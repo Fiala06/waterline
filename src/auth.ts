@@ -24,7 +24,7 @@ export function checkAuthConfig() {
 		console.warn('[waterline] ORIGIN is plain http. Fine for a LAN-only server, but Google sign-in, offline logging and the install prompt need HTTPS.');
 	}
 	if (env.LOCAL_ADMIN_PASSWORD_HASH && !localAdminEnabled()) {
-		console.error("[waterline] LOCAL_ADMIN_PASSWORD_HASH isn't a valid hash, so the local admin login is off. Create one with: npm run hash-password -- 'your password'");
+		console.error("[waterline] LOCAL_ADMIN_PASSWORD_HASH isn't a valid hash, so the local admin login is off. Create one with: hash-password (in the Docker container) or npm run hash-password");
 	}
 }
 

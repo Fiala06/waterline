@@ -20,7 +20,11 @@ COPY --from=build /app/package.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/build ./build
 COPY --from=build /app/drizzle ./drizzle
-RUN mkdir -p /data && chown node:node /data
+COPY --from=build /app/scripts/hash-password.mjs ./scripts/
+# `hash-password` in the container console prints a LOCAL_ADMIN_PASSWORD_HASH value.
+RUN printf '#!/bin/sh\nexec node /app/scripts/hash-password.mjs "$@"\n' > /usr/local/bin/hash-password \
+	&& chmod +x /usr/local/bin/hash-password \
+	&& mkdir -p /data && chown node:node /data
 USER node
 VOLUME /data
 EXPOSE 3000
