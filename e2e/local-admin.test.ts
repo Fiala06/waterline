@@ -10,9 +10,10 @@ test('local admin login rejects a wrong password', async ({ page }) => {
 	await expect(page.getByRole('alert')).toContainText('Wrong username or password.');
 });
 
-test('local admin login signs in', async ({ page }) => {
+test('local admin login signs in, whatever the username capitalization', async ({ page }) => {
 	await page.goto('/signin?local');
-	await page.getByPlaceholder('Admin username').fill('admin');
+	// Phone keyboards capitalize the first letter.
+	await page.getByPlaceholder('Admin username').fill('Admin');
 	await page.getByPlaceholder('Password').fill('e2e-admin-password');
 	await page.getByRole('button', { name: 'Local admin login' }).click();
 	await expect(page).toHaveURL(/\/(setup)?$/);

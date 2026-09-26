@@ -43,7 +43,8 @@ function providers(): Provider[] {
 					const expectedUser = env.LOCAL_ADMIN_USERNAME?.trim() || 'admin';
 					// check the password first, so a wrong username takes just as long
 					const ok = await verifyPassword(password, env.LOCAL_ADMIN_PASSWORD_HASH!);
-					if (!ok || username !== expectedUser) return null;
+					// Any capitalization: phone keyboards turn "admin" into "Admin".
+					if (!ok || username.toLowerCase() !== expectedUser.toLowerCase()) return null;
 					const email = env.ADMIN_EMAIL?.trim() || LOCAL_ADMIN_FALLBACK_EMAIL;
 					const user = upsertUser({ email, name: 'Admin' });
 					return { id: user.id, email: user.email, name: user.displayName };
