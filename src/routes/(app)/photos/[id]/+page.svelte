@@ -4,6 +4,17 @@
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import { photoUrl } from '$lib/media';
 	let { data } = $props();
+	let copied = $state(false);
+	const shareUrl = $derived(data.sharing?.share ? `${data.sharing.base || location.origin}/s/${data.sharing.share.id}` : '');
+	async function copy() {
+		try {
+			await navigator.clipboard.writeText(shareUrl);
+			copied = true;
+			setTimeout(() => (copied = false), 2000);
+		} catch {
+			/* blocked */
+		}
+	}
 
 	function onkeydown(e: KeyboardEvent) {
 		if ((e.target as HTMLElement).closest('input, textarea, [popover]:popover-open')) return;
@@ -48,6 +59,26 @@
 			{/if}
 			<ConfirmDelete id="confirm-photo" title="Delete this photo?" body="The photo is removed from its entry. This can't be undone." />
 		</div>
+		{#if data.sharing}
+			<div class="share">
+				<div class="s-title">Public link</div>
+				{#if data.sharing.share}
+					<div class="s-row">
+						<span class="mono s-url">{shareUrl.replace(/^https?:\/\//, '')}</span>
+						<button type="button" class="btn" onclick={copy}>{copied ? '✓ Copied' : 'Copy'}</button>
+					</div>
+					<form method="POST" action="?/shareOptions" use:enhance class="s-opts">
+						<label class="check-row"><input type="checkbox" name="includeNote" defaultChecked={data.sharing.share.includeNote} onchange={(e) => e.currentTarget.form?.requestSubmit()} /><span>Include note and date</span></label>
+						<label class="check-row"><input type="checkbox" name="includeTank" defaultChecked={data.sharing.share.includeTank} onchange={(e) => e.currentTarget.form?.requestSubmit()} /><span>Include tank name</span></label>
+					</form>
+					<p class="s-note">Anyone with the link can view this photo. There's no sign-in, and readings and other entries stay private. Turn the link off to revoke it.</p>
+					<form method="POST" action="?/unshare" use:enhance><button class="btn">Turn off link</button></form>
+				{:else}
+					<p class="s-note">Share just this photo with a link. No sign-in needed to view it.</p>
+					<form method="POST" action="?/share" use:enhance><button class="btn">Create public link</button></form>
+				{/if}
+			</div>
+		{/if}
 	</div>
 </div>
 
@@ -166,6 +197,47 @@
 		color: #f08a78;
 		border-color: #6b3129;
 		flex: none;
+	}
+	.share {
+		border-top: 1px solid #24414a;
+		margin-top: 8px;
+		padding-top: 12px;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+	.s-title {
+		font-size: 15px;
+		font-weight: 600;
+	}
+	.s-row {
+		display: flex;
+		gap: 8px;
+		align-items: center;
+	}
+	.s-url {
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		font-size: 13px;
+		color: #b8cacd;
+	}
+	.s-opts {
+		display: flex;
+		flex-direction: column;
+	}
+	.s-note {
+		margin: 0;
+		font-size: 13px;
+		color: #9fb4b8;
+		line-height: 1.5;
+	}
+	.share :global(.btn) {
+		color: #e6f0f0;
+		border-color: #2f525c;
+		align-self: flex-start;
 	}
 	.is-cover {
 		opacity: 0.7;

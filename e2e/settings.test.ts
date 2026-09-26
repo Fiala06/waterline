@@ -51,7 +51,7 @@ test('server settings are admin only; test email via outbox', async ({ page }, i
 	await expect(page.getByText('Outbox mode')).toBeVisible();
 
 	// Validation
-	await page.getByRole('button', { name: 'Save', exact: true }).click();
+	await page.locator('form[action="?/save"]').getByRole('button', { name: 'Save', exact: true }).click();
 	await expect(page.getByText('✕ Enter your Mailgun API key.')).toBeVisible();
 
 	// Fill Mailgun and send a test (outbox mode never calls Mailgun)
@@ -63,7 +63,7 @@ test('server settings are admin only; test email via outbox', async ({ page }, i
 	const mail = await waitForMail(adminInbox, (m) => m.subject === 'Waterline test email: delivery works');
 	expect(mail.text).toContain('✓ Delivery works');
 
-	await page.getByRole('button', { name: 'Save', exact: true }).click();
+	await page.locator('form[action="?/save"]').getByRole('button', { name: 'Save', exact: true }).click();
 	await expect(page.getByText('✓ Saved')).toBeVisible();
 	await open(page, '/settings/server');
 	await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /saved/);

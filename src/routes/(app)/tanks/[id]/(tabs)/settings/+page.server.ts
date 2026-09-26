@@ -3,6 +3,9 @@ import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { setFlash } from '$lib/server/flash';
 import { parseTankForm } from '$lib/server/forms';
 import { preparePhotos, setCover, storePhotos } from '$lib/server/photos';
+import { db } from '$lib/server/db';
+import { publicPages } from '$lib/server/db/schema';
+import { eq } from 'drizzle-orm';
 import { getTank, listParams, setArchived, updateTank } from '$lib/server/tanks';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -39,6 +42,7 @@ export const load: PageServerLoad = ({ locals, params }) => {
 			custom: all.filter((p) => p.isCustom).length,
 			names: tracked.map((p) => p.name).join(', ')
 		},
+		publicLive: !!db.select().from(publicPages).where(eq(publicPages.tankId, tank.id)).get()?.enabled,
 		volUnit: unitLabel('volume', user),
 		lenUnit: unitLabel('length', user)
 	};

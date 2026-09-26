@@ -124,6 +124,53 @@
 		{/if}
 	</form>
 
+	<form method="POST" action="?/savePublic" class="card sec" use:enhance={() => async ({ update }) => update({ reset: false })}>
+		<div>
+			<h2>Public pages</h2>
+			<p class="muted sm">Applies to everyone on this server.</p>
+		</div>
+		{#each [{ k: 'allowPublicPages', t: 'Allow public tank pages', d: 'Users can publish tanks and share photo links', v: data.publicPages.allow }, { k: 'publicHomeEnabled', t: 'Public home page', d: `${data.publicPages.effectiveBase ? new URL(data.publicPages.effectiveBase).host : 'The home page'} lists all public tanks`, v: data.publicPages.home }] as row (row.k)}
+			<div class="trow">
+				<label for="pp-{row.k}" class="ttext"><span class="tt">{row.t}</span><span class="td">{row.d}</span></label>
+				<span class="switch"><input id="pp-{row.k}" type="checkbox" name={row.k} defaultChecked={row.v} /><span></span></span>
+			</div>
+		{/each}
+		<div class="kv">
+			<div>
+				<div class="tt">Sitemap & robots.txt</div>
+				<div class="td mono">/sitemap.xml · {data.publicPages.sitemapCount} public page{data.publicPages.sitemapCount === 1 ? '' : 's'}</div>
+			</div>
+			<span class="status-ok strong">✓ Generated</span>
+		</div>
+		<div class="field">
+			<label class="label" for="pp-base">Public site URL</label>
+			<input class="input" id="pp-base" name="publicBaseUrl" defaultValue={data.publicPages.baseUrl} placeholder={data.publicPages.effectiveBase || 'https://tanks.example.com'} aria-invalid={!!form?.publicErrors?.publicBaseUrl} />
+			<span class="td">Used in share links, canonical URLs and the sitemap. Defaults to ORIGIN.</span>
+			{#if form?.publicErrors?.publicBaseUrl}<span class="error-text">✕ {form.publicErrors.publicBaseUrl}</span>{/if}
+		</div>
+
+		<div>
+			<h2>Analytics</h2>
+			<p class="muted sm">Loaded on public pages only. Never on signed-in app screens.</p>
+		</div>
+		<div class="field">
+			<label class="label" for="pp-ga4">Google Analytics 4 measurement ID</label>
+			<input class="input mono" id="pp-ga4" name="ga4Id" defaultValue={data.publicPages.ga4Id} placeholder="G-XXXXXXXXXX" aria-invalid={!!form?.publicErrors?.ga4Id} />
+			{#if form?.publicErrors?.ga4Id}<span class="error-text">✕ {form.publicErrors.ga4Id}</span>{/if}
+		</div>
+		<div class="trow">
+			<label for="pp-consent" class="ttext"><span class="tt">Cookie consent banner</span><span class="td">Analytics loads only after the visitor accepts</span></label>
+			<span class="switch"><input id="pp-consent" type="checkbox" name="consentBanner" defaultChecked={data.publicPages.consent} /><span></span></span>
+		</div>
+		<div class="field">
+			<label class="label" for="pp-gsc">Google Search Console verification</label>
+			<input class="input mono" id="pp-gsc" name="searchConsoleTag" defaultValue={data.publicPages.searchConsoleTag} placeholder='<meta name="google-site-verification" content="…">' aria-invalid={!!form?.publicErrors?.searchConsoleTag} />
+			{#if form?.publicErrors?.searchConsoleTag}<span class="error-text">✕ {form.publicErrors.searchConsoleTag}</span>{/if}
+		</div>
+		<div class="actions"><button class="btn btn-primary">Save</button></div>
+		{#if form && 'publicSaved' in form}<p class="result status-ok" role="status">✓ Saved</p>{/if}
+	</form>
+
 	<section class="card sec">
 		<h2>Sign-in</h2>
 		<div class="kv">

@@ -5,8 +5,9 @@ import { failInterruptedExports } from '$lib/server/export';
 import { sequence } from '@sveltejs/kit/hooks';
 import { handle as authHandle } from './auth';
 import { getUser } from '$lib/server/users';
+import { publicSettings } from '$lib/server/public';
 
-const PUBLIC_PATHS = ['/signin', '/auth', '/e', '/unsubscribe'];
+const PUBLIC_PATHS = ['/signin', '/auth', '/e', '/unsubscribe', '/t', '/s', '/p', '/public', '/sitemap.xml', '/robots.txt'];
 
 /**
  * Cross-site form posts are refused (the check SvelteKit normally does),
@@ -41,6 +42,10 @@ const appHandle: Handle = async ({ event, resolve }) => {
 
 	const path = event.url.pathname;
 	const user = event.locals.user;
+	// Signed-out visitors to / see the public home page when the admin turned it on.
+	if (!user && path === '/' && publicSettings().publicHomeEnabled && publicSettings().allowPublicPages) {
+		redirect(303, '/public');
+	}
 	if (!user && !isPublic(path)) {
 		redirect(303, `/signin${path === '/' ? '' : `?redirectTo=${encodeURIComponent(path + event.url.search)}`}`);
 	}
