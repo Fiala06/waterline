@@ -10,7 +10,7 @@
 		{ id: 'units', label: 'Units' },
 		{ id: 'notifications', label: 'Notifications' },
 		{ id: 'theme', label: 'Theme' },
-		{ id: 'data', label: 'Export' }
+		{ id: 'data', label: 'Export', href: '/settings/export' }
 	];
 	const unsubscribedOn = $derived(
 		p.unsubscribedAt
@@ -25,7 +25,7 @@
 	<h1>Settings</h1>
 	<div class="layout">
 		<nav class="side" aria-label="Settings sections">
-			{#each sections as s (s.id)}<a href="#{s.id}">{s.label}</a>{/each}
+			{#each sections as s (s.id)}<a href={'href' in s ? s.href : `#${s.id}`}>{s.label}</a>{/each}
 			{#if u.isAdmin}<a href="/settings/server" class="admin">Server <span class="badge">Admin</span></a>{/if}
 			<form method="POST" action="?/signout"><button class="signout-link">Sign out</button></form>
 		</nav>
@@ -141,7 +141,7 @@
 
 			<section id="data" class="stack">
 				<h2 class="caps">Data</h2>
-				<div class="card row-link muted">Export arrives with the next milestone.</div>
+				<a class="card row-link" href="/settings/export"><span>Export data</span><span aria-hidden="true">›</span></a>
 				{#if u.isAdmin}
 					<a class="card row-link" href="/settings/server"><span>Server settings <span class="badge">Admin</span></span><span aria-hidden="true">›</span></a>
 				{/if}

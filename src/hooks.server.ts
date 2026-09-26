@@ -1,6 +1,7 @@
 import { redirect, type Handle, type ServerInit } from '@sveltejs/kit';
 import { building } from '$app/environment';
 import { startScheduler } from '$lib/server/scheduler';
+import { failInterruptedExports } from '$lib/server/export';
 import { sequence } from '@sveltejs/kit/hooks';
 import { handle as authHandle } from './auth';
 import { getUser } from '$lib/server/users';
@@ -51,5 +52,7 @@ const appHandle: Handle = async ({ event, resolve }) => {
 export const handle = sequence(csrf, authHandle, appHandle);
 
 export const init: ServerInit = () => {
-	if (!building) startScheduler();
+	if (building) return;
+	failInterruptedExports();
+	startScheduler();
 };

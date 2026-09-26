@@ -1,0 +1,264 @@
+// Data export (17 / D10 / G10): a full backup ZIP (JSON + photos) or a CSV of
+// water tests, for one tank or the whole account. Built in the background;
+// files are kept in DATA_DIR/exports for 24 hours.
+import { error } from '@sveltejs/kit';
+import { and, asc, desc, eq, inArray, lt } from 'drizzle-orm';
+import { createWriteStream, mkdirSync, rmSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+import yazl from 'yazl';
+import { env } from '$env/dynamic/private';
+import { displayValue, paramDecimals, paramUnit } from '$lib/params';
+import { formatNumber } from '$lib/units';
+import { utcToZoned } from '$lib/time';
+import { db } from './db';
+import {
+	events,
+	exports,
+	notificationPrefs,
+	photos,
+	tankParameters,
+	tanks,
+	taskCompletions,
+	tasks,
+	testReadings,
+	tests,
+	type Tank,
+	type User
+} from './db/schema';
+import { photoFilePath } from './photos';
+import { getTank, listTanks } from './tanks';
+
+export const EXPORT_TTL_HOURS = 24;
+const dir = () => join(env.DATA_DIR ?? './data', 'exports');
+
+export type ExportRow = typeof exports.$inferSelect;
+
+export function listExports(userId: string) {
+	return db.select().from(exports).where(eq(exports.userId, userId)).orderBy(desc(exports.createdAt)).limit(10).all();
+}
+
+export function getExport(userId: string, id: string): ExportRow {
+	const row = db.select().from(exports).where(and(eq(exports.id, id), eq(exports.userId, userId))).get();
+	if (!row) error(404, 'Export not found');
+	return row;
+}
+
+function tanksFor(user: User, scope: 'tank' | 'account', tankId: string | null): Tank[] {
+	if (scope === 'tank') return [getTank(user.id, tankId ?? '')];
+	return [...listTanks(user.id), ...listTanks(user.id, { archived: true })];
+}
+
+/** Rough size of a full backup, for "about 48 MB". */
+export function estimateBackupBytes(user: User, scope: 'tank' | 'account', tankId: string | null) {
+	const ids = tanksFor(user, scope, tankId).map((t) => t.id);
+	if (!ids.length) return 0;
+	let bytes = 50_000;
+	for (const p of db.select().from(photos).where(inArray(photos.tankId, ids)).all()) {
+		try {
+			bytes += statSync(photoFilePath(p, 'full')).size;
+		} catch {
+			/* missing file */
+		}
+	}
+	return bytes;
+}
+
+export function startExport(user: User, scope: 'tank' | 'account', tankId: string | null, format: 'zip' | 'csv') {
+	const list = tanksFor(user, scope, tankId); // validates ownership
+	const row = db
+		.insert(exports)
+		.values({ userId: user.id, scope, tankId: scope === 'tank' ? list[0].id : null, format, progressText: 'Starting…' })
+		.returning()
+		.get();
+	// Runs in the background; the page polls for progress.
+	build(row.id, user, list, format).catch((e) => {
+		console.error('[waterline] export failed:', e);
+		db.update(exports).set({ status: 'failed', error: 'The export failed. Try again.' }).where(eq(exports.id, row.id)).run();
+	});
+	return row;
+}
+
+const progress = (id: string, pct: number, text: string) =>
+	db.update(exports).set({ progress: Math.round(pct), progressText: text }).where(eq(exports.id, id)).run();
+
+function dataFor(user: User, list: Tank[]) {
+	const ids = list.map((t) => t.id);
+	const byTank = <T extends { tankId: string }>(rows: T[]) => (id: string) => rows.filter((r) => r.tankId === id);
+	const params = byTank(db.select().from(tankParameters).where(inArray(tankParameters.tankId, ids)).orderBy(asc(tankParameters.sort)).all());
+	const allTests = db.select().from(tests).where(inArray(tests.tankId, ids)).orderBy(asc(tests.takenAt)).all();
+	const testIds = allTests.map((t) => t.id);
+	const readings = testIds.length ? db.select().from(testReadings).where(inArray(testReadings.testId, testIds)).all() : [];
+	const allEvents = byTank(db.select().from(events).where(inArray(events.tankId, ids)).orderBy(asc(events.occurredAt)).all());
+	const allTasks = db.select().from(tasks).where(inArray(tasks.tankId, ids)).all();
+	const completions = allTasks.length
+		? db.select().from(taskCompletions).where(inArray(taskCompletions.taskId, allTasks.map((t) => t.id))).all()
+		: [];
+	const allPhotos = db.select().from(photos).where(inArray(photos.tankId, ids)).orderBy(asc(photos.takenAt)).all();
+	return { params, allTests, readings, allEvents, allTasks, completions, allPhotos };
+}
+
+async function build(id: string, user: User, list: Tank[], format: 'zip' | 'csv') {
+	mkdirSync(dir(), { recursive: true });
+	const stamp = utcToZoned(new Date(), user.timeZone).date;
+	const d = dataFor(user, list);
+	const entries = d.allTests.length + list.reduce((n, t) => n + d.allEvents(t.id).length, 0);
+
+	if (format === 'csv') {
+		const name = `waterline-tests-${list.length === 1 ? slug(list[0].name) + '-' : ''}${stamp}.csv`;
+		const path = join(dir(), `${id}.csv`);
+		const csv = testsCsv(user, list, d);
+		await new Promise<void>((resolve, reject) => {
+			const ws = createWriteStream(path);
+			ws.on('error', reject).on('finish', resolve);
+			ws.end(csv);
+		});
+		finish(id, path, name, `${d.allTests.length} test${d.allTests.length === 1 ? '' : 's'}`);
+		return;
+	}
+
+	const name = `waterline-backup-${list.length === 1 ? slug(list[0].name) + '-' : ''}${stamp}.zip`;
+	const path = join(dir(), `${id}.zip`);
+	const zip = new yazl.ZipFile();
+	const out = createWriteStream(path);
+	const done = new Promise<void>((resolve, reject) => {
+		out.on('close', resolve).on('error', reject);
+		zip.outputStream.on('error', reject);
+	});
+	zip.outputStream.pipe(out);
+
+	progress(id, 5, 'Writing entries');
+	const prefs = db.select().from(notificationPrefs).where(eq(notificationPrefs.userId, user.id)).get();
+	const json = {
+		format: 'waterline-backup',
+		version: 1,
+		exportedAt: new Date().toISOString(),
+		note: 'Measurements are stored metric: volume in liters, temperature in °C, lengths in cm, hardness in dGH. Times are UTC.',
+		account: {
+			email: user.email,
+			displayName: user.displayName,
+			unitSystem: user.unitSystem,
+			hardnessUnit: user.hardnessUnit,
+			timeZone: user.timeZone,
+			notifications: prefs ? { ...prefs, userId: undefined } : null
+		},
+		tanks: list.map((t) => ({
+			...t,
+			userId: undefined,
+			parameters: d.params(t.id).map((p) => ({ ...p, tankId: undefined })),
+			tests: d.allTests
+				.filter((x) => x.tankId === t.id)
+				.map((x) => ({
+					...x,
+					tankId: undefined,
+					readings: d.readings.filter((r) => r.testId === x.id).map((r) => ({ parameterId: r.parameterId, value: r.value }))
+				})),
+			events: d.allEvents(t.id).map((e) => ({ ...e, tankId: undefined })),
+			tasks: d.allTasks
+				.filter((k) => k.tankId === t.id)
+				.map((k) => ({ ...k, tankId: undefined, completions: d.completions.filter((c) => c.taskId === k.id) })),
+			photos: d.allPhotos
+				.filter((p) => p.tankId === t.id)
+				.map((p) => ({ id: p.id, eventId: p.eventId, testId: p.testId, takenAt: p.takenAt, width: p.width, height: p.height, file: `photos/${p.path}` }))
+		}))
+	};
+	zip.addBuffer(Buffer.from(JSON.stringify(json, null, 2)), 'waterline.json');
+	zip.addBuffer(Buffer.from(testsCsv(user, list, d)), 'water-tests.csv');
+	zip.addBuffer(
+		Buffer.from(
+			`Waterline backup — ${stamp}\n\nwaterline.json   everything: tanks, parameters, tests, events, tasks, photo list\nwater-tests.csv  one row per water test, in your units\nphotos/          full-size photos, by tank\n`
+		),
+		'README.txt'
+	);
+
+	const total = d.allPhotos.length;
+	for (let i = 0; i < total; i++) {
+		const p = d.allPhotos[i];
+		try {
+			statSync(photoFilePath(p, 'full'));
+			// JPEGs are already compressed
+			zip.addFile(photoFilePath(p, 'full'), `photos/${p.path}`, { compress: false });
+		} catch {
+			/* skip missing file */
+		}
+		if (i % 5 === 0 || i === total - 1) progress(id, 10 + (80 * (i + 1)) / total, `Packing photos · ${i + 1} of ${total}`);
+	}
+	progress(id, 95, 'Finishing');
+	zip.end();
+	await done;
+	finish(id, path, name, `${total} photo${total === 1 ? '' : 's'}, ${entries} entr${entries === 1 ? 'y' : 'ies'}`);
+}
+
+function finish(id: string, path: string, fileName: string, summary: string) {
+	db.update(exports)
+		.set({
+			status: 'ready',
+			progress: 100,
+			progressText: null,
+			filePath: path,
+			fileName,
+			size: statSync(path).size,
+			summary,
+			expiresAt: new Date(Date.now() + EXPORT_TTL_HOURS * 3_600_000).toISOString()
+		})
+		.where(eq(exports.id, id))
+		.run();
+}
+
+const slug = (s: string) =>
+	s
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-|-$/g, '')
+		.slice(0, 40) || 'tank';
+
+function csvCell(v: string) {
+	return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+}
+
+/** One row per test, values in the user's units. Columns: date, time, tank, each parameter, note. */
+export function testsCsv(user: User, list: Tank[], d: ReturnType<typeof dataFor>) {
+	const cols: { key: string; header: string }[] = [];
+	const seen = new Set<string>();
+	for (const t of list) {
+		for (const p of d.params(t.id)) {
+			const key = p.isCustom ? `custom:${p.name.toLowerCase()}:${p.unit}` : p.key;
+			if (seen.has(key)) continue;
+			seen.add(key);
+			const unit = paramUnit(p, user);
+			cols.push({ key, header: `${p.name}${unit ? ` (${unit})` : ''}` });
+		}
+	}
+	const lines = [['Date', 'Time', 'Tank', ...cols.map((c) => c.header), 'Note'].map(csvCell).join(',')];
+	const tankName = new Map(list.map((t) => [t.id, t.name]));
+	for (const t of d.allTests) {
+		const byParam = new Map(d.params(t.tankId).map((p) => [p.id, p]));
+		const values = new Map<string, string>();
+		for (const r of d.readings.filter((x) => x.testId === t.id)) {
+			const p = byParam.get(r.parameterId);
+			if (!p) continue;
+			const key = p.isCustom ? `custom:${p.name.toLowerCase()}:${p.unit}` : p.key;
+			values.set(key, formatNumber(displayValue(p, r.value, user), paramDecimals(p, user) + 1));
+		}
+		const when = utcToZoned(t.takenAt, user.timeZone);
+		lines.push(
+			[when.date, when.time, tankName.get(t.tankId) ?? '', ...cols.map((c) => values.get(c.key) ?? ''), t.note ?? ''].map(csvCell).join(',')
+		);
+	}
+	return lines.join('\n') + '\n';
+}
+
+/** Delete expired export files (run by the scheduler). Interrupted builds are marked failed on start. */
+export function cleanupExports() {
+	const now = new Date().toISOString();
+	for (const r of db.select().from(exports).where(and(eq(exports.status, 'ready'), lt(exports.expiresAt, now))).all()) {
+		if (r.filePath) rmSync(r.filePath, { force: true });
+		db.update(exports).set({ status: 'expired', filePath: null }).where(eq(exports.id, r.id)).run();
+	}
+}
+
+export function failInterruptedExports() {
+	db.update(exports)
+		.set({ status: 'failed', error: 'The server restarted while this was building. Try again.' })
+		.where(eq(exports.status, 'building'))
+		.run();
+}

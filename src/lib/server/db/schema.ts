@@ -243,3 +243,29 @@ export const emailLog = sqliteTable(
 	},
 	(t) => [uniqueIndex('email_log_key').on(t.userId, t.key)]
 );
+
+// ── Export ───────────────────────────────────────────────────────────────────
+
+export const exports = sqliteTable(
+	'exports',
+	{
+		id: id(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		scope: text('scope', { enum: ['tank', 'account'] }).notNull(),
+		tankId: text('tank_id').references(() => tanks.id, { onDelete: 'cascade' }),
+		format: text('format', { enum: ['zip', 'csv'] }).notNull(),
+		status: text('status', { enum: ['building', 'ready', 'failed', 'expired'] }).notNull().default('building'),
+		progress: integer('progress').notNull().default(0),
+		progressText: text('progress_text'),
+		filePath: text('file_path'),
+		fileName: text('file_name'),
+		size: integer('size'),
+		summary: text('summary'), // "190 photos, 212 entries"
+		error: text('error'),
+		createdAt: createdAt(),
+		expiresAt: text('expires_at')
+	},
+	(t) => [index('exports_user').on(t.userId)]
+);
