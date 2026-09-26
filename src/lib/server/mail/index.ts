@@ -18,31 +18,59 @@ export function getServerSettings() {
 	);
 }
 
-/** The configured transport and sender, or null when email isn't set up. */
-export function getTransport(): { transport: Transport; from: string } | null {
-	if (env.EMAIL_TRANSPORT === 'outbox') return { transport: outboxTransport(), from: 'Waterline <waterline@localhost>' };
+export interface MailConfig {
+	emailProvider: 'mailgun' | 'smtp' | null;
+	mailgunApiKey: string | null;
+	mailgunDomain: string | null;
+	mailgunRegion: 'us' | 'eu';
+	smtpHost: string | null;
+	smtpPort: number | null;
+	smtpSecure: boolean;
+	smtpUser: string | null;
+	smtpPassword: string | null;
+	sender: string | null;
+}
+
+export function storedConfig(): MailConfig {
 	const s = getServerSettings();
-	if (!s.sender) return null;
-	const from = s.sender.includes('<') ? s.sender : `Waterline <${s.sender}>`;
-	if (s.emailProvider === 'mailgun') {
-		const apiKey = decrypt(s.mailgunApiKeyEnc);
-		if (!apiKey || !s.mailgunDomain) return null;
-		return { transport: mailgunTransport({ apiKey, domain: s.mailgunDomain, region: s.mailgunRegion }), from };
+	return {
+		emailProvider: s.emailProvider,
+		mailgunApiKey: decrypt(s.mailgunApiKeyEnc),
+		mailgunDomain: s.mailgunDomain,
+		mailgunRegion: s.mailgunRegion,
+		smtpHost: s.smtpHost,
+		smtpPort: s.smtpPort,
+		smtpSecure: s.smtpSecure,
+		smtpUser: s.smtpUser,
+		smtpPassword: decrypt(s.smtpPasswordEnc),
+		sender: s.sender
+	};
+}
+
+/** Build a transport from settings (saved or just typed into the admin form). */
+export function transportFrom(c: MailConfig): { transport: Transport; from: string } | null {
+	if (!c.sender) return null;
+	const from = c.sender.includes('<') ? c.sender : `Waterline <${c.sender}>`;
+	if (c.emailProvider === 'mailgun') {
+		if (!c.mailgunApiKey || !c.mailgunDomain) return null;
+		return { transport: mailgunTransport({ apiKey: c.mailgunApiKey, domain: c.mailgunDomain, region: c.mailgunRegion }), from };
 	}
-	if (s.emailProvider === 'smtp') {
-		if (!s.smtpHost || !s.smtpPort) return null;
+	if (c.emailProvider === 'smtp') {
+		if (!c.smtpHost || !c.smtpPort) return null;
 		return {
-			transport: smtpTransport({
-				host: s.smtpHost,
-				port: s.smtpPort,
-				secure: s.smtpSecure,
-				user: s.smtpUser,
-				password: decrypt(s.smtpPasswordEnc)
-			}),
+			transport: smtpTransport({ host: c.smtpHost, port: c.smtpPort, secure: c.smtpSecure, user: c.smtpUser, password: c.smtpPassword }),
 			from
 		};
 	}
 	return null;
+}
+
+export const outboxMode = () => env.EMAIL_TRANSPORT === 'outbox';
+
+/** The configured transport and sender, or null when email isn't set up. */
+export function getTransport(): { transport: Transport; from: string } | null {
+	if (outboxMode()) return { transport: outboxTransport(), from: 'Waterline <waterline@localhost>' };
+	return transportFrom(storedConfig());
 }
 
 export function emailConfigured() {
