@@ -25,7 +25,7 @@ const csrf: Handle = ({ event, resolve }) => {
 	}
 	return resolve(event);
 };
-const isPublic = (path: string) => PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + '/'));
+const isPublic = (path: string) => path === '/dev/seed' || PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + '/'));
 
 const appHandle: Handle = async ({ event, resolve }) => {
 	// Background sync of offline entries: no "Saved" toast per replayed entry.

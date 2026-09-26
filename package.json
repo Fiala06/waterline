@@ -15,7 +15,8 @@
 		"test:e2e": "playwright test",
 		"db:generate": "drizzle-kit generate",
 		"hash-password": "node scripts/hash-password.mjs",
-		"build:species": "node scripts/build-species.mjs"
+		"build:species": "node scripts/build-species.mjs",
+		"seed": "curl -sf -X POST http://localhost:5173/dev/seed && echo"
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.63.0",

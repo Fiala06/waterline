@@ -7,6 +7,9 @@
 
 	let { data } = $props();
 	let selected = $state<string | null>(null);
+	// Dosing can be several times a week, so its markers are opt-in.
+	let showDosing = $state(false);
+	const markers = $derived((data.chart?.markers ?? []).filter((m) => showDosing || m.kind !== 'dosing'));
 
 	const q = (patch: Record<string, string>) => {
 		const u = new URLSearchParams(page.url.searchParams);
@@ -67,7 +70,7 @@
 								height={300}
 								points={data.chart.points}
 								band={data.chart.band}
-								markers={data.chart.markers}
+								{markers}
 								from={data.chart.from}
 								to={data.chart.to}
 								lastLevel={data.chart.stats?.latestLevel}
@@ -85,8 +88,12 @@
 							</TrendChart>
 							<div class="legend">
 								{#if data.chart.target}<span><i class="lg-band"></i>Target {data.chart.target}</span>{/if}
-								{#if data.chart.markers.length}<span><i class="lg-marker"></i>Water change{hasDosing ? '' : 's (tap to open)'}</span>{/if}
-								{#if hasDosing}<span><i class="lg-marker dosing"></i>Dosing</span>{/if}
+								{#if data.chart.markers.some((m) => m.kind !== 'dosing')}<span><i class="lg-marker"></i>Water changes (tap to open)</span>{/if}
+								{#if hasDosing}
+									<button type="button" class="lg-toggle" aria-pressed={showDosing} onclick={() => (showDosing = !showDosing)}>
+										<i class="lg-marker dosing"></i>{showDosing ? 'Hide dosing' : 'Show dosing'}
+									</button>
+								{/if}
 							</div>
 						{:else}
 							<p class="muted">Charts appear after your second test.</p>
@@ -107,11 +114,11 @@
 				{/if}
 			</div>
 
-			{#if data.chart?.markers.length}
+			{#if markers.length}
 				<aside class="events">
 					<h2 class="caps">Events in range</h2>
 					<ul>
-						{#each [...data.chart.markers].reverse() as m (m.href)}
+						{#each [...markers].reverse() as m (m.href)}
 							<li>
 								<button type="button" class:active={chosen?.href === m.href} onclick={() => (selected = m.href)}>
 									<span>{m.label}</span><span class="muted sm">{m.day}</span>
@@ -242,6 +249,15 @@
 		border-radius: 5px;
 		background: var(--border);
 		border: 1px solid var(--text-muted);
+	}
+	.lg-toggle {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 13px;
+		color: var(--accent);
+		font-weight: 600;
+		min-height: 32px;
 	}
 	.lg-marker.dosing {
 		border-radius: 2px;

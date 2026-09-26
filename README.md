@@ -24,6 +24,16 @@ npm run dev
 
 Open http://localhost:5173. With `AUTH_DEV_LOGIN=true` the sign-in page shows a test form in place of Google, so you can try the app without OAuth keys. Never turn that on for a real server.
 
+### Demo data
+
+With the dev server running (and `AUTH_DEV_LOGIN=true`):
+
+```bash
+npm run seed
+```
+
+Then sign in with the test form as **demo@example.com**. You get four tanks (planted, reef, a shrimp tank and an archived one) with six months of tests, water changes, dosing, maintenance, photos, livestock, plants, equipment, tasks in every state, a published public page at `/t/riverbed-40-demo`, and a photo share link. Running it again replaces the demo account; your other accounts aren't touched.
+
 ## Deploy with Docker
 
 ```bash
