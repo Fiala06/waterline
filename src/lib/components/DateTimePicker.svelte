@@ -23,13 +23,17 @@
 	let time = $state('');
 	let month = $state(''); // YYYY-MM shown
 
+	// Start from the current choice each time it opens. Untracked, so picking a day
+	// (which changes `date`) doesn't re-run this and undo the pick.
 	$effect(() => {
 		if (!open) return;
-		today = todayInZone(timeZone);
-		const now = utcToZoned(new Date(), timeZone);
-		date = value?.date ?? now.date;
-		time = value?.time ?? now.time;
-		month = date.slice(0, 7);
+		untrack(() => {
+			const now = utcToZoned(new Date(), timeZone);
+			today = now.date;
+			date = value?.date ?? now.date;
+			time = value?.time ?? now.time;
+			month = date.slice(0, 7);
+		});
 	});
 
 	const cells = $derived.by(() => {
@@ -58,8 +62,14 @@
 	}
 
 	const canNext = $derived(month < today.slice(0, 7));
-	const nowParts = $derived(utcToZoned(new Date(), timeZone));
-	const isFuture = $derived(date > today || (date === today && time > nowParts.time));
+	// checked against the clock whenever the choice changes, not when the page loaded
+	const isFuture = $derived.by(() => {
+		const now = utcToZoned(new Date(), timeZone);
+		return date > now.date || (date === now.date && time > now.time);
+	});
+
+	const dayLabel = (d: string) =>
+		new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' });
 
 	const useLabel = $derived(date && time ? `Use ${whenLabel({ date, time })}` : 'Use');
 </script>
@@ -100,7 +110,8 @@
 						class:today={c === today}
 						disabled={c > today}
 						aria-pressed={c === date}
-						aria-label={c}
+						aria-current={c === today ? 'date' : undefined}
+						aria-label={dayLabel(c)}
 						onclick={() => (date = c)}>{Number(c.slice(8))}</button
 					>
 				{:else}
@@ -112,14 +123,14 @@
 
 	<label class="time">
 		<span>Time</span>
-		<input type="time" class="input" bind:value={time} required />
+		<input type="time" class="time-box" bind:value={time} required />
 	</label>
 
 	<p class="note">Future dates are disabled for logs. Backdating is allowed.</p>
 
 	<button
 		type="button"
-		class="btn btn-primary btn-lg"
+		class="btn btn-primary btn-lg use"
 		disabled={isFuture || !date || !time}
 		onclick={() => {
 			onselect({ date, time });
@@ -139,38 +150,56 @@
 		font-size: 22px;
 		font-weight: 600;
 	}
+	.head .chip {
+		font-weight: 600;
+	}
 	.nav {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		margin-bottom: 8px;
+		margin-bottom: 6px;
+	}
+	.nav .btn-icon {
+		background: transparent;
+		color: var(--text-2);
+		font-size: 20px;
 	}
 	.nav .btn-icon:disabled {
 		opacity: 0.35;
+		cursor: default;
 	}
 	.month {
-		font-size: 17px;
+		font-size: 16px;
 		font-weight: 600;
 	}
 	.grid {
 		display: grid;
 		grid-template-columns: repeat(7, 1fr);
-		gap: 4px;
+		gap: 4px 2px;
 	}
 	.dow {
 		text-align: center;
 		font-size: 12px;
 		color: var(--text-faint);
-		padding: 4px 0;
+		padding-bottom: 4px;
 	}
+	/* G9: 40px pills; the hit area reaches 44px into the row gap */
 	.day {
-		height: 44px;
-		border-radius: 12px;
-		font-size: 16px;
+		position: relative;
+		height: 40px;
+		border-radius: 20px;
+		font-size: 15px;
 		font-variant-numeric: tabular-nums;
 	}
+	.day::after {
+		content: '';
+		position: absolute;
+		inset: -2px 0;
+	}
 	.day.today {
-		box-shadow: inset 0 0 0 1px var(--border-strong);
+		box-shadow: inset 0 0 0 1px var(--accent);
+		color: var(--accent);
+		font-weight: 700;
 	}
 	.day.selected {
 		background: var(--accent);
@@ -182,21 +211,51 @@
 		color: var(--placeholder);
 		cursor: not-allowed;
 	}
+	@media (hover: hover) {
+		.day:not(:disabled):not(.selected):hover {
+			background: var(--surface-hi);
+		}
+	}
 	.time {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 12px;
-		font-size: 15px;
+		gap: 10px;
+		font-size: 14px;
 		color: var(--text-muted);
 	}
-	.time .input {
-		width: 160px;
-		text-align: center;
+	.time-box {
+		height: 46px;
+		padding: 0 16px;
+		border-radius: 12px;
+		background: var(--surface-2);
+		border: 1px solid var(--border-strong);
+		color: var(--text);
+		font-size: 17px;
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
+	}
+	.time-box:focus {
+		outline: none;
+		border-color: var(--accent);
+		box-shadow: inset 0 0 0 1px var(--accent);
+	}
+	/* touch screens open their own time wheel; the clock icon only helps with a mouse */
+	@media (pointer: coarse) {
+		.time-box::-webkit-calendar-picker-indicator {
+			display: none;
+		}
+	}
+	.time-box::-webkit-calendar-picker-indicator {
+		opacity: 0.6;
+		cursor: pointer;
 	}
 	.note {
 		margin: 0;
-		font-size: 13px;
+		font-size: 12px;
 		color: var(--text-faint);
+	}
+	.use {
+		height: 54px;
 	}
 </style>

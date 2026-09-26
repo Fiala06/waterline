@@ -1,10 +1,11 @@
 <script lang="ts">
-	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
+	// Public, read-only tank page. Phone (P2): one column, readings first.
+	// Desktop (P3): cover, story and chart on the left; readings, photos and
+	// activity on the right, inside one set of outer margins.
 	import Logo from '$lib/components/Logo.svelte';
 	import PublicAnalytics from '$lib/components/PublicAnalytics.svelte';
 	import PublicHead from '$lib/components/PublicHead.svelte';
 	import TrendChart from '$lib/components/TrendChart.svelte';
-	import type { ComponentProps } from 'svelte';
 
 	let { data } = $props();
 	const v = $derived(data.view);
@@ -12,7 +13,6 @@
 	let chartIdx = $state(0);
 	const chart = $derived(v.charts[chartIdx] ?? v.charts[0]);
 	const now = Date.now();
-	const kind = (k: string) => (k === 'test' ? 'test' : k) as ComponentProps<typeof CategoryIcon>['kind'];
 	const jsonLd = $derived({
 		'@context': 'https://schema.org',
 		'@type': 'WebPage',
@@ -24,118 +24,151 @@
 		about: { '@type': 'Thing', name: `${v.name} (${v.type.toLowerCase()} aquarium)` }
 	});
 	const sub = $derived([v.type, v.volume, v.since ? `running since ${v.since}` : null].filter(Boolean).join(' · '));
+	// "today" or "Sep 25"; capitalized where it stands alone
+	const testedDay = $derived(v.tested ? v.tested.charAt(0).toUpperCase() + v.tested.slice(1) : null);
+	const squash = (s: string) => s.toLowerCase().replace(/\s+/g, '');
+	// "Tidewell 200 W" doesn't need "200 W" again
+	const specOf = (e: { name: string; spec: string | null }) => (e.spec && !squash(e.name).includes(squash(e.spec)) ? e.spec : null);
+	const inTank = $derived(v.livestock.length > 0 || v.plants.length > 0 || v.equipment.length > 0);
 </script>
 
 <PublicHead seo={data.seo} verification={data.verification} {jsonLd} />
 
 <div class="pub">
 	<header class="top">
-		<a href="/" class="brand" aria-label="Waterline"><Logo size={26} wordmark wordSize={18} /></a>
-		<span class="muted sm">Read-only{v.keeper ? ` · shared by ${v.keeper}` : ''}</span>
-		{#if data.ownerTankId}<a class="btn sm-btn" href="/tanks/{data.ownerTankId}/public">Edit public page</a>{/if}
+		<div class="top-in">
+			<a href="/" class="brand" aria-label="Waterline"><Logo size={24} wordmark wordSize={16} /></a>
+			<span class="shared hide-phone">Read-only{v.keeper ? ` · shared by ${v.keeper}` : ''}</span>
+			{#if data.ownerTankId}<a class="btn edit" href="/tanks/{data.ownerTankId}/public">Edit public page</a>{/if}
+		</div>
 	</header>
 
-	<div class="hero" class:photo-placeholder={!v.cover}>
-		{#if v.cover}<img src={photo(v.cover, 'full')} alt="{v.name} aquarium" />{/if}
-	</div>
-
 	<main class="wrap">
-		<div class="intro">
-			<h1>{v.name}</h1>
-			<p class="muted">{sub}{v.keeper ? ` · kept by ${v.keeper}` : ''}</p>
-			{#if v.summary}
-				<div class="pills">
-					{#each v.summary.bad as b (b)}<span class="pill bad">✕ {b}</span>{/each}
-					{#if v.summary.ok}<span class="pill ok">✓ {v.summary.ok} in range</span>{/if}
-					{#if v.tested}<span class="muted sm">Tested {v.tested}</span>{/if}
+		<div class="col">
+			<div class="hero" class:photo-placeholder={!v.cover}>
+				{#if v.cover}<img src={photo(v.cover, 'full')} alt="{v.name} aquarium" />{/if}
+			</div>
+
+			<div class="intro">
+				<div class="title">
+					<h1>{v.name}</h1>
+					<p class="sub">{sub}{#if v.keeper}<span class="hide-desk">{` · kept by ${v.keeper}`}</span>{/if}</p>
 				</div>
-			{/if}
+				{#if v.summary}
+					<div class="pills">
+						{#each v.summary.bad as b (b)}<span class="pill bad">✕ {b}</span>{/each}
+						{#if v.summary.ok}<span class="pill ok">✓ {v.summary.ok} in range</span>{/if}
+						{#if v.tested}<span class="pill plain hide-desk">Tested {v.tested}</span>{/if}
+					</div>
+				{/if}
+			</div>
+
 			{#if v.description}<p class="desc">{v.description}</p>{/if}
-		</div>
 
-		<div class="cols">
-			<div class="col">
-				{#if chart}
-					<section class="card chart">
-						<div class="ch">
-							<h2>{chart.name} · 3 months</h2>
-							{#if v.charts.length > 1}
-								<div class="chips" role="group" aria-label="Parameter">
-									{#each v.charts as c, i (c.id)}
-										<button type="button" class="chip" aria-pressed={chartIdx === i} onclick={() => (chartIdx = i)}>{c.name}</button>
-									{/each}
-								</div>
-							{/if}
-						</div>
-						<TrendChart
-							full
-							height={220}
-							points={chart.points}
-							band={chart.band}
-							from={now - 91 * 86_400_000}
-							to={now}
-							lastLevel={chart.lastLevel}
-							label="{chart.name} over the last 3 months"
-						/>
-						{#if chart.target}<p class="muted sm">Target {chart.target}</p>{/if}
-					</section>
-				{/if}
-
-				{#if v.photos.length}
-					<section>
-						<h2>Photos</h2>
-						<div class="photos">
-							{#each v.photos as p, i (p)}<a href={photo(p, 'full')}><img src={photo(p)} alt="{v.name} photo {i + 1}" loading="lazy" /></a>{/each}
-						</div>
-					</section>
-				{/if}
-
-				{#if v.livestock.length || v.plants.length || v.equipment.length}
-					<section>
-						<h2>In the tank</h2>
-						{#if v.livestock.length}
-							<div class="card list">
-								{#each v.livestock as l (l.id)}<div class="li"><span>{l.name}</span><span class="num strong">{l.count}</span></div>{/each}
+			{#if chart}
+				<section class="chart">
+					<div class="ch">
+						<h2>{chart.name} · 3 months</h2>
+						{#if v.charts.length > 1}
+							<div class="chips" role="group" aria-label="Parameter">
+								{#each v.charts as c, i (c.id)}
+									<button type="button" class="chip" aria-pressed={chartIdx === i} onclick={() => (chartIdx = i)}>{c.name}</button>
+								{/each}
 							</div>
 						{/if}
-						{#if v.equipment.length}
-							<p class="muted sm">{v.equipment.map((e) => [e.name, e.spec].filter(Boolean).join(' ')).join(' · ')}</p>
-						{/if}
-						{#if v.plants.length}<p class="muted sm">{v.plants.join(', ')}</p>{/if}
-					</section>
-				{/if}
-			</div>
-
-			<div class="col side">
-				{#if v.readings.length}
-					<section class="first">
-						<div class="sh"><h2>Latest readings</h2>{#if v.tested}<span class="muted sm">{v.tested}</span>{/if}</div>
-						<div class="readings">
-							{#each v.readings as r (r.id)}
-								<div class="card rd" class:bad={r.level === 'bad'} class:warn={r.level === 'warn'}>
-									<span class="rn">{r.name}</span>
-									<span class="rv num">{r.value}{#if r.unit && r.unit.length <= 3}<small> {r.unit}</small>{/if}</span>
-									<span class="rs status-{r.level}">{r.status}</span>
-								</div>
-							{/each}
+					</div>
+					<div class="chart-card">
+						<div class="chart-box">
+							<div class="fill">
+								<TrendChart
+									fit
+									points={chart.points}
+									band={chart.band}
+									from={now - 91 * 86_400_000}
+									to={now}
+									lastLevel={chart.lastLevel}
+									label="{chart.name} over the last 3 months"
+								/>
+							</div>
 						</div>
-					</section>
-				{/if}
+						{#if chart.target}<p class="legend"><span class="swatch" aria-hidden="true"></span>Target {chart.target}</p>{/if}
+					</div>
+				</section>
+			{/if}
 
-				{#if v.activity.length}
-					<section class="last">
-						<h2>Recent activity</h2>
-						<ul class="feed">
-							{#each v.activity as a (a.key)}
-								<li><CategoryIcon kind={kind(a.kind)} size={36} /><span class="ft">{a.title}</span><span class="muted sm">{a.day}</span></li>
-							{/each}
-						</ul>
-					</section>
-				{/if}
-			</div>
+			{#if inTank}
+				<section class="tank">
+					<h2>In the tank</h2>
+					{#if v.livestock.length}
+						<div class="group">
+							<h3>Livestock</h3>
+							<ul class="tags">
+								{#each v.livestock as l (l.id)}<li class="tag">{l.name}<b class="num">{l.count}</b></li>{/each}
+							</ul>
+						</div>
+					{/if}
+					{#if v.equipment.length}
+						<div class="group">
+							<h3>Equipment</h3>
+							<ul class="rows">
+								{#each v.equipment as e (e.id)}
+									<li><span>{e.name}</span>{#if specOf(e)}<span class="muted">{specOf(e)}</span>{/if}</li>
+								{/each}
+							</ul>
+						</div>
+					{/if}
+					{#if v.plants.length}
+						<div class="group">
+							<h3>Plants</h3>
+							<p class="plants">{v.plants.join(', ')}</p>
+						</div>
+					{/if}
+				</section>
+			{/if}
 		</div>
 
-		<footer class="foot muted sm">Logged with Waterline · read-only</footer>
+		<div class="col side">
+			{#if v.readings.length}
+				<section class="readings">
+					<!-- P2 goes straight from the pills to the tiles; the heading is for desktop and screen readers -->
+					<div class="sh">
+						<h2>Latest readings</h2>
+						{#if testedDay}<span class="muted">{testedDay}</span>{/if}
+					</div>
+					<div class="tiles">
+						{#each v.readings as r (r.id)}
+							<div class="rd" class:bad={r.level === 'bad'} class:warn={r.level === 'warn'}>
+								<span class="rn">{r.name}</span>
+								<span class="rv num">{r.value}{#if r.unit}{' '}<small>{r.unit}</small>{/if}</span>
+								<span class="rs status-{r.level}">{r.status}</span>
+							</div>
+						{/each}
+					</div>
+				</section>
+			{/if}
+
+			{#if v.photos.length}
+				<section class="photos">
+					<h2>Photos</h2>
+					<div class="grid">
+						{#each v.photos.slice(0, 6) as p, i (p)}
+							<a href={photo(p, 'full')}><img src={photo(p)} alt="{v.name} photo {i + 1}" loading="lazy" /></a>
+						{/each}
+					</div>
+				</section>
+			{/if}
+
+			{#if v.activity.length}
+				<section class="activity">
+					<h2>Recent activity</h2>
+					<ul class="rows">
+						{#each v.activity as a (a.key)}<li><span>{a.title}</span><span class="muted">{a.day}</span></li>{/each}
+					</ul>
+				</section>
+			{/if}
+		</div>
+
+		<footer class="foot"><Logo size={18} />Logged with Waterline · read-only</footer>
 	</main>
 </div>
 
@@ -145,79 +178,56 @@
 	.pub {
 		min-height: 100dvh;
 		background: var(--bg);
-	}
-	.top {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-		padding: 12px 20px;
-		justify-content: space-between;
-	}
-	.brand {
 		color: var(--text);
 	}
-	.sm {
-		font-size: 13px;
+
+	/* ── Header ───────────────────────────────────────────────── */
+	.top {
+		border-bottom: 1px solid var(--border);
+		padding-top: env(safe-area-inset-top);
 	}
-	.sm-btn {
-		min-height: 34px;
-		font-size: 13px;
-	}
-	.hero {
-		height: 220px;
-		overflow: hidden;
-		border: none;
-	}
-	.hero img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-		display: block;
-	}
-	.wrap {
-		max-width: 1120px;
+	.top-in {
+		max-width: 1280px;
 		margin: 0 auto;
-		padding: 16px 20px 40px;
+		min-height: 56px;
+		padding: 0 20px;
+		display: flex;
+		align-items: center;
+		gap: 16px;
+	}
+	.brand {
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		margin-right: auto;
+		color: var(--text);
+	}
+	.shared {
+		font-size: 13px;
+		color: var(--text-muted);
+	}
+	.edit {
+		position: relative;
+		min-height: 36px;
+		padding: 0 14px;
+		border-radius: 10px;
+		font-size: 14px;
+	}
+	.edit::after {
+		content: '';
+		position: absolute;
+		inset: -4px 0;
+	}
+
+	/* ── Layout ───────────────────────────────────────────────── */
+	.wrap {
+		max-width: 1280px;
+		margin: 0 auto;
+		padding: 0 20px;
 		display: flex;
 		flex-direction: column;
-		gap: 24px;
+		gap: 22px;
 	}
-	h1 {
-		margin: 0;
-		font-size: 30px;
-		font-weight: 700;
-		letter-spacing: -0.02em;
-	}
-	.intro p {
-		margin: 4px 0 0;
-	}
-	.pills {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 8px;
-		align-items: center;
-		margin-top: 12px;
-	}
-	.pill {
-		font-size: 14px;
-		font-weight: 600;
-		padding: 4px 10px;
-		border-radius: 999px;
-	}
-	.pill.bad {
-		background: var(--bad-bg);
-		color: var(--bad-text);
-	}
-	.pill.ok {
-		background: var(--ok-bg);
-		color: var(--ok-text);
-	}
-	.desc {
-		margin-top: 14px !important;
-		line-height: 1.6;
-		max-width: 680px;
-	}
-	.cols,
 	.col {
 		display: flex;
 		flex-direction: column;
@@ -228,83 +238,165 @@
 		display: flex;
 		flex-direction: column;
 		gap: 10px;
-	}
-	/* Phones (P2): readings first, then chart, photos, the tank, activity. */
-	@media (max-width: 1023px) {
-		.col {
-			display: contents;
-		}
-		.first {
-			order: -1;
-		}
-		.last {
-			order: 1;
-		}
+		min-width: 0;
 	}
 	h2 {
 		margin: 0;
 		font-size: 17px;
 		font-weight: 600;
 	}
+	/* Phones (P2): one column: cover, title, readings, chart, photos, the tank, activity. */
+	@media (max-width: 1023px) {
+		.col {
+			display: contents;
+		}
+		.hero {
+			order: 0;
+		}
+		.intro {
+			order: 1;
+		}
+		.desc {
+			order: 2;
+		}
+		.readings {
+			order: 3;
+		}
+		.chart {
+			order: 4;
+		}
+		.photos {
+			order: 5;
+		}
+		.tank {
+			order: 6;
+		}
+		.activity {
+			order: 7;
+		}
+		.foot {
+			order: 8;
+		}
+	}
+
+	/* ── Cover + title ────────────────────────────────────────── */
+	.hero {
+		position: relative;
+		height: 220px;
+		margin: 0 -20px;
+		overflow: hidden;
+		border: none;
+	}
+	.hero img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+	}
+	/* the cover fades into the page and the title overlaps it (P2) */
+	.hero::after {
+		content: '';
+		position: absolute;
+		inset: auto 0 0;
+		height: 90px;
+		background: linear-gradient(transparent, var(--bg));
+	}
+	.intro {
+		position: relative;
+		margin-top: -50px;
+		display: flex;
+		flex-direction: column;
+		gap: 22px;
+	}
+	.title {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		min-width: 0;
+	}
+	h1 {
+		margin: 0;
+		font-size: 30px;
+		font-weight: 600;
+		letter-spacing: -0.01em;
+		line-height: 1.15;
+		overflow-wrap: anywhere;
+	}
+	.sub {
+		margin: 0;
+		font-size: 14px;
+		color: var(--text-muted);
+	}
+	.pills {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+	.pill {
+		display: inline-flex;
+		align-items: center;
+		height: 30px;
+		padding: 0 10px;
+		border-radius: 8px;
+		font-size: 13px;
+		font-weight: 600;
+		white-space: nowrap;
+	}
+	.pill.bad {
+		background: var(--bad-bg);
+		color: var(--bad-text);
+	}
+	.pill.ok {
+		background: var(--ok-bg);
+		color: var(--ok-text);
+	}
+	.pill.plain {
+		background: var(--surface);
+		border: 1px solid var(--border);
+		color: var(--text-2);
+		font-weight: 400;
+	}
+	.desc {
+		margin: 0;
+		font-size: 15px;
+		line-height: 1.6;
+		color: var(--text-2);
+		max-width: 640px;
+	}
+
+	/* ── Readings ─────────────────────────────────────────────── */
 	.sh {
 		display: flex;
 		justify-content: space-between;
 		align-items: baseline;
+		gap: 12px;
+		font-size: 13px;
 	}
-	.chart {
-		padding: 16px;
+	@media (max-width: 1023px) {
+		.sh {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			overflow: hidden;
+			clip: rect(0 0 0 0);
+			white-space: nowrap;
+		}
 	}
-	.ch {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 10px;
-		justify-content: space-between;
-		align-items: center;
-	}
-	.chips {
-		display: flex;
-		gap: 6px;
-	}
-	.chip[aria-pressed='true'] {
-		color: var(--on-accent);
-	}
-	.photos {
+	.tiles {
 		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		gap: 4px;
-	}
-	.photos img {
-		width: 100%;
-		aspect-ratio: 1;
-		object-fit: cover;
-		border-radius: 8px;
-		display: block;
-	}
-	.list {
-		display: flex;
-		flex-direction: column;
-	}
-	.li {
-		display: flex;
-		justify-content: space-between;
-		padding: 10px 14px;
-	}
-	.li + .li {
-		border-top: 1px solid var(--border);
-	}
-	.strong {
-		font-weight: 700;
-	}
-	.readings {
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
+		grid-template-columns: repeat(3, minmax(0, 1fr));
 		gap: 8px;
 	}
 	.rd {
-		padding: 10px 12px;
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
+		border-radius: 12px;
+		background: var(--surface);
+		border: 1px solid var(--border);
+		padding: 10px;
+		display: grid;
+		grid-template-areas: 'n' 'v' 's';
+		align-content: start;
+		gap: 4px;
+		min-width: 0;
 	}
 	.rd.bad {
 		background: var(--bad-bg);
@@ -315,68 +407,301 @@
 		border-color: var(--warn-border);
 	}
 	.rn {
-		font-size: 13px;
+		grid-area: n;
+		font-size: 12px;
 		color: var(--text-muted);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.rd.bad .rn,
+	.rd.bad small {
+		color: var(--bad-text);
+	}
+	.rd.warn .rn,
+	.rd.warn small {
+		color: var(--warn-text);
 	}
 	.rv {
+		grid-area: v;
 		font-size: 22px;
 		font-weight: 600;
+		line-height: 1.15;
+		overflow-wrap: anywhere;
 	}
 	.rv small {
 		font-size: 12px;
-		color: var(--text-muted);
 		font-weight: 400;
+		color: var(--text-muted);
 	}
 	.rs {
+		grid-area: s;
 		font-size: 12px;
 		font-weight: 600;
+		white-space: nowrap;
 	}
-	.feed {
+
+	/* ── Chart ────────────────────────────────────────────────── */
+	.ch {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px 12px;
+		justify-content: space-between;
+		align-items: center;
+	}
+	.ch .chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+	}
+	.ch .chip[aria-pressed='true'] {
+		font-weight: 700;
+	}
+	.chart-card {
+		border-radius: 14px;
+		background: var(--surface);
+		border: 1px solid var(--border);
+		padding: 12px;
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+	}
+	.chart-box {
+		position: relative;
+		height: 150px;
+	}
+	.fill {
+		position: absolute;
+		inset: 0;
+	}
+	.legend {
+		margin: 0;
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 13px;
+		color: var(--text-muted);
+	}
+	.swatch {
+		width: 14px;
+		height: 8px;
+		background: var(--band);
+		border: 1px dashed var(--accent);
+	}
+
+	/* ── Photos ───────────────────────────────────────────────── */
+	.grid {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 4px;
+	}
+	.grid a {
+		display: block;
+		aspect-ratio: 1;
+		border-radius: 6px;
+		overflow: hidden;
+		background: var(--surface-hi);
+	}
+	.grid img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+	}
+
+	/* ── In the tank ──────────────────────────────────────────── */
+	.group {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+	h3 {
+		margin: 4px 0 0;
+		font-size: 12px;
+		font-weight: 600;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--text-muted);
+	}
+	.tags {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+	}
+	.tag {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		min-height: 32px;
+		padding: 0 10px;
+		border-radius: 8px;
+		background: var(--surface);
+		border: 1px solid var(--border);
+		font-size: 13px;
+	}
+	.tag b {
+		color: var(--accent);
+	}
+	.plants {
+		margin: 0;
+		font-size: 14px;
+		line-height: 1.6;
+		color: var(--text-2);
+	}
+
+	/* Equipment and activity: label left, detail right, soft dividers */
+	.rows {
 		list-style: none;
 		margin: 0;
 		padding: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
 	}
-	.feed li {
+	.rows li {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		gap: 16px;
+		padding: 10px 0;
+		font-size: 15px;
+	}
+	.rows li + li {
+		border-top: 1px solid var(--divider-soft);
+	}
+	.rows .muted {
+		flex-shrink: 0;
+		text-align: right;
+	}
+	.tank .rows li {
+		padding: 8px 0;
+		font-size: 14px;
+	}
+	/* ── Footer ───────────────────────────────────────────────── */
+	.foot {
 		display: flex;
 		align-items: center;
-		gap: 12px;
+		gap: 8px;
+		margin-top: 2px;
+		padding: 12px 0 calc(30px + env(safe-area-inset-bottom));
+		border-top: 1px solid var(--border);
+		font-size: 13px;
+		color: var(--text-muted);
 	}
-	.ft {
-		flex: 1;
-		font-size: 15px;
-		font-weight: 600;
-	}
-	.foot {
-		text-align: center;
-		padding-top: 12px;
-	}
+
+	/* ── Desktop (P3) ─────────────────────────────────────────── */
 	@media (min-width: 1024px) {
-		.top {
-			padding: 16px 32px;
+		.top-in {
+			min-height: 60px;
+			padding: 0 40px;
+		}
+		.wrap {
+			display: grid;
+			grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+			gap: 32px;
+			align-items: start;
+			padding: 32px 40px 0;
+		}
+		.side {
+			gap: 22px;
 		}
 		.hero {
 			height: 320px;
-			max-width: 1120px;
-			margin: 0 auto;
-			border-radius: 20px;
+			margin: 0;
+			border-radius: 18px;
 		}
-		.wrap {
-			padding: 24px 32px 48px;
+		.hero::after {
+			display: none;
+		}
+		.intro {
+			margin-top: 0;
+			flex-direction: row;
+			justify-content: space-between;
+			align-items: flex-end;
+			gap: 20px;
+		}
+		.title {
+			flex: 1;
 		}
 		h1 {
 			font-size: 40px;
+			letter-spacing: -0.02em;
 		}
-		.cols {
-			display: grid;
-			grid-template-columns: minmax(0, 1fr) 380px;
-			gap: 32px;
-			align-items: start;
+		.sub {
+			font-size: 15px;
 		}
-		.photos {
-			grid-template-columns: repeat(4, 1fr);
+		.pills {
+			justify-content: flex-end;
+			max-width: 50%;
+		}
+		.pill {
+			height: 32px;
+			padding: 0 12px;
+		}
+		.desc {
+			font-size: 16px;
+		}
+		/* the chart header moves into the card */
+		.chart {
+			border-radius: 16px;
+			background: var(--surface);
+			border: 1px solid var(--border);
+			padding: 18px;
+		}
+		.chart-card {
+			border: none;
+			border-radius: 0;
+			background: none;
+			padding: 0;
+		}
+		.chart-box {
+			height: 200px;
+		}
+		/* P3's compact chips (phones keep the 36px ones) */
+		.ch .chip {
+			height: 30px;
+			padding: 0 12px;
+			border-radius: 15px;
+			font-size: 13px;
+		}
+		.ch .chip::after {
+			inset: -7px 0;
+		}
+		.tiles {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+		.rd {
+			padding: 12px;
+			grid-template-columns: minmax(0, 1fr) auto;
+			grid-template-areas: 'n s' 'v v';
+			column-gap: 6px;
+		}
+		.rn,
+		.rs {
+			font-size: 13px;
+		}
+		.rv {
+			font-size: 24px;
+		}
+		.rv small {
+			font-size: 13px;
+		}
+		.grid {
+			gap: 6px;
+		}
+		.grid a {
+			border-radius: 8px;
+		}
+		.rows li {
+			padding: 9px 0;
+			font-size: 14px;
+		}
+		.foot {
+			grid-column: 1 / -1;
+			margin-top: 16px;
+			padding-bottom: 40px;
 		}
 	}
 </style>

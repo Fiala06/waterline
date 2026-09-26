@@ -9,7 +9,7 @@
 	let input: HTMLInputElement | undefined = $state();
 	let previews = $state<{ url: string; name: string }[]>([]);
 	let removed = $state<string[]>([]);
-	let busy = $state(false);
+	let pending = $state(0); // photos being prepared
 	let error = $state<string | null>(null);
 
 	const MAX_EDGE = 2560;
@@ -38,14 +38,15 @@
 			error = `Up to ${max} photos per entry.`;
 			files = files.slice(0, Math.max(0, max - kept));
 		}
-		busy = true;
+		previews.forEach((p) => URL.revokeObjectURL(p.url));
+		previews = [];
+		pending = files.length;
 		const shrunk = await Promise.all(files.map(shrink));
 		const dt = new DataTransfer();
 		shrunk.forEach((f) => dt.items.add(f));
 		input.files = dt.files;
-		previews.forEach((p) => URL.revokeObjectURL(p.url));
 		previews = shrunk.map((f) => ({ url: URL.createObjectURL(f), name: f.name }));
-		busy = false;
+		pending = 0;
 	}
 
 	function removeNew(i: number) {
@@ -80,11 +81,19 @@
 				<button type="button" class="x" aria-label="Remove {p.name}" onclick={() => removeNew(i)}>✕</button>
 			</div>
 		{/each}
-		<label class="add" class:busy>
+		{#each Array.from({ length: pending }, (_, i) => i) as i (i)}
+			<div class="tile uploading" aria-hidden="true">
+				<span class="bar"><i></i></span>
+				{#if !compact}<span>Adding…</span>{/if}
+			</div>
+		{/each}
+		<label class="add" class:busy={pending > 0}>
 			<input bind:this={input} type="file" name="photos" accept="image/*" multiple {onchange} />
-			{#if compact}<span>Photo</span>{:else}<span class="plus">+</span><span>{busy ? 'Adding…' : 'Add'}</span>{/if}
+			{#if compact}<span class="hide-desk">Photo</span><span class="hide-phone">Add photo</span>{:else}<span class="plus" aria-hidden="true">+</span><span>Add</span>{/if}
 		</label>
 	</div>
+	<!-- a live region, not role="status": the app's toast is the page's status -->
+	<span class="sr-only" aria-live="polite">{pending ? 'Adding photos…' : ''}</span>
 	{#if error}<span class="error-text">✕ {error}</span>{/if}
 </div>
 
@@ -101,15 +110,16 @@
 	.tiles {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 8px;
+		gap: 10px;
+		/* room for the remove chips that overhang the top corner */
+		padding-top: 6px;
 	}
 	.tile,
 	.add {
 		position: relative;
-		width: 72px;
-		height: 72px;
+		width: 84px;
+		height: 84px;
 		border-radius: 12px;
-		overflow: hidden;
 		flex-shrink: 0;
 	}
 	.tile img {
@@ -117,26 +127,80 @@
 		height: 100%;
 		object-fit: cover;
 		display: block;
+		border-radius: 12px;
+		border: 1px solid var(--border);
+		background: var(--surface-hi);
 	}
 	.tile.gone img {
 		opacity: 0.3;
 	}
+	/* Remove: the button is the 44px tap area; the 24px ring over the corner is drawn inside it (7.6 "Added") */
 	.x {
 		position: absolute;
-		top: 4px;
-		right: 4px;
-		width: 24px;
-		height: 24px;
-		border-radius: 12px;
-		background: rgba(3, 10, 12, 0.75);
-		color: #e6f0f0;
+		top: -16px;
+		right: -16px;
+		width: 44px;
+		height: 44px;
+		z-index: 1;
+		color: var(--text-muted);
 		font-size: 12px;
+		line-height: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	}
 	.x::before {
 		content: '';
 		position: absolute;
-		inset: -10px;
+		inset: 10px;
+		z-index: -1;
+		border-radius: 50%;
+		background: var(--bg);
+		border: 1px solid var(--border-strong);
 	}
+	.x:focus-visible {
+		outline: none;
+	}
+	.x:focus-visible::before {
+		outline: 2px solid var(--accent);
+		outline-offset: 2px;
+	}
+	@media (hover: hover) {
+		.x:hover {
+			color: var(--text);
+		}
+		.x:hover::before {
+			border-color: var(--text-faint);
+		}
+	}
+	/* 7.6 "Uploading": being prepared for upload */
+	.uploading {
+		background: var(--surface);
+		border: 1px solid var(--border);
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		padding: 0 12px;
+		font-size: 12px;
+		color: var(--text-muted);
+	}
+	.bar {
+		width: 100%;
+		height: 4px;
+		border-radius: 2px;
+		background: var(--border);
+		overflow: hidden;
+	}
+	.bar i {
+		display: block;
+		width: 60%;
+		height: 100%;
+		background: var(--accent);
+		animation: wl-pulse 1.4s ease-in-out infinite;
+	}
+	/* 7.6 "Empty" */
 	.add {
 		border: 1px dashed var(--border-strong);
 		display: flex;
@@ -145,19 +209,27 @@
 		justify-content: center;
 		gap: 2px;
 		font-size: 13px;
-		color: var(--text-muted);
+		font-weight: 600;
+		color: var(--accent);
 		cursor: pointer;
 	}
 	.add:focus-within {
 		outline: 2px solid var(--accent);
+		outline-offset: 2px;
 	}
 	.add.busy {
 		opacity: 0.6;
 	}
+	@media (hover: hover) {
+		.add:hover {
+			border-color: var(--accent);
+			background: var(--selected);
+		}
+	}
 	.plus {
-		font-size: 22px;
+		font-size: 24px;
+		font-weight: 400;
 		line-height: 1;
-		color: var(--accent);
 	}
 	.add input {
 		position: absolute;
@@ -167,6 +239,14 @@
 	}
 	.compact .tiles {
 		flex-wrap: nowrap;
+		gap: 8px;
+		padding-top: 0;
+	}
+	.compact .x {
+		top: -15px;
+		right: -15px;
+		width: 40px;
+		height: 40px;
 	}
 	.compact .add {
 		width: auto;
@@ -180,5 +260,11 @@
 		width: 48px;
 		height: 48px;
 		border-radius: 10px;
+	}
+	.compact .tile img {
+		border-radius: 10px;
+	}
+	.compact .uploading {
+		padding: 0 8px;
 	}
 </style>

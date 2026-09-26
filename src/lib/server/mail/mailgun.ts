@@ -23,7 +23,7 @@ export function mailgunTransport(opts: { apiKey: string; domain: string; region:
 			} catch (e) {
 				throw new MailError(`Couldn't reach Mailgun. (${(e as Error).message})`);
 			}
-			if (!res.ok) throw new MailError(`Mailgun rejected the request. (${res.status} ${res.statusText})`);
+			if (!res.ok) throw new MailError(`Mailgun rejected the request. Check the API key and region. (${`${res.status} ${res.statusText}`.trim()})`);
 		}
 	};
 }

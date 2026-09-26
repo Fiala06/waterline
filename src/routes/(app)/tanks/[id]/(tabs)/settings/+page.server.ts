@@ -7,6 +7,7 @@ import { db } from '$lib/server/db';
 import { publicPages } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { getTank, listParams, setArchived, updateTank } from '$lib/server/tanks';
+import { todayInZone } from '$lib/time';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals, params }) => {
@@ -43,6 +44,7 @@ export const load: PageServerLoad = ({ locals, params }) => {
 			names: tracked.map((p) => p.name).join(', ')
 		},
 		publicLive: !!db.select().from(publicPages).where(eq(publicPages.tankId, tank.id)).get()?.enabled,
+		today: todayInZone(user.timeZone),
 		volUnit: unitLabel('volume', user),
 		lenUnit: unitLabel('length', user)
 	};

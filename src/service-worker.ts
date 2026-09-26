@@ -99,8 +99,17 @@ async function networkFirst(req: Request) {
 	}
 }
 
-const offlinePage = `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Offline · Waterline</title>
-<body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0c1a1f;color:#e6f0f0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;text-align:center;padding:24px">
-<div><div style="font-size:22px;font-weight:600;margin-bottom:8px">You're offline</div>
-<div style="color:#9fb4b8;line-height:1.5">This page hasn't been opened on this device yet.<br>Open the dashboard once while online and it will work offline too.</div>
-<p><a href="/" style="color:#4fc4bd;font-weight:600">Try the dashboard</a></p></div></body>`;
+// Standalone (no app.css here), so it carries the bg/text/muted/accent tokens for both themes.
+const offlinePage = `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark light"><title>Offline · Waterline</title>
+<style>
+:root{--bg:#0c1a1f;--text:#e6f0f0;--text-muted:#9fb4b8;--accent:#4fc4bd;color-scheme:dark}
+@media (prefers-color-scheme:light){:root{--bg:#f4f7f6;--text:#0f2126;--text-muted:#4f666b;--accent:#197474;color-scheme:light}}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;background:var(--bg);color:var(--text);font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;text-align:center}
+body>div{max-width:360px}
+h1{margin:0 0 8px;font-size:22px;font-weight:600}
+p{margin:0;color:var(--text-muted);line-height:1.5;text-wrap:pretty}
+a{display:inline-flex;align-items:center;min-height:44px;margin-top:8px;color:var(--accent);font-weight:600;text-decoration:none}
+</style>
+<body><div><h1>You're offline</h1>
+<p>This page hasn't been opened on this device yet.<br>Open the dashboard once while online and it will work offline too.</p>
+<a href="/">Try the dashboard</a></div></body>`;

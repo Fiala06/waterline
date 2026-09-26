@@ -55,7 +55,7 @@ test('audit every screen', async ({ page, browser, request }) => {
 	let shareId: string | null = null;
 	for (const p of photos) {
 		await page.goto(p);
-		const url = await page.locator('.s-url').innerText({ timeout: 1500 }).catch(() => '');
+		const url = await page.locator('aside .s-url').inputValue({ timeout: 1500 }).catch(() => '');
 		if (url) {
 			shareId = url.split('/s/')[1];
 			break;

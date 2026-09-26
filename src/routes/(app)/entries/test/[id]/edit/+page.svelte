@@ -1,6 +1,7 @@
 <script lang="ts">
 	import TestForm from '$lib/components/TestForm.svelte';
 	let { data, form } = $props();
+	const readings = $derived(Object.keys(data.values).length);
 </script>
 
 <svelte:head><title>Edit water test · Waterline</title></svelte:head>
@@ -22,6 +23,6 @@
 	remove={{
 		action: `/entries/test/${data.entry.id}?/delete`,
 		title: 'Delete this water test?',
-		body: `The readings from ${data.entry.day} will be removed. This can't be undone.`
+		body: `The ${readings} reading${readings === 1 ? '' : 's'} from ${data.entry.day} will be removed. This can't be undone.`
 	}}
 />

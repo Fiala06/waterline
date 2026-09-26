@@ -1,30 +1,35 @@
 <script lang="ts">
+	// A shared photo (D8's public link, S2's look). Everything lines up with the
+	// photo: logo, image and caption share one column as wide as the image.
 	import Logo from '$lib/components/Logo.svelte';
 	import PublicAnalytics from '$lib/components/PublicAnalytics.svelte';
 	import PublicHead from '$lib/components/PublicHead.svelte';
 	let { data } = $props();
 	const s = $derived(data.share);
+	const ratio = $derived(s.width && s.height ? s.width / s.height : 4 / 3);
 </script>
 
 <PublicHead seo={data.seo} />
 
 <div class="share">
-	<header><a href="/" aria-label="Waterline"><Logo size={24} wordmark wordSize={17} /></a></header>
-	<main>
-		<img src="/s/{s.id}/image" width={s.width} height={s.height} alt={s.title ?? 'Aquarium photo'} />
-		{#if s.title || s.tankName || s.date}
-			<div class="card cap">
-				{#if s.title}<h1>{s.title}</h1>{/if}
-				{#if s.tankName || s.date}
-					<p class="muted">
-						{#if s.tankName}{#if s.tankSlug}<a href="/t/{s.tankSlug}">{s.tankName}</a>{:else}{s.tankName}{/if}{/if}{s.tankName && s.date ? ' · ' : ''}{s.date ?? ''}
-					</p>
-				{/if}
-				{#if s.note}<p class="note">{s.note}</p>{/if}
-			</div>
-		{/if}
-		<p class="muted sm">Shared with Waterline</p>
-	</main>
+	<div class="col" style:--ratio={ratio}>
+		<header><a href="/" aria-label="Waterline"><Logo size={24} wordmark wordSize={17} /></a></header>
+		<main>
+			<img src="/s/{s.id}/image" width={s.width} height={s.height} alt={s.title ?? 'Aquarium photo'} />
+			{#if s.title || s.tankName || s.date || s.note}
+				<div class="card cap">
+					{#if s.title}<h1>{s.title}</h1>{/if}
+					{#if s.tankName || s.date}
+						<p class="meta">
+							{#if s.tankName}{#if s.tankSlug}<a href="/t/{s.tankSlug}">{s.tankName}</a>{:else}{s.tankName}{/if}{/if}{s.tankName && s.date ? ' · ' : ''}{s.date ?? ''}
+						</p>
+					{/if}
+					{#if s.note}<p class="note">{s.note}</p>{/if}
+				</div>
+			{/if}
+		</main>
+		<footer>Shared with Waterline</footer>
+	</div>
 </div>
 
 <PublicAnalytics ga4Id={data.analytics.ga4Id} consent={data.analytics.consent} />
@@ -32,52 +37,90 @@
 <style>
 	.share {
 		min-height: 100dvh;
-		background: #030809;
-		color: #e6f0f0;
-		--text: #e6f0f0;
+		background: var(--bg);
+		color: var(--text);
+		padding: 0 16px calc(24px + env(safe-area-inset-bottom));
 	}
-	header {
-		padding: 14px 20px;
-	}
-	main {
-		max-width: 1000px;
+	/* as wide as the photo when it fits the screen height, never too narrow for the caption */
+	.col {
+		--photo-h: calc(100dvh - 240px);
+		width: min(100%, max(min(100%, 420px), calc(var(--photo-h) * var(--ratio))));
+		max-width: 1100px;
 		margin: 0 auto;
-		padding: 0 16px 32px;
 		display: flex;
 		flex-direction: column;
-		gap: 14px;
+	}
+	header {
+		display: flex;
 		align-items: center;
+		min-height: 60px;
+		padding-top: env(safe-area-inset-top);
+	}
+	header a {
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+	}
+	main {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
 	}
 	img {
-		max-width: 100%;
-		max-height: 75dvh;
+		display: block;
+		width: 100%;
 		height: auto;
-		width: auto;
-		border-radius: 12px;
+		max-height: max(var(--photo-h), 240px);
+		object-fit: contain;
+		border-radius: 14px;
+		/* letterboxing, if the photo is taller than the screen allows */
+		background: var(--viewer-bg);
 	}
 	.cap {
-		width: 100%;
-		max-width: 640px;
-		padding: 16px;
-		background: #13262c;
-		border-color: #24414a;
-		color: #e6f0f0;
+		padding: 16px 18px;
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
 	}
 	h1 {
-		margin: 0 0 4px;
-		font-size: 19px;
-	}
-	.cap p {
 		margin: 0;
-		color: #9fb4b8;
+		font-size: 20px;
+		font-weight: 600;
+		line-height: 1.3;
+		overflow-wrap: anywhere;
+	}
+	.meta {
+		margin: 0;
+		font-size: 14px;
+		color: var(--text-muted);
+	}
+	.meta a {
+		font-weight: 600;
+		padding: 12px 0; /* taller tap target; inline, so the line doesn't move */
 	}
 	.note {
-		margin-top: 8px !important;
-		color: #b8cacd !important;
+		margin: 6px 0 0;
+		font-size: 15px;
 		line-height: 1.5;
+		color: var(--text-2);
+		white-space: pre-line;
+		overflow-wrap: anywhere;
 	}
-	.sm {
+	footer {
+		padding-top: 16px;
 		font-size: 13px;
-		color: #7d9397;
+		color: var(--text-faint);
+		text-align: center;
+	}
+	@media (min-width: 1024px) {
+		.share {
+			padding-inline: 40px;
+		}
+		header {
+			min-height: 68px;
+		}
+		h1 {
+			font-size: 22px;
+		}
 	}
 </style>

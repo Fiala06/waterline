@@ -18,7 +18,7 @@ test('public tank page and photo share link', async ({ page, browser }, info) =>
 	const slug = `riverbed-${info.project.name}-${Date.now().toString(36)}`;
 	await open(page, `/tanks/${tankId}/public`);
 	await page.getByLabel('Share this tank').check({ force: true });
-	await page.getByLabel('Link').fill(slug);
+	await page.getByLabel('URL').fill(slug);
 	await page.getByLabel('Allow search engines').check({ force: true });
 	await page.getByLabel(/Page title/).fill('Riverbed 40: planted tank log');
 	await page.getByRole('button', { name: 'Save' }).first().click();
@@ -54,15 +54,19 @@ test('public tank page and photo share link', async ({ page, browser }, info) =>
 	// Photo share link
 	await open(page, '/photos');
 	await page.locator('a.tile').first().click();
-	await page.getByRole('button', { name: 'Create public link' }).click();
-	const url = await page.locator('.s-url').innerText();
+	// phones keep the photo actions in the ••• sheet
+	if (info.project.name === 'phone') await page.getByRole('link', { name: 'More', exact: true }).click();
+	const linkSwitch = page.getByRole('switch', { name: 'Public link' });
+	await linkSwitch.click();
+	await expect(linkSwitch).toHaveAttribute('aria-checked', 'true');
+	const url = await page.getByRole('textbox', { name: 'Link address' }).inputValue();
 	const shareId = url.split('/s/')[1];
 	await v.goto(`/s/${shareId}`);
 	await expect(v.locator('main img')).toBeVisible();
 	await expect(v.locator('body')).not.toContainText('SECRET');
 	expect((await visitor.request.get(`/s/${shareId}/image`)).headers()['content-type']).toBe('image/jpeg');
 
-	await page.getByRole('button', { name: 'Turn off link' }).click();
+	await linkSwitch.click();
 	await expect(page.getByRole('status')).toContainText('Public link turned off');
 	expect((await visitor.request.get(`/s/${shareId}`)).status()).toBe(404);
 

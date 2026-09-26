@@ -12,6 +12,7 @@
 		volume: string | null;
 		alerts: number;
 		cover?: string | null;
+		tested?: boolean;
 	}
 	let {
 		open = $bindable(false),
@@ -74,8 +75,10 @@
 						</span>
 						{#if t.alerts}
 							<span class="pill-bad">{t.alerts} alert{t.alerts === 1 ? '' : 's'}</span>
-						{:else}
+						{:else if t.tested}
 							<span class="good">All good</span>
+						{:else}
+							<span class="nodata">No data</span>
 						{/if}
 						{#if tanks.indexOf(t) < 9}<kbd class="num" aria-hidden="true">{tanks.indexOf(t) + 1}</kbd>{/if}
 					</button>
@@ -137,7 +140,7 @@
 	}
 	kbd {
 		font-family: ui-monospace, Menlo, monospace;
-		font-size: 11px;
+		font-size: 12px;
 		color: var(--text-faint);
 	}
 	ul {
@@ -185,7 +188,7 @@
 		color: var(--text-muted);
 	}
 	.pill-bad {
-		font-size: 11px;
+		font-size: 12px;
 		font-weight: 700;
 		background: var(--bad-bg);
 		color: var(--bad-text);
@@ -193,11 +196,15 @@
 		border-radius: 9px;
 		white-space: nowrap;
 	}
-	.good {
-		font-size: 11px;
+	.good,
+	.nodata {
+		font-size: 12px;
 		font-weight: 600;
 		color: var(--ok);
 		white-space: nowrap;
+	}
+	.nodata {
+		color: var(--text-muted);
 	}
 	.num {
 		width: 12px;

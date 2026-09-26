@@ -13,14 +13,17 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 	const all = tankPhotos(user.id, tank.id);
 	const i = all.findIndex((r) => r.photo.id === photo.id);
 	const { event, test } = all[i];
-	const when = new Date(photo.takenAt).toLocaleString('en-US', {
-		weekday: 'short',
-		month: 'short',
-		day: 'numeric',
-		hour: 'numeric',
-		minute: '2-digit',
-		timeZone: user.timeZone
-	});
+	// "Mon Sep 22, 6:40 PM" (13b, D8)
+	const when = new Date(photo.takenAt)
+		.toLocaleString('en-US', {
+			weekday: 'short',
+			month: 'short',
+			day: 'numeric',
+			hour: 'numeric',
+			minute: '2-digit',
+			timeZone: user.timeZone
+		})
+		.replace(',', '');
 	const entry = event
 		? {
 				href: `/entries/event/${event.id}`,

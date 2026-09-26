@@ -135,7 +135,7 @@ async function build(id: string, user: User, list: Tank[], format: 'zip' | 'csv'
 	});
 	zip.outputStream.pipe(out);
 
-	progress(id, 5, 'Writing entries');
+	progress(id, 5, 'Writing entries…');
 	const prefs = db.select().from(notificationPrefs).where(eq(notificationPrefs.userId, user.id)).get();
 	const json = {
 		format: 'waterline-backup',
@@ -194,7 +194,7 @@ async function build(id: string, user: User, list: Tank[], format: 'zip' | 'csv'
 		}
 		if (i % 5 === 0 || i === total - 1) progress(id, 10 + (80 * (i + 1)) / total, `Packing photos · ${i + 1} of ${total}`);
 	}
-	progress(id, 95, 'Finishing');
+	progress(id, 95, 'Finishing…');
 	zip.end();
 	await done;
 	finish(id, path, name, `${total} photo${total === 1 ? '' : 's'}, ${entries} entr${entries === 1 ? 'y' : 'ies'}`);

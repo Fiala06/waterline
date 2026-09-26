@@ -1,23 +1,41 @@
 <script lang="ts">
+	// 13b (phone) / D8 (desktop). The stage is dark in both themes; the panel,
+	// caption and sheet use the normal theme colors.
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
+	import Sheet from '$lib/components/Sheet.svelte';
 	import { photoUrl } from '$lib/media';
+	import type { SubmitFunction } from '@sveltejs/kit';
+
 	let { data } = $props();
+	let menu = $state(false);
 	let copied = $state(false);
-	const shareUrl = $derived(data.sharing?.share ? `${data.sharing.base}/s/${data.sharing.share.id}` : '');
-	async function copy() {
+	const share = $derived(data.sharing?.share ?? null);
+	const shareUrl = $derived(share && data.sharing ? `${data.sharing.base}/s/${share.id}` : '');
+	const download = $derived(`${photoUrl(data.photo.id, 'full')}?download`);
+
+	async function copy(e: MouseEvent) {
+		const field = (e.currentTarget as HTMLElement).parentElement?.querySelector('input');
 		try {
 			await navigator.clipboard.writeText(shareUrl);
 			copied = true;
 			setTimeout(() => (copied = false), 2000);
 		} catch {
-			/* blocked */
+			field?.select(); // clipboard blocked: select it so it can be copied by hand
 		}
 	}
+	// Options save as they change: keep what was just ticked instead of resetting the form.
+	const keep: SubmitFunction = () => async ({ update }) => update({ reset: false });
+	const closeMenu: SubmitFunction = () => {
+		menu = false;
+		return async ({ update }) => update();
+	};
 
 	function onkeydown(e: KeyboardEvent) {
-		if ((e.target as HTMLElement).closest('input, textarea, [popover]:popover-open')) return;
+		if (menu || e.metaKey || e.ctrlKey || e.altKey) return;
+		if ((e.target as HTMLElement).closest('input, textarea, select, dialog, [popover]')) return;
+		if (document.querySelector('[popover]:popover-open')) return;
 		if (e.key === 'ArrowLeft' && data.prev) goto(`/photos/${data.prev}`, { replaceState: true });
 		if (e.key === 'ArrowRight' && data.next) goto(`/photos/${data.next}`, { replaceState: true });
 		if (e.key === 'Escape') goto('/photos');
@@ -27,119 +45,189 @@
 <svelte:window {onkeydown} />
 <svelte:head><title>Photo {data.position} · Waterline</title></svelte:head>
 
+{#snippet cover(cls: string)}
+	{#if data.photo.isCover}
+		<span class="{cls} is-cover" aria-disabled="true">✓ Tank cover</span>
+	{:else}
+		<form method="POST" action="?/cover" use:enhance={closeMenu}><button class={cls}>Set as cover</button></form>
+	{/if}
+{/snippet}
+
+{#snippet shareCard(where: string)}
+	{#if data.sharing}
+		<div class="share" class:on={!!share}>
+			<div class="s-head">
+				<span class="s-title" id="share-{where}">Public link</span>
+				<!-- a submit button drawn as a switch, so it works without JavaScript too -->
+				<form method="POST" action={share ? '?/unshare' : '?/share'} use:enhance>
+					<button class="switch" role="switch" aria-checked={!!share} aria-labelledby="share-{where}"><span></span></button>
+				</form>
+			</div>
+			{#if share}
+				<div class="s-row">
+					<input
+						class="s-url mono"
+						readonly
+						value={shareUrl.replace(/^https?:\/\//, '')}
+						aria-label="Link address"
+						onfocus={(e) => e.currentTarget.select()}
+					/>
+					<button type="button" class="btn btn-primary s-copy" onclick={copy}>{copied ? '✓ Copied' : 'Copy'}</button>
+				</div>
+				<form method="POST" action="?/shareOptions" use:enhance={keep} class="s-opts">
+					<label class="check-row">
+						<input type="checkbox" name="includeNote" checked={share.includeNote} onchange={(e) => e.currentTarget.form?.requestSubmit()} />
+						<span>Include note and date</span>
+					</label>
+					<label class="check-row">
+						<input type="checkbox" name="includeTank" checked={share.includeTank} onchange={(e) => e.currentTarget.form?.requestSubmit()} />
+						<span>Include tank name</span>
+					</label>
+					<noscript><button class="btn s-save">Save</button></noscript>
+				</form>
+				<p class="s-note">Anyone with the link can view this photo. There's no sign-in, and readings and other entries stay private. Turn the link off to revoke it.</p>
+			{:else}
+				<p class="s-note">Share just this photo with a link. No sign-in needed to view it.</p>
+			{/if}
+		</div>
+	{/if}
+{/snippet}
+
 <div class="viewer">
-	<div class="bar">
+	<div class="bar hide-desk">
 		<a class="round" href="/photos" aria-label="Close">✕</a>
 		<span class="pos">{data.position}</span>
-		<span class="round spacer" aria-hidden="true"></span>
+		<!-- opens the sheet; without JavaScript it jumps to the same actions below the caption -->
+		<a
+			class="round more"
+			href="#photo-tools"
+			aria-label="More"
+			aria-haspopup="dialog"
+			aria-expanded={menu}
+			onclick={(e) => {
+				e.preventDefault();
+				menu = true;
+			}}>•••</a
+		>
 	</div>
 
 	<div class="stage">
+		<img src={photoUrl(data.photo.id, 'full')} width={data.photo.width} height={data.photo.height} alt={data.entry?.title ?? 'Tank photo'} />
 		{#if data.prev}<a class="nav prev" href="/photos/{data.prev}" data-sveltekit-replacestate aria-label="Previous photo">‹</a>{/if}
-		<img
-			src={photoUrl(data.photo.id, 'full')}
-			width={data.photo.width}
-			height={data.photo.height}
-			alt={data.entry?.title ?? 'Tank photo'}
-		/>
 		{#if data.next}<a class="nav next" href="/photos/{data.next}" data-sveltekit-replacestate aria-label="Next photo">›</a>{/if}
 	</div>
 
-	<div class="card info">
-		<div class="muted sm">{data.when}</div>
-		{#if data.entry?.title}<div class="title">{data.entry.title}</div>{/if}
-		{#if data.entry?.note}<p class="note">{data.entry.note}</p>{/if}
-		{#if data.entry}<a class="link" href={data.entry.href}>View entry ›</a>{/if}
-		<div class="actions">
-			<a class="btn" href="{photoUrl(data.photo.id, 'full')}?download" download>Download</a>
-			{#if data.photo.isCover}
-				<span class="btn is-cover" aria-disabled="true">✓ Tank cover</span>
-			{:else}
-				<form method="POST" action="?/cover" use:enhance><button class="btn">Set as cover</button></form>
-			{/if}
-			<ConfirmDelete id="confirm-photo" title="Delete this photo?" body="The photo is removed from its entry. This can't be undone." />
+	<aside class="panel" aria-label="Photo details">
+		<div class="p-top hide-phone">
+			<span class="count">{data.position}</span>
+			<a class="round close" href="/photos" aria-label="Close">✕</a>
 		</div>
-		{#if data.sharing}
-			<div class="share">
-				<div class="s-title">Public link</div>
-				{#if data.sharing.share}
-					<div class="s-row">
-						<span class="mono s-url">{shareUrl.replace(/^https?:\/\//, '')}</span>
-						<button type="button" class="btn" onclick={copy}>{copied ? '✓ Copied' : 'Copy'}</button>
-					</div>
-					<form method="POST" action="?/shareOptions" use:enhance class="s-opts">
-						<label class="check-row"><input type="checkbox" name="includeNote" defaultChecked={data.sharing.share.includeNote} onchange={(e) => e.currentTarget.form?.requestSubmit()} /><span>Include note and date</span></label>
-						<label class="check-row"><input type="checkbox" name="includeTank" defaultChecked={data.sharing.share.includeTank} onchange={(e) => e.currentTarget.form?.requestSubmit()} /><span>Include tank name</span></label>
-					</form>
-					<p class="s-note">Anyone with the link can view this photo. There's no sign-in, and readings and other entries stay private. Turn the link off to revoke it.</p>
-					<form method="POST" action="?/unshare" use:enhance><button class="btn">Turn off link</button></form>
-				{:else}
-					<p class="s-note">Share just this photo with a link. No sign-in needed to view it.</p>
-					<form method="POST" action="?/share" use:enhance><button class="btn">Create public link</button></form>
-				{/if}
+		<div class="caption">
+			<div class="meta">{data.when}</div>
+			{#if data.entry?.title}<h1 class="title">{data.entry.title}</h1>{/if}
+			{#if data.entry?.note}<p class="note">{data.entry.note}</p>{/if}
+			{#if data.entry}<a class="link" href={data.entry.href}>View entry ›</a>{/if}
+		</div>
+		<div class="tools" id="photo-tools">
+			{@render shareCard('panel')}
+			<div class="buttons">
+				<a class="btn" href={download} download>Download</a>
+				{@render cover('btn')}
 			</div>
-		{/if}
-	</div>
+			<button type="button" class="btn-text delete" popovertarget="confirm-photo">Delete photo</button>
+			<ConfirmDelete id="confirm-photo" trigger={false} title="Delete this photo?" body="The photo is removed from its entry. This can't be undone." />
+		</div>
+	</aside>
 </div>
 
+<Sheet bind:open={menu} label="Photo actions">
+	<div class="menu">
+		<a class="row" href={download} download onclick={() => (menu = false)}>Download</a>
+		{@render cover('row')}
+	</div>
+	{@render shareCard('sheet')}
+	<div class="sheet-foot">
+		<button type="button" class="btn btn-danger" popovertarget="confirm-photo-sheet">Delete photo</button>
+		<button type="button" class="btn" onclick={() => (menu = false)}>Cancel</button>
+	</div>
+	<ConfirmDelete id="confirm-photo-sheet" trigger={false} title="Delete this photo?" body="The photo is removed from its entry. This can't be undone." />
+</Sheet>
+
 <style>
+	/* Fixed, so the dark stage fills the screen even where the shell centers a column (tablets). */
 	.viewer {
-		min-height: 100dvh;
-		background: #030809;
-		color: #e6f0f0;
+		position: fixed;
+		inset: 0;
+		z-index: 10;
+		overflow-y: auto;
+		background: var(--viewer-bg);
 		display: flex;
 		flex-direction: column;
-		padding-bottom: calc(24px + env(safe-area-inset-bottom));
 	}
+
+	/* ── Phone (13b) ─────────────────────────────────────────── */
 	.bar {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		padding: 12px 20px;
+		gap: 12px;
+		padding: calc(8px + env(safe-area-inset-top)) 20px 12px;
 	}
 	.round {
 		width: 44px;
 		height: 44px;
 		border-radius: 22px;
-		background: #13262c;
-		display: flex;
+		flex-shrink: 0;
+		background: var(--surface);
+		color: var(--text-muted);
+		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		color: #9fb4b8;
 		font-size: 18px;
+		line-height: 1;
 	}
-	.spacer {
-		visibility: hidden;
+	.more {
+		font-size: 13px;
+		letter-spacing: 0.05em;
 	}
+	/* on the stage, so it wears the overlay colors (readable in both themes) */
 	.pos {
 		font-size: 15px;
 		font-weight: 600;
+		padding: 5px 12px;
+		border-radius: 999px;
+		background: var(--overlay-bg);
+		color: var(--overlay-text);
+		font-variant-numeric: tabular-nums;
 	}
 	.stage {
-		flex: 1;
+		flex: 1 1 0;
+		min-height: 45dvh;
 		position: relative;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		min-height: 0;
 	}
 	.stage img {
+		display: block;
 		max-width: 100%;
-		max-height: 70dvh;
+		max-height: 100%;
 		width: auto;
 		height: auto;
-		display: block;
+		object-fit: contain;
 	}
 	.nav {
 		position: absolute;
 		top: 50%;
 		transform: translateY(-50%);
-		width: 48px;
-		height: 48px;
-		border-radius: 24px;
-		background: rgba(19, 38, 44, 0.8);
-		color: #e6f0f0;
-		font-size: 28px;
+		width: 44px;
+		height: 44px;
+		border-radius: 50%;
+		background: var(--surface);
+		border: 1px solid var(--border-strong);
+		color: var(--text-2);
+		font-size: 20px;
+		line-height: 1;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -150,114 +238,344 @@
 	.next {
 		right: 12px;
 	}
-	.info {
-		margin: 16px 16px 0;
+	@media (hover: hover) {
+		.round:hover,
+		.nav:hover {
+			background: var(--surface-hi);
+			color: var(--text);
+		}
+	}
+
+	/* The caption card at the bottom of the phone screen. */
+	.panel {
+		margin: 16px 16px calc(16px + env(safe-area-inset-bottom));
+		align-self: center;
+		width: calc(100% - 32px);
+		max-width: 560px;
+		border-radius: 18px;
+		background: var(--surface);
+		border: 1px solid var(--border);
+		color: var(--text);
 		padding: 16px;
 		display: flex;
 		flex-direction: column;
-		gap: 6px;
-		background: #13262c;
-		border-color: #24414a;
-		color: #e6f0f0;
-		max-width: 560px;
-		align-self: stretch;
 	}
-	.sm {
+	.caption {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		min-width: 0;
+	}
+	.meta {
 		font-size: 13px;
-		color: #9fb4b8;
+		color: var(--text-muted);
 	}
 	.title {
+		margin: 0;
 		font-size: 17px;
 		font-weight: 600;
+		line-height: 1.3;
+		overflow-wrap: anywhere;
 	}
 	.note {
 		margin: 0;
 		font-size: 14px;
 		line-height: 1.5;
-		color: #b8cacd;
+		color: var(--text-2);
+		white-space: pre-line;
+		overflow-wrap: anywhere;
+		/* the whole note is on the entry: keep the photo in view */
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 3;
+		line-clamp: 3;
+		overflow: hidden;
 	}
 	.link {
+		align-self: flex-start;
 		font-size: 14px;
 		font-weight: 600;
-		padding-top: 4px;
-		color: #4fc4bd;
+		/* 44px tap target without adding height */
+		padding: 12px 0;
+		margin: -8px 0 -12px;
 	}
-	.actions {
+	/* Actions live in the ••• sheet; without JavaScript the ••• link shows them here. */
+	.tools {
+		display: none;
+		flex-direction: column;
+		gap: 12px;
+	}
+	.tools:target {
 		display: flex;
-		flex-wrap: wrap;
-		gap: 8px;
-		padding-top: 10px;
+		margin-top: 16px;
+		padding-top: 16px;
+		border-top: 1px solid var(--border);
 	}
-	.actions .btn,
-	.actions :global(.btn) {
-		color: #e6f0f0;
-		border-color: #2f525c;
+	.buttons {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 10px;
 	}
-	.actions :global(.btn-danger) {
-		color: #f08a78;
-		border-color: #6b3129;
-		flex: none;
+	.buttons .btn {
+		width: 100%;
 	}
+	.is-cover {
+		color: var(--text-muted);
+		cursor: default;
+	}
+	.delete {
+		align-self: center;
+		color: var(--bad);
+		font-size: 14px;
+	}
+	@media (hover: hover) {
+		.delete:hover {
+			color: var(--bad);
+			text-decoration: underline;
+		}
+	}
+
+	/* Public link card */
 	.share {
-		border-top: 1px solid #24414a;
-		margin-top: 8px;
-		padding-top: 12px;
+		border-radius: 14px;
+		background: var(--surface);
+		border: 1px solid var(--border);
+		padding: 14px;
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
+		gap: 10px;
+	}
+	.share.on {
+		border-color: var(--accent);
+	}
+	.s-head {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 12px;
+		min-height: 32px;
 	}
 	.s-title {
 		font-size: 15px;
 		font-weight: 600;
 	}
+	.switch {
+		border-radius: 16px;
+	}
+	.switch::before {
+		content: '';
+		position: absolute;
+		inset: -6px -4px;
+	}
+	.switch[aria-checked='true'] span {
+		background: var(--accent);
+	}
+	.switch[aria-checked='true'] span::after {
+		transform: translateX(20px);
+	}
 	.s-row {
 		display: flex;
 		gap: 8px;
-		align-items: center;
 	}
 	.s-url {
 		flex: 1;
 		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
+		height: 44px;
+		border-radius: 10px;
+		background: var(--bg);
+		border: 1px solid var(--border-strong);
+		padding: 0 10px;
 		font-size: 13px;
-		color: #b8cacd;
+		color: var(--text-2);
+		text-overflow: ellipsis;
+	}
+	.s-url:focus {
+		outline: none;
+		border-color: var(--accent);
+	}
+	.s-copy {
+		padding: 0 14px;
+		font-size: 14px;
+		border-radius: 10px;
 	}
 	.s-opts {
 		display: flex;
 		flex-direction: column;
 	}
+	.s-save {
+		align-self: flex-start;
+		margin-top: 4px;
+	}
 	.s-note {
 		margin: 0;
 		font-size: 13px;
-		color: #9fb4b8;
 		line-height: 1.5;
+		color: var(--text-muted);
 	}
-	.share :global(.btn) {
-		color: #e6f0f0;
-		border-color: #2f525c;
-		align-self: flex-start;
+
+	/* ── Sheet (phone ••• menu) ──────────────────────────────── */
+	.menu {
+		border: 1px solid var(--border);
+		border-radius: 16px;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
 	}
-	.is-cover {
-		opacity: 0.7;
+	.menu > * + * {
+		border-top: 1px solid var(--border);
 	}
+	.row {
+		width: 100%;
+		min-height: 52px;
+		padding: 0 16px;
+		display: flex;
+		align-items: center;
+		font-size: 16px;
+		font-weight: 600;
+		color: var(--text);
+		text-align: left;
+	}
+	.row.is-cover {
+		color: var(--text-muted);
+	}
+	@media (hover: hover) {
+		button.row:hover,
+		a.row:hover {
+			background: var(--surface-hi);
+			color: var(--text);
+		}
+	}
+	.sheet-foot {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 10px;
+	}
+	.sheet-foot .btn {
+		min-height: 48px;
+	}
+	/* in the sheet the card sits on a surface: recess it */
+	.menu + .share {
+		background: var(--surface-2);
+	}
+
+	/* ── Desktop (D8): stage + docked panel ─────────────────── */
 	@media (min-width: 1024px) {
 		.viewer {
 			display: grid;
-			grid-template-columns: minmax(0, 1fr) 360px;
-			grid-template-rows: auto 1fr;
-			padding: 0;
+			grid-template-columns: minmax(0, 1fr) 340px;
+			grid-template-rows: minmax(0, 1fr);
+			overflow: hidden;
 		}
-		.bar {
-			grid-column: 1 / -1;
+		.stage {
+			min-height: 0;
+			padding: 48px;
 		}
-		.stage img {
-			max-height: calc(100dvh - 100px);
+		.nav {
+			width: 48px;
+			height: 48px;
 		}
-		.info {
-			margin: 0 24px 24px 0;
-			align-self: start;
+		.prev {
+			left: 20px;
+		}
+		.next {
+			right: 20px;
+		}
+		.panel {
+			margin: 0;
+			width: auto;
+			max-width: none;
+			align-self: stretch;
+			min-height: 0;
+			overflow-y: auto;
+			border-radius: 0;
+			border: none;
+			border-left: 1px solid var(--border);
+			background: var(--surface-2);
+			padding: 24px;
+			gap: 14px;
+		}
+		.p-top {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+		}
+		.count {
+			font-size: 14px;
+			color: var(--text-muted);
+			font-variant-numeric: tabular-nums;
+		}
+		.close {
+			width: 40px;
+			height: 40px;
+			font-size: 16px;
+			position: relative;
+		}
+		.caption {
+			gap: 14px;
+		}
+		.title {
+			font-size: 20px;
+		}
+		.note {
+			font-size: 15px;
+			display: block;
+			overflow: visible;
+		}
+		.link {
+			font-size: 15px;
+			margin: -12px 0;
+		}
+		/* the card and buttons sit at the bottom of the panel */
+		.tools,
+		.tools:target {
+			display: flex;
+			margin-top: auto;
+			padding-top: 10px;
+			border-top: none;
+		}
+		.share {
+			gap: 10px;
+		}
+		.s-url {
+			height: 38px;
+			font-size: 12px;
+			border-radius: 8px;
+		}
+		.s-copy {
+			min-height: 38px;
+			padding: 0 12px;
+			font-size: 13px;
+			border-radius: 8px;
+		}
+		.s-opts {
+			gap: 6px;
+		}
+		.s-opts .check-row {
+			min-height: 22px;
+			gap: 8px;
+			font-size: 13px;
+		}
+		.s-opts .check-row input {
+			width: 18px;
+			height: 18px;
+			border-radius: 5px;
+			border-width: 1.5px;
+		}
+		.s-opts .check-row input:checked::after {
+			font-size: 12px;
+		}
+		.s-note {
+			font-size: 12px;
+		}
+		.buttons .btn {
+			min-height: 42px;
+			border-radius: 10px;
+			font-size: 14px;
+		}
+		.delete {
+			min-height: 32px;
+			margin: -4px 0 -6px;
+			font-size: 13px;
 		}
 	}
 </style>

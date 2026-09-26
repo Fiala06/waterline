@@ -14,17 +14,15 @@ export const load: PageServerLoad = ({ locals, url }) => {
 	const filter = url.searchParams.get('filter');
 	const rows = listTasks(user.id, filter ?? undefined);
 
-	// Desktop edit pane (D5): ?edit=<task id> or ?new
-	const editId = url.searchParams.get('edit');
+	// Desktop edit pane (D5): ?edit=<task id>, ?new, or else the first task in the list,
+	// so the pane is never empty (phones hide it). The task must be in the list shown.
+	const editing = rows.find((r) => r.task.id === url.searchParams.get('edit'))?.task;
 	let pane: { mode: 'new' | 'edit'; taskId: string | null; values: ReturnType<typeof taskFormValues> } | null = null;
-	if (editId) {
-		try {
-			pane = { mode: 'edit', taskId: editId, values: taskFormValues(getTask(user.id, editId), user, null) };
-		} catch {
-			pane = null;
-		}
-	} else if (url.searchParams.has('new')) {
+	if (!editing && url.searchParams.has('new')) {
 		pane = { mode: 'new', taskId: null, values: taskFormValues(null, user, filter) };
+	} else {
+		const task = editing ?? rows[0]?.task;
+		if (task) pane = { mode: 'edit', taskId: task.id, values: taskFormValues(task, user, null) };
 	}
 
 	return {

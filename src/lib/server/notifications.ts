@@ -192,8 +192,10 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 		});
 	}
 	if (!tanksOut.length) return { sent };
-	const tzName =
-		new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'shortGeneric' }).formatToParts(now).find((p) => p.type === 'timeZoneName')?.value ?? tz;
+	// "Pacific" as in E3 ("Pacific Time" → "Pacific"), not the abbreviation "PT"
+	const tzName = (
+		new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'longGeneric' }).formatToParts(now).find((p) => p.type === 'timeZoneName')?.value ?? tz
+	).replace(/ Time$/, '');
 	const [h, m] = prefs.sendTime.split(':').map(Number);
 	const sendAt = new Date(Date.UTC(2000, 0, 1, h, m)).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' });
 	const ok = await sendOnce(

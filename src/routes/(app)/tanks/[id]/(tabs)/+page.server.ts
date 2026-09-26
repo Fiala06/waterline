@@ -1,4 +1,5 @@
 import { EQUIPMENT_TYPE_LABEL, equipmentName } from '$lib/equipment';
+import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { getTank } from '$lib/server/tanks';
 import { listEquipment, listLivestock, listPlants } from '$lib/server/specs';
 import type { PageServerLoad } from './$types';
@@ -11,9 +12,16 @@ export const load: PageServerLoad = ({ locals, params }) => {
 	const eq = listEquipment(user.id, t.id);
 	const ls = listLivestock(user.id, t.id);
 	const pl = listPlants(user.id, t.id);
+	const len = (cm: number) => formatNumber(toDisplay(cm, 'length', user), 0);
+	const size =
+		t.lengthCm && t.widthCm && t.heightCm
+			? `${len(t.lengthCm)} × ${len(t.widthCm)} × ${len(t.heightCm)} ${unitLabel('length', user)}`
+			: null;
 	return {
+		// T1 order
 		specs: [
 			['Tank', [t.specBrand, t.specModel].filter(Boolean).join(' ')],
+			['Size', size],
 			['Glass', t.glass],
 			['Substrate', t.substrate],
 			['Water source', t.waterSource ? SOURCES[t.waterSource] : null],

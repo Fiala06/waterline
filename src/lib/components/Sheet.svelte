@@ -111,7 +111,8 @@
 		min-height: 44px;
 		padding: 0 4px;
 	}
-	@media (min-width: 900px) {
+	/* the shell's breakpoint: phones and tablets get the bottom sheet */
+	@media (min-width: 1024px) {
 		.sheet {
 			align-items: center;
 			justify-content: center;

@@ -32,58 +32,66 @@
 
 <svelte:head><title>Set up · Waterline</title></svelte:head>
 
-<form method="POST" class="wrap">
-	<div class="head">
-		<div class="progress" aria-hidden="true"><i class="on"></i><i></i></div>
-		<div class="step">Step 1 of 2</div>
-		<h1>Set up your log</h1>
-	</div>
-
-	<div class="body">
-		{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
-		<div class="field">
-			<label class="label" for="displayName">Display name</label>
-			<input class="input" id="displayName" name="displayName" defaultValue={data.displayName} required autocomplete="name" />
+<div class="screen">
+	<form method="POST" class="wrap">
+		<div class="head">
+			<div class="progress" aria-hidden="true"><i class="on"></i><i></i></div>
+			<div class="step">Step 1 of 2</div>
+			<h1>Set up your log</h1>
 		</div>
 
-		<fieldset class="field">
-			<legend class="label">Units</legend>
-			<div class="segmented">
-				<label><input type="radio" name="unitSystem" value="imperial" bind:group={unitSystem} />Imperial<small>gal · °F · in</small></label>
-				<label><input type="radio" name="unitSystem" value="metric" bind:group={unitSystem} />Metric<small>L · °C · cm</small></label>
+		<div class="body">
+			{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
+			<div class="field">
+				<label class="label" for="displayName">Display name</label>
+				<input class="input" id="displayName" name="displayName" defaultValue={data.displayName} required autocomplete="name" />
 			</div>
-		</fieldset>
 
-		<fieldset class="field">
-			<legend class="label">Hardness units</legend>
-			<div class="segmented">
-				<label><input type="radio" name="hardnessUnit" value="dgh" defaultChecked={data.hardnessUnit === 'dgh'} />dGH / dKH</label>
-				<label><input type="radio" name="hardnessUnit" value="ppm" defaultChecked={data.hardnessUnit === 'ppm'} />ppm</label>
+			<div class="units">
+				<fieldset class="field">
+					<legend class="label">Units</legend>
+					<div class="segmented">
+						<label><input type="radio" name="unitSystem" value="imperial" bind:group={unitSystem} />Imperial<small>gal · °F · in</small></label>
+						<label><input type="radio" name="unitSystem" value="metric" bind:group={unitSystem} />Metric<small>L · °C · cm</small></label>
+					</div>
+				</fieldset>
+
+				<fieldset class="field">
+					<!-- D2 shortens the label to fit the two-column row -->
+					<legend class="label"><span class="hide-desk">Hardness units</span><span class="hide-phone">Hardness</span></legend>
+					<div class="segmented">
+						<label><input type="radio" name="hardnessUnit" value="dgh" defaultChecked={data.hardnessUnit === 'dgh'} />dGH / dKH</label>
+						<label><input type="radio" name="hardnessUnit" value="ppm" defaultChecked={data.hardnessUnit === 'ppm'} />ppm</label>
+					</div>
+				</fieldset>
 			</div>
-		</fieldset>
+			<p class="hint hide-phone">
+				{unitSystem === 'metric' ? 'Metric: L · °C · cm.' : 'Imperial: gal · °F · in.'} You can change these later in Settings.
+			</p>
 
-		<div class="field">
-			<label class="label" for="timeZone">Time zone</label>
-			{#if changing}
-				<select class="input" id="timeZone" name="timeZone" bind:value={timeZone}>
-					{#each data.timeZones as tz (tz)}<option value={tz}>{tz.replace(/_/g, ' ')}</option>{/each}
-				</select>
-			{:else}
-				<input type="hidden" name="timeZone" value={timeZone} />
-				<div class="input tz">
-					<span>{tzLabel}{detected ? ' · detected' : ''}</span>
-					<button type="button" class="btn-text" onclick={() => (changing = true)}>Change</button>
-				</div>
-			{/if}
+			<div class="field">
+				<label class="label" for="timeZone">Time zone</label>
+				{#if changing}
+					<select class="input" id="timeZone" name="timeZone" bind:value={timeZone}>
+						{#each data.timeZones as tz (tz)}<option value={tz}>{tz.replace(/_/g, ' ')}</option>{/each}
+					</select>
+				{:else}
+					<input type="hidden" name="timeZone" value={timeZone} />
+					<div class="input tz">
+						<span>{tzLabel}{detected ? ' · detected' : ''}</span>
+						<button type="button" class="btn-text" onclick={() => (changing = true)}>Change</button>
+					</div>
+				{/if}
+			</div>
+			<p class="hint hide-desk">You can change these later in Settings.</p>
 		</div>
-		<p class="hint">You can change these later in Settings.</p>
-	</div>
 
-	<div class="foot">
-		<button class="btn btn-primary btn-lg" name="next" value="tank">Continue to first tank</button>
-		<button class="skip" name="next" value="skip">Skip, I'll add a tank later</button>
-	</div>
-</form>
+		<div class="foot">
+			<button class="btn btn-primary btn-lg" name="next" value="tank">Continue to first tank</button>
+			<button class="skip" name="next" value="skip"><span class="hide-desk">Skip, I'll add a tank later</span><span class="hide-phone">Skip tank setup</span></button>
+		</div>
+	</form>
+</div>
 
 <style>
 	.wrap {
@@ -131,6 +139,9 @@
 		flex-direction: column;
 		gap: 22px;
 	}
+	.units {
+		display: contents;
+	}
 	fieldset {
 		border: none;
 		margin: 0;
@@ -163,14 +174,82 @@
 		color: var(--text-muted);
 		min-height: 44px;
 	}
+
+	/* D2: the same steps in a centered card */
 	@media (min-width: 1024px) {
-		.wrap {
+		.screen {
+			min-height: 100dvh;
+			display: flex;
+			align-items: center;
 			justify-content: center;
-			max-width: 520px;
+			padding: 40px;
 		}
-		.body,
-		.foot {
+		.wrap {
+			min-height: 0;
+			width: 560px;
+			max-width: 100%;
+			margin: 0;
+			padding: 36px;
+			gap: 22px;
+			border-radius: 20px;
+			background: var(--surface);
+			border: 1px solid var(--border);
+		}
+		.head {
+			padding: 0;
+			gap: 4px;
+		}
+		.progress {
+			margin-bottom: 18px;
+		}
+		.step {
+			margin-top: 0;
+		}
+		.body {
 			flex: none;
+			padding: 0;
+		}
+		/* inputs sit recessed inside the card */
+		.input {
+			height: 48px;
+			padding: 0 14px;
+			font-size: 16px;
+			background: var(--surface-2);
+			border-color: var(--border-strong);
+		}
+		.tz {
+			padding-right: 6px;
+		}
+		.units {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 14px;
+		}
+		.segmented {
+			border-radius: 12px;
+			background: var(--surface-2);
+		}
+		.segmented label {
+			min-height: 40px;
+			border-radius: 8px;
+			font-size: 15px;
+		}
+		/* the unit hint moves below the row */
+		.segmented small {
+			display: none;
+		}
+		.foot {
+			flex-direction: row-reverse;
+			justify-content: space-between;
+			align-items: center;
+			padding: 6px 0 0;
+		}
+		.foot .btn {
+			width: auto;
+			height: 48px;
+			padding: 0 22px;
+			border-radius: 12px;
+			font-size: 16px;
 		}
 	}
 </style>

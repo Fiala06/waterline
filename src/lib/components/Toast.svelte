@@ -6,8 +6,14 @@
 		message,
 		undo,
 		view,
-		raised = false
-	}: { message: string | null | undefined; undo?: string; view?: string; raised?: boolean } = $props();
+		lift = 'none'
+	}: {
+		message: string | null | undefined;
+		undo?: string;
+		view?: string;
+		/** On phones, sit above the tab bar, or above the tab bar and the + button. */
+		lift?: 'none' | 'tabs' | 'fab';
+	} = $props();
 	let visible = $state<string | null>(null);
 
 	$effect(() => {
@@ -18,7 +24,7 @@
 	});
 </script>
 
-<div class="toast-region" class:raised role="status" aria-live="polite">
+<div class="toast-region {lift}" role="status" aria-live="polite">
 	{#if visible}
 		<div class="toast">
 			<span>{visible}</span>
@@ -46,7 +52,10 @@
 		display: flex;
 		justify-content: center;
 	}
-	.toast-region.raised {
+	.toast-region.tabs {
+		bottom: calc(104px + env(safe-area-inset-bottom));
+	}
+	.toast-region.fab {
 		bottom: calc(184px + env(safe-area-inset-bottom));
 	}
 	.toast {
@@ -74,9 +83,11 @@
 		align-items: center;
 		padding: 0 4px;
 	}
-	@media (min-width: 900px) {
+	/* the shell's breakpoint: below it the tab bar is still showing */
+	@media (min-width: 1024px) {
 		.toast-region,
-		.toast-region.raised {
+		.toast-region.tabs,
+		.toast-region.fab {
 			left: auto;
 			right: 28px;
 			bottom: 28px;

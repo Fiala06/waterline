@@ -37,11 +37,12 @@ export const load: PageServerLoad = ({ locals, params }) => {
 		items,
 		past: listLivestock(user.id, params.id, { removed: true }).map(view),
 		animals: items.reduce((n, l) => n + l.count, 0),
-		equipment: listEquipment(user.id, params.id).map((e) => ({
-			id: e.id,
-			type: EQUIPMENT_TYPE_LABEL[e.type],
-			line: [equipmentName(e), ...specSummary(e.type, e.specs, user).slice(0, 1)].join(' · ')
-		})),
+		equipment: listEquipment(user.id, params.id).map((e) => {
+			const name = equipmentName(e);
+			// T6: "Tidewell 200 W · 77 °F", not the wattage twice
+			const spec = specSummary(e.type, e.specs, user).find((s) => !name.includes(s));
+			return { id: e.id, type: EQUIPMENT_TYPE_LABEL[e.type], line: spec ? `${name} · ${spec}` : name };
+		}),
 		recent
 	};
 };

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	let { data, form } = $props();
 	const base = $derived(`/tanks/${data.tankHead.id}`);
 	// pending count per row, confirmed by choosing a reason
@@ -10,109 +11,147 @@
 		if (next === current) delete pending[id];
 		else pending[id] = next;
 	}
+	// "−1 Harlequin rasbora · loss": the part after the first " · " is muted (T6)
+	function split(title: string) {
+		const i = title.indexOf(' · ');
+		return i < 0 ? [title, ''] : [title.slice(0, i), title.slice(i + 3)];
+	}
 </script>
 
 <svelte:head><title>Livestock · {data.tankHead.name}</title></svelte:head>
 
+{#snippet past()}
+	<details class="past">
+		<summary><span class="show">Show past livestock ({data.past.length})</span><span class="hide">Hide past livestock</span></summary>
+		<ul>
+			{#each data.past as l (l.id)}<li><span>{l.name}</span><span class="muted">{KIND[l.kind]}</span></li>{/each}
+		</ul>
+	</details>
+{/snippet}
+
+<!-- "+ Add" is in the tank header (layout) -->
 <div class="body">
 	<div class="main">
-		<div class="top">
-			<span class="muted">{data.animals} animal{data.animals === 1 ? '' : 's'} · {data.items.length} species</span>
-			<a class="btn add" href="{base}/livestock/new">+ Add</a>
-		</div>
 		{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
 
 		{#if !data.items.length}
-			<div class="card empty">
-				<strong>No livestock yet</strong>
-				<span class="muted">Add fish, shrimp, snails and corals. The species list works offline; custom names are fine.</span>
-				<a class="btn btn-primary" href="{base}/livestock/new">Add livestock</a>
-			</div>
+			<EmptyState
+				icon="livestock"
+				title="No livestock yet"
+				text="Add fish, shrimp, snails and corals. The species list works offline; custom names are fine."
+				href="{base}/livestock/new"
+				label="Add livestock"
+				primary
+			/>
+			{#if data.past.length}{@render past()}{/if}
 		{:else}
-			<div class="card table" role="table" aria-label="Livestock">
+			<p class="total">{data.animals} animal{data.animals === 1 ? '' : 's'} · {data.items.length} species</p>
+			<div class="table" role="table" aria-label="Livestock">
 				<div class="thead" role="row">
 					<span role="columnheader">Species</span><span role="columnheader">Type</span><span role="columnheader">Added</span
 					><span role="columnheader">Status</span><span role="columnheader" class="r">Count</span>
 				</div>
 				{#each data.items as l (l.id)}
 					{@const next = pending[l.id]}
-					<div class="tr" role="row">
+					<div class="tr" class:pending={next != null} role="row">
 						<div class="sp" role="cell">
 							<span class="name">{l.name}</span>
 							{#if l.scientific}<span class="sci">{l.scientific}</span>{/if}
 						</div>
-						<span class="d d1" role="cell">{KIND[l.kind]}</span>
-						<span class="d d2" role="cell">{l.added}</span>
-						<span role="cell" class="st">
+						<span class="d" role="cell">{KIND[l.kind]}</span>
+						<span class="d" role="cell">{l.added}</span>
+						<div class="st" class:in={l.status !== 'quarantine'} role="cell">
 							{#if l.status === 'quarantine'}
-								<span class="status-warn strong">▲ Quarantine</span>
+								<span class="status-tag tag-warn sm">▲ Quarantine</span>
 								<form method="POST" action="?/status" use:enhance>
 									<input type="hidden" name="id" value={l.id} />
 									<input type="hidden" name="status" value="in_tank" />
-									<button class="btn-text sm">Move in</button>
+									<button class="move">Move in</button>
 								</form>
 							{:else}
-								<span class="status-ok d-only">✓ In tank</span>
+								<span class="in-tank">✓ In tank</span>
 							{/if}
-						</span>
-						<div class="stepper" role="cell">
-							<button type="button" aria-label="One fewer {l.name}" onclick={() => step(l.id, l.count, -1)}>−</button>
-							<span class="num" class:changed={next != null}>{next ?? l.count}</span>
-							<button type="button" aria-label="One more {l.name}" onclick={() => step(l.id, l.count, 1)}>+</button>
+						</div>
+						<div class="cnt" role="cell">
+							<div class="count-stepper">
+								<button type="button" aria-label="One fewer {l.name}" onclick={() => step(l.id, l.count, -1)}>−</button>
+								<span class="value" class:changed={next != null}>{next ?? l.count}</span>
+								<button type="button" aria-label="One more {l.name}" onclick={() => step(l.id, l.count, 1)}>+</button>
+							</div>
 						</div>
 						{#if next != null}
-							<form method="POST" action="?/count" class="reason" use:enhance={() => async ({ update }) => { delete pending[l.id]; await update(); }}>
-								<input type="hidden" name="id" value={l.id} />
-								<input type="hidden" name="count" value={next} />
-								<span class="muted">{l.count} → {next}. Log it as:</span>
-								{#if next < l.count}
-									<button class="chip" name="reason" value="loss">Loss</button>
-									<button class="chip" name="reason" value="rehomed">Rehomed</button>
-								{:else}
-									<button class="chip" name="reason" value="added">Added</button>
-								{/if}
-								<button class="chip" name="reason" value="recount">Recount</button>
-								<button type="button" class="btn-text" onclick={() => delete pending[l.id]}>Cancel</button>
-							</form>
+							<div class="reason" role="cell">
+								<form
+									method="POST"
+									action="?/count"
+									use:enhance={() =>
+										async ({ update }) => {
+											delete pending[l.id];
+											await update();
+										}}
+								>
+									<input type="hidden" name="id" value={l.id} />
+									<input type="hidden" name="count" value={next} />
+									<p class="ask">{l.count} → {next}. Log it as:</p>
+									<div class="reasons">
+										{#if next < l.count}
+											<button class="rsn lead" name="reason" value="loss">Loss</button>
+											<button class="rsn" name="reason" value="rehomed">Rehomed</button>
+										{:else}
+											<button class="rsn lead" name="reason" value="added">Added</button>
+										{/if}
+										<button class="rsn" name="reason" value="recount">Recount</button>
+										<button type="button" class="cancel" onclick={() => delete pending[l.id]}>Cancel</button>
+									</div>
+								</form>
+							</div>
 						{/if}
 					</div>
 				{/each}
+				{#if data.past.length}
+					<div class="tfoot" role="row"><div role="cell">{@render past()}</div></div>
+				{/if}
 			</div>
-		{/if}
-
-		{#if data.past.length}
-			<details>
-				<summary>Show past livestock ({data.past.length})</summary>
-				<ul class="card past">
-					{#each data.past as l (l.id)}<li><span>{l.name}</span><span class="muted">{KIND[l.kind]}</span></li>{/each}
-				</ul>
-			</details>
 		{/if}
 	</div>
 
 	<aside class="side">
-		<section class="card sidecard">
+		<section>
 			<div class="sh"><h2>Equipment</h2><a href="{base}/equipment">Manage</a></div>
-			{#each data.equipment as e (e.id)}
-				<div class="eq"><span class="caps">{e.type}</span><span>{e.line}</span></div>
+			{#if data.equipment.length}
+				<div class="card eqs">
+					{#each data.equipment as e (e.id)}
+						<a class="eq" href="{base}/equipment/{e.id}"><span class="caps">{e.type}</span><span class="line">{e.line}</span></a>
+					{/each}
+				</div>
 			{:else}
-				<span class="muted sm">None yet</span>
-			{/each}
+				<p class="none">None added yet</p>
+			{/if}
 		</section>
-		<section class="card sidecard">
-			<h2>Recent changes</h2>
-			{#each data.recent as r (r.id)}
-				<a class="rc" href="/entries/event/{r.id}"><span>{r.title}</span><span class="muted sm">{r.day}</span></a>
+		<section>
+			<div class="sh"><h2>Recent changes</h2></div>
+			{#if data.recent.length}
+				<ul class="recent">
+					{#each data.recent as r (r.id)}
+						{@const [what, detail] = split(r.title)}
+						<li>
+							<a href="/entries/event/{r.id}">
+								<span class="rc-t">{what}{#if detail}<span class="muted">{' · ' + detail}</span>{/if}</span>
+								<span class="rc-d">{r.day}</span>
+							</a>
+						</li>
+					{/each}
+				</ul>
 			{:else}
-				<span class="muted sm">Nothing yet</span>
-			{/each}
+				<p class="none">None added yet</p>
+			{/if}
 		</section>
 	</aside>
 </div>
 
 <style>
 	.body {
-		padding: 16px 20px;
+		padding: 12px 20px 16px;
 		display: flex;
 		flex-direction: column;
 		gap: 16px;
@@ -120,34 +159,38 @@
 	.main {
 		display: flex;
 		flex-direction: column;
-		gap: 12px;
+		gap: 8px;
 		min-width: 0;
 	}
-	.top {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
+	.total {
+		margin: 0 0 -2px;
+		font-size: 13px;
+		color: var(--text-muted);
 	}
-	.add {
-		min-height: 38px;
-	}
+
+	/* Phones (T4): one card per species */
 	.table {
 		display: flex;
 		flex-direction: column;
+		gap: 8px;
 	}
-	.thead {
+	.thead,
+	.d {
 		display: none;
 	}
 	.tr {
-		padding: 12px 14px;
+		padding: 12px 12px 12px 14px;
+		border-radius: 16px;
+		background: var(--surface);
+		border: 1px solid var(--border);
 		display: grid;
-		grid-template-columns: 1fr auto;
-		grid-template-areas: 'sp step' 'st step' 'reason reason';
+		grid-template-columns: minmax(0, 1fr) auto;
+		grid-template-areas: 'sp cnt' 'st st' 'rs rs';
 		align-items: center;
-		gap: 4px 12px;
+		column-gap: 12px;
 	}
-	.tr + .tr {
-		border-top: 1px solid var(--border);
+	.tr.pending {
+		border-color: var(--accent);
 	}
 	.sp {
 		grid-area: sp;
@@ -165,99 +208,190 @@
 		font-style: italic;
 		color: var(--text-muted);
 	}
-	.d {
-		display: none;
-	}
 	.st {
 		grid-area: st;
 		display: flex;
 		align-items: center;
-		gap: 8px;
-		font-size: 13px;
+		gap: 10px;
+		padding-top: 6px;
+		white-space: nowrap;
 	}
-	.d-only {
+	.st.in {
 		display: none;
 	}
-	.strong {
+	.in-tank {
+		font-size: 13px;
 		font-weight: 600;
+		color: var(--ok);
 	}
-	.stepper {
-		grid-area: step;
+	.st form {
 		display: flex;
+	}
+	/* a text link, 44px to tap without making the row taller */
+	.move {
+		position: relative;
+		min-height: 36px;
+		margin: -8px 0;
+		display: inline-flex;
 		align-items: center;
-		gap: 4px;
-	}
-	.stepper button {
-		width: 40px;
-		height: 40px;
-		border-radius: 12px;
-		border: 1px solid var(--border-strong);
-		font-size: 20px;
-	}
-	.stepper .num {
-		min-width: 32px;
-		text-align: center;
-		font-size: 18px;
+		font-size: 14px;
 		font-weight: 600;
+		color: var(--accent);
+		white-space: nowrap;
 	}
-	.num.changed {
+	.move::after {
+		content: '';
+		position: absolute;
+		inset: -4px -6px;
+	}
+	.cnt {
+		grid-area: cnt;
+	}
+	.value.changed {
 		color: var(--accent);
 	}
+	/* T4: "14 → 13. Log it as:" over one row of reasons */
 	.reason {
-		grid-area: reason;
-		display: flex;
-		flex-wrap: wrap;
-		gap: 6px;
-		align-items: center;
-		padding-top: 8px;
-		font-size: 14px;
+		grid-area: rs;
+		margin-top: 12px;
+		padding-top: 10px;
+		border-top: 1px solid var(--border);
 	}
-	.reason .chip {
-		color: var(--text);
-	}
-	.sm {
-		font-size: 13px;
-	}
-	.empty {
-		padding: 18px;
+	.reason form {
 		display: flex;
 		flex-direction: column;
-		align-items: flex-start;
+		gap: 8px;
+	}
+	.ask {
+		margin: 0;
+		font-size: 13px;
+		color: var(--text-2);
+	}
+	.reasons {
+		display: flex;
+		align-items: center;
 		gap: 6px;
 	}
-	details summary {
-		cursor: pointer;
-		color: var(--text-muted);
-		padding: 10px 0;
+	.rsn {
+		position: relative;
+		height: 36px;
+		padding: 0 12px;
+		border-radius: 10px;
+		border: 1px solid var(--border-strong);
+		font-size: 13px;
+		color: var(--text);
+		white-space: nowrap;
 	}
-	.past {
+	.rsn::after {
+		content: '';
+		position: absolute;
+		inset: -4px 0;
+	}
+	.rsn.lead {
+		background: var(--accent);
+		border-color: var(--accent);
+		color: var(--on-accent);
+		font-weight: 700;
+	}
+	.cancel {
+		margin-left: auto;
+		min-height: 44px;
+		padding: 0 4px;
+		font-size: 14px;
+		color: var(--text-muted);
+	}
+
+	.past summary {
+		list-style: none;
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		font-size: 14px;
+		font-weight: 600;
+		color: var(--accent);
+		cursor: pointer;
+	}
+	.past summary::-webkit-details-marker {
+		display: none;
+	}
+	.past[open] .show,
+	.past:not([open]) .hide {
+		display: none;
+	}
+	.past ul {
 		list-style: none;
 		margin: 0;
 		padding: 0;
+		border-radius: 16px;
+		background: var(--surface);
+		border: 1px solid var(--border);
 	}
 	.past li {
 		padding: 12px 14px;
 		display: flex;
 		justify-content: space-between;
+		gap: 12px;
+		font-size: 15px;
 	}
 	.past li + li {
 		border-top: 1px solid var(--border);
 	}
+	.past .muted {
+		font-size: 13px;
+	}
 	.side {
 		display: none;
 	}
+	@media (hover: hover) {
+		.rsn:not(.lead):hover {
+			background: var(--surface-hi);
+		}
+		.rsn.lead:hover {
+			background: color-mix(in srgb, var(--accent) 86%, var(--text));
+		}
+		.cancel:hover {
+			color: var(--text);
+		}
+		.past summary:hover,
+		.move:hover {
+			color: var(--accent-hover);
+		}
+	}
+
+	/* Desktop (T6): one table, columns sized to their content */
 	@media (min-width: 1024px) {
 		.body {
-			padding: 24px 32px;
+			padding: 22px 32px;
 			display: grid;
-			grid-template-columns: minmax(0, 1fr) 320px;
+			grid-template-columns: minmax(0, 1fr) 280px;
 			gap: 24px;
 			align-items: start;
 		}
-		.thead {
+		.main {
+			gap: 10px;
+		}
+		.total {
+			margin: 0;
+		}
+		.table {
 			display: grid;
-			grid-template-columns: minmax(0, 2fr) 80px 100px 150px 150px;
-			padding: 10px 14px;
+			grid-template-columns: minmax(0, 1fr) repeat(4, max-content);
+			column-gap: 20px;
+			border-radius: 16px;
+			background: var(--surface);
+			border: 1px solid var(--border);
+			overflow: hidden;
+		}
+		.thead,
+		.tr {
+			grid-column: 1 / -1;
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) 64px 110px 170px 140px;
+			grid-template-columns: subgrid;
+			align-items: center;
+		}
+		.thead {
+			padding: 12px 16px;
 			font-size: 12px;
 			letter-spacing: 0.06em;
 			text-transform: uppercase;
@@ -268,69 +402,187 @@
 			text-align: right;
 		}
 		.tr {
-			grid-template-columns: minmax(0, 2fr) 80px 100px 150px 150px;
-			grid-template-areas: 'sp d1 d2 st step' 'reason reason reason reason reason';
+			grid-template-areas: none;
+			padding: 10px 16px;
+			border: none;
+			border-radius: 0;
+			background: none;
 		}
-		.d1 {
-			grid-area: d1;
+		.tr + .tr {
+			border-top: 1px solid var(--divider-soft);
 		}
-		.d2 {
-			grid-area: d2;
+		.tr.pending {
+			box-shadow: inset 0 0 0 1px var(--accent);
+		}
+		.sp,
+		.st,
+		.cnt {
+			grid-area: auto;
+		}
+		.name,
+		.sci {
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+		.name {
+			font-size: 15px;
+		}
+		.sci {
+			font-size: 12px;
 		}
 		.d {
 			display: block;
 			font-size: 14px;
 			color: var(--text-2);
+			white-space: nowrap;
 		}
-		.d-only {
-			display: inline;
+		.st,
+		.st.in {
+			display: flex;
+			padding: 0;
 		}
-		.stepper {
-			justify-content: flex-end;
+		.cnt {
+			justify-self: end;
+		}
+		.count-stepper {
+			height: 38px;
+			border-radius: 10px;
+		}
+		.count-stepper button {
+			width: 36px;
+			font-size: 18px;
+		}
+		.count-stepper .value {
+			width: 36px;
+			font-size: 16px;
+			font-weight: 700;
+		}
+		.reason {
+			grid-column: 1 / -1;
+			margin-top: 10px;
+		}
+		.reason form {
+			flex-direction: row;
+			align-items: center;
+			gap: 12px;
+		}
+		.reasons {
+			flex: 1;
+		}
+		.tfoot {
+			grid-column: 1 / -1;
+			padding: 0 16px;
+			border-top: 1px solid var(--border);
+			display: flex;
+			flex-direction: column;
+		}
+		.tfoot .past summary {
+			display: flex;
+			width: fit-content;
+			margin-left: auto;
+			font-size: 13px;
+		}
+		.tfoot .past ul {
+			margin: 0 -16px;
+			border: none;
+			border-top: 1px solid var(--divider-soft);
+			border-radius: 0;
+			background: none;
+		}
+		.tfoot .past li {
+			padding: 10px 16px;
+			font-size: 14px;
+		}
+		.tfoot .past li + li {
+			border-top-color: var(--divider-soft);
 		}
 		.side {
 			display: flex;
 			flex-direction: column;
-			gap: 16px;
+			gap: 18px;
 		}
-		.sidecard {
-			padding: 16px;
+		.side section {
 			display: flex;
 			flex-direction: column;
 			gap: 10px;
-		}
-		.sidecard h2 {
-			margin: 0;
-			font-size: 17px;
 		}
 		.sh {
 			display: flex;
 			justify-content: space-between;
 			align-items: baseline;
+			gap: 12px;
+		}
+		.sh h2 {
+			margin: 0;
+			font-size: 16px;
+			font-weight: 600;
 		}
 		.sh a {
 			font-size: 14px;
 			font-weight: 600;
+			padding: 12px 0 12px 12px;
+			margin: -12px 0 -12px -12px;
+		}
+		.eqs {
+			display: flex;
+			flex-direction: column;
+			overflow: hidden;
+			border-radius: 14px;
 		}
 		.eq {
+			padding: 11px 14px;
 			display: flex;
 			flex-direction: column;
 			gap: 2px;
-			font-size: 14px;
+			color: var(--text);
+		}
+		.eq + .eq {
+			border-top: 1px solid var(--border);
+		}
+		.eq:hover {
+			color: var(--text);
+			background: var(--surface-hi);
 		}
 		.caps {
-			font-size: 11px;
-			font-weight: 700;
+			font-size: 12px;
 			letter-spacing: 0.06em;
 			text-transform: uppercase;
 			color: var(--text-muted);
 		}
-		.rc {
+		.line {
+			font-size: 14px;
+			font-weight: 600;
+		}
+		.recent {
+			list-style: none;
+			margin: 0;
+			padding: 0;
+		}
+		.recent li + li {
+			border-top: 1px solid var(--divider-soft);
+		}
+		.recent a {
+			padding: 8px 0;
 			display: flex;
 			justify-content: space-between;
-			gap: 8px;
+			align-items: baseline;
+			gap: 12px;
 			font-size: 14px;
 			color: var(--text);
+		}
+		.recent a:hover .rc-t {
+			color: var(--accent-hover);
+		}
+		.rc-d {
+			flex-shrink: 0;
+			white-space: nowrap;
+			color: var(--text-muted);
+		}
+		.none {
+			margin: 0;
+			font-size: 14px;
+			color: var(--text-muted);
 		}
 	}
 </style>

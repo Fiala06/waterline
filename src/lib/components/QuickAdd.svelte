@@ -87,7 +87,12 @@
 
 <svelte:window {onkeydown} />
 
-<Sheet bind:open title="Quick add" width={560}>
+<Sheet bind:open label="Quick add" width={560}>
+	<div class="head">
+		<h2>Quick add</h2>
+		<button type="button" class="close hide-desk" onclick={() => (open = false)}>Cancel</button>
+		<button type="button" class="close hide-phone" onclick={() => (open = false)}>Esc to close</button>
+	</div>
 	{#if !tank}
 		<p class="muted">Add a tank first to start logging.</p>
 		<a class="btn btn-primary btn-lg" href="/tanks/new" onclick={() => (open = false)}>Add tank</a>
@@ -101,12 +106,14 @@
 			</button>
 		</div>
 
+		<!-- phones: three wide rows (04); desktop: three tiles with their key (D12) -->
 		<div class="big">
 			<a class="choice primary" href={href('/log/test')} onclick={() => (open = false)}>
-				<CategoryIcon kind="test" size={44} inverted />
+				<span class="ic hide-desk"><CategoryIcon kind="test" size={44} inverted /></span>
+				<span class="ic hide-phone"><CategoryIcon kind="test" size={36} inverted /></span>
 				<span class="t">
-					<span class="title">Log water test</span>
-					<span class="sub">{lastTest}</span>
+					<span class="title"><span class="hide-desk">Log water test</span><span class="hide-phone">Water test</span></span>
+					<span class="sub hide-desk">{lastTest}</span>
 				</span>
 				<kbd>T</kbd>
 			</a>
@@ -115,11 +122,12 @@
 				href={href('/log/event', { category: 'water_change' })}
 				onclick={() => (open = false)}
 			>
-				<CategoryIcon kind="water_change" size={44} />
+				<span class="ic hide-desk"><CategoryIcon kind="water_change" size={44} /></span>
+				<span class="ic hide-phone"><CategoryIcon kind="water_change" size={36} /></span>
 				<span class="t">
-					<span class="title">Log water change</span>
+					<span class="title"><span class="hide-desk">Log water change</span><span class="hide-phone">Water change</span></span>
 					{#if wcDue && wcDue.level !== 'ok'}
-						<span class="sub status-{wcDue.level}"
+						<span class="sub hide-desk status-{wcDue.level}"
 							>{wcDue.days < 0 ? `✕ ${-wcDue.days} day${wcDue.days === -1 ? '' : 's'} overdue` : wcDue.text}</span
 						>
 					{/if}
@@ -127,10 +135,11 @@
 				<kbd>W</kbd>
 			</a>
 			<a class="choice" href={href('/log/event', { category: 'note' })} onclick={() => (open = false)}>
-				<CategoryIcon kind="note" size={44} />
+				<span class="ic hide-desk"><CategoryIcon kind="note" size={44} /></span>
+				<span class="ic hide-phone"><CategoryIcon kind="note" size={36} /></span>
 				<span class="t">
-					<span class="title">Add note or photo</span>
-					<span class="sub">Opens camera or library</span>
+					<span class="title"><span class="hide-desk">Add note or photo</span><span class="hide-phone">Note / photo</span></span>
+					<span class="sub hide-desk">Opens camera or library</span>
 				</span>
 				<kbd>N</kbd>
 			</a>
@@ -154,6 +163,27 @@
 <DateTimePicker bind:open={pickingWhen} value={when} {timeZone} onselect={(v) => (when = v)} />
 
 <style>
+	.head {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 12px;
+	}
+	.head h2 {
+		margin: 0;
+		font-size: 22px;
+		font-weight: 600;
+		flex: 1;
+	}
+	.close {
+		font-size: 15px;
+		color: var(--text-muted);
+		min-height: 44px;
+		padding: 0 4px;
+	}
+	.close:hover {
+		color: var(--text);
+	}
 	.ctx {
 		display: flex;
 		gap: 8px;
@@ -187,6 +217,9 @@
 		border-color: var(--accent);
 		color: var(--on-accent);
 	}
+	.ic {
+		display: contents;
+	}
 	.t {
 		flex: 1;
 		display: flex;
@@ -209,13 +242,13 @@
 	}
 	kbd {
 		display: none;
-		font-family: inherit;
+		font-family: ui-monospace, Menlo, monospace;
 		font-size: 12px;
+		color: var(--text-muted);
+	}
+	.primary kbd {
+		color: var(--on-accent);
 		font-weight: 700;
-		padding: 2px 8px;
-		border-radius: 6px;
-		border: 1px solid currentColor;
-		opacity: 0.7;
 	}
 	.more {
 		display: flex;
@@ -243,9 +276,51 @@
 		color: var(--text-faint);
 	}
 	@media (min-width: 1024px) {
-		kbd,
+		.close {
+			font-size: 14px;
+		}
+		.ctx .chip {
+			height: 38px;
+		}
+		.big {
+			display: grid;
+			grid-template-columns: repeat(3, 1fr);
+		}
+		/* icon at the top, name and key along the bottom */
+		.choice {
+			height: 120px;
+			padding: 16px;
+			border-radius: 16px;
+			display: grid;
+			grid-template: 'icon icon' 1fr 'title key' auto / 1fr auto;
+			align-items: baseline;
+			gap: 0 8px;
+		}
+		.choice :global(.icon) {
+			grid-area: icon;
+			align-self: start;
+		}
+		.t {
+			grid-area: title;
+		}
+		.title {
+			font-size: 16px;
+		}
+		kbd {
+			display: block;
+			grid-area: key;
+		}
+		.more-label {
+			display: none;
+		}
+		.more-list .btn {
+			min-height: 38px;
+			padding: 0 14px;
+			border-radius: 10px;
+			font-size: 14px;
+		}
 		.hint {
-			display: inline-block;
+			display: block;
 		}
 	}
 </style>

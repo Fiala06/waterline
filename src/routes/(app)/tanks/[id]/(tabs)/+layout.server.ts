@@ -7,8 +7,6 @@ export const load: LayoutServerLoad = ({ locals, params }) => {
 	const user = locals.user!;
 	const t = getTank(user.id, params.id);
 	const vol = (l: number | null) => (l == null ? null : formatNumber(toDisplay(l, 'volume', user), 0));
-	const len = (c: number | null) => (c == null ? null : formatNumber(toDisplay(c, 'length', user), 0));
-	const dims = t.lengthCm && t.widthCm && t.heightCm ? `${len(t.lengthCm)} × ${len(t.widthCm)} × ${len(t.heightCm)} ${unitLabel('length', user)}` : null;
 	const volUnit = unitLabel('volume', user);
 	const nominal = vol(t.nominalVolumeL);
 	const actual = vol(t.actualVolumeL);
@@ -22,15 +20,14 @@ export const load: LayoutServerLoad = ({ locals, params }) => {
 			type: t.type,
 			cover: t.coverPhotoId,
 			archived: !!t.archivedAt,
+			// T1: "Planted · 40 gal (34 actual) · since Mar 2025"; model and size are in Specs
 			sub: [
 				tankTypeLabel(t.type),
 				nominal ? `${nominal} ${volUnit}${actual && actual !== nominal ? ` (${actual} actual)` : ''}` : null,
 				since ? `since ${since}` : null
 			]
 				.filter(Boolean)
-				.join(' · '),
-			model: [t.specBrand, t.specModel].filter(Boolean).join(' ') || null,
-			dims
+				.join(' · ')
 		}
 	};
 };

@@ -17,6 +17,7 @@
 	const url = $derived(`${data.base}/t/${slug}`);
 	const shownTitle = $derived(title || `${data.tank.name} · aquarium log`);
 	const shownDesc = $derived(description || `Water parameters, trends and photos from ${data.tank.name}.`);
+	const live = $derived(enabled && p.enabled);
 
 	const toggles = [
 		{ k: 'showReadings', t: 'Latest readings', d: 'Values and in-range status' },
@@ -54,119 +55,136 @@
 			}
 		}}
 >
-	<a class="back" href="/tanks/{data.tank.id}/settings">‹ {data.tank.name}</a>
+	<!-- on desktop the header has "Tanks › {tank} › Public page"; Save stays in a slim toolbar -->
+	<a class="back hide-desk" href="/tanks/{data.tank.id}/settings">‹ {data.tank.name}</a>
 	<div class="head">
-		<h1>Public page</h1>
+		<h1 class="hide-desk">Public page</h1>
+		{#if p.enabled}<span class="live hide-phone">● Live</span>{/if}
 		<button class="btn btn-primary">Save</button>
 	</div>
 	{#if !data.allowed}
 		<p class="banner banner-warn">▲ The server owner has turned public pages off, so this page can't be published right now.</p>
 	{/if}
 
-	<section class="card box">
-		<div class="trow">
-			<label for="pp-enabled" class="ttext">
-				<span class="tt">Share this tank</span>
-				<span class="td">
-					{#if enabled && p.enabled}<span class="status-ok">● Live</span> · {data.views} view{data.views === 1 ? '' : 's'} this week{:else}Off — only you can see this tank{/if}
-				</span>
-			</label>
-			<span class="switch"><input id="pp-enabled" type="checkbox" name="enabled" bind:checked={enabled} /><span></span></span>
-		</div>
-		<div class="field">
-			<label class="label" for="pp-slug">Link</label>
-			<div class="unit-input slug">
-				<span class="unit mono">{data.host}/t/</span>
-				<input id="pp-slug" name="slug" bind:value={slug} maxlength="60" autocomplete="off" aria-invalid={!!form?.slugError} />
-			</div>
-			{#if form?.slugError}<span class="error-text">✕ {form.slugError}</span>{/if}
-			<div class="links">
-				<button type="button" class="btn" onclick={copy}>{copied ? '✓ Copied' : 'Copy'}</button>
-				{#if p.enabled}<a class="btn" href="/t/{p.slug}" target="_blank" rel="noopener">Preview</a>{/if}
-			</div>
-		</div>
-	</section>
-
-	<section class="stack">
-		<h2 class="caps">Show on the page</h2>
-		<div class="card toggles">
-			{#each toggles as t (t.k)}
+	<div class="cols">
+		<div class="col">
+			<section class="card box" class:on={live}>
 				<div class="trow">
-					<label for="pp-{t.k}" class="ttext"><span class="tt">{t.t}</span><span class="td">{t.d}</span></label>
-					<span class="switch"><input id="pp-{t.k}" type="checkbox" name={t.k} defaultChecked={p[t.k]} /><span></span></span>
+					<label for="pp-enabled" class="ttext">
+						<span class="tt">Share this tank</span>
+						{#if live}
+							<span class="td live">● Live · {data.views} view{data.views === 1 ? '' : 's'} this week</span>
+						{:else}
+							<span class="td">Off · only you can see this tank</span>
+						{/if}
+					</label>
+					<span class="switch"><input id="pp-enabled" type="checkbox" name="enabled" bind:checked={enabled} /><span></span></span>
 				</div>
-			{/each}
-		</div>
-		<div class="field">
-			<label class="label" for="pp-blurb">Public description</label>
-			<textarea class="input" id="pp-blurb" name="description" rows="3" maxlength="1000" bind:value={blurb} placeholder="What's special about this tank? Shown only if Tank description is on."></textarea>
-		</div>
-		<div class="field">
-			<label class="label" for="pp-name">Display name</label>
-			<select class="input" id="pp-name" name="displayName">
-				<option value="short" selected={p.displayName === 'short'}>{data.names.short}</option>
-				<option value="full" selected={p.displayName === 'full'}>{data.names.full}</option>
-				<option value="none" selected={p.displayName === 'none'}>Don't show a name</option>
-			</select>
-		</div>
-		<p class="hint">Never public: tasks, private notes, exact times, your email.</p>
-	</section>
+				<div class="field">
+					<label class="label" for="pp-slug">URL</label>
+					<div class="unit-input slug">
+						<span class="unit mono">{data.host}/t/</span>
+						<input id="pp-slug" class="mono" name="slug" bind:value={slug} maxlength="60" autocomplete="off" aria-invalid={!!form?.slugError} />
+					</div>
+					{#if form?.slugError}<span class="error-text">✕ {form.slugError}</span>{/if}
+					<div class="links">
+						<button type="button" class="btn" onclick={copy}>{copied ? '✓ Copied' : 'Copy'}</button>
+						{#if p.enabled}<a class="btn" href="/t/{p.slug}" target="_blank" rel="noopener">Preview</a>{/if}
+					</div>
+				</div>
+			</section>
 
-	<section class="stack">
-		<h2 class="caps">Search & sharing</h2>
-		<div class="card toggles">
-			<div class="trow">
-				<label for="pp-index" class="ttext"><span class="tt">Allow search engines</span><span class="td">Page is indexable and listed in sitemap.xml</span></label>
-				<span class="switch"><input id="pp-index" type="checkbox" name="indexable" defaultChecked={p.indexable} /><span></span></span>
-			</div>
-		</div>
-		<div class="field">
-			<label class="label" for="pp-title">Page title <span class="count">{title.length} / 60</span></label>
-			<input class="input" id="pp-title" name="seoTitle" bind:value={title} maxlength="60" placeholder={shownTitle} />
-		</div>
-		<div class="field">
-			<label class="label" for="pp-desc">Description <span class="count">{description.length} / 160</span></label>
-			<textarea class="input" id="pp-desc" name="seoDescription" rows="3" maxlength="160" bind:value={description} placeholder={shownDesc}></textarea>
-		</div>
-		<fieldset class="field">
-			<legend class="label">Share image</legend>
-			<div class="segmented">
-				<label><input type="radio" name="ogStyle" value="card" defaultChecked={!p.ogPlain} />Card with readings</label>
-				<label><input type="radio" name="ogStyle" value="plain" defaultChecked={p.ogPlain} />Plain photo</label>
-			</div>
-			{#if data.photos.length}
-				<div class="og-photos" role="radiogroup" aria-label="Share photo">
-					<label class="og" class:on={ogPhotoId === ''}><input type="radio" name="ogPhotoId" value="" bind:group={ogPhotoId} /><span>Cover</span></label>
-					{#each data.photos as ph, i (ph.id)}
-						<label class="og" class:on={ogPhotoId === ph.id}>
-							<input type="radio" name="ogPhotoId" value={ph.id} bind:group={ogPhotoId} aria-label="Photo {i + 1}" />
-							<img src={photoUrl(ph.id)} alt="" loading="lazy" />
-						</label>
+			<section class="stack">
+				<h2 class="caps">Show on the page</h2>
+				<div class="card toggles">
+					{#each toggles as t (t.k)}
+						<div class="trow">
+							<label for="pp-{t.k}" class="ttext"><span class="tt">{t.t}</span><span class="td">{t.d}</span></label>
+							<span class="switch"><input id="pp-{t.k}" type="checkbox" name={t.k} defaultChecked={p[t.k]} /><span></span></span>
+						</div>
 					{/each}
 				</div>
-			{:else}
-				<span class="hint">Add a cover photo for a nicer share image.</span>
-			{/if}
-		</fieldset>
+				<div class="field">
+					<label class="label" for="pp-blurb">Public description</label>
+					<textarea class="input" id="pp-blurb" name="description" rows="3" maxlength="1000" bind:value={blurb} placeholder="What's special about this tank? Shown only if Tank description is on."></textarea>
+				</div>
+				<div class="field">
+					<label class="label" for="pp-name">Display name</label>
+					<select class="input" id="pp-name" name="displayName">
+						<option value="short" selected={p.displayName === 'short'}>{data.names.short}</option>
+						<option value="full" selected={p.displayName === 'full'}>{data.names.full}</option>
+						<option value="none" selected={p.displayName === 'none'}>Don't show a name</option>
+					</select>
+				</div>
+				<p class="hint">
+					Never public: tasks, private notes, exact times, your email. Search &amp; sharing settings control indexing, title and share image.
+				</p>
+			</section>
 
-		<div class="card preview">
-			<div class="caps">Search preview</div>
-			<div class="g-url mono">{data.host} › t › {slug}</div>
-			<div class="g-title">{shownTitle}</div>
-			<div class="g-desc">{shownDesc}</div>
+			<section class="stack">
+				<h2 class="caps">Search &amp; sharing</h2>
+				<div class="card toggles">
+					<div class="trow">
+						<label for="pp-index" class="ttext"><span class="tt strong">Allow search engines</span><span class="td">Page is indexable and listed in sitemap.xml</span></label>
+						<span class="switch"><input id="pp-index" type="checkbox" name="indexable" defaultChecked={p.indexable} /><span></span></span>
+					</div>
+				</div>
+				<div class="field">
+					<label class="label" for="pp-title">Page title <span class="count">{title.length} / 60</span></label>
+					<input class="input" id="pp-title" name="seoTitle" bind:value={title} maxlength="60" placeholder={shownTitle} />
+				</div>
+				<div class="field">
+					<label class="label" for="pp-desc">Description <span class="count">{description.length} / 160</span></label>
+					<textarea class="input" id="pp-desc" name="seoDescription" rows="3" maxlength="160" bind:value={description} placeholder={shownDesc}></textarea>
+				</div>
+				<fieldset class="field">
+					<legend class="label">Share image</legend>
+					<div class="segmented">
+						<label><input type="radio" name="ogStyle" value="card" defaultChecked={!p.ogPlain} />Card with readings</label>
+						<label><input type="radio" name="ogStyle" value="plain" defaultChecked={p.ogPlain} />Plain photo</label>
+					</div>
+					{#if data.photos.length}
+						<div class="og-photos" role="radiogroup" aria-label="Share photo">
+							<label class="og" class:on={ogPhotoId === ''}><input type="radio" name="ogPhotoId" value="" bind:group={ogPhotoId} /><span>Cover</span></label>
+							{#each data.photos as ph, i (ph.id)}
+								<label class="og" class:on={ogPhotoId === ph.id}>
+									<input type="radio" name="ogPhotoId" value={ph.id} bind:group={ogPhotoId} aria-label="Photo {i + 1}" />
+									<img src={photoUrl(ph.id)} alt="" loading="lazy" />
+								</label>
+							{/each}
+						</div>
+					{:else}
+						<span class="hint">Add a cover photo for a nicer share image.</span>
+					{/if}
+				</fieldset>
+			</section>
 		</div>
-		{#if p.enabled}
-			<div class="card preview">
-				<div class="caps">Social preview</div>
-				<img class="og-img" src="/t/{p.slug}/og.png?v={data.ogVersion}" alt="How the link looks when shared" />
-			</div>
-		{/if}
-		<p class="hint">
-			Added automatically: canonical URL, Open Graph and Twitter tags, schema.org structured data, and a server-rendered page, so
-			crawlers see full content without JavaScript.
-		</p>
-	</section>
-	<button class="btn btn-primary btn-lg">Save</button>
+
+		<!-- P4: previews beside the fields on desktop -->
+		<aside class="col previews">
+			<section class="stack">
+				<h2 class="caps">Search preview</h2>
+				<div class="card preview">
+					<div class="g-url mono">{data.host} › t › {slug}</div>
+					<div class="g-title">{shownTitle}</div>
+					<div class="g-desc">{shownDesc}</div>
+				</div>
+			</section>
+			{#if p.enabled}
+				<section class="stack">
+					<h2 class="caps">Social preview</h2>
+					<div class="card preview social">
+						<img class="og-img" src="/t/{p.slug}/og.png?v={data.ogVersion}" alt="How the link looks when shared" />
+					</div>
+				</section>
+			{/if}
+			<p class="hint">
+				Added automatically: canonical URL, Open Graph and Twitter tags, schema.org structured data, and a server-rendered page, so
+				crawlers see full content without JavaScript.
+			</p>
+		</aside>
+	</div>
+	<button class="btn btn-primary btn-lg save-end">Save</button>
 </form>
 
 <style>
@@ -181,17 +199,33 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
+		gap: 12px;
 	}
 	h1 {
 		margin: 0;
 		font-size: 28px;
 		font-weight: 600;
 	}
+	.cols,
+	.col {
+		display: flex;
+		flex-direction: column;
+		gap: 18px;
+		min-width: 0;
+	}
 	.box {
 		padding: 16px;
 		display: flex;
 		flex-direction: column;
 		gap: 14px;
+	}
+	/* P1: the card is outlined in accent while the page is live */
+	.box.on {
+		border-color: var(--accent);
+	}
+	.live {
+		color: var(--ok);
+		font-weight: 600;
 	}
 	.stack {
 		display: flex;
@@ -200,8 +234,8 @@
 	}
 	.caps {
 		margin: 0;
-		font-size: 12px;
-		font-weight: 700;
+		font-size: 13px;
+		font-weight: 600;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
 		color: var(--text-muted);
@@ -214,7 +248,7 @@
 		display: flex;
 		align-items: center;
 		gap: 12px;
-		padding: 12px 14px;
+		padding: 12px 16px;
 	}
 	.box .trow {
 		padding: 0;
@@ -230,6 +264,10 @@
 		cursor: pointer;
 	}
 	.tt {
+		font-size: 15px;
+	}
+	.box .tt,
+	.tt.strong {
 		font-size: 16px;
 		font-weight: 600;
 	}
@@ -237,10 +275,19 @@
 		font-size: 13px;
 		color: var(--text-muted);
 	}
+	.td.live {
+		color: var(--ok);
+	}
+	/* 52 × 32 like the design, 44px to tap */
+	.switch input {
+		inset: -6px -4px;
+	}
 	.slug {
 		padding-left: 12px;
+		gap: 2px;
 	}
-	.slug .unit {
+	.slug .unit,
+	.slug input {
 		font-size: 14px;
 	}
 	.links {
@@ -290,16 +337,24 @@
 		position: absolute;
 		opacity: 0;
 	}
+	.og:has(input:focus-visible) {
+		outline: 2px solid var(--accent);
+		outline-offset: 2px;
+	}
 	.og img {
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
 	}
 	.preview {
-		padding: 14px;
+		padding: 16px 18px;
 		display: flex;
 		flex-direction: column;
 		gap: 4px;
+	}
+	.social {
+		padding: 0;
+		overflow: hidden;
 	}
 	.g-url {
 		font-size: 12px;
@@ -311,14 +366,14 @@
 	}
 	.g-desc {
 		font-size: 14px;
+		line-height: 1.5;
 		color: var(--text-2);
 	}
 	.og-img {
+		display: block;
 		width: 100%;
-		border-radius: 10px;
 		aspect-ratio: 1200 / 630;
 		object-fit: cover;
-		margin-top: 6px;
 	}
 	.hint {
 		margin: 0;
@@ -328,7 +383,34 @@
 	}
 	@media (min-width: 1024px) {
 		.page {
-			padding: 28px 32px;
+			padding: 16px 32px 32px;
+			max-width: 1180px;
+			gap: 16px;
+		}
+		.head {
+			justify-content: flex-end;
+		}
+		.head .btn {
+			min-height: 42px;
+			padding: 0 20px;
+		}
+		.cols {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+			gap: 28px;
+			align-items: start;
+		}
+		.previews {
+			position: sticky;
+			top: 24px;
+		}
+		.save-end {
+			width: auto;
+			height: 44px;
+			border-radius: 12px;
+			font-size: 15px;
+			padding: 0 22px;
+			align-self: flex-start;
 		}
 	}
 </style>

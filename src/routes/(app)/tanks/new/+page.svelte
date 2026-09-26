@@ -6,11 +6,12 @@
 <svelte:head><title>Add tank · Waterline</title></svelte:head>
 
 <div class="wrap">
-	<div class="top">
+	<!-- on desktop the header has "Tanks › Add tank" -->
+	<div class="top hide-desk">
 		<a href="/tanks" class="back">‹ Tanks</a>
 		<h1>Add tank</h1>
 	</div>
-	<TankCreateForm volUnit={data.volUnit} errors={form?.errors} values={form?.values} submitLabel="Create tank" />
+	<TankCreateForm volUnit={data.volUnit} errors={form?.errors} values={form?.values} submitLabel="Create tank" cancelHref="/tanks" />
 </div>
 
 <style>
@@ -34,7 +35,8 @@
 	@media (min-width: 1024px) {
 		.wrap {
 			min-height: 0;
-			padding: 12px 8px;
+			max-width: none;
+			padding: 0 32px;
 		}
 	}
 </style>

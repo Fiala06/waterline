@@ -1,16 +1,19 @@
 <script lang="ts">
-	// Create-a-tank form (setup step 2 and Tanks › Add tank).
+	// Create-a-tank form (setup step 2 and Tanks › Add tank). With `cancelHref`
+	// (Add tank) it becomes a card with Cancel + Create on desktop.
 	import { enhance } from '$app/forms';
 	let {
 		volUnit,
 		errors = {},
 		values = {},
-		submitLabel = 'Create tank'
+		submitLabel = 'Create tank',
+		cancelHref
 	}: {
 		volUnit: string;
 		errors?: Record<string, string>;
 		values?: Record<string, string>;
 		submitLabel?: string;
+		cancelHref?: string;
 	} = $props();
 
 	const types = [
@@ -25,6 +28,7 @@
 <form
 	method="POST"
 	class="tank-form"
+	class:paged={!!cancelHref}
 	use:enhance={() => {
 		busy = true;
 		return async ({ update }) => {
@@ -72,6 +76,7 @@
 		</p>
 	</div>
 	<div class="foot">
+		{#if cancelHref}<a class="btn cancel" href={cancelHref}>Cancel</a>{/if}
 		<button class="btn btn-primary btn-lg" disabled={busy}>{submitLabel}</button>
 	</div>
 </form>
@@ -109,5 +114,57 @@
 	}
 	.foot {
 		padding: 0 24px calc(32px + env(safe-area-inset-bottom));
+	}
+	.cancel {
+		display: none;
+	}
+	/* Add tank on desktop: a centered card (the header has the title) */
+	@media (min-width: 1024px) {
+		.paged {
+			flex: none;
+			width: 100%;
+			max-width: 640px;
+			margin: 28px auto;
+			padding: 24px 28px;
+			background: var(--surface);
+			border: 1px solid var(--border);
+			border-radius: 20px;
+		}
+		.paged .body {
+			padding: 0;
+		}
+		.paged .two {
+			grid-template-columns: repeat(4, 1fr);
+		}
+		/* recessed fields on the card (D13) */
+		.paged .input,
+		.paged .unit-input {
+			background-color: var(--surface-2);
+			border-color: var(--border-strong);
+		}
+		.paged .input:focus,
+		.paged .unit-input:focus-within {
+			border-color: var(--accent);
+		}
+		.paged .foot {
+			margin-top: 24px;
+			padding: 20px 0 0;
+			border-top: 1px solid var(--border);
+			display: flex;
+			justify-content: flex-end;
+			gap: 12px;
+		}
+		.paged .cancel {
+			display: inline-flex;
+		}
+		.paged .foot .btn {
+			width: auto;
+			height: 44px;
+			border-radius: 12px;
+			font-size: 15px;
+		}
+		.paged .btn-primary {
+			padding: 0 22px;
+		}
 	}
 </style>

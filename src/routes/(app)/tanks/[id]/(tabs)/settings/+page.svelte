@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
+	import DateField from '$lib/components/DateField.svelte';
 	import { photoUrl } from '$lib/media';
 	import { untrack } from 'svelte';
 	let { data, form } = $props();
 	let coverPreview = $state<string | null>(null);
 	let notes = $state(untrack(() => data.tank.notes));
+	let startDate = $state(untrack(() => data.tank.startDate));
 	function pickCover(e: Event) {
 		const f = (e.currentTarget as HTMLInputElement).files?.[0];
 		if (coverPreview) URL.revokeObjectURL(coverPreview);
@@ -124,7 +126,8 @@
 
 			<div class="field">
 				<label class="label" for="startDate">Start date</label>
-				<input class="input" id="startDate" name="startDate" type="date" defaultValue={data.tank.startDate} />
+				<DateField name="startDate" id="startDate" bind:value={startDate} label="Start date" today={data.today} max={data.today} invalid={!!errors.startDate} />
+				{#if errors.startDate}<span class="error-text">✕ {errors.startDate}</span>{/if}
 			</div>
 
 			<div class="field">
@@ -137,7 +140,9 @@
 			<a class="card params" href="/tanks/{data.tank.id}/public">
 				<div>
 					<div class="p-title">Public page</div>
-					<div class="muted sm">{data.publicLive ? '● Live · read-only page anyone with the link can see' : 'Off · share a read-only page of this tank'}</div>
+					<div class="muted sm">
+						{#if data.publicLive}<span class="live">● Live</span>{' · read-only page anyone with the link can see'}{:else}Off · share a read-only page of this tank{/if}
+					</div>
 				</div>
 				<span class="link">Set up ›</span>
 			</a>
@@ -153,13 +158,14 @@
 				<span class="link">Targets ›</span>
 			</a>
 
+			<button class="btn btn-primary btn-lg save">Save changes</button>
 			{#if !data.tank.archived}
+				<!-- reversible, so amber rather than red (10) -->
 				<div class="archive">
-					<button type="button" class="btn btn-danger" popovertarget="confirm-archive">Archive tank</button>
+					<button type="button" class="btn btn-warn" popovertarget="confirm-archive">Archive tank</button>
 					<p class="faint sm">History is kept. Archived tanks can be restored.</p>
 				</div>
 			{/if}
-			<button class="btn btn-primary btn-lg">Save changes</button>
 		</div>
 	</div>
 </form>
@@ -171,7 +177,7 @@
 	body="It moves to Archived. The history is kept and you can restore it any time."
 	action="?/archive"
 	label="Archive"
-	tone="primary"
+	tone="warn"
 />
 
 <style>
@@ -187,11 +193,11 @@
 		gap: 20px;
 	}
 	.cols {
-		padding: 8px 20px;
+		padding: 20px 20px 8px;
 	}
 	.cover {
 		position: relative;
-		height: 140px;
+		height: 160px;
 		border-radius: 16px;
 		display: flex;
 		align-items: center;
@@ -212,19 +218,21 @@
 		right: 10px;
 		bottom: 10px;
 		height: 36px;
-		padding: 0 14px;
-		border-radius: 18px;
-		background: rgba(3, 10, 12, 0.75);
-		color: #e6f0f0;
+		padding: 0 12px;
+		border-radius: 10px;
+		background: var(--overlay-bg);
+		color: var(--overlay-text);
+		border: 1px solid var(--border-strong);
 		font-size: 14px;
 		font-weight: 600;
 		display: flex;
 		align-items: center;
 		cursor: pointer;
 	}
+	/* 36px to match 10, 44px to tap */
 	.change input {
 		position: absolute;
-		inset: 0;
+		inset: -4px -1px;
 		opacity: 0;
 		cursor: pointer;
 	}
@@ -277,22 +285,41 @@
 		font-weight: 600;
 		white-space: nowrap;
 	}
+	.live {
+		color: var(--ok);
+		font-weight: 600;
+	}
 	.archive {
 		display: flex;
 		flex-direction: column;
 		gap: 8px;
-		align-items: flex-start;
+		padding-top: 4px;
+	}
+	.archive .btn {
+		height: 52px;
+		border-radius: 14px;
+		font-size: 16px;
 	}
 	.archive p {
 		margin: 0;
+		text-align: center;
 	}
 	@media (min-width: 1024px) {
 		.cols {
 			display: grid;
 			grid-template-columns: minmax(0, 1fr) 340px;
 			gap: 28px;
-			padding: 16px 32px;
+			padding: 24px 32px;
 			align-items: start;
+		}
+		.save {
+			height: 48px;
+			border-radius: 12px;
+			font-size: 16px;
+		}
+		.archive .btn {
+			height: 48px;
+			border-radius: 12px;
 		}
 	}
 </style>

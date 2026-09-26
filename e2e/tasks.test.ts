@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { newKeeperWithTank, open } from './helpers';
+import { dateValue, newKeeperWithTank, open, pickDate } from './helpers';
 
 test('tasks: create, complete with undo, snooze, edit, delete', async ({ page }, info) => {
 	await newKeeperWithTank(page, `m7-${info.project.name}`);
@@ -8,7 +8,7 @@ test('tasks: create, complete with undo, snooze, edit, delete', async ({ page },
 	await open(page, '/tasks/new');
 	await page.getByLabel('Task').fill('Clean canister filter');
 	await page.locator('label', { hasText: 'One-off' }).click();
-	const today = await page.getByLabel('Next due', { exact: true }).inputValue();
+	const today = await dateValue(page, 'nextDue');
 	await page.getByRole('button', { name: 'Save' }).last().click();
 	await expect(page.getByRole('status')).toContainText('✓ Clean canister filter added');
 	await expect(page.getByRole('heading', { name: /Due soon · 1/ })).toBeVisible();
@@ -58,7 +58,7 @@ test('snooze sheet picks a date and keeps the schedule', async ({ page }, info) 
 	await open(page, href!);
 	// two days back, so it's overdue in any time zone
 	const yesterday = new Date(Date.now() - 2 * 86_400_000).toISOString().slice(0, 10);
-	await page.getByLabel('Next due', { exact: true }).fill(yesterday);
+	await pickDate(page, 'nextDue', yesterday);
 	await page.getByRole('button', { name: 'Save' }).last().click();
 	await expect(page.getByRole('heading', { name: /Overdue · 1/ })).toBeVisible();
 
@@ -70,6 +70,6 @@ test('snooze sheet picks a date and keeps the schedule', async ({ page }, info) 
 
 	// Editing shows the snoozed date; the underlying schedule is unchanged
 	await open(page, href!);
-	const shown = await page.getByLabel('Next due', { exact: true }).inputValue();
+	const shown = await dateValue(page, 'nextDue');
 	expect(shown > yesterday).toBe(true);
 });

@@ -4,8 +4,8 @@ import { newKeeperWithTank, open, waitForMail } from './helpers';
 test('daily digest instead of individual emails', async ({ page }, info) => {
 	const email = await newKeeperWithTank(page, `digest-${info.project.name}`);
 	await open(page, '/settings');
+	// settings save as soon as they change
 	await page.locator('label', { hasText: 'Daily digest' }).click();
-	await page.getByRole('button', { name: 'Save notifications' }).click();
 	await expect(page.getByRole('status')).toContainText('✓ Notification settings saved');
 
 	// With a digest, a bad reading doesn't send its own alert...
@@ -42,8 +42,8 @@ test('server settings are admin only; test email via outbox', async ({ page }, i
 	}
 	await open(page, '/settings');
 	const adminInbox = `owner-${info.project.name}-${Date.now()}@example.com`;
-	await page.getByLabel('Send to').fill(adminInbox);
-	await page.getByRole('button', { name: 'Save notifications' }).click();
+	await page.getByLabel('Notification email').fill(adminInbox);
+	await page.getByLabel('Notification email').press('Enter');
 	await expect(page.getByRole('status')).toContainText('saved');
 
 	await open(page, '/settings/server');
@@ -74,12 +74,9 @@ test('changing the theme applies right away', async ({ page }, info) => {
 	await open(page, '/settings');
 	const html = page.locator('html');
 	await page.locator('#theme label', { hasText: 'Light' }).click();
-	await page.getByRole('button', { name: 'Save settings' }).click();
 	await expect(html).toHaveAttribute('data-theme', 'light');
 	await page.locator('#theme label', { hasText: 'Dark' }).click();
-	await page.getByRole('button', { name: 'Save settings' }).click();
 	await expect(html).toHaveAttribute('data-theme', 'dark');
 	await page.locator('#theme label', { hasText: 'System' }).click();
-	await page.getByRole('button', { name: 'Save settings' }).click();
 	await expect(html).not.toHaveAttribute('data-theme', /.+/);
 });

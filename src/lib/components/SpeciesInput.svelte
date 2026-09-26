@@ -61,6 +61,13 @@
 		search(text);
 	}
 
+	// T5: the typed part of each name in bold ("**Ember** tetra")
+	function parts(name: string) {
+		const q = text.trim();
+		const i = q ? name.toLowerCase().indexOf(q.toLowerCase()) : -1;
+		return i < 0 ? [name, '', ''] : [name.slice(0, i), name.slice(i, i + q.length), name.slice(i + q.length)];
+	}
+
 	function pick(s: Species | null) {
 		if (s) {
 			text = s.c[0] ?? s.s;
@@ -105,23 +112,24 @@
 		aria-controls="{id}-list"
 		aria-autocomplete="list"
 		aria-invalid={invalid}
-		placeholder="Start typing, e.g. ember"
+		placeholder={kind === 'plant' ? 'Start typing, e.g. java fern' : 'Start typing, e.g. ember'}
 	/>
 	<input type="hidden" name="scientificName" value={scientific} />
 	{#if scientific}<span class="sci">{scientific}</span>{/if}
 	{#if open && results.length}
-		<ul class="list card" id="{id}-list" role="listbox">
+		<ul class="list" id="{id}-list" role="listbox">
 			{#each results as r, i (r.s)}
+				{@const [pre, hit, post] = parts(r.c[0] ?? r.s)}
 				<li role="option" aria-selected={active === i}>
 					<button type="button" class:active={active === i} onmousedown={(e) => e.preventDefault()} onclick={() => pick(r)}>
-						<span class="c">{r.c[0] ?? r.s}</span>
+						<span class="c">{pre}<strong>{hit}</strong>{post}</span>
 						<span class="s">{r.s}</span>
 					</button>
 				</li>
 			{/each}
 			<li role="option" aria-selected={active === results.length}>
 				<button type="button" class="custom" class:active={active === results.length} onmousedown={(e) => e.preventDefault()} onclick={() => pick(null)}>
-					Use “{text}” as a custom name
+					Use "{text}" as a custom name
 				</button>
 			</li>
 		</ul>
@@ -137,25 +145,30 @@
 		font-style: italic;
 		color: var(--text-muted);
 	}
+	/* T5 */
 	.list {
 		position: absolute;
 		top: 100%;
 		left: 0;
 		right: 0;
 		z-index: 10;
-		margin: 4px 0 0;
-		padding: 4px;
+		margin: 6px 0 0;
+		padding: 0;
 		list-style: none;
+		border-radius: 12px;
+		background: var(--surface);
+		border: 1px solid var(--border-strong);
 		box-shadow: var(--shadow-modal);
-		border-color: var(--border-strong);
 		max-height: 320px;
 		overflow-y: auto;
+	}
+	.list li + li {
+		border-top: 1px solid var(--border);
 	}
 	.list button {
 		width: 100%;
 		text-align: left;
-		padding: 10px 12px;
-		border-radius: 10px;
+		padding: 10px 14px;
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
@@ -167,10 +180,12 @@
 	}
 	.c {
 		font-size: 15px;
-		font-weight: 600;
+	}
+	.c strong {
+		font-weight: 700;
 	}
 	.s {
-		font-size: 13px;
+		font-size: 12px;
 		font-style: italic;
 		color: var(--text-muted);
 	}

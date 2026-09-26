@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { page } from '$app/state';
 	import { photoUrl } from '$lib/media';
 	import { ui } from '$lib/ui.svelte';
 	interface Row {
@@ -29,14 +30,33 @@
 		editHref: string;
 		actions: Snippet;
 	} = $props();
+
+	// "‹ History", "‹ Dashboard": the back link names where it goes.
+	const PLACES: Record<string, string> = {
+		history: 'History',
+		charts: 'Charts',
+		photos: 'Photos',
+		tasks: 'Tasks',
+		tanks: 'Tanks',
+		settings: 'Settings'
+	};
+	const back = $derived.by(() => {
+		const href = ui.prev ?? backHref;
+		const path = href.split(/[?#]/)[0];
+		if (path === '/') return { href, label: 'Dashboard' };
+		const tankId = path.match(/^\/tanks\/([^/]+)/)?.[1];
+		const tanks = (page.data.tanks ?? []) as { id: string; name: string }[];
+		const tankName = tankId && tanks.find((t) => t.id === tankId)?.name;
+		return { href, label: tankName || PLACES[path.split('/')[1]] || 'Back' };
+	});
 </script>
 
 <div class="wrap">
-	<a class="back" href={ui.prev ?? backHref}>‹ Back</a>
+	<a class="back hide-desk" href={back.href}>‹ {back.label}</a>
 	<div class="card sheet">
 		<div class="head">
 			<h1>{title}</h1>
-			<div class="muted">{when}{edited ? ` · edited ${edited}` : ''}</div>
+			<div class="when">{when}{edited ? ` · edited ${edited}` : ''}</div>
 		</div>
 		{#if rows.length}
 			<div class="rows">
@@ -51,7 +71,7 @@
 		{/if}
 		{#if note}
 			<div class="note">
-				<div class="muted sm">Note</div>
+				<div class="note-label">Note</div>
 				<p>{note}</p>
 			</div>
 		{/if}
@@ -72,6 +92,7 @@
 <style>
 	.wrap {
 		max-width: 560px;
+		margin-inline: auto;
 		padding: 8px 20px calc(24px + env(safe-area-inset-bottom));
 		display: flex;
 		flex-direction: column;
@@ -93,6 +114,10 @@
 		font-size: 22px;
 		font-weight: 600;
 	}
+	.when {
+		font-size: 14px;
+		color: var(--text-muted);
+	}
 	.rows {
 		border-radius: 16px;
 		background: var(--surface-2);
@@ -109,6 +134,7 @@
 	}
 	.label {
 		flex: 1;
+		min-width: 0;
 		font-size: 15px;
 		color: var(--text-muted);
 	}
@@ -117,20 +143,21 @@
 		font-weight: 600;
 	}
 	.st {
-		min-width: 100px;
+		min-width: 96px;
 		max-width: 50%;
 		text-align: right;
 		font-size: 13px;
 		font-weight: 600;
+	}
+	.note-label {
+		font-size: 13px;
+		color: var(--text-muted);
 	}
 	.note p {
 		margin: 6px 0 0;
 		font-size: 15px;
 		line-height: 1.5;
 		white-space: pre-wrap;
-	}
-	.sm {
-		font-size: 13px;
 	}
 	.photos {
 		display: grid;
@@ -148,18 +175,26 @@
 		display: flex;
 		gap: 10px;
 	}
-	.edit {
+	/* Only the row's own buttons: the confirm dialog inside keeps its 44px buttons (7.10). */
+	.actions > .edit,
+	.actions > :global(.btn-danger) {
 		flex: 1;
 		height: 50px;
 		font-size: 16px;
 	}
-	.actions :global(.btn-danger) {
-		height: 50px;
-		font-size: 16px;
-	}
 	@media (min-width: 1024px) {
+		/* the header already says "History › Water test"; the card sits centered (D6) */
 		.wrap {
+			max-width: 640px;
 			padding: 28px 32px;
+		}
+		.sheet {
+			padding: 24px;
+		}
+		.actions > .edit,
+		.actions > :global(.btn-danger) {
+			height: 44px;
+			font-size: 15px;
 		}
 	}
 </style>

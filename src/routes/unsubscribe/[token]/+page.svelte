@@ -18,7 +18,7 @@
 		{:else}
 			<h1>This link isn't valid.</h1>
 		{/if}
-		<a href="/settings#notifications">Notification settings</a>
+		<a class="open" href="/settings#notifications">Notification settings</a>
 	</div>
 </div>
 
@@ -42,8 +42,17 @@
 		margin: 0;
 		font-size: 22px;
 		font-weight: 600;
+		line-height: 1.3;
 	}
 	p {
 		margin: 0;
+		line-height: 1.5;
+	}
+	.open {
+		align-self: flex-start;
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		font-weight: 600;
 	}
 </style>

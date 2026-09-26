@@ -109,7 +109,7 @@ export function queueable(o: {
 			try {
 				await enqueue(formData, action.pathname + action.search, o.title(), o.timeZone);
 			} catch {
-				toast('✕ Couldn’t save on this device. Try again when you’re back online.');
+				toast("✕ Couldn't save on this device. Try again when you're back online.");
 				o.busy(false);
 				return;
 			}
@@ -163,7 +163,7 @@ export async function flushQueue(): Promise<number> {
 				synced++;
 			} else {
 				// The server refused it (e.g. the tank was deleted); keep it so the user can see and discard it.
-				const message = result?.data ? 'The server couldn’t save this entry.' : `Sync failed (${res.status}).`;
+				const message = result?.data ? "The server couldn't save this entry." : `Sync failed (${res.status}).`;
 				await tx('readwrite', (s) => s.put({ ...item, error: message }));
 			}
 		}

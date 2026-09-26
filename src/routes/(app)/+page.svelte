@@ -1,16 +1,18 @@
 <script lang="ts">
 	import { tankTypeLabel } from '$lib/types';
 	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ParamCard from '$lib/components/ParamCard.svelte';
 	import TankThumb from '$lib/components/TankThumb.svelte';
 	import TaskList from '$lib/components/TaskList.svelte';
 	import TrendChart from '$lib/components/TrendChart.svelte';
 	import { displayValue, fmtRange, fmtValue, paramUnit, shortName, statusOf } from '$lib/params';
 	import { statusShort } from '$lib/status';
-	import { invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { discard, retry } from '$lib/offline';
 	import { toast, ui } from '$lib/ui.svelte';
 	import { photoUrl } from '$lib/media';
+	import { hscroll } from '$lib/actions';
 
 	let { data } = $props();
 	const prefs = $derived(data.user);
@@ -65,6 +67,24 @@
 			: []
 	);
 
+	// G1: swipe left or right on the tank name for the next or previous tank; a tap opens the switcher.
+	let touch = { x: 0, y: 0 };
+	let swiped = false;
+	function swipeStart(e: TouchEvent) {
+		touch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+		swiped = false;
+	}
+	function swipeEnd(e: TouchEvent) {
+		const dx = e.changedTouches[0].clientX - touch.x;
+		const dy = e.changedTouches[0].clientY - touch.y;
+		if (Math.abs(dx) < 48 || Math.abs(dy) > 32 || data.tanks.length < 2) return;
+		const i = data.tanks.findIndex((t) => t.id === data.currentTankId);
+		const next = data.tanks[(i + (dx < 0 ? 1 : -1) + data.tanks.length) % data.tanks.length];
+		swiped = true;
+		e.preventDefault(); // no click, so the switcher doesn't open too
+		goto(`/?tank=${next.id}`);
+	}
+
 	const wc = $derived(data.waterChange);
 	const wcOver = $derived(wc && wc.days != null && wc.days > wc.goal ? wc.days - wc.goal : 0);
 </script>
@@ -74,17 +94,21 @@
 {#if !data.tank}
 	<div class="page">
 		<h1 class="title">Dashboard</h1>
-		<div class="empty">
-			<CategoryIcon kind="note" size={44} />
-			<h2>No tanks yet</h2>
-			<p>Add your first tank to start logging.</p>
-			<a class="btn btn-primary" href="/tanks/new">Add tank</a>
-		</div>
+		<EmptyState icon="tank" title="No tanks yet" text="Add your first tank to start logging." href="/tanks/new" label="Add tank" primary />
 	</div>
 {:else}
 	<div class="page">
 		<h1 class="sr-only">{data.tank.name} dashboard</h1>
-		<button type="button" class="tank-head" onclick={() => (ui.tankSwitcher = true)}>
+		<button
+			type="button"
+			class="tank-head"
+			ontouchstart={swipeStart}
+			ontouchend={swipeEnd}
+			onclick={() => {
+				if (!swiped) ui.tankSwitcher = true;
+				swiped = false;
+			}}
+		>
 			<TankThumb cover={current?.cover} />
 			<span class="th-text">
 				<span class="th-name">{data.tank.name} <span class="caret">▾</span></span>
@@ -99,12 +123,14 @@
 		<div class="grid">
 			<div class="col-main">
 				{#if !hasReadings}
-					<div class="empty">
-						<CategoryIcon kind="test" size={44} />
-						<h2>No readings yet</h2>
-						<p>Log your first water test to see status for each parameter. Every field is optional.</p>
-						<a class="btn btn-primary" href="/log/test?tank={data.tank.id}">Log first water test</a>
-					</div>
+					<EmptyState
+						icon="test"
+						title="No readings yet"
+						text="Log your first water test to see status for each parameter. Every field is optional."
+						href="/log/test?tank={data.tank.id}"
+						label="Log first water test"
+						primary
+					/>
 				{:else}
 					<div class="summary-row">
 						{#if bad.length}
@@ -143,11 +169,11 @@
 
 					<section class="stack trends">
 						<div class="section-head">
-							<h2>Trends <span class="meta">· last 4 weeks</span></h2>
+							<h2>Trends <span class="meta">· Last 4 weeks</span></h2>
 							<a href="/charts{chosen ? `?p=${chosen.id}` : ''}">Charts</a>
 						</div>
 						{#if trendable.length}
-							<div class="chips" role="group" aria-label="Parameter">
+							<div class="chips hscroll" role="group" aria-label="Parameter" use:hscroll={chosen?.id}>
 								{#each trendable as p (p.id)}
 									<button
 										type="button"
@@ -160,7 +186,8 @@
 						{/if}
 						<div class="card chart-card">
 							{#if chosen && chosenPoints.length >= 2}
-								<TrendChart
+								<div class="chart-box"><div class="chart-fill"><TrendChart
+									fit
 									points={chosenPoints}
 									band={{
 										min: chosen.min == null ? null : displayValue(chosen, chosen.min, prefs),
@@ -171,7 +198,7 @@
 									to={Date.now()}
 									lastLevel={statusOf(chosen, data.latest?.[chosen.id]?.value).level}
 									label="{chosen.name} over the last 4 weeks"
-								/>
+								/></div></div>
 								<div class="legend">
 									{#if fmtRange(chosen, prefs)}
 										<span><i class="lg-band"></i>Target {fmtRange(chosen, prefs)}</span>
@@ -208,10 +235,14 @@
 					{#if data.tasks.length}
 						<TaskList tasks={data.tasks.slice(0, 3)} today={data.today} />
 					{:else}
-						<div class="card nothing">
-							<strong>Nothing due</strong>
-							<span class="muted">Set up reminders for water changes and upkeep.</span>
-						</div>
+						<EmptyState
+							compact
+							icon="maintenance"
+							title="Nothing due"
+							text="Set up reminders for water changes and upkeep."
+							href="/tasks/new?tank={data.tank.id}"
+							label="New task"
+						/>
 					{/if}
 				</section>
 
@@ -359,32 +390,6 @@
 	.strong {
 		font-weight: 600;
 	}
-	.empty {
-		border-radius: 18px;
-		background: var(--surface);
-		border: 1px dashed var(--border-strong);
-		padding: 24px 20px;
-		display: flex;
-		flex-direction: column;
-		align-items: flex-start;
-		gap: 10px;
-	}
-	.empty h2 {
-		margin: 0;
-		font-size: 19px;
-		font-weight: 600;
-	}
-	.empty p {
-		margin: 0;
-		font-size: 15px;
-		line-height: 1.5;
-		color: var(--text-muted);
-	}
-	.empty .btn {
-		margin-top: 6px;
-		height: 48px;
-		font-size: 16px;
-	}
 	.summary-row {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
@@ -441,17 +446,24 @@
 		grid-template-columns: 1fr 1fr;
 		gap: 10px;
 	}
+	/* chips run to the screen edge on phones (03) */
 	.chips {
-		display: flex;
-		gap: 8px;
-		overflow-x: auto;
-		scrollbar-width: none;
+		margin-inline: -20px;
+		padding-inline: 20px;
 	}
 	.chart-card {
 		padding: 14px 14px 10px;
 		display: flex;
 		flex-direction: column;
 		gap: 8px;
+	}
+	.chart-box {
+		position: relative;
+		height: 132px;
+	}
+	.chart-fill {
+		position: absolute;
+		inset: 0;
 	}
 	.chart-empty {
 		margin: 8px 0;
@@ -482,13 +494,6 @@
 		border-radius: 5px;
 		background: var(--border);
 		border: 1px solid var(--text-muted);
-	}
-	.nothing {
-		padding: 16px;
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
-		font-size: 15px;
 	}
 	.feed {
 		list-style: none;
@@ -580,7 +585,32 @@
 			display: grid;
 			grid-template-columns: minmax(0, 1fr) 360px;
 			gap: 28px;
-			align-items: start;
+		}
+		/* Trends is one card with its chips (07) and grows so both columns end together. */
+		.trends {
+			flex: 1;
+			gap: 14px;
+			padding: 18px 20px;
+			border-radius: 16px;
+			background: var(--surface);
+			border: 1px solid var(--border);
+		}
+		/* the card has room for every chip, so they wrap instead of scrolling */
+		.chips {
+			margin-inline: 0;
+			padding-inline: 0;
+			flex-wrap: wrap;
+		}
+		.chart-card {
+			flex: 1;
+			padding: 0;
+			border: none;
+			background: none;
+		}
+		.chart-box {
+			flex: 1;
+			height: auto;
+			min-height: 240px;
 		}
 		.cards {
 			grid-template-columns: repeat(4, 1fr);

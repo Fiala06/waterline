@@ -8,10 +8,10 @@
 	const title = $derived(
 		status === 404
 			? isPublic
-				? 'This page isn’t available'
+				? "This page isn't available"
 				: 'Page not found'
 			: status === 403
-				? 'You can’t do that here'
+				? "You can't do that here"
 				: status === 410
 					? 'This link has expired'
 					: 'Something went wrong'

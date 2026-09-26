@@ -23,7 +23,8 @@ export const load: PageServerLoad = ({ locals, params }) => {
 			id: e.id,
 			type: EQUIPMENT_TYPE_LABEL[e.type],
 			name,
-			summary: specSummary(e.type, e.specs, user),
+			// T2: "Tidewell 200 W" gets "Set 77 °F", not a second "200 W"
+			summary: specSummary(e.type, e.specs, user).filter((s) => !name.includes(s)),
 			since: since(e.installedAt),
 			serviced: e.lastServicedAt ? fmtDate(dateInZone(e.lastServicedAt, user.timeZone)) : null,
 			task: task?.name ?? null,

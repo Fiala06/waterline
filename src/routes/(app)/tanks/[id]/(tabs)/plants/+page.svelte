@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { getContext, onDestroy } from 'svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Sheet from '$lib/components/Sheet.svelte';
 	import SpeciesInput from '$lib/components/SpeciesInput.svelte';
 	let { data, form } = $props();
@@ -15,19 +17,22 @@
 		{ v: 'foreground', l: 'Foreground' },
 		{ v: 'epiphyte', l: 'Epiphyte' }
 	];
-	const STATUS: Record<string, { text: string; level: string }> = {
-		thriving: { text: '✓ Thriving', level: 'ok' },
-		melting: { text: '▲ Melting', level: 'warn' },
-		algae: { text: '▲ Algae', level: 'warn' },
-		other: { text: '– Other', level: 'none' }
+	const STATUS: Record<string, { text: string; label: string; level: string }> = {
+		thriving: { text: '✓ Thriving', label: 'Thriving', level: 'ok' },
+		melting: { text: '▲ Melting', label: 'Melting', level: 'warn' },
+		algae: { text: '▲ Algae', label: 'Algae', level: 'warn' },
+		other: { text: '– Other', label: 'Other', level: 'none' }
 	};
 
-	let adding = $state(false);
-	let trimming = $state(false);
+	// "Log trim" and "+ Add" are in the tank header (layout), which opens these sheets.
+	const sheets = getContext<{ add: boolean; trim: boolean }>('plant-sheets');
+	onDestroy(() => {
+		sheets.add = sheets.trim = false;
+	});
 	let editing = $state<(typeof data.plants)[number] | null>(null);
 	let editOpen = $state(false);
 	const close = () => async ({ update }: { update: () => Promise<void> }) => {
-		adding = trimming = editOpen = false;
+		sheets.add = sheets.trim = editOpen = false;
 		await update();
 	};
 </script>
@@ -35,18 +40,12 @@
 <svelte:head><title>Plants · {data.tankHead.name}</title></svelte:head>
 
 <div class="body">
-	<div class="top">
-		{#if data.plants.length}<button type="button" class="btn" onclick={() => (trimming = true)}>Log trim</button>{/if}
-		<button type="button" class="btn" onclick={() => (adding = true)}>+ Add</button>
-	</div>
 	{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
 
 	{#if !data.plants.length}
-		<div class="card empty">
-			<strong>No plants yet</strong>
-			<span class="muted">Add stems, carpets, epiphytes and mosses to track how they're doing.</span>
-			<button type="button" class="btn btn-primary" onclick={() => (adding = true)}>Add plant</button>
-		</div>
+		<EmptyState icon="livestock" title="No plants yet" text="Add stems, carpets, epiphytes and mosses to track how they're doing.">
+			<button type="button" class="btn btn-primary" onclick={() => (sheets.add = true)}>Add plant</button>
+		</EmptyState>
 	{/if}
 
 	{#each GROUPS as g (g.key)}
@@ -69,8 +68,8 @@
 								<span class="name">{p.name}</span>
 								{#if p.scientific && p.scientific !== p.name}<span class="sci">{p.scientific}</span>{/if}
 								<span class="meta">
-									<span class="status-{STATUS[p.status].level} strong">{STATUS[p.status].text}</span>
-									{#if p.trimmed}<span class="muted"> · Trimmed {p.trimmed}</span>{/if}
+									<span class="status-tag sm tag-{STATUS[p.status].level}">{STATUS[p.status].text}</span>
+									{#if p.trimmed}<span class="when">Trimmed {p.trimmed}</span>{/if}
 								</span>
 							</span>
 						</button>
@@ -81,13 +80,13 @@
 	{/each}
 </div>
 
-<Sheet bind:open={adding} title="Add plant" width={480}>
+<Sheet bind:open={sheets.add} title="Add plant" width={480}>
 	<form method="POST" action="?/add" class="sheet-form" use:enhance={close}>
 		<SpeciesInput id="plant-name" kind="plant" water="fresh" label="Plant" />
 		<fieldset class="field">
 			<legend class="label">Position</legend>
-			<div class="opts">
-				{#each POSITIONS as o (o.v)}<label class="option"><input type="radio" name="position" value={o.v} defaultChecked={o.v === 'midground'} />{o.l}</label>{/each}
+			<div class="chips">
+				{#each POSITIONS as o (o.v)}<label class="chip"><input type="radio" name="position" value={o.v} defaultChecked={o.v === 'midground'} />{o.l}</label>{/each}
 			</div>
 		</fieldset>
 		<input type="hidden" name="status" value="thriving" />
@@ -102,14 +101,14 @@
 				<input type="hidden" name="id" value={editing.id} />
 				<fieldset class="field">
 					<legend class="label">Status</legend>
-					<div class="opts">
-						{#each Object.entries(STATUS) as [v, s] (v)}<label class="option"><input type="radio" name="status" value={v} defaultChecked={editing.status === v} />{s.text.slice(2)}</label>{/each}
+					<div class="chips">
+						{#each Object.entries(STATUS) as [v, s] (v)}<label class="chip"><input type="radio" name="status" value={v} defaultChecked={editing.status === v} />{s.label}</label>{/each}
 					</div>
 				</fieldset>
 				<fieldset class="field">
 					<legend class="label">Position</legend>
-					<div class="opts">
-						{#each POSITIONS as o (o.v)}<label class="option"><input type="radio" name="position" value={o.v} defaultChecked={editing.position === o.v} />{o.l}</label>{/each}
+					<div class="chips">
+						{#each POSITIONS as o (o.v)}<label class="chip"><input type="radio" name="position" value={o.v} defaultChecked={editing.position === o.v} />{o.l}</label>{/each}
 					</div>
 				</fieldset>
 				<div class="row">
@@ -121,12 +120,12 @@
 	{/if}
 </Sheet>
 
-<Sheet bind:open={trimming} title="Log trim" width={480}>
+<Sheet bind:open={sheets.trim} title="Log trim" width={480}>
 	<form method="POST" action="?/trim" class="sheet-form" use:enhance={close}>
 		<fieldset class="field">
 			<legend class="label">What did you trim?</legend>
-			<div class="opts">
-				{#each data.plants as p (p.id)}<label class="option"><input type="checkbox" name="plant" value={p.id} />{p.name}</label>{/each}
+			<div class="chips">
+				{#each data.plants as p (p.id)}<label class="chip"><input type="checkbox" name="plant" value={p.id} />{p.name}</label>{/each}
 			</div>
 		</fieldset>
 		<div class="field">
@@ -140,18 +139,10 @@
 
 <style>
 	.body {
-		padding: 16px 20px;
+		padding: 14px 20px;
 		display: flex;
 		flex-direction: column;
 		gap: 14px;
-	}
-	.top {
-		display: flex;
-		justify-content: flex-end;
-		gap: 8px;
-	}
-	.top .btn {
-		min-height: 38px;
 	}
 	section {
 		display: flex;
@@ -170,6 +161,7 @@
 		display: grid;
 		gap: 8px;
 	}
+	/* T7 */
 	.plant {
 		padding: 12px;
 		display: flex;
@@ -177,6 +169,7 @@
 		align-items: center;
 		text-align: left;
 		width: 100%;
+		color: var(--text);
 	}
 	.plant:hover {
 		border-color: var(--border-strong);
@@ -189,32 +182,37 @@
 		border: none;
 	}
 	.text {
+		flex: 1;
 		display: flex;
 		flex-direction: column;
-		gap: 2px;
+		gap: 3px;
 		min-width: 0;
+	}
+	.name,
+	.sci {
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 	.name {
 		font-size: 16px;
 		font-weight: 600;
 	}
 	.sci {
-		font-size: 13px;
+		font-size: 12px;
 		font-style: italic;
 		color: var(--text-muted);
 	}
 	.meta {
-		font-size: 13px;
-	}
-	.strong {
-		font-weight: 600;
-	}
-	.empty {
-		padding: 18px;
 		display: flex;
-		flex-direction: column;
-		align-items: flex-start;
+		align-items: center;
 		gap: 6px;
+		margin-top: 1px;
+	}
+	.when {
+		font-size: 12px;
+		color: var(--text-faint);
+		white-space: nowrap;
 	}
 	.sheet-form {
 		display: flex;
@@ -229,15 +227,6 @@
 	legend {
 		padding: 0;
 		margin-bottom: 8px;
-	}
-	.opts {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 8px;
-	}
-	.opts .option {
-		padding: 0 14px;
-		min-height: 44px;
 	}
 	.row {
 		display: flex;

@@ -38,6 +38,7 @@ test('photos, history and charts', async ({ page }, info) => {
 	const img = page.locator('.stage img');
 	await expect(img).toHaveJSProperty('complete', true);
 	expect(await img.evaluate((el: HTMLImageElement) => el.naturalWidth)).toBe(640);
+	if (info.project.name === 'phone') await page.getByRole('link', { name: 'More', exact: true }).click();
 	await page.getByRole('button', { name: 'Set as cover' }).click();
 	await expect(page.getByRole('status')).toContainText('✓ Set as tank cover');
 	await page.getByRole('link', { name: 'Next photo' }).click();
@@ -48,7 +49,7 @@ test('photos, history and charts', async ({ page }, info) => {
 	await expect(page.getByRole('heading', { name: /^TODAY · / })).toBeVisible();
 	await expect(page.getByText('✕ Nitrate 35')).toBeVisible();
 	await page.getByRole('link', { name: /Water changes/ }).first().click();
-	await expect(page.getByText('Water change · 25% · Tap')).toBeVisible();
+	await expect(page.locator('a.row', { hasText: 'Water change · 25% · Tap' })).toBeVisible();
 	await expect(page.getByText(/Water test ·/)).toHaveCount(0);
 
 	// Charts: nitrate line with the water change marker and stats

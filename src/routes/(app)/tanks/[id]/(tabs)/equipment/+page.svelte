@@ -1,36 +1,46 @@
 <script lang="ts">
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	let { data } = $props();
 	const base = $derived(`/tanks/${data.tankHead.id}`);
+	// T2: "Last serviced Sep 3 · linked task: Clean canister filter"
+	function meta(e: { serviced: string | null; task: string | null }) {
+		const s = [e.serviced && `Last serviced ${e.serviced}`, e.task && `linked task: ${e.task}`].filter(Boolean).join(' · ');
+		return s && s[0].toUpperCase() + s.slice(1);
+	}
 </script>
 
 <svelte:head><title>Equipment · {data.tankHead.name}</title></svelte:head>
 
+<!-- "+ Add" is in the tank header (layout) -->
 <div class="body">
-	<div class="top"><a class="btn add" href="{base}/equipment/new">+ Add</a></div>
-	{#if !data.items.length}
-		<div class="card empty">
-			<strong>No equipment yet</strong>
-			<span class="muted">Add filters, heaters, lights and more to keep settings and service dates in one place.</span>
-			<a class="btn btn-primary" href="{base}/equipment/new">Add equipment</a>
+	{#if data.items.length}
+		<div class="grid">
+			{#each data.items as e (e.id)}
+				<a class="card item" href="{base}/equipment/{e.id}">
+					<div class="h"><span class="caps">{e.type}</span>{#if e.since}<span class="since">since {e.since}</span>{/if}</div>
+					<div class="name">{e.name}</div>
+					{#if e.summary.length}
+						<div class="specs">{#each e.summary as s, i (i)}<span class="spec">{s}</span>{/each}</div>
+					{/if}
+					{#if meta(e)}<div class="meta">{meta(e)}</div>{/if}
+				</a>
+			{/each}
 		</div>
+	{:else}
+		<EmptyState
+			icon="equipment"
+			title="No equipment yet"
+			text="Add filters, heaters, lights and more to keep settings and service dates in one place."
+			href="{base}/equipment/new"
+			label="Add equipment"
+			primary
+		/>
 	{/if}
-	<div class="grid">
-		{#each data.items as e (e.id)}
-			<a class="card item" href="{base}/equipment/{e.id}">
-				<div class="h"><span class="caps">{e.type}</span>{#if e.since}<span class="muted sm">since {e.since}</span>{/if}</div>
-				<div class="name">{e.name}</div>
-				{#each e.summary as line, i (i)}<div class="spec">{line}</div>{/each}
-				{#if e.serviced || e.task}
-					<div class="muted sm">{e.serviced ? `Last serviced ${e.serviced}` : ''}{e.serviced && e.task ? ' · ' : ''}{e.task ? `linked task: ${e.task}` : ''}</div>
-				{/if}
-			</a>
-		{/each}
-	</div>
 	{#if data.past.length}
-		<details>
-			<summary>Past equipment · {data.past.length}</summary>
-			<ul class="card past">
-				{#each data.past as e (e.id)}<li><span>{e.name}</span><span class="muted sm">{e.type}</span></li>{/each}
+		<details class="past">
+			<summary><span class="show">Show past equipment ({data.past.length})</span><span class="hide">Hide past equipment</span></summary>
+			<ul class="card">
+				{#each data.past as e (e.id)}<li><span>{e.name}</span><span class="muted">{e.type}</span></li>{/each}
 			</ul>
 		</details>
 	{/if}
@@ -43,13 +53,6 @@
 		flex-direction: column;
 		gap: 14px;
 	}
-	.top {
-		display: flex;
-		justify-content: flex-end;
-	}
-	.add {
-		min-height: 38px;
-	}
 	.grid {
 		display: grid;
 		gap: 10px;
@@ -58,15 +61,18 @@
 		padding: 14px;
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
+		gap: 8px;
 		color: var(--text);
 	}
 	.item:hover {
+		color: var(--text);
 		border-color: var(--border-strong);
 	}
 	.h {
 		display: flex;
 		justify-content: space-between;
+		align-items: baseline;
+		gap: 12px;
 	}
 	.caps {
 		font-size: 12px;
@@ -75,30 +81,55 @@
 		text-transform: uppercase;
 		color: var(--text-muted);
 	}
+	.since {
+		font-size: 12px;
+		color: var(--text-faint);
+		white-space: nowrap;
+	}
 	.name {
 		font-size: 17px;
 		font-weight: 600;
 	}
-	.spec {
-		font-size: 14px;
-		color: var(--text-2);
-	}
-	.sm {
-		font-size: 13px;
-	}
-	.empty {
-		padding: 18px;
+	/* T2: specs as small tags */
+	.specs {
 		display: flex;
-		flex-direction: column;
-		align-items: flex-start;
+		flex-wrap: wrap;
 		gap: 6px;
 	}
-	details summary {
-		cursor: pointer;
-		color: var(--text-muted);
-		padding: 10px 0;
+	.spec {
+		min-height: 26px;
+		padding: 0 8px;
+		border-radius: 6px;
+		background: var(--surface-hi);
+		display: inline-flex;
+		align-items: center;
+		font-size: 13px;
+		color: var(--text-2);
 	}
-	.past {
+	.meta {
+		font-size: 13px;
+		color: var(--text-muted);
+	}
+	/* "Show past …" works the same on Equipment and Livestock */
+	.past summary {
+		list-style: none;
+		align-self: flex-start;
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		font-size: 14px;
+		font-weight: 600;
+		color: var(--accent);
+		cursor: pointer;
+	}
+	.past summary::-webkit-details-marker {
+		display: none;
+	}
+	.past[open] .show,
+	.past:not([open]) .hide {
+		display: none;
+	}
+	.past ul {
 		list-style: none;
 		margin: 0;
 		padding: 0;
@@ -107,9 +138,19 @@
 		padding: 12px 14px;
 		display: flex;
 		justify-content: space-between;
+		gap: 12px;
+		font-size: 15px;
 	}
 	.past li + li {
 		border-top: 1px solid var(--border);
+	}
+	.past .muted {
+		font-size: 13px;
+	}
+	@media (hover: hover) {
+		.past summary:hover {
+			color: var(--accent-hover);
+		}
 	}
 	@media (min-width: 1024px) {
 		.body {

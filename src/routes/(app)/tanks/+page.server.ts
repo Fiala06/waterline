@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import { shortName, statusOf } from '$lib/params';
 import { dueInfo } from '$lib/tasks';
-import { dateInZone, daysBetween, fmtDateLong, fmtDay, todayInZone } from '$lib/time';
+import { dateInZone, daysBetween, fmtDay, todayInZone } from '$lib/time';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { setFlash } from '$lib/server/flash';
 import { lastEventOf, latestReadings, latestTest } from '$lib/server/logs';
@@ -10,6 +10,9 @@ import { listTasks } from '$lib/server/tasks';
 import type { Actions, PageServerLoad } from './$types';
 
 const relDay = (d: string) => (d === 'Today' || d === 'Yesterday' ? d.toLowerCase() : d);
+/** "Jun 2026" for a 'YYYY-MM-DD' date (D3: "archived Jun 2026"). */
+const monthYear = (d: string) =>
+	new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 
 export const load: PageServerLoad = ({ locals }) => {
 	const user = locals.user!;
@@ -61,8 +64,9 @@ export const load: PageServerLoad = ({ locals }) => {
 		id: t.id,
 		name: t.name,
 		type: t.type,
+		cover: t.coverPhotoId,
 		volume: vol(t.nominalVolumeL),
-		archivedOn: t.archivedAt ? fmtDateLong(dateInZone(t.archivedAt, tz)) : ''
+		archivedOn: t.archivedAt ? monthYear(dateInZone(t.archivedAt, tz)) : ''
 	}));
 
 	return { tankCards: tanks, archived };

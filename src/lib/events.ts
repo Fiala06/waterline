@@ -144,7 +144,7 @@ function firstLine(s: string | null) {
 
 /** Category word shown under a feed title ("Sep 17 · Water change"). */
 export function eventKindLabel(e: EventLike): string {
-	if (e.category === 'livestock') return 'Livestock / plant change';
+	if (e.category === 'livestock') return e.data.kind === 'plant' ? 'Plant change' : 'Livestock change';
 	if (e.category === 'note' && e.data.system) return 'Tank';
 	return CATEGORY_LABEL[e.category];
 }

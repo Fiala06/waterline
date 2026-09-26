@@ -18,5 +18,6 @@
 		error={form?.error}
 		fieldErrors={form?.errors}
 		ontankclick={() => (ui.tankSwitcher = true)}
+		targetsHref="/tanks/{data.tank.id}/targets"
 	/>
 {/key}

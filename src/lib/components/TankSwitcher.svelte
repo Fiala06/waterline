@@ -11,6 +11,7 @@
 		volume: string | null;
 		alerts: number;
 		cover?: string | null;
+		tested?: boolean;
 	}
 	let {
 		open = $bindable(false),
@@ -52,8 +53,10 @@
 					<span class="right">
 						{#if t.alerts}
 							<span class="pill-bad">{t.alerts} alert{t.alerts === 1 ? '' : 's'}</span>
-						{:else}
+						{:else if t.tested}
 							<span class="good">All good</span>
+						{:else}
+							<span class="nodata">No data</span>
 						{/if}
 						{#if t.id === currentId}<span class="viewing">Viewing</span>{/if}
 					</span>
@@ -62,6 +65,7 @@
 		{/each}
 	</ul>
 	<a class="btn add" href="/tanks/new" onclick={() => (open = false)}>+ Add tank</a>
+	{#if tanks.length > 1}<p class="tip">Tip: swipe left or right on the tank name to switch</p>{/if}
 </Sheet>
 
 <style>
@@ -131,10 +135,14 @@
 		padding: 2px 8px;
 		border-radius: 10px;
 	}
-	.good {
+	.good,
+	.nodata {
 		font-size: 12px;
 		font-weight: 600;
 		color: var(--ok);
+	}
+	.nodata {
+		color: var(--text-muted);
 	}
 	.viewing {
 		font-size: 13px;
@@ -144,5 +152,17 @@
 	.add {
 		border-style: dashed;
 		color: var(--accent);
+	}
+	.tip {
+		margin: -6px 0 0;
+		text-align: center;
+		font-size: 13px;
+		color: var(--text-faint);
+	}
+	/* the swipe is on the phone dashboard's tank name */
+	@media (min-width: 1024px) {
+		.tip {
+			display: none;
+		}
 	}
 </style>

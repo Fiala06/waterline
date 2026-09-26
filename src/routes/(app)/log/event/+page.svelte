@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import EventForm from '$lib/components/EventForm.svelte';
+	import { ui } from '$lib/ui.svelte';
 	import type { EventCategory } from '$lib/types';
 	let { data, form } = $props();
 
@@ -33,5 +34,6 @@
 		water={data.water}
 		error={form?.error}
 		errors={form?.errors}
+		ontankclick={() => (ui.tankSwitcher = true)}
 	/>
 {/key}

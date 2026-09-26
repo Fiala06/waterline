@@ -19,9 +19,12 @@
 	const path = $derived(page.url.pathname);
 	const current = $derived(data.tanks.find((t) => t.id === data.currentTankId));
 
-	// Phone tab bar + FAB show on the four top-level tabs only; forms are full screen.
+	// Phone tab bar on the top-level screens; forms are full screen.
 	const tabRoutes = ['/', '/tanks', '/tasks', '/settings', '/history', '/charts', '/photos'];
 	const showTabs = $derived(tabRoutes.includes(path));
+	// The + button is for logging: on the tank screens and Tasks (03, 06), not on Tanks or Settings (09, 16).
+	const fabRoutes = ['/', '/tasks', '/history', '/charts', '/photos'];
+	const showFab = $derived(fabRoutes.includes(path));
 	// The photo viewer is full screen, without the sidebar or header.
 	const fullscreen = $derived(path.startsWith('/photos/'));
 	// The header's tank switcher only on pages about the current tank; Tasks,
@@ -37,6 +40,51 @@
 		{ href: '/photos', label: 'Photos' }
 	];
 	const isActive = (href: string) => (href === '/' ? path === '/' : path === href || path.startsWith(href + '/'));
+	// History, Charts and Photos open from the dashboard, so its tab stays lit there.
+	const tabActive = (href: string) => (href === '/' ? path === '/' || /^\/(history|charts|photos)(\/|$)/.test(path) : isActive(href));
+
+	// Desktop header (README → Navigation). The dashboard and log forms get the big tank
+	// switcher (07, 08); History, Charts and Photos a title and a small switcher (D6, D7, 19);
+	// every other page its title, under a breadcrumb when it belongs to another page (D3–D5, D9).
+	const bigSwitcher = $derived(path === '/' || path.startsWith('/log/'));
+	const sectionTitle = $derived(({ '/history': 'History', '/charts': 'Charts', '/photos': 'Photos' } as Record<string, string | undefined>)[path]);
+	const tankName = $derived(
+		(page.data.tankHead?.name ?? page.data.tank?.name ?? data.tanks.find((t) => t.id === page.params.id)?.name ?? 'Tank') as string
+	);
+	const newTaskHref = $derived.by(() => {
+		const q = new URLSearchParams(page.url.searchParams);
+		q.delete('edit');
+		q.set('new', '');
+		return `/tasks?${q}`;
+	});
+	type Header = { title: string; crumbs?: { label: string; href: string }[]; actions?: { label: string; href: string }[] };
+	const header = $derived.by((): Header | null => {
+		const id = page.route.id ?? '';
+		const tanks = { label: 'Tanks', href: '/tanks' };
+		const tasks = { label: 'Tasks', href: '/tasks' };
+		if (id === '/(app)/tanks') return { title: 'Tanks', actions: [{ label: 'Add tank', href: '/tanks/new' }] };
+		if (id === '/(app)/tanks/new') return { title: 'Add tank', crumbs: [tanks] };
+		if (id.startsWith('/(app)/tanks/[id]/(tabs)')) return { title: tankName, crumbs: [tanks] };
+		const tankPage = (
+			{
+				'/(app)/tanks/[id]/equipment/new': 'Add equipment',
+				'/(app)/tanks/[id]/equipment/[eid]': 'Edit equipment',
+				'/(app)/tanks/[id]/livestock/new': 'Add livestock',
+				'/(app)/tanks/[id]/targets': 'Parameters & targets',
+				'/(app)/tanks/[id]/public': 'Public page'
+			} as Record<string, string | undefined>
+		)[id];
+		if (tankPage) return { title: tankPage, crumbs: [tanks, { label: tankName, href: `/tanks/${page.params.id}` }] };
+		if (id === '/(app)/tasks') return { title: 'Tasks', actions: [{ label: 'New task', href: newTaskHref }] };
+		if (id === '/(app)/tasks/new') return { title: 'New task', crumbs: [tasks] };
+		if (id === '/(app)/tasks/[id]') return { title: 'Edit task', crumbs: [tasks] };
+		if (id.startsWith('/(app)/entries/')) {
+			const history = { label: 'History', href: ui.prev?.startsWith('/history') ? ui.prev : '/history' };
+			return { title: id.endsWith('/edit') ? 'Edit entry' : ((page.data.entry?.kindLabel as string | undefined) ?? 'Entry'), crumbs: [history] };
+		}
+		if (id.startsWith('/(app)/settings')) return { title: 'Settings' };
+		return null;
+	});
 
 	function pickTank(id: string) {
 		const u = new URL(page.url);
@@ -168,12 +216,14 @@
 						class:current={t.id === data.currentTankId}
 						aria-current={t.id === data.currentTankId ? 'true' : undefined}
 					>
-						<TankThumb cover={t.cover} size={24} radius={6} />
+						<TankThumb cover={t.cover} size={22} radius={6} />
 						<span class="tname">{t.name}</span>
 						{#if t.alerts}
 							<span class="pill-bad sm">{t.alerts} alert{t.alerts === 1 ? '' : 's'}</span>
-						{:else}
+						{:else if t.tested}
 							<span class="good">All good</span>
+						{:else}
+							<span class="nodata">No data</span>
 						{/if}
 					</a>
 				{/each}
@@ -185,7 +235,7 @@
 
 	<div class="main">
 		<header class="topbar">
-			{#if current && tankScoped}
+			{#if current && tankScoped && bigSwitcher}
 				<div class="tank-pick">
 					<button type="button" class="tank-btn" aria-expanded={tankMenu} onclick={() => (tankMenu = !tankMenu)}>
 						<TankThumb cover={current.cover} size={40} radius={10} />
@@ -196,9 +246,31 @@
 					</button>
 					<TankMenu bind:open={tankMenu} tanks={data.tanks} currentId={data.currentTankId} onpick={pickTank} />
 				</div>
+			{:else if tankScoped && sectionTitle}
+				<div class="h-left">
+					<h1 class="h-title">{sectionTitle}</h1>
+					{#if current}
+						<div class="tank-pick">
+							<button type="button" class="tank-mini" aria-expanded={tankMenu} aria-label="{current.name}, switch tank" onclick={() => (tankMenu = !tankMenu)}>
+								{current.name} <span class="caret" aria-hidden="true">{tankMenu ? '▴' : '▾'}</span>
+							</button>
+							<TankMenu bind:open={tankMenu} tanks={data.tanks} currentId={data.currentTankId} onpick={pickTank} />
+						</div>
+					{/if}
+				</div>
+			{:else if header}
+				<div class="h-left">
+					{#if header.crumbs?.length}
+						<nav class="crumbs" aria-label="Breadcrumb">
+							{#each header.crumbs as c (c.href)}<a href={c.href}>{c.label}</a><span class="sep" aria-hidden="true">›</span>{/each}
+						</nav>
+					{/if}
+					<h1 class="h-title">{header.title}</h1>
+				</div>
 			{/if}
 			<div class="spacer"></div>
 			{#if current && path === '/'}<span class="tb-meta">{data.quick.lastTest}</span>{/if}
+			{#each header?.actions ?? [] as a (a.href)}<a class="btn h-action" href={a.href}>{a.label}</a>{/each}
 			<button type="button" class="btn btn-primary" onclick={() => (ui.quickAdd = true)}>
 				<span class="plus">+</span>Quick add
 			</button>
@@ -207,10 +279,10 @@
 		{#if !ui.online || waiting}
 			<div class="offline" role="status">
 				<strong>{ui.online ? '' : 'Offline'}{!ui.online && waiting ? ' · ' : ''}{waiting ? `${waiting} entr${waiting === 1 ? 'y' : 'ies'} waiting` : ''}</strong>
-				<span>{ui.online ? 'Syncing…' : waiting ? "Saved on this phone. They'll sync when you're back online." : 'New entries are saved on this phone until you’re back online.'}</span>
+				<span>{ui.online ? 'Syncing…' : waiting ? "Saved on this phone. They'll sync when you're back online." : "New entries are saved on this phone until you're back online."}</span>
 			</div>
 		{/if}
-		<main class:with-tabs={showTabs} aria-busy={slow}>
+		<main class:with-tabs={showTabs} class:with-fab={showFab} aria-busy={slow}>
 			{@render children()}
 			{#if slow}
 				<div class="skeleton" aria-hidden="true"><i class="sk-title"></i><i></i><i></i><i class="sk-short"></i></div>
@@ -219,10 +291,12 @@
 	</div>
 </div>
 
-{#if showTabs}
+{#if showFab}
 	<button type="button" class="fab" aria-label="Quick add" onclick={() => (ui.quickAdd = true)}>+</button>
+{/if}
+{#if showTabs}
 	<nav class="tabbar" aria-label="Main">
-		<a href="/" class:active={isActive('/')} aria-current={isActive('/') ? 'page' : undefined}>
+		<a href="/" class:active={tabActive('/')} aria-current={path === '/' ? 'page' : undefined}>
 			<span class="ti ti-dash" aria-hidden="true"><i></i><i></i><i></i><i></i></span>Dashboard
 		</a>
 		<a href="/tanks" class:active={isActive('/tanks')} aria-current={isActive('/tanks') ? 'page' : undefined}>
@@ -254,7 +328,7 @@
 {#if showTabs}<InstallPrompt />{/if}
 
 {#key ui.toast?.id}
-	<Toast message={ui.toast?.text} undo={ui.toast?.undo} view={ui.toast?.view} raised={showTabs} />
+	<Toast message={ui.toast?.text} undo={ui.toast?.undo} view={ui.toast?.view} lift={showFab ? 'fab' : showTabs ? 'tabs' : 'none'} />
 {/key}
 
 <style>
@@ -297,6 +371,10 @@
 	main.with-tabs {
 		padding-bottom: calc(110px + env(safe-area-inset-bottom));
 	}
+	/* tab bar 88 + gap + the 64px + button, so the last row can scroll clear of it */
+	main.with-fab {
+		padding-bottom: calc(184px + env(safe-area-inset-bottom));
+	}
 	.spacer {
 		flex: 1;
 	}
@@ -318,6 +396,18 @@
 	.fullscreen .sidebar,
 	.fullscreen .topbar {
 		display: none !important;
+	}
+	/* Tablets get the phone layout in a centered column, not edge-to-edge cards. */
+	@media (min-width: 700px) and (max-width: 1023px) {
+		main {
+			width: 100%;
+			max-width: 720px;
+			margin-inline: auto;
+		}
+		.offline {
+			max-width: 680px;
+			margin-inline: auto;
+		}
 	}
 
 	/* ── Phone tab bar + FAB ─────────────────────────────────────────── */
@@ -386,6 +476,7 @@
 	.ti-tanks {
 		width: 24px;
 		height: 20px;
+		margin: 1px 0; /* same 22px box as the other icons, so the labels line up */
 		border: 2px solid var(--c);
 		border-radius: 4px;
 	}
@@ -426,13 +517,14 @@
 		.tabbar {
 			display: none;
 		}
-		main.with-tabs {
+		main.with-tabs,
+		main.with-fab {
 			padding-bottom: 0;
 		}
 		.sidebar {
 			display: flex;
 			flex-direction: column;
-			gap: 28px;
+			gap: 26px;
 			width: 232px;
 			flex-shrink: 0;
 			position: sticky;
@@ -441,7 +533,7 @@
 			overflow-y: auto;
 			background: var(--surface-2);
 			border-right: 1px solid var(--border);
-			padding: 22px 16px;
+			padding: 22px 14px;
 		}
 		.brand {
 			padding: 0 8px;
@@ -483,7 +575,6 @@
 			white-space: nowrap;
 		}
 		.pill-bad.sm {
-			font-size: 11px;
 			padding: 2px 7px;
 		}
 		.tank-list {
@@ -499,7 +590,7 @@
 			padding: 0 12px;
 		}
 		.tank {
-			height: 44px;
+			height: 42px;
 			padding: 0 12px;
 			border-radius: 10px;
 			display: flex;
@@ -524,11 +615,15 @@
 			text-overflow: ellipsis;
 			white-space: nowrap;
 		}
-		.good {
-			font-size: 11px;
+		.good,
+		.nodata {
+			font-size: 12px;
 			font-weight: 600;
 			color: var(--ok);
 			white-space: nowrap;
+		}
+		.nodata {
+			color: var(--text-muted);
 		}
 		.main {
 			flex: 1;
@@ -546,6 +641,49 @@
 		}
 		.tank-pick {
 			position: relative;
+		}
+		.h-left {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			min-width: 0;
+		}
+		.h-title {
+			margin: 0;
+			font-size: 22px;
+			font-weight: 600;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+		.crumbs {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			flex-shrink: 0;
+			font-size: 15px;
+			font-weight: 600;
+		}
+		.crumbs .sep {
+			color: var(--accent);
+		}
+		.crumbs .sep:last-child {
+			margin-right: 2px;
+		}
+		.tank-mini {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			min-height: 44px;
+			padding: 0 4px;
+			font-size: 15px;
+			color: var(--text-muted);
+		}
+		.tank-mini:hover {
+			color: var(--text);
+		}
+		.h-action {
+			min-height: 44px;
 		}
 		.tank-btn {
 			display: flex;

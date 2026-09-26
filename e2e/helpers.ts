@@ -55,6 +55,24 @@ export function linkIn(mail: OutboxMail, needle: string) {
 	return url;
 }
 
+/** The value of a DateField (a hidden input named `name`). */
+export function dateValue(page: Page, name: string) {
+	return page.locator(`input[type=hidden][name="${name}"]`).inputValue();
+}
+
+/** Pick `ymd` (YYYY-MM-DD) in a DateField: open its calendar, go to the month, tap the day. */
+export async function pickDate(page: Page, name: string, ymd: string) {
+	const noon = (d: string) => new Date(d + 'T12:00:00Z');
+	const shown = (await dateValue(page, name)) || new Date().toISOString().slice(0, 10);
+	await page.locator(`input[type=hidden][name="${name}"] + button`).click();
+	const sheet = page.getByRole('dialog');
+	const months = (noon(ymd).getUTCFullYear() - noon(shown).getUTCFullYear()) * 12 + noon(ymd).getUTCMonth() - noon(shown).getUTCMonth();
+	for (let i = 0; i < Math.abs(months); i++) await sheet.getByRole('button', { name: months > 0 ? 'Next month' : 'Previous month' }).click();
+	const day = noon(ymd).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+	await sheet.getByRole('button', { name: day, exact: true }).click();
+	await expect(page.locator(`input[type=hidden][name="${name}"]`)).toHaveValue(ymd);
+}
+
 /** A small JPEG to upload. */
 export async function jpeg(color = '#2a8c84', name = 'tank.jpg') {
 	const buffer = await sharp({ create: { width: 640, height: 480, channels: 3, background: color } }).jpeg().toBuffer();

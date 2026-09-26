@@ -79,7 +79,7 @@ export function emailConfigured() {
 
 export async function sendMail(msg: MailMessage) {
 	const t = getTransport();
-	if (!t) throw new MailError('Email delivery isn’t set up. An admin can add Mailgun or SMTP in Server settings.');
+	if (!t) throw new MailError("Email delivery isn't set up. An admin can add Mailgun or SMTP in Server settings.");
 	await t.transport.send(t.from, msg);
 	return t.transport.describe;
 }

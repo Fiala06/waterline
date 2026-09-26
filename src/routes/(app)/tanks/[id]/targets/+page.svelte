@@ -32,7 +32,8 @@
 		if (mid == null) return null;
 		const d = Number(cDecimals);
 		const v = Math.round(mid * 10 ** d) / 10 ** d;
-		return { v, st: statusMedium(paramStatus(v, { min: lo, max: hi })) };
+		const s = paramStatus(v, { min: lo, max: hi });
+		return { v, st: statusMedium(s), level: s.level };
 	});
 </script>
 
@@ -40,9 +41,10 @@
 
 <div class="wrap">
 	<div class="top">
-		<a class="back" href="/tanks/{data.tank.id}">‹ {data.tank.name}</a>
-		<h1>Parameters &amp; targets</h1>
-		<div class="muted">{data.tank.name} · {tankTypeLabel(data.tank.type)}</div>
+		<!-- on desktop the header has "Tanks › {tank} › Parameters & targets" -->
+		<a class="back hide-desk" href="/tanks/{data.tank.id}">‹ {data.tank.name}</a>
+		<h1 class="hide-desk">Parameters &amp; targets</h1>
+		<div class="muted hide-desk">{data.tank.name} · {tankTypeLabel(data.tank.type)}</div>
 		<p class="intro">
 			Set your own range for each parameter. Readings outside it are flagged
 			<span class="status-bad strong">✕ out of range</span>; readings within 10% of a limit show
@@ -52,6 +54,8 @@
 
 	<form method="POST" action="?/save" use:enhance={() => ({ update }) => update({ reset: false })}>
 		<div class="rows">
+			<!-- desktop: one table like D4 -->
+			<div class="thead" aria-hidden="true"><span>Parameter</span><span>Min</span><span>Max</span><span>Unit</span><span>Track</span></div>
 			{#each data.rows as r (r.id)}
 				<div class="card prow" class:off={!tracked[r.id]}>
 					<div class="p-head">
@@ -70,12 +74,12 @@
 						</label>
 					</div>
 					<div class="range" hidden={!tracked[r.id]}>
-						<label class="minmax">
+						<label class="minmax lo">
 							<span>Min</span>
 							<input name="min_{r.id}" inputmode="decimal" defaultValue={r.min} aria-label="{r.name} minimum" />
 						</label>
 						<span class="dash" aria-hidden="true">–</span>
-						<label class="minmax">
+						<label class="minmax hi">
 							<span>Max</span>
 							<input name="max_{r.id}" inputmode="decimal" defaultValue={r.max} aria-label="{r.name} maximum" />
 						</label>
@@ -120,31 +124,33 @@
 		</div>
 		<fieldset class="field">
 			<legend class="label">Unit</legend>
-			<div class="unit-chips">
+			<div class="chips units">
 				{#each units as u (u)}
-					<label class="option sm-opt"><input type="radio" name="unit" value={u} bind:group={cUnit} />{u}</label>
+					<label class="chip"><input type="radio" name="unit" value={u} bind:group={cUnit} />{u}</label>
 				{/each}
-				<label class="option sm-opt"><input type="radio" name="unit" value="custom" bind:group={cUnit} />Custom</label>
+				<label class="chip"><input type="radio" name="unit" value="custom" bind:group={cUnit} />Custom</label>
 			</div>
 			{#if cUnit === 'custom'}
 				<input class="input" name="customUnit" bind:value={cCustomUnit} maxlength="12" placeholder="Unit label" aria-label="Custom unit" />
 			{/if}
 		</fieldset>
 		<div class="c-range">
-			<label class="field"><span class="label">Min</span><input class="input" name="min" inputmode="decimal" bind:value={cMin} /></label>
-			<label class="field"><span class="label">Max</span><input class="input" name="max" inputmode="decimal" bind:value={cMax} /></label>
+			<label class="field"><span class="label">Min</span><input class="input num" name="min" inputmode="decimal" bind:value={cMin} /></label>
+			<label class="field"><span class="label">Max</span><input class="input num" name="max" inputmode="decimal" bind:value={cMax} /></label>
 			<label class="field"
 				><span class="label">Decimals</span>
-				<select class="input" name="decimals" bind:value={cDecimals}>
+				<select class="input num" name="decimals" bind:value={cDecimals}>
 					<option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option>
 				</select>
 			</label>
 		</div>
 		{#if cName && preview}
-			<div class="card preview">
-				<span class="muted sm">Preview</span>
-				<span><strong>{cName}</strong> <span class="num">{preview.v}</span> {previewUnit}</span>
-				<span class="status-ok strong sm">{preview.st}</span>
+			<div class="preview">
+				<div class="pv">
+					<span class="muted sm">Preview</span>
+					<span class="pv-line"><strong>{cName}</strong> <span class="muted"><span class="num">{preview.v}</span> {previewUnit}</span></span>
+				</div>
+				<span class="status-{preview.level} strong">{preview.st}</span>
 			</div>
 		{/if}
 		<button class="btn btn-primary btn-lg">Add to {data.tank.name}</button>
@@ -236,6 +242,7 @@
 	}
 	.minmax input {
 		flex: 1;
+		align-self: stretch; /* the whole box is the tap target */
 		min-width: 0;
 		width: 100%;
 		background: transparent;
@@ -254,11 +261,16 @@
 		font-size: 13px;
 		color: var(--text-muted);
 	}
+	/* 52 × 32 like the design, 44px to tap */
+	.p-head .switch input {
+		inset: -6px -4px;
+	}
 	.remove {
 		align-self: flex-start;
 		font-size: 14px;
 		color: var(--bad);
-		min-height: 36px;
+		min-height: 44px;
+		margin: -4px 0;
 	}
 	.foot {
 		display: flex;
@@ -294,25 +306,177 @@
 		padding: 0;
 		margin-bottom: 8px;
 	}
-	.unit-chips {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 8px;
+	/* G7: the chosen unit is ticked, like the other pick-from-a-list chips */
+	.units label.chip:has(input:checked) {
+		background: var(--selected);
+		border-color: var(--accent);
+		color: var(--text);
+		font-weight: 600;
 	}
-	.sm-opt {
-		min-height: 44px;
-		padding: 0 14px;
+	.units label.chip:has(input:checked)::before {
+		content: '✓';
+		color: var(--accent);
+		font-weight: 700;
 	}
 	.c-range {
 		display: grid;
 		grid-template-columns: 1fr 1fr 1fr;
-		gap: 10px;
+		gap: 8px;
+	}
+	/* G7: recessed fields in the sheet; background-color keeps the select's ▾ */
+	.custom .input {
+		background-color: var(--surface-2);
+		border-color: var(--border-strong);
+	}
+	.custom .input:focus {
+		border-color: var(--accent);
+	}
+	.c-range .input {
+		padding: 0 12px;
+		font-weight: 600;
+	}
+	.c-range select.input {
+		padding-right: 32px;
+		background-position:
+			calc(100% - 17px) 52%,
+			calc(100% - 12px) 52%;
 	}
 	.preview {
 		padding: 12px 14px;
+		border-radius: 12px;
+		background: var(--surface-2);
+		border: 1px solid var(--border);
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		font-size: 13px;
+	}
+	.pv {
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
-		background: var(--surface-2);
+		gap: 2px;
+		min-width: 0;
+	}
+	.pv-line {
+		font-size: 15px;
+	}
+	.pv-line .muted {
+		font-weight: 400;
+	}
+	.thead {
+		display: none;
+	}
+	/* Desktop (D4): one table, Parameter · Min · Max · Unit · Track */
+	@media (min-width: 1024px) {
+		.wrap {
+			max-width: 840px;
+			padding: 24px 32px;
+		}
+		.top {
+			padding: 0;
+		}
+		.intro {
+			margin: 0;
+		}
+		.rows {
+			margin-top: 16px;
+			padding: 0;
+			gap: 0;
+			border-radius: 16px;
+			background: var(--surface);
+			border: 1px solid var(--border);
+			overflow: hidden;
+		}
+		.thead,
+		.prow {
+			display: grid;
+			grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) 64px 56px;
+			column-gap: 12px;
+			align-items: center;
+		}
+		.thead {
+			padding: 10px 18px;
+			font-size: 12px;
+			letter-spacing: 0.06em;
+			text-transform: uppercase;
+			color: var(--text-faint);
+			border-bottom: 1px solid var(--border);
+		}
+		.prow {
+			row-gap: 6px;
+			padding: 8px 18px;
+			border: none;
+			border-radius: 0;
+			background: none;
+		}
+		.prow + .prow {
+			border-top: 1px solid var(--divider-soft);
+		}
+		.p-head,
+		.range {
+			display: contents;
+		}
+		.p-name {
+			grid-column: 1;
+			grid-row: 1;
+		}
+		.lo {
+			grid-column: 2;
+			grid-row: 1;
+		}
+		.hi {
+			grid-column: 3;
+			grid-row: 1;
+		}
+		.u {
+			grid-column: 4;
+			grid-row: 1;
+			width: auto;
+		}
+		.p-head .switch {
+			grid-column: 5;
+			grid-row: 1;
+		}
+		/* the column headers say Min and Max */
+		.dash,
+		.minmax span {
+			display: none;
+		}
+		.minmax {
+			height: 40px;
+			border-radius: 10px;
+		}
+		.minmax input {
+			font-size: 15px;
+			text-align: left;
+		}
+		.error-text,
+		.remove {
+			grid-column: 1 / -1;
+			justify-self: start;
+		}
+		.foot {
+			flex-direction: row;
+			align-items: center;
+			gap: 12px;
+			padding-top: 16px;
+		}
+		.add {
+			height: 44px;
+			padding: 0 18px;
+			margin-right: auto;
+		}
+		.reset {
+			order: 1;
+		}
+		.foot .btn-lg {
+			order: 2;
+			width: auto;
+			height: 44px;
+			border-radius: 12px;
+			font-size: 15px;
+			padding: 0 22px;
+		}
 	}
 </style>

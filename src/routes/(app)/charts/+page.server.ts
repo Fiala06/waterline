@@ -34,6 +34,8 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 
 	const raw = series(tank.id, param.id, since);
 	const points = raw.map((r) => ({ t: Date.parse(r.takenAt), v: displayValue(param, r.value, user) }));
+	// Too few points in this range: is it the range, or are there no tests yet?
+	const allTime = points.length < 2 && range.days ? series(tank.id, param.id, '0000').length : points.length;
 	const from = range.days ? now - range.days * 86_400_000 : (points[0]?.t ?? now - 30 * 86_400_000);
 
 	// Events on the timeline, with the reading just before and after each one.
@@ -78,11 +80,14 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 			name: param.name,
 			unit: paramUnit(param, user),
 			target: fmtRange(param, user),
+			// "5–20", for "ppm · target 5–20" next to the unit
+			targetBare: fmtRange(param, user, false),
 			band: {
 				min: param.min == null ? null : displayValue(param, param.min, user),
 				max: param.max == null ? null : displayValue(param, param.max, user)
 			},
 			points,
+			allTime,
 			from,
 			to: now,
 			markers,

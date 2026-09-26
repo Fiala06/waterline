@@ -43,6 +43,10 @@
 	--toast-action: #197474;
 	--placeholder-stripe-a: #1a3138;
 	--placeholder-stripe-b: #152a30;
+	/* labels over photos (dates, "Change", remove ×) and the photo viewer stage */
+	--overlay-bg: rgba(8, 19, 23, 0.72);
+	--overlay-text: #e6f0f0;
+	--viewer-bg: #030809;
 	--shadow-fab: 0 8px 24px rgba(0, 0, 0, 0.45);
 	--shadow-modal: 0 24px 64px rgba(0, 0, 0, 0.5);
 	--shadow-toast: 0 10px 30px rgba(0, 0, 0, 0.4);
@@ -81,7 +85,7 @@
 	--bad-border: #efc3b9;
 	--bad-text: #8f2f1f;
 	--scrim: rgba(15, 33, 38, 0.4);
-	--band: rgba(26, 122, 122, 0.1);
+	--band: rgba(25, 116, 116, 0.1);
 	--google-bg: #0f2126;
 	--google-text: #ffffff;
 	--toast-bg: #0f2126;
@@ -89,6 +93,9 @@
 	--toast-action: #4fc4bd;
 	--placeholder-stripe-a: #e1e9e8;
 	--placeholder-stripe-b: #eaf0ef;
+	--overlay-bg: rgba(255, 255, 255, 0.92);
+	--overlay-text: #0f2126;
+	--viewer-bg: #0f2126;
 	--shadow-fab: 0 8px 24px rgba(15, 33, 38, 0.2);
 	--shadow-modal: 0 24px 64px rgba(15, 33, 38, 0.2);
 	--shadow-toast: 0 10px 30px rgba(15, 33, 38, 0.18);
@@ -128,14 +135,17 @@
 		--bad-border: #efc3b9;
 		--bad-text: #8f2f1f;
 		--scrim: rgba(15, 33, 38, 0.4);
-		--band: rgba(26, 122, 122, 0.1);
+		--band: rgba(25, 116, 116, 0.1);
 		--google-bg: #0f2126;
 		--google-text: #ffffff;
 		--toast-bg: #0f2126;
 		--toast-text: #ffffff;
-	--toast-action: #4fc4bd;
+		--toast-action: #4fc4bd;
 		--placeholder-stripe-a: #e1e9e8;
 		--placeholder-stripe-b: #eaf0ef;
+		--overlay-bg: rgba(255, 255, 255, 0.92);
+		--overlay-text: #0f2126;
+		--viewer-bg: #0f2126;
 		--shadow-fab: 0 8px 24px rgba(15, 33, 38, 0.2);
 		--shadow-modal: 0 24px 64px rgba(15, 33, 38, 0.2);
 		--shadow-toast: 0 10px 30px rgba(15, 33, 38, 0.18);
@@ -206,6 +216,33 @@ textarea {
 :focus-visible {
 	outline: 2px solid var(--accent);
 	outline-offset: 2px;
+}
+
+/* `hidden` must win over component display rules (e.g. `.field { display: flex }`). */
+[hidden] {
+	display: none !important;
+}
+
+/* No lone words on the last line of headings and paragraphs. */
+h1,
+h2,
+h3 {
+	text-wrap: balance;
+}
+p {
+	text-wrap: pretty;
+}
+
+/* Shown on one layout only. Desktop is ≥1024px, the same breakpoint as the app shell. */
+@media (min-width: 1024px) {
+	.hide-desk {
+		display: none !important;
+	}
+}
+@media (max-width: 1023px) {
+	.hide-phone {
+		display: none !important;
+	}
 }
 
 input::placeholder,
@@ -320,6 +357,48 @@ textarea::placeholder {
 	color: var(--text-muted);
 	font-size: 18px;
 }
+/* Reversible but significant (archive): amber, not red. */
+.btn-warn {
+	border-color: var(--warn-border);
+	color: var(--warn);
+}
+
+/* Hover only where there is a pointer, so taps don't leave sticky highlights. */
+@media (hover: hover) {
+	.btn:not(:disabled):hover {
+		background: var(--surface-hi);
+	}
+	.btn-primary:not(:disabled):hover {
+		background: color-mix(in srgb, var(--accent) 86%, var(--text));
+		border-color: color-mix(in srgb, var(--accent) 86%, var(--text));
+	}
+	.btn-danger:not(:disabled):hover {
+		background: var(--bad-bg);
+	}
+	.btn-warn:not(:disabled):hover {
+		background: var(--warn-bg);
+	}
+	.btn-text:hover {
+		background: none;
+		color: var(--accent-hover);
+	}
+	.btn-icon:hover {
+		background: var(--surface-hi);
+		color: var(--text);
+	}
+	.chip:not(:disabled):not([aria-pressed='true']):not(.selected):hover {
+		background: var(--surface-hi);
+	}
+	.chip-pill:not(:disabled):hover {
+		background: var(--selected);
+	}
+	.option:not(:has(input:checked)):hover {
+		border-color: var(--text-faint);
+	}
+	.segmented label:not(:has(input:checked)):hover {
+		color: var(--text);
+	}
+}
 
 /* ── Chips and segmented controls ─────────────────────────────────────────── */
 
@@ -336,12 +415,84 @@ textarea::placeholder {
 	background: transparent;
 	color: var(--text);
 }
+.chip {
+	position: relative;
+	cursor: pointer;
+}
+/* 36px to match the design, 44px to tap. */
+.chip::after {
+	content: '';
+	position: absolute;
+	inset: -4px 0;
+}
 .chip[aria-pressed='true'],
-.chip.selected {
+.chip.selected,
+label.chip:has(input[type='radio']:checked) {
 	background: var(--accent);
 	border-color: var(--accent);
 	color: var(--on-accent);
 	font-weight: 700;
+}
+.chip:disabled {
+	cursor: default;
+}
+.chip:disabled .caret {
+	display: none;
+}
+/* Chips wrapping a radio (pick one) or checkbox (pick any, shown with ✓). */
+label.chip input {
+	position: absolute;
+	opacity: 0;
+	pointer-events: none;
+}
+label.chip:has(input[type='checkbox']:checked) {
+	background: var(--selected);
+	border-color: var(--accent);
+	font-weight: 600;
+}
+label.chip:has(input[type='checkbox']:checked)::before {
+	content: '✓';
+	color: var(--accent);
+	font-weight: 700;
+}
+label.chip:has(input:focus-visible) {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+.chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+/* A row of chips or tabs that scrolls sideways (use:hscroll adds the edge fades). */
+.hscroll {
+	display: flex;
+	flex-wrap: nowrap;
+	gap: 8px;
+	overflow-x: auto;
+	scrollbar-width: none;
+	/* room for the chips' taller tap area, which a scroller would clip */
+	padding-block: 4px;
+	margin-block: -4px;
+}
+.hscroll::-webkit-scrollbar {
+	display: none;
+}
+.hscroll > * {
+	flex-shrink: 0;
+}
+.hscroll[data-fade='end'] {
+	-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+	mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+}
+.hscroll[data-fade='start'] {
+	-webkit-mask-image: linear-gradient(to left, #000 calc(100% - 32px), transparent);
+	mask-image: linear-gradient(to left, #000 calc(100% - 32px), transparent);
+}
+.hscroll[data-fade='both'] {
+	-webkit-mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 32px), transparent);
+	mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 32px), transparent);
 }
 .chip-pill {
 	height: 40px;
@@ -475,7 +626,9 @@ textarea::placeholder {
 .section-head a {
 	font-size: 14px;
 	font-weight: 600;
-	padding: 12px 0; /* taller tap target; inline, so the layout doesn't move */
+	/* taller tap target that doesn't make headers with a link taller than ones without */
+	padding: 12px 0;
+	margin: -12px 0;
 }
 
 .field {
@@ -544,6 +697,137 @@ textarea.input {
 .unit-input .unit {
 	font-size: 15px;
 	color: var(--text-muted);
+}
+
+/* Dropdowns: the browser arrow swapped for the design's ▾ */
+select.input {
+	appearance: none;
+	-webkit-appearance: none;
+	padding-right: 44px;
+	cursor: pointer;
+	background-image:
+		linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+		linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+	background-position:
+		calc(100% - 23px) 52%,
+		calc(100% - 18px) 52%;
+	background-size: 5px 5px;
+	background-repeat: no-repeat;
+}
+select.input:disabled {
+	cursor: default;
+	opacity: 0.6;
+}
+
+/* Radio buttons shown as rings (native ones render as grey discs in dark mode). */
+.radio {
+	appearance: none;
+	-webkit-appearance: none;
+	flex-shrink: 0;
+	width: 22px;
+	height: 22px;
+	margin: 0;
+	border-radius: 50%;
+	border: 2px solid var(--border-strong);
+	background: transparent;
+	cursor: pointer;
+	display: grid;
+	place-content: center;
+}
+.radio:checked {
+	border-color: var(--accent);
+}
+.radio:checked::after {
+	content: '';
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	background: var(--accent);
+}
+
+/* Status as a tinted pill: "✕ Nitrate high", "✓ All in range", "▲ 1 due today". */
+.status-tag {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	height: 26px;
+	padding: 0 10px;
+	border-radius: 8px;
+	font-size: 13px;
+	font-weight: 700;
+	white-space: nowrap;
+}
+.status-tag.sm {
+	height: 20px;
+	padding: 0 7px;
+	border-radius: 10px;
+	font-size: 12px;
+}
+.tag-ok {
+	background: var(--ok-bg);
+	color: var(--ok-text);
+}
+.tag-warn {
+	background: var(--warn-bg);
+	color: var(--warn-text);
+}
+.tag-bad {
+	background: var(--bad-bg);
+	color: var(--bad-text);
+}
+.tag-none {
+	background: var(--surface-hi);
+	color: var(--text-muted);
+}
+
+/* − 13 + in one control (livestock counts). */
+.count-stepper {
+	display: inline-flex;
+	align-items: center;
+	flex-shrink: 0;
+	height: 48px;
+	border-radius: 12px;
+	border: 1px solid var(--border-strong);
+	background: var(--surface-2);
+	overflow: hidden;
+}
+.count-stepper button {
+	width: 44px;
+	align-self: stretch;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 20px;
+	color: var(--text);
+}
+.count-stepper button:disabled {
+	color: var(--placeholder);
+	cursor: default;
+}
+@media (hover: hover) {
+	.count-stepper button:not(:disabled):hover {
+		background: var(--surface-hi);
+	}
+}
+.count-stepper .value,
+.count-stepper input {
+	min-width: 36px;
+	width: 44px;
+	text-align: center;
+	font-size: 17px;
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	background: transparent;
+	border: none;
+	outline: none;
+	padding: 0;
+}
+/* the whole middle of the control is the input's tap area */
+.count-stepper input {
+	align-self: stretch;
+}
+.count-stepper:has(input:focus) {
+	border-color: var(--accent);
 }
 
 .error-text {

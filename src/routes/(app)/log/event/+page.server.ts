@@ -40,7 +40,14 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 		recentProducts: category === 'dosing' ? recentDosingProducts(tank.id) : [],
 		inventory: ['livestock', 'equipment', 'maintenance'].includes(category)
 			? {
-					livestock: listLivestock(user.id, tank.id).map((l) => ({ id: l.id, name: l.commonName, count: l.count })),
+					livestock: listLivestock(user.id, tank.id).map((l) => ({
+						id: l.id,
+						name: l.commonName,
+						count: l.count,
+						// for the "Livestock tab: Ember tetra 0 → 10" preview (G3)
+						status: l.status,
+						scientific: l.scientificName
+					})),
 					plants: listPlants(user.id, tank.id).map((p) => ({ id: p.id, name: p.name })),
 					equipment: listEquipment(user.id, tank.id).map((e) => ({ id: e.id, name: equipmentName(e) }))
 				}

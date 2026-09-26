@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import TrendChart from '$lib/components/TrendChart.svelte';
 	import { CHART_RANGES } from '$lib/charts';
 	import { ui } from '$lib/ui.svelte';
@@ -16,136 +16,182 @@
 		for (const [k, v] of Object.entries(patch)) u.set(k, v);
 		return `/charts?${u}`;
 	};
+	// The picker and range forms keep the other query params (GET forms replace them all).
+	const keep = (name: string) => [...page.url.searchParams].filter(([k]) => k !== name);
+	const submit = (e: Event) => (e.currentTarget as HTMLInputElement | HTMLSelectElement).form?.requestSubmit();
+
 	const chosen = $derived(data.chart?.markers.find((m) => m.href === selected) ?? null);
 	const hasDosing = $derived(data.chart?.markers.some((m) => m.kind === 'dosing'));
+	// "ppm · target 5–20"; pH has no unit, so just "target 6.5–7.5"
+	const subtitle = $derived(
+		[data.chart?.unit, data.chart?.targetBare && `target ${data.chart.targetBare}`].filter(Boolean).join(' · ')
+	);
 </script>
 
 <svelte:head><title>Charts · Waterline</title></svelte:head>
 
 <div class="page">
-	<a class="back" href="/">‹ Dashboard</a>
-	<div class="head">
+	<a class="back hide-desk" href="/">‹ Dashboard</a>
+	<div class="head hide-desk">
 		<h1>Charts</h1>
 		{#if data.tank}<button type="button" class="tank" onclick={() => (ui.tankSwitcher = true)}>{data.tank.name} ▾</button>{/if}
 	</div>
 
 	{#if !data.tank}
-		<div class="card empty"><strong>No tanks yet</strong><a href="/tanks/new">Add tank</a></div>
+		<div class="none">
+			<EmptyState icon="tank" title="No tanks yet" text="Add your first tank to start logging." href="/tanks/new" label="Add tank" primary />
+		</div>
+	{:else if !data.chart}
+		<div class="none">
+			<EmptyState icon="test" title="No parameters tracked for this tank." href="/tanks/{data.tank.id}/targets" label="Parameters & targets" />
+		</div>
 	{:else}
+		{@const c = data.chart}
 		<div class="layout">
 			<nav class="plist" aria-label="Parameter">
 				<div class="caps">Parameter</div>
 				{#each data.list as p (p.id)}
-					<a class="pitem" class:active={data.chart?.paramId === p.id} aria-current={data.chart?.paramId === p.id ? 'true' : undefined} href={q({ p: p.id })}>
-						<span>{p.name}</span><span class="status-{p.level}" title={p.status}><span aria-hidden="true">{p.icon}</span><span class="sr-only">{p.status}</span></span>
+					<a class="pitem" class:active={c.paramId === p.id} aria-current={c.paramId === p.id ? 'true' : undefined} href={q({ p: p.id })}>
+						<span>{p.name}</span><span class="status-{p.level} p-status" title={p.status}><span aria-hidden="true">{p.icon}</span><span class="sr-only">{p.status}</span></span>
 					</a>
 				{/each}
 			</nav>
 
-			<div class="main">
-				<label class="picker">
+			<!-- 12: "Nitrate … ppm ▾" over a native select -->
+			<form class="picker" method="GET" action="/charts" data-sveltekit-noscroll data-sveltekit-keepfocus>
+				{#each keep('p') as [k, v], i (i)}<input type="hidden" name={k} value={v} />{/each}
+				<label class="p-box">
 					<span class="sr-only">Parameter</span>
-					<select value={data.chart?.paramId} onchange={(e) => goto(q({ p: e.currentTarget.value }), { noScroll: true })}>
-						{#each data.list as p (p.id)}<option value={p.id}>{p.name}{p.unit ? ` · ${p.unit}` : ''}</option>{/each}
+					<select name="p" value={c.paramId} onchange={submit}>
+						{#each data.list as p (p.id)}<option value={p.id} selected={p.id === c.paramId}>{p.name}</option>{/each}
 					</select>
+					<span class="p-name" aria-hidden="true">{c.name}</span>
+					<span class="p-unit" aria-hidden="true">{c.unit}<span class="p-caret"></span></span>
 				</label>
+				<noscript><button class="btn">Apply</button></noscript>
+			</form>
 
-				<div class="card chart-card">
-					{#if data.chart}
-						<div class="c-head">
-							<div class="c-title">
-								<h2>{data.chart.name}</h2>
-								<span class="muted sm">{data.chart.unit}{data.chart.target ? ` · target ${data.chart.target.replace(` ${data.chart.unit}`, '')}` : ''}</span>
-							</div>
-							<div class="ranges" role="group" aria-label="Time range">
-								{#each CHART_RANGES as r (r.key)}
-									<a class="rg" class:active={data.range === r.key} aria-current={data.range === r.key ? 'true' : undefined} href={q({ r: r.key })} data-sveltekit-noscroll>{r.label}</a>
-								{/each}
-							</div>
+			<div class="c-head">
+				<div class="c-title">
+					<h2>{c.name}</h2>
+					{#if subtitle}<span class="c-sub">{subtitle}</span>{/if}
+				</div>
+				<form method="GET" action="/charts" data-sveltekit-noscroll data-sveltekit-keepfocus>
+					{#each keep('r') as [k, v], i (i)}<input type="hidden" name={k} value={v} />{/each}
+					<fieldset>
+						<legend class="sr-only">Time range</legend>
+						<div class="segmented ranges">
+							{#each CHART_RANGES as r (r.key)}
+								<label><input type="radio" name="r" value={r.key} checked={data.range === r.key} onchange={submit} />{r.label}</label>
+							{/each}
 						</div>
+					</fieldset>
+					<noscript><button class="btn">Apply</button></noscript>
+				</form>
+			</div>
 
-						{#if data.chart.points.length >= 2}
+			{#if c.points.length >= 2}
+				<div class="card chart-card">
+					<div class="chart-box">
+						<div class="chart-fill">
 							<TrendChart
+								fit
 								full
-								height={300}
-								points={data.chart.points}
-								band={data.chart.band}
+								height={260}
+								points={c.points}
+								band={c.band}
 								{markers}
-								from={data.chart.from}
-								to={data.chart.to}
-								lastLevel={data.chart.stats?.latestLevel}
-								label="{data.chart.name} over time"
+								from={c.from}
+								to={c.to}
+								lastLevel={c.stats?.latestLevel}
+								label="{c.name} over time"
 								{selected}
 								onselect={(m) => (selected = selected === m.href ? null : m.href)}
 							>
 								{#snippet popover(m)}
-									{@const full = data.chart?.markers.find((x) => x.href === m.href)}
+									{@const full = c.markers.find((x) => x.href === m.href)}
 									<div class="pop-day">{full?.day} · {m.kind === 'dosing' ? 'Dosing' : 'Water change'}</div>
 									<div class="pop-title">{m.label.replace(/^Water change · /, '')}</div>
 									{#if full?.change}<div class="pop-change">{full.change}</div>{/if}
 									<a class="pop-link" href={m.href}>View entry ›</a>
 								{/snippet}
 							</TrendChart>
-							<div class="legend">
-								{#if data.chart.target}<span><i class="lg-band"></i>Target {data.chart.target}</span>{/if}
-								{#if data.chart.markers.some((m) => m.kind !== 'dosing')}<span><i class="lg-marker"></i>Water changes (tap to open)</span>{/if}
-								{#if hasDosing}
-									<button type="button" class="lg-toggle" aria-pressed={showDosing} onclick={() => (showDosing = !showDosing)}>
-										<i class="lg-marker dosing"></i>{showDosing ? 'Hide dosing' : 'Show dosing'}
-									</button>
-								{/if}
-							</div>
-						{:else}
-							<p class="muted">Charts appear after your second test.</p>
-						{/if}
-					{:else}
-						<p class="muted">No parameters tracked for this tank.</p>
+						</div>
+					</div>
+				</div>
+				<div class="legend">
+					{#if c.target}
+						<span><i class="lg-band"></i><span class="hide-desk">Target {c.target}</span><span class="hide-phone">Target band</span></span>
+					{/if}
+					{#if c.markers.some((m) => m.kind !== 'dosing')}
+						<span><i class="lg-marker"></i><span class="hide-desk">Water changes (tap to open)</span><span class="hide-phone">Water change</span></span>
+					{/if}
+					{#if hasDosing}
+						<button type="button" class="lg-toggle" aria-pressed={showDosing} onclick={() => (showDosing = !showDosing)}>
+							<i class="lg-marker dosing"></i>{showDosing ? 'Hide dosing' : 'Show dosing'}
+						</button>
 					{/if}
 				</div>
+			{:else}
+				<div class="chart-empty">
+					{#if c.allTime >= 2}
+						<EmptyState compact icon="test" title="Fewer than 2 readings in this range" text="Try a longer range." />
+					{:else}
+						<EmptyState compact icon="test" title="Charts appear after your second test." href="/log/test?tank={data.tank.id}" label="Log water test" />
+					{/if}
+				</div>
+			{/if}
 
-				{#if data.chart?.stats}
-					{@const s = data.chart.stats}
+			<div class="side">
+				{#if c.stats}
+					{@const s = c.stats}
 					<div class="stats">
 						<div class="card stat">
-								<span class="sl">Latest</span><span class="sv num">{s.latest}</span>
-								<span class="sl strong status-{s.latestLevel}">{s.latestStatus}</span>
-							</div>
+							<span class="sl">Latest</span>
+							<span class="sv num" class:status-bad={s.latestLevel === 'bad'} class:status-warn={s.latestLevel === 'warn'}>{s.latest}</span>
+							<span class="st status-{s.latestLevel}">{s.latestStatus}</span>
+						</div>
 						<div class="card stat"><span class="sl">Average</span><span class="sv num">{s.average}</span></div>
 						<div class="card stat mm"><span class="sl">Min / max</span><span class="sv num">{s.min} / {s.max}</span></div>
 						<div class="card stat"><span class="sl">In range</span><span class="sv num">{s.inRange}</span></div>
 					</div>
 				{/if}
+				{#if markers.length}
+					<div class="events">
+						<h2>Events in range</h2>
+						<ul>
+							{#each [...markers].reverse() as m (m.href)}
+								<li>
+									<button type="button" class:active={chosen?.href === m.href} aria-pressed={chosen?.href === m.href} onclick={() => (selected = m.href)}>
+										<span class="e-title">{m.label}</span><span class="e-day">{m.day}</span>
+									</button>
+								</li>
+							{/each}
+						</ul>
+					</div>
+				{/if}
 			</div>
-
-			{#if markers.length}
-				<aside class="events">
-					<h2 class="caps">Events in range</h2>
-					<ul>
-						{#each [...markers].reverse() as m (m.href)}
-							<li>
-								<button type="button" class:active={chosen?.href === m.href} onclick={() => (selected = m.href)}>
-									<span>{m.label}</span><span class="muted sm">{m.day}</span>
-								</button>
-							</li>
-						{/each}
-					</ul>
-				</aside>
-			{/if}
 		</div>
 	{/if}
 </div>
 
 <style>
 	.page {
-		padding: 8px 20px 24px;
+		padding: 0 20px 24px;
 		display: flex;
 		flex-direction: column;
-		gap: 14px;
+		gap: 12px;
+	}
+	/* 12: the links keep 44px tap areas; the text sits where the design puts it */
+	.back {
+		margin-top: -7px;
 	}
 	.head {
 		display: flex;
 		justify-content: space-between;
 		align-items: baseline;
+		gap: 12px;
+		margin-top: -18px;
 	}
 	h1 {
 		margin: 0;
@@ -156,82 +202,107 @@
 		font-size: 14px;
 		color: var(--text-muted);
 		min-height: 44px;
+		margin-block: -10px;
 	}
-	.plist,
-	.events {
-		display: none;
-	}
-	.main {
+	.layout {
 		display: flex;
 		flex-direction: column;
 		gap: 14px;
 		min-width: 0;
 	}
-	.picker select {
-		width: 100%;
+	.plist,
+	.c-title,
+	.events {
+		display: none;
+	}
+	/* 12: stats, then the legend */
+	.legend {
+		order: 1;
+	}
+	fieldset {
+		border: none;
+		margin: 0;
+		padding: 0;
+	}
+	.picker {
+		display: flex;
+		gap: 8px;
+	}
+	.p-box {
+		position: relative;
+		flex: 1;
+		min-width: 0;
 		height: 52px;
 		border-radius: 12px;
 		background: var(--surface);
 		border: 1px solid var(--border);
 		padding: 0 16px;
-		font-size: 17px;
-		font-weight: 600;
-	}
-	.chart-card {
-		padding: 14px;
-		display: flex;
-		flex-direction: column;
-		gap: 12px;
-	}
-	.c-head {
-		display: flex;
-		flex-direction: column;
-		gap: 12px;
-	}
-	.c-title {
-		display: none;
-	}
-	.c-title h2 {
-		margin: 0;
-		font-size: 20px;
-	}
-	.ranges {
-		display: grid;
-		grid-template-columns: repeat(5, 1fr);
-		gap: 4px;
-		padding: 4px;
-		border-radius: 12px;
-		background: var(--surface-2);
-		border: 1px solid var(--border);
-	}
-	.rg {
-		height: 36px;
-		border-radius: 8px;
 		display: flex;
 		align-items: center;
-		justify-content: center;
+		justify-content: space-between;
+		gap: 12px;
+		cursor: pointer;
+	}
+	.p-box:has(select:focus-visible) {
+		outline: 2px solid var(--accent);
+		outline-offset: 2px;
+	}
+	/* the native select takes the taps; the box shows the design */
+	.p-box select {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		max-width: none;
+		opacity: 0;
+		cursor: pointer;
+		font-size: 16px;
+	}
+	.p-name {
+		font-size: 17px;
+		font-weight: 600;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.p-unit {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		flex-shrink: 0;
 		font-size: 14px;
 		color: var(--text-muted);
 	}
-	.rg.active {
-		background: var(--border);
-		color: var(--text);
-		font-weight: 600;
+	.p-caret {
+		width: 0;
+		height: 0;
+		border-left: 4px solid transparent;
+		border-right: 4px solid transparent;
+		border-top: 5px solid var(--text-muted);
 	}
-	.sm {
-		font-size: 13px;
+	.chart-card {
+		padding: 14px 12px 8px 6px;
+	}
+	.chart-box {
+		position: relative;
+		height: 260px;
+	}
+	.chart-fill {
+		position: absolute;
+		inset: 0;
 	}
 	.legend {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 16px;
+		align-items: center;
+		column-gap: 16px;
 		font-size: 13px;
 		color: var(--text-muted);
 	}
-	.legend span {
+	.legend > span {
 		display: flex;
 		align-items: center;
 		gap: 6px;
+		min-height: 24px;
 	}
 	.lg-band {
 		width: 14px;
@@ -279,7 +350,7 @@
 	}
 	.stats {
 		display: grid;
-		grid-template-columns: repeat(3, 1fr);
+		grid-template-columns: repeat(3, minmax(0, 1fr));
 		gap: 8px;
 	}
 	.stat {
@@ -288,6 +359,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
+		min-width: 0;
 	}
 	.stat.mm {
 		display: none;
@@ -299,89 +371,159 @@
 	.sv {
 		font-size: 20px;
 		font-weight: 600;
+		white-space: nowrap;
 	}
-	.empty {
-		padding: 18px;
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
+	.st {
+		font-size: 12px;
+		font-weight: 600;
 	}
 	.caps {
-		margin: 0;
 		font-size: 12px;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
 		color: var(--text-faint);
-		font-weight: 400;
 	}
 
+	/* ── 19: parameters | chart | stats and events ───────────────── */
 	@media (min-width: 1024px) {
 		.page {
 			padding: 28px 32px;
 		}
-		.back,
-		.tank,
+		.none {
+			max-width: 560px;
+		}
 		.picker {
 			display: none;
 		}
 		.layout {
 			display: grid;
-			grid-template-columns: 200px minmax(0, 1fr) 280px;
-			gap: 24px;
-			align-items: start;
+			grid-template-columns: clamp(168px, 13.9vw, 200px) minmax(0, 1fr) clamp(260px, 20.8vw, 300px);
+			grid-template-rows: auto auto auto 1fr;
+			grid-template-areas:
+				'plist head side'
+				'plist chart side'
+				'plist legend side'
+				'plist . side';
+			column-gap: 24px;
+			row-gap: 16px;
 		}
 		.plist {
+			grid-area: plist;
 			display: flex;
 			flex-direction: column;
-			gap: 2px;
+			gap: 4px;
+			min-width: 0;
 		}
 		.plist .caps {
 			padding: 0 12px 6px;
 		}
 		.pitem {
-			height: 40px;
+			min-height: 44px;
 			padding: 0 12px;
 			border-radius: 10px;
 			display: flex;
 			justify-content: space-between;
 			align-items: center;
-			color: var(--text-2);
+			gap: 8px;
+			color: var(--text);
 			font-size: 15px;
 		}
 		.pitem:hover {
 			background: var(--surface);
+			color: var(--text);
 		}
 		.pitem.active {
 			background: var(--selected);
-			color: var(--accent);
 			font-weight: 600;
 		}
-		.chart-card {
-			padding: 20px;
+		.p-status {
+			font-size: 13px;
 		}
 		.c-head {
-			flex-direction: row;
-			justify-content: space-between;
+			grid-area: head;
+			display: flex;
 			align-items: center;
+			justify-content: space-between;
+			gap: 16px;
+			min-width: 0;
 		}
 		.c-title {
 			display: flex;
-			flex-direction: column;
-			gap: 2px;
+			align-items: baseline;
+			flex-wrap: wrap;
+			column-gap: 8px;
+			min-width: 0;
 		}
+		.c-title h2 {
+			margin: 0;
+			font-size: 28px;
+			font-weight: 600;
+			line-height: 1.2;
+		}
+		.c-sub {
+			font-size: 15px;
+			color: var(--text-muted);
+		}
+		/* 19: the compact segmented control */
 		.ranges {
-			width: 280px;
+			border-radius: 12px;
+		}
+		.ranges label {
+			min-height: 36px;
+			padding: 0 14px;
+			border-radius: 8px;
+			font-size: 14px;
+		}
+		.chart-card,
+		.chart-empty {
+			grid-area: chart;
+		}
+		.chart-card {
+			padding: 18px 20px 12px 10px;
+		}
+		/* the page's centerpiece: as tall as the window allows (header, title row,
+		   legend and page padding are ~290px) */
+		.chart-box {
+			height: max(360px, calc(100dvh - 290px));
+		}
+		.legend {
+			grid-area: legend;
+			margin-top: -4px;
+			column-gap: 20px;
+		}
+		.lg-toggle {
+			min-height: 28px;
+		}
+		.side {
+			grid-area: side;
+			display: flex;
+			flex-direction: column;
+			gap: 16px;
+			min-width: 0;
 		}
 		.stats {
-			grid-template-columns: repeat(4, 1fr);
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 10px;
+		}
+		.stat {
+			padding: 12px;
 		}
 		.stat.mm {
 			display: flex;
 		}
+		.sv {
+			font-size: 22px;
+		}
 		.events {
 			display: flex;
 			flex-direction: column;
-			gap: 8px;
+			gap: 4px;
+		}
+		.events h2 {
+			margin: 0;
+			padding-bottom: 4px;
+			font-size: 15px;
+			font-weight: 600;
 		}
 		.events ul {
 			list-style: none;
@@ -389,23 +531,52 @@
 			padding: 0;
 			display: flex;
 			flex-direction: column;
-			gap: 6px;
+			gap: 4px;
 		}
 		.events button {
 			width: 100%;
 			text-align: left;
-			padding: 12px;
-			border-radius: 12px;
-			background: var(--surface);
-			border: 1px solid var(--border);
+			padding: 10px 12px;
+			border-radius: 10px;
 			display: flex;
 			flex-direction: column;
 			gap: 2px;
+		}
+		.events button:hover {
+			background: var(--surface);
+		}
+		.events button.active {
+			background: var(--selected);
+		}
+		.e-title {
 			font-size: 14px;
 			font-weight: 600;
 		}
-		.events button.active {
-			border-color: var(--accent);
+		.e-day {
+			font-size: 12px;
+			color: var(--text-muted);
+		}
+	}
+	/* Narrow desktop: stats and events move under the chart */
+	@media (min-width: 1024px) and (max-width: 1279px) {
+		.layout {
+			grid-template-columns: 168px minmax(0, 1fr);
+			grid-template-rows: auto auto auto auto 1fr;
+			grid-template-areas:
+				'plist head'
+				'plist chart'
+				'plist legend'
+				'plist side'
+				'plist .';
+		}
+		.c-head {
+			flex-wrap: wrap;
+		}
+		.chart-box {
+			height: clamp(300px, calc(100dvh - 72px - 420px), 480px);
+		}
+		.stats {
+			grid-template-columns: repeat(4, minmax(0, 1fr));
 		}
 	}
 </style>

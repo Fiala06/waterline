@@ -30,7 +30,8 @@
 		full = false,
 		selected = null,
 		onselect,
-		popover
+		popover,
+		fit = false
 	}: {
 		points: Point[];
 		band: { min: number | null; max: number | null };
@@ -44,9 +45,13 @@
 		selected?: string | null;
 		onselect?: (m: Marker) => void;
 		popover?: Snippet<[Marker]>;
+		/** Take the height from the container (set it in CSS) instead of `height`. */
+		fit?: boolean;
 	} = $props();
 
 	let width = $state(320);
+	let measured = $state(0);
+	const h = $derived(fit && measured > 0 ? measured : height);
 	const TOP = 22; // room for marker dots
 	const BOTTOM = 20;
 	const LEFT = $derived(full ? 34 : 10);
@@ -84,12 +89,12 @@
 	});
 
 	const x = (t: number) => LEFT + ((t - from) / Math.max(1, to - from)) * (width - LEFT - 10);
-	const y = (v: number) => TOP + (1 - (v - domain.lo) / (domain.hi - domain.lo)) * (height - TOP - BOTTOM);
+	const y = (v: number) => TOP + (1 - (v - domain.lo) / (domain.hi - domain.lo)) * (h - TOP - BOTTOM);
 
 	const line = $derived(points.map((p) => `${x(p.t).toFixed(1)},${y(p.v).toFixed(1)}`).join(' '));
 	const last = $derived(points.at(-1));
 	const bandTop = $derived(band.max != null ? y(band.max) : TOP);
-	const bandBottom = $derived(band.min != null ? y(band.min) : height - BOTTOM);
+	const bandBottom = $derived(band.min != null ? y(band.min) : h - BOTTOM);
 	const hasBand = $derived(band.min != null || band.max != null);
 
 	const fmt = (t: number) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -97,14 +102,14 @@
 	const chosen = $derived(markers.find((m) => m.href === selected) ?? null);
 </script>
 
-<div class="chart" bind:clientWidth={width}>
-	<svg {width} {height} viewBox="0 0 {width} {height}" role="img" aria-label={label}>
+<div class="chart" class:fit bind:clientWidth={width} bind:clientHeight={measured}>
+	<svg {width} height={h} viewBox="0 0 {width} {h}" role="img" aria-label={label}>
 		{#each ticks as t (t)}
 			<line x1={LEFT} x2={width} y1={y(t)} y2={y(t)} class="grid"></line>
 			<text x={LEFT - 6} y={y(t) + 4} class="axis" text-anchor="end">{t}</text>
 		{/each}
 		{#if hasBand}
-			<rect x={LEFT} y={bandTop} width={width - LEFT} height={Math.max(0, bandBottom - bandTop)} fill="var(--band)"></rect>
+			<rect x={LEFT} y={bandTop} width={Math.max(0, width - LEFT)} height={Math.max(0, bandBottom - bandTop)} fill="var(--band)"></rect>
 			{#if band.max != null}<line x1={LEFT} x2={width} y1={bandTop} y2={bandTop} class="band-edge"></line>{/if}
 			{#if band.min != null}<line x1={LEFT} x2={width} y1={bandBottom} y2={bandBottom} class="band-edge"></line>{/if}
 		{/if}
@@ -113,7 +118,7 @@
 				x1={x(m.t)}
 				x2={x(m.t)}
 				y1={TOP - 10}
-				y2={height - BOTTOM}
+				y2={h - BOTTOM}
 				class="marker-line"
 				class:dosing={m.kind === 'dosing'}
 				class:chosen={m.href === selected}
@@ -131,11 +136,11 @@
 				fill={lastLevel === 'bad' ? 'var(--bad)' : lastLevel === 'warn' ? 'var(--warn)' : 'var(--accent)'}
 			></circle>
 		{/if}
-		<line x1={LEFT} x2={width} y1={height - BOTTOM} y2={height - BOTTOM} stroke="var(--border)"></line>
+		<line x1={LEFT} x2={width} y1={h - BOTTOM} y2={h - BOTTOM} stroke="var(--border)"></line>
 		{#each xTicks as t, i (i)}
 			<text
 				x={i === 0 ? LEFT : i === xTicks.length - 1 ? width : x(t)}
-				y={height - 4}
+				y={h - 4}
 				class="axis"
 				text-anchor={i === 0 ? 'start' : i === xTicks.length - 1 ? 'end' : 'middle'}
 				>{i === xTicks.length - 1 && isToday(t) ? 'Today' : fmt(t)}</text
@@ -171,6 +176,9 @@
 		position: relative;
 		width: 100%;
 	}
+	.chart.fit {
+		height: 100%;
+	}
 	svg {
 		display: block;
 		overflow: visible;
@@ -199,7 +207,7 @@
 	}
 	.axis {
 		fill: var(--text-faint);
-		font-size: 11px;
+		font-size: 12px;
 	}
 	.marker {
 		position: absolute;
@@ -210,11 +218,6 @@
 		border-radius: 50%;
 		background: var(--border);
 		border: 1px solid var(--text-muted);
-	}
-	.marker::after {
-		content: '';
-		position: absolute;
-		inset: -12px; /* easier to tap than the 14px dot */
 	}
 	.marker.dosing {
 		border-radius: 3px;

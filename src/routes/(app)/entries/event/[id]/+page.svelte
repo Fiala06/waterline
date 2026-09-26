@@ -22,8 +22,8 @@
 		<ConfirmDelete
 			fields={{ from: ui.prev ?? '' }}
 			id="confirm-delete"
-			title="Delete this {e.kindLabel.toLowerCase()}?"
-			body="“{e.title}” will be removed from the history. This can't be undone."
+			title="Delete this entry?"
+			body="“{e.title}” from {e.day} will be removed. This can't be undone."
 		/>
 	{/snippet}
 </EntryDetail>

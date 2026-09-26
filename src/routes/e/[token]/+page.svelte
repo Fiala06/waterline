@@ -8,6 +8,8 @@
 		stale: 'This reminder is out of date: the task has been done or rescheduled since.',
 		missing: "This link isn't valid."
 	};
+	// "✓ Water change done" / "✓ Snoozed Water change": success always shows its icon
+	const doneText = $derived(form?.done ? (form.message.startsWith('✓') ? form.message : `✓ ${form.message}`) : '');
 </script>
 
 <svelte:head><title>{data.task?.name ?? 'Waterline'} · Waterline</title></svelte:head>
@@ -16,7 +18,7 @@
 	<Logo size={40} wordmark wordSize={22} />
 	<div class="card box">
 		{#if form?.done}
-			<h1 class="status-ok">{form.message}</h1>
+			<h1 class="status-ok">{doneText}</h1>
 			{#if form.next}<p class="muted">Next due {form.next}.</p>{/if}
 		{:else if state === 'ok' && data.task}
 			<p class="muted small">{data.task.tankName}{data.task.due ? ` · due ${data.task.due}` : ''} · {data.task.repeats}</p>
@@ -28,7 +30,7 @@
 		{:else}
 			<h1>{messages[state] ?? messages.missing}</h1>
 		{/if}
-		<a href="/">Open Waterline</a>
+		<a class="open" href="/">Open Waterline</a>
 	</div>
 </div>
 
@@ -59,5 +61,12 @@
 	}
 	.small {
 		font-size: 14px;
+	}
+	.open {
+		align-self: flex-start;
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		font-weight: 600;
 	}
 </style>
