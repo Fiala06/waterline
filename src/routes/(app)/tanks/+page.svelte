@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { photoUrl } from '$lib/media';
 	let { data } = $props();
 	const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 </script>
@@ -23,7 +24,9 @@
 	<div class="grid">
 		{#each data.tankCards as t (t.id)}
 			<article class="card tank">
-				<a class="cover photo-placeholder" href="/?tank={t.id}" aria-label="Open {t.name} dashboard"></a>
+				<a class="cover" class:photo-placeholder={!t.cover} href="/?tank={t.id}" aria-label="Open {t.name} dashboard">
+					{#if t.cover}<img src={photoUrl(t.cover, 'full')} alt="" loading="lazy" />{/if}
+				</a>
 				<div class="info">
 					<div class="row">
 						<div>
@@ -98,6 +101,13 @@
 		height: 120px;
 		border: none;
 		border-bottom: 1px solid var(--border);
+		overflow: hidden;
+	}
+	.cover img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
 	}
 	.info {
 		padding: 14px;

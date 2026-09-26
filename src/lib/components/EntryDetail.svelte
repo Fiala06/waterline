@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { photoUrl } from '$lib/media';
 	interface Row {
 		label: string;
 		value: string;
@@ -12,6 +13,7 @@
 		edited = null,
 		rows = [],
 		note = null,
+		photos = [],
 		backHref,
 		editHref,
 		actions
@@ -21,6 +23,7 @@
 		edited?: string | null;
 		rows?: Row[];
 		note?: string | null;
+		photos?: { id: string }[];
 		backHref: string;
 		editHref: string;
 		actions: Snippet;
@@ -49,6 +52,13 @@
 			<div class="note">
 				<div class="muted sm">Note</div>
 				<p>{note}</p>
+			</div>
+		{/if}
+		{#if photos.length}
+			<div class="photos">
+				{#each photos as p (p.id)}
+					<a href="/photos/{p.id}"><img src={photoUrl(p.id)} alt="From this entry" loading="lazy" /></a>
+				{/each}
 			</div>
 		{/if}
 		<div class="actions">
@@ -125,6 +135,18 @@
 	}
 	.sm {
 		font-size: 13px;
+	}
+	.photos {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 6px;
+	}
+	.photos img {
+		width: 100%;
+		aspect-ratio: 1;
+		object-fit: cover;
+		border-radius: 10px;
+		display: block;
 	}
 	.actions {
 		display: flex;

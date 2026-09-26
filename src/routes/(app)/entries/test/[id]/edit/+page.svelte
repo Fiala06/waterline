@@ -17,4 +17,5 @@
 	error={form?.error}
 	fieldErrors={form?.errors}
 	meta={data.meta}
+	existingPhotos={data.photos}
 />

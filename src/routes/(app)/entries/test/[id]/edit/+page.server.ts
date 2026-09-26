@@ -5,6 +5,7 @@ import { setFlash } from '$lib/server/flash';
 import { optStr, parseWhen, str } from '$lib/server/forms';
 import { parseReadings, testFormParams } from '$lib/server/log-forms';
 import { getTest, updateTest } from '$lib/server/logs';
+import { deleteEntryPhotos, entryPhotos, photoFiles, preparePhotos, storePhotos } from '$lib/server/photos';
 import { getTank, listParams } from '$lib/server/tanks';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -23,6 +24,7 @@ export const load: PageServerLoad = ({ locals, params }) => {
 		params: testFormParams(ps, new Map(), user),
 		values: Object.fromEntries(ps.filter((p) => readings.has(p.id)).map((p) => [p.id, fmtValue(p, readings.get(p.id)!, user)])),
 		when: utcToZoned(test.takenAt, user.timeZone),
+		photos: entryPhotos({ testId: test.id }).map((p) => ({ id: p.id })),
 		meta: `Logged ${logged.replace(/^(Today|Yesterday), /, (m) => m.slice(0, -2).toLowerCase() + ' at ')}${
 			test.editedAt ? ` · edited ${fmtTime(test.editedAt, user.timeZone)}` : ''
 		}`
@@ -41,7 +43,11 @@ export const actions: Actions = {
 		if (!readings.size) return fail(400, { errors, values, error: 'Keep at least one reading, or delete the entry.' });
 		const when = parseWhen(form, user.timeZone);
 		if ('error' in when) return fail(400, { errors, values, error: when.error });
+		const prepared = await preparePhotos(photoFiles(form));
+		if ('error' in prepared) return fail(400, { errors, values, error: prepared.error });
 		updateTest(user.id, params.id, { takenAt: when.at, note: optStr(form, 'note'), readings });
+		deleteEntryPhotos(user.id, form.getAll('removePhoto').map(String), { testId: test.id });
+		storePhotos(test.tankId, prepared, { testId: test.id, takenAt: when.at });
 		setFlash(cookies, '✓ Changes saved');
 		redirect(303, `/entries/test/${params.id}`);
 	}

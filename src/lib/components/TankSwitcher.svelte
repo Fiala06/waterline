@@ -1,6 +1,7 @@
 <script lang="ts">
 	// G1 · Tank switcher. Picks a tank; the caller decides what that does.
 	import Sheet from './Sheet.svelte';
+	import TankThumb from './TankThumb.svelte';
 
 	interface TankSummary {
 		id: string;
@@ -8,6 +9,7 @@
 		type: string;
 		volume: string | null;
 		alerts: number;
+		cover?: string | null;
 	}
 	let {
 		open = $bindable(false),
@@ -42,7 +44,7 @@
 						open = false;
 					}}
 				>
-					<span class="thumb photo-placeholder"></span>
+					<TankThumb cover={t.cover} />
 					<span class="text">
 						<span class="name">{t.name}</span>
 						<span class="sub">{cap(t.type)}{t.volume ? ` · ${t.volume}` : ''}</span>
@@ -99,12 +101,6 @@
 	.row.current {
 		background: var(--surface-hi);
 		border-color: var(--border-strong);
-	}
-	.thumb {
-		width: 44px;
-		height: 44px;
-		border-radius: 12px;
-		flex-shrink: 0;
 	}
 	.text {
 		flex: 1;

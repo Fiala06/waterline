@@ -16,6 +16,7 @@ import {
 } from './db/schema';
 import { getTank } from './tanks';
 import { completeTask } from './tasks';
+import { removeEntryPhotoFiles } from './photos';
 
 // ── Tests ───────────────────────────────────────────────────────────────────
 
@@ -117,6 +118,7 @@ export function updateTest(userId: string, testId: string, input: Omit<TestInput
 
 export function deleteTest(userId: string, testId: string) {
 	const { test } = getTest(userId, testId);
+	removeEntryPhotoFiles({ testId });
 	db.delete(tests).where(eq(tests.id, testId)).run();
 	return test;
 }
@@ -219,6 +221,7 @@ export function updateEvent(
 
 export function deleteEvent(userId: string, eventId: string) {
 	const e = getEvent(userId, eventId);
+	removeEntryPhotoFiles({ eventId });
 	db.delete(events).where(eq(events.id, eventId)).run();
 	return e;
 }

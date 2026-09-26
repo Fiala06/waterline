@@ -54,7 +54,7 @@ export const load: PageServerLoad = ({ locals }) => {
 			.filter(Boolean)
 			.join(' · ');
 
-		return { id: t.id, name: t.name, type: t.type, volume: vol(t.nominalVolumeL), status, task, meta };
+		return { id: t.id, name: t.name, type: t.type, cover: t.coverPhotoId, volume: vol(t.nominalVolumeL), status, task, meta };
 	});
 
 	const archived = listTanks(user.id, { archived: true }).map((t) => ({

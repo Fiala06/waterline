@@ -10,6 +10,7 @@ import {
 	parseEventData
 } from '$lib/server/log-forms';
 import { createEvent, recentDosingProducts } from '$lib/server/logs';
+import { photoFiles, preparePhotos, storePhotos } from '$lib/server/photos';
 import { getTank } from '$lib/server/tanks';
 import { createTask, getTask } from '$lib/server/tasks';
 import type { Actions, PageServerLoad } from './$types';
@@ -51,10 +52,19 @@ export const actions: Actions = {
 			values[k] = ['actions', 'tags', 'reasons'].includes(k) ? all : all[0];
 		}
 
+		const files = photoFiles(form);
 		const { data, errors } = parseEventData(category, form, tank, user);
+		// A photo on its own is enough for a note.
+		if (files.length) {
+			delete errors.note;
+			delete errors.tags;
+			delete errors.actions;
+		}
 		if (Object.keys(errors).length) return fail(400, { errors, values, error: null });
 		const when = parseWhen(form, user.timeZone);
 		if ('error' in when) return fail(400, { errors, values, error: when.error });
+		const prepared = await preparePhotos(files);
+		if ('error' in prepared) return fail(400, { errors, values, error: prepared.error });
 
 		const completeTaskId = optStr(form, 'completeTask', 64);
 		if (completeTaskId && getTask(user.id, completeTaskId).tankId !== tank.id) error(400, 'Task belongs to another tank');
@@ -63,14 +73,16 @@ export const actions: Actions = {
 		const recheck = category === 'observation' ? num(form, 'recheck') : null;
 		if (recheck && recheck > 0) data.recheck_at = addDays(dateInZone(when.at, user.timeZone), recheck);
 
-		createEvent(
+		const { event, duplicate } = createEvent(
 			user.id,
 			tank.id,
 			{ category, occurredAt: when.at, note: optStr(form, 'note'), data, clientId: optStr(form, 'clientId', 64) },
 			{ completeTaskId, timeZone: user.timeZone }
 		);
 
-		if (typeof data.recheck_at === 'string') {
+		if (!duplicate) storePhotos(tank.id, prepared, { eventId: event.id, takenAt: when.at });
+
+		if (!duplicate && typeof data.recheck_at === 'string') {
 			const tags = (data.tags as string[] | undefined) ?? [];
 			createTask(user.id, tank.id, {
 				name: `Check again: ${tags.length ? tags.join(', ').toLowerCase() : 'observation'}`,
@@ -89,6 +101,8 @@ export const actions: Actions = {
 			message = `✓ Water change logged${next ? ` · next due ${fmtDate(next)}` : ''}`;
 		} else if (category === 'observation' && data.recheck_at) {
 			message = `✓ Observation saved · check again ${fmtDate(data.recheck_at as string)}`;
+		} else if (category === 'note') {
+			message = files.length && !optStr(form, 'note') ? `✓ Photo${files.length === 1 ? '' : 's'} added` : '✓ Note saved';
 		} else if (completeTaskId) {
 			message = `✓ Saved · task done`;
 		}

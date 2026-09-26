@@ -1,11 +1,13 @@
 <script lang="ts">
 	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
 	import ParamCard from '$lib/components/ParamCard.svelte';
+	import TankThumb from '$lib/components/TankThumb.svelte';
 	import TaskList from '$lib/components/TaskList.svelte';
 	import TrendChart from '$lib/components/TrendChart.svelte';
 	import { displayValue, fmtRange, fmtValue, paramUnit, shortName, statusOf } from '$lib/params';
 	import { statusShort } from '$lib/status';
 	import { ui } from '$lib/ui.svelte';
+	import { photoUrl } from '$lib/media';
 
 	let { data } = $props();
 	const prefs = $derived(data.user);
@@ -69,7 +71,7 @@
 {:else}
 	<div class="page">
 		<button type="button" class="tank-head" onclick={() => (ui.tankSwitcher = true)}>
-			<span class="thumb photo-placeholder"></span>
+			<TankThumb cover={current?.cover} />
 			<span class="th-text">
 				<span class="th-name">{data.tank.name} <span class="caret">▾</span></span>
 				<span class="th-sub"
@@ -213,7 +215,11 @@
 										<span class="f-title">{a.title}</span>
 										<span class="f-sub">{a.sub}</span>
 									</span>
-									<span class="chev" aria-hidden="true">›</span>
+									{#if a.thumb}
+										<img class="f-thumb" src={photoUrl(a.thumb)} alt="" loading="lazy" />
+									{:else}
+										<span class="chev" aria-hidden="true">›</span>
+									{/if}
 								</a>
 							</li>
 						{/each}
@@ -243,12 +249,6 @@
 		padding: 8px 0;
 		color: var(--text);
 		text-align: left;
-	}
-	.thumb {
-		width: 44px;
-		height: 44px;
-		border-radius: 12px;
-		flex-shrink: 0;
 	}
 	.th-text {
 		display: flex;
@@ -455,6 +455,13 @@
 	.chev {
 		font-size: 18px;
 		color: var(--placeholder);
+	}
+	.f-thumb {
+		width: 52px;
+		height: 52px;
+		border-radius: 10px;
+		object-fit: cover;
+		flex-shrink: 0;
 	}
 
 	@media (min-width: 1024px) {

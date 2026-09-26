@@ -4,6 +4,7 @@
 	import { enhance } from '$app/forms';
 	import { onMount } from 'svelte';
 	import DateTimePicker from './DateTimePicker.svelte';
+	import PhotoPicker from './PhotoPicker.svelte';
 	import {
 		CATEGORY_LABEL,
 		DOSING_UNITS,
@@ -38,7 +39,8 @@
 		recentProducts = [],
 		error = null,
 		errors = {},
-		meta = null
+		meta = null,
+		existingPhotos = []
 	}: {
 		mode?: 'new' | 'edit';
 		category: EventCategory;
@@ -57,6 +59,7 @@
 		error?: string | null;
 		errors?: Record<string, string>;
 		meta?: string | null;
+		existingPhotos?: { id: string }[];
 	} = $props();
 
 	const v = (k: string) => (typeof values[k] === 'string' ? (values[k] as string) : '');
@@ -104,13 +107,16 @@
 					note: 'Save note'
 				}[category]
 	);
-	const title = $derived(mode === 'edit' ? `Edit ${CATEGORY_LABEL[category].toLowerCase()}` : category === 'note' ? 'Add note' : 'Log event');
+	const title = $derived(
+		mode === 'edit' ? `Edit ${CATEGORY_LABEL[category].toLowerCase()}` : category === 'note' ? 'Add note or photo' : 'Log event'
+	);
 	const fmtDose = (r: (typeof recentProducts)[number]) =>
 		`Last dosed ${r.amount ?? ''} ${r.unit ?? ''} on ${new Date(r.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone })}.`.replace(/\s+/g, ' ');
 </script>
 
 <form
 	method="POST"
+	enctype="multipart/form-data"
 	class="eform"
 	use:enhance={() => {
 		busy = true;
@@ -296,6 +302,8 @@
 				>
 				{#if errors.note}<span class="error-text">✕ {errors.note}</span>{/if}
 			</div>
+
+			<PhotoPicker existing={existingPhotos} />
 
 			{#if category === 'observation' && mode === 'new'}
 				<div class="field">

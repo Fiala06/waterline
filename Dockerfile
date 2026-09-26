@@ -14,6 +14,7 @@ WORKDIR /app
 ENV NODE_ENV=production \
 	PORT=3000 \
 	DATA_DIR=/data \
+	BODY_SIZE_LIMIT=64M \
 	MIGRATIONS_DIR=/app/drizzle
 COPY --from=build /app/package.json ./
 COPY --from=build /app/node_modules ./node_modules

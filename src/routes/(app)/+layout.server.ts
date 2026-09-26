@@ -44,6 +44,7 @@ export const load: LayoutServerLoad = ({ locals, url, cookies }) => {
 					? `${formatNumber(toDisplay(t.nominalVolumeL, 'volume', user), 0)} ${unitLabel('volume', user)}`
 					: null,
 			startDate: t.startDate,
+			cover: t.coverPhotoId,
 			alerts: outOfRange + (overdueByTank.get(t.id) ?? 0)
 		};
 	});

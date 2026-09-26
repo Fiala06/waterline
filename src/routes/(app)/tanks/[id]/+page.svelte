@@ -1,6 +1,13 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { photoUrl } from '$lib/media';
 	let { data, form } = $props();
+	let coverPreview = $state<string | null>(null);
+	function pickCover(e: Event) {
+		const f = (e.currentTarget as HTMLInputElement).files?.[0];
+		if (coverPreview) URL.revokeObjectURL(coverPreview);
+		coverPreview = f ? URL.createObjectURL(f) : null;
+	}
 	const errors = $derived((form?.errors ?? {}) as Record<string, string>);
 	const types = [
 		{ value: 'freshwater', label: 'Fresh' },
@@ -12,7 +19,7 @@
 
 <svelte:head><title>Edit {data.tank.name} · Waterline</title></svelte:head>
 
-<form method="POST" action="?/save" class="wrap" use:enhance>
+<form method="POST" action="?/save" enctype="multipart/form-data" class="wrap" use:enhance>
 	<div class="bar">
 		<a href="/tanks" class="back">‹ Tanks</a>
 		<h1>Edit tank</h1>
@@ -21,7 +28,18 @@
 
 	<div class="cols">
 		<div class="body">
-			<div class="cover photo-placeholder"><span class="mono">cover photo</span></div>
+			<div class="cover" class:photo-placeholder={!coverPreview && !data.tank.cover}>
+				{#if coverPreview || data.tank.cover}
+					<img src={coverPreview ?? photoUrl(data.tank.cover!, 'full')} alt="Tank cover" />
+				{:else}
+					<span class="mono">cover photo</span>
+				{/if}
+				<label class="change">
+					Change
+					<input type="file" name="cover" accept="image/*" onchange={pickCover} />
+				</label>
+			</div>
+			{#if errors.cover}<span class="error-text">✕ {errors.cover}</span>{/if}
 
 			<div class="field">
 				<label class="label" for="name">Name</label>
@@ -157,6 +175,7 @@
 		padding: 8px 20px;
 	}
 	.cover {
+		position: relative;
 		height: 140px;
 		border-radius: 16px;
 		display: flex;
@@ -164,6 +183,38 @@
 		justify-content: center;
 		font-size: 12px;
 		color: var(--text-faint);
+		overflow: hidden;
+	}
+	.cover img {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+	.change {
+		position: absolute;
+		right: 10px;
+		bottom: 10px;
+		height: 36px;
+		padding: 0 14px;
+		border-radius: 18px;
+		background: rgba(3, 10, 12, 0.75);
+		color: #e6f0f0;
+		font-size: 14px;
+		font-weight: 600;
+		display: flex;
+		align-items: center;
+		cursor: pointer;
+	}
+	.change input {
+		position: absolute;
+		inset: 0;
+		opacity: 0;
+		cursor: pointer;
+	}
+	.change:focus-within {
+		outline: 2px solid var(--accent);
 	}
 	fieldset {
 		border: none;

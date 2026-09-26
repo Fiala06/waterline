@@ -4,6 +4,7 @@
 	import Logo from '$lib/components/Logo.svelte';
 	import QuickAdd from '$lib/components/QuickAdd.svelte';
 	import TankSwitcher from '$lib/components/TankSwitcher.svelte';
+	import TankThumb from '$lib/components/TankThumb.svelte';
 	import Toast from '$lib/components/Toast.svelte';
 	import { ui } from '$lib/ui.svelte';
 
@@ -15,6 +16,8 @@
 	// Phone tab bar + FAB show on the four top-level tabs only; forms are full screen.
 	const tabRoutes = ['/', '/tanks', '/tasks', '/settings', '/history', '/charts', '/photos'];
 	const showTabs = $derived(tabRoutes.includes(path));
+	// The photo viewer is full screen, without the sidebar or header.
+	const fullscreen = $derived(path.startsWith('/photos/'));
 
 	const nav = [
 		{ href: '/', label: 'Dashboard' },
@@ -47,7 +50,7 @@
 
 <svelte:window {onkeydown} />
 
-<div class="shell">
+<div class="shell" class:fullscreen>
 	<aside class="sidebar" aria-label="Main">
 		<a class="brand" href="/"><Logo size={28} wordmark wordSize={19} /></a>
 		<nav class="nav">
@@ -70,7 +73,7 @@
 						class:current={t.id === data.currentTankId}
 						aria-current={t.id === data.currentTankId ? 'true' : undefined}
 					>
-						<span class="thumb photo-placeholder"></span>
+						<TankThumb cover={t.cover} size={24} radius={6} />
 						<span class="tname">{t.name}</span>
 						{#if t.alerts}
 							<span class="pill-bad sm">{t.alerts} alert{t.alerts === 1 ? '' : 's'}</span>
@@ -89,7 +92,7 @@
 		<header class="topbar">
 			{#if current}
 				<button type="button" class="tank-btn" onclick={() => (ui.tankSwitcher = true)}>
-					<span class="thumb-lg photo-placeholder"></span>
+					<TankThumb cover={current.cover} size={40} radius={10} />
 					<span class="tb-text">
 						<span class="tb-name">{current.name} <span class="caret">▾</span></span>
 						<span class="tb-sub">{cap(current.type)}{current.volume ? ` · ${current.volume}` : ''}</span>
@@ -161,6 +164,10 @@
 	}
 	.spacer {
 		flex: 1;
+	}
+	.fullscreen .sidebar,
+	.fullscreen .topbar {
+		display: none !important;
 	}
 
 	/* ── Phone tab bar + FAB ─────────────────────────────────────────── */
@@ -360,13 +367,6 @@
 			color: var(--text);
 			font-weight: 600;
 		}
-		.thumb {
-			width: 24px;
-			height: 24px;
-			border-radius: 6px;
-			border: none;
-			flex-shrink: 0;
-		}
 		.tname {
 			flex: 1;
 			min-width: 0;
@@ -399,11 +399,6 @@
 			align-items: center;
 			gap: 16px;
 			text-align: left;
-		}
-		.thumb-lg {
-			width: 40px;
-			height: 40px;
-			border-radius: 10px;
 		}
 		.tb-text {
 			display: flex;

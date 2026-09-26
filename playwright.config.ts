@@ -28,6 +28,7 @@ export default defineConfig({
 			DATA_DIR: '.e2e-data',
 			AUTH_SECRET: 'e2e-test-secret-not-for-production-use-000000',
 			AUTH_DEV_LOGIN: 'true',
+			BODY_SIZE_LIMIT: '64M',
 			LOCAL_ADMIN_PASSWORD_HASH: hash
 		}
 	}

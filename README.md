@@ -38,6 +38,7 @@ Edit the environment in [`docker-compose.yml`](docker-compose.yml) first. Everyt
 | `LOCAL_ADMIN_PASSWORD_HASH` | optional | Enables the local admin fallback login. Create with `npm run hash-password -- 'your password'` |
 | `LOCAL_ADMIN_USERNAME` | optional | Defaults to `admin` |
 | `DATA_DIR` | optional | Defaults to `/data` in Docker, `./data` locally |
+| `BODY_SIZE_LIMIT` | optional | Largest upload. The Docker image sets `64M` so photos fit; outside Docker set it yourself, since Node defaults to 512K |
 
 ## Tests
 

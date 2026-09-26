@@ -1,6 +1,7 @@
 import { eventKindLabel, eventTitle } from '$lib/events';
 import { dateInZone, daysBetween, fmtDay, fmtWhen, todayInZone } from '$lib/time';
 import { eventsSince, lastEventOf, latestReadings, recentActivity, series } from '$lib/server/logs';
+import { thumbsFor } from '$lib/server/photos';
 import { getTank, listParams } from '$lib/server/tanks';
 import { listTasks } from '$lib/server/tasks';
 import type { PageServerLoad } from './$types';
@@ -38,18 +39,25 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 	const wcTask = tasks.find((t) => t.kind === 'water_change');
 	const lastWc = lastEventOf(tank.id, 'water_change');
 
-	const activity = recentActivity(tank.id, 5).map((item) =>
+	const recent = recentActivity(tank.id, 5);
+	const thumbs = thumbsFor(
+		recent.filter((r) => r.kind === 'event').map((r) => r.id),
+		recent.filter((r) => r.kind === 'test').map((r) => r.id)
+	);
+	const activity = recent.map((item) =>
 		item.kind === 'test'
 			? {
 					href: `/entries/test/${item.id}`,
 					icon: 'test' as const,
 					title: `Water test · ${item.count} reading${item.count === 1 ? '' : 's'}`,
+					thumb: thumbs.get(item.id) ?? null,
 					sub: `${fmtWhen(item.at, tz)}${item.outOfRange ? ` · ${item.outOfRange} out of range` : ''}`
 				}
 			: {
 					href: `/entries/event/${item.id}`,
 					icon: item.event.category,
 					title: eventTitle(item.event, user),
+					thumb: thumbs.get(item.id) ?? null,
 					sub: `${fmtDay(item.at, tz)} · ${eventKindLabel(item.event)}`
 				}
 	);

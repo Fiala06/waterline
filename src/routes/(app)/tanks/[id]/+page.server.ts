@@ -2,6 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { setFlash } from '$lib/server/flash';
 import { parseTankForm } from '$lib/server/forms';
+import { preparePhotos, setCover, storePhotos } from '$lib/server/photos';
 import { getTank, listParams, setArchived, updateTank } from '$lib/server/tanks';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -18,6 +19,7 @@ export const load: PageServerLoad = ({ locals, params }) => {
 			name: tank.name,
 			type: tank.type,
 			archived: !!tank.archivedAt,
+			cover: tank.coverPhotoId,
 			nominalVolume: v(tank.nominalVolumeL, 'volume', 1),
 			actualVolume: v(tank.actualVolumeL, 'volume', 1),
 			length: v(tank.lengthCm, 'length', 1),
@@ -42,7 +44,12 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const { errors, values } = parseTankForm(form, user);
 		if (Object.keys(errors).length) return fail(400, { errors });
+		const cover = form.get('cover');
+		const prepared = cover instanceof File && cover.size ? await preparePhotos([cover]) : [];
+		if ('error' in prepared) return fail(400, { errors: { cover: prepared.error } });
 		updateTank(user.id, params.id, values);
+		const [photo] = storePhotos(params.id, prepared, { takenAt: new Date().toISOString() });
+		if (photo) setCover(user.id, photo.id);
 		setFlash(cookies, '✓ Tank saved');
 		redirect(303, `/?tank=${params.id}`);
 	},

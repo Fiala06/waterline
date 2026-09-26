@@ -4,6 +4,7 @@ import { setFlash } from '$lib/server/flash';
 import { optStr, parseWhen, str } from '$lib/server/forms';
 import { completableTask, parseReadings, testFormParams } from '$lib/server/log-forms';
 import { createTest, latestReadings } from '$lib/server/logs';
+import { photoFiles, preparePhotos, storePhotos } from '$lib/server/photos';
 import { getTank, listParams } from '$lib/server/tanks';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -42,6 +43,8 @@ export const actions: Actions = {
 		if (!readings.size) return fail(400, { errors, values, error: 'Enter at least one reading.' });
 		const when = parseWhen(form, user.timeZone);
 		if ('error' in when) return fail(400, { errors, values, error: when.error });
+		const prepared = await preparePhotos(photoFiles(form));
+		if ('error' in prepared) return fail(400, { errors, values, error: prepared.error });
 
 		const result = createTest(
 			user.id,
@@ -49,6 +52,7 @@ export const actions: Actions = {
 			{ takenAt: when.at, note: optStr(form, 'note'), readings, clientId: optStr(form, 'clientId', 64) },
 			{ completeTaskId: optStr(form, 'completeTask', 64), timeZone: user.timeZone }
 		);
+		if (!result.duplicate) storePhotos(tank.id, prepared, { testId: result.test.id, takenAt: when.at });
 		const n = result.count;
 		setFlash(
 			cookies,
