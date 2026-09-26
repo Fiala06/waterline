@@ -17,7 +17,7 @@ A running list of ideas and nice-to-haves that aren't in the current scope. For 
   - Make the data AI-friendly: a clean read-only API and/or an MCP server so any agent can read tank history.
   - Per-user opt-in with a user-supplied API key (self-hosted, so no shared keys), and clear control over which tanks/data are shared.
   - Suggestions only; the agent never logs or changes data without the user confirming.
-- **Parameter presets by tank type:** when creating a tank, pre-select a suggested parameter set for its type, which the user can adjust. Examples:
+- **Parameter presets by tank type:** *(built: new tanks get their type's preset; "Reset to defaults" on the targets page applies it)* when creating a tank, pre-select a suggested parameter set for its type, which the user can adjust. Examples:
   - Freshwater: pH, ammonia, nitrite, nitrate, GH, KH, temperature.
   - Planted: freshwater set + CO2, iron, phosphate, potassium.
   - Brackish: freshwater set + salinity/specific gravity.

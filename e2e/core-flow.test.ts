@@ -32,10 +32,10 @@ test('core flow', async ({ page }, info) => {
 	// Log a water test with inline status
 	await page.getByRole('link', { name: 'Log first water test' }).click();
 	await expect(page.getByRole('heading', { name: 'Water test' })).toBeVisible();
-	await page.getByLabel('pH').fill('6.8');
-	await page.getByLabel('Nitrate').fill('40');
+	await page.getByLabel(/^pH /).fill('6.8');
+	await page.getByLabel(/^Nitrate /).fill('40');
 	await expect(page.getByText('✕ Above target 5–20 ppm')).toBeVisible();
-	await page.getByLabel('KH', { exact: false }).last().fill('2');
+	await page.getByLabel(/^KH /).fill('2');
 	await expect(page.getByText('▲ Near limit · 2–5 dKH')).toBeVisible();
 	await page.getByRole('button', { name: 'Save 3 readings' }).click();
 
@@ -44,7 +44,8 @@ test('core flow', async ({ page }, info) => {
 	const cards = page.locator('.pcard');
 	await expect(cards.filter({ hasText: 'Nitrate' })).toContainText('✕ High');
 	await expect(cards.filter({ hasText: 'KH' })).toContainText('▲ Near low');
-	await expect(cards.filter({ hasText: 'pH' })).toContainText('✓ OK');
+	await expect(cards.filter({ hasText: /^pH/ })).toContainText('✓ OK');
+	await expect(cards.filter({ hasText: 'CO₂' })).toContainText('– No data');
 	await expect(cards.filter({ hasText: 'Ammonia' })).toContainText('– No data');
 
 	// Complete a task: the water change reminder opens its log form

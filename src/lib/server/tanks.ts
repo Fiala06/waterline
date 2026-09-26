@@ -64,7 +64,7 @@ export function createTank(user: User, input: TankInput): Tank {
 			.returning()
 			.get();
 		tx.insert(tankParameters)
-			.values(defaultParameters(user).map((p) => ({ ...p, tankId: tank.id })))
+			.values(defaultParameters(user, input.type).map((p) => ({ ...p, tankId: tank.id })))
 			.run();
 		const today = todayInZone(user.timeZone);
 		tx.insert(tasks)
@@ -176,19 +176,34 @@ export function deleteCustomParam(userId: string, tankId: string, paramId: strin
 		.run();
 }
 
-/** Put built-in targets back to the defaults for this user's units; custom parameters are untouched. */
+/**
+ * Reset to the tank type's preset: preset parameters get default targets (and
+ * are added if missing); other built-ins are untracked but keep their history.
+ * Custom parameters are untouched.
+ */
 export function resetParamDefaults(user: User, tankId: string) {
-	getTank(user.id, tankId);
-	const defaults = new Map(defaultParameters(user).map((d) => [d.key, d]));
-	const existing = listParams(tankId, { all: true });
+	const tank = getTank(user.id, tankId);
+	const preset = defaultParameters(user, tank.type);
+	const existing = new Map(
+		listParams(tankId, { all: true })
+			.filter((p) => !p.isCustom)
+			.map((p) => [p.key, p])
+	);
 	db.transaction((tx) => {
-		for (const p of existing) {
-			const d = defaults.get(p.key);
-			if (!d || p.isCustom) continue;
-			tx.update(tankParameters)
-				.set({ min: d.min, max: d.max, tracked: true, decimals: d.decimals })
-				.where(eq(tankParameters.id, p.id))
-				.run();
+		for (const d of preset) {
+			const p = existing.get(d.key);
+			if (p) {
+				tx.update(tankParameters)
+					.set({ name: d.name, min: d.min, max: d.max, tracked: true, decimals: d.decimals, sort: d.sort })
+					.where(eq(tankParameters.id, p.id))
+					.run();
+				existing.delete(d.key);
+			} else {
+				tx.insert(tankParameters).values({ ...d, tankId }).run();
+			}
+		}
+		for (const p of existing.values()) {
+			tx.update(tankParameters).set({ tracked: false, sort: 100 + p.sort }).where(eq(tankParameters.id, p.id)).run();
 		}
 	});
 }

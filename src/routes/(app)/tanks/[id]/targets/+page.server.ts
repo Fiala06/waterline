@@ -16,7 +16,7 @@ import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = ({ locals, params }) => {
 	const user = locals.user!;
 	const tank = getTank(user.id, params.id);
-	const defaults = new Map(defaultParameters(user).map((d) => [d.key, d]));
+	const defaults = new Map(defaultParameters(user, tank.type).map((d) => [d.key, d]));
 	return {
 		tank: { id: tank.id, name: tank.name, type: tank.type },
 		rows: listParams(tank.id, { all: true }).map((p) => {
@@ -33,7 +33,9 @@ export const load: PageServerLoad = ({ locals, params }) => {
 				defaultText:
 					d && !p.isCustom
 						? `Default ${fmtValue(p, d.min, user)}–${fmtValue(p, d.max, user)}${paramUnit(p, user) ? ' ' + paramUnit(p, user) : ''}`
-						: 'Custom parameter'
+						: p.isCustom
+							? 'Custom parameter'
+							: `Not in the ${tank.type} preset`
 			};
 		})
 	};

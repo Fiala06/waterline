@@ -9,6 +9,7 @@ import {
 	type Quantity,
 	type UnitPrefs
 } from './units';
+import type { TankType } from './types';
 
 /** Minimal shape of a tank_parameters row that display logic needs. */
 export interface ParamLike {
@@ -20,7 +21,7 @@ export interface ParamLike {
 	max: number | null;
 }
 
-export const BUILTIN_KEYS = ['ph', 'nh3', 'no2', 'no3', 'gh', 'kh', 'temp'] as const;
+export const BUILTIN_KEYS = ['ph', 'nh3', 'no2', 'no3', 'gh', 'kh', 'temp', 'po4', 'k', 'fe', 'co2', 'sal', 'ca', 'mg'] as const;
 
 export function quantityOf(key: string): Quantity {
 	if (key === 'gh' || key === 'kh') return 'hardness';
@@ -64,27 +65,83 @@ export function statusOf(p: ParamLike, stored: number | null | undefined): Statu
 	return paramStatus(stored, { min: p.min, max: p.max } satisfies Range);
 }
 
-/** Default parameter set, with targets chosen in the user's own units so they read as round numbers. */
-export function defaultParameters(prefs: UnitPrefs) {
+/**
+ * Default parameter set for a tank type. Targets are chosen in the user's own
+ * units so they read as round numbers (74–80 °F, not 73.4–80.6 °F).
+ * Ranges are common hobby guidance; every one can be edited per tank.
+ */
+export function defaultParameters(prefs: UnitPrefs, type: TankType = 'freshwater') {
 	const imperial = prefs.unitSystem === 'imperial';
 	const ppm = prefs.hardnessUnit === 'ppm';
-	const hard = (dgh: number, ppmValue: number) => (ppm ? ppmToDgh(ppmValue) : dgh);
-	return [
-		{ key: 'ph', name: 'pH', unit: '', decimals: 1, min: 6.5, max: 7.5 },
-		{ key: 'nh3', name: 'Ammonia', unit: 'ppm', decimals: 2, min: 0, max: 0.25 },
-		{ key: 'no2', name: 'Nitrite', unit: 'ppm', decimals: 2, min: 0, max: 0.25 },
-		{ key: 'no3', name: 'Nitrate', unit: 'ppm', decimals: 0, min: 5, max: 20 },
-		{ key: 'gh', name: 'GH', unit: 'dGH', decimals: 0, min: hard(4, 70), max: hard(8, 140) },
-		{ key: 'kh', name: 'KH', unit: 'dKH', decimals: 0, min: hard(2, 35), max: hard(5, 90) },
-		{
-			key: 'temp',
-			name: 'Temperature',
-			unit: '°C',
-			decimals: imperial ? 0 : 1,
-			min: imperial ? fToC(74) : 23,
-			max: imperial ? fToC(80) : 27
-		}
-	].map((p, i) => ({ ...p, sort: i, tracked: true, isCustom: false }));
+	const hard = (dgh: [number, number], ppmRange: [number, number]) =>
+		ppm ? ppmRange.map(ppmToDgh) : dgh;
+	const temp = (f: [number, number], c: [number, number]) => ({
+		key: 'temp',
+		name: 'Temperature',
+		unit: '°C',
+		decimals: imperial ? 0 : 1,
+		min: imperial ? fToC(f[0]) : c[0],
+		max: imperial ? fToC(f[1]) : c[1]
+	});
+	const p = (key: string, name: string, unit: string, decimals: number, [min, max]: number[]) => ({
+		key,
+		name,
+		unit,
+		decimals,
+		min,
+		max
+	});
+
+	const ammonia = p('nh3', 'Ammonia', 'ppm', 2, [0, 0.25]);
+	const nitrite = p('no2', 'Nitrite', 'ppm', 2, [0, 0.25]);
+
+	const sets: Record<TankType, ReturnType<typeof p>[]> = {
+		freshwater: [
+			p('ph', 'pH', '', 1, [6.5, 7.5]),
+			ammonia,
+			nitrite,
+			p('no3', 'Nitrate', 'ppm', 0, [5, 20]),
+			p('gh', 'GH', 'dGH', 0, hard([4, 8], [70, 140])),
+			p('kh', 'KH', 'dKH', 0, hard([2, 5], [35, 90])),
+			temp([74, 80], [23, 27])
+		],
+		planted: [
+			p('ph', 'pH', '', 1, [6.5, 7.5]),
+			ammonia,
+			nitrite,
+			p('no3', 'Nitrate', 'ppm', 0, [5, 20]),
+			p('po4', 'Phosphate', 'ppm', 1, [0.5, 2]),
+			p('k', 'Potassium', 'ppm', 0, [5, 20]),
+			p('fe', 'Iron', 'ppm', 2, [0.05, 0.2]),
+			p('co2', 'CO₂', 'ppm', 0, [20, 30]),
+			p('gh', 'GH', 'dGH', 0, hard([4, 8], [70, 140])),
+			p('kh', 'KH', 'dKH', 0, hard([2, 5], [35, 90])),
+			temp([74, 80], [23, 27])
+		],
+		brackish: [
+			p('ph', 'pH', '', 1, [7.5, 8.4]),
+			ammonia,
+			nitrite,
+			p('no3', 'Nitrate', 'ppm', 0, [5, 20]),
+			p('sal', 'Salinity', 'ppt', 0, [5, 15]),
+			p('gh', 'GH', 'dGH', 0, hard([12, 20], [210, 360])),
+			p('kh', 'KH', 'dKH', 0, hard([10, 18], [180, 320])),
+			temp([75, 80], [24, 27])
+		],
+		reef: [
+			p('sal', 'Salinity', 'ppt', 1, [33, 35]),
+			p('kh', 'Alkalinity', 'dKH', 1, hard([7, 11], [125, 200])),
+			p('ca', 'Calcium', 'ppm', 0, [400, 450]),
+			p('mg', 'Magnesium', 'ppm', 0, [1250, 1400]),
+			p('po4', 'Phosphate', 'ppm', 2, [0.03, 0.1]),
+			p('no3', 'Nitrate', 'ppm', 0, [2, 10]),
+			ammonia,
+			nitrite,
+			p('ph', 'pH', '', 1, [7.9, 8.4]),
+			temp([76, 79], [24.5, 26])
+		]
+	};
+	return [...sets[type]].map((x, i) => ({ ...x, sort: i, tracked: true, isCustom: false }));
 }
 
 /** Short name used on dashboard cards (design uses "Temp"). */
