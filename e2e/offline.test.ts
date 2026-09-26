@@ -32,8 +32,6 @@ test('logging offline saves on the device and syncs later', async ({ page, conte
 	await expect(page.getByText('✓ Synced 1 entry')).toBeVisible({ timeout: 10_000 });
 	await expect(page.getByText('▲ Waiting to sync')).toHaveCount(0);
 	await open(page, '/history');
-	await expect(page.getByText('Water test · 2 readings')).toBeVisible();
-
-	// Syncing again can't duplicate it (clientId dedupe)
-	await expect(page.getByText('Water test · 2 readings')).toHaveCount(1);
+	// Exactly one row: replays can't duplicate it (clientId dedupe)
+	await expect(page.locator('a.row', { hasText: 'Water test · 2 readings' })).toHaveCount(1);
 });
