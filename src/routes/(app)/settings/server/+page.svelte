@@ -12,8 +12,8 @@
 
 <svelte:head><title>Server settings · Waterline</title></svelte:head>
 
-<div class="page">
-	<a class="back" href="/settings">‹ Settings</a>
+<div class="page sub-page">
+	<a class="back sub-back" href="/settings">‹ Settings</a>
 	<div class="head">
 		<h1>Server settings</h1>
 		<span class="badge">Admin</span>

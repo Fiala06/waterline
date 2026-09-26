@@ -7,13 +7,6 @@
 	const u = $derived(data.user);
 	const p = $derived(data.prefs);
 
-	const sections = [
-		{ id: 'profile', label: 'Profile' },
-		{ id: 'units', label: 'Units' },
-		{ id: 'notifications', label: 'Notifications' },
-		{ id: 'theme', label: 'Theme' },
-		{ id: 'data', label: 'Export', href: '/settings/export' }
-	];
 	const unsubscribedOn = $derived(
 		p.unsubscribedAt
 			? new Date(p.unsubscribedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: u.timeZone })
@@ -23,15 +16,9 @@
 
 <svelte:head><title>Settings · Waterline</title></svelte:head>
 
-<div class="page">
-	<h1>Settings</h1>
-	<div class="layout">
-		<nav class="side" aria-label="Settings sections">
-			{#each sections as s (s.id)}<a href={'href' in s ? s.href : `#${s.id}`}>{s.label}</a>{/each}
-			{#if u.isAdmin}<a href="/settings/server" class="admin">Server <span class="badge">Admin</span></a>{/if}
-			<form method="POST" action="?/signout"><button class="signout-link">Sign out</button></form>
-		</nav>
-
+<div class="page sub-page">
+	<h1 class="phone-title">Settings</h1>
+	<div>
 		<div class="content">
 			<form method="POST" action="?/save" use:enhance class="stack">
 				{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
@@ -181,9 +168,6 @@
 		font-size: 28px;
 		font-weight: 600;
 	}
-	.side {
-		display: none;
-	}
 	.content {
 		display: flex;
 		flex-direction: column;
@@ -299,42 +283,7 @@
 	}
 
 	@media (min-width: 1024px) {
-		.page {
-			padding: 28px 32px;
-		}
-		.layout {
-			display: grid;
-			grid-template-columns: 200px minmax(0, 600px);
-			gap: 32px;
-			align-items: start;
-		}
-		.side {
-			display: flex;
-			flex-direction: column;
-			gap: 2px;
-			position: sticky;
-			top: 24px;
-		}
-		.side a,
-		.signout-link {
-			height: 40px;
-			padding: 0 12px;
-			border-radius: 10px;
-			display: flex;
-			align-items: center;
-			color: var(--text-2);
-			font-size: 15px;
-			width: 100%;
-			text-align: left;
-		}
-		.side a:hover,
-		.signout-link:hover {
-			background: var(--surface);
-		}
-		.signout-link {
-			color: var(--bad);
-			margin-top: 12px;
-		}
+		.phone-title,
 		.phone-only {
 			display: none;
 		}

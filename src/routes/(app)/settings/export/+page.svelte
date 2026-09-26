@@ -43,8 +43,8 @@
 
 <svelte:head><title>Export data · Waterline</title></svelte:head>
 
-<div class="page">
-	<a class="back" href="/settings">‹ Settings</a>
+<div class="page sub-page">
+	<a class="back sub-back" href="/settings">‹ Settings</a>
 	<h1>Export data</h1>
 	<p class="muted intro">Take everything with you. Nothing is deleted.</p>
 
