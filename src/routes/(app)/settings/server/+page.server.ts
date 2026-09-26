@@ -11,6 +11,7 @@ import { getServerSettings, MailError, outboxMode, storedConfig, transportFrom, 
 import { testEmail } from '$lib/server/mail/templates';
 import { baseUrl, prefsFor, recipient, unsubscribeToken } from '$lib/server/notifications';
 import { encrypt } from '$lib/server/secrets';
+import { sitemapEntries } from '$lib/server/public';
 import { outboxTransport } from '$lib/server/mail/outbox';
 import type { Actions, PageServerLoad } from './$types';
 import pkg from '../../../../../package.json';
@@ -56,6 +57,16 @@ export const load: PageServerLoad = ({ locals }) => {
 		},
 		outbox: outboxMode(),
 		originSet: !!baseUrl(),
+		publicPages: {
+			allow: s.allowPublicPages,
+			home: s.publicHomeEnabled,
+			baseUrl: s.publicBaseUrl ?? '',
+			ga4Id: s.ga4Id ?? '',
+			consent: s.consentBanner,
+			searchConsoleTag: s.searchConsoleTag ?? '',
+			sitemapCount: sitemapEntries().length,
+			effectiveBase: (s.publicBaseUrl || env.ORIGIN || '').replace(/\/+$/, '')
+		},
 		signIn: {
 			google: googleEnabled(),
 			googleClient: googleId ? `…${googleId.replace('.apps.googleusercontent.com', '').slice(-4)}.apps.googleusercontent.com` : null,
@@ -118,6 +129,33 @@ export const actions: Actions = {
 			.where(eq(serverSettings.id, 1))
 			.run();
 		return { saved: true };
+	},
+	savePublic: async ({ request, locals }) => {
+		requireAdmin(locals);
+		const form = await request.formData();
+		const errors: Record<string, string> = {};
+		const baseUrl = str(form, 'publicBaseUrl').replace(/\/+$/, '');
+		if (baseUrl && !/^https?:\/\/[^\s/]+(:\d+)?$/.test(baseUrl)) errors.publicBaseUrl = 'Use a URL like https://tanks.example.com (no path).';
+		const ga4 = str(form, 'ga4Id').toUpperCase();
+		if (ga4 && !/^G-[A-Z0-9]{4,16}$/.test(ga4)) errors.ga4Id = 'GA4 measurement IDs look like G-XXXXXXXXXX.';
+		// Accept either the whole <meta> tag or just its content value.
+		const tagRaw = str(form, 'searchConsoleTag');
+		const tag = tagRaw.match(/content=["']([^"']+)["']/)?.[1] ?? tagRaw;
+		if (tag && !/^[A-Za-z0-9_-]{10,100}$/.test(tag)) errors.searchConsoleTag = 'Paste the verification meta tag or its content value.';
+		if (Object.keys(errors).length) return fail(400, { publicErrors: errors });
+		getServerSettings();
+		db.update(serverSettings)
+			.set({
+				allowPublicPages: form.get('allowPublicPages') === 'on',
+				publicHomeEnabled: form.get('publicHomeEnabled') === 'on',
+				publicBaseUrl: baseUrl || null,
+				ga4Id: ga4 || null,
+				consentBanner: form.get('consentBanner') === 'on',
+				searchConsoleTag: tag || null
+			})
+			.where(eq(serverSettings.id, 1))
+			.run();
+		return { publicSaved: true };
 	},
 	// Sends E5 with what's in the form right now, saved or not.
 	test: async ({ request, locals }) => {

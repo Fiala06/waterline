@@ -133,6 +133,14 @@
 		</div>
 
 		<div class="side">
+			<a class="card params" href="/tanks/{data.tank.id}/public">
+				<div>
+					<div class="p-title">Public page</div>
+					<div class="muted sm">{data.publicLive ? '● Live · read-only page anyone with the link can see' : 'Off · share a read-only page of this tank'}</div>
+				</div>
+				<span class="link">Set up ›</span>
+			</a>
+
 			<a class="card params" href="/tanks/{data.tank.id}/targets">
 				<div>
 					<div class="p-title">Parameters</div>

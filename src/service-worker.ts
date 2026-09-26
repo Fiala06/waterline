@@ -15,7 +15,21 @@ const MEDIA = 'media-v1';
 const ASSETS = [...build, ...files];
 
 // Never cache: sign-in, email links, downloads, test hooks.
-const NO_CACHE = [/^\/auth\//, /^\/signin/, /^\/e\//, /^\/unsubscribe\//, /^\/settings\/export\//, /^\/dev\//];
+const NO_CACHE = [
+	/^\/auth\//,
+	/^\/signin/,
+	/^\/e\//,
+	/^\/unsubscribe\//,
+	/^\/settings\/export\//,
+	/^\/dev\//,
+	// public pages are for visitors; always fresh
+	/^\/t\//,
+	/^\/s\//,
+	/^\/p\//,
+	/^\/public/,
+	/^\/sitemap\.xml/,
+	/^\/robots\.txt/
+];
 
 sw.addEventListener('install', (event) => {
 	event.waitUntil(caches.open(SHELL).then((c) => c.addAll(ASSETS)).then(() => sw.skipWaiting()));

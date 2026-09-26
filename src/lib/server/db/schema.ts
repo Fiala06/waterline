@@ -220,7 +220,13 @@ export const serverSettings = sqliteTable('server_settings', {
 	smtpSecure: integer('smtp_secure', { mode: 'boolean' }).notNull().default(true),
 	smtpUser: text('smtp_user'),
 	smtpPasswordEnc: text('smtp_password_enc'),
-	sender: text('sender')
+	sender: text('sender'),
+	allowPublicPages: integer('allow_public_pages', { mode: 'boolean' }).notNull().default(true),
+	publicHomeEnabled: integer('public_home_enabled', { mode: 'boolean' }).notNull().default(false),
+	publicBaseUrl: text('public_base_url'),
+	ga4Id: text('ga4_id'),
+	consentBanner: integer('consent_banner', { mode: 'boolean' }).notNull().default(true),
+	searchConsoleTag: text('search_console_tag')
 });
 
 /** Signed single-use links in emails (Mark done / Snooze). Only the hash is stored. */
@@ -341,3 +347,59 @@ export const plants = sqliteTable(
 export type Equipment = typeof equipment.$inferSelect;
 export type Livestock = typeof livestock.$inferSelect;
 export type Plant = typeof plants.$inferSelect;
+
+// ── Public pages ─────────────────────────────────────────────────────────────
+
+export const publicPages = sqliteTable(
+	'public_pages',
+	{
+		tankId: text('tank_id')
+			.primaryKey()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		enabled: integer('enabled', { mode: 'boolean' }).notNull().default(false),
+		slug: text('slug').notNull(),
+		showReadings: integer('show_readings', { mode: 'boolean' }).notNull().default(true),
+		showCharts: integer('show_charts', { mode: 'boolean' }).notNull().default(true),
+		showPhotos: integer('show_photos', { mode: 'boolean' }).notNull().default(true),
+		showActivity: integer('show_activity', { mode: 'boolean' }).notNull().default(true),
+		showLivestock: integer('show_livestock', { mode: 'boolean' }).notNull().default(true),
+		showEquipment: integer('show_equipment', { mode: 'boolean' }).notNull().default(true),
+		showDescription: integer('show_description', { mode: 'boolean' }).notNull().default(true),
+		description: text('description'),
+		displayName: text('display_name', { enum: ['full', 'short', 'none'] }).notNull().default('short'),
+		indexable: integer('indexable', { mode: 'boolean' }).notNull().default(false),
+		seoTitle: text('seo_title'),
+		seoDescription: text('seo_description'),
+		ogPhotoId: text('og_photo_id'),
+		ogPlain: integer('og_plain', { mode: 'boolean' }).notNull().default(false),
+		viewCount: integer('view_count').notNull().default(0)
+	},
+	(t) => [uniqueIndex('public_pages_slug').on(t.slug)]
+);
+
+/** Views per public page per day, for "38 views this week". */
+export const publicPageViews = sqliteTable(
+	'public_page_views',
+	{
+		tankId: text('tank_id')
+			.notNull()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		day: text('day').notNull(),
+		views: integer('views').notNull().default(0)
+	},
+	(t) => [primaryKey({ columns: [t.tankId, t.day] })]
+);
+
+export const photoShares = sqliteTable('photo_shares', {
+	id: text('id').primaryKey(), // the slug in /s/<id>
+	photoId: text('photo_id')
+		.notNull()
+		.references(() => photos.id, { onDelete: 'cascade' }),
+	includeNote: integer('include_note', { mode: 'boolean' }).notNull().default(true),
+	includeTank: integer('include_tank', { mode: 'boolean' }).notNull().default(false),
+	createdAt: createdAt(),
+	revokedAt: text('revoked_at')
+});
+
+export type PublicPage = typeof publicPages.$inferSelect;
+export type PhotoShare = typeof photoShares.$inferSelect;

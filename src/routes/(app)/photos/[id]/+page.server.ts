@@ -3,6 +3,7 @@ import { eventKindLabel, eventTitle } from '$lib/events';
 import { setFlash } from '$lib/server/flash';
 import { deletePhoto, getPhoto, setCover, tankPhotos } from '$lib/server/photos';
 import { getTank } from '$lib/server/tanks';
+import { createShare, getShareForPhoto, publicSettings, revokeShare, updateShare } from '$lib/server/public';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals, params }) => {
@@ -30,7 +31,12 @@ export const load: PageServerLoad = ({ locals, params }) => {
 		: test
 			? { href: `/entries/test/${test.id}`, kind: 'Water test', title: 'Water test', note: test.note }
 			: null;
+	const pub = publicSettings();
+	const share = pub.allowPublicPages ? getShareForPhoto(user.id, photo.id) : null;
 	return {
+		sharing: pub.allowPublicPages
+			? { share: share ? { id: share.id, includeNote: share.includeNote, includeTank: share.includeTank } : null, base: pub.baseUrl ?? '' }
+			: null,
 		photo: { id: photo.id, width: photo.width, height: photo.height, isCover: tank.coverPhotoId === photo.id },
 		tankId: tank.id,
 		position: `${i + 1} of ${all.length}`,
@@ -45,6 +51,20 @@ export const actions: Actions = {
 	cover: ({ locals, params, cookies }) => {
 		setCover(locals.user!.id, params.id);
 		setFlash(cookies, '✓ Set as tank cover');
+		redirect(303, `/photos/${params.id}`);
+	},
+	share: ({ locals, params }) => {
+		createShare(locals.user!.id, params.id);
+		return { shared: true };
+	},
+	shareOptions: async ({ locals, params, request }) => {
+		const form = await request.formData();
+		updateShare(locals.user!.id, params.id, { includeNote: form.get('includeNote') === 'on', includeTank: form.get('includeTank') === 'on' });
+		return { shared: true };
+	},
+	unshare: ({ locals, params, cookies }) => {
+		revokeShare(locals.user!.id, params.id);
+		setFlash(cookies, 'Public link turned off');
 		redirect(303, `/photos/${params.id}`);
 	},
 	delete: ({ locals, params, cookies }) => {
