@@ -1,21 +1,44 @@
 <script lang="ts">
 	// 7.10 · Confirmation dialog. Uses the popover API, so it works without JS.
-	let { id, title, body, action = '?/delete' }: { id: string; title: string; body: string; action?: string } =
-		$props();
+	// Forms can't nest: when the opening button sits inside another form, pass
+	// trigger={false}, render this after that form, and give the button
+	// popovertarget={id}.
+	let {
+		id,
+		title,
+		body,
+		action = '?/delete',
+		label = 'Delete',
+		fields = {},
+		trigger = true,
+		tone = 'danger'
+	}: {
+		id: string;
+		title: string;
+		body: string;
+		action?: string;
+		label?: string;
+		fields?: Record<string, string>;
+		trigger?: boolean;
+		tone?: 'danger' | 'primary';
+	} = $props();
 </script>
 
-<button type="button" class="btn btn-danger" popovertarget={id}>Delete</button>
+{#if trigger}<button type="button" class="btn btn-danger trigger" popovertarget={id}>{label}</button>{/if}
 <div {id} popover class="confirm" role="alertdialog" aria-labelledby="{id}-t">
 	<h2 id="{id}-t">{title}</h2>
 	<p>{body}</p>
 	<div class="actions">
 		<button type="button" class="btn" popovertarget={id} popovertargetaction="hide">Cancel</button>
-		<form method="POST" {action}><button class="btn btn-danger solid">Delete</button></form>
+		<form method="POST" {action}>
+			{#each Object.entries(fields) as [name, value] (name)}<input type="hidden" {name} {value} />{/each}
+			<button class="btn {tone === 'danger' ? 'btn-danger solid' : 'btn-primary'}">{label}</button>
+		</form>
 	</div>
 </div>
 
 <style>
-	.btn-danger {
+	.trigger {
 		flex: 1;
 	}
 	.confirm {

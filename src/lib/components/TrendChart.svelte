@@ -121,7 +121,7 @@
 		{/each}
 		<polyline points={line} fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"></polyline>
 		{#if full}
-			{#each points as p (p.t)}<circle cx={x(p.t)} cy={y(p.v)} r="2.5" fill="var(--accent)"></circle>{/each}
+			{#each points as p, i (i)}<circle cx={x(p.t)} cy={y(p.v)} r="2.5" fill="var(--accent)"></circle>{/each}
 		{/if}
 		{#if last}
 			<circle
@@ -210,6 +210,11 @@
 		border-radius: 50%;
 		background: var(--border);
 		border: 1px solid var(--text-muted);
+	}
+	.marker::after {
+		content: '';
+		position: absolute;
+		inset: -12px; /* easier to tap than the 14px dot */
 	}
 	.marker.dosing {
 		border-radius: 3px;

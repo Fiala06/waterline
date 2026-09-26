@@ -1,6 +1,6 @@
 // EMAIL_TRANSPORT=outbox: write emails to DATA_DIR/outbox as JSON instead of
 // sending them. For development and tests.
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { env } from '$env/dynamic/private';
 import type { MailMessage, Transport } from './types';
@@ -16,14 +16,4 @@ export function outboxTransport(): Transport {
 			writeFileSync(join(dir(), name), JSON.stringify({ from, ...msg }, null, 2));
 		}
 	};
-}
-
-export function readOutbox(): (MailMessage & { from: string; file: string })[] {
-	try {
-		return readdirSync(dir())
-			.sort()
-			.map((f) => ({ ...JSON.parse(readFileSync(join(dir(), f), 'utf8')), file: f }));
-	} catch {
-		return [];
-	}
 }

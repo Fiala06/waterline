@@ -120,7 +120,9 @@ export const testReadings = sqliteTable(
 		parameterId: text('parameter_id')
 			.notNull()
 			.references(() => tankParameters.id, { onDelete: 'cascade' }),
-		value: real('value').notNull()
+		value: real('value').notNull(),
+		// the value before the last edit, for "was 40" (G6)
+		prevValue: real('prev_value')
 	},
 	(t) => [primaryKey({ columns: [t.testId, t.parameterId] })]
 );
@@ -249,7 +251,7 @@ export const emailLog = sqliteTable(
 		userId: text('user_id')
 			.notNull()
 			.references(() => users.id, { onDelete: 'cascade' }),
-		key: text('key').notNull(), // e.g. reminder:<task>:<due>, digest:<date>
+		key: text('key').notNull(), // e.g. reminder:<task>:<due>, daily-digest:<date>
 		sentAt: createdAt(),
 		error: text('error')
 	},
@@ -402,4 +404,3 @@ export const photoShares = sqliteTable('photo_shares', {
 });
 
 export type PublicPage = typeof publicPages.$inferSelect;
-export type PhotoShare = typeof photoShares.$inferSelect;

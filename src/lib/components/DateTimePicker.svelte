@@ -89,7 +89,7 @@
 				onclick={() => shiftMonth(1)}>›</button
 			>
 		</div>
-		<div class="grid" role="grid" aria-label={monthLabel}>
+		<div class="grid" role="group" aria-label={monthLabel}>
 			{#each WEEKDAYS as w, i (i)}<div class="dow" aria-hidden="true">{w}</div>{/each}
 			{#each cells as c, i (c ?? `blank-${i}`)}
 				{#if c}

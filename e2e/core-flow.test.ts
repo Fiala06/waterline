@@ -9,7 +9,7 @@ test('core flow', async ({ page }, info) => {
 	await page.goto('/');
 	await expect(page).toHaveURL(/\/signin/);
 	await page.getByPlaceholder('Email').fill(email);
-	await page.getByPlaceholder('Name').fill('Jordan Reyes');
+	await page.getByPlaceholder('Name', { exact: true }).fill('Jordan Reyes');
 	await page.getByRole('button', { name: /Sign in with Google/ }).click();
 
 	// Setup

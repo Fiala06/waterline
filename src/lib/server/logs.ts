@@ -92,11 +92,16 @@ export function getTest(userId: string, testId: string) {
 		.get();
 	if (!row) error(404, 'Entry not found');
 	const readings = db.select().from(testReadings).where(eq(testReadings.testId, testId)).all();
-	return { test: row.test, readings: new Map(readings.map((r) => [r.parameterId, r.value])) };
+	return {
+		test: row.test,
+		readings: new Map(readings.map((r) => [r.parameterId, r.value])),
+		/** values before the last edit that changed them ("was 40") */
+		previous: new Map(readings.filter((r) => r.prevValue != null).map((r) => [r.parameterId, r.prevValue!]))
+	};
 }
 
 export function updateTest(userId: string, testId: string, input: Omit<TestInput, 'clientId'>) {
-	const { test } = getTest(userId, testId);
+	const { test, readings: before, previous } = getTest(userId, testId);
 	const params = paramsById(test.tankId);
 	for (const id of input.readings.keys()) {
 		if (!params.has(id)) error(400, 'Unknown parameter');
@@ -109,7 +114,14 @@ export function updateTest(userId: string, testId: string, input: Omit<TestInput
 		tx.delete(testReadings).where(eq(testReadings.testId, testId)).run();
 		if (input.readings.size) {
 			tx.insert(testReadings)
-				.values([...input.readings].map(([parameterId, value]) => ({ testId, parameterId, value })))
+				.values(
+					[...input.readings].map(([parameterId, value]) => {
+						// a changed value remembers the old one; an unchanged one keeps its hint
+						const old = before.get(parameterId);
+						const prevValue = old != null && Math.abs(old - value) > 1e-9 ? old : (previous.get(parameterId) ?? null);
+						return { testId, parameterId, value, prevValue };
+					})
+				)
 				.run();
 		}
 	});
@@ -164,6 +176,15 @@ export interface EventInput {
 	clientId?: string | null;
 }
 
+/** The entry an offline-queued form already created, if it was sent before. */
+export function eventByClientId(tankId: string, clientId: string): Event | undefined {
+	return db
+		.select()
+		.from(events)
+		.where(and(eq(events.tankId, tankId), eq(events.clientId, clientId)))
+		.get();
+}
+
 export function createEvent(
 	userId: string,
 	tankId: string,
@@ -171,14 +192,8 @@ export function createEvent(
 	opts: { completeTaskId?: string | null; timeZone: string }
 ): { event: Event; duplicate: boolean } {
 	getTank(userId, tankId);
-	if (input.clientId) {
-		const existing = db
-			.select()
-			.from(events)
-			.where(and(eq(events.tankId, tankId), eq(events.clientId, input.clientId)))
-			.get();
-		if (existing) return { event: existing, duplicate: true };
-	}
+	const existing = input.clientId ? eventByClientId(tankId, input.clientId) : undefined;
+	if (existing) return { event: existing, duplicate: true };
 	const event = db
 		.insert(events)
 		.values({ ...input, tankId, clientId: input.clientId ?? null })

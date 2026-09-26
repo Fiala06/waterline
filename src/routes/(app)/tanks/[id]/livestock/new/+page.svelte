@@ -22,7 +22,7 @@
 			<label><input type="radio" name="kind" value="coral" bind:group={kind} />Coral</label>
 		</div>
 
-		{#key kind}<SpeciesInput kind={kind === 'fish' ? 'fish' : kind} water={data.water} initialName={form?.values?.name ?? ''} invalid={!!form?.error} />{/key}
+		{#key kind}<SpeciesInput {kind} water={data.water} initialName={form?.values?.name ?? ''} initialScientific={form?.values?.scientificName ?? ''} invalid={!!form?.error} />{/key}
 
 		<div class="field">
 			<label class="label" for="count-in">Count</label>

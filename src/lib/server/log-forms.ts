@@ -10,7 +10,7 @@ import {
 	OBSERVATION_TAGS,
 	WATER_SOURCES
 } from '$lib/events';
-import { fmtRange, fmtValue, paramDecimals, paramUnit, storedValue } from '$lib/params';
+import { displayValue, fmtRange, fmtValue, paramDecimals, paramUnit, storedValue } from '$lib/params';
 import { dueInfo, effectiveDue, nextDueAfterCompletion } from '$lib/tasks';
 import { fmtDate, todayInZone, utcToZoned } from '$lib/time';
 import { formatNumber, toDisplay, toStored, unitLabel } from '$lib/units';
@@ -36,9 +36,9 @@ export function testFormParams(
 			name: p.name,
 			unit: paramUnit(p, user),
 			decimals: paramDecimals(p, user),
-			// target in display units for live status
-			min: p.min == null ? null : Number(fmtValue(p, p.min, user)),
-			max: p.max == null ? null : Number(fmtValue(p, p.max, user)),
+			// exact target in display units, so the live status matches the saved one
+			min: p.min == null ? null : displayValue(p, p.min, user),
+			max: p.max == null ? null : displayValue(p, p.max, user),
 			rangeText: fmtRange(p, user),
 			last: last
 				? `Last ${fmtValue(p, last.value, user)} · ${fmtDate(utcToZoned(last.takenAt, user.timeZone).date)}`

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { photoUrl } from '$lib/media';
+	import { ui } from '$lib/ui.svelte';
 	interface Row {
 		label: string;
 		value: string;
@@ -31,7 +32,7 @@
 </script>
 
 <div class="wrap">
-	<a class="back" href={backHref}>‹ Back</a>
+	<a class="back" href={ui.prev ?? backHref}>‹ Back</a>
 	<div class="card sheet">
 		<div class="head">
 			<h1>{title}</h1>
@@ -76,12 +77,6 @@
 		flex-direction: column;
 		gap: 8px;
 	}
-	.back {
-		min-height: 44px;
-		display: flex;
-		align-items: center;
-		font-size: 15px;
-	}
 	.sheet {
 		padding: 20px;
 		display: flex;
@@ -122,7 +117,8 @@
 		font-weight: 600;
 	}
 	.st {
-		width: 100px;
+		min-width: 100px;
+		max-width: 50%;
 		text-align: right;
 		font-size: 13px;
 		font-weight: 600;

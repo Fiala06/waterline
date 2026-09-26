@@ -26,12 +26,6 @@
 		flex-direction: column;
 		gap: 8px;
 	}
-	.back {
-		font-size: 15px;
-		min-height: 44px;
-		display: flex;
-		align-items: center;
-	}
 	h1 {
 		margin: 0;
 		font-size: 28px;

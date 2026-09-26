@@ -1,6 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { fmtValue, paramDecimals, paramUnit, storedValue } from '$lib/params';
-import { defaultParameters } from '$lib/params';
+import { defaultParameters, fmtTarget, paramDecimals, paramUnit, storedValue } from '$lib/params';
 import { setFlash } from '$lib/server/flash';
 import { num, str } from '$lib/server/forms';
 import {
@@ -8,6 +7,7 @@ import {
 	deleteCustomParam,
 	getTank,
 	listParams,
+	readingCounts,
 	resetParamDefaults,
 	updateParams
 } from '$lib/server/tanks';
@@ -17,6 +17,7 @@ export const load: PageServerLoad = ({ locals, params }) => {
 	const user = locals.user!;
 	const tank = getTank(user.id, params.id);
 	const defaults = new Map(defaultParameters(user, tank.type).map((d) => [d.key, d]));
+	const counts = readingCounts(tank.id);
 	return {
 		tank: { id: tank.id, name: tank.name, type: tank.type },
 		rows: listParams(tank.id, { all: true }).map((p) => {
@@ -26,13 +27,14 @@ export const load: PageServerLoad = ({ locals, params }) => {
 				name: p.name,
 				unit: paramUnit(p, user),
 				isCustom: p.isCustom,
+				readings: counts.get(p.id) ?? 0,
 				tracked: p.tracked,
 				decimals: paramDecimals(p, user),
-				min: p.min == null ? '' : fmtValue(p, p.min, user),
-				max: p.max == null ? '' : fmtValue(p, p.max, user),
+				min: p.min == null ? '' : fmtTarget(p, p.min, user),
+				max: p.max == null ? '' : fmtTarget(p, p.max, user),
 				defaultText:
 					d && !p.isCustom
-						? `Default ${fmtValue(p, d.min, user)}–${fmtValue(p, d.max, user)}${paramUnit(p, user) ? ' ' + paramUnit(p, user) : ''}`
+						? `Default ${fmtTarget(p, d.min, user)}–${fmtTarget(p, d.max, user)}${paramUnit(p, user) ? ' ' + paramUnit(p, user) : ''}`
 						: p.isCustom
 							? 'Custom parameter'
 							: `Not in the ${tank.type} preset`
@@ -48,16 +50,18 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const existing = listParams(params.id, { all: true });
 		const errors: Record<string, string> = {};
+		// A field left as shown keeps its exact stored value (the page shows it rounded).
+		const limit = (p: (typeof existing)[number], field: 'min' | 'max') => {
+			const old = p[field];
+			if (old != null && str(form, `${field}_${p.id}`) === fmtTarget(p, old, user)) return old;
+			const v = num(form, `${field}_${p.id}`);
+			return v == null ? null : storedValue(p, v, user);
+		};
 		const rows = existing.map((p) => {
-			const min = num(form, `min_${p.id}`);
-			const max = num(form, `max_${p.id}`);
+			const min = limit(p, 'min');
+			const max = limit(p, 'max');
 			if (min != null && max != null && min > max) errors[p.id] = 'Min must be below max.';
-			return {
-				id: p.id,
-				min: min == null ? null : storedValue(p, min, user),
-				max: max == null ? null : storedValue(p, max, user),
-				tracked: form.get(`tracked_${p.id}`) === 'on'
-			};
+			return { id: p.id, min, max, tracked: form.get(`tracked_${p.id}`) === 'on' };
 		});
 		if (Object.keys(errors).length) return fail(400, { errors });
 		updateParams(user.id, params.id, rows);

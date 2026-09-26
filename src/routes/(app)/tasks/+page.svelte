@@ -133,7 +133,7 @@
 										<span class:status-warn={d.level === 'warn'} class:strong={d.level === 'warn'}>{d.days === 0 ? 'Today' : fmtShort(t.due)}</span>
 										· {intervalText(t)}
 									</span>
-									<span class="d-due status-{d.level}" class:plain={d.level === 'ok'}>{dueLabel(t)}</span>
+									<span class="d-due {d.level === 'ok' ? 'plain' : `status-${d.level}`}">{dueLabel(t)}</span>
 									<span class="dmeta">{tankNames[t.tankId]} · {cap(intervalText(t))}</span>
 								</a>
 								<form method="POST" action="/tasks?/done" use:enhance>

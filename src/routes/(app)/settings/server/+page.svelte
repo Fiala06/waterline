@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { untrack } from 'svelte';
+	import { toast } from '$lib/ui.svelte';
 	let { data, form } = $props();
 
 	let provider = $state(untrack(() => data.mail.provider));
@@ -26,9 +27,10 @@
 		class="card sec"
 		use:enhance={({ action }) => {
 			busy = action.search.includes('test') ? 'test' : 'save';
-			return async ({ update }) => {
+			return async ({ result, update }) => {
 				await update({ reset: false });
 				busy = null;
+				if (result.type === 'success' && result.data?.saved) toast('✓ Email settings saved');
 			};
 		}}
 	>
@@ -40,7 +42,7 @@
 			<p class="banner banner-ok">Outbox mode (EMAIL_TRANSPORT=outbox): emails are written to files in the data folder, not sent.</p>
 		{/if}
 		{#if !data.originSet}
-			<p class="banner banner-bad">Set ORIGIN to this server's public address, or links in emails won't work.</p>
+			<p class="banner banner-warn">▲ Set ORIGIN to this server's public address, or links in emails won't work.</p>
 		{/if}
 
 		<div class="segmented">
@@ -103,6 +105,7 @@
 				<div class="field">
 					<label class="label" for="smtp-pass">Password</label>
 					<input class="input" id="smtp-pass" name="smtpPassword" type="password" autocomplete="new-password" placeholder={data.mail.hasSmtpPassword ? '•••••••• saved' : ''} />
+					{#if data.mail.hasSmtpPassword}<p class="hint">Changing the server? Enter its password again.</p>{/if}
 				</div>
 			</div>
 		{/if}
@@ -119,12 +122,19 @@
 		</div>
 		{#if test}
 			<p class="result" class:status-ok={test.ok} class:status-bad={!test.ok} role="status">{test.ok ? '✓' : '✕'} {test.message}</p>
-		{:else if form && 'saved' in form && form.saved}
-			<p class="result status-ok" role="status">✓ Saved</p>
 		{/if}
 	</form>
 
-	<form method="POST" action="?/savePublic" class="card sec" use:enhance={() => async ({ update }) => update({ reset: false })}>
+	<form
+		method="POST"
+		action="?/savePublic"
+		class="card sec"
+		use:enhance={() =>
+			async ({ result, update }) => {
+				await update({ reset: false });
+				if (result.type === 'success') toast('✓ Public page settings saved');
+			}}
+	>
 		<div>
 			<h2>Public pages</h2>
 			<p class="muted sm">Applies to everyone on this server.</p>
@@ -168,7 +178,6 @@
 			{#if form?.publicErrors?.searchConsoleTag}<span class="error-text">✕ {form.publicErrors.searchConsoleTag}</span>{/if}
 		</div>
 		<div class="actions"><button class="btn btn-primary">Save</button></div>
-		{#if form && 'publicSaved' in form}<p class="result status-ok" role="status">✓ Saved</p>{/if}
 	</form>
 
 	<section class="card sec">
@@ -188,6 +197,12 @@
 			</div>
 			<span class={data.signIn.localAdmin ? 'status-ok strong' : 'muted'}>{data.signIn.localAdmin ? '✓ On' : 'Off'}</span>
 		</div>
+		<div class="kv">
+			<div>
+				<div class="tt">Who can sign in</div>
+				<div class="td">{data.signIn.who}</div>
+			</div>
+		</div>
 	</section>
 
 	<section class="card sec">
@@ -205,13 +220,6 @@ users    {data.server.users}</pre>
 		flex-direction: column;
 		gap: 16px;
 		max-width: 640px;
-	}
-	.back {
-		font-size: 16px;
-		font-weight: 600;
-		min-height: 36px;
-		display: flex;
-		align-items: center;
 	}
 	.head {
 		display: flex;

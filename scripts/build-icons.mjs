@@ -31,7 +31,9 @@ const out = [
 	['icon-512.png', icon(512, 0.62, mark2c(3))],
 	// maskable: mark inside the 66% safe zone (design: 104/192)
 	['icon-512-maskable.png', icon(512, 104 / 192, mark2c(3))],
-	['favicon-32.png', icon(32, 24 / 32, mark2a(5), 7)]
+	['icon-192-maskable.png', icon(192, 104 / 192, mark2c(3))],
+	['favicon-32.png', icon(32, 24 / 32, mark2a(5), 7)],
+	['favicon-16.png', icon(16, 14 / 16, mark2a(6), 3)]
 ];
 for (const [name, svg] of out) {
 	await sharp(Buffer.from(svg)).png().toFile(`static/icons/${name}`);

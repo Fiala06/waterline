@@ -1,5 +1,5 @@
 import { error, fail, redirect } from '@sveltejs/kit';
-import { taskKindFor } from '$lib/events';
+import { EQUIPMENT_REASONS, taskKindFor } from '$lib/events';
 import { addDays, dateInZone, fmtDate } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
 import { num, optStr, parseWhen, str } from '$lib/server/forms';
@@ -9,7 +9,7 @@ import {
 	parseCategory,
 	parseEventData
 } from '$lib/server/log-forms';
-import { createEvent, recentDosingProducts } from '$lib/server/logs';
+import { createEvent, eventByClientId, recentDosingProducts } from '$lib/server/logs';
 import { photoFiles, preparePhotos, storePhotos } from '$lib/server/photos';
 import { getTank } from '$lib/server/tanks';
 import { createTask, getTask } from '$lib/server/tasks';
@@ -65,6 +65,10 @@ export const actions: Actions = {
 
 		const files = photoFiles(form);
 
+		// The offline queue can post the same entry twice; the first one stands.
+		const clientId = optStr(form, 'clientId', 64);
+		if (clientId && eventByClientId(tank.id, clientId)) redirect(303, `/?tank=${tank.id}`);
+
 		// Linked livestock/plant changes update the tank's lists and write their own entry.
 		if (category === 'livestock' && form.get('linked') === '1') {
 			const when = parseWhen(form, user.timeZone);
@@ -75,7 +79,7 @@ export const actions: Actions = {
 			if (r && 'errors' in r) return fail(400, { errors: r.errors, values, error: null });
 			if (r) {
 				if (r.eventId) storePhotos(tank.id, prepared, { eventId: r.eventId, takenAt: when.at });
-				setFlash(cookies, r.message);
+				setFlash(cookies, r.message, r.eventId ? { view: `/entries/event/${r.eventId}` } : {});
 				redirect(303, `/?tank=${tank.id}`);
 			}
 		}
@@ -86,11 +90,14 @@ export const actions: Actions = {
 		if (eqItem && eqItem.tankId !== tank.id) error(400, 'Equipment belongs to another tank');
 		if (eqItem && category === 'equipment') form.set('item', equipmentName(eqItem));
 		if (eqItem && category === 'equipment' && str(form, 'action') === 'removed') {
+			const when = parseWhen(form, user.timeZone);
+			if ('error' in when) return fail(400, { errors: {}, values, error: when.error });
 			const prepared = await preparePhotos(files);
 			if ('error' in prepared) return fail(400, { errors: {}, values, error: prepared.error });
-			const r = removeEquipment(user.id, eqItem.id);
-			storePhotos(tank.id, prepared, { eventId: r.event.id, takenAt: r.event.occurredAt });
-			setFlash(cookies, `${equipmentName(eqItem)} removed`);
+			const reasons = form.getAll('reasons').map(String).filter((r) => EQUIPMENT_REASONS.includes(r));
+			const r = removeEquipment(user.id, eqItem.id, { at: when.at, note: optStr(form, 'note'), clientId, reasons });
+			storePhotos(tank.id, prepared, { eventId: r.event.id, takenAt: when.at });
+			setFlash(cookies, `${equipmentName(eqItem)} removed${r.tasksRemoved ? ' with its reminder' : ''}`);
 			redirect(303, `/?tank=${tank.id}`);
 		}
 
@@ -118,7 +125,7 @@ export const actions: Actions = {
 		const { event, duplicate } = createEvent(
 			user.id,
 			tank.id,
-			{ category, occurredAt: when.at, note: optStr(form, 'note'), data, clientId: optStr(form, 'clientId', 64) },
+			{ category, occurredAt: when.at, note: optStr(form, 'note'), data, clientId },
 			{ completeTaskId, timeZone: user.timeZone }
 		);
 
@@ -149,7 +156,7 @@ export const actions: Actions = {
 		} else if (completeTaskId) {
 			message = `✓ Saved · task done`;
 		}
-		setFlash(cookies, message);
+		setFlash(cookies, message, { view: `/entries/event/${event.id}` });
 		redirect(303, `/?tank=${tank.id}`);
 	}
 };

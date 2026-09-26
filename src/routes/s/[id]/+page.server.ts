@@ -3,7 +3,7 @@ import type { PageServerLoad } from './$types';
 
 // A shared photo (D8): no sign-in; readings and other entries stay private.
 export const load: PageServerLoad = ({ params, url }) => {
-	const share = findShare(params.id);
+	const { photoId: _, ...share } = findShare(params.id); // the page needs no internal ids
 	const s = publicSettings();
 	const base = s.baseUrl ?? url.origin;
 	const title = share.title ?? (share.tankName ? `Photo from ${share.tankName}` : 'Aquarium photo');

@@ -33,6 +33,6 @@
 	<meta name="twitter:image" content={seo.image} />
 	<meta name="twitter:image:alt" content={seo.imageAlt} />
 	{#if verification}<meta name="google-site-verification" content={verification} />{/if}
-	<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+	<!-- JSON-LD: built server-side with every "<" escaped, so it can't close the script tag -->
 	{@html ld}
 </svelte:head>

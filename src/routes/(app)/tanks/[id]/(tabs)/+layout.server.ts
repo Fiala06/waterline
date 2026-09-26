@@ -1,6 +1,7 @@
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { getTank } from '$lib/server/tanks';
 import type { LayoutServerLoad } from './$types';
+import { tankTypeLabel } from '$lib/types';
 
 export const load: LayoutServerLoad = ({ locals, params }) => {
 	const user = locals.user!;
@@ -14,7 +15,6 @@ export const load: LayoutServerLoad = ({ locals, params }) => {
 	const since = t.startDate
 		? new Date(t.startDate + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' })
 		: null;
-	const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 	return {
 		tankHead: {
 			id: t.id,
@@ -23,7 +23,7 @@ export const load: LayoutServerLoad = ({ locals, params }) => {
 			cover: t.coverPhotoId,
 			archived: !!t.archivedAt,
 			sub: [
-				cap(t.type),
+				tankTypeLabel(t.type),
 				nominal ? `${nominal} ${volUnit}${actual && actual !== nominal ? ` (${actual} actual)` : ''}` : null,
 				since ? `since ${since}` : null
 			]

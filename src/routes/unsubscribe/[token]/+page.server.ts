@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { users } from '$lib/server/db/schema';
-import { unsubscribeAll } from '$lib/server/notifications';
+import { prefsFor, unsubscribeAll } from '$lib/server/notifications';
 import { verify } from '$lib/server/secrets';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -14,7 +14,8 @@ function userFor(token: string) {
 
 export const load: PageServerLoad = ({ params }) => {
 	const user = userFor(params.token);
-	return { valid: !!user, email: user?.email ?? null };
+	// the address the emails go to (which the link's holder already knows), not the sign-in email
+	return { valid: !!user, email: user ? (prefsFor(user.id).notifyEmail || user.email).trim() : null };
 };
 
 export const actions: Actions = {

@@ -2,6 +2,7 @@
 // with satori (layout → SVG) and resvg (SVG → PNG). Key content stays inside
 // the centered 630×630 safe area. Cached on disk by version.
 import { Resvg } from '@resvg/resvg-js';
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
@@ -138,7 +139,7 @@ export async function tankCard(view: PublicView, opts: { cover: Photo | null; pl
 
 /** S2: shared photo, full bleed, with a caption band. */
 export async function photoCard(share: { id: string; title: string | null; tankName: string | null; date: string | null }, photo: Photo) {
-	return cached(`s-${share.id}-${[share.title, share.tankName, share.date].join('|').length}`, async () => {
+	return cached(`s-${share.id}-${createHash('sha1').update([share.title, share.tankName, share.date].join('|')).digest('hex').slice(0, 10)}`, async () => {
 		const caption = [share.tankName, share.date].filter(Boolean).join(' · ');
 		return render(
 			h(

@@ -1,5 +1,5 @@
 import { fail, redirect, type RequestEvent } from '@sveltejs/kit';
-import { todayInZone } from '$lib/time';
+import { isDate, todayInZone } from '$lib/time';
 import type { Task, User } from './db/schema';
 import { setFlash } from './flash';
 import { num, str } from './forms';
@@ -46,7 +46,7 @@ function parse(form: FormData, existing: Task | null) {
 	if (recurring && (every == null || every < 1 || !Number.isInteger(every) || every * unit > 3650))
 		errors.every = 'Enter a whole number of days or weeks.';
 	const nextDue = str(form, 'nextDue');
-	if (!/^\d{4}-\d{2}-\d{2}$/.test(nextDue)) errors.nextDue = 'Pick a date.';
+	if (!isDate(nextDue)) errors.nextDue = 'Pick a date.';
 	const onDone = str(form, 'onDone') as OnDone;
 
 	let kind: Task['kind'];

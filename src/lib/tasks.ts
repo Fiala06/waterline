@@ -67,15 +67,22 @@ export function intervalText(task: { recurring: boolean; intervalDays: number | 
 
 /** Snooze choices (G8): tomorrow, in 3 days, next weekend (the coming Saturday after this week's). */
 export function snoozeOptions(today: string, due: string) {
-	const base = due > today ? due : today;
+	// Not due yet: push it back from its due date (a date before it would do nothing).
+	if (due > today) {
+		return [
+			{ label: 'A day later', date: addDays(due, 1) },
+			{ label: '3 days later', date: addDays(due, 3) },
+			{ label: 'A week later', date: addDays(due, 7) }
+		];
+	}
 	const dow = new Date(today + 'T12:00:00Z').getUTCDay(); // 0 Sun … 6 Sat
 	const toSat = ((6 - dow + 7) % 7) || 7;
 	const weekend = addDays(today, toSat < 3 ? toSat + 7 : toSat);
 	return [
-		{ label: 'Tomorrow', date: addDays(base, 1) },
-		{ label: 'In 3 days', date: addDays(base, 3) },
+		{ label: 'Tomorrow', date: addDays(today, 1) },
+		{ label: 'In 3 days', date: addDays(today, 3) },
 		{ label: 'Next weekend', date: weekend }
-	].filter((o, i, all) => all.findIndex((x) => x.date === o.date) === i);
+	];
 }
 
 /** Example under each schedule mode (15): "Done late on Sep 26 → next due Oct 3". */

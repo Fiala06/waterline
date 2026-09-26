@@ -33,6 +33,7 @@ import { getServerSettings } from './mail';
 import { latestReadings, series } from './logs';
 import { getPhoto } from './photos';
 import { getTank, listParams } from './tanks';
+import { tankTypeLabel } from '$lib/types';
 
 // ── Server-wide settings ────────────────────────────────────────────────────
 
@@ -55,7 +56,7 @@ export const slugify = (s: string) =>
 	s
 		.toLowerCase()
 		.normalize('NFKD')
-		.replace(/[̀-ͯ]/g, '')
+		.replace(/\p{M}/gu, '') // accents
 		.replace(/[^a-z0-9]+/g, '-')
 		.replace(/^-+|-+$/g, '')
 		.slice(0, 60);
@@ -74,9 +75,10 @@ export function getPublicPage(userId: string, tankId: string): PublicPage {
 	const tank = getTank(userId, tankId);
 	const existing = db.select().from(publicPages).where(eq(publicPages.tankId, tankId)).get();
 	if (existing) return existing;
-	let slug = slugify(tank.name) || 'tank';
-	if (slug.length < 3) slug = `${slug}-tank`;
-	for (let i = 2; slugTaken(slug, tankId) || RESERVED.has(slug); i++) slug = `${slugify(tank.name).slice(0, 55)}-${i}`;
+	let base = slugify(tank.name) || 'tank'; // e.g. a name in another script
+	if (base.length < 3) base = `${base}-tank`;
+	let slug = base;
+	for (let i = 2; slugTaken(slug, tankId) || RESERVED.has(slug); i++) slug = `${base.slice(0, 55)}-${i}`;
 	return db.insert(publicPages).values({ tankId, slug }).returning().get();
 }
 
@@ -92,7 +94,7 @@ export function updatePublicPage(userId: string, tankId: string, patch: PublicPa
 }
 
 export function viewsThisWeek(tankId: string) {
-	const since = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
+	const since = new Date(Date.now() - 6 * 86_400_000).toISOString().slice(0, 10); // today and the 6 days before
 	return (
 		db
 			.select({ n: sql<number>`coalesce(sum(${publicPageViews.views}), 0)` })
@@ -127,7 +129,6 @@ export function displayNameFor(user: User, mode: PublicPage['displayName']) {
 }
 
 const PUBLIC_CATEGORIES = ['water_change', 'dosing', 'maintenance', 'livestock', 'equipment'] as const;
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const monthYear = (d: string) =>
 	new Date(d.slice(0, 10) + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 
@@ -152,7 +153,7 @@ export function publicView(page: PublicPage, tank: Tank, owner: User) {
 				value: fmtValue(p, r.value, prefs),
 				unit: paramUnit(p, prefs),
 				level: st.level,
-				status: statusShort(st).replace(/ (low|high)$/, '').replace('Near', 'Near'),
+				status: statusShort(st).replace(/ (low|high)$/, ''),
 				statusLong: statusShort(st),
 				target: fmtRange(p, prefs, false),
 				day: dateInZone(r.takenAt, tz)
@@ -185,10 +186,15 @@ export function publicView(page: PublicPage, tank: Tank, owner: User) {
 						min: p.min == null ? null : displayValue(p, p.min, prefs),
 						max: p.max == null ? null : displayValue(p, p.max, prefs)
 					},
-					points: series(tank.id, p.id, since).map((r) => ({
-						t: Date.parse(dateInZone(r.takenAt, tz) + 'T12:00:00Z'),
-						v: displayValue(p, r.value, prefs)
-					})),
+					// public charts are by day: the day's last reading stands for it
+					points: [
+						...new Map(
+							series(tank.id, p.id, since).map((r) => {
+								const t = Date.parse(dateInZone(r.takenAt, tz) + 'T12:00:00Z');
+								return [t, { t, v: displayValue(p, r.value, prefs) }];
+							})
+						).values()
+					],
 					lastLevel: statusOf(p, latest.get(p.id)?.value).level
 				}))
 				.filter((c) => c.points.length >= 2)
@@ -198,8 +204,13 @@ export function publicView(page: PublicPage, tank: Tank, owner: User) {
 		? db.select({ id: photos.id }).from(photos).where(eq(photos.tankId, tank.id)).orderBy(desc(photos.takenAt)).limit(12).all().map((p) => p.id)
 		: [];
 
+	// quarantined animals aren't in the display tank yet
 	const animals = page.showLivestock
-		? db.select().from(livestock).where(and(eq(livestock.tankId, tank.id), isNull(livestock.removedAt))).all()
+		? db
+				.select()
+				.from(livestock)
+				.where(and(eq(livestock.tankId, tank.id), isNull(livestock.removedAt), eq(livestock.status, 'in_tank')))
+				.all()
 		: [];
 	const plantNames = page.showLivestock
 		? db.select().from(plants).where(and(eq(plants.tankId, tank.id), isNull(plants.removedAt))).all().map((p) => p.name)
@@ -245,14 +256,18 @@ export function publicView(page: PublicPage, tank: Tank, owner: User) {
 	return {
 		slug: page.slug,
 		name: tank.name,
-		type: cap(tank.type),
+		type: tankTypeLabel(tank.type),
 		volume: vol,
 		since: tank.startDate ? monthYear(tank.startDate) : null,
 		keeper: displayNameFor(owner, page.displayName),
 		description: page.showDescription ? page.description : null,
 		cover: tank.coverPhotoId,
-		summary: cards.length ? { bad: bad.map((c) => `${c.name} ${c.statusLong.replace('✕ ', '').toLowerCase()}`), ok: cards.length - bad.length } : null,
-		tested: lastDay ? (lastDay === today ? 'today' : fmtDate(lastDay)) : null,
+		// status and test date are readings too: hidden with them
+		summary:
+			page.showReadings && cards.length
+				? { bad: bad.map((c) => `${c.name} ${c.statusLong.replace('✕ ', '').toLowerCase()}`), ok: cards.length - bad.length }
+				: null,
+		tested: page.showReadings && lastDay ? (lastDay === today ? 'today' : fmtDate(lastDay)) : null,
 		readings: page.showReadings ? cards : [],
 		charts,
 		photos: photoIds,
@@ -328,7 +343,7 @@ export function getShareForPhoto(userId: string, photoId: string) {
 export function createShare(userId: string, photoId: string) {
 	const existing = getShareForPhoto(userId, photoId);
 	if (existing) return existing;
-	const id = randomBytes(5).toString('base64url').replace(/[-_]/g, 'x').slice(0, 7);
+	const id = randomBytes(12).toString('base64url'); // 96 bits: not guessable
 	return db.insert(photoShares).values({ id, photoId }).returning().get();
 }
 
@@ -353,7 +368,7 @@ export function findShare(id: string) {
 		.innerJoin(tanks, eq(tanks.id, photos.tankId))
 		.innerJoin(users, eq(users.id, tanks.userId))
 		.leftJoin(events, eq(events.id, photos.eventId))
-		.where(and(eq(photoShares.id, id), isNull(photoShares.revokedAt)))
+		.where(and(eq(photoShares.id, id), isNull(photoShares.revokedAt), isNull(tanks.archivedAt)))
 		.get();
 	if (!row) error(404, 'Not found');
 	const { share, photo, tank, user, event } = row;

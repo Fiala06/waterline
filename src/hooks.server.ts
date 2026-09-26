@@ -3,28 +3,77 @@ import { building } from '$app/environment';
 import { startScheduler } from '$lib/server/scheduler';
 import { failInterruptedExports } from '$lib/server/export';
 import { sequence } from '@sveltejs/kit/hooks';
-import { handle as authHandle } from './auth';
-import { getUser } from '$lib/server/users';
+import { checkAuthConfig, devLoginEnabled, handle as authHandle } from './auth';
+import { clearLoginFailures, loginBlockedMinutes, recordLoginFailure } from '$lib/server/rate-limit';
+import { getUser, isEmailAllowed } from '$lib/server/users';
 import { publicSettings } from '$lib/server/public';
 
 const PUBLIC_PATHS = ['/signin', '/auth', '/e', '/unsubscribe', '/t', '/s', '/p', '/public', '/sitemap.xml', '/robots.txt'];
 
 /**
- * Cross-site form posts are refused (the check SvelteKit normally does),
- * except one-click unsubscribe, which mail providers POST without an Origin.
+ * Only this site may post to it (the check SvelteKit normally does, for every
+ * content type). Exceptions: one-click unsubscribe, which mail providers POST
+ * without an Origin, and the test-only /dev endpoints (404 unless AUTH_DEV_LOGIN).
  */
-const FORM_TYPES = ['application/x-www-form-urlencoded', 'multipart/form-data', 'text/plain'];
 const csrf: Handle = ({ event, resolve }) => {
 	const { request, url } = event;
-	if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) {
-		const type = request.headers.get('content-type')?.split(';')[0].trim().toLowerCase() ?? '';
-		const origin = request.headers.get('origin');
-		if (FORM_TYPES.includes(type) && origin !== url.origin && !url.pathname.startsWith('/unsubscribe/')) {
-			return new Response(`Cross-site ${request.method} form submissions are forbidden`, { status: 403 });
-		}
+	if (
+		!['GET', 'HEAD', 'OPTIONS'].includes(request.method) &&
+		request.headers.get('origin') !== url.origin &&
+		!url.pathname.startsWith('/unsubscribe/') &&
+		!url.pathname.startsWith('/dev/')
+	) {
+		return new Response(`Cross-site ${request.method} requests are forbidden`, { status: 403 });
 	}
 	return resolve(event);
 };
+
+/**
+ * Auth.js also takes local admin logins at /auth/callback/local directly; the
+ * sign-in page's own action applies the same limit with a friendlier message.
+ */
+const loginLimit: Handle = async ({ event, resolve }) => {
+	if (event.request.method !== 'POST' || event.url.pathname !== '/auth/callback/local') return resolve(event);
+	const address = event.getClientAddress();
+	const wait = loginBlockedMinutes(address);
+	if (wait) return new Response('Too many sign-in attempts. Try again later.', { status: 429, headers: { 'retry-after': String(wait * 60) } });
+	const res = await resolve(event);
+	if (/session-token=[^;]/.test(res.headers.get('set-cookie') ?? '')) clearLoginFailures(address);
+	else recordLoginFailure(address);
+	return res;
+};
+
+/**
+ * Headers for every response: no framing, no sniffing, and no Referer to other
+ * sites (email-link tokens stay here). Not no-referrer: that makes browsers send
+ * "Origin: null" on this site's own forms, which the check above refuses.
+ */
+const securityHeaders: Handle = async ({ event, resolve }) => {
+	const res = await resolve(event);
+	const url = event.url;
+	const set = (k: string, v: string) => {
+		try {
+			if (!res.headers.has(k)) res.headers.set(k, v);
+		} catch {
+			/* immutable headers (e.g. a fetched response) */
+		}
+	};
+	set('x-frame-options', 'DENY');
+	set('x-content-type-options', 'nosniff');
+	set('referrer-policy', 'same-origin');
+	if (url.protocol === 'https:') set('strict-transport-security', 'max-age=31536000');
+	return res;
+};
+
+/** Browser bar color: the page background of the chosen theme, or both for "system". */
+function themeColorMeta(theme: string) {
+	const dark = '<meta name="theme-color" content="#0c1a1f" />';
+	const light = '<meta name="theme-color" content="#f4f7f6" />';
+	if (theme === 'dark') return dark;
+	if (theme === 'light') return light;
+	return `${dark.replace(' />', ' media="(prefers-color-scheme: dark)" />')}${light.replace(' />', ' media="(prefers-color-scheme: light)" />')}`;
+}
+
 const isPublic = (path: string) => path === '/dev/seed' || PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + '/'));
 
 const appHandle: Handle = async ({ event, resolve }) => {
@@ -38,7 +87,9 @@ const appHandle: Handle = async ({ event, resolve }) => {
 
 	const session = await event.locals.auth();
 	const uid = session?.user?.id;
-	event.locals.user = uid ? (getUser(uid) ?? null) : null;
+	const found = uid ? (getUser(uid) ?? null) : null;
+	// Someone taken off ALLOWED_EMAILS is signed out on their next request.
+	event.locals.user = found && (devLoginEnabled() || isEmailAllowed(found.email)) ? found : null;
 
 	const path = event.url.pathname;
 	const user = event.locals.user;
@@ -57,15 +108,21 @@ const appHandle: Handle = async ({ event, resolve }) => {
 	// Theme: explicit choice sets data-theme; "system" leaves it off so CSS follows the OS.
 	const theme = user?.theme ?? event.cookies.get('wl_theme') ?? 'system';
 	const attr = theme === 'dark' || theme === 'light' ? `data-theme="${theme}"` : '';
-	return resolve(event, {
-		transformPageChunk: ({ html }) => html.replace('%wl.theme%', attr)
+	const res = await resolve(event, {
+		transformPageChunk: ({ html }) => html.replace('%wl.theme%', attr).replace('%wl.themecolor%', themeColorMeta(theme))
 	});
+	// Signing out forgets this account's cached pages, photos and offline entries on this device.
+	if (event.request.method === 'POST' && path === '/settings' && event.url.search === '?/signout') {
+		res.headers.set('clear-site-data', '"cache", "storage"');
+	}
+	return res;
 };
 
-export const handle = sequence(csrf, authHandle, appHandle);
+export const handle = sequence(securityHeaders, csrf, loginLimit, authHandle, appHandle);
 
 export const init: ServerInit = () => {
 	if (building) return;
+	checkAuthConfig();
 	failInterruptedExports();
 	startScheduler();
 };

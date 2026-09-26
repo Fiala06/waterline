@@ -1,7 +1,7 @@
 {
 	"name": "waterline",
 	"private": true,
-	"version": "0.0.1",
+	"version": "1.0.0",
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
@@ -19,6 +19,7 @@
 		"seed": "curl -sf -X POST http://localhost:5173/dev/seed && echo"
 	},
 	"devDependencies": {
+		"@axe-core/playwright": "^4.13.0",
 		"@playwright/test": "^1.63.0",
 		"@sveltejs/adapter-node": "^5.5.7",
 		"@sveltejs/kit": "^2.63.0",
@@ -40,9 +41,15 @@
 		"@resvg/resvg-js": "^2.6.2",
 		"better-sqlite3": "^13.0.3",
 		"drizzle-orm": "^0.45.3",
-		"nodemailer": "^8.0.11",
+		"nodemailer": "^10.0.10",
 		"satori": "^0.33.5",
 		"sharp": "^0.35.4",
 		"yazl": "^3.3.1"
+	},
+	"overrides": {
+		"nodemailer": "$nodemailer"
+	},
+	"engines": {
+		"node": ">=22"
 	}
 }

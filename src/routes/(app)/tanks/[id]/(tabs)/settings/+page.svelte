@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import { photoUrl } from '$lib/media';
 	import { untrack } from 'svelte';
 	let { data, form } = $props();
@@ -163,16 +164,15 @@
 	</div>
 </form>
 
-<div id="confirm-archive" popover class="confirm">
-	<h2>Archive {data.tank.name}?</h2>
-	<p>It moves to Archived. The history is kept and you can restore it any time.</p>
-	<div class="c-actions">
-		<button type="button" class="btn" popovertarget="confirm-archive" popovertargetaction="hide">Cancel</button>
-		<form method="POST" action="?/archive">
-			<button class="btn btn-primary">Archive</button>
-		</form>
-	</div>
-</div>
+<ConfirmDelete
+	id="confirm-archive"
+	trigger={false}
+	title="Archive {data.tank.name}?"
+	body="It moves to Archived. The history is kept and you can restore it any time."
+	action="?/archive"
+	label="Archive"
+	tone="primary"
+/>
 
 <style>
 	.wrap {
@@ -285,32 +285,6 @@
 	}
 	.archive p {
 		margin: 0;
-	}
-	.confirm {
-		border: 1px solid var(--border-strong);
-		border-radius: 20px;
-		background: var(--surface);
-		color: var(--text);
-		padding: 22px;
-		width: min(400px, calc(100vw - 40px));
-		box-shadow: var(--shadow-modal);
-	}
-	.confirm::backdrop {
-		background: var(--scrim);
-	}
-	.confirm h2 {
-		margin: 0 0 8px;
-		font-size: 19px;
-	}
-	.confirm p {
-		margin: 0 0 18px;
-		color: var(--text-muted);
-		line-height: 1.5;
-	}
-	.c-actions {
-		display: flex;
-		gap: 10px;
-		justify-content: flex-end;
 	}
 	@media (min-width: 1024px) {
 		.cols {

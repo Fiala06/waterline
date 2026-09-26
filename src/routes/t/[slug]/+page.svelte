@@ -45,7 +45,7 @@
 			<p class="muted">{sub}{v.keeper ? ` · kept by ${v.keeper}` : ''}</p>
 			{#if v.summary}
 				<div class="pills">
-					{#each v.summary.bad as b (b)}<span class="pill bad">✕ {b.charAt(0).toUpperCase() + b.slice(1)}</span>{/each}
+					{#each v.summary.bad as b (b)}<span class="pill bad">✕ {b}</span>{/each}
 					{#if v.summary.ok}<span class="pill ok">✓ {v.summary.ok} in range</span>{/if}
 					{#if v.tested}<span class="muted sm">Tested {v.tested}</span>{/if}
 				</div>
@@ -85,7 +85,7 @@
 					<section>
 						<h2>Photos</h2>
 						<div class="photos">
-							{#each v.photos as p (p)}<a href={photo(p, 'full')}><img src={photo(p)} alt="" loading="lazy" /></a>{/each}
+							{#each v.photos as p, i (p)}<a href={photo(p, 'full')}><img src={photo(p)} alt="{v.name} photo {i + 1}" loading="lazy" /></a>{/each}
 						</div>
 					</section>
 				{/if}
@@ -108,7 +108,7 @@
 
 			<div class="col side">
 				{#if v.readings.length}
-					<section>
+					<section class="first">
 						<div class="sh"><h2>Latest readings</h2>{#if v.tested}<span class="muted sm">{v.tested}</span>{/if}</div>
 						<div class="readings">
 							{#each v.readings as r (r.id)}
@@ -123,7 +123,7 @@
 				{/if}
 
 				{#if v.activity.length}
-					<section>
+					<section class="last">
 						<h2>Recent activity</h2>
 						<ul class="feed">
 							{#each v.activity as a (a.key)}
@@ -228,6 +228,18 @@
 		display: flex;
 		flex-direction: column;
 		gap: 10px;
+	}
+	/* Phones (P2): readings first, then chart, photos, the tank, activity. */
+	@media (max-width: 1023px) {
+		.col {
+			display: contents;
+		}
+		.first {
+			order: -1;
+		}
+		.last {
+			order: 1;
+		}
 	}
 	h2 {
 		margin: 0;

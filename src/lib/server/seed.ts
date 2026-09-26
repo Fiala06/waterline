@@ -107,18 +107,18 @@ async function seedPlanted(user: User) {
 	updateTank(user.id, tank.id, { specBrand: 'Aqualine', specModel: '90P', glass: 'Low-iron, rimless', substrate: 'Aquasoil, 3 in', waterSource: 'rodi', photoperiodH: 8 });
 	backdateCreated(tank, at(-DAYS - 20, '10:00'));
 
-	const filter = addEquipment(user.id, tank.id, { type: 'filter', brand: 'Tidewell', model: 'C-400', specs: { filterType: 'Canister', flowLh: 1200, media: 'Ceramic + sponge' }, installedAt: day(-DAYS - 20), notes: 'Bought at the local fish store.' });
-	addEquipment(user.id, tank.id, { type: 'light', brand: 'Lumora', model: 'Pro 90', specs: { photoperiodH: 8, intensity: 70, spectrum: 'Full spectrum' }, installedAt: day(-DAYS - 20), notes: null });
-	addEquipment(user.id, tank.id, { type: 'heater', brand: 'Tidewell', model: '200 W', specs: { watts: 200, setC: fToC(77) }, installedAt: day(-DAYS - 20), notes: null });
-	addEquipment(user.id, tank.id, { type: 'co2', brand: 'Dual-stage regulator', model: '+ inline diffuser', specs: { bps: 1, cylinder: '5 lb' }, installedAt: day(-DAYS + 10), notes: null });
+	const filter = addEquipment(user.id, tank.id, { type: 'filter', brand: 'Tidewell', model: 'C-400', specs: { filterType: 'Canister', flowLh: 1200, media: 'Ceramic + sponge' }, installedAt: day(-DAYS - 20), notes: 'Bought at the local fish store.' }, user.timeZone);
+	addEquipment(user.id, tank.id, { type: 'light', brand: 'Lumora', model: 'Pro 90', specs: { photoperiodH: 8, intensity: 70, spectrum: 'Full spectrum' }, installedAt: day(-DAYS - 20), notes: null }, user.timeZone);
+	addEquipment(user.id, tank.id, { type: 'heater', brand: 'Tidewell', model: '200 W', specs: { watts: 200, setC: fToC(77) }, installedAt: day(-DAYS - 20), notes: null }, user.timeZone);
+	addEquipment(user.id, tank.id, { type: 'co2', brand: 'Dual-stage regulator', model: '+ inline diffuser', specs: { bps: 1, cylinder: '5 lb' }, installedAt: day(-DAYS + 10), notes: null }, user.timeZone);
 
 	// Livestock arrives over time; one loss along the way.
-	const rasbora = addLivestock(user.id, tank.id, { kind: 'fish', commonName: 'Harlequin rasbora', scientificName: 'Trigonostigma heteromorpha', count: 15, status: 'in_tank', addedAt: day(-DAYS + 5), source: null }, at(-DAYS + 5, '17:30')).row;
-	addLivestock(user.id, tank.id, { kind: 'invert', commonName: 'Amano shrimp', scientificName: 'Caridina multidentata', count: 8, status: 'in_tank', addedAt: day(-DAYS + 5), source: null }, at(-DAYS + 5, '17:40'));
-	addLivestock(user.id, tank.id, { kind: 'fish', commonName: 'Otocinclus', scientificName: 'Otocinclus vittatus', count: 5, status: 'in_tank', addedAt: day(-110), source: null }, at(-110, '18:00'));
-	addLivestock(user.id, tank.id, { kind: 'invert', commonName: 'Nerite snail', scientificName: 'Neritina natalensis', count: 3, status: 'in_tank', addedAt: day(-150), source: null }, at(-150, '18:00'));
-	addLivestock(user.id, tank.id, { kind: 'fish', commonName: 'Honey gourami', scientificName: 'Trichogaster chuna', count: 1, status: 'quarantine', addedAt: day(-5), source: null }, at(-5, '16:20'));
-	changeCount(user.id, rasbora.id, 14, 'loss', at(-45, '08:05'));
+	const rasbora = addLivestock(user.id, tank.id, { kind: 'fish', commonName: 'Harlequin rasbora', scientificName: 'Trigonostigma heteromorpha', count: 15, status: 'in_tank', addedAt: day(-DAYS + 5), source: null }, { at: at(-DAYS + 5, '17:30') }).row;
+	addLivestock(user.id, tank.id, { kind: 'invert', commonName: 'Amano shrimp', scientificName: 'Caridina multidentata', count: 8, status: 'in_tank', addedAt: day(-DAYS + 5), source: null }, { at: at(-DAYS + 5, '17:40') });
+	addLivestock(user.id, tank.id, { kind: 'fish', commonName: 'Otocinclus', scientificName: 'Otocinclus vittatus', count: 5, status: 'in_tank', addedAt: day(-110), source: null }, { at: at(-110, '18:00') });
+	addLivestock(user.id, tank.id, { kind: 'invert', commonName: 'Nerite snail', scientificName: 'Neritina natalensis', count: 3, status: 'in_tank', addedAt: day(-150), source: null }, { at: at(-150, '18:00') });
+	addLivestock(user.id, tank.id, { kind: 'fish', commonName: 'Honey gourami', scientificName: 'Trichogaster chuna', count: 1, status: 'quarantine', addedAt: day(-5), source: null }, { at: at(-5, '16:20') });
+	changeCount(user.id, rasbora.id, 14, 'loss', { at: at(-45, '08:05') });
 
 	const plantList = [
 		['Rotala rotundifolia', 'Rotala rotundifolia', 'background', 'thriving'],
@@ -207,7 +207,7 @@ async function seedPlanted(user: User) {
 	for (const w of wcEvents) db.insert(taskCompletions).values({ taskId: wcTask.id, completedAt: w.at, eventId: w.id }).run();
 	createTask(user.id, tank.id, { name: 'Test water', kind: 'test', recurring: true, intervalDays: 3, scheduleMode: 'completion', nextDue: day(0), openFormOnDone: true });
 	createTask(user.id, tank.id, { name: 'Trim stem plants', kind: 'maintenance', recurring: true, intervalDays: 14, scheduleMode: 'fixed', nextDue: day(2), openFormOnDone: false });
-	createTask(user.id, tank.id, { name: 'Clean Tidewell C-400 canister', kind: 'maintenance', recurring: true, intervalDays: 28, scheduleMode: 'completion', nextDue: day(8), openFormOnDone: false });
+	createTask(user.id, tank.id, { name: 'Clean Tidewell C-400 canister', kind: 'maintenance', recurring: true, intervalDays: 28, scheduleMode: 'completion', nextDue: day(8), openFormOnDone: false, equipmentId: filter.id });
 	createTask(user.id, tank.id, { name: 'Refill CO₂ cylinder', kind: 'other', recurring: false, intervalDays: null, scheduleMode: 'completion', nextDue: day(20), openFormOnDone: false });
 
 	// Public page + one shared photo.
@@ -229,10 +229,10 @@ async function seedReef(user: User) {
 	const tank = createTank(user, { name: 'Reef 24', type: 'reef', nominalVolumeL: 90.8, actualVolumeL: 79.5, lengthCm: 61, widthCm: 45.7, heightCm: 45.7, startDate: day(-DAYS + 30) });
 	backdateCreated(tank, at(-DAYS + 30, '10:00'));
 	updateTank(user.id, tank.id, { specBrand: 'Tidewell', specModel: 'Nano 24', glass: 'Starphire', substrate: 'Aragonite sand, 1 in', waterSource: 'rodi', photoperiodH: 9 });
-	addEquipment(user.id, tank.id, { type: 'pump', brand: 'Tidewell', model: 'DC 1500', specs: { flowLh: 1500 }, installedAt: day(-DAYS + 30), notes: null });
-	addEquipment(user.id, tank.id, { type: 'skimmer', brand: 'Tideline', model: 'S-60', specs: { ratedL: 230 }, installedAt: day(-DAYS + 30), notes: null });
-	addEquipment(user.id, tank.id, { type: 'heater', brand: 'Tidewell', model: '100 W', specs: { watts: 100, setC: 25.5 }, installedAt: day(-DAYS + 30), notes: null });
-	addEquipment(user.id, tank.id, { type: 'light', brand: 'Coralux', model: 'Blue 30', specs: { photoperiodH: 9, intensity: 55 }, installedAt: day(-DAYS + 30), notes: null });
+	addEquipment(user.id, tank.id, { type: 'pump', brand: 'Tidewell', model: 'DC 1500', specs: { flowLh: 1500 }, installedAt: day(-DAYS + 30), notes: null }, user.timeZone);
+	addEquipment(user.id, tank.id, { type: 'skimmer', brand: 'Tideline', model: 'S-60', specs: { ratedL: 230 }, installedAt: day(-DAYS + 30), notes: null }, user.timeZone);
+	addEquipment(user.id, tank.id, { type: 'heater', brand: 'Tidewell', model: '100 W', specs: { watts: 100, setC: 25.5 }, installedAt: day(-DAYS + 30), notes: null }, user.timeZone);
+	addEquipment(user.id, tank.id, { type: 'light', brand: 'Coralux', model: 'Blue 30', specs: { photoperiodH: 9, intensity: 55 }, installedAt: day(-DAYS + 30), notes: null }, user.timeZone);
 
 	for (const [name, sci, kind, count, d] of [
 		['Ocellaris clownfish', 'Amphiprion ocellaris', 'fish', 2, -140],
@@ -242,7 +242,7 @@ async function seedReef(user: User) {
 		['Green star polyps', 'Pachyclavularia violacea', 'coral', 1, -60],
 		['Trochus snail', 'Trochus histrio', 'invert', 6, -130]
 	] as const) {
-		addLivestock(user.id, tank.id, { kind, commonName: name, scientificName: sci, count, status: 'in_tank', addedAt: day(d), source: null }, at(d, '17:00'));
+		addLivestock(user.id, tank.id, { kind, commonName: name, scientificName: sci, count, status: 'in_tank', addedAt: day(d), source: null }, { at: at(d, '17:00') });
 	}
 
 	let alk = 8.5;
@@ -292,8 +292,8 @@ async function seedReef(user: User) {
 async function seedSmall(user: User) {
 	const shrimp = createTank(user, { name: 'Shrimp 10', type: 'freshwater', nominalVolumeL: 37.9, startDate: day(-60) });
 	backdateCreated(shrimp, at(-60, '10:00'));
-	addLivestock(user.id, shrimp.id, { kind: 'invert', commonName: 'Cherry shrimp', scientificName: 'Neocaridina davidi', count: 25, status: 'in_tank', addedAt: day(-55), source: null }, at(-55, '17:00'));
-	addEquipment(user.id, shrimp.id, { type: 'filter', brand: 'Spongey', model: 'Dual', specs: { filterType: 'Sponge' }, installedAt: day(-60), notes: null });
+	addLivestock(user.id, shrimp.id, { kind: 'invert', commonName: 'Cherry shrimp', scientificName: 'Neocaridina davidi', count: 25, status: 'in_tank', addedAt: day(-55), source: null }, { at: at(-55, '17:00') });
+	addEquipment(user.id, shrimp.id, { type: 'filter', brand: 'Spongey', model: 'Dual', specs: { filterType: 'Sponge' }, installedAt: day(-60), notes: null }, user.timeZone);
 	for (let d = -56; d <= -2; d += 7) test(user, shrimp, d, '09:00', { ph: round(between(7.0, 7.4)), nh3: 0, no2: 0, no3: round(between(5, 15), 0), gh: round(between(6, 8), 0), kh: round(between(3, 4), 0), temp: round(fToC(between(72, 75)), 1) });
 	db.update(tasks).set({ name: 'Water change 20%', nextDue: day(4) }).where(eq(tasks.tankId, shrimp.id)).run();
 

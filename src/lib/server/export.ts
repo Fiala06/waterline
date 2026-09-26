@@ -68,6 +68,9 @@ export function estimateBackupBytes(user: User, scope: 'tank' | 'account', tankI
 
 export function startExport(user: User, scope: 'tank' | 'account', tankId: string | null, format: 'zip' | 'csv') {
 	const list = tanksFor(user, scope, tankId); // validates ownership
+	// one at a time per person: a backup copies every photo
+	const running = db.select().from(exports).where(and(eq(exports.userId, user.id), eq(exports.status, 'building'))).get();
+	if (running) return running;
 	const row = db
 		.insert(exports)
 		.values({ userId: user.id, scope, tankId: scope === 'tank' ? list[0].id : null, format, progressText: 'Starting…' })

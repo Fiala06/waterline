@@ -3,8 +3,10 @@
 	// 05 / 08 / G6 · Water test form. Every field is optional; numeric keypad;
 	// previous reading shown faintly; inline status as you type.
 	import { enhance } from '$app/forms';
-	import { enqueue } from '$lib/offline';
+	import { queueable } from '$lib/offline';
 	import { onMount } from 'svelte';
+	import ConfirmDelete from './ConfirmDelete.svelte';
+	import { ui } from '$lib/ui.svelte';
 	import DateTimePicker from './DateTimePicker.svelte';
 	import PhotoPicker from './PhotoPicker.svelte';
 	import { paramStatus, statusIcon, statusLong, statusMedium } from '$lib/status';
@@ -34,6 +36,8 @@
 		fieldErrors = {},
 		meta = null,
 		existingPhotos = [],
+		previous = {},
+		remove = null,
 		ontankclick
 	}: {
 		mode?: 'new' | 'edit';
@@ -49,6 +53,10 @@
 		fieldErrors?: Record<string, string>;
 		meta?: string | null;
 		existingPhotos?: { id: string }[];
+		/** edit mode: values before the last edit, for "was 40" */
+		previous?: Record<string, string>;
+		/** edit mode: the entry's delete action and its confirmation (G6 "Delete entry") */
+		remove?: { action: string; title: string; body: string } | null;
 		ontankclick?: () => void;
 	} = $props();
 
@@ -66,7 +74,8 @@
 			const raw = draft[p.id] ?? '';
 			const v = parseNumber(raw);
 			const st = v == null ? null : paramStatus(v, { min: p.min, max: p.max });
-			const was = mode === 'edit' && (saved[p.id] ?? '') !== raw && saved[p.id] ? saved[p.id] : null;
+			// "was": the saved value while it's being changed, else the value before the last edit
+			const was = mode !== 'edit' ? null : (saved[p.id] ?? '') !== raw && saved[p.id] ? saved[p.id] : (previous[p.id] ?? null);
 			return { ...p, raw, v, st, was };
 		})
 	);
@@ -98,30 +107,13 @@
 	method="POST"
 	enctype="multipart/form-data"
 	class="tform"
-	use:enhance={({ formData, action, cancel }) => {
-		// Offline (G11): keep the entry on this device and sync it later.
-		const queue = async () => {
-			await enqueue(formData, action.pathname + action.search, `Water test · ${filled} reading${filled === 1 ? '' : 's'}`, timeZone);
-			// A full page load, which the service worker can answer from its cache.
-			try {
-				sessionStorage.setItem('wl_toast', "Saved on this phone. It'll sync when you're back online.");
-			} catch {
-				/* storage blocked */
-			}
-			location.assign(closeHref);
-		};
-		if (mode === 'new' && !navigator.onLine) {
-			cancel();
-			queue();
-			return;
-		}
-		busy = true;
-		return async ({ result, update }) => {
-			if (mode === 'new' && result.type === 'error' && !navigator.onLine) await queue();
-			else await update({ reset: false });
-			busy = false;
-		};
-	}}
+	use:enhance={queueable({
+		offline: mode === 'new',
+		title: () => `Water test · ${filled} reading${filled === 1 ? '' : 's'}`,
+		closeHref: () => closeHref,
+		timeZone,
+		busy: (b) => (busy = b)
+	})}
 >
 	<input type="hidden" name="clientId" value={clientId} />
 	<input type="hidden" name="date" value={when?.date ?? ''} />
@@ -203,6 +195,8 @@
 			</label>
 		{/if}
 
+		{#if remove}<button type="button" class="btn btn-danger remove" popovertarget="confirm-entry-delete">Delete entry</button>{/if}
+
 		<footer class="foot">
 			<span class="count"
 				>{filled} of {params.length} filled{outOfRange ? ` · ${outOfRange} out of range` : ''}</span
@@ -212,6 +206,10 @@
 		</footer>
 	</div>
 </form>
+
+{#if remove}
+	<ConfirmDelete id="confirm-entry-delete" trigger={false} title={remove.title} body={remove.body} action={remove.action} fields={{ from: ui.prev ?? '' }} />
+{/if}
 
 <DateTimePicker bind:open={picking} value={when} {timeZone} onselect={(v) => (when = v)} />
 
@@ -252,9 +250,15 @@
 		font-weight: 600;
 	}
 	.sub {
+		position: relative;
 		font-size: 12px;
 		color: var(--text-muted);
 		min-height: 24px;
+	}
+	.sub::after {
+		content: '';
+		position: absolute;
+		inset: -10px -8px; /* a 44px tap target without moving the title */
 	}
 	.spacer {
 		width: 44px;
@@ -382,6 +386,10 @@
 	}
 	.check-row {
 		margin-top: 10px;
+	}
+	.remove {
+		width: 100%;
+		margin-top: 8px;
 	}
 	.foot {
 		position: sticky;

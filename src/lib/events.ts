@@ -122,7 +122,7 @@ export function eventTitle(e: EventLike, prefs: UnitPrefs): string {
 		}
 		case 'equipment': {
 			const action = EQUIPMENT_ACTIONS.find((a) => a.value === d.action)?.label ?? 'Changed';
-			return `${action === 'Replaced' ? 'Replaced' : action} ${str(d.item) || 'equipment'}`;
+			return `${action} ${str(d.item) || 'equipment'}`;
 		}
 		case 'observation': {
 			const tags = Array.isArray(d.tags) ? (d.tags as string[]) : [];

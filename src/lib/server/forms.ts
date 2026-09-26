@@ -1,6 +1,6 @@
 // Form parsing shared by several actions.
 import { TANK_TYPES, type TankType } from './db/schema';
-import { isValidTimeZone, zonedToUtc } from '$lib/time';
+import { isDate, isValidTimeZone, zonedToUtc } from '$lib/time';
 import { parseNumber, toStored, type UnitPrefs } from '$lib/units';
 
 export const str = (form: FormData, key: string) => String(form.get(key) ?? '').trim();
@@ -44,7 +44,7 @@ export function parseTankForm(form: FormData, prefs: UnitPrefs) {
 		return v;
 	};
 	const startDate = optStr(form, 'startDate');
-	if (startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) errors.startDate = 'Use a valid date.';
+	if (startDate && !isDate(startDate)) errors.startDate = 'Use a valid date.';
 
 	return {
 		errors,
@@ -80,8 +80,7 @@ export function parseWhen(form: FormData, timeZone: string): { at: string } | { 
 	const date = str(form, 'date');
 	const time = str(form, 'time');
 	if (!date && !time) return { at: new Date().toISOString() };
-	if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) return { error: 'Pick a valid date and time.' };
-	const at = zonedToUtc(date, time, timeZone);
+	const at = zonedToUtc(date, time, timeZone); // Invalid Date unless both are real
 	if (Number.isNaN(at.getTime())) return { error: 'Pick a valid date and time.' };
 	if (at.getTime() > Date.now() + 2 * 60_000) return { error: "Logs can't be in the future." };
 	return { at: at.toISOString() };

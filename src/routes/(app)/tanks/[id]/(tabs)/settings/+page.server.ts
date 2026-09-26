@@ -61,7 +61,7 @@ export const actions: Actions = {
 		const [photo] = storePhotos(params.id, prepared, { takenAt: new Date().toISOString() });
 		if (photo) setCover(user.id, photo.id);
 		setFlash(cookies, '✓ Tank saved');
-		redirect(303, `/?tank=${params.id}`);
+		redirect(303, `/tanks/${params.id}/settings`); // stay on the tab, like the other tank tabs
 	},
 	archive: async ({ locals, params, cookies }) => {
 		const tank = getTank(locals.user!.id, params.id);

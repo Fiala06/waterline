@@ -5,7 +5,7 @@
 	import { photoUrl } from '$lib/media';
 	let { data } = $props();
 	let copied = $state(false);
-	const shareUrl = $derived(data.sharing?.share ? `${data.sharing.base || location.origin}/s/${data.sharing.share.id}` : '');
+	const shareUrl = $derived(data.sharing?.share ? `${data.sharing.base}/s/${data.sharing.share.id}` : '');
 	async function copy() {
 		try {
 			await navigator.clipboard.writeText(shareUrl);

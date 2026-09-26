@@ -33,8 +33,7 @@ test('server settings are admin only; test email via outbox', async ({ page }, i
 	await page.context().clearCookies();
 
 	// The local admin account is the admin
-	await open(page, '/signin');
-	await page.getByRole('button', { name: 'Use local admin login' }).click();
+	await open(page, '/signin?local');
 	await page.getByPlaceholder('Admin username').fill('admin');
 	await page.getByPlaceholder('Password').fill('e2e-admin-password');
 	await page.getByRole('button', { name: 'Local admin login' }).click();
@@ -64,7 +63,7 @@ test('server settings are admin only; test email via outbox', async ({ page }, i
 	expect(mail.text).toContain('✓ Delivery works');
 
 	await page.locator('form[action="?/save"]').getByRole('button', { name: 'Save', exact: true }).click();
-	await expect(page.getByText('✓ Saved')).toBeVisible();
+	await expect(page.getByText('✓ Email settings saved')).toBeVisible();
 	await open(page, '/settings/server');
 	await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /saved/);
 	await expect(page.getByLabel('Sending domain')).toHaveValue('mg.example.com');

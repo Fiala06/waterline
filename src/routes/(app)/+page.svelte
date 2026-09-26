@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tankTypeLabel } from '$lib/types';
 	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
 	import ParamCard from '$lib/components/ParamCard.svelte';
 	import TankThumb from '$lib/components/TankThumb.svelte';
@@ -6,13 +7,25 @@
 	import TrendChart from '$lib/components/TrendChart.svelte';
 	import { displayValue, fmtRange, fmtValue, paramUnit, shortName, statusOf } from '$lib/params';
 	import { statusShort } from '$lib/status';
-	import { ui } from '$lib/ui.svelte';
+	import { invalidateAll } from '$app/navigation';
+	import { discard, retry } from '$lib/offline';
+	import { toast, ui } from '$lib/ui.svelte';
 	import { photoUrl } from '$lib/media';
 
 	let { data } = $props();
 	const prefs = $derived(data.user);
 	const current = $derived(data.tanks.find((t) => t.id === data.currentTankId));
-	const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+	/** "Rotala, Ludwigia, Java fern +3" */
+	const preview = (items: string[], n = 3) => items.slice(0, n).join(', ') + (items.length > n ? ` +${items.length - n}` : '');
+
+	// An entry the server refused while syncing: send it again, or drop it.
+	async function retryEntry(id: string) {
+		if ((await retry(id)) > 0) {
+			toast('✓ Synced');
+			invalidateAll();
+		}
+	}
 
 	const cards = $derived(
 		(data.params ?? []).map((p) => {
@@ -70,12 +83,13 @@
 	</div>
 {:else}
 	<div class="page">
+		<h1 class="sr-only">{data.tank.name} dashboard</h1>
 		<button type="button" class="tank-head" onclick={() => (ui.tankSwitcher = true)}>
 			<TankThumb cover={current?.cover} />
 			<span class="th-text">
 				<span class="th-name">{data.tank.name} <span class="caret">▾</span></span>
 				<span class="th-sub"
-					>{cap(data.tank.type)}{current?.volume ? ` · ${current.volume}` : ''}{data.tanks.length > 1
+					>{tankTypeLabel(data.tank.type)}{current?.volume ? ` · ${current.volume}` : ''}{data.tanks.length > 1
 						? ` · ${data.tanks.length} tanks`
 						: ''}</span
 				>
@@ -127,10 +141,10 @@
 						</div>
 					</section>
 
-					<section class="stack trends card-desktop">
+					<section class="stack trends">
 						<div class="section-head">
-							<h2>Trends</h2>
-							<span class="meta">Last 4 weeks</span>
+							<h2>Trends <span class="meta">· last 4 weeks</span></h2>
+							<a href="/charts{chosen ? `?p=${chosen.id}` : ''}">Charts</a>
 						</div>
 						{#if trendable.length}
 							<div class="chips" role="group" aria-label="Parameter">
@@ -179,7 +193,7 @@
 							<div class="muted sm">Since last water change</div>
 							<div class="big-num">
 								<span class="num">{wc?.days ?? '—'}</span>
-								<span class="muted">{wc?.days == null ? 'none logged' : `days · goal ${wc.goal}`}</span>
+								<span class="muted">{wc?.days == null ? 'none logged' : `day${wc.days === 1 ? '' : 's'} · goal ${wc.goal}`}</span>
 							</div>
 						</div>
 						{#if wcOver}<span class="status-bad sm strong">✕ {wcOver} day{wcOver === 1 ? '' : 's'} over</span>{/if}
@@ -201,10 +215,10 @@
 					{/if}
 				</section>
 
-				<section class="stack">
+				<section class="stack recent">
 					<div class="section-head">
 						<h2>Recent activity</h2>
-						<a href="/history">History</a>
+						<span class="links"><a href="/photos">Photos</a><a href="/history">History</a></span>
 					</div>
 					<ul class="feed">
 						{#each ui.queue.filter((q) => q.tankId === data.tank?.id) as q (q.id)}
@@ -215,6 +229,12 @@
 										<span class="f-title">{q.title}</span>
 										<span class="f-sub" class:status-warn={!q.error} class:status-bad={!!q.error}>{q.error ? `✕ ${q.error}` : '▲ Waiting to sync'}</span>
 									</span>
+									{#if q.error}
+										<span class="q-actions">
+											<button type="button" class="btn" onclick={() => retryEntry(q.id)}>Retry</button>
+											<button type="button" class="btn" onclick={() => discard(q.id)}>Discard</button>
+										</span>
+									{/if}
 								</div>
 							</li>
 						{/each}
@@ -235,6 +255,28 @@
 							</li>
 						{/each}
 					</ul>
+				</section>
+
+				<section class="stack in-tank">
+					<div class="section-head">
+						<h2>In the tank</h2>
+						<a href="/tanks/{data.tank.id}">Details</a>
+					</div>
+					<div class="card contents">
+						{#each [
+							{ tab: 'livestock', title: 'Livestock', count: data.contents.animals ? `${data.contents.animals} in ${data.contents.livestock.length} species` : '', items: data.contents.livestock, extra: data.contents.quarantine ? `${data.contents.quarantine} in quarantine` : '' },
+							{ tab: 'plants', title: 'Plants', count: data.contents.plants.length ? String(data.contents.plants.length) : '', items: data.contents.plants, extra: '' },
+							{ tab: 'equipment', title: 'Equipment', count: data.contents.equipment.length ? String(data.contents.equipment.length) : '', items: data.contents.equipment, extra: '' }
+						] as row (row.tab)}
+							<a class="c-row" href="/tanks/{data.tank.id}/{row.tab}">
+								<span class="f-text">
+									<span class="f-title">{row.title}{row.count ? ` · ${row.count}` : ''}</span>
+									<span class="f-sub">{row.items.length ? preview(row.items) : 'None added yet'}{row.extra ? ` · ${row.extra}` : ''}</span>
+								</span>
+								<span class="chev" aria-hidden="true">›</span>
+							</a>
+						{/each}
+					</div>
 				</section>
 			</div>
 		</div>
@@ -290,6 +332,26 @@
 		display: flex;
 		flex-direction: column;
 		gap: 10px;
+	}
+	.links {
+		display: flex;
+		gap: 16px;
+	}
+	/* Phones read top to bottom: summary, readings, due, trends, recent activity (03). */
+	@media (max-width: 1023px) {
+		.col-main,
+		.col-side {
+			display: contents;
+		}
+		.trends {
+			order: 1;
+		}
+		.recent {
+			order: 2;
+		}
+		.in-tank {
+			order: 3;
+		}
 	}
 	.sm {
 		font-size: 13px;
@@ -467,6 +529,20 @@
 		font-size: 18px;
 		color: var(--placeholder);
 	}
+	.contents {
+		padding: 4px 14px;
+	}
+	.c-row {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		min-height: 60px;
+		padding: 10px 0;
+		color: var(--text);
+	}
+	.c-row + .c-row {
+		border-top: 1px solid var(--border);
+	}
 	.queued {
 		display: flex;
 		gap: 12px;
@@ -475,6 +551,14 @@
 	}
 	.queued .f-sub {
 		font-weight: 600;
+	}
+	.q-actions {
+		display: flex;
+		gap: 6px;
+	}
+	.q-actions .btn {
+		padding: 0 12px;
+		font-size: 14px;
 	}
 	.f-thumb {
 		width: 52px;

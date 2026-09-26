@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { untrack } from 'svelte';
 	import { photoUrl } from '$lib/media';
+	import { toast } from '$lib/ui.svelte';
 	let { data, form } = $props();
 	const p = $derived(data.page);
 
@@ -40,16 +41,27 @@
 
 <svelte:head><title>Public page · {data.tank.name}</title></svelte:head>
 
-<form method="POST" action="?/save" class="page" use:enhance={() => async ({ update }) => update({ reset: false })}>
+<form
+	method="POST"
+	action="?/save"
+	class="page"
+	use:enhance={() =>
+		async ({ result, update }) => {
+			await update({ reset: false });
+			if (result.type === 'success') {
+				slug = data.page.slug; // as the server cleaned it up
+				toast('✓ Public page saved');
+			}
+		}}
+>
 	<a class="back" href="/tanks/{data.tank.id}/settings">‹ {data.tank.name}</a>
 	<div class="head">
 		<h1>Public page</h1>
 		<button class="btn btn-primary">Save</button>
 	</div>
 	{#if !data.allowed}
-		<p class="banner banner-bad">The server owner has turned public pages off, so this page can't be published right now.</p>
+		<p class="banner banner-warn">▲ The server owner has turned public pages off, so this page can't be published right now.</p>
 	{/if}
-	{#if form?.saved}<p class="banner banner-ok" role="status">✓ Saved</p>{/if}
 
 	<section class="card box">
 		<div class="trow">
@@ -125,9 +137,9 @@
 			{#if data.photos.length}
 				<div class="og-photos" role="radiogroup" aria-label="Share photo">
 					<label class="og" class:on={ogPhotoId === ''}><input type="radio" name="ogPhotoId" value="" bind:group={ogPhotoId} /><span>Cover</span></label>
-					{#each data.photos as ph (ph.id)}
+					{#each data.photos as ph, i (ph.id)}
 						<label class="og" class:on={ogPhotoId === ph.id}>
-							<input type="radio" name="ogPhotoId" value={ph.id} bind:group={ogPhotoId} />
+							<input type="radio" name="ogPhotoId" value={ph.id} bind:group={ogPhotoId} aria-label="Photo {i + 1}" />
 							<img src={photoUrl(ph.id)} alt="" loading="lazy" />
 						</label>
 					{/each}
@@ -146,7 +158,7 @@
 		{#if p.enabled}
 			<div class="card preview">
 				<div class="caps">Social preview</div>
-				<img class="og-img" src="/t/{p.slug}/og.png?v={Date.now()}" alt="How the link looks when shared" />
+				<img class="og-img" src="/t/{p.slug}/og.png?v={data.ogVersion}" alt="How the link looks when shared" />
 			</div>
 		{/if}
 		<p class="hint">
@@ -164,13 +176,6 @@
 		flex-direction: column;
 		gap: 18px;
 		max-width: 640px;
-	}
-	.back {
-		font-size: 16px;
-		font-weight: 600;
-		min-height: 36px;
-		display: flex;
-		align-items: center;
 	}
 	.head {
 		display: flex;

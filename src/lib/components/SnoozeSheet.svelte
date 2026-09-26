@@ -48,7 +48,7 @@
 				<form method="POST" action="/tasks?/snooze" class="pick" use:enhance={() => async ({ update }) => { open = false; await update(); }}>
 					<input type="hidden" name="taskId" value={task.id} />
 					<input type="hidden" name="from" value={from} />
-					<input class="input" type="date" name="until" min={addDays(today, 1)} bind:value={custom} required aria-label="Snooze until" />
+					<input class="input" type="date" name="until" min={addDays(task.due > today ? task.due : today, 1)} bind:value={custom} required aria-label="Snooze until" />
 					<button class="btn btn-primary">Snooze</button>
 				</form>
 			{:else}

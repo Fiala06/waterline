@@ -1,12 +1,12 @@
 import { error, redirect } from '@sveltejs/kit';
-import { fmtDate, todayInZone } from '$lib/time';
+import { addDays, fmtDate, isDate, todayInZone } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
 import { str } from '$lib/server/forms';
 import { safeReturn } from '$lib/server/redirect';
 import { listTanks } from '$lib/server/tanks';
 import { taskFormValues } from '$lib/server/task-form';
 import { completeTask, getTask, listTasks, snoozeTask, undoCompletion } from '$lib/server/tasks';
-import { addDays } from '$lib/time';
+import { effectiveDue } from '$lib/tasks';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals, url }) => {
@@ -64,8 +64,10 @@ export const actions: Actions = {
 		const taskId = str(form, 'taskId');
 		if (!taskId) error(400, 'Missing task');
 		const until = str(form, 'until');
-		const date = /^\d{4}-\d{2}-\d{2}$/.test(until) ? until : addDays(todayInZone(user.timeZone), 1);
-		if (date <= todayInZone(user.timeZone)) error(400, 'Pick a date after today');
+		const date = isDate(until) ? until : addDays(todayInZone(user.timeZone), 1);
+		const due = effectiveDue(getTask(user.id, taskId));
+		const after = due && due > todayInZone(user.timeZone) ? due : todayInZone(user.timeZone);
+		if (date <= after) error(400, `Pick a date after ${fmtDate(after)}`);
 		const task = snoozeTask(user.id, taskId, date);
 		setFlash(cookies, `Snoozed ${task.name} to ${fmtDate(date)}`);
 		redirect(303, safeReturn(form.get('from'), '/tasks'));

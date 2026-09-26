@@ -17,6 +17,16 @@ import { getEvent, getTest } from './logs';
 import { entryPhotos } from './photos';
 import { listParams } from './tanks';
 
+/**
+ * Whether the event form can edit this entry. System notes and automatic
+ * livestock entries (recounts, status changes) have no form fields to edit.
+ */
+export function eventEditable(e: { category: string; data: Record<string, unknown> }) {
+	if (e.category === 'note') return !e.data.system;
+	if (e.category === 'livestock') return LIVESTOCK_ACTIONS.some((a) => a.value === e.data.action);
+	return true;
+}
+
 export interface EntryView {
 	kind: 'test' | 'event';
 	id: string;
@@ -34,14 +44,20 @@ export interface EntryView {
 }
 
 export function testView(user: User, id: string): EntryView {
-	const { test, readings } = getTest(user.id, id);
+	const { test, readings, previous } = getTest(user.id, id);
 	const rows = listParams(test.tankId, { all: true })
 		.filter((p) => readings.has(p.id))
 		.map((p) => {
 			const v = readings.get(p.id)!;
 			const st = statusOf(p, v);
 			const unit = paramUnit(p, user);
-			return { label: p.name, value: `${fmtValue(p, v, user)}${unit ? ' ' + unit : ''}`, statusText: statusMedium(st), level: st.level };
+			const was = previous.get(p.id);
+			return {
+				label: p.name,
+				value: `${fmtValue(p, v, user)}${unit ? ' ' + unit : ''}`,
+				statusText: `${statusMedium(st)}${was != null ? ` · was ${fmtValue(p, was, user)}` : ''}`,
+				level: st.level
+			};
 		});
 	return {
 		kind: 'test',
@@ -114,7 +130,7 @@ export function eventView(user: User, id: string): EntryView {
 		note: e.note,
 		rows,
 		photos: entryPhotos({ eventId: e.id }).map((p) => ({ id: p.id })),
-		editable: !(e.category === 'note' && d.system),
+		editable: eventEditable(e),
 		href: `/entries/event/${e.id}`
 	};
 }

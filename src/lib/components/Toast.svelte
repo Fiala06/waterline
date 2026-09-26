@@ -5,14 +5,15 @@
 	let {
 		message,
 		undo,
+		view,
 		raised = false
-	}: { message: string | null | undefined; undo?: string; raised?: boolean } = $props();
+	}: { message: string | null | undefined; undo?: string; view?: string; raised?: boolean } = $props();
 	let visible = $state<string | null>(null);
 
 	$effect(() => {
 		if (!message) return;
 		visible = message;
-		const t = setTimeout(() => (visible = null), undo ? 6000 : 2800);
+		const t = setTimeout(() => (visible = null), undo || view ? 6000 : 2800);
 		return () => clearTimeout(t);
 	});
 </script>
@@ -27,6 +28,8 @@
 					<input type="hidden" name="from" value={page.url.pathname + page.url.search} />
 					<button class="undo">Undo</button>
 				</form>
+			{:else if view}
+				<a class="undo" href={view} onclick={() => (visible = null)}>View</a>
 			{/if}
 		</div>
 	{/if}
@@ -66,7 +69,9 @@
 	.undo {
 		color: var(--toast-action);
 		font-weight: 700;
-		min-height: 32px;
+		min-height: 44px;
+		display: flex;
+		align-items: center;
 		padding: 0 4px;
 	}
 	@media (min-width: 900px) {

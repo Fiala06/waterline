@@ -1,7 +1,8 @@
 // Offline queue for new log entries (G11). When there's no connection, the
 // form's fields (and photos) are stored in IndexedDB and posted later. Each
 // entry carries a clientId, so the server ignores a replay it already has.
-import { ui } from './ui.svelte';
+import type { SubmitFunction } from '@sveltejs/kit';
+import { toast, ui } from './ui.svelte';
 import { utcToZoned } from './time';
 
 const DB = 'waterline';
@@ -14,6 +15,7 @@ export interface Queued {
 	fields: Field[];
 	title: string; // "Water test · 5 readings"
 	tankId: string | null;
+	userId: string | null;
 	createdAt: string;
 	error?: string;
 }
@@ -39,7 +41,7 @@ async function tx<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBReq
 export async function listQueued(): Promise<Queued[]> {
 	try {
 		const all = await tx<Queued[]>('readonly', (s) => s.getAll() as IDBRequest<Queued[]>);
-		return all.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+		return all.filter((q) => q.userId === ui.userId).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 	} catch {
 		return [];
 	}
@@ -71,6 +73,7 @@ export async function enqueue(form: FormData, url: string, title: string, timeZo
 		fields,
 		title,
 		tankId: new URL(url, location.origin).searchParams.get('tank'),
+		userId: ui.userId,
 		createdAt: new Date().toISOString()
 	};
 	await tx('readwrite', (s) => s.put(item));
@@ -82,6 +85,57 @@ export async function discard(id: string) {
 	await refreshQueue();
 }
 
+/** Clear a refused entry's error and try to send it again. */
+export async function retry(id: string) {
+	const item = await tx<Queued | undefined>('readonly', (s) => s.get(id) as IDBRequest<Queued | undefined>);
+	if (item) await tx('readwrite', (s) => s.put({ ...item, error: undefined }));
+	return flushQueue();
+}
+
+/**
+ * use:enhance for the log forms. With `offline` (new entries), no connection
+ * keeps the entry on this device (G11) and goes back to `closeHref`, which the
+ * service worker can answer from its cache. Otherwise it submits as usual.
+ */
+export function queueable(o: {
+	offline: boolean;
+	title: () => string;
+	closeHref: () => string;
+	timeZone: string;
+	busy: (b: boolean) => void;
+}): SubmitFunction {
+	return ({ formData, action, cancel }) => {
+		const queue = async () => {
+			try {
+				await enqueue(formData, action.pathname + action.search, o.title(), o.timeZone);
+			} catch {
+				toast('✕ Couldn’t save on this device. Try again when you’re back online.');
+				o.busy(false);
+				return;
+			}
+			try {
+				sessionStorage.setItem('wl_toast', "Saved on this phone. It'll sync when you're back online.");
+			} catch {
+				/* storage blocked */
+			}
+			location.assign(o.closeHref());
+		};
+		if (o.offline && !navigator.onLine) {
+			cancel();
+			void queue();
+			return;
+		}
+		o.busy(true);
+		return async ({ result, update }) => {
+			if (o.offline && result.type === 'error' && !navigator.onLine) await queue();
+			else {
+				await update({ reset: false });
+				o.busy(false);
+			}
+		};
+	};
+}
+
 let flushing = false;
 
 /** Post queued entries in order. Stops at the first network failure. */
@@ -91,6 +145,7 @@ export async function flushQueue(): Promise<number> {
 	let synced = 0;
 	try {
 		for (const item of await listQueued()) {
+			if (item.error) continue; // refused before: waits for Retry or Discard
 			const body = new FormData();
 			for (const [k, v] of item.fields) {
 				if (typeof v === 'string') body.append(k, v);

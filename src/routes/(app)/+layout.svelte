@@ -1,12 +1,14 @@
 <script lang="ts">
-	import { goto, invalidateAll } from '$app/navigation';
+	import { tankTypeLabel } from '$lib/types';
+	import { afterNavigate, goto, invalidateAll } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import InstallPrompt from '$lib/components/InstallPrompt.svelte';
 	import { flushQueue, refreshQueue } from '$lib/offline';
 	import { listenForInstall } from '$lib/install.svelte';
-	import { page } from '$app/state';
+	import { navigating, page } from '$app/state';
 	import Logo from '$lib/components/Logo.svelte';
 	import QuickAdd from '$lib/components/QuickAdd.svelte';
+	import TankMenu from '$lib/components/TankMenu.svelte';
 	import TankSwitcher from '$lib/components/TankSwitcher.svelte';
 	import TankThumb from '$lib/components/TankThumb.svelte';
 	import Toast from '$lib/components/Toast.svelte';
@@ -22,6 +24,9 @@
 	const showTabs = $derived(tabRoutes.includes(path));
 	// The photo viewer is full screen, without the sidebar or header.
 	const fullscreen = $derived(path.startsWith('/photos/'));
+	// The header's tank switcher only on pages about the current tank; Tasks,
+	// Tanks and Settings cover every tank.
+	const tankScoped = $derived(path === '/' || /^\/(charts|history|photos|log)(\/|$)/.test(path));
 
 	const nav = [
 		{ href: '/', label: 'Dashboard' },
@@ -52,6 +57,7 @@
 	onMount(() => {
 		listenForInstall();
 		ui.online = navigator.onLine;
+		ui.userId = data.user.id;
 		try {
 			const t = sessionStorage.getItem('wl_toast');
 			if (t) {
@@ -86,15 +92,48 @@
 		const root = document.documentElement;
 		if (theme === 'dark' || theme === 'light') root.dataset.theme = theme;
 		else delete root.dataset.theme;
+		// the browser bar color follows too (as themeColorMeta in hooks.server.ts)
+		for (const m of document.querySelectorAll('meta[name="theme-color"]')) m.remove();
+		const bar = (content: string, media = '') => document.head.append(Object.assign(document.createElement('meta'), { name: 'theme-color', content, media }));
+		if (theme !== 'light') bar('#0c1a1f', theme === 'dark' ? '' : '(prefers-color-scheme: dark)');
+		if (theme !== 'dark') bar('#f4f7f6', theme === 'light' ? '' : '(prefers-color-scheme: light)');
 	});
 
 	// Server messages (after a redirect) and browser ones share one toast.
 	$effect(() => {
 		const f = data.flash;
-		if (f) ui.toast = { text: f.text, id: f.id, undo: f.undo };
+		if (f) ui.toast = { text: f.text, id: f.id, undo: f.undo, view: f.view };
 	});
 
+	// Where an entry was opened from, so its Back link and Delete return there.
+	// Forms and single photos aren't places to go back to.
+	afterNavigate(({ from, to }) => {
+		const f = from?.url;
+		if (!f || f.pathname === to?.url.pathname) return;
+		ui.prev = /^\/(entries|log|photos\/|setup)/.test(f.pathname) ? ui.prev : f.pathname + f.search;
+	});
+
+	// Skeleton while a page takes a moment to load (7.9); quick loads never show it.
+	let slow = $state(false);
+	$effect(() => {
+		if (!navigating.to) {
+			slow = false;
+			return;
+		}
+		const t = setTimeout(() => (slow = true), 300);
+		return () => clearTimeout(t);
+	});
+
+	// Desktop header dropdown (G12); phones use the bottom sheet.
+	let tankMenu = $state(false);
+
 	function onkeydown(e: KeyboardEvent) {
+		if (e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey) && data.tanks.length) {
+			e.preventDefault();
+			if (tankScoped && matchMedia('(min-width: 1024px)').matches) tankMenu = !tankMenu;
+			else ui.tankSwitcher = true;
+			return;
+		}
 		if (e.key !== '+' || e.metaKey || e.ctrlKey) return;
 		const t = e.target as HTMLElement;
 		if (t.closest('input, textarea, select, dialog')) return;
@@ -102,7 +141,6 @@
 		ui.quickAdd = true;
 	}
 
-	const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 </script>
 
 <svelte:window {onkeydown} />
@@ -147,17 +185,20 @@
 
 	<div class="main">
 		<header class="topbar">
-			{#if current}
-				<button type="button" class="tank-btn" onclick={() => (ui.tankSwitcher = true)}>
-					<TankThumb cover={current.cover} size={40} radius={10} />
-					<span class="tb-text">
-						<span class="tb-name">{current.name} <span class="caret">▾</span></span>
-						<span class="tb-sub">{cap(current.type)}{current.volume ? ` · ${current.volume}` : ''}</span>
-					</span>
-				</button>
+			{#if current && tankScoped}
+				<div class="tank-pick">
+					<button type="button" class="tank-btn" aria-expanded={tankMenu} onclick={() => (tankMenu = !tankMenu)}>
+						<TankThumb cover={current.cover} size={40} radius={10} />
+						<span class="tb-text">
+							<span class="tb-name">{current.name} <span class="caret">{tankMenu ? '▴' : '▾'}</span></span>
+							<span class="tb-sub">{tankTypeLabel(current.type)}{current.volume ? ` · ${current.volume}` : ''}</span>
+						</span>
+					</button>
+					<TankMenu bind:open={tankMenu} tanks={data.tanks} currentId={data.currentTankId} onpick={pickTank} />
+				</div>
 			{/if}
 			<div class="spacer"></div>
-			{#if current}<span class="tb-meta">{data.quick.lastTest}</span>{/if}
+			{#if current && path === '/'}<span class="tb-meta">{data.quick.lastTest}</span>{/if}
 			<button type="button" class="btn btn-primary" onclick={() => (ui.quickAdd = true)}>
 				<span class="plus">+</span>Quick add
 			</button>
@@ -169,8 +210,11 @@
 				<span>{ui.online ? 'Syncing…' : waiting ? "Saved on this phone. They'll sync when you're back online." : 'New entries are saved on this phone until you’re back online.'}</span>
 			</div>
 		{/if}
-		<main class:with-tabs={showTabs}>
+		<main class:with-tabs={showTabs} aria-busy={slow}>
 			{@render children()}
+			{#if slow}
+				<div class="skeleton" aria-hidden="true"><i class="sk-title"></i><i></i><i></i><i class="sk-short"></i></div>
+			{/if}
 		</main>
 	</div>
 </div>
@@ -210,7 +254,7 @@
 {#if showTabs}<InstallPrompt />{/if}
 
 {#key ui.toast?.id}
-	<Toast message={ui.toast?.text} undo={ui.toast?.undo} raised={showTabs} />
+	<Toast message={ui.toast?.text} undo={ui.toast?.undo} view={ui.toast?.view} raised={showTabs} />
 {/key}
 
 <style>
@@ -222,7 +266,33 @@
 		display: none;
 	}
 	main {
+		position: relative;
 		padding-top: env(safe-area-inset-top);
+	}
+	.skeleton {
+		position: absolute;
+		inset: 0;
+		z-index: 5;
+		background: var(--bg);
+		padding: calc(16px + env(safe-area-inset-top)) 20px;
+		display: flex;
+		flex-direction: column;
+		gap: 14px;
+	}
+	.skeleton i {
+		display: block;
+		height: 96px;
+		max-width: 720px;
+		border-radius: 16px;
+		background: var(--surface);
+		animation: wl-pulse 1.4s ease-in-out infinite;
+	}
+	.skeleton .sk-title {
+		height: 32px;
+		width: 45%;
+	}
+	.skeleton .sk-short {
+		width: 70%;
 	}
 	main.with-tabs {
 		padding-bottom: calc(110px + env(safe-area-inset-bottom));
@@ -473,6 +543,9 @@
 			height: 72px;
 			padding: 0 32px;
 			border-bottom: 1px solid var(--border);
+		}
+		.tank-pick {
+			position: relative;
 		}
 		.tank-btn {
 			display: flex;

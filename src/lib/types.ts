@@ -2,6 +2,9 @@
 export const TANK_TYPES = ['freshwater', 'planted', 'brackish', 'reef'] as const;
 export type TankType = (typeof TANK_TYPES)[number];
 
+/** "Freshwater", "Planted"… for any tank type string. */
+export const tankTypeLabel = (type: string) => type.charAt(0).toUpperCase() + type.slice(1);
+
 export const EVENT_CATEGORIES = [
 	'water_change',
 	'dosing',

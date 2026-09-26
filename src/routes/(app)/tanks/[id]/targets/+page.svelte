@@ -1,17 +1,16 @@
 <script lang="ts">
+	import { tankTypeLabel } from '$lib/types';
 	import { enhance } from '$app/forms';
+	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import Sheet from '$lib/components/Sheet.svelte';
 	import { paramStatus, statusMedium } from '$lib/status';
 	import { parseNumber } from '$lib/units';
 
 	let { data, form } = $props();
-	const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 	const errors = $derived((form?.errors ?? {}) as Record<string, string>);
 
-	let tracked = $state<Record<string, boolean>>({});
-	$effect(() => {
-		tracked = Object.fromEntries(data.rows.map((r) => [r.id, r.tracked]));
-	});
+	// Derived (not an effect) so the server-rendered page shows the saved switches.
+	let tracked = $derived<Record<string, boolean>>(Object.fromEntries(data.rows.map((r) => [r.id, r.tracked])));
 
 	// G7 · custom parameter sheet
 	let addOpen = $state(false);
@@ -43,7 +42,7 @@
 	<div class="top">
 		<a class="back" href="/tanks/{data.tank.id}">‹ {data.tank.name}</a>
 		<h1>Parameters &amp; targets</h1>
-		<div class="muted">{data.tank.name} · {cap(data.tank.type)}</div>
+		<div class="muted">{data.tank.name} · {tankTypeLabel(data.tank.type)}</div>
 		<p class="intro">
 			Set your own range for each parameter. Readings outside it are flagged
 			<span class="status-bad strong">✕ out of range</span>; readings within 10% of a limit show
@@ -61,7 +60,12 @@
 							<span class="faint sm">{tracked[r.id] ? r.defaultText : 'Not tracked · hidden from tests'}</span>
 						</div>
 						<label class="switch" aria-label="Track {r.name}">
-							<input type="checkbox" name="tracked_{r.id}" bind:checked={tracked[r.id]} />
+							<input
+								type="checkbox"
+								name="tracked_{r.id}"
+								checked={tracked[r.id]}
+								onchange={(e) => (tracked = { ...tracked, [r.id]: e.currentTarget.checked })}
+							/>
 							<span></span>
 						</label>
 					</div>
@@ -79,7 +83,7 @@
 					</div>
 					{#if errors[r.id]}<span class="error-text">✕ {errors[r.id]}</span>{/if}
 					{#if r.isCustom}
-						<button class="remove" formaction="?/deleteCustom" name="paramId" value={r.id}>Remove {r.name}</button>
+						<button type="button" class="remove" popovertarget="confirm-rm-{r.id}">Remove {r.name}</button>
 					{/if}
 				</div>
 			{/each}
@@ -88,10 +92,24 @@
 		<div class="foot">
 			<button type="button" class="add" onclick={() => (addOpen = true)}>+ Add custom parameter</button>
 			<button class="btn btn-primary btn-lg">Save targets</button>
-			<button class="reset" formaction="?/reset" formnovalidate>Reset to {cap(data.tank.type)} defaults</button>
+			<button class="reset" formaction="?/reset" formnovalidate>Reset to {tankTypeLabel(data.tank.type)} defaults</button>
 		</div>
 	</form>
 </div>
+
+{#each data.rows.filter((r) => r.isCustom) as r (r.id)}
+	<ConfirmDelete
+		id="confirm-rm-{r.id}"
+		trigger={false}
+		title="Remove {r.name}?"
+		body={r.readings
+			? `Its ${r.readings} reading${r.readings === 1 ? '' : 's'} will be deleted from History. This can't be undone. To keep them, switch it off instead.`
+			: 'It has no readings yet. This can\'t be undone.'}
+		action="?/deleteCustom"
+		fields={{ paramId: r.id }}
+		label="Remove"
+	/>
+{/each}
 
 <Sheet bind:open={addOpen} title="Custom parameter" width={480}>
 	<form method="POST" action="?/addCustom" class="custom" use:enhance>
@@ -143,12 +161,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: 4px;
-	}
-	.back {
-		min-height: 44px;
-		display: flex;
-		align-items: center;
-		font-size: 15px;
 	}
 	h1 {
 		margin: 0;
@@ -207,6 +219,7 @@
 	}
 	.minmax {
 		flex: 1;
+		min-width: 0;
 		height: 48px;
 		border-radius: 12px;
 		background: var(--surface-2);
@@ -224,6 +237,7 @@
 	.minmax input {
 		flex: 1;
 		min-width: 0;
+		width: 100%;
 		background: transparent;
 		border: none;
 		font-size: 18px;

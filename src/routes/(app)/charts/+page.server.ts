@@ -1,6 +1,6 @@
 import { eventTitle } from '$lib/events';
 import { displayValue, fmtRange, fmtValue, paramUnit, statusOf } from '$lib/params';
-import { statusIcon } from '$lib/status';
+import { statusIcon, statusShort } from '$lib/status';
 import { fmtDate, dateInZone } from '$lib/time';
 import { eventsSince, latestReadings, series } from '$lib/server/logs';
 import { getTank, listParams } from '$lib/server/tanks';
@@ -28,7 +28,7 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 
 	const list = params.map((p) => {
 		const st = statusOf(p, latest.get(p.id)?.value);
-		return { id: p.id, name: p.name, unit: paramUnit(p, user), level: st.level, icon: statusIcon[st.level] };
+		return { id: p.id, name: p.name, unit: paramUnit(p, user), level: st.level, icon: statusIcon[st.level], status: statusShort(st) };
 	});
 	if (!param) return { tank: { id: tank.id, name: tank.name }, range: range.key, list, chart: null };
 
@@ -60,6 +60,7 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 		? {
 				latest: fv(lastValue!),
 				latestLevel: statusOf(param, lastValue).level,
+				latestStatus: statusShort(statusOf(param, lastValue)),
 				average: fv(values.reduce((a, b) => a + b, 0) / values.length),
 				min: fv(Math.min(...values)),
 				max: fv(Math.max(...values)),

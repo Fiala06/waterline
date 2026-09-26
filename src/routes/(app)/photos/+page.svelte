@@ -56,13 +56,6 @@
 		flex-direction: column;
 		gap: 18px;
 	}
-	.back {
-		font-size: 16px;
-		font-weight: 600;
-		min-height: 36px;
-		display: flex;
-		align-items: center;
-	}
 	.head {
 		display: flex;
 		align-items: center;

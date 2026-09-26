@@ -1,5 +1,6 @@
 <script lang="ts">
 	// G1 · Tank switcher. Picks a tank; the caller decides what that does.
+	import { tankTypeLabel } from '$lib/types';
 	import Sheet from './Sheet.svelte';
 	import TankThumb from './TankThumb.svelte';
 
@@ -23,7 +24,6 @@
 		onpick: (id: string) => void;
 	} = $props();
 
-	const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 </script>
 
 <Sheet bind:open label="Switch tank" width={440}>
@@ -47,7 +47,7 @@
 					<TankThumb cover={t.cover} />
 					<span class="text">
 						<span class="name">{t.name}</span>
-						<span class="sub">{cap(t.type)}{t.volume ? ` · ${t.volume}` : ''}</span>
+						<span class="sub">{tankTypeLabel(t.type)}{t.volume ? ` · ${t.volume}` : ''}</span>
 					</span>
 					<span class="right">
 						{#if t.alerts}
@@ -99,8 +99,8 @@
 		text-align: left;
 	}
 	.row.current {
-		background: var(--surface-hi);
-		border-color: var(--border-strong);
+		background: var(--selected);
+		border-color: var(--accent);
 	}
 	.text {
 		flex: 1;
@@ -137,8 +137,9 @@
 		color: var(--ok);
 	}
 	.viewing {
-		font-size: 12px;
-		color: var(--text-muted);
+		font-size: 13px;
+		font-weight: 700;
+		color: var(--accent);
 	}
 	.add {
 		border-style: dashed;

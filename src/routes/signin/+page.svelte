@@ -4,11 +4,10 @@
 	let { data, form } = $props();
 	// Signed out: forget pages the service worker cached for the last user.
 	onMount(() => navigator.serviceWorker?.controller?.postMessage('clear-user-cache'));
-	let showLocal = $state(false);
 	const error = $derived(form?.error ?? data.error);
-	$effect(() => {
-		if (form?.error && data.local) showLocal = true;
-	});
+	// Phones open the admin form from a plain link (no JS needed); desktop always shows it (D1).
+	const showLocal = $derived(data.showLocal || !!form?.error);
+	const localHref = $derived(`?local${data.redirectTo !== '/' ? `&redirectTo=${encodeURIComponent(data.redirectTo)}` : ''}`);
 </script>
 
 <svelte:head><title>Sign in · Waterline</title></svelte:head>
@@ -21,6 +20,7 @@
 	</div>
 
 	<div class="actions">
+		<h2 class="desk-only">Sign in</h2>
 		{#if error}<p class="banner banner-bad" role="alert">✕ {error}</p>{/if}
 
 		{#if data.google}
@@ -29,7 +29,7 @@
 				<button class="google"><span class="g" aria-hidden="true">G</span>Sign in with Google</button>
 			</form>
 		{:else if !data.dev}
-			<p class="banner banner-bad">Google sign-in isn't configured. Set AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET.</p>
+			<p class="banner banner-warn">▲ Google sign-in isn't set up. Set AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET.</p>
 		{/if}
 
 		{#if data.dev}
@@ -43,19 +43,17 @@
 		{/if}
 
 		{#if data.local}
-			{#if showLocal}
-				<form method="POST" action="?/local" class="local">
-					<input type="hidden" name="redirectTo" value={data.redirectTo} />
-					<label class="sr-only" for="username">Admin username</label>
-					<input class="input" id="username" name="username" placeholder="Admin username" required autocomplete="username" />
-					<label class="sr-only" for="password">Password</label>
-					<input class="input" id="password" name="password" type="password" placeholder="Password" required autocomplete="current-password" />
-					<button class="btn btn-lg">Local admin login</button>
-				</form>
-			{:else}
-				<p class="muted owner">
-					Server owner? <button type="button" class="link" onclick={() => (showLocal = true)}>Use local admin login</button>
-				</p>
+			<div class="divider desk-only" aria-hidden="true"><span>server owner</span></div>
+			<form method="POST" action="?/local" class="local admin" class:open={showLocal}>
+				<input type="hidden" name="redirectTo" value={data.redirectTo} />
+				<label class="sr-only" for="username">Admin username</label>
+				<input class="input" id="username" name="username" placeholder="Admin username" required autocomplete="username" />
+				<label class="sr-only" for="password">Password</label>
+				<input class="input" id="password" name="password" type="password" placeholder="Password" required autocomplete="current-password" />
+				<button class="btn btn-lg">Local admin login</button>
+			</form>
+			{#if !showLocal}
+				<p class="muted owner">Server owner? <a class="link" href={localHref}>Use local admin login</a></p>
 			{/if}
 		{/if}
 		<p class="host mono">self-hosted · {data.host}</p>
@@ -135,6 +133,10 @@
 		font-size: 13px;
 		color: var(--warn);
 	}
+	.admin:not(.open),
+	.desk-only {
+		display: none;
+	}
 	.owner {
 		text-align: center;
 		margin: 0;
@@ -143,6 +145,9 @@
 	.link {
 		color: var(--accent);
 		font-weight: 600;
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
 	}
 	.host {
 		text-align: center;
@@ -151,8 +156,55 @@
 		color: var(--text-faint);
 	}
 	@media (min-width: 1024px) {
+		/* D1: brand on the left, a sign-in card on the right */
+		.wrap {
+			max-width: 1040px;
+			flex-direction: row;
+			align-items: center;
+			gap: 64px;
+			padding: 48px;
+		}
+		.hero {
+			align-items: flex-start;
+			text-align: left;
+			padding: 0;
+		}
 		h1 {
 			font-size: 48px;
+		}
+		.actions {
+			width: 420px;
+			flex-shrink: 0;
+			padding: 32px;
+			border-radius: 20px;
+			background: var(--surface);
+			border: 1px solid var(--border);
+		}
+		h2.desk-only {
+			display: block;
+			margin: 0;
+			font-size: 22px;
+			font-weight: 600;
+		}
+		.divider.desk-only {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			font-size: 13px;
+			color: var(--text-faint);
+		}
+		.divider::before,
+		.divider::after {
+			content: '';
+			flex: 1;
+			height: 1px;
+			background: var(--border);
+		}
+		.admin:not(.open) {
+			display: flex;
+		}
+		.owner {
+			display: none;
 		}
 	}
 </style>

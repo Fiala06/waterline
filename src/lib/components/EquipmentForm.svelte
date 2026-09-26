@@ -1,6 +1,7 @@
 <script lang="ts">
 	// T3 · Add / edit equipment. Fields adapt to the type.
 	import { enhance } from '$app/forms';
+	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import { untrack } from 'svelte';
 	import { EQUIPMENT_TYPE_LABEL, EQUIPMENT_TYPES, SPEC_FIELDS, SUGGESTED_TASK, specUnit, type EquipmentType } from '$lib/equipment';
 	import type { UnitPrefs } from '$lib/units';
@@ -134,14 +135,14 @@
 </form>
 
 {#if mode === 'edit'}
-	<div id="confirm-eq-remove" popover class="confirm" role="alertdialog" aria-labelledby="cer-t">
-		<h2 id="cer-t">Remove this equipment?</h2>
-		<p>It moves to past equipment and a “Removed” entry is added to History.</p>
-		<div class="c-actions">
-			<button type="button" class="btn" popovertarget="confirm-eq-remove" popovertargetaction="hide">Cancel</button>
-			<form method="POST" action="?/remove"><button class="btn btn-danger">Remove</button></form>
-		</div>
-	</div>
+	<ConfirmDelete
+		id="confirm-eq-remove"
+		trigger={false}
+		title="Remove this equipment?"
+		body="It moves to past equipment and a “Removed” entry is added to History. A reminder made for it is removed too."
+		action="?/remove"
+		label="Remove"
+	/>
 {/if}
 
 <style>
@@ -228,31 +229,5 @@
 	}
 	.grow {
 		flex: 1;
-	}
-	.confirm {
-		border: 1px solid var(--border-strong);
-		border-radius: 20px;
-		background: var(--surface);
-		color: var(--text);
-		padding: 22px;
-		width: min(400px, calc(100vw - 40px));
-		box-shadow: var(--shadow-modal);
-	}
-	.confirm::backdrop {
-		background: var(--scrim);
-	}
-	.confirm h2 {
-		margin: 0 0 8px;
-		font-size: 19px;
-	}
-	.confirm p {
-		margin: 0 0 18px;
-		color: var(--text-muted);
-		line-height: 1.5;
-	}
-	.c-actions {
-		display: flex;
-		gap: 10px;
-		justify-content: flex-end;
 	}
 </style>

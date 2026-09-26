@@ -36,6 +36,13 @@ function dirSize(dir: string): number {
 
 const mb = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${Math.round(bytes / 1024 / 1024)} MB`);
 
+/** Plain-language sign-up policy (see isEmailAllowed). */
+function whoCanSignIn() {
+	if (env.OPEN_SIGNUP === 'true') return 'Anyone with a Google account (OPEN_SIGNUP=true)';
+	const n = (env.ALLOWED_EMAILS ?? '').split(',').filter((x) => x.trim()).length;
+	return n ? `The admin and ${n} allowed address${n === 1 ? '' : 'es'} or domain${n === 1 ? '' : 's'} (ALLOWED_EMAILS)` : 'Only the admin. Add people with ALLOWED_EMAILS.';
+}
+
 export const load: PageServerLoad = ({ locals }) => {
 	requireAdmin(locals);
 	const s = getServerSettings();
@@ -70,7 +77,8 @@ export const load: PageServerLoad = ({ locals }) => {
 		signIn: {
 			google: googleEnabled(),
 			googleClient: googleId ? `…${googleId.replace('.apps.googleusercontent.com', '').slice(-4)}.apps.googleusercontent.com` : null,
-			localAdmin: localAdminEnabled()
+			localAdmin: localAdminEnabled(),
+			who: whoCanSignIn()
 		},
 		server: {
 			version: pkg.version,
@@ -100,7 +108,8 @@ function readForm(form: FormData, saved: MailConfig) {
 		cfg.smtpPort = port && Number.isInteger(port) && port > 0 && port < 65536 ? port : null;
 		cfg.smtpSecure = form.get('smtpSecure') === 'on';
 		cfg.smtpUser = str(form, 'smtpUser') || null;
-		cfg.smtpPassword = str(form, 'smtpPassword') || saved.smtpPassword;
+		// the saved password only ever goes to the server it was saved for
+		cfg.smtpPassword = str(form, 'smtpPassword') || (cfg.smtpHost === saved.smtpHost ? saved.smtpPassword : null);
 		if (!cfg.smtpHost) errors.smtpHost = 'Enter the SMTP server.';
 		if (!cfg.smtpPort) errors.smtpPort = 'Enter a port, usually 587 or 465.';
 	}

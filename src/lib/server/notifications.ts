@@ -16,6 +16,7 @@ import { digestEmail, outOfRangeEmail, taskEmail, type DigestTank, type Footer, 
 import { sign } from './secrets';
 import { listParams, listTanks } from './tanks';
 import { listTasks } from './tasks';
+import { tankTypeLabel } from '$lib/types';
 
 export type Prefs = typeof notificationPrefs.$inferSelect;
 
@@ -97,7 +98,7 @@ function lastDone(taskId: string, today: string, tz: string) {
 }
 
 function tankSub(t: { type: string; nominalVolumeL: number | null }, user: User) {
-	return `${cap(t.type)}${t.nominalVolumeL != null ? ` · ${formatNumber(toDisplay(t.nominalVolumeL, 'volume', user), 0)} ${unitLabel('volume', user)}` : ''}`;
+	return `${tankTypeLabel(t.type)}${t.nominalVolumeL != null ? ` · ${formatNumber(toDisplay(t.nominalVolumeL, 'volume', user), 0)} ${unitLabel('volume', user)}` : ''}`;
 }
 
 /** Out-of-range readings in each tank's latest results. */
@@ -164,7 +165,8 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 	const weekly = prefs.delivery === 'weekly';
 	if (weekly && new Date(today + 'T12:00:00Z').getUTCDay() !== 1 && !force) return { sent };
 	const horizon = weekly ? 7 : Math.max(prefs.leadDays, 0);
-	const tanksOut: DigestTank[] = [];
+	type Pending = Omit<DigestTank, 'tasks'> & { tasks: (Omit<DigestTank['tasks'][number], 'doneUrl'> & { doneUrl: () => string })[] };
+	const tanksOut: Pending[] = [];
 	const summary = { overdue: 0, due: 0, outOfRange: 0 };
 	for (const tank of listTanks(user.id)) {
 		const mine = tasks
@@ -183,7 +185,8 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 				name: t.name,
 				due: d.days < 0 ? `✕ ${whenText(d.days).replace('Overdue by', 'Overdue')}` : d.days === 0 ? '▲ Due today' : `▲ Due ${longDate(t.due)}`,
 				level: d.days < 0 ? ('bad' as const) : ('warn' as const),
-				doneUrl: `${base}/e/${createActionToken(t.id, 'done', t.nextDue!)}`
+				// a function, so tokens are only made when the digest is really sent
+				doneUrl: () => `${base}/e/${createActionToken(t.id, 'done', t.nextDue!)}`
 			})),
 			readings
 		});
@@ -196,12 +199,12 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 	const ok = await sendOnce(
 		user,
 		to,
-		`digest:${today}`,
+		`${weekly ? 'weekly' : 'daily'}-digest:${today}`,
 		() =>
 			digestEmail({
 				dateLabel: new Date(today + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' }),
 				weekly,
-				tanks: tanksOut,
+				tanks: tanksOut.map((tank) => ({ ...tank, tasks: tank.tasks.map((t) => ({ ...t, doneUrl: t.doneUrl() })) })),
 				summary,
 				openUrl: base,
 				sentLabel: `${weekly ? 'Weekly' : 'Daily'} digest, sent at ${sendAt} ${tzName}.`,

@@ -22,7 +22,7 @@ test('public tank page and photo share link', async ({ page, browser }, info) =>
 	await page.getByLabel('Allow search engines').check({ force: true });
 	await page.getByLabel(/Page title/).fill('Riverbed 40: planted tank log');
 	await page.getByRole('button', { name: 'Save' }).first().click();
-	await expect(page.getByText('✓ Saved')).toBeVisible();
+	await expect(page.getByText('✓ Public page saved')).toBeVisible();
 
 	// Visitor, signed out
 	const visitor = await browser.newContext();
@@ -70,7 +70,7 @@ test('public tank page and photo share link', async ({ page, browser }, info) =>
 	await open(page, `/tanks/${tankId}/public`);
 	await page.getByLabel('Share this tank').uncheck({ force: true });
 	await page.getByRole('button', { name: 'Save' }).first().click();
-	await expect(page.getByText('✓ Saved')).toBeVisible();
+	await expect(page.getByText('✓ Public page saved')).toBeVisible();
 	expect((await visitor.request.get(`/t/${slug}`)).status()).toBe(404);
 	await visitor.close();
 });

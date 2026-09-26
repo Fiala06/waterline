@@ -1,6 +1,7 @@
 <script lang="ts">
 	// 15 / D5 · Create or edit a task.
 	import { enhance } from '$app/forms';
+	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import { untrack } from 'svelte';
 	import { scheduleExamples } from '$lib/tasks';
 	import { parseNumber } from '$lib/units';
@@ -60,7 +61,7 @@
 	}}
 >
 	<div class="bar">
-		<a class="cancel" href={cancelHref}>{compact ? '✕' : 'Cancel'}</a>
+		<a class="cancel" href={cancelHref} aria-label={compact ? 'Close' : undefined}>{compact ? '✕' : 'Cancel'}</a>
 		<h1>{mode === 'edit' ? 'Edit task' : 'New task'}</h1>
 		<button class="save-top" disabled={busy}>Save</button>
 	</div>
@@ -140,14 +141,13 @@
 </form>
 
 {#if mode === 'edit'}
-	<div id="confirm-task-delete" popover class="confirm" role="alertdialog" aria-labelledby="ctd-t">
-		<h2 id="ctd-t">Delete “{values.name}”?</h2>
-		<p>The reminder is removed. Entries you logged stay in the history.</p>
-		<div class="c-actions">
-			<button type="button" class="btn" popovertarget="confirm-task-delete" popovertargetaction="hide">Cancel</button>
-			<form method="POST" action="{action}?/delete"><button class="btn btn-danger">Delete</button></form>
-		</div>
-	</div>
+	<ConfirmDelete
+		id="confirm-task-delete"
+		trigger={false}
+		title="Delete “{values.name}”?"
+		body="The reminder is removed. Entries you logged stay in the history."
+		action="{action}?/delete"
+	/>
 {/if}
 
 <style>
@@ -251,32 +251,6 @@
 	}
 	.save {
 		flex: 1;
-	}
-	.confirm {
-		border: 1px solid var(--border-strong);
-		border-radius: 20px;
-		background: var(--surface);
-		color: var(--text);
-		padding: 22px;
-		width: min(400px, calc(100vw - 40px));
-		box-shadow: var(--shadow-modal);
-	}
-	.confirm::backdrop {
-		background: var(--scrim);
-	}
-	.confirm h2 {
-		margin: 0 0 8px;
-		font-size: 19px;
-	}
-	.confirm p {
-		margin: 0 0 18px;
-		color: var(--text-muted);
-		line-height: 1.5;
-	}
-	.c-actions {
-		display: flex;
-		gap: 10px;
-		justify-content: flex-end;
 	}
 	.compact .bar {
 		grid-template-columns: 1fr auto;

@@ -2,7 +2,10 @@
 	// Settings shell: on desktop, one "Settings" heading and section menu for the
 	// main page and its sub-pages (Export, Server). Phones use back links instead.
 	import { page } from '$app/state';
+	import { ui } from '$lib/ui.svelte';
 	let { data, children } = $props();
+	// Signing out clears this device, including entries still waiting to sync.
+	const unsynced = $derived(ui.queue.length);
 
 	const path = $derived(page.url.pathname);
 	const items = $derived([
@@ -24,7 +27,11 @@
 					{it.label}{#if 'admin' in it}<span class="badge">Admin</span>{/if}
 				</a>
 			{/each}
-			<form method="POST" action="/settings?/signout"><button class="signout">Sign out</button></form>
+			<form method="POST" action="/settings?/signout">
+				<input type="hidden" name="redirectTo" value="/signin" />
+				<button class="signout">Sign out</button>
+				{#if unsynced}<p class="unsynced status-warn">▲ {unsynced} entr{unsynced === 1 ? 'y' : 'ies'} not synced yet</p>{/if}
+			</form>
 		</nav>
 		<div class="content">{@render children()}</div>
 	</div>
@@ -59,6 +66,11 @@
 			top: 24px;
 		}
 		.side a,
+		.unsynced {
+			margin: 4px 12px 0;
+			font-size: 13px;
+			font-weight: 600;
+		}
 		.signout {
 			height: 40px;
 			padding: 0 12px;

@@ -58,13 +58,6 @@
 		padding: 8px 20px 0;
 		border-bottom: 1px solid var(--border);
 	}
-	.back {
-		font-size: 16px;
-		font-weight: 600;
-		min-height: 36px;
-		display: inline-flex;
-		align-items: center;
-	}
 	h1 {
 		margin: 4px 0 2px;
 		font-size: 24px;

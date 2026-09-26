@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { LEAD_OPTIONS, SEND_TIMES } from '$lib/notify-options';
 	import { install, promptInstall } from '$lib/install.svelte';
+	import { ui } from '$lib/ui.svelte';
 	let installHelp = $state(false);
 	let { data, form } = $props();
 	const u = $derived(data.user);
@@ -73,13 +74,13 @@
 			<form method="POST" action="?/notifications" use:enhance class="stack" id="notifications">
 				<h2 class="caps">Notifications</h2>
 				{#if !data.emailReady}
-					<p class="banner banner-bad">
-						Email isn't set up on this server yet{u.isAdmin ? '.' : ', so nothing will be sent. Ask the server owner to set it up.'}
+					<p class="banner banner-warn">
+						▲ Email isn't set up on this server yet{u.isAdmin ? '.' : ', so nothing will be sent. Ask the server owner to set it up.'}
 						{#if u.isAdmin}<a href="/settings/server">Set up email delivery ›</a>{/if}
 					</p>
 				{/if}
 				{#if unsubscribedOn}
-					<p class="banner banner-bad">You unsubscribed from all emails on {unsubscribedOn}. Turn any of these on and save to start again.</p>
+					<p class="banner banner-warn">▲ You unsubscribed from all emails on {unsubscribedOn}. Turn any of these on and save to start again.</p>
 				{/if}
 				<div class="field">
 					<label class="label" for="notifyEmail">Send to</label>
@@ -149,7 +150,13 @@
 			</section>
 
 			<form method="POST" action="?/signout" class="phone-only">
+				<input type="hidden" name="redirectTo" value="/signin" />
 				<button class="btn btn-lg signout">Sign out</button>
+				{#if ui.queue.length}
+					<p class="unsynced status-warn">
+						▲ {ui.queue.length} entr{ui.queue.length === 1 ? 'y hasn’t' : 'ies haven’t'} synced yet. Sign out once {ui.queue.length === 1 ? 'it has' : 'they have'}, or {ui.queue.length === 1 ? 'it' : 'they'} may be lost.
+					</p>
+				{/if}
 			</form>
 			<p class="faint version">Waterline v1.0 · self-hosted</p>
 		</div>
@@ -268,6 +275,11 @@
 		background: var(--selected);
 		color: var(--accent);
 		margin-left: 6px;
+	}
+	.unsynced {
+		margin: 8px 0 0;
+		font-size: 14px;
+		font-weight: 600;
 	}
 	.signout {
 		color: var(--bad);

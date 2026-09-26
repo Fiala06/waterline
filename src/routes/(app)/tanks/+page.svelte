@@ -1,8 +1,8 @@
 <script lang="ts">
+	import { tankTypeLabel } from '$lib/types';
 	import { enhance } from '$app/forms';
 	import { photoUrl } from '$lib/media';
 	let { data } = $props();
-	const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 </script>
 
 <svelte:head><title>Tanks · Waterline</title></svelte:head>
@@ -31,7 +31,7 @@
 					<div class="row">
 						<div>
 							<h2><a href="/tanks/{t.id}">{t.name}</a></h2>
-							<div class="muted sub">{cap(t.type)}{t.volume ? ` · ${t.volume}` : ''}</div>
+							<div class="muted sub">{tankTypeLabel(t.type)}{t.volume ? ` · ${t.volume}` : ''}</div>
 						</div>
 						<a class="btn edit" href="/tanks/{t.id}">Details</a>
 					</div>
@@ -54,7 +54,7 @@
 						<div>
 							<div class="aname">{t.name}</div>
 							<div class="muted sub">
-								{cap(t.type)}{t.volume ? ` · ${t.volume}` : ''} · archived {t.archivedOn}
+								{tankTypeLabel(t.type)}{t.volume ? ` · ${t.volume}` : ''} · archived {t.archivedOn}
 							</div>
 						</div>
 						<form method="POST" action="?/restore" use:enhance>

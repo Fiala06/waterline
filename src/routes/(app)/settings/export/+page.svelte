@@ -22,13 +22,17 @@
 		}
 		const id = current.id;
 		const t = setInterval(async () => {
-			const r = await fetch(`/settings/export/${id}`);
-			if (!r.ok) return;
-			const s = await r.json();
-			live = s;
-			if (s.status !== 'building') {
-				clearInterval(t);
-				invalidateAll();
+			try {
+				const r = await fetch(`/settings/export/${id}`);
+				if (!r.ok) return;
+				const s = await r.json();
+				live = s;
+				if (s.status !== 'building') {
+					clearInterval(t);
+					invalidateAll();
+				}
+			} catch {
+				/* offline for a moment: try again on the next tick */
 			}
 		}, 700);
 		return () => clearInterval(t);
@@ -126,13 +130,6 @@
 		flex-direction: column;
 		gap: 16px;
 		max-width: 600px;
-	}
-	.back {
-		font-size: 16px;
-		font-weight: 600;
-		min-height: 36px;
-		display: flex;
-		align-items: center;
 	}
 	h1 {
 		margin: 0;

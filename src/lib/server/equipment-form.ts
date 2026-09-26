@@ -1,6 +1,6 @@
 import { fail, redirect, type RequestEvent } from '@sveltejs/kit';
-import { EQUIPMENT_TYPES, SPEC_FIELDS, SUGGESTED_TASK, equipmentName, specToDisplay, specToStored, type EquipmentType } from '$lib/equipment';
-import { addDays, todayInZone } from '$lib/time';
+import { EQUIPMENT_TYPES, SPEC_FIELDS, SUGGESTED_TASK, equipmentName, specToDisplay, specToStored, type EquipmentType, type SpecField } from '$lib/equipment';
+import { addDays, isDate, todayInZone } from '$lib/time';
 import { formatNumber } from '$lib/units';
 import type { Equipment, User } from './db/schema';
 import { setFlash } from './flash';
@@ -15,7 +15,7 @@ export function equipmentFormValues(e: Equipment | null, user: User) {
 	for (const t of EQUIPMENT_TYPES) {
 		for (const f of SPEC_FIELDS[t]) {
 			const v = e?.type === t ? e.specs[f.key] : undefined;
-			specs[`${t}.${f.key}`] = v == null ? '' : typeof v === 'number' ? formatNumber(specToDisplay(f, v, user), 1) : String(v);
+			specs[`${t}.${f.key}`] = v == null ? '' : typeof v === 'number' ? shown(f, v, user) : String(v);
 		}
 	}
 	return {
@@ -28,7 +28,9 @@ export function equipmentFormValues(e: Equipment | null, user: User) {
 	};
 }
 
-function parse(form: FormData, user: User) {
+const shown = (f: SpecField, stored: number, user: User) => formatNumber(specToDisplay(f, stored, user), 1);
+
+function parse(form: FormData, user: User, before: Equipment | null) {
 	const errors: Record<string, string> = {};
 	const type = str(form, 'type') as EquipmentType;
 	if (!EQUIPMENT_TYPES.includes(type)) errors.type = 'Choose a type.';
@@ -36,6 +38,12 @@ function parse(form: FormData, user: User) {
 	for (const f of SPEC_FIELDS[type] ?? []) {
 		const key = `spec.${f.key}`;
 		if (f.kind === 'number') {
+			// a number left as shown keeps its exact stored value (no 1200 → 1199.98)
+			const old = before?.type === type ? before.specs[f.key] : undefined;
+			if (typeof old === 'number' && str(form, key) === shown(f, old, user)) {
+				specs[f.key] = old;
+				continue;
+			}
 			const v = num(form, key);
 			if (v == null) continue;
 			if (v < 0) errors[key] = 'Enter 0 or more.';
@@ -46,7 +54,7 @@ function parse(form: FormData, user: User) {
 		}
 	}
 	const installedAt = optStr(form, 'installedAt');
-	if (installedAt && !/^\d{4}-\d{2}-\d{2}$/.test(installedAt)) errors.installedAt = 'Pick a date.';
+	if (installedAt && !isDate(installedAt)) errors.installedAt = 'Pick a date.';
 	const input: EquipmentInput = {
 		type,
 		brand: optStr(form, 'brand', 60),
@@ -62,14 +70,14 @@ function parse(form: FormData, user: User) {
 export async function saveEquipmentAction(event: RequestEvent, tankId: string, equipmentId: string | null) {
 	const user = event.locals.user!;
 	const form = await event.request.formData();
-	const { errors, input } = parse(form, user);
+	const before = equipmentId ? getEquipment(user.id, equipmentId) : null;
+	const { errors, input } = parse(form, user, before);
 	if (Object.keys(errors).length) return fail(400, { errors });
 	if (equipmentId) {
-		getEquipment(user.id, equipmentId);
 		updateEquipment(user.id, equipmentId, input);
 		setFlash(event.cookies, '✓ Equipment saved');
 	} else {
-		const e = addEquipment(user.id, tankId, input);
+		const e = addEquipment(user.id, tankId, input, user.timeZone);
 		const suggestion = SUGGESTED_TASK[input.type];
 		if (suggestion && form.get('createTask') === 'on') {
 			createTask(user.id, tankId, {
@@ -79,7 +87,8 @@ export async function saveEquipmentAction(event: RequestEvent, tankId: string, e
 				intervalDays: suggestion.days,
 				scheduleMode: 'completion',
 				nextDue: addDays(todayInZone(user.timeZone), suggestion.days),
-				openFormOnDone: false
+				openFormOnDone: false,
+				equipmentId: e.id
 			});
 		}
 		setFlash(event.cookies, `✓ ${equipmentName(e)} added`);
@@ -89,6 +98,6 @@ export async function saveEquipmentAction(event: RequestEvent, tankId: string, e
 
 export function removeEquipmentAction(event: RequestEvent, equipmentId: string) {
 	const e = removeEquipment(event.locals.user!.id, equipmentId);
-	setFlash(event.cookies, `${equipmentName(e)} removed`);
+	setFlash(event.cookies, `${equipmentName(e)} removed${e.tasksRemoved ? ' with its reminder' : ''}`);
 	redirect(303, `/tanks/${e.tankId}/equipment`);
 }

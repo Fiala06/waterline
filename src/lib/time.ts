@@ -90,6 +90,12 @@ export function fmtWhen(instant: string, timeZone: string, now = new Date()): st
 	return `${fmtDate(day)}, ${time}`;
 }
 
+/** "Logged today at 8:12 AM · edited 8:20 AM" on edit screens (G6). */
+export function loggedLine(at: string, editedAt: string | null, timeZone: string, now = new Date()): string {
+	const when = fmtWhen(at, timeZone, now).replace(/^(Today|Yesterday), /, (m) => `${m.slice(0, -2).toLowerCase()} at `);
+	return `Logged ${when}${editedAt ? ` · edited ${fmtTime(editedAt, timeZone)}` : ''}`;
+}
+
 /** "Today", "Yesterday" or "Sep 17". */
 export function fmtDay(instant: string, timeZone: string, now = new Date()): string {
 	const day = dateInZone(instant, timeZone);
@@ -99,14 +105,23 @@ export function fmtDay(instant: string, timeZone: string, now = new Date()): str
 	return fmtDate(day);
 }
 
+/** A real calendar date 'YYYY-MM-DD' (not 2026-02-30 or 2026-13-01). */
+export function isDate(s: string): boolean {
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+	const d = new Date(`${s}T00:00:00Z`);
+	return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+}
+
+/** A clock time 'HH:MM' from 00:00 to 23:59. */
+export const isTime = (s: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
+
 /**
  * Convert a wall-clock date + time in a time zone to a UTC instant.
- * `date` is 'YYYY-MM-DD', `time` is 'HH:MM'.
+ * `date` is 'YYYY-MM-DD', `time` is 'HH:MM'; anything else gives an Invalid Date.
  */
 export function zonedToUtc(date: string, time: string, timeZone: string): Date {
-	const guess = new Date(`${date}T${time}:00Z`);
-	// Offset of the zone at that moment, found by formatting the guess in the zone.
-	const parts = new Intl.DateTimeFormat('en-US', {
+	if (!isDate(date) || !isTime(time)) return new Date(NaN);
+	const fmt = new Intl.DateTimeFormat('en-US', {
 		timeZone,
 		hourCycle: 'h23',
 		year: 'numeric',
@@ -114,10 +129,17 @@ export function zonedToUtc(date: string, time: string, timeZone: string): Date {
 		day: '2-digit',
 		hour: '2-digit',
 		minute: '2-digit'
-	}).formatToParts(guess);
-	const get = (t: string) => Number(parts.find((p) => p.type === t)?.value);
-	const asZone = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'));
-	return new Date(guess.getTime() - (asZone - guess.getTime()));
+	});
+	// The zone's offset at an instant, found by formatting it in the zone.
+	const offset = (t: number) => {
+		const parts = fmt.formatToParts(new Date(t));
+		const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+		return Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute')) - t;
+	};
+	const wall = Date.parse(`${date}T${time}:00Z`);
+	// Twice: near a daylight-saving change the offset at the first guess can be the other one.
+	const first = wall - offset(wall);
+	return new Date(wall - offset(first));
 }
 
 /** Wall-clock parts of an instant in a zone: { date: 'YYYY-MM-DD', time: 'HH:MM' }. */

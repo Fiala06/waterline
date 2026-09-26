@@ -1,5 +1,5 @@
 import { EQUIPMENT_TYPE_LABEL, equipmentName, specSummary } from '$lib/equipment';
-import { fmtDate } from '$lib/time';
+import { dateInZone, fmtDate } from '$lib/time';
 import { db } from '$lib/server/db';
 import { tasks } from '$lib/server/db/schema';
 import { listEquipment } from '$lib/server/specs';
@@ -18,14 +18,14 @@ export const load: PageServerLoad = ({ locals, params }) => {
 		.all();
 	const view = (e: ReturnType<typeof listEquipment>[number]) => {
 		const name = equipmentName(e);
-		const task = openTasks.find((t) => t.equipmentId === e.id || t.name.includes(name));
+		const task = openTasks.find((t) => t.equipmentId === e.id);
 		return {
 			id: e.id,
 			type: EQUIPMENT_TYPE_LABEL[e.type],
 			name,
 			summary: specSummary(e.type, e.specs, user),
 			since: since(e.installedAt),
-			serviced: e.lastServicedAt ? fmtDate(e.lastServicedAt.slice(0, 10)) : null,
+			serviced: e.lastServicedAt ? fmtDate(dateInZone(e.lastServicedAt, user.timeZone)) : null,
 			task: task?.name ?? null,
 			notes: e.notes
 		};

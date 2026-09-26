@@ -18,4 +18,10 @@
 	fieldErrors={form?.errors}
 	meta={data.meta}
 	existingPhotos={data.photos}
+	previous={data.previous}
+	remove={{
+		action: `/entries/test/${data.entry.id}?/delete`,
+		title: 'Delete this water test?',
+		body: `The readings from ${data.entry.day} will be removed. This can't be undone.`
+	}}
 />

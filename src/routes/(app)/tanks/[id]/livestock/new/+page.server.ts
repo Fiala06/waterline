@@ -1,5 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { todayInZone } from '$lib/time';
+import { isDate, todayInZone } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
 import { num, optStr, str } from '$lib/server/forms';
 import { addLivestock } from '$lib/server/specs';
@@ -23,7 +23,7 @@ export const actions: Actions = {
 		const name = str(form, 'name').slice(0, 80);
 		const count = num(form, 'count') ?? 1;
 		const kind = str(form, 'kind');
-		const values = { name, count: String(count), kind };
+		const values = { name, scientificName: str(form, 'scientificName'), count: String(count), kind };
 		if (!name) return fail(400, { error: 'Enter the species.', values });
 		if (!Number.isInteger(count) || count < 1 || count > 10000) return fail(400, { error: 'Enter how many, 1 or more.', values });
 		const addedAt = optStr(form, 'addedAt');
@@ -33,7 +33,7 @@ export const actions: Actions = {
 			scientificName: optStr(form, 'scientificName', 120),
 			count,
 			status: str(form, 'status') === 'quarantine' ? 'quarantine' : 'in_tank',
-			addedAt: addedAt && /^\d{4}-\d{2}-\d{2}$/.test(addedAt) ? addedAt : todayInZone(user.timeZone),
+			addedAt: addedAt && isDate(addedAt) ? addedAt : todayInZone(user.timeZone),
 			source: optStr(form, 'source', 120)
 		});
 		setFlash(cookies, `✓ Added ${count} ${row.commonName}`);

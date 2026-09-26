@@ -37,7 +37,7 @@
 				<div class="caps">Parameter</div>
 				{#each data.list as p (p.id)}
 					<a class="pitem" class:active={data.chart?.paramId === p.id} aria-current={data.chart?.paramId === p.id ? 'true' : undefined} href={q({ p: p.id })}>
-						<span>{p.name}</span><span class="status-{p.level}">{p.icon}</span>
+						<span>{p.name}</span><span class="status-{p.level}" title={p.status}><span aria-hidden="true">{p.icon}</span><span class="sr-only">{p.status}</span></span>
 					</a>
 				{/each}
 			</nav>
@@ -106,7 +106,10 @@
 				{#if data.chart?.stats}
 					{@const s = data.chart.stats}
 					<div class="stats">
-						<div class="card stat"><span class="sl">Latest</span><span class="sv num status-{s.latestLevel}">{s.latest}</span></div>
+						<div class="card stat">
+								<span class="sl">Latest</span><span class="sv num">{s.latest}</span>
+								<span class="sl strong status-{s.latestLevel}">{s.latestStatus}</span>
+							</div>
 						<div class="card stat"><span class="sl">Average</span><span class="sv num">{s.average}</span></div>
 						<div class="card stat mm"><span class="sl">Min / max</span><span class="sv num">{s.min} / {s.max}</span></div>
 						<div class="card stat"><span class="sl">In range</span><span class="sv num">{s.inRange}</span></div>
@@ -138,13 +141,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: 14px;
-	}
-	.back {
-		font-size: 16px;
-		font-weight: 600;
-		min-height: 36px;
-		display: flex;
-		align-items: center;
 	}
 	.head {
 		display: flex;
@@ -257,7 +253,7 @@
 		font-size: 13px;
 		color: var(--accent);
 		font-weight: 600;
-		min-height: 32px;
+		min-height: 44px;
 	}
 	.lg-marker.dosing {
 		border-radius: 2px;
@@ -303,9 +299,6 @@
 	.sv {
 		font-size: 20px;
 		font-weight: 600;
-	}
-	.sv.status-ok {
-		color: var(--text);
 	}
 	.empty {
 		padding: 18px;

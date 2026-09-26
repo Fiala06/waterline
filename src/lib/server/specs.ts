@@ -3,14 +3,27 @@
 import { error } from '@sveltejs/kit';
 import { and, asc, eq, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import { equipmentName, type EquipmentType } from '$lib/equipment';
+import { zonedToUtc } from '$lib/time';
 import { db } from './db';
-import { equipment, events, livestock, plants, tanks, type Equipment, type Livestock, type Plant } from './db/schema';
+import { equipment, events, livestock, plants, tanks, tasks, type Equipment, type Livestock, type Plant } from './db/schema';
 import { getTank } from './tanks';
 
 const now = () => new Date().toISOString();
 
-function logEvent(tankId: string, category: 'livestock' | 'equipment' | 'maintenance', data: Record<string, unknown>, note: string | null = null, at = now()) {
-	return db.insert(events).values({ tankId, category, occurredAt: at, note, data }).returning().get();
+/** When the change happened and what the History entry says, from the log form. */
+export interface EntryMeta {
+	at?: string;
+	note?: string | null;
+	/** the offline queue's id, so a replayed form isn't applied twice */
+	clientId?: string | null;
+}
+
+function logEvent(tankId: string, category: 'livestock' | 'equipment' | 'maintenance', data: Record<string, unknown>, meta: EntryMeta = {}) {
+	return db
+		.insert(events)
+		.values({ tankId, category, occurredAt: meta.at ?? now(), note: meta.note ?? null, data, clientId: meta.clientId ?? null })
+		.returning()
+		.get();
 }
 
 // ── Equipment ───────────────────────────────────────────────────────────────
@@ -45,10 +58,12 @@ export interface EquipmentInput {
 	notes: string | null;
 }
 
-export function addEquipment(userId: string, tankId: string, input: EquipmentInput) {
+export function addEquipment(userId: string, tankId: string, input: EquipmentInput, timeZone: string) {
 	getTank(userId, tankId);
 	const e = db.insert(equipment).values({ ...input, tankId }).returning().get();
-	logEvent(tankId, 'equipment', { action: 'installed', equipment_id: e.id, item: equipmentName(e) }, null, input.installedAt ? `${input.installedAt}T12:00:00.000Z` : now());
+	// an install date without a time goes on that day at noon, in the user's zone
+	const at = input.installedAt ? zonedToUtc(input.installedAt, '12:00', timeZone).toISOString() : now();
+	logEvent(tankId, 'equipment', { action: 'installed', equipment_id: e.id, item: equipmentName(e) }, { at });
 	return e;
 }
 
@@ -66,11 +81,13 @@ export function updateEquipment(userId: string, id: string, input: EquipmentInpu
 	return after;
 }
 
-export function removeEquipment(userId: string, id: string) {
+/** Moves it to past equipment. Its suggested maintenance reminder goes with it. */
+export function removeEquipment(userId: string, id: string, meta: EntryMeta & { reasons?: string[] } = {}) {
 	const e = getEquipment(userId, id);
-	db.update(equipment).set({ removedAt: now() }).where(eq(equipment.id, id)).run();
-	const event = logEvent(e.tankId, 'equipment', { action: 'removed', equipment_id: id, item: equipmentName(e) });
-	return Object.assign(e, { event });
+	db.update(equipment).set({ removedAt: meta.at ?? now() }).where(eq(equipment.id, id)).run();
+	const tasksRemoved = db.delete(tasks).where(eq(tasks.equipmentId, id)).run().changes;
+	const event = logEvent(e.tankId, 'equipment', { action: 'removed', equipment_id: id, item: equipmentName(e), reasons: meta.reasons ?? [] }, meta);
+	return Object.assign(e, { event, tasksRemoved });
 }
 
 export function markServiced(userId: string, id: string, at: string) {
@@ -123,23 +140,29 @@ export interface LivestockInput {
 	source: string | null;
 }
 
-/** Add animals; the same species with the same status adds to the existing count. */
-export function addLivestock(userId: string, tankId: string, input: LivestockInput, at = now()) {
-	getTank(userId, tankId);
-	const same = db
+/** A current row for the same species with this status, other than `except`. */
+function sameSpecies(tankId: string, l: Pick<Livestock, 'status' | 'scientificName' | 'commonName'>, except?: string) {
+	return db
 		.select()
 		.from(livestock)
 		.where(
 			and(
 				eq(livestock.tankId, tankId),
 				isNull(livestock.removedAt),
-				eq(livestock.status, input.status),
-				input.scientificName
-					? eq(livestock.scientificName, input.scientificName)
-					: sql`lower(${livestock.commonName}) = ${input.commonName.toLowerCase()}`
+				eq(livestock.status, l.status),
+				except ? ne(livestock.id, except) : undefined,
+				l.scientificName
+					? eq(livestock.scientificName, l.scientificName)
+					: sql`lower(${livestock.commonName}) = ${l.commonName.toLowerCase()}`
 			)
 		)
 		.get();
+}
+
+/** Add animals; the same species with the same status adds to the existing count. */
+export function addLivestock(userId: string, tankId: string, input: LivestockInput, meta: EntryMeta = {}) {
+	getTank(userId, tankId);
+	const same = sameSpecies(tankId, input);
 	const row = same
 		? db.update(livestock).set({ count: same.count + input.count }).where(eq(livestock.id, same.id)).returning().get()
 		: db.insert(livestock).values({ ...input, tankId }).returning().get();
@@ -151,14 +174,15 @@ export function addLivestock(userId: string, tankId: string, input: LivestockInp
 		count: input.count,
 		status: input.status,
 		delta: input.count
-	}, null, at);
+	}, meta);
 	return { row, event };
 }
 
 export type CountReason = 'loss' | 'rehomed' | 'recount' | 'added';
 
 /** Change a count (T4). Decreases need a reason; reaching 0 moves it to past livestock. */
-export function changeCount(userId: string, id: string, newCount: number, reason: CountReason, at = now()) {
+export function changeCount(userId: string, id: string, newCount: number, reason: CountReason, meta: EntryMeta = {}) {
+	const at = meta.at ?? now();
 	const l = getLivestock(userId, id);
 	const delta = newCount - l.count;
 	if (delta === 0) return Object.assign(l, { event: null as typeof events.$inferSelect | null });
@@ -175,15 +199,22 @@ export function changeCount(userId: string, id: string, newCount: number, reason
 		delta,
 		from: l.count,
 		to: newCount
-	}, null, at);
+	}, { ...meta, at });
 	return Object.assign(getLivestock(userId, id), { event });
 }
 
+/** Quarantine ↔ in tank. Moving in joins an existing group of the same species. */
 export function setLivestockStatus(userId: string, id: string, status: Livestock['status']) {
 	const l = getLivestock(userId, id);
 	if (l.status === status) return l;
-	db.update(livestock).set({ status }).where(eq(livestock.id, id)).run();
-	logEvent(l.tankId, 'livestock', { action: 'status', livestock_id: id, name: l.commonName, count: l.count, status });
+	const same = sameSpecies(l.tankId, { ...l, status }, l.id);
+	if (same) {
+		db.update(livestock).set({ count: same.count + l.count }).where(eq(livestock.id, same.id)).run();
+		db.delete(livestock).where(eq(livestock.id, id)).run();
+	} else {
+		db.update(livestock).set({ status }).where(eq(livestock.id, id)).run();
+	}
+	logEvent(l.tankId, 'livestock', { action: 'status', livestock_id: same?.id ?? id, name: l.commonName, count: l.count, status });
 	return l;
 }
 
@@ -205,10 +236,10 @@ export function getPlant(userId: string, id: string): Plant {
 	return row.p;
 }
 
-export function addPlant(userId: string, tankId: string, input: Pick<Plant, 'name' | 'scientificName' | 'position' | 'status'>) {
+export function addPlant(userId: string, tankId: string, input: Pick<Plant, 'name' | 'scientificName' | 'position' | 'status'>, meta: EntryMeta = {}) {
 	getTank(userId, tankId);
 	const p = db.insert(plants).values({ ...input, tankId }).returning().get();
-	const event = logEvent(tankId, 'livestock', { action: 'added', plant_id: p.id, name: p.name, scientific_name: p.scientificName, kind: 'plant' });
+	const event = logEvent(tankId, 'livestock', { action: 'added', plant_id: p.id, name: p.name, scientific_name: p.scientificName, kind: 'plant' }, meta);
 	return Object.assign(p, { event });
 }
 
@@ -217,10 +248,10 @@ export function updatePlant(userId: string, id: string, patch: Partial<Pick<Plan
 	return db.update(plants).set(patch).where(eq(plants.id, id)).returning().get();
 }
 
-export function removePlant(userId: string, id: string) {
+export function removePlant(userId: string, id: string, meta: EntryMeta = {}) {
 	const p = getPlant(userId, id);
-	db.update(plants).set({ removedAt: now() }).where(eq(plants.id, id)).run();
-	const event = logEvent(p.tankId, 'livestock', { action: 'removed', plant_id: id, name: p.name, kind: 'plant' });
+	db.update(plants).set({ removedAt: meta.at ?? now() }).where(eq(plants.id, id)).run();
+	const event = logEvent(p.tankId, 'livestock', { action: 'removed', plant_id: id, name: p.name, kind: 'plant' }, meta);
 	return Object.assign(p, { event });
 }
 
@@ -230,5 +261,5 @@ export function logTrim(userId: string, tankId: string, plantIds: string[], note
 	if (!mine.length) error(400, 'Choose at least one plant');
 	const at = now();
 	for (const p of mine) db.update(plants).set({ lastTrimmedAt: at }).where(eq(plants.id, p.id)).run();
-	return logEvent(tankId, 'maintenance', { actions: ['Trimmed plants'], plants: mine.map((p) => p.name) }, note, at);
+	return logEvent(tankId, 'maintenance', { actions: ['Trimmed plants'], plants: mine.map((p) => p.name) }, { note, at });
 }

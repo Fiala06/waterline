@@ -1,0 +1,1 @@
+ALTER TABLE `test_readings` ADD `prev_value` real;

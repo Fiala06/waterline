@@ -3,7 +3,7 @@ import { desc, eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { photos } from '$lib/server/db/schema';
 import { optStr, str } from '$lib/server/forms';
-import { displayNameFor, getPublicPage, publicSettings, slugify, updatePublicPage, viewsThisWeek } from '$lib/server/public';
+import { displayNameFor, getPublicPage, ogVersion, publicSettings, slugify, updatePublicPage, viewsThisWeek } from '$lib/server/public';
 import { getTank } from '$lib/server/tanks';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -17,6 +17,7 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 	return {
 		tank: { id: tank.id, name: tank.name, hasCover: !!tank.coverPhotoId },
 		page,
+		ogVersion: ogVersion(page, tank),
 		allowed: s.allowPublicPages,
 		base,
 		host: new URL(base).host,

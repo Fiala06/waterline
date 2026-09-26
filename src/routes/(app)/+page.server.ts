@@ -2,6 +2,8 @@ import { eventKindLabel, eventTitle } from '$lib/events';
 import { dateInZone, daysBetween, fmtDay, fmtWhen, todayInZone } from '$lib/time';
 import { eventsSince, lastEventOf, latestReadings, recentActivity, series } from '$lib/server/logs';
 import { thumbsFor } from '$lib/server/photos';
+import { equipmentName } from '$lib/equipment';
+import { listEquipment, listLivestock, listPlants } from '$lib/server/specs';
 import { getTank, listParams } from '$lib/server/tanks';
 import { listTasks } from '$lib/server/tasks';
 import type { PageServerLoad } from './$types';
@@ -62,7 +64,19 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 				}
 	);
 
+	// "In the tank": what lives in it and what runs it, each opening its tab
+	const animals = listLivestock(user.id, tank.id);
+	const inTank = animals.filter((l) => l.status === 'in_tank');
+	const contents = {
+		livestock: inTank.map((l) => `${l.commonName} ${l.count}`),
+		animals: inTank.reduce((n, l) => n + l.count, 0),
+		quarantine: animals.filter((l) => l.status === 'quarantine').reduce((n, l) => n + l.count, 0),
+		plants: listPlants(user.id, tank.id).map((p) => p.name),
+		equipment: listEquipment(user.id, tank.id).map(equipmentName)
+	};
+
 	return {
+		contents,
 		tank: {
 			id: tank.id,
 			name: tank.name,

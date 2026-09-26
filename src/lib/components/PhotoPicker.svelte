@@ -3,17 +3,8 @@
 	// With JS, images are shrunk in the browser (max 2560px) before upload.
 	import { photoUrl } from '$lib/media';
 
-	let {
-		existing = [],
-		label = 'Photos',
-		compact = false,
-		max = 10
-	}: {
-		existing?: { id: string }[];
-		label?: string;
-		compact?: boolean;
-		max?: number;
-	} = $props();
+	let { existing = [], compact = false }: { existing?: { id: string }[]; compact?: boolean } = $props();
+	const max = 10; // per entry
 
 	let input: HTMLInputElement | undefined = $state();
 	let previews = $state<{ url: string; name: string }[]>([]);
@@ -72,7 +63,7 @@
 </script>
 
 <div class="picker" class:compact>
-	{#if !compact}<span class="label">{label}</span>{/if}
+	{#if !compact}<span class="label">Photos</span>{/if}
 	<div class="tiles">
 		{#each existing as p (p.id)}
 			<div class="tile" class:gone={removed.includes(p.id)}>

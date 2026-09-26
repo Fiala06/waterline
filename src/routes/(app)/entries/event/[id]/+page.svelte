@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import EntryDetail from '$lib/components/EntryDetail.svelte';
+	import { ui } from '$lib/ui.svelte';
 	let { data } = $props();
 	const e = $derived(data.entry);
 </script>
@@ -19,6 +20,7 @@
 >
 	{#snippet actions()}
 		<ConfirmDelete
+			fields={{ from: ui.prev ?? '' }}
 			id="confirm-delete"
 			title="Delete this {e.kindLabel.toLowerCase()}?"
 			body="“{e.title}” will be removed from the history. This can't be undone."

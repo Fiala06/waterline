@@ -16,7 +16,6 @@
 		const w = window as unknown as { dataLayer: unknown[]; gtag: (...a: unknown[]) => void };
 		w.dataLayer = w.dataLayer || [];
 		w.gtag = function () {
-			// eslint-disable-next-line prefer-rest-params
 			w.dataLayer.push(arguments);
 		};
 		w.gtag('js', new Date());
@@ -48,7 +47,7 @@
 </script>
 
 {#if ask}
-	<div class="consent card" role="dialog" aria-label="Analytics cookies">
+	<div class="consent card" role="region" aria-label="Analytics cookies">
 		<strong>Allow analytics cookies?</strong>
 		<span class="muted">Helps the owner see how many people visit. Nothing loads unless you allow it.</span>
 		<div class="row">

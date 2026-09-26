@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { and, asc, eq, isNotNull, isNull, max } from 'drizzle-orm';
+import { and, asc, count, eq, isNotNull, isNull, max, or, sql } from 'drizzle-orm';
 import { defaultParameters } from '$lib/params';
 import { addDays, todayInZone } from '$lib/time';
 import { db } from './db';
@@ -8,6 +8,8 @@ import {
 	tankParameters,
 	tanks,
 	tasks,
+	testReadings,
+	tests,
 	type Tank,
 	type TankParameter,
 	type TankType,
@@ -169,17 +171,42 @@ export function addCustomParam(
 		.get();
 }
 
+/** Number of readings per parameter of a tank, for the "Remove" confirmation. */
+export function readingCounts(tankId: string): Map<string, number> {
+	const rows = db
+		.select({ id: testReadings.parameterId, n: count() })
+		.from(testReadings)
+		.innerJoin(tankParameters, eq(tankParameters.id, testReadings.parameterId))
+		.where(eq(tankParameters.tankId, tankId))
+		.groupBy(testReadings.parameterId)
+		.all();
+	return new Map(rows.map((r) => [r.id, r.n]));
+}
+
+/** Deletes a custom parameter with its readings, and any test left with nothing in it. */
 export function deleteCustomParam(userId: string, tankId: string, paramId: string) {
 	getTank(userId, tankId);
-	db.delete(tankParameters)
-		.where(
-			and(
-				eq(tankParameters.id, paramId),
-				eq(tankParameters.tankId, tankId),
-				eq(tankParameters.isCustom, true)
+	db.transaction((tx) => {
+		tx.delete(tankParameters)
+			.where(
+				and(
+					eq(tankParameters.id, paramId),
+					eq(tankParameters.tankId, tankId),
+					eq(tankParameters.isCustom, true)
+				)
 			)
-		)
-		.run();
+			.run();
+		tx.delete(tests)
+			.where(
+				and(
+					eq(tests.tankId, tankId),
+					or(isNull(tests.note), eq(tests.note, '')),
+					sql`not exists (select 1 from test_readings r where r.test_id = ${tests.id})`,
+					sql`not exists (select 1 from photos p where p.test_id = ${tests.id})`
+				)
+			)
+			.run();
+	});
 }
 
 /**

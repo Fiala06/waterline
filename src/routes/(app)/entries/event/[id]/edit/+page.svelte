@@ -21,4 +21,9 @@
 	errors={form?.errors}
 	meta={data.meta}
 	existingPhotos={data.photos}
+	remove={{
+		action: `/entries/event/${data.entry.id}?/delete`,
+		title: 'Delete this entry?',
+		body: `“${data.entry.title}” from ${data.entry.day} will be removed. This can't be undone.`
+	}}
 />

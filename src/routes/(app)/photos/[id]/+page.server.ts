@@ -6,7 +6,7 @@ import { getTank } from '$lib/server/tanks';
 import { createShare, getShareForPhoto, publicSettings, revokeShare, updateShare } from '$lib/server/public';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = ({ locals, params }) => {
+export const load: PageServerLoad = ({ locals, params, url }) => {
 	const user = locals.user!;
 	const photo = getPhoto(user.id, params.id);
 	const tank = getTank(user.id, photo.tankId);
@@ -35,7 +35,7 @@ export const load: PageServerLoad = ({ locals, params }) => {
 	const share = pub.allowPublicPages ? getShareForPhoto(user.id, photo.id) : null;
 	return {
 		sharing: pub.allowPublicPages
-			? { share: share ? { id: share.id, includeNote: share.includeNote, includeTank: share.includeTank } : null, base: pub.baseUrl ?? '' }
+			? { share: share ? { id: share.id, includeNote: share.includeNote, includeTank: share.includeTank } : null, base: pub.baseUrl ?? url.origin }
 			: null,
 		photo: { id: photo.id, width: photo.width, height: photo.height, isCover: tank.coverPhotoId === photo.id },
 		tankId: tank.id,

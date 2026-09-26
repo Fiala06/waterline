@@ -61,7 +61,8 @@ export const actions: Actions = {
 		const n = result.count;
 		setFlash(
 			cookies,
-			`✓ Saved ${n} reading${n === 1 ? '' : 's'}${result.outOfRange ? ` · ${result.outOfRange} out of range` : ''}`
+			`✓ Saved ${n} reading${n === 1 ? '' : 's'}${result.outOfRange ? ` · ${result.outOfRange} out of range` : ''}`,
+			{ view: `/entries/test/${result.test.id}` }
 		);
 		redirect(303, `/?tank=${tank.id}`);
 	}

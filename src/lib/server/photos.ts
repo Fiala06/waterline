@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import sharp from 'sharp';
 import { env } from '$env/dynamic/private';
 import { db } from './db';
-import { events, photos, tanks, tests } from './db/schema';
+import { events, photos, publicPages, tanks, tests } from './db/schema';
 import { getTank } from './tanks';
 
 export const MAX_PHOTO_BYTES = 20 * 1024 * 1024;
@@ -35,6 +35,8 @@ export function checkPhotoFiles(files: File[]): string | null {
 	return null;
 }
 
+const MAX_PIXELS = 100_000_000;
+
 export interface PreparedPhoto {
 	full: Buffer;
 	thumb: Buffer;
@@ -54,15 +56,17 @@ export async function preparePhotos(files: File[]): Promise<PreparedPhoto[] | { 
 		try {
 			const input = Buffer.from(await file.arrayBuffer());
 			// rotate() applies EXIF orientation; output carries no metadata (no GPS).
-			const { data: full, info } = await sharp(input, { failOn: 'error' })
+			// the pixel cap keeps a tiny file that decodes to a huge image from tying up the server
+			const { data: full, info } = await sharp(input, { failOn: 'error', limitInputPixels: MAX_PIXELS })
 				.rotate()
 				.resize(FULL, FULL, { fit: 'inside', withoutEnlargement: true })
 				.jpeg({ quality: 82, mozjpeg: true })
 				.toBuffer({ resolveWithObject: true });
 			const thumb = await sharp(full).resize(THUMB, THUMB, { fit: 'cover' }).jpeg({ quality: 76 }).toBuffer();
 			out.push({ full, thumb, width: info.width, height: info.height });
-		} catch {
-			return { error: `${file.name || 'A photo'} couldn't be read as an image.` };
+		} catch (e) {
+			const huge = String((e as Error)?.message).includes('pixel limit');
+			return { error: `${file.name || 'A photo'} ${huge ? 'is too large (over 100 megapixels)' : "couldn't be read as an image"}.` };
 		}
 	}
 	return out;
@@ -114,9 +118,15 @@ export function photoFilePath(p: Photo, size: 'full' | 'thumb') {
 	return join(root(), size === 'thumb' ? p.thumbPath : p.path);
 }
 
+/** A photo is going away: stop using it as a tank cover or public share image. */
+function unlinkPhoto(id: string) {
+	db.update(tanks).set({ coverPhotoId: null }).where(eq(tanks.coverPhotoId, id)).run();
+	db.update(publicPages).set({ ogPhotoId: null }).where(eq(publicPages.ogPhotoId, id)).run();
+}
+
 export function deletePhoto(userId: string, photoId: string) {
 	const p = getPhoto(userId, photoId);
-	db.update(tanks).set({ coverPhotoId: null }).where(and(eq(tanks.id, p.tankId), eq(tanks.coverPhotoId, p.id))).run();
+	unlinkPhoto(p.id);
 	db.delete(photos).where(eq(photos.id, photoId)).run();
 	rmSync(photoFilePath(p, 'full'), { force: true });
 	rmSync(photoFilePath(p, 'thumb'), { force: true });
@@ -141,7 +151,7 @@ export function removeEntryPhotoFiles(entry: { eventId?: string; testId?: string
 		.where(entry.eventId ? eq(photos.eventId, entry.eventId) : eq(photos.testId, entry.testId!))
 		.all();
 	for (const p of rows) {
-		db.update(tanks).set({ coverPhotoId: null }).where(eq(tanks.coverPhotoId, p.id)).run();
+		unlinkPhoto(p.id);
 		db.delete(photos).where(eq(photos.id, p.id)).run();
 		rmSync(photoFilePath(p, 'full'), { force: true });
 		rmSync(photoFilePath(p, 'thumb'), { force: true });

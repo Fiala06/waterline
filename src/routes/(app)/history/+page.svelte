@@ -120,7 +120,7 @@
 						{#if d.note}<p class="note">{d.note}</p>{/if}
 						{#if d.photos.length}
 							<div class="photos">
-								{#each d.photos as p (p.id)}<a href="/photos/{p.id}"><img src={photoUrl(p.id)} alt="" loading="lazy" /></a>{/each}
+								{#each d.photos as p, i (p.id)}<a href="/photos/{p.id}"><img src={photoUrl(p.id)} alt="Photo {i + 1} of this entry" loading="lazy" /></a>{/each}
 							</div>
 						{/if}
 						<div class="actions">
@@ -130,6 +130,7 @@
 								title="Delete this {d.kindLabel.toLowerCase()}?"
 								body="“{d.title}” from {d.day} will be removed. This can't be undone."
 								action="{d.href}?/delete"
+								fields={{ from: q({ entry: null }) }}
 							/>
 						</div>
 					</div>
@@ -145,13 +146,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: 12px;
-	}
-	.back {
-		font-size: 16px;
-		font-weight: 600;
-		min-height: 36px;
-		display: flex;
-		align-items: center;
 	}
 	.head {
 		display: flex;
@@ -349,6 +343,9 @@
 			font-size: 13px;
 			color: var(--text-faint);
 		}
+		.filter.active .f-count {
+			color: var(--text-muted); /* faint is too light on the selected background */
+		}
 		.detail {
 			display: block;
 			position: sticky;
@@ -388,7 +385,8 @@
 			font-weight: 600;
 		}
 		.ds {
-			width: 96px;
+			min-width: 96px;
+			max-width: 50%;
 			text-align: right;
 			font-size: 13px;
 			font-weight: 600;

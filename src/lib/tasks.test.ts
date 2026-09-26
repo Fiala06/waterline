@@ -48,6 +48,10 @@ describe('snoozeOptions', () => {
 			{ label: 'Next weekend', date: '2026-10-03' }
 		]);
 	});
+
+	it('pushes back from the due date when it is not due yet', () => {
+		expect(snoozeOptions('2026-09-25', '2026-10-07').map((o) => o.date)).toEqual(['2026-10-08', '2026-10-10', '2026-10-14']);
+	});
 });
 
 describe('text', () => {

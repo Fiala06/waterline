@@ -21,8 +21,6 @@ export interface ParamLike {
 	max: number | null;
 }
 
-export const BUILTIN_KEYS = ['ph', 'nh3', 'no2', 'no3', 'gh', 'kh', 'temp', 'po4', 'k', 'fe', 'co2', 'sal', 'ca', 'mg'] as const;
-
 export function quantityOf(key: string): Quantity {
 	if (key === 'gh' || key === 'kh') return 'hardness';
 	if (key === 'temp') return 'temp';
@@ -36,9 +34,11 @@ export function paramUnit(p: ParamLike, prefs: UnitPrefs): string {
 	return unitLabel(q, prefs, p.key === 'kh' ? 'kh' : 'gh');
 }
 
-/** Decimals for display; hardness in ppm is always whole numbers. */
+/** Decimals for display: hardness in ppm and °F are whole numbers, °C has one. */
 export function paramDecimals(p: ParamLike, prefs: UnitPrefs): number {
-	if (quantityOf(p.key) === 'hardness' && prefs.hardnessUnit === 'ppm') return 0;
+	const q = quantityOf(p.key);
+	if (q === 'hardness' && prefs.hardnessUnit === 'ppm') return 0;
+	if (q === 'temp') return prefs.unitSystem === 'imperial' ? 0 : 1;
 	return p.decimals;
 }
 
@@ -50,14 +50,35 @@ export function storedValue(p: ParamLike, display: number, prefs: UnitPrefs): nu
 	return toStored(display, quantityOf(p.key), prefs);
 }
 
-/** Formatted value in display units, e.g. "6.8" or "77". */
+/**
+ * A reading in display units, e.g. "6.8" or "77". Rounding never changes what
+ * the status says: pH 7.54 against a max of 7.5 shows "7.54", not "7.5".
+ */
 export function fmtValue(p: ParamLike, stored: number, prefs: UnitPrefs): string {
-	return formatNumber(displayValue(p, stored, prefs), paramDecimals(p, prefs));
+	const v = displayValue(p, stored, prefs);
+	const level = statusOf(p, stored).level;
+	const base = paramDecimals(p, prefs);
+	let out = formatNumber(v, base);
+	for (let d = base + 1; d <= base + 2 && statusOf(p, storedValue(p, Number(out), prefs)).level !== level; d++) {
+		out = formatNumber(v, d);
+	}
+	return out;
+}
+
+/**
+ * A target limit in display units, with one more decimal when the usual
+ * rounding would move it: 4 dGH is "71.4" ppm, not "71".
+ */
+export function fmtTarget(p: ParamLike, stored: number, prefs: UnitPrefs): string {
+	const v = displayValue(p, stored, prefs);
+	const base = paramDecimals(p, prefs);
+	const out = formatNumber(v, base);
+	return Math.abs(Number(out) - v) < 1e-6 ? out : formatNumber(v, base + 1);
 }
 
 /** Target range text in display units, e.g. "5–20 ppm" or "≤ 0.25 ppm". */
 export function fmtRange(p: ParamLike, prefs: UnitPrefs, withUnit = true): string {
-	const f = (v: number | null) => (v == null ? null : fmtValue(p, v, prefs));
+	const f = (v: number | null) => (v == null ? null : fmtTarget(p, v, prefs));
 	return rangeText(f(p.min), f(p.max), withUnit ? paramUnit(p, prefs) : '', p.min === 0);
 }
 

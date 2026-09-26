@@ -25,7 +25,7 @@
 			<div class="row">
 				<div class="text">
 					<div class="name">{t.name}</div>
-					<div class="due status-{d.level}" class:plain={d.level === 'ok'}>
+					<div class="due {d.level === 'ok' ? 'plain' : `status-${d.level}`}">
 						{d.level === 'warn' ? d.text : `${d.text} · ${intervalText(t)}`}
 					</div>
 				</div>

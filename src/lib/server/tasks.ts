@@ -102,7 +102,8 @@ export function taskOfKind(userId: string, tankId: string, kind: Task['kind']) {
 	return listTasks(userId, tankId).find((r) => r.task.kind === kind)?.task;
 }
 
-export type TaskInput = Pick<Task, 'name' | 'kind' | 'recurring' | 'intervalDays' | 'scheduleMode' | 'nextDue' | 'openFormOnDone'>;
+export type TaskInput = Pick<Task, 'name' | 'kind' | 'recurring' | 'intervalDays' | 'scheduleMode' | 'nextDue' | 'openFormOnDone'> &
+	Partial<Pick<Task, 'equipmentId'>>;
 
 export function createTask(userId: string, tankId: string, input: TaskInput) {
 	getTank(userId, tankId);
@@ -112,9 +113,11 @@ export function createTask(userId: string, tankId: string, input: TaskInput) {
 export function updateTask(userId: string, taskId: string, input: TaskInput & { tankId: string }) {
 	const task = getTask(userId, taskId);
 	getTank(userId, input.tankId);
-	// A new due date replaces any snooze.
-	const snoozedUntil = input.nextDue === task.nextDue ? task.snoozedUntil : null;
-	return db.update(tasks).set({ ...input, snoozedUntil }).where(eq(tasks.id, taskId)).returning().get();
+	// The form shows the snoozed date as "Next due". Left as shown, the schedule and
+	// snooze stay; a new date replaces both.
+	const same = input.nextDue === effectiveDue(task);
+	const schedule = same ? { nextDue: task.nextDue, snoozedUntil: task.snoozedUntil } : { snoozedUntil: null };
+	return db.update(tasks).set({ ...input, ...schedule }).where(eq(tasks.id, taskId)).returning().get();
 }
 
 export function deleteTask(userId: string, taskId: string) {

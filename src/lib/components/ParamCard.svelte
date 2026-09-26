@@ -6,8 +6,7 @@
 		unit,
 		level,
 		statusText,
-		sub,
-		large = false
+		sub
 	}: {
 		label: string;
 		value: string | null;
@@ -15,11 +14,10 @@
 		level: StatusLevel;
 		statusText: string;
 		sub: string;
-		large?: boolean;
 	} = $props();
 </script>
 
-<div class="pcard {level}" class:large>
+<div class="pcard {level}">
 	<div class="top">
 		<span class="label">{label}</span>
 		<span class="status">{statusText}</span>
@@ -44,9 +42,6 @@
 		--label: var(--text-muted);
 		--sub: var(--text-faint);
 		--status: var(--ok);
-	}
-	.pcard.large {
-		padding: 14px;
 	}
 	.pcard.warn {
 		background: var(--warn-bg);
@@ -97,9 +92,6 @@
 	.value {
 		font-size: 26px;
 		font-weight: 600;
-	}
-	.large .value {
-		font-size: 28px;
 	}
 	.none .value {
 		color: var(--placeholder);

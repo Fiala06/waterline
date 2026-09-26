@@ -2,8 +2,10 @@
 	import { untrack } from 'svelte';
 	// 14 / G2–G5 / D13 · Log event: one layout that adapts to the category.
 	import { enhance } from '$app/forms';
-	import { enqueue } from '$lib/offline';
+	import { queueable } from '$lib/offline';
 	import { onMount } from 'svelte';
+	import ConfirmDelete from './ConfirmDelete.svelte';
+	import { ui } from '$lib/ui.svelte';
 	import DateTimePicker from './DateTimePicker.svelte';
 	import PhotoPicker from './PhotoPicker.svelte';
 	import SpeciesInput from './SpeciesInput.svelte';
@@ -43,6 +45,7 @@
 		errors = {},
 		meta = null,
 		existingPhotos = [],
+		remove = null,
 		inventory = null,
 		water = null
 	}: {
@@ -64,6 +67,8 @@
 		errors?: Record<string, string>;
 		meta?: string | null;
 		existingPhotos?: { id: string }[];
+		/** edit mode: the entry's delete action and its confirmation (G6 "Delete entry") */
+		remove?: { action: string; title: string; body: string } | null;
 		inventory?: {
 			livestock: { id: string; name: string; count: number }[];
 			plants: { id: string; name: string }[];
@@ -142,36 +147,18 @@
 	method="POST"
 	enctype="multipart/form-data"
 	class="eform"
-	use:enhance={({ formData, action, cancel }) => {
-		// Offline (G11): keep the entry on this device and sync it later.
-		const queue = async () => {
-			const title =
-				category === 'water_change' && amount
-					? `Water change · ${amount}${amountMode === 'percent' ? '%' : ` ${volUnit}`}`
-					: category === 'dosing' && product
-						? `Dosed ${product}`
-						: CATEGORY_LABEL[category];
-			await enqueue(formData, action.pathname + action.search, title, timeZone);
-			// A full page load, which the service worker can answer from its cache.
-			try {
-				sessionStorage.setItem('wl_toast', "Saved on this phone. It'll sync when you're back online.");
-			} catch {
-				/* storage blocked */
-			}
-			location.assign(closeHref);
-		};
-		if (mode === 'new' && !navigator.onLine) {
-			cancel();
-			queue();
-			return;
-		}
-		busy = true;
-		return async ({ result, update }) => {
-			if (mode === 'new' && result.type === 'error' && !navigator.onLine) await queue();
-			else await update({ reset: false });
-			busy = false;
-		};
-	}}
+	use:enhance={queueable({
+		offline: mode === 'new',
+		title: () =>
+			category === 'water_change' && amount
+				? `Water change · ${amount}${amountMode === 'percent' ? '%' : ` ${volUnit}`}`
+				: category === 'dosing' && product
+					? `Dosed ${product}`
+					: CATEGORY_LABEL[category],
+		closeHref: () => closeHref,
+		timeZone,
+		busy: (b) => (busy = b)
+	})}
 >
 	<input type="hidden" name="clientId" value={clientId} />
 	<input type="hidden" name="date" value={when?.date ?? ''} />
@@ -465,6 +452,7 @@
 					<span>{task.label}</span>
 				</label>
 			{/if}
+			{#if remove}<button type="button" class="btn btn-danger remove" popovertarget="confirm-entry-delete">Delete entry</button>{/if}
 		</div>
 
 		<footer class="foot">
@@ -473,6 +461,10 @@
 		</footer>
 	</div>
 </form>
+
+{#if remove}
+	<ConfirmDelete id="confirm-entry-delete" trigger={false} title={remove.title} body={remove.body} action={remove.action} fields={{ from: ui.prev ?? '' }} />
+{/if}
 
 <DateTimePicker bind:open={picking} value={when} {timeZone} onselect={(w) => (when = w)} />
 
@@ -513,9 +505,15 @@
 		font-weight: 600;
 	}
 	.sub {
+		position: relative;
 		font-size: 12px;
 		color: var(--text-muted);
 		min-height: 24px;
+	}
+	.sub::after {
+		content: '';
+		position: absolute;
+		inset: -10px -8px; /* a 44px tap target without moving the title */
 	}
 	.spacer {
 		width: 44px;
@@ -602,10 +600,19 @@
 	.four .option {
 		font-size: 14px;
 	}
+	@media (max-width: 380px) {
+		.four {
+			grid-template-columns: 1fr 1fr;
+		}
+	}
 	.pair {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
 		gap: 12px;
+	}
+	.remove {
+		width: 100%;
+		margin-top: 8px;
 	}
 	.foot {
 		position: sticky;

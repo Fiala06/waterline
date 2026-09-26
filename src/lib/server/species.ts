@@ -9,19 +9,24 @@ export interface Species {
 }
 
 const species = data.species as Species[];
-const norm = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '');
+const norm = (s: string) => s.toLowerCase().normalize('NFKD').replace(/\p{M}/gu, ''); // drop accents
 const index = species.map((sp) => ({ sp, keys: [sp.s, ...sp.c].map(norm) }));
 
 /**
  * Best matches first: a name that starts with the query, then a word that
  * starts with it, then any substring. Optionally limited to fresh or marine.
  */
-export function searchSpecies(query: string, opts: { water?: 'fresh' | 'marine'; limit?: number } = {}): Species[] {
+/** `kind` 'invert' includes corals; filtering happens before the limit. */
+export function searchSpecies(
+	query: string,
+	opts: { water?: 'fresh' | 'marine'; kind?: Species['kind']; limit?: number } = {}
+): Species[] {
 	const q = norm(query.trim());
 	if (q.length < 2) return [];
+	const kindOk = (k: Species['kind']) => !opts.kind || k === opts.kind || (opts.kind === 'invert' && k === 'coral');
 	const scored: { sp: Species; score: number }[] = [];
 	for (const { sp, keys } of index) {
-		if (opts.water && sp.water !== opts.water) continue;
+		if ((opts.water && sp.water !== opts.water) || !kindOk(sp.kind)) continue;
 		let score = 0;
 		for (const k of keys) {
 			if (k.startsWith(q)) score = Math.max(score, 3);

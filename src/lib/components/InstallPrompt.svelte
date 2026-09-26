@@ -50,7 +50,7 @@
 </script>
 
 {#if show}
-	<div class="install card" role="dialog" aria-label="Install Waterline">
+	<div class="install card" role="region" aria-label="Install Waterline">
 		<img src="/icons/icon-192.png" alt="" width="48" height="48" />
 		<div class="text">
 			<strong>Add Waterline to your home screen</strong>

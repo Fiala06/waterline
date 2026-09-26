@@ -1,5 +1,6 @@
 import { fail, isRedirect } from '@sveltejs/kit';
 import { devLoginEnabled, googleEnabled, localAdminEnabled, signIn } from '../../auth';
+import { clearLoginFailures, loginBlockedMinutes, recordLoginFailure } from '$lib/server/rate-limit';
 import { safeReturn } from '$lib/server/redirect';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -9,13 +10,14 @@ export const load: PageServerLoad = ({ url }) => {
 		google: googleEnabled(),
 		local: localAdminEnabled(),
 		dev: devLoginEnabled(),
+		showLocal: url.searchParams.has('local'),
 		host: url.host,
 		redirectTo: safeReturn(url.searchParams.get('redirectTo')),
 		error: error
 			? error === 'CredentialsSignin'
 				? 'Wrong username or password.'
 				: error === 'AccessDenied'
-					? "This Google account isn't allowed on this server."
+					? "This Google account isn't allowed on this server. Ask the server owner to add it."
 					: "Couldn't sign you in. Try again."
 			: null
 	};
@@ -51,7 +53,17 @@ export const actions: Actions = {
 	google: (event) => attempt(() => withProvider(event, 'google', []), "Couldn't sign you in. Try again."),
 	local: async (event) => {
 		if (!localAdminEnabled()) return fail(404);
-		return attempt(() => withProvider(event, 'local', ['username', 'password']), 'Wrong username or password.');
+		const address = event.getClientAddress();
+		const wait = loginBlockedMinutes(address);
+		if (wait) return fail(429, { error: `Too many tries. Try again in ${wait} minute${wait === 1 ? '' : 's'}.` });
+		try {
+			const failed = await attempt(() => withProvider(event, 'local', ['username', 'password']), 'Wrong username or password.');
+			if (failed) recordLoginFailure(address);
+			return failed;
+		} catch (e) {
+			if (isRedirect(e)) clearLoginFailures(address); // signed in
+			throw e;
+		}
 	},
 	dev: async (event) => {
 		if (!devLoginEnabled()) return fail(404);
