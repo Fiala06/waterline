@@ -84,12 +84,11 @@ function parseList(text) {
 
 	for (const table of text.split(/\n\{\|/).slice(1)) {
 		const body = table.split(/\n\|\}/)[0];
-		const [head, ...rows] = body.split(/\n\|-[^\n]*/);
-		const headers = head
-			.split('\n')
-			.filter((l) => l.startsWith('!'))
-			.flatMap((l) => l.slice(1).split('!!'))
-			.map((h) => plain(h).toLowerCase());
+		const parts = body.split(/\n\|-[^\n]*/);
+		// Header cells ("!") can sit before or after the first row separator.
+		const headerLines = parts.flatMap((p) => p.split('\n').filter((l) => l.startsWith('!')));
+		const rows = parts.filter((p) => !p.trim().startsWith('!'));
+		const headers = headerLines.flatMap((l) => l.slice(1).split('!!')).map((h) => plain(h).toLowerCase());
 		const commonCol = headers.findIndex((h) => h.startsWith('common name'));
 		for (const row of rows) {
 			const cells = row

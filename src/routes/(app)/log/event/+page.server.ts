@@ -2,7 +2,7 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import { taskKindFor } from '$lib/events';
 import { addDays, dateInZone, fmtDate } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
-import { num, optStr, parseWhen } from '$lib/server/forms';
+import { num, optStr, parseWhen, str } from '$lib/server/forms';
 import {
 	completableTask,
 	eventFormContext,
@@ -13,6 +13,9 @@ import { createEvent, recentDosingProducts } from '$lib/server/logs';
 import { photoFiles, preparePhotos, storePhotos } from '$lib/server/photos';
 import { getTank } from '$lib/server/tanks';
 import { createTask, getTask } from '$lib/server/tasks';
+import { equipmentName } from '$lib/equipment';
+import { handleLinkedLivestock } from '$lib/server/log-livestock';
+import { getEquipment, listEquipment, listLivestock, listPlants, markServiced, removeEquipment } from '$lib/server/specs';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, url, parent }) => {
@@ -34,7 +37,15 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 		context: eventFormContext(tank, user),
 		when: date && time ? { date, time } : null,
 		task: completableTask(user, tank.id, taskKindFor(category), url.searchParams.get('task')),
-		recentProducts: category === 'dosing' ? recentDosingProducts(tank.id) : []
+		recentProducts: category === 'dosing' ? recentDosingProducts(tank.id) : [],
+		inventory: ['livestock', 'equipment', 'maintenance'].includes(category)
+			? {
+					livestock: listLivestock(user.id, tank.id).map((l) => ({ id: l.id, name: l.commonName, count: l.count })),
+					plants: listPlants(user.id, tank.id).map((p) => ({ id: p.id, name: p.name })),
+					equipment: listEquipment(user.id, tank.id).map((e) => ({ id: e.id, name: equipmentName(e) }))
+				}
+			: null,
+		water: (tank.type === 'reef' ? 'marine' : tank.type === 'brackish' ? null : 'fresh') as 'marine' | 'fresh' | null
 	};
 };
 
@@ -53,7 +64,38 @@ export const actions: Actions = {
 		}
 
 		const files = photoFiles(form);
+
+		// Linked livestock/plant changes update the tank's lists and write their own entry.
+		if (category === 'livestock' && form.get('linked') === '1') {
+			const when = parseWhen(form, user.timeZone);
+			if ('error' in when) return fail(400, { errors: {}, values, error: when.error });
+			const prepared = await preparePhotos(files);
+			if ('error' in prepared) return fail(400, { errors: {}, values, error: prepared.error });
+			const r = handleLinkedLivestock(user, tank, form, when.at);
+			if (r && 'errors' in r) return fail(400, { errors: r.errors, values, error: null });
+			if (r) {
+				if (r.eventId) storePhotos(tank.id, prepared, { eventId: r.eventId, takenAt: when.at });
+				setFlash(cookies, r.message);
+				redirect(303, `/?tank=${tank.id}`);
+			}
+		}
+
+		// Equipment picked from the list: removing it updates the Equipment tab.
+		const equipmentId = optStr(form, 'equipmentId', 64);
+		const eqItem = equipmentId ? getEquipment(user.id, equipmentId) : null;
+		if (eqItem && eqItem.tankId !== tank.id) error(400, 'Equipment belongs to another tank');
+		if (eqItem && category === 'equipment') form.set('item', equipmentName(eqItem));
+		if (eqItem && category === 'equipment' && str(form, 'action') === 'removed') {
+			const prepared = await preparePhotos(files);
+			if ('error' in prepared) return fail(400, { errors: {}, values, error: prepared.error });
+			const r = removeEquipment(user.id, eqItem.id);
+			storePhotos(tank.id, prepared, { eventId: r.event.id, takenAt: r.event.occurredAt });
+			setFlash(cookies, `${equipmentName(eqItem)} removed`);
+			redirect(303, `/?tank=${tank.id}`);
+		}
+
 		const { data, errors } = parseEventData(category, form, tank, user);
+		if (eqItem) data.equipment_id = eqItem.id;
 		// A photo on its own is enough for a note.
 		if (files.length) {
 			delete errors.note;
@@ -81,6 +123,7 @@ export const actions: Actions = {
 		);
 
 		if (!duplicate) storePhotos(tank.id, prepared, { eventId: event.id, takenAt: when.at });
+		if (!duplicate && eqItem && category === 'maintenance') markServiced(user.id, eqItem.id, when.at);
 
 		if (!duplicate && typeof data.recheck_at === 'string') {
 			const tags = (data.tags as string[] | undefined) ?? [];

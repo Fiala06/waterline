@@ -1,0 +1,234 @@
+// Equipment, livestock and plants for a tank. Every change also writes an
+// event, so History shows what was added, removed, counted or trimmed.
+import { error } from '@sveltejs/kit';
+import { and, asc, eq, isNotNull, isNull, ne, sql } from 'drizzle-orm';
+import { equipmentName, type EquipmentType } from '$lib/equipment';
+import { db } from './db';
+import { equipment, events, livestock, plants, tanks, type Equipment, type Livestock, type Plant } from './db/schema';
+import { getTank } from './tanks';
+
+const now = () => new Date().toISOString();
+
+function logEvent(tankId: string, category: 'livestock' | 'equipment' | 'maintenance', data: Record<string, unknown>, note: string | null = null, at = now()) {
+	return db.insert(events).values({ tankId, category, occurredAt: at, note, data }).returning().get();
+}
+
+// ── Equipment ───────────────────────────────────────────────────────────────
+
+export function listEquipment(userId: string, tankId: string, opts: { removed?: boolean } = {}) {
+	getTank(userId, tankId);
+	return db
+		.select()
+		.from(equipment)
+		.where(and(eq(equipment.tankId, tankId), opts.removed ? isNotNull(equipment.removedAt) : isNull(equipment.removedAt)))
+		.orderBy(asc(equipment.createdAt))
+		.all();
+}
+
+export function getEquipment(userId: string, id: string): Equipment {
+	const row = db
+		.select({ e: equipment })
+		.from(equipment)
+		.innerJoin(tanks, eq(tanks.id, equipment.tankId))
+		.where(and(eq(equipment.id, id), eq(tanks.userId, userId)))
+		.get();
+	if (!row) error(404, 'Equipment not found');
+	return row.e;
+}
+
+export interface EquipmentInput {
+	type: EquipmentType;
+	brand: string | null;
+	model: string | null;
+	specs: Record<string, unknown>;
+	installedAt: string | null;
+	notes: string | null;
+}
+
+export function addEquipment(userId: string, tankId: string, input: EquipmentInput) {
+	getTank(userId, tankId);
+	const e = db.insert(equipment).values({ ...input, tankId }).returning().get();
+	logEvent(tankId, 'equipment', { action: 'installed', equipment_id: e.id, item: equipmentName(e) }, null, input.installedAt ? `${input.installedAt}T12:00:00.000Z` : now());
+	return e;
+}
+
+export function updateEquipment(userId: string, id: string, input: EquipmentInput) {
+	const before = getEquipment(userId, id);
+	const after = db.update(equipment).set(input).where(eq(equipment.id, id)).returning().get();
+	// Record what changed so charts can mark it ("8 h → 7 h").
+	const changes: Record<string, [unknown, unknown]> = {};
+	for (const k of new Set([...Object.keys(before.specs), ...Object.keys(after.specs)])) {
+		if (before.specs[k] !== after.specs[k]) changes[k] = [before.specs[k] ?? null, after.specs[k] ?? null];
+	}
+	if (before.brand !== after.brand || before.model !== after.model || Object.keys(changes).length) {
+		logEvent(after.tankId, 'equipment', { action: 'adjusted', equipment_id: id, item: equipmentName(after), changes });
+	}
+	return after;
+}
+
+export function removeEquipment(userId: string, id: string) {
+	const e = getEquipment(userId, id);
+	db.update(equipment).set({ removedAt: now() }).where(eq(equipment.id, id)).run();
+	const event = logEvent(e.tankId, 'equipment', { action: 'removed', equipment_id: id, item: equipmentName(e) });
+	return Object.assign(e, { event });
+}
+
+export function markServiced(userId: string, id: string, at: string) {
+	getEquipment(userId, id);
+	db.update(equipment).set({ lastServicedAt: at }).where(eq(equipment.id, id)).run();
+}
+
+/** Brands the user has on other tanks, for "Tidewell · used in Reef 24". */
+export function knownBrands(userId: string) {
+	return db
+		.select({ brand: equipment.brand, tankName: tanks.name })
+		.from(equipment)
+		.innerJoin(tanks, eq(tanks.id, equipment.tankId))
+		.where(and(eq(tanks.userId, userId), isNotNull(equipment.brand), ne(equipment.brand, '')))
+		.all()
+		.filter((r, i, all) => all.findIndex((x) => x.brand!.toLowerCase() === r.brand!.toLowerCase()) === i)
+		.map((r) => ({ brand: r.brand!, tankName: r.tankName }));
+}
+
+// ── Livestock ───────────────────────────────────────────────────────────────
+
+export function listLivestock(userId: string, tankId: string, opts: { removed?: boolean } = {}) {
+	getTank(userId, tankId);
+	return db
+		.select()
+		.from(livestock)
+		.where(and(eq(livestock.tankId, tankId), opts.removed ? isNotNull(livestock.removedAt) : isNull(livestock.removedAt)))
+		.orderBy(asc(livestock.createdAt))
+		.all();
+}
+
+export function getLivestock(userId: string, id: string): Livestock {
+	const row = db
+		.select({ l: livestock })
+		.from(livestock)
+		.innerJoin(tanks, eq(tanks.id, livestock.tankId))
+		.where(and(eq(livestock.id, id), eq(tanks.userId, userId)))
+		.get();
+	if (!row) error(404, 'Livestock not found');
+	return row.l;
+}
+
+export interface LivestockInput {
+	kind: Livestock['kind'];
+	commonName: string;
+	scientificName: string | null;
+	count: number;
+	status: Livestock['status'];
+	addedAt: string | null;
+	source: string | null;
+}
+
+/** Add animals; the same species with the same status adds to the existing count. */
+export function addLivestock(userId: string, tankId: string, input: LivestockInput, at = now()) {
+	getTank(userId, tankId);
+	const same = db
+		.select()
+		.from(livestock)
+		.where(
+			and(
+				eq(livestock.tankId, tankId),
+				isNull(livestock.removedAt),
+				eq(livestock.status, input.status),
+				input.scientificName
+					? eq(livestock.scientificName, input.scientificName)
+					: sql`lower(${livestock.commonName}) = ${input.commonName.toLowerCase()}`
+			)
+		)
+		.get();
+	const row = same
+		? db.update(livestock).set({ count: same.count + input.count }).where(eq(livestock.id, same.id)).returning().get()
+		: db.insert(livestock).values({ ...input, tankId }).returning().get();
+	const event = logEvent(tankId, 'livestock', {
+		action: 'added',
+		livestock_id: row.id,
+		name: row.commonName,
+		scientific_name: row.scientificName,
+		count: input.count,
+		status: input.status,
+		delta: input.count
+	}, null, at);
+	return { row, event };
+}
+
+export type CountReason = 'loss' | 'rehomed' | 'recount' | 'added';
+
+/** Change a count (T4). Decreases need a reason; reaching 0 moves it to past livestock. */
+export function changeCount(userId: string, id: string, newCount: number, reason: CountReason, at = now()) {
+	const l = getLivestock(userId, id);
+	const delta = newCount - l.count;
+	if (delta === 0) return Object.assign(l, { event: null as typeof events.$inferSelect | null });
+	db.update(livestock)
+		.set({ count: Math.max(0, newCount), removedAt: newCount <= 0 ? at : null })
+		.where(eq(livestock.id, id))
+		.run();
+	const event = logEvent(l.tankId, 'livestock', {
+		action: reason === 'recount' ? 'recount' : delta > 0 ? 'added' : 'removed',
+		reason: delta > 0 && reason !== 'recount' ? null : reason,
+		livestock_id: id,
+		name: l.commonName,
+		count: Math.abs(delta),
+		delta,
+		from: l.count,
+		to: newCount
+	}, null, at);
+	return Object.assign(getLivestock(userId, id), { event });
+}
+
+export function setLivestockStatus(userId: string, id: string, status: Livestock['status']) {
+	const l = getLivestock(userId, id);
+	if (l.status === status) return l;
+	db.update(livestock).set({ status }).where(eq(livestock.id, id)).run();
+	logEvent(l.tankId, 'livestock', { action: 'status', livestock_id: id, name: l.commonName, count: l.count, status });
+	return l;
+}
+
+// ── Plants ──────────────────────────────────────────────────────────────────
+
+export function listPlants(userId: string, tankId: string) {
+	getTank(userId, tankId);
+	return db.select().from(plants).where(and(eq(plants.tankId, tankId), isNull(plants.removedAt))).orderBy(asc(plants.createdAt)).all();
+}
+
+export function getPlant(userId: string, id: string): Plant {
+	const row = db
+		.select({ p: plants })
+		.from(plants)
+		.innerJoin(tanks, eq(tanks.id, plants.tankId))
+		.where(and(eq(plants.id, id), eq(tanks.userId, userId)))
+		.get();
+	if (!row) error(404, 'Plant not found');
+	return row.p;
+}
+
+export function addPlant(userId: string, tankId: string, input: Pick<Plant, 'name' | 'scientificName' | 'position' | 'status'>) {
+	getTank(userId, tankId);
+	const p = db.insert(plants).values({ ...input, tankId }).returning().get();
+	const event = logEvent(tankId, 'livestock', { action: 'added', plant_id: p.id, name: p.name, scientific_name: p.scientificName, kind: 'plant' });
+	return Object.assign(p, { event });
+}
+
+export function updatePlant(userId: string, id: string, patch: Partial<Pick<Plant, 'position' | 'status'>>) {
+	getPlant(userId, id);
+	return db.update(plants).set(patch).where(eq(plants.id, id)).returning().get();
+}
+
+export function removePlant(userId: string, id: string) {
+	const p = getPlant(userId, id);
+	db.update(plants).set({ removedAt: now() }).where(eq(plants.id, id)).run();
+	const event = logEvent(p.tankId, 'livestock', { action: 'removed', plant_id: id, name: p.name, kind: 'plant' });
+	return Object.assign(p, { event });
+}
+
+/** "Log trim": one maintenance entry, and the trimmed plants remember the date. */
+export function logTrim(userId: string, tankId: string, plantIds: string[], note: string | null) {
+	const mine = listPlants(userId, tankId).filter((p) => plantIds.includes(p.id));
+	if (!mine.length) error(400, 'Choose at least one plant');
+	const at = now();
+	for (const p of mine) db.update(plants).set({ lastTrimmedAt: at }).where(eq(plants.id, p.id)).run();
+	return logEvent(tankId, 'maintenance', { actions: ['Trimmed plants'], plants: mine.map((p) => p.name) }, note, at);
+}

@@ -61,6 +61,12 @@ export const tanks = sqliteTable(
 		startDate: text('start_date'),
 		notes: text('notes'),
 		coverPhotoId: text('cover_photo_id'),
+		specBrand: text('spec_brand'),
+		specModel: text('spec_model'),
+		glass: text('glass'),
+		substrate: text('substrate'),
+		waterSource: text('water_source'),
+		photoperiodH: real('photoperiod_h'),
 		archivedAt: text('archived_at'),
 		createdAt: createdAt()
 	},
@@ -269,3 +275,69 @@ export const exports = sqliteTable(
 	},
 	(t) => [index('exports_user').on(t.userId)]
 );
+
+// ── Tank specs: equipment, livestock, plants ─────────────────────────────────
+
+export const EQUIPMENT_TYPES = ['filter', 'heater', 'light', 'co2', 'pump', 'skimmer', 'other'] as const;
+
+export const equipment = sqliteTable(
+	'equipment',
+	{
+		id: id(),
+		tankId: text('tank_id')
+			.notNull()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		type: text('type', { enum: EQUIPMENT_TYPES }).notNull(),
+		brand: text('brand'),
+		model: text('model'),
+		specs: text('specs', { mode: 'json' }).$type<Record<string, unknown>>().notNull().default({}),
+		installedAt: text('installed_at'),
+		lastServicedAt: text('last_serviced_at'),
+		notes: text('notes'),
+		removedAt: text('removed_at'),
+		createdAt: createdAt()
+	},
+	(t) => [index('equipment_tank').on(t.tankId)]
+);
+
+export const livestock = sqliteTable(
+	'livestock',
+	{
+		id: id(),
+		tankId: text('tank_id')
+			.notNull()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		kind: text('kind', { enum: ['fish', 'invert', 'coral'] }).notNull(),
+		commonName: text('common_name').notNull(),
+		scientificName: text('scientific_name'),
+		count: integer('count').notNull().default(1),
+		status: text('status', { enum: ['in_tank', 'quarantine'] }).notNull().default('in_tank'),
+		addedAt: text('added_at'),
+		source: text('source'),
+		removedAt: text('removed_at'),
+		createdAt: createdAt()
+	},
+	(t) => [index('livestock_tank').on(t.tankId)]
+);
+
+export const plants = sqliteTable(
+	'plants',
+	{
+		id: id(),
+		tankId: text('tank_id')
+			.notNull()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		name: text('name').notNull(),
+		scientificName: text('scientific_name'),
+		position: text('position', { enum: ['background', 'midground', 'foreground', 'epiphyte'] }).notNull().default('midground'),
+		status: text('status', { enum: ['thriving', 'melting', 'algae', 'other'] }).notNull().default('thriving'),
+		lastTrimmedAt: text('last_trimmed_at'),
+		removedAt: text('removed_at'),
+		createdAt: createdAt()
+	},
+	(t) => [index('plants_tank').on(t.tankId)]
+);
+
+export type Equipment = typeof equipment.$inferSelect;
+export type Livestock = typeof livestock.$inferSelect;
+export type Plant = typeof plants.$inferSelect;

@@ -22,12 +22,6 @@
 <svelte:head><title>Edit {data.tank.name} · Waterline</title></svelte:head>
 
 <form method="POST" action="?/save" enctype="multipart/form-data" class="wrap" use:enhance>
-	<div class="bar">
-		<a href="/tanks" class="back">‹ Tanks</a>
-		<h1>Edit tank</h1>
-		<button class="btn-text save">Save</button>
-	</div>
-
 	<div class="cols">
 		<div class="body">
 			<div class="cover" class:photo-placeholder={!coverPreview && !data.tank.cover}>
@@ -89,6 +83,44 @@
 				</div>
 			</fieldset>
 
+			<div class="pair">
+				<div class="field">
+					<label class="label" for="specBrand">Tank brand</label>
+					<input class="input" id="specBrand" name="specBrand" defaultValue={data.tank.specBrand} maxlength="60" placeholder="e.g. Aqualine" />
+				</div>
+				<div class="field">
+					<label class="label" for="specModel">Model</label>
+					<input class="input" id="specModel" name="specModel" defaultValue={data.tank.specModel} maxlength="60" placeholder="e.g. 90P" />
+				</div>
+			</div>
+			<div class="pair">
+				<div class="field">
+					<label class="label" for="glass">Glass</label>
+					<input class="input" id="glass" name="glass" defaultValue={data.tank.glass} maxlength="60" placeholder="e.g. Low-iron, rimless" />
+				</div>
+				<div class="field">
+					<label class="label" for="substrate">Substrate</label>
+					<input class="input" id="substrate" name="substrate" defaultValue={data.tank.substrate} maxlength="60" placeholder="e.g. Aquasoil, 3 in" />
+				</div>
+			</div>
+			<div class="pair">
+				<div class="field">
+					<label class="label" for="waterSource">Water source</label>
+					<select class="input" id="waterSource" name="waterSource">
+						{#each [['', '—'], ['tap', 'Tap'], ['rodi', 'RODI'], ['mix', 'Mix'], ['well', 'Well']] as [v, l] (v)}
+							<option value={v} selected={data.tank.waterSource === v}>{l}</option>
+						{/each}
+					</select>
+				</div>
+				<div class="field">
+					<label class="label" for="photoperiodH">Photoperiod</label>
+					<div class="unit-input">
+						<input id="photoperiodH" name="photoperiodH" inputmode="decimal" defaultValue={data.tank.photoperiodH} />
+						<span class="unit">h</span>
+					</div>
+				</div>
+			</div>
+
 			<div class="field">
 				<label class="label" for="startDate">Start date</label>
 				<input class="input" id="startDate" name="startDate" type="date" defaultValue={data.tank.startDate} />
@@ -138,33 +170,6 @@
 	.wrap {
 		max-width: 1100px;
 		padding-bottom: calc(24px + env(safe-area-inset-bottom));
-	}
-	.bar {
-		position: sticky;
-		top: 0;
-		z-index: 5;
-		background: var(--bg);
-		display: grid;
-		grid-template-columns: 1fr auto 1fr;
-		align-items: center;
-		padding: 8px 12px;
-	}
-	.back {
-		font-size: 15px;
-		min-height: 44px;
-		display: flex;
-		align-items: center;
-		padding: 0 8px;
-	}
-	h1 {
-		margin: 0;
-		font-size: 17px;
-		font-weight: 600;
-	}
-	.save {
-		justify-self: end;
-		min-height: 44px;
-		font-size: 16px;
 	}
 	.cols,
 	.body,
@@ -306,9 +311,6 @@
 			gap: 28px;
 			padding: 16px 32px;
 			align-items: start;
-		}
-		.bar {
-			padding: 16px 24px 0;
 		}
 	}
 </style>

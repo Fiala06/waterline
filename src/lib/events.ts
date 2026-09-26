@@ -105,16 +105,24 @@ export function eventTitle(e: EventLike, prefs: UnitPrefs): string {
 		}
 		case 'maintenance': {
 			const actions = Array.isArray(d.actions) ? (d.actions as string[]) : [];
+			const plants = Array.isArray(d.plants) ? (d.plants as string[]) : [];
+			if (plants.length && actions.length === 1 && actions[0] === 'Trimmed plants') return `Trimmed ${plants.join(', ')}`;
 			return actions.length ? actions.join(', ') : 'Maintenance';
 		}
 		case 'livestock': {
+			const name = str(d.name) || (d.kind === 'plant' ? 'plant' : 'livestock');
+			const n = typeof d.count === 'number' && d.count > 0 ? d.count : null;
+			if (d.kind === 'plant') return d.action === 'removed' ? `Removed ${name}` : `Planted ${name}`;
+			if (d.action === 'recount') return `Recount · ${name} ${d.from} → ${d.to}`;
+			if (d.action === 'status') return `${name} ${d.status === 'quarantine' ? 'to quarantine' : 'moved into the tank'}`;
+			if (d.action === 'added') return `+${n ?? 1} ${name}${d.status === 'quarantine' ? ' · quarantine' : ''}`;
+			if (d.action === 'removed') return `−${n ?? 1} ${name}${d.reason ? ` · ${d.reason}` : ''}`;
 			const action = LIVESTOCK_ACTIONS.find((a) => a.value === d.action)?.label ?? 'Changed';
-			const n = typeof d.count === 'number' && d.count > 0 ? `${d.count} ` : '';
-			return `${action} ${n}${str(d.name) || 'livestock'}`.trim();
+			return `${action} ${n ? `${n} ` : ''}${name}`;
 		}
 		case 'equipment': {
 			const action = EQUIPMENT_ACTIONS.find((a) => a.value === d.action)?.label ?? 'Changed';
-			return `${action} ${str(d.item) || 'equipment'}`;
+			return `${action === 'Replaced' ? 'Replaced' : action} ${str(d.item) || 'equipment'}`;
 		}
 		case 'observation': {
 			const tags = Array.isArray(d.tags) ? (d.tags as string[]) : [];

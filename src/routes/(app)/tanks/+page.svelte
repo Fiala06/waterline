@@ -30,10 +30,10 @@
 				<div class="info">
 					<div class="row">
 						<div>
-							<h2><a href="/?tank={t.id}">{t.name}</a></h2>
+							<h2><a href="/tanks/{t.id}">{t.name}</a></h2>
 							<div class="muted sub">{cap(t.type)}{t.volume ? ` · ${t.volume}` : ''}</div>
 						</div>
-						<a class="btn edit" href="/tanks/{t.id}">Edit</a>
+						<a class="btn edit" href="/tanks/{t.id}">Details</a>
 					</div>
 					<div class="statuses">
 						<span class="st status-{t.status.level}">{t.status.text}</span>

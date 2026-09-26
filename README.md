@@ -6,7 +6,7 @@ Design handoff and specs live in [`design_handoff_waterline/`](design_handoff_wa
 
 ## Status
 
-Milestones 1–11 of the build plan are done: sign-in, setup, tanks and targets, logging, dashboard, history, charts, photos, tasks, email (reminders, overdue alerts, digests, out-of-range alerts, one-click actions and unsubscribe), settings and server settings, export (full backup ZIP or water tests CSV), and the installable app (home-screen icon, splash, install prompt, offline logging that syncs later). Tank specs and public pages come next.
+Milestones 1–12 of the build plan are done: sign-in, setup, tanks and targets, logging, dashboard, history, charts, photos, tasks, email (reminders, overdue alerts, digests, out-of-range alerts, one-click actions and unsubscribe), settings and server settings, export (full backup ZIP or water tests CSV), and the installable app (home-screen icon, splash, install prompt, offline logging that syncs later), and tank specs (equipment, livestock with the bundled species list, plants). Public pages come next.
 
 The admin (the `ADMIN_EMAIL` Google account, or the local admin login) sets up email delivery in **Settings › Server settings**: Mailgun or any SMTP server, with a *Send test email* button.
 

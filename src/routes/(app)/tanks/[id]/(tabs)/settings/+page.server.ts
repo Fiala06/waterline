@@ -26,7 +26,13 @@ export const load: PageServerLoad = ({ locals, params }) => {
 			width: v(tank.widthCm, 'length', 1),
 			height: v(tank.heightCm, 'length', 1),
 			startDate: tank.startDate ?? '',
-			notes: tank.notes ?? ''
+			notes: tank.notes ?? '',
+			specBrand: tank.specBrand ?? '',
+			specModel: tank.specModel ?? '',
+			glass: tank.glass ?? '',
+			substrate: tank.substrate ?? '',
+			waterSource: tank.waterSource ?? '',
+			photoperiodH: tank.photoperiodH == null ? '' : String(tank.photoperiodH)
 		},
 		paramSummary: {
 			tracked: tracked.length,

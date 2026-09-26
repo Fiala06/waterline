@@ -12,8 +12,11 @@ import { formatNumber } from '$lib/units';
 import { utcToZoned } from '$lib/time';
 import { db } from './db';
 import {
+	equipment,
 	events,
 	exports,
+	livestock,
+	plants,
 	notificationPrefs,
 	photos,
 	tankParameters,
@@ -94,7 +97,10 @@ function dataFor(user: User, list: Tank[]) {
 		? db.select().from(taskCompletions).where(inArray(taskCompletions.taskId, allTasks.map((t) => t.id))).all()
 		: [];
 	const allPhotos = db.select().from(photos).where(inArray(photos.tankId, ids)).orderBy(asc(photos.takenAt)).all();
-	return { params, allTests, readings, allEvents, allTasks, completions, allPhotos };
+	const allEquipment = byTank(db.select().from(equipment).where(inArray(equipment.tankId, ids)).all());
+	const allLivestock = byTank(db.select().from(livestock).where(inArray(livestock.tankId, ids)).all());
+	const allPlants = byTank(db.select().from(plants).where(inArray(plants.tankId, ids)).all());
+	return { params, allTests, readings, allEvents, allTasks, completions, allPhotos, allEquipment, allLivestock, allPlants };
 }
 
 async function build(id: string, user: User, list: Tank[], format: 'zip' | 'csv') {
@@ -153,6 +159,9 @@ async function build(id: string, user: User, list: Tank[], format: 'zip' | 'csv'
 					readings: d.readings.filter((r) => r.testId === x.id).map((r) => ({ parameterId: r.parameterId, value: r.value }))
 				})),
 			events: d.allEvents(t.id).map((e) => ({ ...e, tankId: undefined })),
+			equipment: d.allEquipment(t.id).map((e) => ({ ...e, tankId: undefined })),
+			livestock: d.allLivestock(t.id).map((l) => ({ ...l, tankId: undefined })),
+			plants: d.allPlants(t.id).map((p) => ({ ...p, tankId: undefined })),
 			tasks: d.allTasks
 				.filter((k) => k.tankId === t.id)
 				.map((k) => ({ ...k, tankId: undefined, completions: d.completions.filter((c) => c.taskId === k.id) })),

@@ -6,6 +6,7 @@
 	import { onMount } from 'svelte';
 	import DateTimePicker from './DateTimePicker.svelte';
 	import PhotoPicker from './PhotoPicker.svelte';
+	import SpeciesInput from './SpeciesInput.svelte';
 	import {
 		CATEGORY_LABEL,
 		DOSING_UNITS,
@@ -41,7 +42,9 @@
 		error = null,
 		errors = {},
 		meta = null,
-		existingPhotos = []
+		existingPhotos = [],
+		inventory = null,
+		water = null
 	}: {
 		mode?: 'new' | 'edit';
 		category: EventCategory;
@@ -61,10 +64,26 @@
 		errors?: Record<string, string>;
 		meta?: string | null;
 		existingPhotos?: { id: string }[];
+		inventory?: {
+			livestock: { id: string; name: string; count: number }[];
+			plants: { id: string; name: string }[];
+			equipment: { id: string; name: string }[];
+		} | null;
+		water?: 'fresh' | 'marine' | null;
 	} = $props();
+
+
 
 	const v = (k: string) => (typeof values[k] === 'string' ? (values[k] as string) : '');
 	const list = (k: string) => (Array.isArray(values[k]) ? (values[k] as string[]) : values[k] ? [values[k] as string] : []);
+
+	// Livestock / plants (G3): new entries add to or take from the tank's lists.
+	let lsAction = $state(untrack(() => v('action') || 'added'));
+	let lsKind = $state<'fish' | 'invert' | 'coral' | 'plant'>('fish');
+	let lsTarget = $state('');
+	let eqId = $state(untrack(() => inventory?.equipment[0]?.id ?? ''));
+	const linked = $derived(mode === 'new' && !!inventory);
+	const targetIsLivestock = $derived(lsTarget.startsWith('livestock:'));
 
 	let when = $state<When | null>(untrack(() => initialWhen));
 	let picking = $state(false);
@@ -255,6 +274,94 @@
 					</div>
 					{#if errors.actions}<span class="error-text">✕ {errors.actions}</span>{/if}
 				</fieldset>
+				{#if linked && inventory?.equipment.length}
+					<div class="field">
+						<label class="label" for="m-equipment">Equipment · optional</label>
+						<select class="input" id="m-equipment" name="equipmentId">
+							<option value="">—</option>
+							{#each inventory.equipment as e (e.id)}<option value={e.id}>{e.name}</option>{/each}
+						</select>
+					</div>
+				{/if}
+			{:else if category === 'livestock' && linked && inventory}
+				<input type="hidden" name="linked" value="1" />
+				<fieldset class="field">
+					<legend class="sr-only">Change</legend>
+					<div class="options three">
+						{#each LIVESTOCK_ACTIONS as a (a.value)}
+							<label class="option"><input type="radio" name="action" value={a.value} bind:group={lsAction} />{a.label}</label>
+						{/each}
+					</div>
+				</fieldset>
+				{#if lsAction === 'added'}
+					<div class="segmented" role="group" aria-label="Kind">
+						{#each [['fish', 'Fish'], ['invert', 'Invert'], ['coral', 'Coral'], ['plant', 'Plant']] as [k, l] (k)}
+							<label><input type="radio" name="kind" value={k} bind:group={lsKind} />{l}</label>
+						{/each}
+					</div>
+					{#key lsKind}<SpeciesInput kind={lsKind} water={lsKind === 'plant' ? 'fresh' : water} invalid={!!errors.name} />{/key}
+					{#if errors.name}<span class="error-text">✕ {errors.name}</span>{/if}
+					{#if lsKind === 'plant'}
+						<div class="field">
+							<label class="label" for="position">Position</label>
+							<select class="input" id="position" name="position">
+								<option value="background">Background</option>
+								<option value="midground" selected>Midground</option>
+								<option value="foreground">Foreground</option>
+								<option value="epiphyte">Epiphyte</option>
+							</select>
+						</div>
+					{:else}
+						<div class="pair">
+							<div class="field">
+								<label class="label" for="count">Count</label>
+								<input class="input" id="count" name="count" inputmode="numeric" defaultValue="1" />
+								{#if errors.count}<span class="error-text">✕ {errors.count}</span>{/if}
+							</div>
+							<div class="field">
+								<label class="label" for="status">Status</label>
+								<select class="input" id="status" name="status" bind:value={livestockStatus}>
+									{#each LIVESTOCK_STATUS as s (s.value)}<option value={s.value}>{s.label}</option>{/each}
+								</select>
+							</div>
+						</div>
+					{/if}
+				{:else}
+					<div class="field">
+						<label class="label" for="target">Which one?</label>
+						<select class="input" id="target" name="target" bind:value={lsTarget} aria-invalid={!!errors.target}>
+							<option value="" disabled>Choose…</option>
+							{#if inventory.livestock.length}
+								<optgroup label="Livestock">
+									{#each inventory.livestock as l (l.id)}<option value="livestock:{l.id}">{l.name} ({l.count})</option>{/each}
+								</optgroup>
+							{/if}
+							{#if inventory.plants.length}
+								<optgroup label="Plants">
+									{#each inventory.plants as p (p.id)}<option value="plant:{p.id}">{p.name}</option>{/each}
+								</optgroup>
+							{/if}
+						</select>
+						{#if !inventory.livestock.length && !inventory.plants.length}<span class="hint">Nothing in this tank yet.</span>{/if}
+						{#if errors.target}<span class="error-text">✕ {errors.target}</span>{/if}
+					</div>
+					{#if lsAction === 'removed' && targetIsLivestock}
+						<div class="pair">
+							<div class="field">
+								<label class="label" for="count">How many</label>
+								<input class="input" id="count" name="count" inputmode="numeric" defaultValue="1" />
+								{#if errors.count}<span class="error-text">✕ {errors.count}</span>{/if}
+							</div>
+							<fieldset class="field">
+								<legend class="label">Why</legend>
+								<div class="segmented">
+									<label><input type="radio" name="reason" value="loss" defaultChecked />Loss</label>
+									<label><input type="radio" name="reason" value="rehomed" />Rehomed</label>
+								</div>
+							</fieldset>
+						</div>
+					{/if}
+				{/if}
 			{:else if category === 'livestock'}
 				<fieldset class="field">
 					<legend class="sr-only">Change</legend>
@@ -292,8 +399,17 @@
 						{/each}
 					</div>
 				</fieldset>
-				<div class="field">
-					<label class="label" for="item">Item</label>
+				{#if linked && inventory?.equipment.length}
+					<div class="field">
+						<label class="label" for="equipmentId">Item</label>
+						<select class="input" id="equipmentId" name="equipmentId" bind:value={eqId}>
+							{#each inventory.equipment as e (e.id)}<option value={e.id}>{e.name}</option>{/each}
+							<option value="">Something else…</option>
+						</select>
+					</div>
+				{/if}
+				<div class="field" hidden={linked && !!inventory?.equipment.length && eqId !== ''}>
+					<label class="label" for="item">{linked && inventory?.equipment.length ? 'Name' : 'Item'}</label>
 					<input class="input" id="item" name="item" defaultValue={v('item')} maxlength="80" placeholder="e.g. Canister filter" aria-invalid={!!errors.item} />
 					{#if errors.item}<span class="error-text">✕ {errors.item}</span>{/if}
 				</div>
