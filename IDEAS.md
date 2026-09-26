@@ -17,6 +17,16 @@ A running list of ideas and nice-to-haves that aren't in the current scope. For 
   - Make the data AI-friendly: a clean read-only API and/or an MCP server so any agent can read tank history.
   - Per-user opt-in with a user-supplied API key (self-hosted, so no shared keys), and clear control over which tanks/data are shared.
   - Suggestions only; the agent never logs or changes data without the user confirming.
+- **Parameter presets by tank type:** when creating a tank, pre-select a suggested parameter set for its type, which the user can adjust. Examples:
+  - Freshwater: pH, ammonia, nitrite, nitrate, GH, KH, temperature.
+  - Planted: freshwater set + CO2, iron, phosphate, potassium.
+  - Brackish: freshwater set + salinity/specific gravity.
+  - Reef/saltwater: salinity/specific gravity, alkalinity, calcium, magnesium, phosphate, nitrate, ammonia, pH, temperature.
+  - Presets could also supply sensible default target ranges per type.
+- **Custom tank notes, one-off reminders, custom parameters:** already in the brief (tank notes field in 5.8, one-off tasks in 5.12, custom parameters in 5.8). Possible extras:
+  - Notes as a running, dated list per tank (or pinned notes), not just one text field.
+  - Quick "remind me about this tank" one-off reminder straight from the tank page or dashboard.
+  - Let custom parameters be saved and reused across tanks.
 
 ## To do later
 
