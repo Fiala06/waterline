@@ -1,9 +1,28 @@
-import { redirect, type Handle } from '@sveltejs/kit';
+import { redirect, type Handle, type ServerInit } from '@sveltejs/kit';
+import { building } from '$app/environment';
+import { startScheduler } from '$lib/server/scheduler';
 import { sequence } from '@sveltejs/kit/hooks';
 import { handle as authHandle } from './auth';
 import { getUser } from '$lib/server/users';
 
-const PUBLIC_PATHS = ['/signin', '/auth'];
+const PUBLIC_PATHS = ['/signin', '/auth', '/e', '/unsubscribe'];
+
+/**
+ * Cross-site form posts are refused (the check SvelteKit normally does),
+ * except one-click unsubscribe, which mail providers POST without an Origin.
+ */
+const FORM_TYPES = ['application/x-www-form-urlencoded', 'multipart/form-data', 'text/plain'];
+const csrf: Handle = ({ event, resolve }) => {
+	const { request, url } = event;
+	if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) {
+		const type = request.headers.get('content-type')?.split(';')[0].trim().toLowerCase() ?? '';
+		const origin = request.headers.get('origin');
+		if (FORM_TYPES.includes(type) && origin !== url.origin && !url.pathname.startsWith('/unsubscribe/')) {
+			return new Response(`Cross-site ${request.method} form submissions are forbidden`, { status: 403 });
+		}
+	}
+	return resolve(event);
+};
 const isPublic = (path: string) => PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + '/'));
 
 const appHandle: Handle = async ({ event, resolve }) => {
@@ -29,4 +48,8 @@ const appHandle: Handle = async ({ event, resolve }) => {
 	});
 };
 
-export const handle = sequence(authHandle, appHandle);
+export const handle = sequence(csrf, authHandle, appHandle);
+
+export const init: ServerInit = () => {
+	if (!building) startScheduler();
+};

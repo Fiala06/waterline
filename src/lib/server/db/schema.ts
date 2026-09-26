@@ -39,7 +39,8 @@ export const notificationPrefs = sqliteTable('notification_prefs', {
 	delivery: text('delivery', { enum: ['individual', 'daily', 'weekly'] }).notNull().default('individual'),
 	leadDays: integer('lead_days').notNull().default(1),
 	sendTime: text('send_time').notNull().default('08:00'),
-	notifyEmail: text('notify_email')
+	notifyEmail: text('notify_email'),
+	unsubscribedAt: text('unsubscribed_at')
 });
 
 
@@ -198,3 +199,47 @@ export type Task = typeof tasks.$inferSelect;
 
 export { EVENT_CATEGORIES, TANK_TYPES, TASK_KINDS };
 export type { EventCategory, TankType, TaskKind } from '../../types';
+
+// ── Email ────────────────────────────────────────────────────────────────────
+
+/** Server-wide settings (one row, id = 1). Secrets are encrypted at rest. */
+export const serverSettings = sqliteTable('server_settings', {
+	id: integer('id').primaryKey(),
+	emailProvider: text('email_provider', { enum: ['mailgun', 'smtp'] }),
+	mailgunApiKeyEnc: text('mailgun_api_key_enc'),
+	mailgunDomain: text('mailgun_domain'),
+	mailgunRegion: text('mailgun_region', { enum: ['us', 'eu'] }).notNull().default('us'),
+	smtpHost: text('smtp_host'),
+	smtpPort: integer('smtp_port'),
+	smtpSecure: integer('smtp_secure', { mode: 'boolean' }).notNull().default(true),
+	smtpUser: text('smtp_user'),
+	smtpPasswordEnc: text('smtp_password_enc'),
+	sender: text('sender')
+});
+
+/** Signed single-use links in emails (Mark done / Snooze). Only the hash is stored. */
+export const actionTokens = sqliteTable('action_tokens', {
+	tokenHash: text('token_hash').primaryKey(),
+	taskId: text('task_id')
+		.notNull()
+		.references(() => tasks.id, { onDelete: 'cascade' }),
+	action: text('action', { enum: ['done', 'snooze'] }).notNull(),
+	due: text('due').notNull(), // the occurrence the email was about
+	expiresAt: text('expires_at').notNull(),
+	usedAt: text('used_at')
+});
+
+/** What was emailed, so the scheduler never sends the same thing twice. */
+export const emailLog = sqliteTable(
+	'email_log',
+	{
+		id: id(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		key: text('key').notNull(), // e.g. reminder:<task>:<due>, digest:<date>
+		sentAt: createdAt(),
+		error: text('error')
+	},
+	(t) => [uniqueIndex('email_log_key').on(t.userId, t.key)]
+);

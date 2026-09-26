@@ -5,6 +5,7 @@ import { optStr, parseWhen, str } from '$lib/server/forms';
 import { completableTask, parseReadings, testFormParams } from '$lib/server/log-forms';
 import { createTest, latestReadings } from '$lib/server/logs';
 import { photoFiles, preparePhotos, storePhotos } from '$lib/server/photos';
+import { alertOutOfRange } from '$lib/server/notifications';
 import { getTank, listParams } from '$lib/server/tanks';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -52,7 +53,11 @@ export const actions: Actions = {
 			{ takenAt: when.at, note: optStr(form, 'note'), readings, clientId: optStr(form, 'clientId', 64) },
 			{ completeTaskId: optStr(form, 'completeTask', 64), timeZone: user.timeZone }
 		);
-		if (!result.duplicate) storePhotos(tank.id, prepared, { testId: result.test.id, takenAt: when.at });
+		if (!result.duplicate) {
+			storePhotos(tank.id, prepared, { testId: result.test.id, takenAt: when.at });
+			// E4 goes out in the background; a mail problem never blocks saving.
+			if (result.outOfRange) alertOutOfRange(user, tank.id, result.test.id).catch((e) => console.error(e));
+		}
 		const n = result.count;
 		setFlash(
 			cookies,

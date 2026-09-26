@@ -6,7 +6,9 @@ Design handoff and specs live in [`design_handoff_waterline/`](design_handoff_wa
 
 ## Status
 
-Milestones 1–5 of the build plan are done: scaffold, sign-in (Google + optional local admin), first-login setup, tanks with parameters and targets, logging (water tests, water changes and other events, backdating, edit/delete), and the dashboard. History, charts, photos, full tasks, email, export and PWA come next.
+Milestones 1–8 of the build plan are done: sign-in, setup, tanks and targets, logging, dashboard, history, charts, photos, tasks, and email (reminders, overdue alerts, digests, out-of-range alerts, one-click actions and unsubscribe). Settings and admin screens, export, PWA, tank specs and public pages come next.
+
+Emails links (Mark done, Snooze, unsubscribe) use `ORIGIN`, so set it to the address people use to reach the server.
 
 ## Run it locally
 
@@ -37,6 +39,8 @@ Edit the environment in [`docker-compose.yml`](docker-compose.yml) first. Everyt
 | `ALLOWED_EMAILS` | optional | Only these emails / `@domains` may sign in. Unset = anyone with a Google account |
 | `LOCAL_ADMIN_PASSWORD_HASH` | optional | Enables the local admin fallback login. Create with `npm run hash-password -- 'your password'` |
 | `LOCAL_ADMIN_USERNAME` | optional | Defaults to `admin` |
+| `ENCRYPTION_KEY` | recommended | Encrypts the stored mail password/API key. Falls back to a key derived from `AUTH_SECRET` |
+| `EMAIL_SCHEDULER` | optional | `off` stops reminder and digest emails |
 | `DATA_DIR` | optional | Defaults to `/data` in Docker, `./data` locally |
 | `BODY_SIZE_LIMIT` | optional | Largest upload. The Docker image sets `64M` so photos fit; outside Docker set it yourself, since Node defaults to 512K |
 
