@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="width:232px;height:100%;background:#0f2126;border-right:1px solid #24414a;padding:22px 14px;box-sizing:border-box;display:flex;flex-direction:column;gap:26px;flex-shrink:0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#e6f0f0">
+  <div style="display:flex;align-items:center;gap:10px;padding:0 8px"><svg width="28" height="28" viewBox="0 0 56 56"><defs><clipPath id="sbm"><circle cx="28" cy="28" r="19"></circle></clipPath></defs><rect x="0" y="31" width="56" height="30" fill="#4fc4bd" clip-path="url(#sbm)"></rect><circle cx="28" cy="28" r="24.5" fill="none" stroke="#e6f0f0" stroke-width="4"></circle></svg><div style="font-size:19px;font-weight:600;letter-spacing:-0.01em">Waterline</div></div>
+  <div style="display:flex;flex-direction:column;gap:2px">
+    <sc-for list="{{ items }}" as="item" hint-placeholder-count="6">
+      <div style="height:40px;padding:0 12px;border-radius:10px;display:flex;align-items:center;justify-content:space-between;font-size:15px;background:{{ item.bg }};color:{{ item.color }};font-weight:{{ item.weight }}">{{ item.label }}<sc-if value="{{ item.hasBadge }}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;font-weight:700;background:#3f201c;color:#f5b6aa;padding:2px 8px;border-radius:10px">1 overdue</div></sc-if></div>
+    </sc-for>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div style="font-size:12px;letter-spacing:0.08em;color:#7d9397;padding:0 12px">TANKS</div>
+    <div style="height:42px;padding:0 12px;border-radius:10px;background:#1a3138;display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600"><div style="width:22px;height:22px;border-radius:6px;background:repeating-linear-gradient(135deg,#1a3138 0 4px,#152a30 4px 8px)"></div><div style="flex:1">Riverbed 40</div><div style="font-size:11px;font-weight:700;background:#3f201c;color:#f5b6aa;padding:2px 7px;border-radius:9px;white-space:nowrap">2 alerts</div></div>
+    <div style="height:42px;padding:0 12px;border-radius:10px;display:flex;align-items:center;gap:10px;font-size:14px;color:#b8cacd"><div style="width:22px;height:22px;border-radius:6px;background:repeating-linear-gradient(135deg,#1a3138 0 4px,#152a30 4px 8px)"></div><div style="flex:1">Reef 24</div><div style="font-size:11px;font-weight:600;color:#6fd39a;white-space:nowrap">All good</div></div>
+  </div>
+  <div style="flex:1"></div>
+  <div style="height:40px;padding:0 12px;border-radius:10px;display:flex;align-items:center;font-size:15px;background:{{ settingsBg }};color:{{ settingsColor }};font-weight:{{ settingsWeight }}">Settings</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:232,&quot;height&quot;:800},&quot;active&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Dashboard&quot;,&quot;Tanks&quot;,&quot;Tasks&quot;,&quot;History&quot;,&quot;Charts&quot;,&quot;Photos&quot;,&quot;Settings&quot;],&quot;default&quot;:&quot;Dashboard&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const a = this.props.active ?? 'Dashboard';
+    const items = ['Dashboard', 'Tanks', 'Tasks', 'History', 'Charts', 'Photos'].map(l => ({
+      label: l, bg: a === l ? '#17363a' : 'transparent', color: a === l ? '#4fc4bd' : '#b8cacd', weight: a === l ? 600 : 400, hasBadge: l === 'Tasks' && a !== 'Tasks',
+    }));
+    const s = a === 'Settings';
+    return { items, settingsBg: s ? '#17363a' : 'transparent', settingsColor: s ? '#4fc4bd' : '#b8cacd', settingsWeight: s ? 600 : 400 };
+  }
+}
+</script>
+</body>
+</html>

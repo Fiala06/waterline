@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<style>html{background:#081317}body{margin:0;background:#081317;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;color:#e6f0f0;-webkit-font-smoothing:antialiased}a{color:#1a7a7a}a:hover{color:#135e5e}</style>
+</helmet>
+<section style="padding:64px;display:flex;flex-direction:column;gap:40px">
+  <div style="display:flex;flex-direction:column;gap:8px;max-width:820px">
+    <div style="font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#9fb4b8">Turn 4 · Email templates</div>
+    <div style="font-size:40px;font-weight:600;letter-spacing:-0.02em">Waterline emails</div>
+    <div style="font-size:17px;line-height:1.5;color:#9fb4b8;text-wrap:pretty">A 600px single-column layout that scales down to phone width. Light by default, since email clients handle dark mode unevenly. Each template shows the inbox subject and preview line first. Action buttons use signed one-time links, so they work without signing in.</div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start">
+
+    <!-- 1 Task reminder -->
+    <div style="width:600px;display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:14px;color:#9fb4b8">E1 · Task reminder</div>
+      <div style="border-radius:12px;background:#13262c;border:1px solid #24414a;padding:12px 16px;display:flex;flex-direction:column;gap:3px"><div style="display:flex;justify-content:space-between;font-size:14px"><div style="font-weight:700">Waterline</div><div style="color:#9fb4b8">7:00 AM</div></div><div style="font-size:14px;font-weight:600">Due tomorrow: Water change 25% · Riverbed 40</div><div style="font-size:13px;color:#9fb4b8">Mark it done or snooze it right from this email.</div></div>
+      <div style="background:#eef3f2;border-radius:12px;padding:32px 24px;color:#0f2126">
+        <div style="display:flex;align-items:center;gap:8px;padding:0 4px 20px"><svg width="24" height="24" viewBox="0 0 56 56"><defs><clipPath id="e1"><circle cx="28" cy="28" r="19"></circle></clipPath></defs><rect x="0" y="31" width="56" height="30" fill="#1a7a7a" clip-path="url(#e1)"></rect><circle cx="28" cy="28" r="24.5" fill="none" stroke="#0f2126" stroke-width="4"></circle></svg><div style="font-size:17px;font-weight:600">Waterline</div></div>
+        <div style="background:#ffffff;border-radius:16px;border:1px solid #d5e0df;padding:32px;display:flex;flex-direction:column;gap:20px">
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;font-weight:700;color:#8a6300">▲ Due tomorrow</div><div style="font-size:28px;font-weight:600;letter-spacing:-0.01em">Water change 25%</div></div>
+          <div style="border-top:1px solid #e1e9e8;border-bottom:1px solid #e1e9e8">
+            <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #e1e9e8;font-size:15px"><div style="color:#4f666b">Tank</div><div style="font-weight:600">Riverbed 40</div></div>
+            <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #e1e9e8;font-size:15px"><div style="color:#4f666b">Due</div><div style="font-weight:600">Fri, Sep 26</div></div>
+            <div style="display:flex;justify-content:space-between;padding:12px 0;font-size:15px"><div style="color:#4f666b">Repeats</div><div style="font-weight:600">Every 7 days</div></div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap"><div style="height:48px;padding:0 24px;border-radius:10px;background:#1a7a7a;color:#ffffff;display:flex;align-items:center;font-size:16px;font-weight:700">Mark done</div><div style="height:48px;padding:0 24px;border-radius:10px;border:1px solid #bccccb;display:flex;align-items:center;font-size:16px;font-weight:600">Snooze 1 day</div></div>
+          <div style="font-size:14px;color:#4f666b">No sign-in needed. <a href="#" style="font-weight:600">Open dashboard</a></div>
+        </div>
+        <div style="padding:20px 4px 0;font-size:12px;line-height:1.6;color:#4f666b">You're getting this because task reminders are on.<br><a href="#">Notification settings</a> · <a href="#">Unsubscribe from all</a><br>Waterline · tanks.reyes.home</div>
+      </div>
+    </div>
+
+    <!-- 2 Overdue -->
+    <div style="width:600px;display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:14px;color:#9fb4b8">E2 · Overdue alert</div>
+      <div style="border-radius:12px;background:#13262c;border:1px solid #24414a;padding:12px 16px;display:flex;flex-direction:column;gap:3px"><div style="display:flex;justify-content:space-between;font-size:14px"><div style="font-weight:700">Waterline</div><div style="color:#9fb4b8">7:00 AM</div></div><div style="font-size:14px;font-weight:600">Overdue 2 days: Water change 25% · Riverbed 40</div><div style="font-size:13px;color:#9fb4b8">It was due Tue, Sep 23. Mark it done or snooze it.</div></div>
+      <div style="background:#eef3f2;border-radius:12px;padding:32px 24px;color:#0f2126">
+        <div style="display:flex;align-items:center;gap:8px;padding:0 4px 20px"><svg width="24" height="24" viewBox="0 0 56 56"><defs><clipPath id="e2"><circle cx="28" cy="28" r="19"></circle></clipPath></defs><rect x="0" y="31" width="56" height="30" fill="#1a7a7a" clip-path="url(#e2)"></rect><circle cx="28" cy="28" r="24.5" fill="none" stroke="#0f2126" stroke-width="4"></circle></svg><div style="font-size:17px;font-weight:600">Waterline</div></div>
+        <div style="background:#ffffff;border-radius:16px;border:1px solid #d5e0df;overflow:hidden">
+          <div style="background:#fbe9e5;border-bottom:1px solid #efc3b9;padding:14px 32px;font-size:15px;font-weight:700;color:#8f2f1f">✕ Overdue by 2 days</div>
+          <div style="padding:28px 32px 32px;display:flex;flex-direction:column;gap:20px">
+            <div style="font-size:28px;font-weight:600;letter-spacing:-0.01em">Water change 25%</div>
+            <div style="border-top:1px solid #e1e9e8;border-bottom:1px solid #e1e9e8">
+              <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #e1e9e8;font-size:15px"><div style="color:#4f666b">Tank</div><div style="font-weight:600">Riverbed 40</div></div>
+              <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #e1e9e8;font-size:15px"><div style="color:#4f666b">Was due</div><div style="font-weight:600;color:#b8412c">Tue, Sep 23</div></div>
+              <div style="display:flex;justify-content:space-between;padding:12px 0;font-size:15px"><div style="color:#4f666b">Last done</div><div style="font-weight:600">Sep 16 · 9 days ago</div></div>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap"><div style="height:48px;padding:0 24px;border-radius:10px;background:#1a7a7a;color:#ffffff;display:flex;align-items:center;font-size:16px;font-weight:700">Mark done</div><div style="height:48px;padding:0 24px;border-radius:10px;border:1px solid #bccccb;display:flex;align-items:center;font-size:16px;font-weight:600">Snooze 1 day</div></div>
+          </div>
+        </div>
+        <div style="padding:20px 4px 0;font-size:12px;line-height:1.6;color:#4f666b">You're getting this because overdue alerts are on.<br><a href="#">Notification settings</a> · <a href="#">Unsubscribe from all</a><br>Waterline · tanks.reyes.home</div>
+      </div>
+    </div>
+
+    <!-- 3 Digest -->
+    <div style="width:600px;display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:14px;color:#9fb4b8">E3 · Daily digest</div>
+      <div style="border-radius:12px;background:#13262c;border:1px solid #24414a;padding:12px 16px;display:flex;flex-direction:column;gap:3px"><div style="display:flex;justify-content:space-between;font-size:14px"><div style="font-weight:700">Waterline</div><div style="color:#9fb4b8">7:00 AM</div></div><div style="font-size:14px;font-weight:600">Today: 1 overdue, 2 due, 1 reading out of range</div><div style="font-size:13px;color:#9fb4b8">Riverbed 40 needs a water change; nitrate is high.</div></div>
+      <div style="background:#eef3f2;border-radius:12px;padding:32px 24px;color:#0f2126">
+        <div style="display:flex;align-items:center;gap:8px;padding:0 4px 20px"><svg width="24" height="24" viewBox="0 0 56 56"><defs><clipPath id="e3"><circle cx="28" cy="28" r="19"></circle></clipPath></defs><rect x="0" y="31" width="56" height="30" fill="#1a7a7a" clip-path="url(#e3)"></rect><circle cx="28" cy="28" r="24.5" fill="none" stroke="#0f2126" stroke-width="4"></circle></svg><div style="font-size:17px;font-weight:600">Waterline</div></div>
+        <div style="background:#ffffff;border-radius:16px;border:1px solid #d5e0df;padding:32px;display:flex;flex-direction:column;gap:24px">
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:14px;color:#4f666b">Thursday, September 25</div><div style="font-size:28px;font-weight:600;letter-spacing:-0.01em">Your tanks today</div></div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:8px;border-bottom:2px solid #0f2126"><div style="font-size:18px;font-weight:700">Riverbed 40</div><div style="font-size:13px;color:#4f666b">Planted · 40 gal</div></div>
+            <div style="display:flex;align-items:center;gap:12px;padding:6px 0"><div style="flex:1;display:flex;flex-direction:column;gap:3px"><div style="font-size:15px;font-weight:600">Water change 25%</div><div style="font-size:13px;font-weight:700;color:#b8412c">✕ Overdue 1 day</div></div><div style="height:36px;padding:0 14px;border-radius:8px;background:#1a7a7a;color:#ffffff;display:flex;align-items:center;font-size:14px;font-weight:700">Mark done</div></div>
+            <div style="display:flex;align-items:center;gap:12px;padding:6px 0"><div style="flex:1;display:flex;flex-direction:column;gap:3px"><div style="font-size:15px;font-weight:600">Trim stem plants</div><div style="font-size:13px;font-weight:700;color:#8a6300">▲ Due Sat, Sep 27</div></div><div style="height:36px;padding:0 14px;border-radius:8px;border:1px solid #bccccb;display:flex;align-items:center;font-size:14px;font-weight:600">Mark done</div></div>
+            <div style="border-radius:10px;background:#fbe9e5;padding:12px 14px;display:flex;gap:12px;align-items:center;font-size:14px"><div style="flex:1;min-width:0;color:#8f2f1f"><span style="font-weight:700">✕ Nitrate 35 ppm</span> · <span style="white-space:nowrap">target 5–20</span></div><div style="color:#8f2f1f;white-space:nowrap;flex-shrink:0">Sep 25</div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:8px;border-bottom:2px solid #0f2126"><div style="font-size:18px;font-weight:700">Reef 24</div><div style="font-size:13px;color:#4f666b">Reef · 24 gal</div></div>
+            <div style="display:flex;align-items:center;gap:12px;padding:6px 0"><div style="flex:1;display:flex;flex-direction:column;gap:3px"><div style="font-size:15px;font-weight:600">Top off ATO reservoir</div><div style="font-size:13px;font-weight:700;color:#8a6300">▲ Due today</div></div><div style="height:36px;padding:0 14px;border-radius:8px;background:#1a7a7a;color:#ffffff;display:flex;align-items:center;font-size:14px;font-weight:700">Mark done</div></div>
+            <div style="font-size:14px;color:#1d7a47;font-weight:600">✓ All readings in range</div>
+          </div>
+          <div style="height:48px;border-radius:10px;border:1px solid #bccccb;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600">Open Waterline</div>
+        </div>
+        <div style="padding:20px 4px 0;font-size:12px;line-height:1.6;color:#4f666b">Daily digest, sent at 7:00 AM Pacific.<br><a href="#">Switch to weekly or individual emails</a> · <a href="#">Unsubscribe from all</a><br>Waterline · tanks.reyes.home</div>
+      </div>
+    </div>
+
+    <!-- 4 Out of range -->
+    <div style="width:600px;display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:14px;color:#9fb4b8">E4 · Out-of-range alert</div>
+      <div style="border-radius:12px;background:#13262c;border:1px solid #24414a;padding:12px 16px;display:flex;flex-direction:column;gap:3px"><div style="display:flex;justify-content:space-between;font-size:14px"><div style="font-weight:700">Waterline</div><div style="color:#9fb4b8">8:13 AM</div></div><div style="font-size:14px;font-weight:600">Nitrate is high in Riverbed 40: 35 ppm</div><div style="font-size:13px;color:#9fb4b8">Your target is 5–20 ppm. Logged today at 8:12 AM.</div></div>
+      <div style="background:#eef3f2;border-radius:12px;padding:32px 24px;color:#0f2126">
+        <div style="display:flex;align-items:center;gap:8px;padding:0 4px 20px"><svg width="24" height="24" viewBox="0 0 56 56"><defs><clipPath id="e4"><circle cx="28" cy="28" r="19"></circle></clipPath></defs><rect x="0" y="31" width="56" height="30" fill="#1a7a7a" clip-path="url(#e4)"></rect><circle cx="28" cy="28" r="24.5" fill="none" stroke="#0f2126" stroke-width="4"></circle></svg><div style="font-size:17px;font-weight:600">Waterline</div></div>
+        <div style="background:#ffffff;border-radius:16px;border:1px solid #d5e0df;padding:32px;display:flex;flex-direction:column;gap:20px">
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;font-weight:700;color:#b8412c">✕ Out of range</div><div style="font-size:28px;font-weight:600;letter-spacing:-0.01em">Nitrate is high in Riverbed 40</div></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;border-radius:12px;border:1px solid #d5e0df;overflow:hidden">
+            <div style="padding:16px;background:#fbe9e5;display:flex;flex-direction:column;gap:4px"><div style="font-size:13px;color:#8f2f1f">Reading</div><div style="font-size:30px;font-weight:600;color:#8f2f1f">35 <span style="font-size:14px;font-weight:400">ppm</span></div></div>
+            <div style="padding:16px;border-left:1px solid #d5e0df;display:flex;flex-direction:column;gap:4px"><div style="font-size:13px;color:#4f666b">Target</div><div style="font-size:30px;font-weight:600">5–20</div></div>
+            <div style="padding:16px;border-left:1px solid #d5e0df;display:flex;flex-direction:column;gap:4px"><div style="font-size:13px;color:#4f666b">Previous</div><div style="font-size:30px;font-weight:600">30</div><div style="font-size:12px;color:#4f666b">Sep 18</div></div>
+          </div>
+          <div style="font-size:15px;line-height:1.5;color:#4f666b">Logged today at 8:12 AM. Last water change was 8 days ago.</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap"><div style="height:48px;padding:0 24px;border-radius:10px;background:#1a7a7a;color:#ffffff;display:flex;align-items:center;font-size:16px;font-weight:700">View tank dashboard</div></div>
+        </div>
+        <div style="padding:20px 4px 0;font-size:12px;line-height:1.6;color:#4f666b">You're getting this because out-of-range alerts are on. Targets are set per tank.<br><a href="#">Notification settings</a> · <a href="#">Unsubscribe from all</a><br>Waterline · tanks.reyes.home</div>
+      </div>
+    </div>
+
+    <!-- 5 Test -->
+    <div style="width:600px;display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:14px;color:#9fb4b8">E5 · Test email</div>
+      <div style="border-radius:12px;background:#13262c;border:1px solid #24414a;padding:12px 16px;display:flex;flex-direction:column;gap:3px"><div style="display:flex;justify-content:space-between;font-size:14px"><div style="font-weight:700">Waterline</div><div style="color:#9fb4b8">7:02 PM</div></div><div style="font-size:14px;font-weight:600">Waterline test email: delivery works</div><div style="font-size:13px;color:#9fb4b8">If you can read this, reminders will reach you.</div></div>
+      <div style="background:#eef3f2;border-radius:12px;padding:32px 24px;color:#0f2126">
+        <div style="display:flex;align-items:center;gap:8px;padding:0 4px 20px"><svg width="24" height="24" viewBox="0 0 56 56"><defs><clipPath id="e5"><circle cx="28" cy="28" r="19"></circle></clipPath></defs><rect x="0" y="31" width="56" height="30" fill="#1a7a7a" clip-path="url(#e5)"></rect><circle cx="28" cy="28" r="24.5" fill="none" stroke="#0f2126" stroke-width="4"></circle></svg><div style="font-size:17px;font-weight:600">Waterline</div></div>
+        <div style="background:#ffffff;border-radius:16px;border:1px solid #d5e0df;padding:32px;display:flex;flex-direction:column;gap:18px">
+          <div style="font-size:14px;font-weight:700;color:#1d7a47">✓ Delivery works</div>
+          <div style="font-size:28px;font-weight:600;letter-spacing:-0.01em">Your server can send email</div>
+          <div style="font-size:15px;line-height:1.5;color:#4f666b">Task reminders, alerts and digests will arrive at this address.</div>
+          <div style="border-radius:10px;background:#f4f7f6;border:1px solid #e1e9e8;padding:14px 16px;font-family:ui-monospace,Menlo,monospace;font-size:13px;line-height:1.7;color:#3f5559">server&nbsp;&nbsp;tanks.reyes.home<br>via&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mailgun (US) · mg.reyes.home<br>sent&nbsp;&nbsp;&nbsp;&nbsp;Sep 25, 7:02 PM PDT</div>
+        </div>
+        <div style="padding:20px 4px 0;font-size:12px;line-height:1.6;color:#4f666b">Sent because an admin clicked "Send test email".<br><a href="#">Notification settings</a> · <a href="#">Unsubscribe from all</a><br>Waterline · tanks.reyes.home</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+</x-dc>
+</body>
+</html>

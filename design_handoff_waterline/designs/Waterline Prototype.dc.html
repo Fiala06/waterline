@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>html{background:#081317}body{margin:0;background:#081317;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;color:#e6f0f0;-webkit-font-smoothing:antialiased}a{color:#4fc4bd}a:hover{color:#8fe0da}input{font-family:inherit}input::placeholder{color:#4a6a72}input:focus{outline:none}.wl-scroll::-webkit-scrollbar{display:none}</style>
+</helmet>
+<div style="min-height:100vh;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:56px;padding:40px 24px;box-sizing:border-box">
+
+  <div style="width:280px;display:flex;flex-direction:column;gap:24px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <svg width="32" height="32" viewBox="0 0 56 56"><defs><clipPath id="pl"><circle cx="28" cy="28" r="19"></circle></clipPath></defs><rect x="0" y="31" width="56" height="30" fill="#4fc4bd" clip-path="url(#pl)"></rect><circle cx="28" cy="28" r="24.5" fill="none" stroke="#e6f0f0" stroke-width="3.5"></circle></svg>
+      <div style="display:flex;flex-direction:column"><div style="font-size:20px;font-weight:600">Waterline</div><div style="font-size:13px;color:#9fb4b8">Core-flow prototype</div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <sc-for list="{{ steps }}" as="item" hint-placeholder-count="6">
+        <div onClick="{{ item.go }}" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;cursor:pointer;background:{{ item.bg }}" style-hover="background:#13262c">
+          <div style="width:24px;height:24px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;background:{{ item.dotBg }};color:{{ item.dotColor }};border:1px solid {{ item.dotBorder }}">{{ item.mark }}</div>
+          <div style="font-size:15px;color:{{ item.color }}">{{ item.label }}</div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="font-size:14px;line-height:1.5;color:#9fb4b8;text-wrap:pretty">Tap through on the phone, or jump to any step here. Readings are live: try a nitrate of 40 to see the out-of-range state.</div>
+    <div onClick="{{ reset }}" style="align-self:flex-start;height:40px;padding:0 16px;border-radius:10px;border:1px solid #2f525c;display:flex;align-items:center;font-size:14px;cursor:pointer" style-hover="background:#13262c">Restart</div>
+  </div>
+
+  <div style="width:390px;height:844px;border-radius:44px;background:#0c1a1f;border:1px solid #24414a;overflow:hidden;position:relative;display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(0,0,0,0.5);flex-shrink:0">
+    <div style="height:48px;flex-shrink:0;padding:0 28px;display:flex;align-items:center;font-size:15px;font-weight:600">9:41</div>
+    <div class="wl-scroll" style="flex:1;min-height:0;overflow-y:auto;scrollbar-width:none;position:relative">
+
+      <sc-if value="{{ isSignin }}" hint-placeholder-val="{{ true }}">
+        <div style="height:100%;display:flex;flex-direction:column">
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:0 32px;text-align:center">
+            <svg width="88" height="88" viewBox="0 0 56 56"><defs><clipPath id="ps"><circle cx="28" cy="28" r="19"></circle></clipPath></defs><rect x="0" y="31" width="56" height="30" fill="#4fc4bd" clip-path="url(#ps)"></rect><circle cx="28" cy="28" r="24.5" fill="none" stroke="#e6f0f0" stroke-width="3"></circle></svg>
+            <div style="font-size:38px;font-weight:600;letter-spacing:-0.02em">Waterline</div>
+            <div style="font-size:17px;line-height:1.5;color:#9fb4b8;max-width:280px;text-wrap:pretty">Water tests, water changes and maintenance for every tank you keep.</div>
+          </div>
+          <div style="padding:0 24px 40px;display:flex;flex-direction:column;gap:16px;align-items:center">
+            <div onClick="{{ signIn }}" style="width:100%;height:56px;border-radius:14px;background:#f3f6f5;color:#0c1a1f;display:flex;align-items:center;justify-content:center;gap:12px;font-size:17px;font-weight:600;cursor:pointer" style-active="transform:scale(0.98)">
+              <div style="width:24px;height:24px;border-radius:12px;border:2px solid #0c1a1f;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;box-sizing:border-box">G</div>Sign in with Google
+            </div>
+            <div style="font-size:15px;color:#9fb4b8">Server owner? <span onClick="{{ notInProto }}" style="color:#4fc4bd;font-weight:600;cursor:pointer">Use local admin login</span></div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isSetup }}" hint-placeholder-val="{{ false }}">
+        <div style="min-height:100%;display:flex;flex-direction:column">
+          <div style="padding:16px 24px 0;display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;gap:6px"><div style="height:4px;flex:1;border-radius:2px;background:#4fc4bd"></div><div style="height:4px;flex:1;border-radius:2px;background:#24414a"></div></div>
+            <div style="font-size:13px;color:#9fb4b8;margin-top:10px">Step 1 of 2</div>
+            <div style="font-size:28px;font-weight:600">Set up your log</div>
+          </div>
+          <div style="flex:1;padding:24px;display:flex;flex-direction:column;gap:22px">
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-size:14px;color:#9fb4b8">Display name</div>
+              <input value="{{ displayName }}" onChange="{{ setName }}" style="height:52px;border-radius:12px;background:#13262c;border:1px solid #24414a;padding:0 16px;font-size:17px;color:#e6f0f0" style-focus="border-color:#4fc4bd"></input>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-size:14px;color:#9fb4b8">Units</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:14px;background:#13262c;border:1px solid #24414a">
+                <div onClick="{{ setImperial }}" style="height:56px;border-radius:10px;cursor:pointer;background:{{ seg.impBg }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px"><div style="font-size:16px;font-weight:600;color:{{ seg.impColor }}">Imperial</div><div style="font-size:12px;color:#9fb4b8">gal · °F · in</div></div>
+                <div onClick="{{ setMetric }}" style="height:56px;border-radius:10px;cursor:pointer;background:{{ seg.metBg }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px"><div style="font-size:16px;font-weight:600;color:{{ seg.metColor }}">Metric</div><div style="font-size:12px;color:#9fb4b8">L · °C · cm</div></div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-size:14px;color:#9fb4b8">Hardness units</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:14px;background:#13262c;border:1px solid #24414a">
+                <div onClick="{{ setDgh }}" style="height:48px;border-radius:10px;cursor:pointer;background:{{ seg.dghBg }};color:{{ seg.dghColor }};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600">dGH / dKH</div>
+                <div onClick="{{ setPpm }}" style="height:48px;border-radius:10px;cursor:pointer;background:{{ seg.ppmBg }};color:{{ seg.ppmColor }};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600">ppm</div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-size:14px;color:#9fb4b8">Time zone</div>
+              <div style="height:52px;border-radius:12px;background:#13262c;border:1px solid #24414a;padding:0 16px;display:flex;align-items:center;justify-content:space-between;font-size:16px"><div>{{ tzLabel }}</div><div style="color:#4fc4bd;font-size:15px;font-weight:600">Change</div></div>
+            </div>
+          </div>
+          <div style="padding:0 24px 32px;display:flex;flex-direction:column;gap:14px">
+            <div onClick="{{ finishSetup }}" style="height:56px;border-radius:14px;background:#4fc4bd;color:#06201f;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;cursor:pointer" style-active="transform:scale(0.98)">Continue to first tank</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isTank }}" hint-placeholder-val="{{ false }}">
+        <div style="min-height:100%;display:flex;flex-direction:column">
+          <div style="padding:16px 24px 0;display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;gap:6px"><div style="height:4px;flex:1;border-radius:2px;background:#4fc4bd"></div><div style="height:4px;flex:1;border-radius:2px;background:#4fc4bd"></div></div>
+            <div style="font-size:13px;color:#9fb4b8;margin-top:10px">Step 2 of 2</div>
+            <div style="font-size:28px;font-weight:600">Create your first tank</div>
+          </div>
+          <div style="flex:1;padding:24px;display:flex;flex-direction:column;gap:22px">
+            <div style="height:120px;border-radius:16px;background:repeating-linear-gradient(135deg,#1a3138 0 6px,#152a30 6px 12px);border:1px dashed #2f525c;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px"><div style="font-size:15px;font-weight:600">Add cover photo</div><div style="font-size:13px;color:#9fb4b8">Camera or library · optional</div></div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-size:14px;color:#9fb4b8">Tank name</div>
+              <input value="{{ tankName }}" onChange="{{ setTankName }}" style="height:52px;border-radius:12px;background:#13262c;border:1px solid #24414a;padding:0 16px;font-size:17px;color:#e6f0f0" style-focus="border-color:#4fc4bd"></input>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-size:14px;color:#9fb4b8">Type</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <sc-for list="{{ tankTypes }}" as="item" hint-placeholder-count="4">
+                  <div onClick="{{ item.pick }}" style="height:48px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;background:{{ item.bg }};color:{{ item.color }};border:1px solid {{ item.border }}">{{ item.label }}</div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-size:14px;color:#9fb4b8">Volume</div>
+              <div style="height:52px;border-radius:12px;background:#13262c;border:1px solid #24414a;padding:0 16px;display:flex;align-items:center;gap:8px">
+                <input value="{{ tankVol }}" onChange="{{ setTankVol }}" inputMode="decimal" style="flex:1;min-width:0;background:transparent;border:none;font-size:17px;color:#e6f0f0"></input>
+                <div style="font-size:15px;color:#9fb4b8">{{ volUnit }}</div>
+              </div>
+            </div>
+            <div style="font-size:13px;line-height:1.5;color:#7d9397;text-wrap:pretty">Default parameters and a weekly water-change reminder are added. You can change them later in tank settings.</div>
+          </div>
+          <div style="padding:0 24px 32px">
+            <div onClick="{{ createTank }}" style="height:56px;border-radius:14px;background:#4fc4bd;color:#06201f;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;cursor:pointer" style-active="transform:scale(0.98)">Create tank</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isDashboard }}" hint-placeholder-val="{{ false }}">
+        <div style="padding-bottom:110px">
+          <div onClick="{{ goParams }}" style="padding:8px 20px 16px;display:flex;align-items:center;gap:12px;cursor:pointer">
+            <div style="width:44px;height:44px;border-radius:12px;background:repeating-linear-gradient(135deg,#1a3138 0 5px,#152a30 5px 10px);border:1px solid #24414a"></div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+              <div style="display:flex;align-items:center;gap:6px;font-size:22px;font-weight:600">{{ tankName }} <span style="font-size:14px;color:#9fb4b8">▾</span></div>
+              <div style="font-size:13px;color:#9fb4b8">{{ tankSub }}</div>
+            </div>
+          </div>
+          <div style="padding:0 20px;display:flex;flex-direction:column;gap:24px">
+            <sc-if value="{{ noReadings }}" hint-placeholder-val="{{ true }}">
+              <div style="border-radius:18px;background:#13262c;border:1px dashed #2f525c;padding:24px 20px;display:flex;flex-direction:column;align-items:flex-start;gap:10px">
+                <div style="width:44px;height:44px;border-radius:12px;background:#17363a;display:flex;align-items:center;justify-content:center"><div style="width:16px;height:16px;border-radius:8px;border:2.5px solid #4fc4bd"></div></div>
+                <div style="font-size:19px;font-weight:600">No readings yet</div>
+                <div style="font-size:15px;line-height:1.5;color:#9fb4b8;text-wrap:pretty">Log your first water test to see status for each parameter. Every field is optional.</div>
+                <div onClick="{{ openTest }}" style="margin-top:6px;height:48px;padding:0 18px;border-radius:12px;background:#4fc4bd;color:#06201f;display:flex;align-items:center;font-size:16px;font-weight:700;cursor:pointer">Log first water test</div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ hasReadings }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:24px">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                  <div style="border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:6px;background:{{ summary.bg }}">
+                    <div style="font-size:13px;font-weight:600;color:{{ summary.color }}">{{ summary.title }}</div>
+                    <div style="font-size:15px;line-height:1.35">{{ summary.detail }}</div>
+                  </div>
+                  <div style="border-radius:16px;background:#13262c;border:1px solid #24414a;padding:14px;display:flex;flex-direction:column;gap:4px">
+                    <div style="font-size:13px;color:#9fb4b8">Since water change</div>
+                    <div style="display:flex;align-items:baseline;gap:6px"><div style="font-size:26px;font-weight:600;font-variant-numeric:tabular-nums">{{ wc.value }}</div><div style="font-size:14px;color:#9fb4b8">{{ wc.sub }}</div></div>
+                  </div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:10px">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:17px;font-weight:600">Latest readings</div><div style="font-size:13px;color:#9fb4b8">{{ latestWhen }}</div></div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                    <sc-for list="{{ cards }}" as="item" hint-placeholder-count="8">
+                      <div style="border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:6px;background:{{ item.bg }};border:{{ item.border }}">
+                        <div style="display:flex;justify-content:space-between;gap:6px;font-size:13px"><div style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:{{ item.labelColor }}">{{ item.label }}</div><div style="flex-shrink:0;white-space:nowrap;font-weight:600;color:{{ item.statusColor }}">{{ item.statusText }}</div></div>
+                        <div style="display:flex;align-items:baseline;gap:4px"><div style="font-size:26px;font-weight:600;font-variant-numeric:tabular-nums;color:{{ item.valueColor }}">{{ item.valueText }}</div><div style="font-size:13px;color:{{ item.labelColor }}">{{ item.unit }}</div></div>
+                        <div style="font-size:12px;color:{{ item.subColor }}">{{ item.sub }}</div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+                <div style="border-radius:16px;background:#13262c;border:1px solid #24414a;padding:16px;display:flex;flex-direction:column;gap:6px">
+                  <div style="font-size:17px;font-weight:600">Trends</div>
+                  <div style="font-size:14px;line-height:1.5;color:#9fb4b8">{{ trendNote }}</div>
+                </div>
+              </div>
+            </sc-if>
+
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:17px;font-weight:600">Due</div><div onClick="{{ goTasks }}" style="font-size:14px;color:#4fc4bd;font-weight:600;cursor:pointer">All tasks</div></div>
+              <div style="border-radius:16px;background:#13262c;border:1px solid #24414a;display:flex;flex-direction:column;overflow:hidden">
+                <sc-for list="{{ dashTasks }}" as="item" hint-placeholder-count="3">
+                  <div style="padding:14px;display:flex;align-items:center;gap:12px;border-top:{{ item.divider }}">
+                    <div style="flex:1;display:flex;flex-direction:column;gap:4px"><div style="font-size:16px;font-weight:600">{{ item.name }}</div><div style="font-size:13px;font-weight:600;color:{{ item.dueColor }}">{{ item.dueText }}</div></div>
+                    <div onClick="{{ item.complete }}" style="height:44px;padding:0 16px;border-radius:12px;display:flex;align-items:center;font-size:15px;font-weight:700;cursor:pointer;background:{{ item.btnBg }};color:{{ item.btnColor }};border:1px solid {{ item.btnBorder }}">Mark done</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:17px;font-weight:600">Recent activity</div><div onClick="{{ notInProto }}" style="font-size:14px;color:#4fc4bd;font-weight:600;cursor:pointer">History</div></div>
+              <sc-for list="{{ events }}" as="item" hint-placeholder-count="1">
+                <div onClick="{{ item.open }}" style="display:flex;gap:12px;align-items:center;padding:8px;margin:0 -8px;border-radius:12px;cursor:pointer" style-hover="background:#13262c" style-active="background:#1a3138">
+                  <div style="width:40px;height:40px;border-radius:12px;background:#17363a;display:flex;align-items:center;justify-content:center"><div style="width:12px;height:12px;border-radius:6px;background:{{ item.dot }}"></div></div>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><div style="font-size:15px;font-weight:600">{{ item.title }}</div><div style="font-size:13px;color:#9fb4b8">{{ item.sub }}</div></div>
+                  <div style="font-size:18px;color:#4a6a72">›</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isTasks }}" hint-placeholder-val="{{ false }}">
+        <div style="padding-bottom:110px">
+          <div style="padding:8px 20px 16px;font-size:28px;font-weight:600">Tasks</div>
+          <div style="padding:0 20px;display:flex;flex-direction:column;gap:10px">
+            <sc-for list="{{ allTasks }}" as="item" hint-placeholder-count="3">
+              <div style="border-radius:16px;background:#13262c;border:1px solid {{ item.cardBorder }};padding:14px;display:flex;flex-direction:column;gap:12px">
+                <div style="display:flex;flex-direction:column;gap:4px"><div style="font-size:16px;font-weight:600">{{ item.name }}</div><div style="font-size:13px;color:#9fb4b8">{{ item.meta }}</div><div style="font-size:13px;font-weight:600;color:{{ item.dueColor }}">{{ item.dueText }}</div></div>
+                <div style="display:flex;gap:8px">
+                  <div onClick="{{ item.complete }}" style="flex:1;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;cursor:pointer;background:{{ item.btnBg }};color:{{ item.btnColor }};border:1px solid {{ item.btnBorder }}">Mark done</div>
+                  <div onClick="{{ item.snooze }}" style="height:44px;padding:0 16px;border-radius:12px;border:1px solid #2f525c;display:flex;align-items:center;font-size:15px;cursor:pointer">Snooze 1 day</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isParams }}" hint-placeholder-val="{{ false }}">
+        <div style="padding-bottom:110px">
+          <div style="padding:8px 20px 4px;display:flex;flex-direction:column;gap:4px">
+            <div style="font-size:28px;font-weight:600">Parameters &amp; targets</div>
+            <div style="font-size:14px;color:#9fb4b8">{{ tankName }} · {{ tankType }}</div>
+          </div>
+          <div style="padding:12px 20px 0;font-size:14px;line-height:1.5;color:#9fb4b8;text-wrap:pretty">Set your own range for each parameter. Readings outside it are flagged <span style="color:#f08a78;font-weight:600">✕ out of range</span>; readings within 10% of a limit show <span style="color:#e8c060;font-weight:600">▲ near limit</span>.</div>
+          <div style="padding:16px 20px 0;display:flex;flex-direction:column;gap:10px">
+            <sc-for list="{{ paramRows }}" as="item" hint-placeholder-count="7">
+              <div style="border-radius:16px;background:#13262c;border:1px solid #24414a;padding:14px;display:flex;flex-direction:column;gap:12px;opacity:{{ item.opacity }}">
+                <div style="display:flex;align-items:center;gap:12px">
+                  <div style="flex:1;display:flex;flex-direction:column;gap:2px"><div style="font-size:16px;font-weight:600">{{ item.label }}</div><div style="font-size:12px;color:#7d9397">{{ item.defText }}</div></div>
+                  <div onClick="{{ item.toggle }}" style="width:52px;height:32px;border-radius:16px;padding:3px;box-sizing:border-box;cursor:pointer;display:flex;background:{{ item.trackBg }};justify-content:{{ item.knobPos }}"><div style="width:26px;height:26px;border-radius:13px;background:#e6f0f0"></div></div>
+                </div>
+                <sc-if value="{{ item.on }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <div style="flex:1;height:48px;border-radius:12px;background:#0f2126;border:1px solid #2f525c;display:flex;align-items:center;gap:6px;padding:0 12px">
+                      <div style="font-size:12px;color:#9fb4b8">Min</div>
+                      <input value="{{ item.lo }}" onChange="{{ item.onLo }}" inputMode="decimal" style="flex:1;min-width:0;background:transparent;border:none;font-size:18px;font-weight:600;color:#e6f0f0;text-align:right"></input>
+                    </div>
+                    <div style="color:#4a6a72">–</div>
+                    <div style="flex:1;height:48px;border-radius:12px;background:#0f2126;border:1px solid #2f525c;display:flex;align-items:center;gap:6px;padding:0 12px">
+                      <div style="font-size:12px;color:#9fb4b8">Max</div>
+                      <input value="{{ item.hi }}" onChange="{{ item.onHi }}" inputMode="decimal" style="flex:1;min-width:0;background:transparent;border:none;font-size:18px;font-weight:600;color:#e6f0f0;text-align:right"></input>
+                    </div>
+                    <div style="width:36px;font-size:13px;color:#9fb4b8">{{ item.unit }}</div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+            <div onClick="{{ notInProto }}" style="height:52px;border-radius:14px;border:1px dashed #2f525c;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;color:#4fc4bd;cursor:pointer">+ Add custom parameter</div>
+            <div onClick="{{ resetTargets }}" style="text-align:center;font-size:14px;color:#9fb4b8;cursor:pointer;padding:8px">Reset to {{ tankType }} defaults</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isTest }}" hint-placeholder-val="{{ false }}">
+        <div style="min-height:100%;display:flex;flex-direction:column">
+          <div style="padding:4px 20px 12px;display:flex;align-items:center;justify-content:space-between">
+            <div onClick="{{ cancelTest }}" style="width:44px;height:44px;border-radius:22px;background:#13262c;display:flex;align-items:center;justify-content:center;font-size:18px;color:#9fb4b8;cursor:pointer">✕</div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:2px"><div style="font-size:17px;font-weight:600">Water test</div><div style="font-size:12px;color:#9fb4b8">{{ tankName }} · Now</div></div>
+            <div style="width:44px"></div>
+          </div>
+          <div style="padding:0 20px;font-size:13px;color:#9fb4b8">All fields optional.</div>
+          <div style="flex:1;padding:6px 20px 0;display:flex;flex-direction:column">
+            <sc-for list="{{ testRows }}" as="item" hint-placeholder-count="7">
+              <div style="display:flex;flex-direction:column;gap:4px;padding:9px 0;border-bottom:1px solid #1c353c">
+                <div style="display:flex;align-items:center;gap:12px">
+                  <div style="flex:1;display:flex;flex-direction:column;gap:2px"><div style="font-size:16px;font-weight:600">{{ item.label }}</div><div style="font-size:12px;color:#7d9397">{{ item.prevText }}</div></div>
+                  <div style="width:140px;height:48px;border-radius:12px;background:#13262c;border:2px solid {{ item.border }};box-sizing:border-box;display:flex;align-items:center;gap:6px;padding:0 12px">
+                    <input value="{{ item.value }}" onChange="{{ item.onChange }}" inputMode="decimal" placeholder="—" style="flex:1;min-width:0;background:transparent;border:none;font-size:20px;font-weight:600;color:#e6f0f0;font-variant-numeric:tabular-nums"></input>
+                    <div style="font-size:12px;color:#9fb4b8">{{ item.unit }}</div>
+                  </div>
+                </div>
+                <sc-if value="{{ item.hasStatus }}" hint-placeholder-val="{{ false }}">
+                  <div style="font-size:13px;font-weight:600;text-align:right;color:{{ item.statusColor }}">{{ item.statusText }}</div>
+                </sc-if>
+              </div>
+            </sc-for>
+            <input value="{{ testNote }}" onChange="{{ setNote }}" placeholder="Add note, e.g. before water change" style="margin-top:12px;height:48px;border-radius:12px;border:1px solid #2f525c;background:transparent;padding:0 14px;font-size:15px;color:#e6f0f0"></input>
+          </div>
+          <div style="position:sticky;bottom:0;padding:14px 20px 28px;background:#0c1a1f;border-top:1px solid #1c353c;margin-top:16px">
+            <div onClick="{{ saveTest }}" style="height:56px;border-radius:14px;background:#4fc4bd;color:#06201f;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;cursor:pointer" style-active="transform:scale(0.98)">{{ saveLabel }}</div>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+
+    <sc-if value="{{ showTabs }}" hint-placeholder-val="{{ false }}">
+      <div onClick="{{ openQuick }}" style="position:absolute;right:20px;bottom:104px;width:64px;height:64px;border-radius:32px;background:#4fc4bd;color:#06201f;display:flex;align-items:center;justify-content:center;font-size:34px;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,0.45)" style-active="transform:scale(0.94)">+</div>
+      <div style="height:88px;flex-shrink:0;background:#0f2126;border-top:1px solid #24414a;display:grid;grid-template-columns:repeat(4,1fr);padding-top:10px;box-sizing:border-box">
+        <div onClick="{{ goDash }}" style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;cursor:pointer;color:{{ tabs.dash }}"><div style="width:22px;height:22px;border-radius:5px;border:2px solid {{ tabs.dash }};box-sizing:border-box"></div>Dashboard</div>
+        <div onClick="{{ goParams }}" style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;cursor:pointer;color:{{ tabs.tanks }}"><div style="width:24px;height:20px;border:2px solid {{ tabs.tanks }};border-radius:4px;box-sizing:border-box"></div>Tanks</div>
+        <div onClick="{{ goTasks }}" style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;cursor:pointer;color:{{ tabs.tasks }}"><div style="width:22px;height:22px;border:2px solid {{ tabs.tasks }};border-radius:11px;box-sizing:border-box"></div>Tasks</div>
+        <div onClick="{{ notInProto }}" style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;cursor:pointer;color:#9fb4b8"><div style="width:22px;height:22px;border:2px solid #9fb4b8;border-radius:6px;box-sizing:border-box;display:flex;align-items:center;justify-content:center"><div style="width:6px;height:6px;border-radius:3px;background:#9fb4b8"></div></div>Settings</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ sheetQuick }}" hint-placeholder-val="{{ false }}">
+      <div onClick="{{ closeSheet }}" style="position:absolute;inset:0;background:rgba(3,10,12,0.7)"></div>
+      <div style="position:absolute;left:0;right:0;bottom:0;background:#13262c;border-top:1px solid #2f525c;border-radius:28px 28px 0 0;padding:10px 20px 36px;display:flex;flex-direction:column;gap:18px">
+        <div style="width:40px;height:5px;border-radius:3px;background:#3a5c65;align-self:center"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:22px;font-weight:600">Quick add</div><div onClick="{{ closeSheet }}" style="font-size:15px;color:#9fb4b8;cursor:pointer">Cancel</div></div>
+        <div style="display:flex;gap:8px">
+          <div style="height:40px;padding:0 14px;border-radius:20px;background:#1a3138;border:1px solid #2f525c;display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600">{{ tankName }} <span style="color:#9fb4b8">▾</span></div>
+          <div style="height:40px;padding:0 14px;border-radius:20px;background:#1a3138;border:1px solid #2f525c;display:flex;align-items:center;gap:6px;font-size:14px">Now <span style="color:#9fb4b8">▾</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div onClick="{{ openTest }}" style="height:76px;border-radius:18px;background:#4fc4bd;color:#06201f;display:flex;align-items:center;gap:16px;padding:0 18px;cursor:pointer">
+            <div style="width:44px;height:44px;border-radius:12px;background:#06201f;display:flex;align-items:center;justify-content:center"><div style="width:16px;height:16px;border-radius:8px;border:2.5px solid #4fc4bd"></div></div>
+            <div style="font-size:18px;font-weight:700">Log water test</div>
+          </div>
+          <div onClick="{{ openWC }}" style="height:76px;border-radius:18px;background:#1a3138;border:1px solid #2f525c;display:flex;align-items:center;gap:16px;padding:0 18px;cursor:pointer">
+            <div style="width:44px;height:44px;border-radius:12px;background:#17363a;display:flex;align-items:center;justify-content:center"><div style="width:18px;height:9px;border-top:2.5px solid #4fc4bd;border-bottom:2.5px solid #4fc4bd"></div></div>
+            <div style="font-size:18px;font-weight:600">Log water change</div>
+          </div>
+          <div onClick="{{ notInProto }}" style="height:76px;border-radius:18px;background:#1a3138;border:1px solid #2f525c;display:flex;align-items:center;gap:16px;padding:0 18px;cursor:pointer">
+            <div style="width:44px;height:44px;border-radius:12px;background:#1d3130;display:flex;align-items:center;justify-content:center"><div style="width:16px;height:16px;border-radius:3px;border:2.5px solid #b8cacd"></div></div>
+            <div style="font-size:18px;font-weight:600">Add note or photo</div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ sheetWC }}" hint-placeholder-val="{{ false }}">
+      <div onClick="{{ closeSheet }}" style="position:absolute;inset:0;background:rgba(3,10,12,0.7)"></div>
+      <div style="position:absolute;left:0;right:0;bottom:0;background:#13262c;border-top:1px solid #2f525c;border-radius:28px 28px 0 0;padding:10px 20px 36px;display:flex;flex-direction:column;gap:20px">
+        <div style="width:40px;height:5px;border-radius:3px;background:#3a5c65;align-self:center"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:22px;font-weight:600">Log water change</div><div onClick="{{ closeSheet }}" style="font-size:15px;color:#9fb4b8;cursor:pointer">Cancel</div></div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="font-size:14px;color:#9fb4b8">Amount</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+            <sc-for list="{{ wcAmts }}" as="item" hint-placeholder-count="4">
+              <div onClick="{{ item.pick }}" style="height:52px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;background:{{ item.bg }};color:{{ item.color }};border:1px solid {{ item.border }}">{{ item.label }}</div>
+            </sc-for>
+          </div>
+          <div style="font-size:13px;color:#7d9397">{{ wcVolNote }}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="font-size:14px;color:#9fb4b8">Source water</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+            <sc-for list="{{ wcSrcs }}" as="item" hint-placeholder-count="3">
+              <div onClick="{{ item.pick }}" style="height:48px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;background:{{ item.bg }};color:{{ item.color }};border:1px solid {{ item.border }}">{{ item.label }}</div>
+            </sc-for>
+          </div>
+        </div>
+        <div onClick="{{ saveWC }}" style="height:56px;border-radius:14px;background:#4fc4bd;color:#06201f;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;cursor:pointer">Save and mark task done</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ sheetEntry }}" hint-placeholder-val="{{ false }}">
+      <div onClick="{{ closeSheet }}" style="position:absolute;inset:0;background:rgba(3,10,12,0.7)"></div>
+      <div style="position:absolute;left:0;right:0;bottom:0;max-height:88%;overflow-y:auto;background:#13262c;border-top:1px solid #2f525c;border-radius:28px 28px 0 0;padding:10px 20px 36px;display:flex;flex-direction:column;gap:18px;box-sizing:border-box">
+        <div style="width:40px;height:5px;border-radius:3px;background:#3a5c65;align-self:center"></div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+          <div style="display:flex;flex-direction:column;gap:4px"><div style="font-size:22px;font-weight:600">{{ entry.title }}</div><div style="font-size:14px;color:#9fb4b8">{{ entry.when }}</div></div>
+          <div onClick="{{ closeSheet }}" style="font-size:15px;color:#9fb4b8;cursor:pointer;padding-top:4px">Close</div>
+        </div>
+        <sc-if value="{{ entry.hasRows }}" hint-placeholder-val="{{ false }}">
+          <div style="border-radius:16px;background:#0f2126;border:1px solid #24414a;display:flex;flex-direction:column">
+            <sc-for list="{{ entry.rows }}" as="item" hint-placeholder-count="3">
+              <div style="padding:12px 14px;display:flex;align-items:center;gap:12px;border-top:{{ item.divider }}">
+                <div style="flex:1;font-size:15px;color:#9fb4b8">{{ item.label }}</div>
+                <div style="font-size:17px;font-weight:600;font-variant-numeric:tabular-nums">{{ item.value }}</div>
+                <div style="width:96px;text-align:right;font-size:13px;font-weight:600;color:{{ item.statusColor }}">{{ item.statusText }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{ entry.hasNote }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;color:#9fb4b8">Note</div><div style="font-size:15px;line-height:1.5">{{ entry.note }}</div></div>
+        </sc-if>
+        <div style="display:flex;gap:10px">
+          <div onClick="{{ notInProto }}" style="flex:1;height:50px;border-radius:12px;border:1px solid #2f525c;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;cursor:pointer">Edit</div>
+          <div onClick="{{ deleteEntry }}" style="flex:1;height:50px;border-radius:12px;border:1px solid #6b3129;color:#f08a78;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;cursor:pointer">Delete</div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;left:20px;right:20px;bottom:{{ toastBottom }};background:#e6f0f0;color:#0c1a1f;border-radius:14px;padding:14px 16px;font-size:15px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,0.4)">{{ toast }}</div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;startAt&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;signin&quot;,&quot;dashboard&quot;],&quot;default&quot;:&quot;signin&quot;,&quot;tsType&quot;:&quot;'signin' | 'dashboard'&quot;}}">
+const DAY = 86400000;
+const startOfDay = (t) => { const d = new Date(t); d.setHours(0,0,0,0); return d.getTime(); };
+const fmt = (t) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+const C = {
+  ok: { bg: '#13262c', border: '1px solid #24414a', status: '#6fd39a', sub: '#7d9397', label: '#9fb4b8' },
+  warn: { bg: '#3a3218', border: '1px solid #5e5020', status: '#e8c060', sub: '#ecd699', label: '#ecd699' },
+  bad: { bg: '#3f201c', border: '1px solid #6b3129', status: '#f08a78', sub: '#f5b6aa', label: '#f5b6aa' },
+};
+
+class Component extends DCLogic {
+  state = this.initial();
+  handlers = {};
+
+  initial() {
+    return { screen: this.props.startAt === 'dashboard' ? 'dashboard' : 'signin', units: 'imperial', hardness: 'dgh', displayName: 'Jordan Reyes',
+      tankName: 'Riverbed 40', tankType: 'Planted', tankVol: '40', hasTank: false, tests: [], draft: {}, testNote: '',
+      targets: {}, tasks: [], events: [], sheet: null, wcAmt: 25, wcSrc: 'RODI', lastWC: null, toast: null, done: {} , ...(this.props.startAt === 'dashboard' ? this.tankSeed() : {}) };
+  }
+  tankSeed() {
+    const t = startOfDay(Date.now());
+    return { hasTank: true,
+      tasks: [
+        { id: 1, name: 'Test water', interval: 7, due: t, kind: 'test' },
+        { id: 2, name: 'Water change 25%', interval: 7, due: t - DAY, kind: 'wc' },
+        { id: 3, name: 'Clean canister filter', interval: 28, due: t + 14 * DAY, kind: 'other' },
+      ],
+      events: [{ id: 'e0', kind: 'note', at: Date.now(), title: 'Tank created', sub: 'Today', dot: '#b8cacd' }] };
+  }
+  params(all) {
+    const base = this.baseParams().map(p => { const o = this.state.targets[p.key] || {}; const n = (x, d) => { const v = parseFloat(x); return isNaN(v) ? d : v; }; return { ...p, dlo: p.lo, dhi: p.hi, lo: n(o.lo, p.lo), hi: n(o.hi, p.hi), on: o.on ?? true, rawLo: o.lo ?? String(p.lo), rawHi: o.hi ?? String(p.hi) }; });
+    return all ? base : base.filter(p => p.on);
+  }
+  baseParams() {
+    const imp = this.state.units === 'imperial', dgh = this.state.hardness === 'dgh';
+    return [
+      { key: 'ph', label: 'pH', unit: '', lo: 6.5, hi: 7.5 },
+      { key: 'nh3', label: 'Ammonia', unit: 'ppm', lo: 0, hi: 0.25 },
+      { key: 'no2', label: 'Nitrite', unit: 'ppm', lo: 0, hi: 0.25 },
+      { key: 'no3', label: 'Nitrate', unit: 'ppm', lo: 5, hi: 20 },
+      { key: 'gh', label: 'GH', unit: dgh ? 'dGH' : 'ppm', lo: dgh ? 4 : 70, hi: dgh ? 8 : 140 },
+      { key: 'kh', label: 'KH', unit: dgh ? 'dKH' : 'ppm', lo: dgh ? 2 : 35, hi: dgh ? 5 : 90 },
+      { key: 'temp', label: 'Temp', unit: imp ? '°F' : '°C', lo: imp ? 74 : 23, hi: imp ? 80 : 27 },
+    ];
+  }
+  status(v, p) {
+    if (v < p.lo || v > p.hi) return 'bad';
+    const m = (p.hi - p.lo) * 0.1;
+    if ((p.lo > 0 && v < p.lo + m) || (p.hi - v < m && p.hi > 0 && p.lo > 0)) return 'warn';
+    return 'ok';
+  }
+  range(p) { return (p.lo === 0 ? `≤ ${p.hi}` : `${p.lo}–${p.hi}`) + (p.unit ? ' ' + p.unit : ''); }
+  h(key, fn) { return this.handlers[key] || (this.handlers[key] = fn); }
+  set = (patch) => this.setState(patch);
+  flash(msg) { this.setState({ toast: msg }); clearTimeout(this.tt); this.tt = setTimeout(() => this.setState({ toast: null }), 2800); }
+  componentWillUnmount() { clearTimeout(this.tt); }
+  ensureTank(s) { return s.hasTank ? {} : this.tankSeed(); }
+  advance(tasks, id) { const t = startOfDay(Date.now()); return tasks.map(k => k.id === id ? { ...k, due: t + k.interval * DAY } : k); }
+
+  signIn = () => this.setState(s => ({ screen: 'setup', done: { ...s.done, signin: true } }));
+  finishSetup = () => this.setState(s => ({ screen: 'tank', done: { ...s.done, setup: true } }));
+  createTank = () => { this.setState(s => ({ ...this.tankSeed(), screen: 'dashboard', events: [{ id: 'e0', kind: 'note', at: Date.now(), title: `Tank created · ${s.tankType}`, sub: 'Today', dot: '#b8cacd', note: `${s.tankType} tank, ${s.tankVol} ${s.units === 'imperial' ? 'gal' : 'L'}.` }], done: { ...s.done, tank: true } })); this.flash('✓ Tank created'); };
+  openTest = () => this.setState({ sheet: null, screen: 'test', draft: {}, testNote: '' });
+  cancelTest = () => this.setState({ screen: 'dashboard' });
+  openQuick = () => this.setState({ sheet: 'quick' });
+  openWC = () => this.setState({ sheet: 'wc' });
+  closeSheet = () => this.setState({ sheet: null });
+  goDash = () => this.setState({ screen: 'dashboard', sheet: null });
+  goTasks = () => this.setState({ screen: 'tasks', sheet: null });
+  notInProto = () => this.flash('Not part of this prototype');
+  reset = () => { this.handlers = {}; this.setState({ ...this.initial(), screen: 'signin', hasTank: false, tasks: [], events: [] }); };
+  setName = (e) => this.setState({ displayName: e.target.value });
+  setTankName = (e) => this.setState({ tankName: e.target.value });
+  setTankVol = (e) => this.setState({ tankVol: e.target.value.replace(/[^0-9.]/g, '') });
+  setNote = (e) => this.setState({ testNote: e.target.value });
+  setImperial = () => this.setState({ units: 'imperial', targets: {} });
+  setMetric = () => this.setState({ units: 'metric', targets: {} });
+  setDgh = () => this.setState({ hardness: 'dgh', targets: {} });
+  setPpm = () => this.setState({ hardness: 'ppm', targets: {} });
+  goParams = () => this.setState({ screen: 'params', sheet: null });
+  resetTargets = () => { this.setState({ targets: {} }); this.flash('Targets reset to defaults'); };
+  setTarget(key, field, val) { this.setState(s => ({ targets: { ...s.targets, [key]: { ...(s.targets[key] || {}), [field]: val } } })); }
+
+  saveTest = () => {
+    const P = this.params(), values = {};
+    P.forEach(p => { const v = parseFloat(this.state.draft[p.key]); if (!isNaN(v)) values[p.key] = v; });
+    const n = Object.keys(values).length;
+    if (!n) return this.flash('Enter at least one reading');
+    const bad = P.filter(p => values[p.key] != null && this.status(values[p.key], p) === 'bad').length;
+    const eid = 'e' + Date.now();
+    const time = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    this.setState(s => ({
+      tests: [...s.tests, { eid, at: Date.now(), values, note: s.testNote }],
+      tasks: this.advance(s.tasks, 1), screen: 'dashboard',
+      events: [{ id: eid, kind: 'test', at: Date.now(), values, note: s.testNote, title: `Water test · ${n} reading${n > 1 ? 's' : ''}`, sub: `Today, ${time}${bad ? ` · ${bad} out of range` : ''}${s.testNote ? ' · ' + s.testNote : ''}`, dot: '#4fc4bd' }, ...s.events],
+      done: { ...s.done, test: true, dashboard: true },
+    }));
+    this.flash(`✓ Saved ${n} reading${n > 1 ? 's' : ''}${bad ? ` · ${bad} out of range` : ''}`);
+  };
+  saveWC = () => {
+    const next = fmt(startOfDay(Date.now()) + 7 * DAY);
+    this.setState(s => ({ sheet: null, tasks: this.advance(s.tasks, 2), lastWC: Date.now(),
+      events: [{ id: 'e' + Date.now(), kind: 'wc', at: Date.now(), amt: s.wcAmt, src: s.wcSrc, title: `Water change · ${s.wcAmt}% · ${s.wcSrc}`, sub: 'Today · Water change', dot: '#4fc4bd' }, ...s.events],
+      done: { ...s.done, task: true } }));
+    this.flash(`✓ Water change logged · next due ${next}`);
+  };
+  openEntry(id) { this.setState({ sheet: 'entry', entryId: id }); }
+  deleteEntry = () => { const id = this.state.entryId; this.setState(s => ({ sheet: null, events: s.events.filter(e => e.id !== id), tests: s.tests.filter(t => t.eid !== id) })); this.flash('Entry deleted'); };
+  completeTask(k) {
+    if (k.kind === 'wc') return this.setState({ sheet: 'wc' });
+    if (k.kind === 'test') return this.openTest();
+    this.setState(s => ({ tasks: this.advance(s.tasks, k.id), done: { ...s.done, task: true } }));
+    this.flash(`✓ ${k.name} done`);
+  }
+  snooze(k) { this.setState(s => ({ tasks: s.tasks.map(x => x.id === k.id ? { ...x, due: x.due + DAY } : x) })); this.flash(`Snoozed ${k.name} 1 day`); }
+  jump(key) {
+    if (key === 'signin') return this.reset();
+    if (key === 'setup' || key === 'tank') return this.setState({ screen: key, sheet: null });
+    this.setState(s => ({ ...this.ensureTank(s), screen: key === 'test' ? 'test' : 'dashboard', sheet: key === 'task' ? 'wc' : null, draft: key === 'test' ? {} : s.draft }));
+  }
+  dueInfo(k) {
+    const d = Math.round((k.due - startOfDay(Date.now())) / DAY);
+    if (d < 0) return { text: `✕ Overdue ${-d} day${d < -1 ? 's' : ''}`, color: '#f08a78', urgent: true, level: 'bad' };
+    if (d === 0) return { text: '▲ Due today', color: '#e8c060', urgent: true, level: 'warn' };
+    if (d <= 3) return { text: `▲ Due in ${d} days · ${fmt(k.due)}`, color: '#e8c060', urgent: false, level: 'warn' };
+    return { text: `${fmt(k.due)} · every ${k.interval} days`, color: '#9fb4b8', urgent: false, level: 'ok' };
+  }
+  entryVM(P) {
+    const e = this.state.events.find(x => x.id === this.state.entryId);
+    if (!e) return { title: '', when: '', rows: [], hasRows: false, hasNote: false };
+    const when = new Date(e.at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    let rows = [];
+    if (e.kind === 'test') rows = P.filter(p => e.values[p.key] != null).map((p, i) => { const v = e.values[p.key], st = this.status(v, p); return { label: p.label, value: v + (p.unit ? ' ' + p.unit : ''), statusText: st === 'ok' ? '✓ In range' : st === 'warn' ? '▲ Near limit' : v > p.hi ? '✕ High' : '✕ Low', statusColor: C[st].status, divider: i ? '1px solid #24414a' : 'none' }; });
+    if (e.kind === 'wc') rows = [{ label: 'Amount', value: e.amt + '%', statusText: '', statusColor: '#9fb4b8', divider: 'none' }, { label: 'Source water', value: e.src, statusText: '', statusColor: '#9fb4b8', divider: '1px solid #24414a' }];
+    return { title: e.title, when, rows, hasRows: rows.length > 0, note: e.note || '', hasNote: !!e.note };
+  }
+  chip(sel) { return { bg: sel ? '#4fc4bd' : '#1a3138', color: sel ? '#06201f' : '#e6f0f0', border: sel ? '#4fc4bd' : '#2f525c' }; }
+
+  renderVals() {
+    const s = this.state, P = this.params();
+    const latest = s.tests[s.tests.length - 1];
+    const volUnit = s.units === 'imperial' ? 'gal' : 'L';
+    const order = ['signin', 'setup', 'tank', 'test', 'dashboard', 'task'];
+    const labels = ['Sign in', 'Set up', 'Create a tank', 'Log a water test', 'View the dashboard', 'Complete a task'];
+    const cur = s.sheet === 'wc' ? 'task' : s.screen === 'tasks' ? 'task' : s.screen;
+    const steps = order.map((k, i) => {
+      const done = !!s.done[k], active = cur === k;
+      return { label: labels[i], mark: done ? '✓' : String(i + 1), bg: active ? '#13262c' : 'transparent',
+        color: active || done ? '#e6f0f0' : '#9fb4b8', dotBg: done ? '#4fc4bd' : 'transparent', dotColor: done ? '#06201f' : '#9fb4b8',
+        dotBorder: done ? '#4fc4bd' : active ? '#4fc4bd' : '#2f525c', go: this.h('go' + k, () => this.jump(k)) };
+    });
+    const cards = P.map(p => {
+      const v = latest ? latest.values[p.key] : undefined;
+      if (v == null) return { label: p.label, valueText: '—', unit: '', statusText: '– No data', statusColor: '#9fb4b8', bg: 'transparent', border: '1px dashed #2f525c', labelColor: '#9fb4b8', subColor: '#7d9397', valueColor: '#4a6a72', sub: 'Not tested' };
+      const st = this.status(v, p), c = C[st];
+      return { label: p.label, valueText: String(v), unit: p.unit, statusText: st === 'ok' ? '✓ OK' : st === 'warn' ? '▲ Near' : v > p.hi ? '✕ High' : '✕ Low',
+        statusColor: c.status, bg: c.bg, border: c.border, labelColor: c.label, subColor: c.sub, valueColor: '#e6f0f0', sub: 'Target ' + this.range(p) };
+    });
+    const badP = latest ? P.filter(p => latest.values[p.key] != null && this.status(latest.values[p.key], p) === 'bad') : [];
+    const summary = badP.length
+      ? { bg: '#3f201c', color: '#f5b6aa', title: `✕ ${badP.length} out of range`, detail: badP.map(p => `${p.label} ${latest.values[p.key]} ${p.unit}`).join(', ') }
+      : { bg: '#143a2c', color: '#9fe5bb', title: '✓ All in range', detail: `${latest ? Object.keys(latest.values).length : 0} parameters tested` };
+    const daysWC = s.lastWC ? Math.round((startOfDay(Date.now()) - startOfDay(s.lastWC)) / DAY) : null;
+    const sorted = [...s.tasks].sort((a, b) => a.due - b.due);
+    const taskVM = (k, i) => {
+      const d = this.dueInfo(k);
+      return { name: k.name, dueText: d.text, dueColor: d.color, meta: `${s.tankName} · every ${k.interval} days`,
+        divider: i === 0 ? 'none' : '1px solid #24414a', cardBorder: d.level === 'bad' ? '#6b3129' : '#24414a',
+        btnBg: d.urgent ? '#4fc4bd' : 'transparent', btnColor: d.urgent ? '#06201f' : '#e6f0f0', btnBorder: d.urgent ? '#4fc4bd' : '#2f525c',
+        complete: this.h('c' + k.id, () => this.completeTask(this.state.tasks.find(x => x.id === k.id))),
+        snooze: this.h('s' + k.id, () => this.snooze(this.state.tasks.find(x => x.id === k.id))) };
+    };
+    const testRows = P.map(p => {
+      const raw = s.draft[p.key] ?? '', v = parseFloat(raw), has = raw !== '' && !isNaN(v);
+      const st = has ? this.status(v, p) : null;
+      const prev = latest && latest.values[p.key] != null ? `Last ${latest.values[p.key]} · ${fmt(latest.at)}` : `Target ${this.range(p)}`;
+      return { label: p.label, unit: p.unit, value: raw, prevText: prev, hasStatus: has,
+        border: st === 'bad' ? '#f08a78' : st === 'warn' ? '#e8c060' : has ? '#4fc4bd' : '#24414a',
+        statusColor: st ? C[st].status : '#9fb4b8',
+        statusText: st === 'bad' ? `✕ ${v > p.hi ? 'Above' : 'Below'} target ${this.range(p)}` : st === 'warn' ? `▲ Near limit · ${this.range(p)}` : '✓ In range',
+        onChange: this.h('d' + p.key, (e) => { const val = e.target.value.replace(/[^0-9.]/g, ''); this.setState(x => ({ draft: { ...x.draft, [p.key]: val } })); }) };
+    });
+    const filled = testRows.filter(r => r.hasStatus).length;
+    const vol = parseFloat(s.tankVol) || 0;
+    return {
+      steps, reset: this.reset,
+      isSignin: s.screen === 'signin', isSetup: s.screen === 'setup', isTank: s.screen === 'tank',
+      isDashboard: s.screen === 'dashboard', isTasks: s.screen === 'tasks', isTest: s.screen === 'test',
+      showTabs: s.hasTank && ['dashboard', 'tasks', 'params'].includes(s.screen), isParams: s.screen === 'params', goParams: this.goParams, resetTargets: this.resetTargets, tankType: s.tankType,
+      tabs: { dash: s.screen === 'dashboard' ? '#4fc4bd' : '#9fb4b8', tasks: s.screen === 'tasks' ? '#4fc4bd' : '#9fb4b8', tanks: s.screen === 'params' ? '#4fc4bd' : '#9fb4b8' },
+      paramRows: this.params(true).map(p => ({ label: p.label, unit: p.unit, on: p.on, lo: p.rawLo, hi: p.rawHi, opacity: p.on ? 1 : 0.6,
+        defText: p.on ? `Default ${p.dlo}–${p.dhi}${p.unit ? ' ' + p.unit : ''}` : 'Not tracked · hidden from tests',
+        trackBg: p.on ? '#4fc4bd' : '#2f525c', knobPos: p.on ? 'flex-end' : 'flex-start',
+        toggle: this.h('pt' + p.key, () => this.setTarget(p.key, 'on', !((this.state.targets[p.key] || {}).on ?? true))),
+        onLo: this.h('pl' + p.key, (e) => this.setTarget(p.key, 'lo', e.target.value.replace(/[^0-9.]/g, ''))),
+        onHi: this.h('ph' + p.key, (e) => this.setTarget(p.key, 'hi', e.target.value.replace(/[^0-9.]/g, ''))) })),
+      sheetQuick: s.sheet === 'quick', sheetWC: s.sheet === 'wc',
+      hasToast: !!s.toast, toast: s.toast, toastBottom: (s.hasTank && ['dashboard', 'tasks', 'params'].includes(s.screen) && !s.sheet) ? '184px' : '110px',
+      signIn: this.signIn, finishSetup: this.finishSetup, createTank: this.createTank, openTest: this.openTest, cancelTest: this.cancelTest,
+      openQuick: this.openQuick, openWC: this.openWC, closeSheet: this.closeSheet, goDash: this.goDash, goTasks: this.goTasks, notInProto: this.notInProto,
+      displayName: s.displayName, setName: this.setName, tankName: s.tankName, setTankName: this.setTankName, tankVol: s.tankVol, setTankVol: this.setTankVol, volUnit,
+      setImperial: this.setImperial, setMetric: this.setMetric, setDgh: this.setDgh, setPpm: this.setPpm,
+      seg: { impBg: s.units === 'imperial' ? '#24414a' : 'transparent', impColor: s.units === 'imperial' ? '#e6f0f0' : '#9fb4b8',
+        metBg: s.units === 'metric' ? '#24414a' : 'transparent', metColor: s.units === 'metric' ? '#e6f0f0' : '#9fb4b8',
+        dghBg: s.hardness === 'dgh' ? '#24414a' : 'transparent', dghColor: s.hardness === 'dgh' ? '#e6f0f0' : '#9fb4b8',
+        ppmBg: s.hardness === 'ppm' ? '#24414a' : 'transparent', ppmColor: s.hardness === 'ppm' ? '#e6f0f0' : '#9fb4b8' },
+      tzLabel: (Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local').replace(/_/g, ' ') + ' · detected',
+      tankTypes: ['Freshwater', 'Planted', 'Brackish', 'Reef'].map(t => ({ label: t, ...this.chip(s.tankType === t), pick: this.h('t' + t, () => this.setState({ tankType: t })) })),
+      tankSub: `${s.tankType} · ${s.tankVol || '—'} ${volUnit}`,
+      noReadings: !latest, hasReadings: !!latest, cards, summary,
+      latestWhen: latest ? 'Today, ' + new Date(latest.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '',
+      wc: { value: daysWC == null ? '—' : String(daysWC), sub: daysWC == null ? 'none logged' : `day${daysWC === 1 ? '' : 's'} · goal 7` },
+      trendNote: s.tests.length < 2 ? 'Charts appear after your second test. Tap + to log another.' : `${s.tests.length} tests logged. Full charts live on the Charts screen.`,
+      dashTasks: sorted.slice(0, 3).map(taskVM), allTasks: sorted.map(taskVM), events: s.events.slice(0, 5).map(e => ({ ...e, open: this.h('o' + e.id, () => this.openEntry(e.id)) })),
+      sheetEntry: s.sheet === 'entry', deleteEntry: this.deleteEntry, entry: this.entryVM(P),
+      testRows, testNote: s.testNote, setNote: this.setNote, saveTest: this.saveTest, saveLabel: filled ? `Save ${filled} reading${filled > 1 ? 's' : ''}` : 'Save',
+      wcAmts: [10, 25, 50, 75].map(a => ({ label: a + '%', ...this.chip(s.wcAmt === a), pick: this.h('a' + a, () => this.setState({ wcAmt: a })) })),
+      wcSrcs: ['Tap', 'RODI', 'Mix'].map(a => ({ label: a, ...this.chip(s.wcSrc === a), pick: this.h('r' + a, () => this.setState({ wcSrc: a })) })),
+      wcVolNote: vol ? `≈ ${Math.round(vol * s.wcAmt / 10) / 10} ${volUnit} of ${vol} ${volUnit}` : '',
+      saveWC: this.saveWC,
+    };
+  }
+}
+</script>
+</body>
+</html>

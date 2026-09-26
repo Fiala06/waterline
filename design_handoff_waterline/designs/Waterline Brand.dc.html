@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<style>html{background:#081317}body{margin:0;background:#081317;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;color:#e6f0f0;-webkit-font-smoothing:antialiased}a{color:#4fc4bd}a:hover{color:#8fe0da}</style>
+</helmet>
+<section style="padding:64px;display:flex;flex-direction:column;gap:56px">
+  <div style="display:flex;flex-direction:column;gap:8px;max-width:820px">
+    <div style="font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#9fb4b8">Turn 5 · Logo refinement, app icon, splash</div>
+    <div style="font-size:40px;font-weight:600;letter-spacing:-0.02em">Waterline identity</div>
+    <div style="font-size:17px;line-height:1.5;color:#9fb4b8;text-wrap:pretty">Three refinements of the 1a mark, each shown at 64, 32 and 16px. The lockups, icons and splash below use <a href="#2c">2c</a>. The 16 and 32px favicons fall back to the solid <a href="#2a">2a</a>, because the gap closes up at small sizes.</div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:28px">
+    <div id="2a" style="width:380px;border-radius:20px;background:#0f2126;border:1px solid #24414a;padding:24px;display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:12px;font-weight:700;background:#24414a;padding:4px 8px;border-radius:6px">2a</div><div style="font-size:13px;color:#9fb4b8">Solid</div></div>
+      <div style="height:180px;border-radius:14px;background:#0c1a1f;display:flex;align-items:center;justify-content:center"><svg width="120" height="120" viewBox="0 0 56 56"><defs><clipPath id="a1"><circle cx="28" cy="28" r="24"></circle></clipPath></defs><rect x="0" y="32" width="56" height="30" fill="#4fc4bd" clip-path="url(#a1)"></rect><circle cx="28" cy="28" r="24" fill="none" stroke="#e6f0f0" stroke-width="3"></circle></svg></div>
+      <div style="display:flex;align-items:center;gap:20px">
+        <svg width="64" height="64" viewBox="0 0 56 56"><defs><clipPath id="a2"><circle cx="28" cy="28" r="24"></circle></clipPath></defs><rect x="0" y="32" width="56" height="30" fill="#4fc4bd" clip-path="url(#a2)"></rect><circle cx="28" cy="28" r="24" fill="none" stroke="#e6f0f0" stroke-width="3.5"></circle></svg>
+        <svg width="32" height="32" viewBox="0 0 56 56"><defs><clipPath id="a3"><circle cx="28" cy="28" r="24"></circle></clipPath></defs><rect x="0" y="32" width="56" height="30" fill="#4fc4bd" clip-path="url(#a3)"></rect><circle cx="28" cy="28" r="24" fill="none" stroke="#e6f0f0" stroke-width="4.5"></circle></svg>
+        <svg width="16" height="16" viewBox="0 0 56 56"><defs><clipPath id="a4"><circle cx="28" cy="28" r="24"></circle></clipPath></defs><rect x="0" y="32" width="56" height="30" fill="#4fc4bd" clip-path="url(#a4)"></rect><circle cx="28" cy="28" r="24" fill="none" stroke="#e6f0f0" stroke-width="6"></circle></svg>
+      </div>
+      <div style="font-size:14px;line-height:1.5;color:#9fb4b8">The original, with the water level lowered slightly so it reads as a gauge rather than a half-circle. Sturdiest at small sizes.</div>
+    </div>
+
+    <div id="2b" style="width:380px;border-radius:20px;background:#0f2126;border:1px solid #24414a;padding:24px;display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:12px;font-weight:700;background:#24414a;padding:4px 8px;border-radius:6px">2b</div><div style="font-size:13px;color:#9fb4b8">Line through</div></div>
+      <div style="height:180px;border-radius:14px;background:#0c1a1f;display:flex;align-items:center;justify-content:center"><svg width="137" height="120" viewBox="0 0 64 56"><defs><clipPath id="b1"><circle cx="32" cy="28" r="22"></circle></clipPath></defs><rect x="0" y="32" width="64" height="30" fill="#4fc4bd" fill-opacity="0.35" clip-path="url(#b1)"></rect><circle cx="32" cy="28" r="22" fill="none" stroke="#e6f0f0" stroke-width="3"></circle><line x1="3" y1="32" x2="61" y2="32" stroke="#4fc4bd" stroke-width="3" stroke-linecap="round"></line></svg></div>
+      <div style="display:flex;align-items:center;gap:20px">
+        <svg width="73" height="64" viewBox="0 0 64 56"><defs><clipPath id="b2"><circle cx="32" cy="28" r="22"></circle></clipPath></defs><rect x="0" y="32" width="64" height="30" fill="#4fc4bd" fill-opacity="0.35" clip-path="url(#b2)"></rect><circle cx="32" cy="28" r="22" fill="none" stroke="#e6f0f0" stroke-width="3.5"></circle><line x1="3" y1="32" x2="61" y2="32" stroke="#4fc4bd" stroke-width="3.5" stroke-linecap="round"></line></svg>
+        <svg width="37" height="32" viewBox="0 0 64 56"><defs><clipPath id="b3"><circle cx="32" cy="28" r="22"></circle></clipPath></defs><rect x="0" y="32" width="64" height="30" fill="#4fc4bd" fill-opacity="0.35" clip-path="url(#b3)"></rect><circle cx="32" cy="28" r="22" fill="none" stroke="#e6f0f0" stroke-width="4.5"></circle><line x1="3" y1="32" x2="61" y2="32" stroke="#4fc4bd" stroke-width="4.5" stroke-linecap="round"></line></svg>
+        <svg width="18" height="16" viewBox="0 0 64 56"><circle cx="32" cy="28" r="22" fill="none" stroke="#e6f0f0" stroke-width="6"></circle><line x1="3" y1="32" x2="61" y2="32" stroke="#4fc4bd" stroke-width="6" stroke-linecap="round"></line></svg>
+      </div>
+      <div style="font-size:14px;line-height:1.5;color:#9fb4b8">The line runs past the glass, so the name is spelled out in the mark. Wider than square, which makes it harder to fit in icons.</div>
+    </div>
+
+    <div id="2c" style="width:380px;border-radius:20px;background:#0f2126;border:2px solid #4fc4bd;padding:23px;display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:12px;font-weight:700;background:#4fc4bd;color:#06201f;padding:4px 8px;border-radius:6px">2c · Recommended</div><div style="font-size:13px;color:#9fb4b8">Inset water</div></div>
+      <div style="height:180px;border-radius:14px;background:#0c1a1f;display:flex;align-items:center;justify-content:center"><svg width="120" height="120" viewBox="0 0 56 56"><defs><clipPath id="c1"><circle cx="28" cy="28" r="19"></circle></clipPath></defs><rect x="0" y="31" width="56" height="30" fill="#4fc4bd" clip-path="url(#c1)"></rect><circle cx="28" cy="28" r="24.5" fill="none" stroke="#e6f0f0" stroke-width="3"></circle></svg></div>
+      <div style="display:flex;align-items:center;gap:20px">
+        <svg width="64" height="64" viewBox="0 0 56 56"><defs><clipPath id="c2"><circle cx="28" cy="28" r="19"></circle></clipPath></defs><rect x="0" y="31" width="56" height="30" fill="#4fc4bd" clip-path="url(#c2)"></rect><circle cx="28" cy="28" r="24.5" fill="none" stroke="#e6f0f0" stroke-width="3.5"></circle></svg>
+        <svg width="32" height="32" viewBox="0 0 56 56"><defs><clipPath id="c3"><circle cx="28" cy="28" r="19"></circle></clipPath></defs><rect x="0" y="31" width="56" height="30" fill="#4fc4bd" clip-path="url(#c3)"></rect><circle cx="28" cy="28" r="24.5" fill="none" stroke="#e6f0f0" stroke-width="4.5"></circle></svg>
+        <svg width="16" height="16" viewBox="0 0 56 56"><defs><clipPath id="c4"><circle cx="28" cy="28" r="24"></circle></clipPath></defs><rect x="0" y="32" width="56" height="30" fill="#4fc4bd" clip-path="url(#c4)"></rect><circle cx="28" cy="28" r="24" fill="none" stroke="#e6f0f0" stroke-width="6"></circle></svg>
+      </div>
+      <div style="font-size:14px;line-height:1.5;color:#9fb4b8">A gap between the glass and the water, like a tank seen from the side. It feels more precise and instrument-like. Below 24px it switches to 2a.</div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="font-size:22px;font-weight:600">Lockups</div>
+    <div style="display:flex;flex-wrap:wrap;gap:20px">
+      <div style="width:420px;height:200px;border-radius:18px;background:#0c1a1f;border:1px solid #24414a;display:flex;align-items:center;justify-content:center;gap:14px"><svg width="52" height="52" viewBox="0 0 56 56"><defs><clipPath id="l1"><circle cx="28" cy="28" r="19"></circle></clipPath></defs><rect x="0" y="31" width="56" height="30" fill="#4fc4bd" clip-path="url(#l1)"></rect><circle cx="28" cy="28" r="24.5" fill="none" stroke="#e6f0f0" stroke-width="3.5"></circle></svg><div style="font-size:38px;font-weight:600;letter-spacing:-0.02em">Waterline</div></div>
+      <div style="width:420px;height:200px;border-radius:18px;background:#f4f7f6;display:flex;align-items:center;justify-content:center;gap:14px;color:#0f2126"><svg width="52" height="52" viewBox="0 0 56 56"><defs><clipPath id="l2"><circle cx="28" cy="28" r="19"></circle></clipPath></defs><rect x="0" y="31" width="56" height="30" fill="#1a7a7a" clip-path="url(#l2)"></rect><circle cx="28" cy="28" r="24.5" fill="none" stroke="#0f2126" stroke-width="3.5"></circle></svg><div style="font-size:38px;font-weight:600;letter-spacing:-0.02em">Waterline</div></div>
+      <div style="width:240px;height:200px;border-radius:18px;background:#0c1a1f;border:1px solid #24414a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px"><svg width="64" height="64" viewBox="0 0 56 56"><defs><clipPath id="l3"><circle cx="28" cy="28" r="19"></circle></clipPath></defs><rect x="0" y="31" width="56" height="30" fill="#4fc4bd" clip-path="url(#l3)"></rect><circle cx="28" cy="28" r="24.5" fill="none" stroke="#e6f0f0" stroke-width="3.5"></circle></svg><div style="font-size:24px;font-weight:600;letter-spacing:-0.01em">Waterline</div></div>
+      <div style="width:300px;height:200px;border-radius:18px;background:#0f2126;border:1px solid #24414a;padding:24px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;gap:10px;font-size:14px;line-height:1.5;color:#9fb4b8"><div style="font-size:15px;font-weight:600;color:#e6f0f0">Usage</div><div>Clear space: at least half the mark's width on every side.</div><div>Mark-to-word gap: 0.27× mark height. Wordmark: Helvetica Neue Medium, −2% tracking.</div><div>Minimum size: 24px for 2c, 12px for 2a.</div></div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="font-size:22px;font-weight:600">App icons</div>
+    <div style="display:flex;flex-wrap:wrap;gap:36px;align-items:flex-end">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px"><div style="width:180px;height:180px;border-radius:40px;background:#0c1a1f;border:1px solid #24414a;display:flex;align-items:center;justify-content:center"><svg width="112" height="112" viewBox="0 0 56 56"><defs><clipPath id="i1"><circle cx="28" cy="28" r="19"></circle></clipPath></defs><rect x="0" y="31" width="56" height="30" fill="#4fc4bd" clip-path="url(#i1)"></rect><circle cx="28" cy="28" r="24.5" fill="none" stroke="#e6f0f0" stroke-width="3"></circle></svg></div><div style="font-size:13px;color:#9fb4b8">iOS · 180 · dark</div></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px"><div style="width:180px;height:180px;border-radius:40px;background:#f4f7f6;display:flex;align-items:center;justify-content:center"><svg width="112" height="112" viewBox="0 0 56 56"><defs><clipPath id="i2"><circle cx="28" cy="28" r="19"></circle></clipPath></defs><rect x="0" y="31" width="56" height="30" fill="#1a7a7a" clip-path="url(#i2)"></rect><circle cx="28" cy="28" r="24.5" fill="none" stroke="#0f2126" stroke-width="3"></circle></svg></div><div style="font-size:13px;color:#9fb4b8">iOS · 180 · light</div></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px"><div style="width:192px;height:192px;border-radius:96px;background:#0c1a1f;border:1px solid #24414a;position:relative;display:flex;align-items:center;justify-content:center"><div style="position:absolute;inset:32px;border-radius:64px;border:1px dashed #3a5c65"></div><svg width="104" height="104" viewBox="0 0 56 56"><defs><clipPath id="i3"><circle cx="28" cy="28" r="19"></circle></clipPath></defs><rect x="0" y="31" width="56" height="30" fill="#4fc4bd" clip-path="url(#i3)"></rect><circle cx="28" cy="28" r="24.5" fill="none" stroke="#e6f0f0" stroke-width="3"></circle></svg></div><div style="font-size:13px;color:#9fb4b8">Android maskable · 192 · safe zone shown</div></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px"><div style="display:flex;align-items:flex-end;gap:16px"><div style="width:32px;height:32px;border-radius:7px;background:#0c1a1f;border:1px solid #24414a;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 56 56"><defs><clipPath id="i4"><circle cx="28" cy="28" r="24"></circle></clipPath></defs><rect x="0" y="32" width="56" height="30" fill="#4fc4bd" clip-path="url(#i4)"></rect><circle cx="28" cy="28" r="24" fill="none" stroke="#e6f0f0" stroke-width="5"></circle></svg></div><div style="width:16px;height:16px;border-radius:3px;background:#0c1a1f;display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 56 56"><defs><clipPath id="i5"><circle cx="28" cy="28" r="24"></circle></clipPath></defs><rect x="0" y="32" width="56" height="30" fill="#4fc4bd" clip-path="url(#i5)"></rect><circle cx="28" cy="28" r="24" fill="none" stroke="#e6f0f0" stroke-width="7"></circle></svg></div></div><div style="font-size:13px;color:#9fb4b8">Favicon 32 / 16 (2a)</div></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+        <div style="width:260px;height:180px;border-radius:24px;background:repeating-linear-gradient(135deg,#1a3138 0 8px,#152a30 8px 16px);display:flex;align-items:center;justify-content:center;gap:20px">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><div style="width:60px;height:60px;border-radius:14px;background:#0c1a1f;display:flex;align-items:center;justify-content:center"><svg width="38" height="38" viewBox="0 0 56 56"><defs><clipPath id="i6"><circle cx="28" cy="28" r="19"></circle></clipPath></defs><rect x="0" y="31" width="56" height="30" fill="#4fc4bd" clip-path="url(#i6)"></rect><circle cx="28" cy="28" r="24.5" fill="none" stroke="#e6f0f0" stroke-width="3.5"></circle></svg></div><div style="font-size:11px;font-weight:600">Waterline</div></div>
+          <div style="width:60px;height:60px;border-radius:14px;background:rgba(230,240,240,0.12)"></div>
+          <div style="width:60px;height:60px;border-radius:14px;background:rgba(230,240,240,0.12)"></div>
+        </div>
+        <div style="font-size:13px;color:#9fb4b8">On a home screen</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="font-size:22px;font-weight:600">Splash / launch</div>
+    <div style="display:flex;flex-wrap:wrap;gap:40px">
+      <div data-screen-label="Splash dark" style="width:390px;height:844px;border-radius:44px;background:#0c1a1f;border:1px solid #24414a;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;position:relative">
+        <svg width="112" height="112" viewBox="0 0 56 56"><defs><clipPath id="s1"><circle cx="28" cy="28" r="19"></circle></clipPath></defs><rect x="0" y="{{ waterY }}" width="56" height="56" fill="#4fc4bd" clip-path="url(#s1)"></rect><circle cx="28" cy="28" r="24.5" fill="none" stroke="#e6f0f0" stroke-width="2.5"></circle></svg>
+        <div style="font-size:34px;font-weight:600;letter-spacing:-0.02em">Waterline</div>
+        
+      </div>
+      <div data-screen-label="Splash light" style="width:390px;height:844px;border-radius:44px;background:#f4f7f6;border:1px solid #d5e0df;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;position:relative;color:#0f2126">
+        <svg width="112" height="112" viewBox="0 0 56 56"><defs><clipPath id="s2"><circle cx="28" cy="28" r="19"></circle></clipPath></defs><rect x="0" y="{{ waterY }}" width="56" height="56" fill="#1a7a7a" clip-path="url(#s2)"></rect><circle cx="28" cy="28" r="24.5" fill="none" stroke="#0f2126" stroke-width="2.5"></circle></svg>
+        <div style="font-size:34px;font-weight:600;letter-spacing:-0.02em">Waterline</div>
+        
+      </div>
+      <div style="width:300px;display:flex;flex-direction:column;gap:10px;font-size:14px;line-height:1.5;color:#9fb4b8;padding-top:8px">
+        <div style="font-size:15px;font-weight:600;color:#e6f0f0">PWA manifest</div>
+        <div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;line-height:1.7;border-radius:12px;background:#0f2126;border:1px solid #24414a;padding:14px;color:#b8cacd">name: Waterline<br>short_name: Waterline<br>background_color: #0c1a1f<br>theme_color: #0c1a1f<br>icons: 192, 512, 512-maskable<br>display: standalone</div>
+        <div>The splash follows the system theme. The water starts at its resting level and rises with real load progress; the app opens once the circle is full. It eases between steps so it never jumps. With reduced motion turned on, it shows the resting mark with no animation.</div><div style="font-size:13px;color:#7d9397">Preview loops: load for 2.6s, hold, then restart.</div>
+      </div>
+    </div>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { p: 0 };
+  componentDidMount() {
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const steps = [[0, 0], [500, 0.18], [900, 0.35], [1500, 0.52], [2000, 0.8], [2600, 1], [3600, 1]];
+    const total = 3600; let start = performance.now();
+    const tick = (now) => {
+      const t = (now - start) % total;
+      let i = 0; while (i < steps.length - 2 && t > steps[i + 1][0]) i++;
+      const [t0, p0] = steps[i], [t1, p1] = steps[i + 1];
+      const k = Math.min(1, (t - t0) / (t1 - t0)), e = 1 - Math.pow(1 - k, 3);
+      this.setState({ p: p0 + (p1 - p0) * e });
+      this.raf = requestAnimationFrame(tick);
+    };
+    this.raf = requestAnimationFrame(tick);
+  }
+  componentWillUnmount() { cancelAnimationFrame(this.raf); }
+  renderVals() { return { waterY: (31 - 22.5 * this.state.p).toFixed(2) }; }
+}
+</script>
+</body>
+</html>

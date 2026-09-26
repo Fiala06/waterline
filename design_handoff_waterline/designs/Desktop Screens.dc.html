@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<style>html{background:#081317}body{margin:0;background:#081317;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;color:#e6f0f0;-webkit-font-smoothing:antialiased}a{color:#4fc4bd}a:hover{color:#8fe0da}</style>
+</helmet>
+<section style="padding:64px;display:flex;flex-direction:column;gap:48px">
+  <div style="display:flex;flex-direction:column;gap:8px;max-width:860px">
+    <div style="font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#9fb4b8">Turn 6 · Desktop layouts · Dark theme</div>
+    <div style="font-size:40px;font-weight:600;letter-spacing:-0.02em">Desktop: every remaining screen</div>
+    <div style="font-size:17px;line-height:1.5;color:#9fb4b8;text-wrap:pretty">Screens at 1280 × 800, alongside the existing desktop dashboard, log water test and charts. On desktop, list screens get a detail pane on the right, so tapping an item never leaves the list.</div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:48px">
+
+    <!-- D1 Sign in -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:14px;color:#9fb4b8">D1 · Sign in</div>
+      <div data-screen-label="D1 Sign in" style="width:1280px;height:800px;border-radius:14px;background:#0c1a1f;border:1px solid #24414a;overflow:hidden;display:grid;grid-template-columns:1fr 1fr">
+        <div style="background:#0f2126;border-right:1px solid #24414a;display:flex;flex-direction:column;justify-content:center;gap:24px;padding:0 96px">
+          <svg width="96" height="96" viewBox="0 0 56 56"><defs><clipPath id="d1m"><circle cx="28" cy="28" r="19"></circle></clipPath></defs><rect x="0" y="31" width="56" height="30" fill="#4fc4bd" clip-path="url(#d1m)"></rect><circle cx="28" cy="28" r="24.5" fill="none" stroke="#e6f0f0" stroke-width="2.5"></circle></svg>
+          <div style="font-size:48px;font-weight:600;letter-spacing:-0.02em">Waterline</div>
+          <div style="font-size:20px;line-height:1.5;color:#9fb4b8;max-width:400px;text-wrap:pretty">Water tests, water changes and maintenance for every tank you keep.</div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center">
+          <div style="width:380px;display:flex;flex-direction:column;gap:18px">
+            <div style="font-size:26px;font-weight:600">Sign in</div>
+            <div style="height:56px;border-radius:14px;background:#f3f6f5;color:#0c1a1f;display:flex;align-items:center;justify-content:center;gap:12px;font-size:17px;font-weight:600"><div style="width:24px;height:24px;border-radius:12px;border:2px solid #0c1a1f;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">G</div>Sign in with Google</div>
+            <div style="display:flex;align-items:center;gap:12px;color:#7d9397;font-size:13px"><div style="flex:1;height:1px;background:#24414a"></div>server owner<div style="flex:1;height:1px;background:#24414a"></div></div>
+            <div style="height:48px;border-radius:12px;background:#13262c;border:1px solid #24414a;padding:0 14px;display:flex;align-items:center;font-size:15px;color:#4a6a72">Admin username</div>
+            <div style="height:48px;border-radius:12px;background:#13262c;border:1px solid #24414a;padding:0 14px;display:flex;align-items:center;font-size:15px;color:#4a6a72">Password</div>
+            <div style="height:48px;border-radius:12px;border:1px solid #2f525c;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600">Local admin login</div>
+            <div style="font-size:12px;color:#7d9397;font-family:ui-monospace,Menlo,monospace;text-align:center">self-hosted · tanks.reyes.home</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- D2 Setup -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:14px;color:#9fb4b8">D2 · First-login setup</div>
+      <div data-screen-label="D2 Setup" style="width:1280px;height:800px;border-radius:14px;background:#0c1a1f;border:1px solid #24414a;overflow:hidden;display:flex;align-items:center;justify-content:center">
+        <div style="width:560px;border-radius:20px;background:#13262c;border:1px solid #24414a;padding:36px;display:flex;flex-direction:column;gap:22px">
+          <div style="display:flex;gap:6px"><div style="height:4px;flex:1;border-radius:2px;background:#4fc4bd"></div><div style="height:4px;flex:1;border-radius:2px;background:#24414a"></div></div>
+          <div style="display:flex;flex-direction:column;gap:4px"><div style="font-size:13px;color:#9fb4b8">Step 1 of 2</div><div style="font-size:28px;font-weight:600">Set up your log</div></div>
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;color:#9fb4b8">Display name</div><div style="height:48px;border-radius:12px;background:#0f2126;border:1px solid #2f525c;padding:0 14px;display:flex;align-items:center;font-size:16px">Jordan Reyes</div></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;color:#9fb4b8">Units</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:12px;background:#0f2126;border:1px solid #24414a"><div style="height:40px;border-radius:8px;background:#24414a;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600">Imperial</div><div style="height:40px;display:flex;align-items:center;justify-content:center;font-size:15px;color:#9fb4b8">Metric</div></div></div>
+            <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;color:#9fb4b8">Hardness</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:12px;background:#0f2126;border:1px solid #24414a"><div style="height:40px;border-radius:8px;background:#24414a;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600">dGH</div><div style="height:40px;display:flex;align-items:center;justify-content:center;font-size:15px;color:#9fb4b8">ppm</div></div></div>
+          </div>
+          <div style="font-size:13px;color:#7d9397">Imperial: gal · °F · in. You can change these later in Settings.</div>
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;color:#9fb4b8">Time zone</div><div style="height:48px;border-radius:12px;background:#0f2126;border:1px solid #2f525c;padding:0 14px;display:flex;align-items:center;justify-content:space-between;font-size:16px">America/Los Angeles · detected<span style="color:#9fb4b8">▾</span></div></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding-top:6px"><div style="font-size:15px;color:#9fb4b8">Skip tank setup</div><div style="height:48px;padding:0 22px;border-radius:12px;background:#4fc4bd;color:#06201f;display:flex;align-items:center;font-size:16px;font-weight:700">Continue to first tank</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- D3 Tanks -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:14px;color:#9fb4b8">D3 · Tanks</div>
+      <div data-screen-label="D3 Tanks" style="width:1280px;height:800px;border-radius:14px;background:#0c1a1f;border:1px solid #24414a;overflow:hidden;display:flex">
+        <dc-import name="Desktop Sidebar" active="Tanks" hint-size="232px,100%"></dc-import>
+        <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+          <div style="height:68px;padding:0 28px;border-bottom:1px solid #24414a;display:flex;align-items:center;gap:12px"><div style="font-size:22px;font-weight:600;flex:1">Tanks</div><div style="height:42px;padding:0 16px;border-radius:12px;border:1px solid #2f525c;display:flex;align-items:center;font-size:15px;font-weight:600">Add tank</div><div style="height:42px;padding:0 16px;border-radius:12px;background:#4fc4bd;color:#06201f;display:flex;align-items:center;font-size:15px;font-weight:700">+ Quick add</div></div>
+          <div style="padding:28px;display:flex;flex-direction:column;gap:22px">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px">
+              <div style="border-radius:18px;background:#13262c;border:1px solid #24414a;overflow:hidden"><div style="height:180px;background:repeating-linear-gradient(135deg,#1a3138 0 6px,#152a30 6px 12px);display:flex;align-items:center;justify-content:center;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#7d9397">tank cover photo</div><div style="padding:16px;display:flex;flex-direction:column;gap:12px"><div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:19px;font-weight:600">Riverbed 40</div><div style="font-size:13px;color:#9fb4b8">Planted · 40 gal</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><div style="height:28px;padding:0 10px;border-radius:8px;background:#3f201c;color:#f5b6aa;display:flex;align-items:center;font-size:13px;font-weight:600">✕ Nitrate high</div><div style="height:28px;padding:0 10px;border-radius:8px;background:#3f201c;color:#f5b6aa;display:flex;align-items:center;font-size:13px;font-weight:600">✕ 1 overdue</div></div><div style="font-size:13px;color:#7d9397">Last test today · last water change 8 days ago</div></div></div>
+              <div style="border-radius:18px;background:#13262c;border:1px solid #24414a;overflow:hidden"><div style="height:180px;background:repeating-linear-gradient(135deg,#1a3138 0 6px,#152a30 6px 12px);display:flex;align-items:center;justify-content:center;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#7d9397">tank cover photo</div><div style="padding:16px;display:flex;flex-direction:column;gap:12px"><div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:19px;font-weight:600">Reef 24</div><div style="font-size:13px;color:#9fb4b8">Reef · 24 gal</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><div style="height:28px;padding:0 10px;border-radius:8px;background:#143a2c;color:#9fe5bb;display:flex;align-items:center;font-size:13px;font-weight:600">✓ All in range</div><div style="height:28px;padding:0 10px;border-radius:8px;background:#3a3218;color:#ecd699;display:flex;align-items:center;font-size:13px;font-weight:600">▲ 1 due today</div></div><div style="font-size:13px;color:#7d9397">Last test Sep 23 · last water change 4 days ago</div></div></div>
+              <div style="border-radius:18px;border:1px dashed #2f525c;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:300px"><div style="font-size:30px;color:#4fc4bd">+</div><div style="font-size:16px;font-weight:600">Add tank</div><div style="font-size:13px;color:#9fb4b8">Freshwater, planted, brackish or reef</div></div>
+            </div>
+            <div style="border-radius:14px;border:1px solid #24414a;display:flex;flex-direction:column">
+              <div style="height:52px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;font-size:15px;border-bottom:1px solid #24414a"><div style="font-weight:600">Archived · 1</div><div style="color:#9fb4b8">▾</div></div>
+              <div style="height:60px;padding:0 16px;display:flex;align-items:center;gap:14px;font-size:15px;color:#9fb4b8"><div style="width:40px;height:40px;border-radius:8px;background:repeating-linear-gradient(135deg,#1a3138 0 4px,#152a30 4px 8px);opacity:0.6"></div><div style="flex:1;display:flex;flex-direction:column;gap:2px"><div style="color:#b8cacd;font-weight:600">Shrimp 10</div><div style="font-size:13px">Freshwater · 10 gal · archived Jun 2026</div></div><div style="color:#4fc4bd;font-weight:600">Restore</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- D4 Tank detail -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:14px;color:#9fb4b8">D4 · Tank detail, edit and targets</div>
+      <div data-screen-label="D4 Tank detail" style="width:1280px;height:800px;border-radius:14px;background:#0c1a1f;border:1px solid #24414a;overflow:hidden;display:flex">
+        <dc-import name="Desktop Sidebar" active="Tanks" hint-size="232px,100%"></dc-import>
+        <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+          <div style="height:68px;padding:0 28px;border-bottom:1px solid #24414a;display:flex;align-items:center;gap:12px"><div style="font-size:15px;color:#4fc4bd;font-weight:600">Tanks ›</div><div style="font-size:22px;font-weight:600;flex:1">Riverbed 40</div><div style="height:42px;padding:0 16px;border-radius:12px;border:1px solid #5e5020;color:#e8c060;display:flex;align-items:center;font-size:15px;font-weight:600">Archive</div><div style="height:42px;padding:0 18px;border-radius:12px;background:#4fc4bd;color:#06201f;display:flex;align-items:center;font-size:15px;font-weight:700">Save changes</div></div>
+          <div style="flex:1;padding:24px 28px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:28px;min-height:0">
+            <div style="display:flex;flex-direction:column;gap:16px">
+              <div style="height:150px;border-radius:14px;background:repeating-linear-gradient(135deg,#1a3138 0 6px,#152a30 6px 12px);border:1px solid #24414a;position:relative;display:flex;align-items:center;justify-content:center;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#7d9397">cover photo<div style="position:absolute;right:10px;bottom:10px;height:34px;padding:0 12px;border-radius:9px;background:rgba(12,26,31,0.85);border:1px solid #2f525c;display:flex;align-items:center;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;font-weight:600;color:#e6f0f0">Change</div></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;color:#9fb4b8">Name</div><div style="height:44px;border-radius:10px;background:#13262c;border:1px solid #24414a;padding:0 12px;display:flex;align-items:center;font-size:15px">Riverbed 40</div></div>
+                <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;color:#9fb4b8">Type</div><div style="height:44px;border-radius:10px;background:#13262c;border:1px solid #24414a;padding:0 12px;display:flex;align-items:center;justify-content:space-between;font-size:15px">Planted<span style="color:#9fb4b8">▾</span></div></div>
+                <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;color:#9fb4b8">Nominal volume</div><div style="height:44px;border-radius:10px;background:#13262c;border:1px solid #24414a;padding:0 12px;display:flex;align-items:center;justify-content:space-between;font-size:15px">40<span style="color:#9fb4b8;font-size:13px">gal</span></div></div>
+                <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;color:#9fb4b8">Actual volume</div><div style="height:44px;border-radius:10px;background:#13262c;border:1px solid #24414a;padding:0 12px;display:flex;align-items:center;justify-content:space-between;font-size:15px">34<span style="color:#9fb4b8;font-size:13px">gal</span></div></div>
+                <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;color:#9fb4b8">Dimensions (L × W × H)</div><div style="height:44px;border-radius:10px;background:#13262c;border:1px solid #24414a;padding:0 12px;display:flex;align-items:center;justify-content:space-between;font-size:15px">36 × 18 × 16<span style="color:#9fb4b8;font-size:13px">in</span></div></div>
+                <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;color:#9fb4b8">Start date</div><div style="height:44px;border-radius:10px;background:#13262c;border:1px solid #24414a;padding:0 12px;display:flex;align-items:center;font-size:15px">Mar 8, 2025</div></div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;color:#9fb4b8">Notes</div><div style="min-height:72px;border-radius:10px;background:#13262c;border:1px solid #24414a;padding:12px;box-sizing:border-box;font-size:14px;line-height:1.5">Aquasoil, CO₂ 1 bps on a timer. Canister filter, 8 h photoperiod.</div></div>
+            </div>
+            <div style="border-radius:16px;background:#13262c;border:1px solid #24414a;display:flex;flex-direction:column;overflow:hidden">
+              <div style="padding:16px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #24414a"><div style="display:flex;flex-direction:column;gap:2px"><div style="font-size:17px;font-weight:600">Parameters &amp; targets</div><div style="font-size:13px;color:#9fb4b8">Outside the range is flagged ✕; within 10% of a limit is ▲</div></div><div style="font-size:14px;color:#4fc4bd;font-weight:600">+ Custom</div></div>
+              <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr 0.7fr 64px;gap:10px;padding:10px 18px;font-size:12px;letter-spacing:0.06em;color:#7d9397;border-bottom:1px solid #24414a"><div>PARAMETER</div><div>MIN</div><div>MAX</div><div>UNIT</div><div>TRACK</div></div>
+              <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr 0.7fr 64px;gap:10px;padding:8px 18px;align-items:center;border-bottom:1px solid #1c353c;font-size:15px"><div style="font-weight:600">pH</div><div style="height:36px;border-radius:8px;background:#0f2126;border:1px solid #2f525c;display:flex;align-items:center;padding:0 10px">6.5</div><div style="height:36px;border-radius:8px;background:#0f2126;border:1px solid #2f525c;display:flex;align-items:center;padding:0 10px">7.5</div><div style="color:#9fb4b8">—</div><div style="width:44px;height:26px;border-radius:13px;background:#4fc4bd;padding:3px;box-sizing:border-box;display:flex;justify-content:flex-end"><div style="width:20px;height:20px;border-radius:10px;background:#e6f0f0"></div></div></div>
+              <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr 0.7fr 64px;gap:10px;padding:8px 18px;align-items:center;border-bottom:1px solid #1c353c;font-size:15px"><div style="font-weight:600">Ammonia</div><div style="height:36px;border-radius:8px;background:#0f2126;border:1px solid #2f525c;display:flex;align-items:center;padding:0 10px">0</div><div style="height:36px;border-radius:8px;background:#0f2126;border:1px solid #2f525c;display:flex;align-items:center;padding:0 10px">0.25</div><div style="color:#9fb4b8">ppm</div><div style="width:44px;height:26px;border-radius:13px;background:#4fc4bd;padding:3px;box-sizing:border-box;display:flex;justify-content:flex-end"><div style="width:20px;height:20px;border-radius:10px;background:#e6f0f0"></div></div></div>
+              <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr 0.7fr 64px;gap:10px;padding:8px 18px;align-items:center;border-bottom:1px solid #1c353c;font-size:15px"><div style="font-weight:600">Nitrite</div><div style="height:36px;border-radius:8px;background:#0f2126;border:1px solid #2f525c;display:flex;align-items:center;padding:0 10px">0</div><div style="height:36px;border-radius:8px;background:#0f2126;border:1px solid #2f525c;display:flex;align-items:center;padding:0 10px">0.25</div><div style="color:#9fb4b8">ppm</div><div style="width:44px;height:26px;border-radius:13px;background:#4fc4bd;padding:3px;box-sizing:border-box;display:flex;justify-content:flex-end"><div style="width:20px;height:20px;border-radius:10px;background:#e6f0f0"></div></div></div>
+              <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr 0.7fr 64px;gap:10px;padding:8px 18px;align-items:center;border-bottom:1px solid #1c353c;font-size:15px"><div style="font-weight:600">Nitrate</div><div style="height:36px;border-radius:8px;background:#0f2126;border:1px solid #2f525c;display:flex;align-items:center;padding:0 10px">5</div><div style="height:36px;border-radius:8px;background:#0f2126;border:2px solid #4fc4bd;box-sizing:border-box;display:flex;align-items:center;padding:0 9px">20</div><div style="color:#9fb4b8">ppm</div><div style="width:44px;height:26px;border-radius:13px;background:#4fc4bd;padding:3px;box-sizing:border-box;display:flex;justify-content:flex-end"><div style="width:20px;height:20px;border-radius:10px;background:#e6f0f0"></div></div></div>
+              <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr 0.7fr 64px;gap:10px;padding:8px 18px;align-items:center;border-bottom:1px solid #1c353c;font-size:15px"><div style="font-weight:600">GH</div><div style="height:36px;border-radius:8px;background:#0f2126;border:1px solid #2f525c;display:flex;align-items:center;padding:0 10px">4</div><div style="height:36px;border-radius:8px;background:#0f2126;border:1px solid #2f525c;display:flex;align-items:center;padding:0 10px">8</div><div style="color:#9fb4b8">dGH</div><div style="width:44px;height:26px;border-radius:13px;background:#4fc4bd;padding:3px;box-sizing:border-box;display:flex;justify-content:flex-end"><div style="width:20px;height:20px;border-radius:10px;background:#e6f0f0"></div></div></div>
+              <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr 0.7fr 64px;gap:10px;padding:8px 18px;align-items:center;border-bottom:1px solid #1c353c;font-size:15px"><div style="font-weight:600">KH</div><div style="height:36px;border-radius:8px;background:#0f2126;border:1px solid #2f525c;display:flex;align-items:center;padding:0 10px">2</div><div style="height:36px;border-radius:8px;background:#0f2126;border:1px solid #2f525c;display:flex;align-items:center;padding:0 10px">5</div><div style="color:#9fb4b8">dKH</div><div style="width:44px;height:26px;border-radius:13px;background:#4fc4bd;padding:3px;box-sizing:border-box;display:flex;justify-content:flex-end"><div style="width:20px;height:20px;border-radius:10px;background:#e6f0f0"></div></div></div>
+              <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr 0.7fr 64px;gap:10px;padding:8px 18px;align-items:center;border-bottom:1px solid #1c353c;font-size:15px"><div style="font-weight:600">Temperature</div><div style="height:36px;border-radius:8px;background:#0f2126;border:1px solid #2f525c;display:flex;align-items:center;padding:0 10px">74</div><div style="height:36px;border-radius:8px;background:#0f2126;border:1px solid #2f525c;display:flex;align-items:center;padding:0 10px">80</div><div style="color:#9fb4b8">°F</div><div style="width:44px;height:26px;border-radius:13px;background:#4fc4bd;padding:3px;box-sizing:border-box;display:flex;justify-content:flex-end"><div style="width:20px;height:20px;border-radius:10px;background:#e6f0f0"></div></div></div>
+              <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr 0.7fr 64px;gap:10px;padding:8px 18px;align-items:center;font-size:15px;opacity:0.55"><div style="font-weight:600">Phosphate</div><div style="color:#9fb4b8">—</div><div style="color:#9fb4b8">—</div><div style="color:#9fb4b8">ppm</div><div style="width:44px;height:26px;border-radius:13px;background:#2f525c;padding:3px;box-sizing:border-box;display:flex"><div style="width:20px;height:20px;border-radius:10px;background:#e6f0f0"></div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- D5 Tasks -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:14px;color:#9fb4b8">D5 · Tasks with edit pane</div>
+      <div data-screen-label="D5 Tasks" style="width:1280px;height:800px;border-radius:14px;background:#0c1a1f;border:1px solid #24414a;overflow:hidden;display:flex">
+        <dc-import name="Desktop Sidebar" active="Tasks" hint-size="232px,100%"></dc-import>
+        <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+          <div style="height:68px;padding:0 28px;border-bottom:1px solid #24414a;display:flex;align-items:center;gap:10px"><div style="font-size:22px;font-weight:600;flex:1">Tasks</div><div style="height:36px;padding:0 14px;border-radius:18px;background:#4fc4bd;color:#06201f;display:flex;align-items:center;font-size:14px;font-weight:700">All tanks</div><div style="height:36px;padding:0 14px;border-radius:18px;border:1px solid #2f525c;display:flex;align-items:center;font-size:14px">Riverbed 40</div><div style="height:36px;padding:0 14px;border-radius:18px;border:1px solid #2f525c;display:flex;align-items:center;font-size:14px">Reef 24</div><div style="width:1px;height:24px;background:#24414a;margin:0 6px"></div><div style="height:42px;padding:0 16px;border-radius:12px;border:1px solid #2f525c;display:flex;align-items:center;font-size:15px;font-weight:600">New task</div></div>
+          <div style="flex:1;display:grid;grid-template-columns:minmax(0,1fr) 400px;min-height:0">
+            <div style="padding:18px 28px;display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:13px;letter-spacing:0.06em;color:#f08a78;font-weight:600">✕ OVERDUE · 1</div>
+                <div style="border-radius:14px;background:#17363a;border:1px solid #4fc4bd;padding:9px 16px;display:grid;grid-template-columns:minmax(0,1fr) 140px 150px auto;gap:16px;align-items:center"><div style="display:flex;flex-direction:column;gap:3px"><div style="font-size:16px;font-weight:600">Water change 25%</div><div style="font-size:13px;color:#f08a78;font-weight:600">✕ Overdue 1 day</div></div><div style="font-size:14px;color:#b8cacd">Riverbed 40</div><div style="font-size:14px;color:#b8cacd">Every 7 days</div><div style="display:flex;gap:8px"><div style="height:38px;padding:0 14px;border-radius:10px;background:#4fc4bd;color:#06201f;display:flex;align-items:center;font-size:14px;font-weight:700">Mark done</div><div style="height:38px;padding:0 12px;border-radius:10px;border:1px solid #2f525c;display:flex;align-items:center;font-size:14px">Snooze</div></div></div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:13px;letter-spacing:0.06em;color:#e8c060;font-weight:600">▲ DUE SOON · 3</div>
+                <div style="border-radius:14px;background:#13262c;border:1px solid #24414a;display:flex;flex-direction:column">
+                  <div style="padding:9px 16px;display:grid;grid-template-columns:minmax(0,1fr) 140px 150px auto;gap:16px;align-items:center;border-bottom:1px solid #24414a"><div style="display:flex;flex-direction:column;gap:3px"><div style="font-size:16px;font-weight:600">Top off ATO reservoir</div><div style="font-size:13px;color:#e8c060;font-weight:600">▲ Due today</div></div><div style="font-size:14px;color:#b8cacd">Reef 24</div><div style="font-size:14px;color:#b8cacd">Every 5 days</div><div style="height:38px;padding:0 14px;border-radius:10px;background:#4fc4bd;color:#06201f;display:flex;align-items:center;font-size:14px;font-weight:700">Mark done</div></div>
+                  <div style="padding:9px 16px;display:grid;grid-template-columns:minmax(0,1fr) 140px 150px auto;gap:16px;align-items:center;border-bottom:1px solid #24414a"><div style="display:flex;flex-direction:column;gap:3px"><div style="font-size:16px;font-weight:600">Trim stem plants</div><div style="font-size:13px;color:#e8c060;font-weight:600">▲ Sat, Sep 27</div></div><div style="font-size:14px;color:#b8cacd">Riverbed 40</div><div style="font-size:14px;color:#b8cacd">Every 2 weeks</div><div style="height:38px;padding:0 14px;border-radius:10px;border:1px solid #2f525c;display:flex;align-items:center;font-size:14px;font-weight:600">Mark done</div></div>
+                  <div style="padding:9px 16px;display:grid;grid-template-columns:minmax(0,1fr) 140px 150px auto;gap:16px;align-items:center"><div style="display:flex;flex-direction:column;gap:3px"><div style="font-size:16px;font-weight:600">Empty skimmer cup</div><div style="font-size:13px;color:#e8c060;font-weight:600">▲ Sun, Sep 28</div></div><div style="font-size:14px;color:#b8cacd">Reef 24</div><div style="font-size:14px;color:#b8cacd">Every 7 days</div><div style="height:38px;padding:0 14px;border-radius:10px;border:1px solid #2f525c;display:flex;align-items:center;font-size:14px;font-weight:600">Mark done</div></div>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:13px;letter-spacing:0.06em;color:#9fb4b8;font-weight:600">LATER · 3</div>
+                <div style="border-radius:14px;background:#13262c;border:1px solid #24414a;display:flex;flex-direction:column">
+                  <div style="padding:9px 16px;display:grid;grid-template-columns:minmax(0,1fr) 140px 150px auto;gap:16px;align-items:center;border-bottom:1px solid #24414a"><div style="display:flex;flex-direction:column;gap:3px"><div style="font-size:16px;font-weight:600">Clean canister filter</div><div style="font-size:13px;color:#9fb4b8">Fri, Oct 3</div></div><div style="font-size:14px;color:#b8cacd">Riverbed 40</div><div style="font-size:14px;color:#b8cacd">Every 4 weeks</div><div style="height:38px;padding:0 14px;border-radius:10px;border:1px solid #2f525c;display:flex;align-items:center;font-size:14px;font-weight:600">Mark done</div></div>
+                  <div style="padding:9px 16px;display:grid;grid-template-columns:minmax(0,1fr) 140px 150px auto;gap:16px;align-items:center;border-bottom:1px solid #24414a"><div style="display:flex;flex-direction:column;gap:3px"><div style="font-size:16px;font-weight:600">Replace carbon</div><div style="font-size:13px;color:#9fb4b8">Sun, Oct 12</div></div><div style="font-size:14px;color:#b8cacd">Reef 24</div><div style="font-size:14px;color:#b8cacd">Every 30 days</div><div style="height:38px;padding:0 14px;border-radius:10px;border:1px solid #2f525c;display:flex;align-items:center;font-size:14px;font-weight:600">Mark done</div></div>
+                  <div style="padding:9px 16px;display:grid;grid-template-columns:minmax(0,1fr) 140px 150px auto;gap:16px;align-items:center"><div style="display:flex;flex-direction:column;gap:3px"><div style="font-size:16px;font-weight:600">Calibrate refractometer</div><div style="font-size:13px;color:#9fb4b8">Sat, Nov 1</div></div><div style="font-size:14px;color:#b8cacd">Reef 24</div><div style="font-size:14px;color:#b8cacd">One-off</div><div style="height:38px;padding:0 14px;border-radius:10px;border:1px solid #2f525c;display:flex;align-items:center;font-size:14px;font-weight:600">Mark done</div></div>
+                </div>
+              </div>
+            </div>
+            <div style="border-left:1px solid #24414a;background:#0f2126;padding:22px;display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:18px;font-weight:600">Edit task</div><div style="font-size:15px;color:#9fb4b8">✕</div></div>
+              <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;color:#9fb4b8">Task</div><div style="height:44px;border-radius:10px;background:#13262c;border:1px solid #24414a;padding:0 12px;display:flex;align-items:center;font-size:15px">Water change 25%</div></div>
+              <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;color:#9fb4b8">Tank</div><div style="height:44px;border-radius:10px;background:#13262c;border:1px solid #24414a;padding:0 12px;display:flex;align-items:center;justify-content:space-between;font-size:15px">Riverbed 40<span style="color:#9fb4b8">▾</span></div></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:12px;background:#13262c;border:1px solid #24414a"><div style="height:36px;border-radius:8px;background:#24414a;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600">Recurring</div><div style="height:36px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#9fb4b8">One-off</div></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;color:#9fb4b8">Every</div><div style="height:44px;border-radius:10px;background:#13262c;border:1px solid #24414a;padding:0 12px;display:flex;align-items:center;justify-content:space-between;font-size:15px">7<span style="color:#9fb4b8;font-size:13px">days ▾</span></div></div><div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;color:#9fb4b8">Next due</div><div style="height:44px;border-radius:10px;background:#13262c;border:1px solid #24414a;padding:0 12px;display:flex;align-items:center;font-size:15px">Sep 24</div></div></div>
+              <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:13px;color:#9fb4b8">Counts from</div>
+                <div style="display:flex;gap:10px;align-items:flex-start"><div style="width:20px;height:20px;border-radius:10px;border:6px solid #4fc4bd;box-sizing:border-box;flex-shrink:0"></div><div style="display:flex;flex-direction:column;gap:2px"><div style="font-size:14px;font-weight:600">Completion</div><div style="font-size:12px;color:#9fb4b8">Next due 7 days after it's done</div></div></div>
+                <div style="display:flex;gap:10px;align-items:flex-start"><div style="width:20px;height:20px;border-radius:10px;border:2px solid #2f525c;box-sizing:border-box;flex-shrink:0"></div><div style="display:flex;flex-direction:column;gap:2px"><div style="font-size:14px;font-weight:600">Fixed calendar</div><div style="font-size:12px;color:#9fb4b8">Stays on the same weekday</div></div></div>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center"><div style="width:22px;height:22px;border-radius:6px;background:#4fc4bd;color:#06201f;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">✓</div><div style="font-size:14px">Open the water change form when marked done</div></div>
+              <div style="flex:1"></div>
+              <div style="display:flex;gap:10px"><div style="height:44px;padding:0 14px;border-radius:10px;color:#f08a78;display:flex;align-items:center;font-size:14px;font-weight:600">Delete</div><div style="flex:1"></div><div style="height:44px;padding:0 18px;border-radius:10px;background:#4fc4bd;color:#06201f;display:flex;align-items:center;font-size:15px;font-weight:700">Save</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- D6 History -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:14px;color:#9fb4b8">D6 · History with detail pane</div>
+      <div data-screen-label="D6 History" style="width:1280px;height:800px;border-radius:14px;background:#0c1a1f;border:1px solid #24414a;overflow:hidden;display:flex">
+        <dc-import name="Desktop Sidebar" active="History" hint-size="232px,100%"></dc-import>
+        <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+          <div style="height:68px;padding:0 28px;border-bottom:1px solid #24414a;display:flex;align-items:center;gap:12px"><div style="font-size:22px;font-weight:600">History</div><div style="font-size:15px;color:#9fb4b8;flex:1">Riverbed 40 ▾</div><div style="height:40px;padding:0 14px;border-radius:10px;border:1px solid #2f525c;display:flex;align-items:center;font-size:14px">Last 30 days ▾</div><div style="height:42px;padding:0 16px;border-radius:12px;background:#4fc4bd;color:#06201f;display:flex;align-items:center;font-size:15px;font-weight:700">+ Quick add</div></div>
+          <div style="flex:1;display:grid;grid-template-columns:200px minmax(0,1fr) 380px;min-height:0">
+            <div style="padding:20px 16px;display:flex;flex-direction:column;gap:4px;border-right:1px solid #24414a">
+              <div style="font-size:12px;letter-spacing:0.08em;color:#7d9397;padding:0 8px 8px">CATEGORY</div>
+              <div style="height:38px;padding:0 10px;border-radius:8px;background:#17363a;display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:600">All<span style="color:#9fb4b8;font-weight:400">9</span></div>
+              <div style="height:38px;padding:0 10px;border-radius:8px;display:flex;align-items:center;justify-content:space-between;font-size:14px;color:#b8cacd">Water tests<span style="color:#7d9397">4</span></div>
+              <div style="height:38px;padding:0 10px;border-radius:8px;display:flex;align-items:center;justify-content:space-between;font-size:14px;color:#b8cacd">Water changes<span style="color:#7d9397">2</span></div>
+              <div style="height:38px;padding:0 10px;border-radius:8px;display:flex;align-items:center;justify-content:space-between;font-size:14px;color:#b8cacd">Dosing<span style="color:#7d9397">1</span></div>
+              <div style="height:38px;padding:0 10px;border-radius:8px;display:flex;align-items:center;justify-content:space-between;font-size:14px;color:#b8cacd">Maintenance<span style="color:#7d9397">1</span></div>
+              <div style="height:38px;padding:0 10px;border-radius:8px;display:flex;align-items:center;justify-content:space-between;font-size:14px;color:#b8cacd">Livestock / plants<span style="color:#7d9397">1</span></div>
+              <div style="height:38px;padding:0 10px;border-radius:8px;display:flex;align-items:center;justify-content:space-between;font-size:14px;color:#b8cacd">Equipment<span style="color:#7d9397">0</span></div>
+              <div style="height:38px;padding:0 10px;border-radius:8px;display:flex;align-items:center;justify-content:space-between;font-size:14px;color:#b8cacd">Observations<span style="color:#7d9397">0</span></div>
+            </div>
+            <div style="padding:20px 24px;display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:12px;font-weight:600;color:#9fb4b8;letter-spacing:0.06em">TODAY · THU SEP 25</div>
+                <div style="border-radius:12px;background:#17363a;border:1px solid #4fc4bd;padding:10px 12px;display:flex;gap:12px;align-items:center"><div style="width:36px;height:36px;border-radius:10px;background:#0f2126;display:flex;align-items:center;justify-content:center"><div style="width:12px;height:12px;border-radius:6px;border:2px solid #4fc4bd"></div></div><div style="flex:1;display:flex;flex-direction:column;gap:2px"><div style="font-size:15px;font-weight:600">Water test · 7 readings</div><div style="font-size:13px;color:#9fb4b8">8:12 AM · <span style="color:#f08a78;font-weight:600">✕ Nitrate 35</span></div></div></div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:12px;font-weight:600;color:#9fb4b8;letter-spacing:0.06em">MON SEP 22</div>
+                <div style="border-radius:12px;background:#13262c;border:1px solid #24414a;padding:10px 12px;display:flex;gap:12px;align-items:center"><div style="width:36px;height:36px;border-radius:10px;background:#17363a;display:flex;align-items:center;justify-content:center;gap:2px"><div style="width:8px;height:8px;border-radius:4px;background:#4fc4bd"></div><div style="width:5px;height:5px;border-radius:3px;background:#4fc4bd;margin-top:-6px"></div></div><div style="flex:1;display:flex;flex-direction:column;gap:2px"><div style="font-size:15px;font-weight:600">New Rotala cuttings</div><div style="font-size:13px;color:#9fb4b8">6:40 PM · Plant change</div></div><div style="width:40px;height:40px;border-radius:8px;background:repeating-linear-gradient(135deg,#1a3138 0 5px,#152a30 5px 10px)"></div></div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:12px;font-weight:600;color:#9fb4b8;letter-spacing:0.06em">SUN SEP 21</div>
+                <div style="border-radius:12px;background:#13262c;border:1px solid #24414a;padding:10px 12px;display:flex;gap:12px;align-items:center"><div style="width:36px;height:36px;border-radius:10px;background:#17363a;display:flex;align-items:center;justify-content:center"><div style="width:7px;height:16px;border-radius:4px;border:2px solid #4fc4bd;box-sizing:border-box"></div></div><div style="flex:1;display:flex;flex-direction:column;gap:2px"><div style="font-size:15px;font-weight:600">Dosed fertilizer · 5 mL</div><div style="font-size:13px;color:#9fb4b8">9:00 AM · Dosing</div></div></div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:12px;font-weight:600;color:#9fb4b8;letter-spacing:0.06em">WED SEP 17</div>
+                <div style="border-radius:12px;background:#13262c;border:1px solid #24414a;display:flex;flex-direction:column">
+                  <div style="padding:10px 12px;display:flex;gap:12px;align-items:center;border-bottom:1px solid #24414a"><div style="width:36px;height:36px;border-radius:10px;background:#17363a;display:flex;align-items:center;justify-content:center"><div style="width:14px;height:7px;border-top:2px solid #4fc4bd;border-bottom:2px solid #4fc4bd"></div></div><div style="flex:1;display:flex;flex-direction:column;gap:2px"><div style="font-size:15px;font-weight:600">Water change · 30% · RODI</div><div style="font-size:13px;color:#9fb4b8">7:15 PM</div></div></div>
+                  <div style="padding:10px 12px;display:flex;gap:12px;align-items:center"><div style="width:36px;height:36px;border-radius:10px;background:#17363a;display:flex;align-items:center;justify-content:center"><div style="width:12px;height:12px;border-radius:6px;border:2px solid #4fc4bd"></div></div><div style="flex:1;display:flex;flex-direction:column;gap:2px"><div style="font-size:15px;font-weight:600">Water test · 4 readings</div><div style="font-size:13px;color:#9fb4b8">6:50 PM · before water change</div></div></div>
+                </div>
+              </div>
+            </div>
+            <div style="border-left:1px solid #24414a;background:#0f2126;padding:22px;display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;flex-direction:column;gap:4px"><div style="font-size:20px;font-weight:600">Water test · 7 readings</div><div style="font-size:14px;color:#9fb4b8">Thu Sep 25, 8:12 AM · Riverbed 40</div></div>
+              <div style="border-radius:14px;background:#13262c;border:1px solid #24414a;display:flex;flex-direction:column">
+                <div style="padding:10px 14px;display:flex;gap:10px;border-bottom:1px solid #24414a;font-size:15px"><div style="flex:1;color:#9fb4b8">pH</div><div style="font-weight:600">6.8</div><div style="width:92px;text-align:right;font-size:13px;color:#6fd39a;font-weight:600">✓ In range</div></div>
+                <div style="padding:10px 14px;display:flex;gap:10px;border-bottom:1px solid #24414a;font-size:15px"><div style="flex:1;color:#9fb4b8">Ammonia</div><div style="font-weight:600">0 ppm</div><div style="width:92px;text-align:right;font-size:13px;color:#6fd39a;font-weight:600">✓ In range</div></div>
+                <div style="padding:10px 14px;display:flex;gap:10px;border-bottom:1px solid #24414a;font-size:15px"><div style="flex:1;color:#9fb4b8">Nitrite</div><div style="font-weight:600">0 ppm</div><div style="width:92px;text-align:right;font-size:13px;color:#6fd39a;font-weight:600">✓ In range</div></div>
+                <div style="padding:10px 14px;display:flex;gap:10px;border-bottom:1px solid #24414a;font-size:15px;background:#3f201c"><div style="flex:1;color:#f5b6aa">Nitrate</div><div style="font-weight:600">35 ppm</div><div style="width:92px;text-align:right;font-size:13px;color:#f08a78;font-weight:600">✕ High</div></div>
+                <div style="padding:10px 14px;display:flex;gap:10px;border-bottom:1px solid #24414a;font-size:15px"><div style="flex:1;color:#9fb4b8">GH</div><div style="font-weight:600">6 dGH</div><div style="width:92px;text-align:right;font-size:13px;color:#6fd39a;font-weight:600">✓ In range</div></div>
+                <div style="padding:10px 14px;display:flex;gap:10px;border-bottom:1px solid #24414a;font-size:15px"><div style="flex:1;color:#9fb4b8">KH</div><div style="font-weight:600">2 dKH</div><div style="width:92px;text-align:right;font-size:13px;color:#e8c060;font-weight:600">▲ Near limit</div></div>
+                <div style="padding:10px 14px;display:flex;gap:10px;font-size:15px"><div style="flex:1;color:#9fb4b8">Temperature</div><div style="font-weight:600">77 °F</div><div style="width:92px;text-align:right;font-size:13px;color:#6fd39a;font-weight:600">✓ In range</div></div>
+              </div>
+              <div style="flex:1"></div>
+              <div style="display:flex;gap:10px"><div style="flex:1;height:44px;border-radius:10px;border:1px solid #2f525c;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600">Edit</div><div style="flex:1;height:44px;border-radius:10px;border:1px solid #6b3129;color:#f08a78;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600">Delete</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- D7 Photos -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:14px;color:#9fb4b8">D7 · Photos</div>
+      <div data-screen-label="D7 Photos" style="width:1280px;height:800px;border-radius:14px;background:#0c1a1f;border:1px solid #24414a;overflow:hidden;display:flex">
+        <dc-import name="Desktop Sidebar" active="Photos" hint-size="232px,100%"></dc-import>
+        <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+          <div style="height:68px;padding:0 28px;border-bottom:1px solid #24414a;display:flex;align-items:center;gap:12px"><div style="font-size:22px;font-weight:600">Photos</div><div style="font-size:15px;color:#9fb4b8;flex:1">Riverbed 40 ▾</div><div style="height:42px;padding:0 16px;border-radius:12px;border:1px solid #2f525c;display:flex;align-items:center;font-size:15px;font-weight:600">Upload</div></div>
+          <div style="padding:22px 28px;display:flex;flex-direction:column;gap:20px">
+            <div style="display:flex;flex-direction:column;gap:10px"><div style="font-size:16px;font-weight:600">September 2026 <span style="color:#9fb4b8;font-weight:400;font-size:14px">· 5</span></div>
+              <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px">
+                <div style="aspect-ratio:1;border-radius:10px;background:repeating-linear-gradient(135deg,#1a3138 0 6px,#152a30 6px 12px);outline:2px solid #4fc4bd;outline-offset:2px;position:relative"><div style="position:absolute;left:8px;bottom:8px;font-size:12px;font-weight:600;background:rgba(12,26,31,0.85);padding:2px 7px;border-radius:5px">Sep 22</div></div>
+                <div style="aspect-ratio:1;border-radius:10px;background:repeating-linear-gradient(135deg,#1a3138 0 6px,#152a30 6px 12px);position:relative"><div style="position:absolute;left:8px;bottom:8px;font-size:12px;font-weight:600;background:rgba(12,26,31,0.85);padding:2px 7px;border-radius:5px">Sep 22</div></div>
+                <div style="aspect-ratio:1;border-radius:10px;background:repeating-linear-gradient(135deg,#1a3138 0 6px,#152a30 6px 12px);position:relative"><div style="position:absolute;left:8px;bottom:8px;font-size:12px;font-weight:600;background:rgba(12,26,31,0.85);padding:2px 7px;border-radius:5px">Sep 17</div></div>
+                <div style="aspect-ratio:1;border-radius:10px;background:repeating-linear-gradient(135deg,#1a3138 0 6px,#152a30 6px 12px);position:relative"><div style="position:absolute;left:8px;bottom:8px;font-size:12px;font-weight:600;background:rgba(12,26,31,0.85);padding:2px 7px;border-radius:5px">Sep 10</div></div>
+                <div style="aspect-ratio:1;border-radius:10px;background:repeating-linear-gradient(135deg,#1a3138 0 6px,#152a30 6px 12px);position:relative"><div style="position:absolute;left:8px;bottom:8px;font-size:12px;font-weight:600;background:rgba(12,26,31,0.85);padding:2px 7px;border-radius:5px">Sep 3</div></div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px"><div style="font-size:16px;font-weight:600">August 2026 <span style="color:#9fb4b8;font-weight:400;font-size:14px">· 6</span></div>
+              <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px">
+                <div style="aspect-ratio:1;border-radius:10px;background:repeating-linear-gradient(135deg,#1a3138 0 6px,#152a30 6px 12px)"></div><div style="aspect-ratio:1;border-radius:10px;background:repeating-linear-gradient(135deg,#1a3138 0 6px,#152a30 6px 12px)"></div><div style="aspect-ratio:1;border-radius:10px;background:repeating-linear-gradient(135deg,#1a3138 0 6px,#152a30 6px 12px)"></div><div style="aspect-ratio:1;border-radius:10px;background:repeating-linear-gradient(135deg,#1a3138 0 6px,#152a30 6px 12px)"></div><div style="aspect-ratio:1;border-radius:10px;background:repeating-linear-gradient(135deg,#1a3138 0 6px,#152a30 6px 12px)"></div><div style="aspect-ratio:1;border-radius:10px;background:repeating-linear-gradient(135deg,#1a3138 0 6px,#152a30 6px 12px)"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- D8 Photo viewer -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:14px;color:#9fb4b8">D8 · Photo viewer (lightbox)</div>
+      <div data-screen-label="D8 Photo viewer" style="width:1280px;height:800px;border-radius:14px;background:#030809;border:1px solid #24414a;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr) 340px">
+        <div style="position:relative;display:flex;align-items:center;justify-content:center;padding:48px">
+          <div style="width:100%;aspect-ratio:4/3;max-height:100%;background:repeating-linear-gradient(135deg,#132328 0 8px,#0f1d21 8px 16px);display:flex;align-items:center;justify-content:center;font-family:ui-monospace,Menlo,monospace;font-size:13px;color:#7d9397">full-size tank photo</div>
+          <div style="position:absolute;left:20px;top:50%;width:48px;height:48px;border-radius:24px;background:#13262c;border:1px solid #2f525c;display:flex;align-items:center;justify-content:center;font-size:20px;color:#b8cacd;transform:translateY(-50%)">‹</div>
+          <div style="position:absolute;right:20px;top:50%;width:48px;height:48px;border-radius:24px;background:#13262c;border:1px solid #2f525c;display:flex;align-items:center;justify-content:center;font-size:20px;color:#b8cacd;transform:translateY(-50%)">›</div>
+        </div>
+        <div style="background:#0f2126;border-left:1px solid #24414a;padding:24px;display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:14px;color:#9fb4b8">2 of 11</div><div style="width:40px;height:40px;border-radius:20px;background:#13262c;display:flex;align-items:center;justify-content:center;color:#9fb4b8">✕</div></div>
+          <div style="font-size:13px;color:#9fb4b8">Mon Sep 22, 6:40 PM · Plant change</div>
+          <div style="font-size:20px;font-weight:600">New Rotala cuttings planted</div>
+          <div style="font-size:15px;line-height:1.5;color:#b8cacd">Replanted tops in the back left and trimmed the old stems.</div>
+          <div style="font-size:15px;color:#4fc4bd;font-weight:600">View entry ›</div>
+          <div style="flex:1"></div>
+          <div style="border-radius:14px;background:#13262c;border:1px solid #4fc4bd;padding:14px;display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:15px;font-weight:600">Public link</div><div style="width:44px;height:26px;border-radius:13px;background:#4fc4bd;padding:3px;box-sizing:border-box;display:flex;justify-content:flex-end"><div style="width:20px;height:20px;border-radius:10px;background:#e6f0f0"></div></div></div>
+            <div style="display:flex;gap:8px"><div style="flex:1;min-width:0;height:38px;border-radius:8px;background:#0c1a1f;border:1px solid #2f525c;padding:0 10px;display:flex;align-items:center;font-size:12px;font-family:ui-monospace,Menlo,monospace;color:#b8cacd;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">tanks.reyes.home/s/k7Qm2x</div><div style="height:38px;padding:0 12px;border-radius:8px;background:#4fc4bd;color:#06201f;display:flex;align-items:center;font-size:13px;font-weight:700">Copy</div></div>
+            <div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;gap:8px;align-items:center;font-size:13px"><div style="width:18px;height:18px;border-radius:5px;background:#4fc4bd;color:#06201f;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">✓</div>Include note and date</div><div style="display:flex;gap:8px;align-items:center;font-size:13px;color:#b8cacd"><div style="width:18px;height:18px;border-radius:5px;border:1.5px solid #2f525c;box-sizing:border-box"></div>Include tank name</div></div>
+            <div style="font-size:12px;line-height:1.5;color:#9fb4b8">Anyone with the link can view this photo. There's no sign-in, and readings and other entries stay private. Turn the link off to revoke it.</div>
+          </div>
+          <div style="display:flex;gap:10px"><div style="flex:1;height:42px;border-radius:10px;border:1px solid #2f525c;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600">Download</div><div style="flex:1;height:42px;border-radius:10px;border:1px solid #2f525c;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600">Set as cover</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- D9 Settings -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:14px;color:#9fb4b8">D9 · Settings · Notifications</div>
+      <div data-screen-label="D9 Settings" style="width:1280px;height:800px;border-radius:14px;background:#0c1a1f;border:1px solid #24414a;overflow:hidden;display:flex">
+        <dc-import name="Desktop Sidebar" active="Settings" hint-size="232px,100%"></dc-import>
+        <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+          <div style="height:68px;padding:0 28px;border-bottom:1px solid #24414a;display:flex;align-items:center"><div style="font-size:22px;font-weight:600">Settings</div></div>
+          <div style="flex:1;display:grid;grid-template-columns:220px minmax(0,1fr);min-height:0">
+            <div style="padding:20px 14px;display:flex;flex-direction:column;gap:2px;border-right:1px solid #24414a">
+              <div style="height:40px;padding:0 12px;border-radius:10px;display:flex;align-items:center;font-size:15px;color:#b8cacd">Profile</div>
+              <div style="height:40px;padding:0 12px;border-radius:10px;display:flex;align-items:center;font-size:15px;color:#b8cacd">Units</div>
+              <div style="height:40px;padding:0 12px;border-radius:10px;background:#17363a;color:#4fc4bd;display:flex;align-items:center;font-size:15px;font-weight:600">Notifications</div>
+              <div style="height:40px;padding:0 12px;border-radius:10px;display:flex;align-items:center;font-size:15px;color:#b8cacd">Theme</div>
+              <div style="height:40px;padding:0 12px;border-radius:10px;display:flex;align-items:center;font-size:15px;color:#b8cacd">Export</div>
+              <div style="height:40px;padding:0 12px;border-radius:10px;display:flex;align-items:center;justify-content:space-between;font-size:15px;color:#b8cacd">Server<span style="font-size:10px;font-weight:700;padding:2px 5px;border-radius:4px;border:1px solid #2f525c;color:#9fb4b8">ADMIN</span></div>
+              <div style="flex:1"></div>
+              <div style="height:40px;padding:0 12px;border-radius:10px;display:flex;align-items:center;font-size:15px;color:#f08a78;font-weight:600">Sign out</div>
+            </div>
+            <div style="padding:28px 36px;display:flex;flex-direction:column;gap:22px;max-width:720px">
+              <div style="display:flex;flex-direction:column;gap:4px"><div style="font-size:22px;font-weight:600">Notifications</div><div style="font-size:14px;color:#9fb4b8">Sent to jordan@gmail.com · <span style="color:#4fc4bd;font-weight:600">Change</span></div></div>
+              <div style="border-radius:16px;background:#13262c;border:1px solid #24414a;display:flex;flex-direction:column">
+                <div style="padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #24414a"><div style="display:flex;flex-direction:column;gap:2px"><div style="font-size:16px">Task reminders</div><div style="font-size:13px;color:#9fb4b8">Before a task is due</div></div><div style="width:52px;height:32px;border-radius:16px;background:#4fc4bd;padding:3px;box-sizing:border-box;display:flex;justify-content:flex-end"><div style="width:26px;height:26px;border-radius:13px;background:#e6f0f0"></div></div></div>
+                <div style="padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #24414a"><div style="display:flex;flex-direction:column;gap:2px"><div style="font-size:16px">Overdue alerts</div><div style="font-size:13px;color:#9fb4b8">When a task passes its due date</div></div><div style="width:52px;height:32px;border-radius:16px;background:#4fc4bd;padding:3px;box-sizing:border-box;display:flex;justify-content:flex-end"><div style="width:26px;height:26px;border-radius:13px;background:#e6f0f0"></div></div></div>
+                <div style="padding:14px 18px;display:flex;justify-content:space-between;align-items:center"><div style="display:flex;flex-direction:column;gap:2px"><div style="font-size:16px">Out-of-range alerts</div><div style="font-size:13px;color:#9fb4b8">When a logged reading is outside its target</div></div><div style="width:52px;height:32px;border-radius:16px;background:#2f525c;padding:3px;box-sizing:border-box;display:flex"><div style="width:26px;height:26px;border-radius:13px;background:#e6f0f0"></div></div></div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+                <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;color:#9fb4b8">Delivery</div><div style="height:44px;border-radius:10px;background:#13262c;border:1px solid #24414a;padding:0 12px;display:flex;align-items:center;justify-content:space-between;font-size:15px">Daily digest<span style="color:#9fb4b8">▾</span></div></div>
+                <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;color:#9fb4b8">Remind me</div><div style="height:44px;border-radius:10px;background:#13262c;border:1px solid #24414a;padding:0 12px;display:flex;align-items:center;justify-content:space-between;font-size:15px">1 day before<span style="color:#9fb4b8">▾</span></div></div>
+                <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;color:#9fb4b8">Send at</div><div style="height:44px;border-radius:10px;background:#13262c;border:1px solid #24414a;padding:0 12px;display:flex;align-items:center;justify-content:space-between;font-size:15px">7:00 AM<span style="color:#9fb4b8">▾</span></div></div>
+              </div>
+              <div style="font-size:13px;color:#7d9397">Every email includes a link back to these settings and a one-click unsubscribe.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- D10 Export ready -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:14px;color:#9fb4b8">D10 · Settings · Export (ready)</div>
+      <div data-screen-label="D10 Export" style="width:1280px;height:800px;border-radius:14px;background:#0c1a1f;border:1px solid #24414a;overflow:hidden;display:flex">
+        <dc-import name="Desktop Sidebar" active="Settings" hint-size="232px,100%"></dc-import>
+        <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+          <div style="height:68px;padding:0 28px;border-bottom:1px solid #24414a;display:flex;align-items:center"><div style="font-size:22px;font-weight:600">Settings</div></div>
+          <div style="flex:1;display:grid;grid-template-columns:220px minmax(0,1fr);min-height:0">
+            <div style="padding:20px 14px;display:flex;flex-direction:column;gap:2px;border-right:1px solid #24414a">
+              <div style="height:40px;padding:0 12px;display:flex;align-items:center;font-size:15px;color:#b8cacd">Profile</div>
+              <div style="height:40px;padding:0 12px;display:flex;align-items:center;font-size:15px;color:#b8cacd">Units</div>
+              <div style="height:40px;padding:0 12px;display:flex;align-items:center;font-size:15px;color:#b8cacd">Notifications</div>
+              <div style="height:40px;padding:0 12px;display:flex;align-items:center;font-size:15px;color:#b8cacd">Theme</div>
+              <div style="height:40px;padding:0 12px;border-radius:10px;background:#17363a;color:#4fc4bd;display:flex;align-items:center;font-size:15px;font-weight:600">Export</div>
+              <div style="height:40px;padding:0 12px;display:flex;align-items:center;justify-content:space-between;font-size:15px;color:#b8cacd">Server<span style="font-size:10px;font-weight:700;padding:2px 5px;border-radius:4px;border:1px solid #2f525c;color:#9fb4b8">ADMIN</span></div>
+            </div>
+            <div style="padding:28px 36px;display:flex;flex-direction:column;gap:22px;max-width:720px">
+              <div style="display:flex;flex-direction:column;gap:4px"><div style="font-size:22px;font-weight:600">Export data</div><div style="font-size:14px;color:#9fb4b8">Take everything with you. Nothing is deleted.</div></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+                <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;color:#9fb4b8">Scope</div><div style="height:44px;border-radius:10px;background:#13262c;border:1px solid #24414a;padding:0 12px;display:flex;align-items:center;justify-content:space-between;font-size:15px">Whole account (2 tanks)<span style="color:#9fb4b8">▾</span></div></div>
+                <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;color:#9fb4b8">Format</div><div style="height:44px;border-radius:10px;background:#13262c;border:1px solid #24414a;padding:0 12px;display:flex;align-items:center;justify-content:space-between;font-size:15px">Full backup · ZIP<span style="color:#9fb4b8">▾</span></div></div>
+              </div>
+              <div style="border-radius:16px;background:#143a2c;border:1px solid #1f5a40;padding:20px;display:flex;align-items:center;gap:16px">
+                <div style="flex:1;display:flex;flex-direction:column;gap:4px"><div style="font-size:16px;font-weight:700;color:#9fe5bb">✓ Backup ready</div><div style="font-size:14px;color:#c7efd6">waterline-backup-2026-09-25.zip · 48.2 MB · 190 photos, 212 entries</div><div style="font-size:13px;color:#9fe5bb">Link expires in 24 hours</div></div>
+                <div style="height:48px;padding:0 22px;border-radius:12px;background:#6fd39a;color:#06201f;display:flex;align-items:center;font-size:16px;font-weight:700">Download</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:13px;color:#9fb4b8">Recent exports</div>
+                <div style="border-radius:14px;background:#13262c;border:1px solid #24414a;display:flex;flex-direction:column">
+                  <div style="padding:12px 16px;display:flex;justify-content:space-between;font-size:14px;border-bottom:1px solid #24414a"><div>Water tests CSV · Riverbed 40</div><div style="color:#9fb4b8">Aug 30 · expired</div></div>
+                  <div style="padding:12px 16px;display:flex;justify-content:space-between;font-size:14px"><div>Full backup · whole account</div><div style="color:#9fb4b8">Jun 2 · expired</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- D11 Admin -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:14px;color:#9fb4b8">D11 · Settings · Server (admin)</div>
+      <div data-screen-label="D11 Admin" style="width:1280px;height:800px;border-radius:14px;background:#0c1a1f;border:1px solid #24414a;overflow:hidden;display:flex">
+        <dc-import name="Desktop Sidebar" active="Settings" hint-size="232px,100%"></dc-import>
+        <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+          <div style="height:68px;padding:0 28px;border-bottom:1px solid #24414a;display:flex;align-items:center"><div style="font-size:22px;font-weight:600">Settings</div></div>
+          <div style="flex:1;display:grid;grid-template-columns:220px minmax(0,1fr);min-height:0">
+            <div style="padding:20px 14px;display:flex;flex-direction:column;gap:2px;border-right:1px solid #24414a">
+              <div style="height:40px;padding:0 12px;display:flex;align-items:center;font-size:15px;color:#b8cacd">Profile</div>
+              <div style="height:40px;padding:0 12px;display:flex;align-items:center;font-size:15px;color:#b8cacd">Units</div>
+              <div style="height:40px;padding:0 12px;display:flex;align-items:center;font-size:15px;color:#b8cacd">Notifications</div>
+              <div style="height:40px;padding:0 12px;display:flex;align-items:center;font-size:15px;color:#b8cacd">Theme</div>
+              <div style="height:40px;padding:0 12px;display:flex;align-items:center;font-size:15px;color:#b8cacd">Export</div>
+              <div style="height:40px;padding:0 12px;border-radius:10px;background:#17363a;color:#4fc4bd;display:flex;align-items:center;justify-content:space-between;font-size:15px;font-weight:600">Server<span style="font-size:10px;font-weight:700;padding:2px 5px;border-radius:4px;border:1px solid #4fc4bd">ADMIN</span></div>
+            </div>
+            <div style="padding:24px 36px;display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:28px">
+              <div style="display:flex;flex-direction:column;gap:16px">
+                <div style="display:flex;flex-direction:column;gap:4px"><div style="font-size:22px;font-weight:600">Email delivery</div><div style="font-size:14px;color:#9fb4b8">Used for reminders, alerts and digests for everyone on this server.</div></div>
+                <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:4px;padding:4px;border-radius:12px;background:#13262c;border:1px solid #24414a;max-width:360px"><div style="height:36px;border-radius:8px;background:#24414a;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600">Mailgun</div><div style="height:36px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#9fb4b8">Custom SMTP</div></div>
+                <div style="font-size:13px;color:#7d9397;margin-top:-6px">Custom SMTP works with any provider or your own mail server (host, port, TLS, username, password).</div>
+                <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;color:#9fb4b8">API key</div><div style="height:44px;border-radius:10px;background:#13262c;border:1px solid #24414a;padding:0 12px;display:flex;align-items:center;justify-content:space-between;font-size:14px;"><span style="letter-spacing:3px">key-••••••••••••••••</span><span style="color:#4fc4bd;font-weight:600;font-family:Helvetica Neue,Helvetica,Arial,sans-serif">Show</span></div></div>
+                <div style="display:grid;grid-template-columns:1fr 150px;gap:12px">
+                  <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;color:#9fb4b8">Sending domain</div><div style="height:44px;border-radius:10px;background:#13262c;border:1px solid #24414a;padding:0 12px;display:flex;align-items:center;justify-content:space-between;font-size:14px;font-family:ui-monospace,Menlo,monospace">mg.reyes.home</div></div>
+                  <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;color:#9fb4b8">Region</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:10px;background:#13262c;border:1px solid #24414a;height:44px;box-sizing:border-box"><div style="border-radius:7px;background:#24414a;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600">US</div><div style="display:flex;align-items:center;justify-content:center;font-size:14px;color:#9fb4b8">EU</div></div></div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;color:#9fb4b8">Sender</div><div style="height:44px;border-radius:10px;background:#13262c;border:1px solid #24414a;padding:0 12px;display:flex;align-items:center;justify-content:space-between;font-size:14px;font-family:ui-monospace,Menlo,monospace">Waterline &lt;tanks@mg.reyes.home&gt;</div></div>
+                <div style="display:flex;gap:10px;align-items:center"><div style="height:44px;padding:0 18px;border-radius:10px;border:1px solid #2f525c;display:flex;align-items:center;font-size:15px;font-weight:600">Send test email</div><div style="height:44px;padding:0 18px;border-radius:10px;background:#4fc4bd;color:#06201f;display:flex;align-items:center;font-size:15px;font-weight:700">Save</div><div style="font-size:14px;color:#6fd39a;font-weight:600">✓ Sent via Mailgun to jordan@gmail.com</div></div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:14px">
+                <div style="font-size:15px;font-weight:600">Sign-in</div>
+                <div style="border-radius:14px;background:#13262c;border:1px solid #24414a;padding:14px;display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;font-size:15px"><div>Google sign-in</div><div style="color:#6fd39a;font-weight:600;font-size:13px">✓ Configured</div></div><div style="font-size:12px;color:#7d9397;font-family:ui-monospace,Menlo,monospace">client …a91f.apps.googleusercontent.com</div><div style="font-size:12px;color:#7d9397">Set via environment variables</div></div>
+                <div style="border-radius:14px;background:#13262c;border:1px solid #24414a;padding:14px;display:flex;justify-content:space-between;align-items:center"><div style="display:flex;flex-direction:column;gap:3px"><div style="font-size:15px">Local admin login</div><div style="font-size:12px;color:#7d9397">Fallback if Google sign-in fails</div></div><div style="width:48px;height:28px;border-radius:14px;background:#4fc4bd;padding:3px;box-sizing:border-box;display:flex;justify-content:flex-end"><div style="width:22px;height:22px;border-radius:11px;background:#e6f0f0"></div></div></div>
+                <div style="border-radius:14px;background:#13262c;border:1px solid #24414a;padding:14px;display:flex;justify-content:space-between;align-items:center"><div style="display:flex;flex-direction:column;gap:3px"><div style="font-size:15px">Public share links</div><div style="font-size:12px;color:#7d9397">Let users share photos with a link. Needs a public URL.</div></div><div style="width:48px;height:28px;border-radius:14px;background:#4fc4bd;padding:3px;box-sizing:border-box;display:flex;justify-content:flex-end"><div style="width:22px;height:22px;border-radius:11px;background:#e6f0f0"></div></div></div>
+                <div style="font-size:15px;font-weight:600;padding-top:6px">Server</div>
+                <div style="border-radius:14px;background:#13262c;border:1px solid #24414a;padding:14px;font-size:13px;line-height:1.8;color:#b8cacd;font-family:ui-monospace,Menlo,monospace">version&nbsp;&nbsp;1.0.0<br>data&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/data · 312 MB<br>users&nbsp;&nbsp;&nbsp;&nbsp;2</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- D12 Quick add modal -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:14px;color:#9fb4b8">D12 · Quick-add modal</div>
+      <div data-screen-label="D12 Quick add" style="width:1280px;height:800px;border-radius:14px;background:#0c1a1f;border:1px solid #24414a;overflow:hidden;display:flex;position:relative">
+        <dc-import name="Desktop Sidebar" active="Dashboard" hint-size="232px,100%"></dc-import>
+        <div style="flex:1;padding:96px 28px 28px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-content:start;opacity:0.5"><div style="height:110px;border-radius:14px;background:#13262c"></div><div style="height:110px;border-radius:14px;background:#13262c"></div><div style="height:110px;border-radius:14px;background:#13262c"></div><div style="height:110px;border-radius:14px;background:#13262c"></div><div style="grid-column:1 / -1;height:300px;border-radius:16px;background:#13262c"></div></div>
+        <div style="position:absolute;inset:0;background:rgba(3,10,12,0.72);display:flex;align-items:center;justify-content:center">
+          <div style="width:560px;border-radius:20px;background:#13262c;border:1px solid #2f525c;box-shadow:0 24px 64px rgba(0,0,0,0.5);padding:24px;display:flex;flex-direction:column;gap:18px">
+            <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:22px;font-weight:600">Quick add</div><div style="font-size:14px;color:#9fb4b8">Esc to close</div></div>
+            <div style="display:flex;gap:8px"><div style="height:38px;padding:0 14px;border-radius:19px;background:#1a3138;border:1px solid #2f525c;display:flex;align-items:center;font-size:14px;font-weight:600">Riverbed 40 ▾</div><div style="height:38px;padding:0 14px;border-radius:19px;background:#1a3138;border:1px solid #2f525c;display:flex;align-items:center;font-size:14px">Now · Sep 25, 8:14 AM ▾</div></div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+              <div style="height:120px;border-radius:16px;background:#4fc4bd;color:#06201f;padding:16px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between"><div style="width:36px;height:36px;border-radius:10px;background:#06201f;display:flex;align-items:center;justify-content:center"><div style="width:13px;height:13px;border-radius:7px;border:2px solid #4fc4bd"></div></div><div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:16px;font-weight:700">Water test</div><div style="font-size:12px;font-weight:700;font-family:ui-monospace,Menlo,monospace">T</div></div></div>
+              <div style="height:120px;border-radius:16px;background:#1a3138;border:1px solid #2f525c;padding:16px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between"><div style="width:36px;height:36px;border-radius:10px;background:#17363a;display:flex;align-items:center;justify-content:center"><div style="width:15px;height:7px;border-top:2px solid #4fc4bd;border-bottom:2px solid #4fc4bd"></div></div><div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:16px;font-weight:600">Water change</div><div style="font-size:12px;color:#9fb4b8;font-family:ui-monospace,Menlo,monospace">W</div></div></div>
+              <div style="height:120px;border-radius:16px;background:#1a3138;border:1px solid #2f525c;padding:16px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between"><div style="width:36px;height:36px;border-radius:10px;background:#17363a;display:flex;align-items:center;justify-content:center"><div style="width:13px;height:13px;border-radius:3px;border:2px solid #4fc4bd"></div></div><div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:16px;font-weight:600">Note / photo</div><div style="font-size:12px;color:#9fb4b8;font-family:ui-monospace,Menlo,monospace">N</div></div></div>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px"><div style="height:38px;padding:0 14px;border-radius:10px;border:1px solid #2f525c;display:flex;align-items:center;font-size:14px">Dosing</div><div style="height:38px;padding:0 14px;border-radius:10px;border:1px solid #2f525c;display:flex;align-items:center;font-size:14px">Maintenance</div><div style="height:38px;padding:0 14px;border-radius:10px;border:1px solid #2f525c;display:flex;align-items:center;font-size:14px">Livestock / plants</div><div style="height:38px;padding:0 14px;border-radius:10px;border:1px solid #2f525c;display:flex;align-items:center;font-size:14px">Equipment</div><div style="height:38px;padding:0 14px;border-radius:10px;border:1px solid #2f525c;display:flex;align-items:center;font-size:14px">Observation</div></div>
+            <div style="font-size:13px;color:#7d9397">Press + anywhere to open, then T, W or N.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- D13 Log event modal -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:14px;color:#9fb4b8">D13 · Log event modal (dosing)</div>
+      <div data-screen-label="D13 Log event" style="width:1280px;height:800px;border-radius:14px;background:#0c1a1f;border:1px solid #24414a;overflow:hidden;display:flex;position:relative">
+        <dc-import name="Desktop Sidebar" active="Dashboard" hint-size="232px,100%"></dc-import>
+        <div style="flex:1;padding:96px 28px 28px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-content:start;opacity:0.5"><div style="height:110px;border-radius:14px;background:#13262c"></div><div style="height:110px;border-radius:14px;background:#13262c"></div><div style="height:110px;border-radius:14px;background:#13262c"></div><div style="height:110px;border-radius:14px;background:#13262c"></div><div style="grid-column:1 / -1;height:300px;border-radius:16px;background:#13262c"></div></div>
+        <div style="position:absolute;inset:0;background:rgba(3,10,12,0.72);display:flex;align-items:center;justify-content:center">
+          <div style="width:600px;border-radius:20px;background:#13262c;border:1px solid #2f525c;box-shadow:0 24px 64px rgba(0,0,0,0.5);display:flex;flex-direction:column">
+            <div style="padding:20px 24px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #24414a"><div style="font-size:22px;font-weight:600;flex:1">Log event</div><div style="height:36px;padding:0 12px;border-radius:18px;background:#1a3138;border:1px solid #2f525c;display:flex;align-items:center;font-size:14px;font-weight:600">Riverbed 40 ▾</div><div style="height:36px;padding:0 12px;border-radius:18px;background:#1a3138;border:1px solid #2f525c;display:flex;align-items:center;font-size:14px">Now ▾</div></div>
+            <div style="padding:20px 24px;display:flex;flex-direction:column;gap:18px">
+              <div style="display:flex;flex-wrap:wrap;gap:8px"><div style="height:36px;padding:0 14px;border-radius:18px;border:1px solid #2f525c;display:flex;align-items:center;font-size:14px">Water change</div><div style="height:36px;padding:0 14px;border-radius:18px;background:#4fc4bd;color:#06201f;display:flex;align-items:center;font-size:14px;font-weight:700">Dosing</div><div style="height:36px;padding:0 14px;border-radius:18px;border:1px solid #2f525c;display:flex;align-items:center;font-size:14px">Maintenance</div><div style="height:36px;padding:0 14px;border-radius:18px;border:1px solid #2f525c;display:flex;align-items:center;font-size:14px">Livestock / plants</div><div style="height:36px;padding:0 14px;border-radius:18px;border:1px solid #2f525c;display:flex;align-items:center;font-size:14px">Equipment</div><div style="height:36px;padding:0 14px;border-radius:18px;border:1px solid #2f525c;display:flex;align-items:center;font-size:14px">Observation</div></div>
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) 120px 110px;gap:12px">
+                <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;color:#9fb4b8">Product</div><div style="height:48px;border-radius:12px;background:#0f2126;border:1px solid #2f525c;padding:0 14px;display:flex;align-items:center;justify-content:space-between;font-size:15px">All-in-one fertilizer<span style="color:#9fb4b8">▾</span></div></div>
+                <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;color:#9fb4b8">Amount</div><div style="height:48px;border-radius:12px;background:#0f2126;border:2px solid #4fc4bd;box-sizing:border-box;padding:0 13px;display:flex;align-items:center;font-size:18px;font-weight:600">5</div></div>
+                <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;color:#9fb4b8">Unit</div><div style="height:48px;border-radius:12px;background:#0f2126;border:1px solid #2f525c;padding:0 14px;display:flex;align-items:center;justify-content:space-between;font-size:15px">mL<span style="color:#9fb4b8">▾</span></div></div>
+              </div>
+              <div style="font-size:13px;color:#7d9397">Last dosed 5 mL on Sep 21. Recent products are listed first.</div>
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end">
+                <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:13px;color:#9fb4b8">Note</div><div style="height:48px;border-radius:12px;border:1px solid #2f525c;padding:0 14px;display:flex;align-items:center;font-size:15px;color:#4a6a72">Optional</div></div>
+                <div style="height:48px;padding:0 16px;border-radius:12px;border:1px dashed #2f525c;display:flex;align-items:center;font-size:14px;color:#4fc4bd;font-weight:600">+ Photo</div>
+              </div>
+            </div>
+            <div style="padding:16px 24px 20px;border-top:1px solid #24414a;display:flex;justify-content:flex-end;gap:10px"><div style="height:46px;padding:0 18px;border-radius:12px;border:1px solid #2f525c;display:flex;align-items:center;font-size:15px">Cancel</div><div style="height:46px;padding:0 22px;border-radius:12px;background:#4fc4bd;color:#06201f;display:flex;align-items:center;font-size:15px;font-weight:700">Save dosing</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+</x-dc>
+</body>
+</html>

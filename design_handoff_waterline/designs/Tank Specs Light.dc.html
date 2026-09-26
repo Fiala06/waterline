@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<style>html{background:#e9eeed}body{margin:0;background:#e9eeed;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;color:#0f2126;-webkit-font-smoothing:antialiased}a{color:#1a7a7a}a:hover{color:#135e5e}</style>
+</helmet>
+<section style="padding:64px;display:flex;flex-direction:column;gap:48px">
+  <div style="display:flex;flex-direction:column;gap:8px;max-width:880px">
+    <div style="font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#4f666b">Turn 9 · Tank specs · Light</div>
+    <div style="font-size:40px;font-weight:600;letter-spacing:-0.02em">What's in the tank</div>
+    <div style="font-size:17px;line-height:1.5;color:#4f666b;text-wrap:pretty">Each tank page gets tabs: Overview, Equipment, Livestock, Plants and Settings. Changing a count or adding an item logs an event automatically, so History stays complete. Livestock and equipment can optionally appear on the public page.</div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start">
+
+    <!-- T1 Overview -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:14px;color:#4f666b">T1 · Tank › Overview (full scroll)</div>
+      <div data-screen-label="T1 Tank overview" style="width:390px;height:1180px;border-radius:44px;background:#f4f7f6;border:1px solid #d5e0df;overflow:hidden;display:flex;flex-direction:column">
+        <div style="height:48px;padding:0 28px;display:flex;align-items:center;font-size:15px;font-weight:600">9:41</div>
+        <div style="height:170px;background:repeating-linear-gradient(135deg,#eaf0ef 0 6px,#e0e8e7 6px 12px);display:flex;align-items:center;justify-content:center;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#627a7e;position:relative">cover photo<div style="position:absolute;left:16px;top:14px;height:36px;padding:0 12px;border-radius:18px;background:rgba(255,255,255,0.9);display:flex;align-items:center;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:14px;font-weight:600;color:#1a7a7a">‹ Tanks</div></div>
+        <div style="padding:16px 20px 0;display:flex;flex-direction:column;gap:4px"><div style="font-size:26px;font-weight:600">Riverbed 40</div><div style="font-size:14px;color:#4f666b">Planted · 40 gal (34 actual) · since Mar 2025</div></div>
+        <div style="padding:14px 20px 0;display:flex;gap:6px;overflow:hidden;border-bottom:1px solid #d5e0df">
+          <div style="padding:0 4px 12px;font-size:15px;font-weight:600;color:#1a7a7a;border-bottom:2px solid #1a7a7a;flex-shrink:0">Overview</div>
+          <div style="padding:0 8px 12px;font-size:15px;color:#4f666b;flex-shrink:0">Equipment</div>
+          <div style="padding:0 8px 12px;font-size:15px;color:#4f666b;flex-shrink:0">Livestock</div>
+          <div style="padding:0 8px 12px;font-size:15px;color:#4f666b;flex-shrink:0">Plants</div>
+          <div style="padding:0 8px 12px;font-size:15px;color:#4f666b;flex-shrink:0">Settings</div>
+        </div>
+        <div style="padding:18px 20px;display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:13px;font-weight:600;color:#4f666b;letter-spacing:0.06em">SPECS</div>
+            <div style="border-radius:16px;background:#ffffff;border:1px solid #d5e0df;display:grid;grid-template-columns:1fr 1fr">
+              <div style="padding:12px 14px;border-right:1px solid #d5e0df;border-bottom:1px solid #d5e0df;display:flex;flex-direction:column;gap:2px"><div style="font-size:12px;color:#4f666b">Tank</div><div style="font-size:15px;font-weight:600">Aqualine 90P</div></div>
+              <div style="padding:12px 14px;border-bottom:1px solid #d5e0df;display:flex;flex-direction:column;gap:2px"><div style="font-size:12px;color:#4f666b">Size</div><div style="font-size:15px;font-weight:600">36 × 18 × 16 in</div></div>
+              <div style="padding:12px 14px;border-right:1px solid #d5e0df;border-bottom:1px solid #d5e0df;display:flex;flex-direction:column;gap:2px"><div style="font-size:12px;color:#4f666b">Glass</div><div style="font-size:15px;font-weight:600">Low-iron, rimless</div></div>
+              <div style="padding:12px 14px;border-bottom:1px solid #d5e0df;display:flex;flex-direction:column;gap:2px"><div style="font-size:12px;color:#4f666b">Substrate</div><div style="font-size:15px;font-weight:600">Aquasoil, 3 in</div></div>
+              <div style="padding:12px 14px;border-right:1px solid #d5e0df;display:flex;flex-direction:column;gap:2px"><div style="font-size:12px;color:#4f666b">Water source</div><div style="font-size:15px;font-weight:600">RODI</div></div>
+              <div style="padding:12px 14px;display:flex;flex-direction:column;gap:2px"><div style="font-size:12px;color:#4f666b">Photoperiod</div><div style="font-size:15px;font-weight:600">8 h</div></div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:13px;font-weight:600;color:#4f666b;letter-spacing:0.06em">EQUIPMENT · 5</div><div style="font-size:14px;color:#1a7a7a;font-weight:600">All ›</div></div>
+            <div style="border-radius:16px;background:#ffffff;border:1px solid #d5e0df;display:flex;flex-direction:column">
+              <div style="padding:12px 14px;display:flex;gap:12px;align-items:center;border-bottom:1px solid #d5e0df"><div style="width:64px;font-size:12px;color:#4f666b">Filter</div><div style="flex:1;font-size:15px;font-weight:600">Tidewell C-400 canister</div></div>
+              <div style="padding:12px 14px;display:flex;gap:12px;align-items:center;border-bottom:1px solid #d5e0df"><div style="width:64px;font-size:12px;color:#4f666b">Light</div><div style="flex:1;font-size:15px;font-weight:600">Lumora Pro 90</div></div>
+              <div style="padding:12px 14px;display:flex;gap:12px;align-items:center;border-bottom:1px solid #d5e0df"><div style="width:64px;font-size:12px;color:#4f666b">Heater</div><div style="flex:1;font-size:15px;font-weight:600">Tidewell 200 W</div></div>
+              <div style="padding:12px 14px;display:flex;gap:12px;align-items:center"><div style="width:64px;font-size:12px;color:#4f666b">CO₂</div><div style="flex:1;font-size:15px;font-weight:600">Regulator + inline diffuser</div></div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:13px;font-weight:600;color:#4f666b;letter-spacing:0.06em">LIVESTOCK · 31 IN 5 SPECIES</div><div style="font-size:14px;color:#1a7a7a;font-weight:600">All ›</div></div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <div style="height:36px;padding:0 12px;border-radius:10px;background:#ffffff;border:1px solid #d5e0df;display:flex;align-items:center;gap:8px;font-size:14px">Harlequin rasbora<span style="font-weight:700;color:#1a7a7a">14</span></div>
+              <div style="height:36px;padding:0 12px;border-radius:10px;background:#ffffff;border:1px solid #d5e0df;display:flex;align-items:center;gap:8px;font-size:14px">Amano shrimp<span style="font-weight:700;color:#1a7a7a">8</span></div>
+              <div style="height:36px;padding:0 12px;border-radius:10px;background:#ffffff;border:1px solid #d5e0df;display:flex;align-items:center;gap:8px;font-size:14px">Otocinclus<span style="font-weight:700;color:#1a7a7a">5</span></div>
+              <div style="height:36px;padding:0 12px;border-radius:10px;background:#ffffff;border:1px solid #d5e0df;display:flex;align-items:center;gap:8px;font-size:14px">Nerite snail<span style="font-weight:700;color:#1a7a7a">3</span></div>
+              <div style="height:36px;padding:0 12px;border-radius:10px;background:#ffffff;border:1px solid #d5e0df;display:flex;align-items:center;gap:8px;font-size:14px">Honey gourami<span style="font-weight:700;color:#1a7a7a">1</span></div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:13px;font-weight:600;color:#4f666b;letter-spacing:0.06em">PLANTS · 6</div><div style="font-size:14px;color:#1a7a7a;font-weight:600">All ›</div></div>
+            <div style="font-size:15px;line-height:1.6;color:#3f5559">Rotala rotundifolia, Ludwigia repens, Monte Carlo, Java fern, Cryptocoryne wendtii, Anubias nana</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- T2 Equipment -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:14px;color:#4f666b">T2 · Tank › Equipment</div>
+      <div data-screen-label="T2 Equipment" style="width:390px;height:844px;border-radius:44px;background:#f4f7f6;border:1px solid #d5e0df;overflow:hidden;display:flex;flex-direction:column">
+        <div style="height:48px;padding:0 28px;display:flex;align-items:center;font-size:15px;font-weight:600">9:41</div>
+        <div style="padding:4px 20px 0;display:flex;justify-content:space-between;align-items:center"><div style="font-size:16px;color:#1a7a7a;font-weight:600">‹ Tanks</div><div style="height:38px;padding:0 14px;border-radius:10px;border:1px solid #bccccb;display:flex;align-items:center;font-size:14px;font-weight:600">+ Add</div></div>
+        <div style="padding:8px 20px 0;font-size:24px;font-weight:600">Riverbed 40</div>
+        <div style="padding:12px 20px 0;display:flex;gap:6px;overflow:hidden;border-bottom:1px solid #d5e0df">
+          <div style="padding:0 8px 12px;font-size:15px;color:#4f666b;flex-shrink:0">Overview</div>
+          <div style="padding:0 4px 12px;font-size:15px;font-weight:600;color:#1a7a7a;border-bottom:2px solid #1a7a7a;flex-shrink:0">Equipment</div>
+          <div style="padding:0 8px 12px;font-size:15px;color:#4f666b;flex-shrink:0">Livestock</div>
+          <div style="padding:0 8px 12px;font-size:15px;color:#4f666b;flex-shrink:0">Plants</div>
+          <div style="padding:0 8px 12px;font-size:15px;color:#4f666b;flex-shrink:0">Settings</div>
+        </div>
+        <div style="padding:16px 20px;display:flex;flex-direction:column;gap:10px">
+          <div style="border-radius:16px;background:#ffffff;border:1px solid #d5e0df;padding:14px;display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:12px;font-weight:700;letter-spacing:0.06em;color:#4f666b">FILTER</div><div style="font-size:12px;color:#627a7e">since Mar 2025</div></div>
+            <div style="font-size:17px;font-weight:600">Tidewell C-400 canister</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px"><div style="height:26px;padding:0 8px;border-radius:6px;background:#eaf0ef;display:flex;align-items:center;font-size:12px;color:#3f5559">1,200 L/h</div><div style="height:26px;padding:0 8px;border-radius:6px;background:#eaf0ef;display:flex;align-items:center;font-size:12px;color:#3f5559">Ceramic + sponge</div></div>
+            <div style="font-size:13px;color:#4f666b">Last serviced Sep 3 · linked task: Clean canister filter</div>
+          </div>
+          <div style="border-radius:16px;background:#ffffff;border:1px solid #d5e0df;padding:14px;display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:12px;font-weight:700;letter-spacing:0.06em;color:#4f666b">LIGHT</div><div style="font-size:12px;color:#627a7e">since Mar 2025</div></div>
+            <div style="font-size:17px;font-weight:600">Lumora Pro 90</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px"><div style="height:26px;padding:0 8px;border-radius:6px;background:#eaf0ef;display:flex;align-items:center;font-size:12px;color:#3f5559">8 h · 70%</div><div style="height:26px;padding:0 8px;border-radius:6px;background:#eaf0ef;display:flex;align-items:center;font-size:12px;color:#3f5559">Full spectrum</div></div>
+          </div>
+          <div style="border-radius:16px;background:#ffffff;border:1px solid #d5e0df;padding:14px;display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:12px;font-weight:700;letter-spacing:0.06em;color:#4f666b">HEATER</div><div style="font-size:12px;color:#627a7e">since Mar 2025</div></div>
+            <div style="font-size:17px;font-weight:600">Tidewell 200 W</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px"><div style="height:26px;padding:0 8px;border-radius:6px;background:#eaf0ef;display:flex;align-items:center;font-size:12px;color:#3f5559">Set 77 °F</div></div>
+          </div>
+          <div style="border-radius:16px;background:#ffffff;border:1px solid #d5e0df;padding:14px;display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:12px;font-weight:700;letter-spacing:0.06em;color:#4f666b">CO₂</div><div style="font-size:12px;color:#627a7e">since Apr 2025</div></div>
+            <div style="font-size:17px;font-weight:600">Dual-stage regulator + inline diffuser</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px"><div style="height:26px;padding:0 8px;border-radius:6px;background:#eaf0ef;display:flex;align-items:center;font-size:12px;color:#3f5559">1 bps</div><div style="height:26px;padding:0 8px;border-radius:6px;background:#eaf0ef;display:flex;align-items:center;font-size:12px;color:#3f5559">5 lb cylinder</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- T3 Add equipment -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:14px;color:#4f666b">T3 · Add equipment</div>
+      <div data-screen-label="T3 Add equipment" style="width:390px;height:844px;border-radius:44px;background:#f4f7f6;border:1px solid #d5e0df;overflow:hidden;display:flex;flex-direction:column">
+        <div style="height:48px;padding:0 28px;display:flex;align-items:center;font-size:15px;font-weight:600">9:41</div>
+        <div style="padding:4px 20px 16px;display:flex;justify-content:space-between;align-items:center"><div style="font-size:16px;color:#4f666b">Cancel</div><div style="font-size:17px;font-weight:600">Add equipment</div><div style="font-size:16px;color:#1a7a7a;font-weight:700">Save</div></div>
+        <div style="flex:1;padding:0 20px;display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;color:#4f666b">Type</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <div style="height:40px;padding:0 14px;border-radius:20px;background:#1a7a7a;color:#ffffff;display:flex;align-items:center;font-size:14px;font-weight:700">Filter</div>
+              <div style="height:40px;padding:0 14px;border-radius:20px;border:1px solid #bccccb;display:flex;align-items:center;font-size:14px">Heater</div>
+              <div style="height:40px;padding:0 14px;border-radius:20px;border:1px solid #bccccb;display:flex;align-items:center;font-size:14px">Light</div>
+              <div style="height:40px;padding:0 14px;border-radius:20px;border:1px solid #bccccb;display:flex;align-items:center;font-size:14px">CO₂</div>
+              <div style="height:40px;padding:0 14px;border-radius:20px;border:1px solid #bccccb;display:flex;align-items:center;font-size:14px">Pump</div>
+              <div style="height:40px;padding:0 14px;border-radius:20px;border:1px solid #bccccb;display:flex;align-items:center;font-size:14px">Skimmer</div>
+              <div style="height:40px;padding:0 14px;border-radius:20px;border:1px solid #bccccb;display:flex;align-items:center;font-size:14px">Other</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;color:#4f666b">Brand</div><div style="height:50px;border-radius:12px;background:#ffffff;border:2px solid #1a7a7a;box-sizing:border-box;padding:0 13px;display:flex;align-items:center;font-size:16px">Tidewell</div></div>
+            <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;color:#4f666b">Model</div><div style="height:50px;border-radius:12px;background:#ffffff;border:1px solid #d5e0df;padding:0 14px;display:flex;align-items:center;font-size:16px">C-400</div></div>
+          </div>
+          <div style="border-radius:12px;background:#ffffff;border:1px solid #bccccb;display:flex;flex-direction:column;margin-top:-10px">
+            <div style="padding:10px 14px;font-size:14px;border-bottom:1px solid #d5e0df"><span style="font-weight:700">Tide</span>well <span style="color:#4f666b">· used in Reef 24</span></div>
+            <div style="padding:10px 14px;font-size:14px"><span style="font-weight:700">Tide</span>line</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;color:#4f666b">Filter type</div><div style="height:50px;border-radius:12px;background:#ffffff;border:1px solid #d5e0df;padding:0 14px;display:flex;align-items:center;justify-content:space-between;font-size:16px">Canister<span style="color:#4f666b;font-size:13px">▾</span></div></div>
+            <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;color:#4f666b">Flow rate</div><div style="height:50px;border-radius:12px;background:#ffffff;border:1px solid #d5e0df;padding:0 14px;display:flex;align-items:center;justify-content:space-between;font-size:16px">1200<span style="color:#4f666b;font-size:13px">L/h</span></div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;color:#4f666b">Installed</div><div style="height:50px;border-radius:12px;background:#ffffff;border:1px solid #d5e0df;padding:0 14px;display:flex;align-items:center;font-size:16px">Mar 8, 2025</div></div>
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;color:#4f666b">Notes</div><div style="height:50px;border-radius:12px;border:1px solid #bccccb;padding:0 14px;display:flex;align-items:center;font-size:15px;color:#9fb0b3">Media, settings, where you bought it</div></div>
+          <div style="display:flex;gap:10px;align-items:center;padding:12px 14px;border-radius:14px;background:#ffffff;border:1px solid #d5e0df"><div style="width:22px;height:22px;border-radius:6px;background:#1a7a7a;color:#ffffff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">✓</div><div style="flex:1;font-size:14px">Create a maintenance task: clean every 4 weeks</div></div>
+        </div>
+        <div style="padding:14px 20px 34px"><div style="font-size:13px;color:#627a7e;text-align:center">Fields adapt to type: heaters get wattage, lights get photoperiod.</div></div>
+      </div>
+    </div>
+
+    <!-- T4 Livestock -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:14px;color:#4f666b">T4 · Tank › Livestock (count change)</div>
+      <div data-screen-label="T4 Livestock" style="width:390px;height:844px;border-radius:44px;background:#f4f7f6;border:1px solid #d5e0df;overflow:hidden;display:flex;flex-direction:column">
+        <div style="height:48px;padding:0 28px;display:flex;align-items:center;font-size:15px;font-weight:600">9:41</div>
+        <div style="padding:4px 20px 0;display:flex;justify-content:space-between;align-items:center"><div style="font-size:16px;color:#1a7a7a;font-weight:600">‹ Tanks</div><div style="height:38px;padding:0 14px;border-radius:10px;border:1px solid #bccccb;display:flex;align-items:center;font-size:14px;font-weight:600">+ Add</div></div>
+        <div style="padding:8px 20px 0;font-size:24px;font-weight:600">Riverbed 40</div>
+        <div style="padding:12px 20px 0;display:flex;gap:6px;overflow:hidden;border-bottom:1px solid #d5e0df">
+          <div style="padding:0 8px 12px;font-size:15px;color:#4f666b;flex-shrink:0">Overview</div>
+          <div style="padding:0 8px 12px;font-size:15px;color:#4f666b;flex-shrink:0">Equipment</div>
+          <div style="padding:0 4px 12px;font-size:15px;font-weight:600;color:#1a7a7a;border-bottom:2px solid #1a7a7a;flex-shrink:0">Livestock</div>
+          <div style="padding:0 8px 12px;font-size:15px;color:#4f666b;flex-shrink:0">Plants</div>
+          <div style="padding:0 8px 12px;font-size:15px;color:#4f666b;flex-shrink:0">Settings</div>
+        </div>
+        <div style="padding:12px 20px 6px;font-size:13px;color:#4f666b">31 animals · 5 species</div>
+        <div style="padding:0 20px;display:flex;flex-direction:column;gap:8px">
+          <div style="border-radius:16px;background:#ffffff;border:1px solid #1a7a7a;padding:12px 12px 12px 14px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><div style="font-size:16px;font-weight:600">Harlequin rasbora</div><div style="font-size:12px;color:#4f666b;font-style:italic">Trigonostigma heteromorpha</div></div>
+              <div style="display:flex;align-items:center;gap:2px;border-radius:12px;background:#f4f7f6;border:1px solid #bccccb;padding:2px"><div style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#3f5559">−</div><div style="width:30px;text-align:center;font-size:18px;font-weight:700;font-variant-numeric:tabular-nums">13</div><div style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#3f5559">+</div></div>
+            </div>
+            <div style="border-top:1px solid #d5e0df;padding-top:10px;display:flex;flex-direction:column;gap:8px"><div style="font-size:13px;color:#3f5559">14 → 13. Log it as:</div><div style="display:flex;gap:6px"><div style="height:36px;padding:0 12px;border-radius:10px;background:#1a7a7a;color:#ffffff;display:flex;align-items:center;font-size:13px;font-weight:700">Loss</div><div style="height:36px;padding:0 12px;border-radius:10px;border:1px solid #bccccb;display:flex;align-items:center;font-size:13px">Rehomed</div><div style="height:36px;padding:0 12px;border-radius:10px;border:1px solid #bccccb;display:flex;align-items:center;font-size:13px">Recount</div></div></div>
+          </div>
+          <div style="border-radius:16px;background:#ffffff;border:1px solid #d5e0df;padding:12px 12px 12px 14px;display:flex;align-items:center;gap:12px"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><div style="font-size:16px;font-weight:600">Amano shrimp</div><div style="font-size:12px;color:#4f666b;font-style:italic">Caridina multidentata</div></div><div style="display:flex;align-items:center;gap:2px;border-radius:12px;background:#f4f7f6;border:1px solid #bccccb;padding:2px"><div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#3f5559">−</div><div style="width:30px;text-align:center;font-size:18px;font-weight:700">8</div><div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#3f5559">+</div></div></div>
+          <div style="border-radius:16px;background:#ffffff;border:1px solid #d5e0df;padding:12px 12px 12px 14px;display:flex;align-items:center;gap:12px"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><div style="font-size:16px;font-weight:600">Otocinclus</div><div style="font-size:12px;color:#4f666b;font-style:italic">Otocinclus vittatus</div></div><div style="display:flex;align-items:center;gap:2px;border-radius:12px;background:#f4f7f6;border:1px solid #bccccb;padding:2px"><div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#3f5559">−</div><div style="width:30px;text-align:center;font-size:18px;font-weight:700">5</div><div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#3f5559">+</div></div></div>
+          <div style="border-radius:16px;background:#ffffff;border:1px solid #d5e0df;padding:12px 12px 12px 14px;display:flex;align-items:center;gap:12px"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><div style="font-size:16px;font-weight:600">Nerite snail</div><div style="font-size:12px;color:#4f666b;font-style:italic">Neritina natalensis</div></div><div style="display:flex;align-items:center;gap:2px;border-radius:12px;background:#f4f7f6;border:1px solid #bccccb;padding:2px"><div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#3f5559">−</div><div style="width:30px;text-align:center;font-size:18px;font-weight:700">3</div><div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#3f5559">+</div></div></div>
+          <div style="border-radius:16px;background:#ffffff;border:1px solid #d5e0df;padding:12px 12px 12px 14px;display:flex;align-items:center;gap:12px"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><div style="font-size:16px;font-weight:600">Honey gourami</div><div style="display:flex;gap:6px;align-items:center"><div style="font-size:12px;color:#4f666b;font-style:italic">Trichogaster chuna</div><div style="font-size:11px;font-weight:700;padding:1px 6px;border-radius:5px;background:#fbf2d9;color:#6e5000;white-space:nowrap">▲ Quarantine</div></div></div><div style="display:flex;align-items:center;gap:2px;border-radius:12px;background:#f4f7f6;border:1px solid #bccccb;padding:2px"><div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#3f5559">−</div><div style="width:30px;text-align:center;font-size:18px;font-weight:700">1</div><div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#3f5559">+</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- T5 Add livestock -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:14px;color:#4f666b">T5 · Add livestock or plant</div>
+      <div data-screen-label="T5 Add livestock" style="width:390px;height:844px;border-radius:44px;background:#f4f7f6;border:1px solid #d5e0df;overflow:hidden;display:flex;flex-direction:column">
+        <div style="height:48px;padding:0 28px;display:flex;align-items:center;font-size:15px;font-weight:600">9:41</div>
+        <div style="padding:4px 20px 16px;display:flex;justify-content:space-between;align-items:center"><div style="font-size:16px;color:#4f666b">Cancel</div><div style="font-size:17px;font-weight:600">Add livestock</div><div style="font-size:16px;color:#1a7a7a;font-weight:700">Add</div></div>
+        <div style="flex:1;padding:0 20px;display:flex;flex-direction:column;gap:18px">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border-radius:14px;background:#ffffff;border:1px solid #d5e0df"><div style="height:40px;border-radius:10px;background:#d5e0df;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600">Fish</div><div style="height:40px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#4f666b">Invert</div><div style="height:40px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#4f666b">Coral</div></div>
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;color:#4f666b">Species</div>
+            <div style="height:50px;border-radius:12px;background:#ffffff;border:2px solid #1a7a7a;box-sizing:border-box;padding:0 13px;display:flex;align-items:center;font-size:16px">ember<span style="width:2px;height:20px;background:#1a7a7a;margin-left:1px"></span></div>
+            <div style="border-radius:12px;background:#ffffff;border:1px solid #bccccb;display:flex;flex-direction:column">
+              <div style="padding:10px 14px;display:flex;flex-direction:column;gap:2px;border-bottom:1px solid #d5e0df"><div style="font-size:15px"><span style="font-weight:700">Ember</span> tetra</div><div style="font-size:12px;color:#4f666b;font-style:italic">Hyphessobrycon amandae</div></div>
+              <div style="padding:10px 14px;display:flex;flex-direction:column;gap:2px;border-bottom:1px solid #d5e0df"><div style="font-size:15px"><span style="font-weight:700">Ember</span> barb</div><div style="font-size:12px;color:#4f666b;font-style:italic">Oliotius oligolepis</div></div>
+              <div style="padding:10px 14px;font-size:14px;color:#1a7a7a;font-weight:600">Use "ember" as a custom name</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;color:#4f666b">Count</div><div style="height:50px;border-radius:12px;background:#ffffff;border:1px solid #d5e0df;display:flex;align-items:center;justify-content:space-between;padding:0 4px"><div style="width:42px;height:42px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#3f5559">−</div><div style="font-size:18px;font-weight:700">10</div><div style="width:42px;height:42px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#3f5559">+</div></div></div>
+            <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;color:#4f666b">Added</div><div style="height:50px;border-radius:12px;background:#ffffff;border:1px solid #d5e0df;padding:0 14px;display:flex;align-items:center;font-size:16px">Today</div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;color:#4f666b">Status</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:14px;background:#ffffff;border:1px solid #d5e0df"><div style="height:40px;border-radius:10px;background:#d5e0df;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600">In tank</div><div style="height:40px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#4f666b">Quarantine</div></div></div>
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:14px;color:#4f666b">Source · optional</div><div style="height:50px;border-radius:12px;border:1px solid #bccccb;padding:0 14px;display:flex;align-items:center;font-size:15px;color:#9fb0b3">Store, breeder, price</div></div>
+          <div style="font-size:13px;line-height:1.5;color:#627a7e">Adds a "Livestock added" entry to History. The species list is bundled with the app and works offline; custom names are always allowed.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- T7 Plants -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:14px;color:#4f666b">T7 · Tank › Plants</div>
+      <div data-screen-label="T7 Plants" style="width:390px;height:844px;border-radius:44px;background:#f4f7f6;border:1px solid #d5e0df;overflow:hidden;display:flex;flex-direction:column">
+        <div style="height:48px;padding:0 28px;display:flex;align-items:center;font-size:15px;font-weight:600">9:41</div>
+        <div style="padding:4px 20px 0;display:flex;justify-content:space-between;align-items:center"><div style="font-size:16px;color:#1a7a7a;font-weight:600">‹ Tanks</div><div style="display:flex;gap:8px"><div style="height:38px;padding:0 12px;border-radius:10px;border:1px solid #bccccb;display:flex;align-items:center;font-size:14px;font-weight:600">Log trim</div><div style="height:38px;padding:0 12px;border-radius:10px;border:1px solid #bccccb;display:flex;align-items:center;font-size:14px;font-weight:600">+ Add</div></div></div>
+        <div style="padding:8px 20px 0;font-size:24px;font-weight:600">Riverbed 40</div>
+        <div style="padding:12px 20px 0;display:flex;gap:6px;overflow:hidden;border-bottom:1px solid #d5e0df">
+          <div style="padding:0 8px 12px;font-size:15px;color:#4f666b;flex-shrink:0">Overview</div>
+          <div style="padding:0 8px 12px;font-size:15px;color:#4f666b;flex-shrink:0">Equipment</div>
+          <div style="padding:0 8px 12px;font-size:15px;color:#4f666b;flex-shrink:0">Livestock</div>
+          <div style="padding:0 4px 12px;font-size:15px;font-weight:600;color:#1a7a7a;border-bottom:2px solid #1a7a7a;flex-shrink:0">Plants</div>
+          <div style="padding:0 8px 12px;font-size:15px;color:#4f666b;flex-shrink:0">Settings</div>
+        </div>
+        <div style="padding:14px 20px;display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:12px;font-weight:700;letter-spacing:0.06em;color:#4f666b">BACKGROUND</div><div style="border-radius:16px;background:#ffffff;border:1px solid #d5e0df;padding:12px;display:flex;gap:12px;align-items:center"><div style="width:52px;height:52px;border-radius:10px;background:repeating-linear-gradient(135deg,#eaf0ef 0 5px,#e0e8e7 5px 10px);flex-shrink:0"></div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><div style="font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Rotala rotundifolia</div><div style="font-size:12px;color:#4f666b;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Rotala rotundifolia</div><div style="display:flex;gap:6px;align-items:center"><div style="font-size:11px;font-weight:700;padding:1px 6px;border-radius:5px;background:trimmed Sep 22;color:#e3f3ea;white-space:nowrap">#1d6a3f</div><div style="font-size:12px;color:#627a7e;white-space:nowrap">undefined</div></div></div></div><div style="border-radius:16px;background:#ffffff;border:1px solid #d5e0df;padding:12px;display:flex;gap:12px;align-items:center"><div style="width:52px;height:52px;border-radius:10px;background:repeating-linear-gradient(135deg,#eaf0ef 0 5px,#e0e8e7 5px 10px);flex-shrink:0"></div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><div style="font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Ludwigia repens</div><div style="font-size:12px;color:#4f666b;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Ludwigia repens</div><div style="display:flex;gap:6px;align-items:center"><div style="font-size:11px;font-weight:700;padding:1px 6px;border-radius:5px;background:trimmed Sep 8;color:#e3f3ea;white-space:nowrap">#1d6a3f</div><div style="font-size:12px;color:#627a7e;white-space:nowrap">undefined</div></div></div></div></div>
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:12px;font-weight:700;letter-spacing:0.06em;color:#4f666b">MIDGROUND &amp; EPIPHYTES</div><div style="border-radius:16px;background:#ffffff;border:1px solid #d5e0df;padding:12px;display:flex;gap:12px;align-items:center"><div style="width:52px;height:52px;border-radius:10px;background:repeating-linear-gradient(135deg,#eaf0ef 0 5px,#e0e8e7 5px 10px);flex-shrink:0"></div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><div style="font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Java fern</div><div style="font-size:12px;color:#4f666b;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Microsorum pteropus</div><div style="display:flex;gap:6px;align-items:center"><div style="font-size:11px;font-weight:700;padding:1px 6px;border-radius:5px;background:since Mar 2025;color:#fbf2d9;white-space:nowrap">#6e5000</div><div style="font-size:12px;color:#627a7e;white-space:nowrap">undefined</div></div></div></div><div style="border-radius:16px;background:#ffffff;border:1px solid #d5e0df;padding:12px;display:flex;gap:12px;align-items:center"><div style="width:52px;height:52px;border-radius:10px;background:repeating-linear-gradient(135deg,#eaf0ef 0 5px,#e0e8e7 5px 10px);flex-shrink:0"></div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><div style="font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Cryptocoryne wendtii</div><div style="font-size:12px;color:#4f666b;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Cryptocoryne wendtii</div><div style="display:flex;gap:6px;align-items:center"><div style="font-size:11px;font-weight:700;padding:1px 6px;border-radius:5px;background:added Sep 14;color:#fbf2d9;white-space:nowrap">#6e5000</div><div style="font-size:12px;color:#627a7e;white-space:nowrap">undefined</div></div></div></div></div>
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:12px;font-weight:700;letter-spacing:0.06em;color:#4f666b">FOREGROUND</div><div style="border-radius:16px;background:#ffffff;border:1px solid #d5e0df;padding:12px;display:flex;gap:12px;align-items:center"><div style="width:52px;height:52px;border-radius:10px;background:repeating-linear-gradient(135deg,#eaf0ef 0 5px,#e0e8e7 5px 10px);flex-shrink:0"></div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><div style="font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Monte Carlo</div><div style="font-size:12px;color:#4f666b;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Micranthemum tweediei</div><div style="display:flex;gap:6px;align-items:center"><div style="font-size:11px;font-weight:700;padding:1px 6px;border-radius:5px;background:carpet 80%;color:#e3f3ea;white-space:nowrap">#1d6a3f</div><div style="font-size:12px;color:#627a7e;white-space:nowrap">undefined</div></div></div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Desktop -->
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="font-size:14px;color:#4f666b">T6 · Desktop tank page · Livestock and Equipment</div>
+    <div data-screen-label="T6 Desktop tank specs" style="width:1280px;height:800px;border-radius:14px;background:#f4f7f6;border:1px solid #d5e0df;overflow:hidden;display:flex">
+      <dc-import name="Desktop Sidebar Light" active="Tanks" hint-size="232px,100%"></dc-import>
+      <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+        <div style="padding:20px 28px 0;border-bottom:1px solid #d5e0df;display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;align-items:center;gap:14px"><div style="width:48px;height:48px;border-radius:12px;background:repeating-linear-gradient(135deg,#eaf0ef 0 5px,#e0e8e7 5px 10px)"></div><div style="flex:1;display:flex;flex-direction:column;gap:2px"><div style="font-size:24px;font-weight:600">Riverbed 40</div><div style="font-size:14px;color:#4f666b">Planted · Aqualine 90P · 36 × 18 × 16 in · 40 gal (34 actual)</div></div><div style="height:42px;padding:0 16px;border-radius:12px;border:1px solid #bccccb;display:flex;align-items:center;font-size:15px;font-weight:600">+ Add livestock</div><div style="height:42px;padding:0 16px;border-radius:12px;background:#1a7a7a;color:#ffffff;display:flex;align-items:center;font-size:15px;font-weight:700">+ Quick add</div></div>
+          <div style="display:flex;gap:22px;font-size:15px"><div style="padding-bottom:12px;color:#4f666b">Overview</div><div style="padding-bottom:12px;color:#4f666b">Equipment</div><div style="padding-bottom:12px;font-weight:600;color:#1a7a7a;border-bottom:2px solid #1a7a7a">Livestock</div><div style="padding-bottom:12px;color:#4f666b">Plants</div><div style="padding-bottom:12px;color:#4f666b">Settings</div></div>
+        </div>
+        <div style="flex:1;padding:22px 28px;display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:22px;min-height:0">
+          <div style="border-radius:16px;background:#ffffff;border:1px solid #d5e0df;display:flex;flex-direction:column;overflow:hidden;align-self:start">
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 60px 92px 108px 116px;gap:10px;padding:12px 18px;font-size:12px;letter-spacing:0.06em;color:#627a7e;border-bottom:1px solid #d5e0df"><div>SPECIES</div><div>TYPE</div><div>ADDED</div><div>STATUS</div><div style="text-align:right">COUNT</div></div>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 60px 92px 108px 116px;gap:10px;padding:10px 16px;align-items:center;border-bottom:1px solid #e1e9e8"><div style="display:flex;flex-direction:column;gap:2px;min-width:0"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Harlequin rasbora</div><div style="font-size:12px;color:#4f666b;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Trigonostigma heteromorpha</div></div><div style="font-size:14px;color:#3f5559">Fish</div><div style="font-size:14px;color:#3f5559">Apr 2025</div><div style="font-size:13px;color:#1d7a47;font-weight:600">✓ In tank</div><div style="display:flex;justify-content:flex-end;align-items:center;gap:2px"><div style="width:34px;height:34px;border-radius:8px;border:1px solid #bccccb;display:flex;align-items:center;justify-content:center;color:#3f5559">−</div><div style="width:34px;text-align:center;font-size:16px;font-weight:700">14</div><div style="width:34px;height:34px;border-radius:8px;border:1px solid #bccccb;display:flex;align-items:center;justify-content:center;color:#3f5559">+</div></div></div>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 60px 92px 108px 116px;gap:10px;padding:10px 16px;align-items:center;border-bottom:1px solid #e1e9e8"><div style="display:flex;flex-direction:column;gap:2px;min-width:0"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Amano shrimp</div><div style="font-size:12px;color:#4f666b;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Caridina multidentata</div></div><div style="font-size:14px;color:#3f5559">Invert</div><div style="font-size:14px;color:#3f5559">Apr 2025</div><div style="font-size:13px;color:#1d7a47;font-weight:600">✓ In tank</div><div style="display:flex;justify-content:flex-end;align-items:center;gap:2px"><div style="width:34px;height:34px;border-radius:8px;border:1px solid #bccccb;display:flex;align-items:center;justify-content:center;color:#3f5559">−</div><div style="width:34px;text-align:center;font-size:16px;font-weight:700">8</div><div style="width:34px;height:34px;border-radius:8px;border:1px solid #bccccb;display:flex;align-items:center;justify-content:center;color:#3f5559">+</div></div></div>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 60px 92px 108px 116px;gap:10px;padding:10px 16px;align-items:center;border-bottom:1px solid #e1e9e8"><div style="display:flex;flex-direction:column;gap:2px;min-width:0"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Otocinclus</div><div style="font-size:12px;color:#4f666b;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Otocinclus vittatus</div></div><div style="font-size:14px;color:#3f5559">Fish</div><div style="font-size:14px;color:#3f5559">Jun 2025</div><div style="font-size:13px;color:#1d7a47;font-weight:600">✓ In tank</div><div style="display:flex;justify-content:flex-end;align-items:center;gap:2px"><div style="width:34px;height:34px;border-radius:8px;border:1px solid #bccccb;display:flex;align-items:center;justify-content:center;color:#3f5559">−</div><div style="width:34px;text-align:center;font-size:16px;font-weight:700">5</div><div style="width:34px;height:34px;border-radius:8px;border:1px solid #bccccb;display:flex;align-items:center;justify-content:center;color:#3f5559">+</div></div></div>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 60px 92px 108px 116px;gap:10px;padding:10px 16px;align-items:center;border-bottom:1px solid #e1e9e8"><div style="display:flex;flex-direction:column;gap:2px;min-width:0"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Nerite snail</div><div style="font-size:12px;color:#4f666b;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Neritina natalensis</div></div><div style="font-size:14px;color:#3f5559">Invert</div><div style="font-size:14px;color:#3f5559">Mar 2025</div><div style="font-size:13px;color:#1d7a47;font-weight:600">✓ In tank</div><div style="display:flex;justify-content:flex-end;align-items:center;gap:2px"><div style="width:34px;height:34px;border-radius:8px;border:1px solid #bccccb;display:flex;align-items:center;justify-content:center;color:#3f5559">−</div><div style="width:34px;text-align:center;font-size:16px;font-weight:700">3</div><div style="width:34px;height:34px;border-radius:8px;border:1px solid #bccccb;display:flex;align-items:center;justify-content:center;color:#3f5559">+</div></div></div>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 60px 92px 108px 116px;gap:10px;padding:10px 16px;align-items:center"><div style="display:flex;flex-direction:column;gap:2px;min-width:0"><div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Honey gourami</div><div style="font-size:12px;color:#4f666b;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Trichogaster chuna</div></div><div style="font-size:14px;color:#3f5559">Fish</div><div style="font-size:14px;color:#3f5559">Sep 20, 2026</div><div style="font-size:13px;color:#8a6300;font-weight:600">▲ Quarantine</div><div style="display:flex;justify-content:flex-end;align-items:center;gap:2px"><div style="width:34px;height:34px;border-radius:8px;border:1px solid #bccccb;display:flex;align-items:center;justify-content:center;color:#3f5559">−</div><div style="width:34px;text-align:center;font-size:16px;font-weight:700">1</div><div style="width:34px;height:34px;border-radius:8px;border:1px solid #bccccb;display:flex;align-items:center;justify-content:center;color:#3f5559">+</div></div></div>
+            <div style="padding:12px 18px;border-top:1px solid #d5e0df;display:flex;justify-content:space-between;font-size:13px;color:#4f666b"><div>31 animals · 5 species</div><div style="color:#1a7a7a;font-weight:600">Show past livestock (3)</div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:16px;font-weight:600">Equipment</div><div style="font-size:14px;color:#1a7a7a;font-weight:600">Manage</div></div>
+            <div style="border-radius:14px;background:#ffffff;border:1px solid #d5e0df;display:flex;flex-direction:column">
+              <div style="padding:11px 14px;display:flex;flex-direction:column;gap:2px;border-bottom:1px solid #d5e0df"><div style="font-size:11px;letter-spacing:0.06em;color:#4f666b">FILTER</div><div style="font-size:14px;font-weight:600">Tidewell C-400 canister · 1,200 L/h</div></div>
+              <div style="padding:11px 14px;display:flex;flex-direction:column;gap:2px;border-bottom:1px solid #d5e0df"><div style="font-size:11px;letter-spacing:0.06em;color:#4f666b">LIGHT</div><div style="font-size:14px;font-weight:600">Lumora Pro 90 · 8 h</div></div>
+              <div style="padding:11px 14px;display:flex;flex-direction:column;gap:2px;border-bottom:1px solid #d5e0df"><div style="font-size:11px;letter-spacing:0.06em;color:#4f666b">HEATER</div><div style="font-size:14px;font-weight:600">Tidewell 200 W · 77 °F</div></div>
+              <div style="padding:11px 14px;display:flex;flex-direction:column;gap:2px"><div style="font-size:11px;letter-spacing:0.06em;color:#4f666b">CO₂</div><div style="font-size:14px;font-weight:600">Dual-stage regulator · 1 bps</div></div>
+            </div>
+            <div style="font-size:16px;font-weight:600;padding-top:4px">Recent changes</div>
+            <div style="display:flex;flex-direction:column;gap:2px;font-size:14px">
+              <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #e1e9e8"><div>+1 Honey gourami <span style="color:#4f666b">· quarantine</span></div><div style="color:#4f666b">Sep 20</div></div>
+              <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #e1e9e8"><div>−1 Harlequin rasbora <span style="color:#4f666b">· loss</span></div><div style="color:#4f666b">Aug 11</div></div>
+              <div style="display:flex;justify-content:space-between;padding:8px 0"><div>Light replaced <span style="color:#4f666b">· Lumora Pro 90</span></div><div style="color:#4f666b">Jul 2</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</x-dc>
+</body>
+</html>
