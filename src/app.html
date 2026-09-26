@@ -5,9 +5,50 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 		<meta name="theme-color" content="#0c1a1f" />
 		<link rel="icon" href="%sveltekit.assets%/favicon.svg" type="image/svg+xml" />
+		<link rel="icon" href="%sveltekit.assets%/icons/favicon-32.png" sizes="32x32" type="image/png" />
+		<link rel="apple-touch-icon" href="%sveltekit.assets%/icons/apple-touch-icon.png" />
+		<link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+		<meta name="apple-mobile-web-app-title" content="Waterline" />
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
+		<!-- Launch splash for the installed app: water rises with load progress. -->
+		<style>
+			#wl-splash { position: fixed; inset: 0; z-index: 100; background: var(--bg); color: var(--text); flex-direction: column; align-items: center; justify-content: center; gap: 22px; transition: opacity 0.25s; }
+			#wl-splash:not([hidden]) { display: flex; }
+		</style>
+		<div id="wl-splash" hidden aria-hidden="true">
+			<svg width="112" height="112" viewBox="0 0 56 56"><defs><clipPath id="wl-sc"><circle cx="28" cy="28" r="19"></circle></clipPath></defs><rect id="wl-water" x="0" y="31" width="56" height="56" fill="var(--accent)" clip-path="url(#wl-sc)"></rect><circle cx="28" cy="28" r="24.5" fill="none" stroke="var(--text)" stroke-width="2.5"></circle></svg>
+			<div style="font:600 34px 'Helvetica Neue',Helvetica,Arial,sans-serif;letter-spacing:-0.02em">Waterline</div>
+		</div>
+		<script>
+			(function () {
+				var standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+				if (!standalone) return;
+				var el = document.getElementById('wl-splash');
+				var water = document.getElementById('wl-water');
+				el.hidden = false;
+				var still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+				var REST = 31, FULL = 8.5, shown = 0, target = 0.35, t0 = performance.now();
+				function ready() { return document.documentElement.dataset.ready === 'true'; }
+				document.addEventListener('DOMContentLoaded', function () { target = Math.max(target, 0.7); });
+				function frame(now) {
+					if (ready()) target = 1;
+					// ease toward the target so it never jumps
+					shown += (target - shown) * (still ? 1 : 0.12);
+					if (!still) water.setAttribute('y', String(REST - (REST - FULL) * shown));
+					if ((target === 1 && shown > 0.985) || now - t0 > 8000) {
+						el.style.opacity = '0';
+						setTimeout(function () { el.remove(); }, 260);
+						return;
+					}
+					requestAnimationFrame(frame);
+				}
+				requestAnimationFrame(frame);
+			})();
+		</script>
 		<div style="display: contents">%sveltekit.body%</div>
 	</body>
 </html>

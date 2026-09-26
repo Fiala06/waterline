@@ -207,6 +207,17 @@
 						<a href="/history">History</a>
 					</div>
 					<ul class="feed">
+						{#each ui.queue.filter((q) => q.tankId === data.tank?.id) as q (q.id)}
+							<li>
+								<div class="queued">
+									<CategoryIcon kind={q.title.startsWith('Water test') ? 'test' : 'note'} size={40} />
+									<span class="f-text">
+										<span class="f-title">{q.title}</span>
+										<span class="f-sub" class:status-warn={!q.error} class:status-bad={!!q.error}>{q.error ? `✕ ${q.error}` : '▲ Waiting to sync'}</span>
+									</span>
+								</div>
+							</li>
+						{/each}
 						{#each data.activity as a (a.href)}
 							<li>
 								<a href={a.href}>
@@ -455,6 +466,15 @@
 	.chev {
 		font-size: 18px;
 		color: var(--placeholder);
+	}
+	.queued {
+		display: flex;
+		gap: 12px;
+		align-items: center;
+		padding: 8px 0;
+	}
+	.queued .f-sub {
+		font-weight: 600;
 	}
 	.f-thumb {
 		width: 52px;

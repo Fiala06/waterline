@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { LEAD_OPTIONS, SEND_TIMES } from '$lib/notify-options';
+	import { install, promptInstall } from '$lib/install.svelte';
+	let installHelp = $state(false);
 	let { data, form } = $props();
 	const u = $derived(data.user);
 	const p = $derived(data.prefs);
@@ -142,6 +144,18 @@
 			<section id="data" class="stack">
 				<h2 class="caps">Data</h2>
 				<a class="card row-link" href="/settings/export"><span>Export data</span><span aria-hidden="true">›</span></a>
+				{#if !install.installed}
+					<button type="button" class="card row-link" onclick={async () => { if (install.available) await promptInstall(); else installHelp = !installHelp; }}>
+						<span>Install app<span class="sub">Add Waterline to your home screen</span></span><span aria-hidden="true">›</span>
+					</button>
+					{#if installHelp}
+						<p class="hint">
+							{install.ios
+								? 'In Safari, tap Share, then Add to Home Screen.'
+								: 'Use your browser’s menu and choose Install app or Add to Home screen. On iPhone, open this site in Safari first.'}
+						</p>
+					{/if}
+				{/if}
 				{#if u.isAdmin}
 					<a class="card row-link" href="/settings/server"><span>Server settings <span class="badge">Admin</span></span><span aria-hidden="true">›</span></a>
 				{/if}
@@ -250,6 +264,15 @@
 		align-items: center;
 		color: var(--text);
 		font-size: 15px;
+	}
+	button.row-link {
+		width: 100%;
+		text-align: left;
+	}
+	.row-link .sub {
+		display: block;
+		font-size: 13px;
+		color: var(--text-muted);
 	}
 	.badge {
 		font-size: 11px;

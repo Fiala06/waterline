@@ -2,6 +2,7 @@
 	import { untrack } from 'svelte';
 	// 14 / G2–G5 / D13 · Log event: one layout that adapts to the category.
 	import { enhance } from '$app/forms';
+	import { enqueue } from '$lib/offline';
 	import { onMount } from 'svelte';
 	import DateTimePicker from './DateTimePicker.svelte';
 	import PhotoPicker from './PhotoPicker.svelte';
@@ -122,10 +123,33 @@
 	method="POST"
 	enctype="multipart/form-data"
 	class="eform"
-	use:enhance={() => {
+	use:enhance={({ formData, action, cancel }) => {
+		// Offline (G11): keep the entry on this device and sync it later.
+		const queue = async () => {
+			const title =
+				category === 'water_change' && amount
+					? `Water change · ${amount}${amountMode === 'percent' ? '%' : ` ${volUnit}`}`
+					: category === 'dosing' && product
+						? `Dosed ${product}`
+						: CATEGORY_LABEL[category];
+			await enqueue(formData, action.pathname + action.search, title, timeZone);
+			// A full page load, which the service worker can answer from its cache.
+			try {
+				sessionStorage.setItem('wl_toast', "Saved on this phone. It'll sync when you're back online.");
+			} catch {
+				/* storage blocked */
+			}
+			location.assign(closeHref);
+		};
+		if (mode === 'new' && !navigator.onLine) {
+			cancel();
+			queue();
+			return;
+		}
 		busy = true;
-		return async ({ update }) => {
-			await update({ reset: false });
+		return async ({ result, update }) => {
+			if (mode === 'new' && result.type === 'error' && !navigator.onLine) await queue();
+			else await update({ reset: false });
 			busy = false;
 		};
 	}}

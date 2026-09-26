@@ -27,6 +27,14 @@ const csrf: Handle = ({ event, resolve }) => {
 const isPublic = (path: string) => PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + '/'));
 
 const appHandle: Handle = async ({ event, resolve }) => {
+	// Background sync of offline entries: no "Saved" toast per replayed entry.
+	if (event.request.headers.get('x-waterline-sync') === '1') {
+		const set = event.cookies.set.bind(event.cookies);
+		event.cookies.set = (name, value, opts) => {
+			if (name !== 'wl_flash') set(name, value, opts);
+		};
+	}
+
 	const session = await event.locals.auth();
 	const uid = session?.user?.id;
 	event.locals.user = uid ? (getUser(uid) ?? null) : null;
