@@ -69,3 +69,18 @@ test('server settings are admin only; test email via outbox', async ({ page }, i
 	await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /saved/);
 	await expect(page.getByLabel('Sending domain')).toHaveValue('mg.example.com');
 });
+
+test('changing the theme applies right away', async ({ page }, info) => {
+	await newKeeperWithTank(page, `theme-${info.project.name}`);
+	await open(page, '/settings');
+	const html = page.locator('html');
+	await page.locator('#theme label', { hasText: 'Light' }).click();
+	await page.getByRole('button', { name: 'Save settings' }).click();
+	await expect(html).toHaveAttribute('data-theme', 'light');
+	await page.locator('#theme label', { hasText: 'Dark' }).click();
+	await page.getByRole('button', { name: 'Save settings' }).click();
+	await expect(html).toHaveAttribute('data-theme', 'dark');
+	await page.locator('#theme label', { hasText: 'System' }).click();
+	await page.getByRole('button', { name: 'Save settings' }).click();
+	await expect(html).not.toHaveAttribute('data-theme', /.+/);
+});

@@ -79,6 +79,15 @@
 	});
 	const waiting = $derived(ui.queue.filter((q) => !q.error).length);
 
+	// The server sets data-theme on first load; keep it in step when the saved
+	// theme changes without a full reload (e.g. saving Settings).
+	$effect(() => {
+		const theme = data.user.theme;
+		const root = document.documentElement;
+		if (theme === 'dark' || theme === 'light') root.dataset.theme = theme;
+		else delete root.dataset.theme;
+	});
+
 	// Server messages (after a redirect) and browser ones share one toast.
 	$effect(() => {
 		const f = data.flash;
