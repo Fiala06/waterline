@@ -1,15 +1,31 @@
 import type { Cookies } from '@sveltejs/kit';
 
-// One-shot toast message carried across a redirect ("✓ Saved 7 readings · 1 out of range").
+// One-shot toast carried across a redirect ("✓ Saved 7 readings · 1 out of range"),
+// optionally with an Undo for a task completion.
 const NAME = 'wl_flash';
 
-export function setFlash(cookies: Cookies, message: string) {
-	cookies.set(NAME, encodeURIComponent(message), { path: '/', httpOnly: true, sameSite: 'lax', maxAge: 60 });
+export interface Flash {
+	text: string;
+	undo?: string; // task completion id
 }
 
-export function takeFlash(cookies: Cookies): string | null {
+export function setFlash(cookies: Cookies, text: string, extra: Omit<Flash, 'text'> = {}) {
+	cookies.set(NAME, encodeURIComponent(JSON.stringify({ text, ...extra })), {
+		path: '/',
+		httpOnly: true,
+		sameSite: 'lax',
+		maxAge: 60
+	});
+}
+
+export function takeFlash(cookies: Cookies): Flash | null {
 	const v = cookies.get(NAME);
 	if (!v) return null;
 	cookies.delete(NAME, { path: '/' });
-	return decodeURIComponent(v);
+	try {
+		const f = JSON.parse(decodeURIComponent(v));
+		return typeof f?.text === 'string' ? { text: f.text, undo: typeof f.undo === 'string' ? f.undo : undefined } : null;
+	} catch {
+		return null;
+	}
 }

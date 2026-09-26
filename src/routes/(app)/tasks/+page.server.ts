@@ -1,19 +1,38 @@
 import { error, redirect } from '@sveltejs/kit';
-import { todayInZone } from '$lib/time';
+import { fmtDate, todayInZone } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
+import { str } from '$lib/server/forms';
 import { safeReturn } from '$lib/server/redirect';
-import { completeTask, getTask, listTasks, snoozeTask } from '$lib/server/tasks';
-import { fmtDate } from '$lib/time';
+import { listTanks } from '$lib/server/tanks';
+import { taskFormValues } from '$lib/server/task-form';
+import { completeTask, getTask, listTasks, snoozeTask, undoCompletion } from '$lib/server/tasks';
+import { addDays } from '$lib/time';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals, url }) => {
 	const user = locals.user!;
 	const filter = url.searchParams.get('filter');
 	const rows = listTasks(user.id, filter ?? undefined);
+
+	// Desktop edit pane (D5): ?edit=<task id> or ?new
+	const editId = url.searchParams.get('edit');
+	let pane: { mode: 'new' | 'edit'; taskId: string | null; values: ReturnType<typeof taskFormValues> } | null = null;
+	if (editId) {
+		try {
+			pane = { mode: 'edit', taskId: editId, values: taskFormValues(getTask(user.id, editId), user, null) };
+		} catch {
+			pane = null;
+		}
+	} else if (url.searchParams.has('new')) {
+		pane = { mode: 'new', taskId: null, values: taskFormValues(null, user, filter) };
+	}
+
 	return {
 		filter,
 		today: todayInZone(user.timeZone),
-		tasks: rows.map((r) => r.task)
+		tasks: rows.map((r) => r.task),
+		pane,
+		formTanks: listTanks(user.id).map((t) => ({ id: t.id, name: t.name }))
 	};
 };
 
@@ -21,7 +40,7 @@ export const actions: Actions = {
 	done: async ({ request, locals, cookies }) => {
 		const user = locals.user!;
 		const form = await request.formData();
-		const taskId = String(form.get('taskId') ?? '');
+		const taskId = str(form, 'taskId');
 		if (!taskId) error(400, 'Missing task');
 		const task = getTask(user.id, taskId);
 
@@ -34,16 +53,27 @@ export const actions: Actions = {
 		}
 
 		const done = completeTask(user.id, taskId, { timeZone: user.timeZone });
-		setFlash(cookies, `✓ ${task.name} done${done.nextDue ? ` · next due ${fmtDate(done.nextDue)}` : ''}`);
+		setFlash(cookies, `✓ ${task.name} done${done.nextDue ? ` · next ${fmtDate(done.nextDue)}` : ''}`, {
+			undo: done.completionId
+		});
 		redirect(303, safeReturn(form.get('from'), '/tasks'));
 	},
 	snooze: async ({ request, locals, cookies }) => {
 		const user = locals.user!;
 		const form = await request.formData();
-		const taskId = String(form.get('taskId') ?? '');
+		const taskId = str(form, 'taskId');
 		if (!taskId) error(400, 'Missing task');
-		const task = snoozeTask(user.id, taskId, 1);
-		setFlash(cookies, `Snoozed ${task.name} 1 day`);
+		const until = str(form, 'until');
+		const date = /^\d{4}-\d{2}-\d{2}$/.test(until) ? until : addDays(todayInZone(user.timeZone), 1);
+		if (date <= todayInZone(user.timeZone)) error(400, 'Pick a date after today');
+		const task = snoozeTask(user.id, taskId, date);
+		setFlash(cookies, `Snoozed ${task.name} to ${fmtDate(date)}`);
+		redirect(303, safeReturn(form.get('from'), '/tasks'));
+	},
+	undo: async ({ request, locals, cookies }) => {
+		const form = await request.formData();
+		const task = undoCompletion(locals.user!.id, str(form, 'completionId'));
+		setFlash(cookies, `Undid ${task.name}`);
 		redirect(303, safeReturn(form.get('from'), '/tasks'));
 	}
 };

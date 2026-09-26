@@ -37,6 +37,12 @@ export function parseTankForm(form: FormData, prefs: UnitPrefs) {
 		if (v <= 0) errors[key] = 'Enter a size above 0.';
 		return toStored(v, 'length', prefs);
 	};
+	const photoperiod = () => {
+		const v = num(form, 'photoperiodH');
+		if (v == null) return null;
+		if (v < 0 || v > 24) errors.photoperiodH = 'Enter 0–24 hours.';
+		return v;
+	};
 	const startDate = optStr(form, 'startDate');
 	if (startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) errors.startDate = 'Use a valid date.';
 
@@ -51,7 +57,17 @@ export function parseTankForm(form: FormData, prefs: UnitPrefs) {
 				? { lengthCm: length('length'), widthCm: length('width'), heightCm: length('height') }
 				: {}),
 			...(form.has('startDate') ? { startDate } : {}),
-			...(form.has('notes') ? { notes: optStr(form, 'notes') } : {})
+			...(form.has('notes') ? { notes: optStr(form, 'notes') } : {}),
+			...(form.has('specBrand')
+				? {
+						specBrand: optStr(form, 'specBrand', 60),
+						specModel: optStr(form, 'specModel', 60),
+						glass: optStr(form, 'glass', 60),
+						substrate: optStr(form, 'substrate', 60),
+						waterSource: ['tap', 'rodi', 'mix', 'well'].includes(str(form, 'waterSource')) ? str(form, 'waterSource') : null,
+						photoperiodH: photoperiod()
+					}
+				: {})
 		}
 	};
 }

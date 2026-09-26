@@ -20,4 +20,5 @@
 	error={form?.error}
 	errors={form?.errors}
 	meta={data.meta}
+	existingPhotos={data.photos}
 />

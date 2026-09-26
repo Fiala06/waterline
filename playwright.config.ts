@@ -12,7 +12,8 @@ export default defineConfig({
 	testDir: 'e2e',
 	fullyParallel: true,
 	retries: process.env.CI ? 1 : 0,
-	use: { baseURL: `http://localhost:${PORT}`, trace: 'retain-on-failure' },
+	// Service workers are off except in the offline test, so caching can't hide bugs.
+	use: { baseURL: `http://localhost:${PORT}`, trace: 'retain-on-failure', serviceWorkers: 'block' },
 	projects: [
 		{ name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } } },
 		{ name: 'phone', use: { ...devices['Pixel 7'] } }
@@ -28,6 +29,9 @@ export default defineConfig({
 			DATA_DIR: '.e2e-data',
 			AUTH_SECRET: 'e2e-test-secret-not-for-production-use-000000',
 			AUTH_DEV_LOGIN: 'true',
+			BODY_SIZE_LIMIT: '64M',
+			EMAIL_TRANSPORT: 'outbox',
+			EMAIL_SCHEDULER: 'off',
 			LOCAL_ADMIN_PASSWORD_HASH: hash
 		}
 	}

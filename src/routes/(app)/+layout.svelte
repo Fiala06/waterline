@@ -1,11 +1,16 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
+	import { onMount } from 'svelte';
+	import InstallPrompt from '$lib/components/InstallPrompt.svelte';
+	import { flushQueue, refreshQueue } from '$lib/offline';
+	import { listenForInstall } from '$lib/install.svelte';
 	import { page } from '$app/state';
 	import Logo from '$lib/components/Logo.svelte';
 	import QuickAdd from '$lib/components/QuickAdd.svelte';
 	import TankSwitcher from '$lib/components/TankSwitcher.svelte';
+	import TankThumb from '$lib/components/TankThumb.svelte';
 	import Toast from '$lib/components/Toast.svelte';
-	import { ui } from '$lib/ui.svelte';
+	import { toast, ui } from '$lib/ui.svelte';
 
 	let { data, children } = $props();
 
@@ -15,6 +20,8 @@
 	// Phone tab bar + FAB show on the four top-level tabs only; forms are full screen.
 	const tabRoutes = ['/', '/tanks', '/tasks', '/settings', '/history', '/charts', '/photos'];
 	const showTabs = $derived(tabRoutes.includes(path));
+	// The photo viewer is full screen, without the sidebar or header.
+	const fullscreen = $derived(path.startsWith('/photos/'));
 
 	const nav = [
 		{ href: '/', label: 'Dashboard' },
@@ -34,6 +41,50 @@
 		goto(keepPage ? `${u.pathname}?${u.searchParams}` : `/?tank=${id}`);
 	}
 
+	// Offline queue: sync when the connection comes back or the app is reopened.
+	async function sync() {
+		const n = await flushQueue();
+		if (n) {
+			toast(`✓ Synced ${n} entr${n === 1 ? 'y' : 'ies'}`);
+			invalidateAll();
+		}
+	}
+	onMount(() => {
+		listenForInstall();
+		ui.online = navigator.onLine;
+		try {
+			const t = sessionStorage.getItem('wl_toast');
+			if (t) {
+				sessionStorage.removeItem('wl_toast');
+				toast(t);
+			}
+		} catch {
+			/* storage blocked */
+		}
+		refreshQueue().then(sync);
+		const on = () => {
+			ui.online = true;
+			sync();
+		};
+		const off = () => (ui.online = false);
+		const vis = () => document.visibilityState === 'visible' && sync();
+		window.addEventListener('online', on);
+		window.addEventListener('offline', off);
+		document.addEventListener('visibilitychange', vis);
+		return () => {
+			window.removeEventListener('online', on);
+			window.removeEventListener('offline', off);
+			document.removeEventListener('visibilitychange', vis);
+		};
+	});
+	const waiting = $derived(ui.queue.filter((q) => !q.error).length);
+
+	// Server messages (after a redirect) and browser ones share one toast.
+	$effect(() => {
+		const f = data.flash;
+		if (f) ui.toast = { text: f.text, id: f.id, undo: f.undo };
+	});
+
 	function onkeydown(e: KeyboardEvent) {
 		if (e.key !== '+' || e.metaKey || e.ctrlKey) return;
 		const t = e.target as HTMLElement;
@@ -47,7 +98,7 @@
 
 <svelte:window {onkeydown} />
 
-<div class="shell">
+<div class="shell" class:fullscreen>
 	<aside class="sidebar" aria-label="Main">
 		<a class="brand" href="/"><Logo size={28} wordmark wordSize={19} /></a>
 		<nav class="nav">
@@ -70,7 +121,7 @@
 						class:current={t.id === data.currentTankId}
 						aria-current={t.id === data.currentTankId ? 'true' : undefined}
 					>
-						<span class="thumb photo-placeholder"></span>
+						<TankThumb cover={t.cover} size={24} radius={6} />
 						<span class="tname">{t.name}</span>
 						{#if t.alerts}
 							<span class="pill-bad sm">{t.alerts} alert{t.alerts === 1 ? '' : 's'}</span>
@@ -89,7 +140,7 @@
 		<header class="topbar">
 			{#if current}
 				<button type="button" class="tank-btn" onclick={() => (ui.tankSwitcher = true)}>
-					<span class="thumb-lg photo-placeholder"></span>
+					<TankThumb cover={current.cover} size={40} radius={10} />
 					<span class="tb-text">
 						<span class="tb-name">{current.name} <span class="caret">▾</span></span>
 						<span class="tb-sub">{cap(current.type)}{current.volume ? ` · ${current.volume}` : ''}</span>
@@ -103,6 +154,12 @@
 			</button>
 		</header>
 
+		{#if !ui.online || waiting}
+			<div class="offline" role="status">
+				<strong>{ui.online ? '' : 'Offline'}{!ui.online && waiting ? ' · ' : ''}{waiting ? `${waiting} entr${waiting === 1 ? 'y' : 'ies'} waiting` : ''}</strong>
+				<span>{ui.online ? 'Syncing…' : waiting ? "Saved on this phone. They'll sync when you're back online." : 'New entries are saved on this phone until you’re back online.'}</span>
+			</div>
+		{/if}
 		<main class:with-tabs={showTabs}>
 			{@render children()}
 		</main>
@@ -141,8 +198,10 @@
 />
 <TankSwitcher bind:open={ui.tankSwitcher} tanks={data.tanks} currentId={data.currentTankId} onpick={pickTank} />
 
-{#key data.flash?.id}
-	<Toast message={data.flash?.text} raised={showTabs} />
+{#if showTabs}<InstallPrompt />{/if}
+
+{#key ui.toast?.id}
+	<Toast message={ui.toast?.text} undo={ui.toast?.undo} raised={showTabs} />
 {/key}
 
 <style>
@@ -161,6 +220,25 @@
 	}
 	.spacer {
 		flex: 1;
+	}
+	.offline {
+		margin: calc(8px + env(safe-area-inset-top)) 20px 0;
+		padding: 10px 14px;
+		border-radius: 14px;
+		background: var(--warn-bg);
+		border: 1px solid var(--warn-border);
+		color: var(--warn-text);
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		font-size: 13px;
+	}
+	.offline strong {
+		font-size: 14px;
+	}
+	.fullscreen .sidebar,
+	.fullscreen .topbar {
+		display: none !important;
 	}
 
 	/* ── Phone tab bar + FAB ─────────────────────────────────────────── */
@@ -360,13 +438,6 @@
 			color: var(--text);
 			font-weight: 600;
 		}
-		.thumb {
-			width: 24px;
-			height: 24px;
-			border-radius: 6px;
-			border: none;
-			flex-shrink: 0;
-		}
 		.tname {
 			flex: 1;
 			min-width: 0;
@@ -399,11 +470,6 @@
 			align-items: center;
 			gap: 16px;
 			text-align: left;
-		}
-		.thumb-lg {
-			width: 40px;
-			height: 40px;
-			border-radius: 10px;
 		}
 		.tb-text {
 			display: flex;

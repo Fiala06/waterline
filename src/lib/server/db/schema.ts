@@ -39,7 +39,8 @@ export const notificationPrefs = sqliteTable('notification_prefs', {
 	delivery: text('delivery', { enum: ['individual', 'daily', 'weekly'] }).notNull().default('individual'),
 	leadDays: integer('lead_days').notNull().default(1),
 	sendTime: text('send_time').notNull().default('08:00'),
-	notifyEmail: text('notify_email')
+	notifyEmail: text('notify_email'),
+	unsubscribedAt: text('unsubscribed_at')
 });
 
 
@@ -60,6 +61,12 @@ export const tanks = sqliteTable(
 		startDate: text('start_date'),
 		notes: text('notes'),
 		coverPhotoId: text('cover_photo_id'),
+		specBrand: text('spec_brand'),
+		specModel: text('spec_model'),
+		glass: text('glass'),
+		substrate: text('substrate'),
+		waterSource: text('water_source'),
+		photoperiodH: real('photoperiod_h'),
 		archivedAt: text('archived_at'),
 		createdAt: createdAt()
 	},
@@ -183,7 +190,10 @@ export const taskCompletions = sqliteTable('task_completions', {
 		.notNull()
 		.references(() => tasks.id, { onDelete: 'cascade' }),
 	completedAt: text('completed_at').notNull(),
-	eventId: text('event_id').references(() => events.id, { onDelete: 'set null' })
+	eventId: text('event_id').references(() => events.id, { onDelete: 'set null' }),
+	// schedule before this completion, so Mark done can be undone
+	prevNextDue: text('prev_next_due'),
+	prevSnoozedUntil: text('prev_snoozed_until')
 });
 
 export type User = typeof users.$inferSelect;
@@ -195,3 +205,139 @@ export type Task = typeof tasks.$inferSelect;
 
 export { EVENT_CATEGORIES, TANK_TYPES, TASK_KINDS };
 export type { EventCategory, TankType, TaskKind } from '../../types';
+
+// ── Email ────────────────────────────────────────────────────────────────────
+
+/** Server-wide settings (one row, id = 1). Secrets are encrypted at rest. */
+export const serverSettings = sqliteTable('server_settings', {
+	id: integer('id').primaryKey(),
+	emailProvider: text('email_provider', { enum: ['mailgun', 'smtp'] }),
+	mailgunApiKeyEnc: text('mailgun_api_key_enc'),
+	mailgunDomain: text('mailgun_domain'),
+	mailgunRegion: text('mailgun_region', { enum: ['us', 'eu'] }).notNull().default('us'),
+	smtpHost: text('smtp_host'),
+	smtpPort: integer('smtp_port'),
+	smtpSecure: integer('smtp_secure', { mode: 'boolean' }).notNull().default(true),
+	smtpUser: text('smtp_user'),
+	smtpPasswordEnc: text('smtp_password_enc'),
+	sender: text('sender')
+});
+
+/** Signed single-use links in emails (Mark done / Snooze). Only the hash is stored. */
+export const actionTokens = sqliteTable('action_tokens', {
+	tokenHash: text('token_hash').primaryKey(),
+	taskId: text('task_id')
+		.notNull()
+		.references(() => tasks.id, { onDelete: 'cascade' }),
+	action: text('action', { enum: ['done', 'snooze'] }).notNull(),
+	due: text('due').notNull(), // the occurrence the email was about
+	expiresAt: text('expires_at').notNull(),
+	usedAt: text('used_at')
+});
+
+/** What was emailed, so the scheduler never sends the same thing twice. */
+export const emailLog = sqliteTable(
+	'email_log',
+	{
+		id: id(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		key: text('key').notNull(), // e.g. reminder:<task>:<due>, digest:<date>
+		sentAt: createdAt(),
+		error: text('error')
+	},
+	(t) => [uniqueIndex('email_log_key').on(t.userId, t.key)]
+);
+
+// ── Export ───────────────────────────────────────────────────────────────────
+
+export const exports = sqliteTable(
+	'exports',
+	{
+		id: id(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		scope: text('scope', { enum: ['tank', 'account'] }).notNull(),
+		tankId: text('tank_id').references(() => tanks.id, { onDelete: 'cascade' }),
+		format: text('format', { enum: ['zip', 'csv'] }).notNull(),
+		status: text('status', { enum: ['building', 'ready', 'failed', 'expired'] }).notNull().default('building'),
+		progress: integer('progress').notNull().default(0),
+		progressText: text('progress_text'),
+		filePath: text('file_path'),
+		fileName: text('file_name'),
+		size: integer('size'),
+		summary: text('summary'), // "190 photos, 212 entries"
+		error: text('error'),
+		createdAt: createdAt(),
+		expiresAt: text('expires_at')
+	},
+	(t) => [index('exports_user').on(t.userId)]
+);
+
+// ── Tank specs: equipment, livestock, plants ─────────────────────────────────
+
+export const EQUIPMENT_TYPES = ['filter', 'heater', 'light', 'co2', 'pump', 'skimmer', 'other'] as const;
+
+export const equipment = sqliteTable(
+	'equipment',
+	{
+		id: id(),
+		tankId: text('tank_id')
+			.notNull()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		type: text('type', { enum: EQUIPMENT_TYPES }).notNull(),
+		brand: text('brand'),
+		model: text('model'),
+		specs: text('specs', { mode: 'json' }).$type<Record<string, unknown>>().notNull().default({}),
+		installedAt: text('installed_at'),
+		lastServicedAt: text('last_serviced_at'),
+		notes: text('notes'),
+		removedAt: text('removed_at'),
+		createdAt: createdAt()
+	},
+	(t) => [index('equipment_tank').on(t.tankId)]
+);
+
+export const livestock = sqliteTable(
+	'livestock',
+	{
+		id: id(),
+		tankId: text('tank_id')
+			.notNull()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		kind: text('kind', { enum: ['fish', 'invert', 'coral'] }).notNull(),
+		commonName: text('common_name').notNull(),
+		scientificName: text('scientific_name'),
+		count: integer('count').notNull().default(1),
+		status: text('status', { enum: ['in_tank', 'quarantine'] }).notNull().default('in_tank'),
+		addedAt: text('added_at'),
+		source: text('source'),
+		removedAt: text('removed_at'),
+		createdAt: createdAt()
+	},
+	(t) => [index('livestock_tank').on(t.tankId)]
+);
+
+export const plants = sqliteTable(
+	'plants',
+	{
+		id: id(),
+		tankId: text('tank_id')
+			.notNull()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		name: text('name').notNull(),
+		scientificName: text('scientific_name'),
+		position: text('position', { enum: ['background', 'midground', 'foreground', 'epiphyte'] }).notNull().default('midground'),
+		status: text('status', { enum: ['thriving', 'melting', 'algae', 'other'] }).notNull().default('thriving'),
+		lastTrimmedAt: text('last_trimmed_at'),
+		removedAt: text('removed_at'),
+		createdAt: createdAt()
+	},
+	(t) => [index('plants_tank').on(t.tankId)]
+);
+
+export type Equipment = typeof equipment.$inferSelect;
+export type Livestock = typeof livestock.$inferSelect;
+export type Plant = typeof plants.$inferSelect;

@@ -8,6 +8,34 @@
       "when": 1790391657433,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1790394643108,
+      "tag": "0001_task_undo",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1790395470126,
+      "tag": "0002_email",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1790396185749,
+      "tag": "0003_exports",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1790432499682,
+      "tag": "0004_tank_specs",
+      "breakpoints": true
     }
   ]
 }

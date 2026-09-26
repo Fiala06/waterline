@@ -43,7 +43,7 @@
 		{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
 		<div class="field">
 			<label class="label" for="displayName">Display name</label>
-			<input class="input" id="displayName" name="displayName" value={data.displayName} required autocomplete="name" />
+			<input class="input" id="displayName" name="displayName" defaultValue={data.displayName} required autocomplete="name" />
 		</div>
 
 		<fieldset class="field">
@@ -57,8 +57,8 @@
 		<fieldset class="field">
 			<legend class="label">Hardness units</legend>
 			<div class="segmented">
-				<label><input type="radio" name="hardnessUnit" value="dgh" checked={data.hardnessUnit === 'dgh'} />dGH / dKH</label>
-				<label><input type="radio" name="hardnessUnit" value="ppm" checked={data.hardnessUnit === 'ppm'} />ppm</label>
+				<label><input type="radio" name="hardnessUnit" value="dgh" defaultChecked={data.hardnessUnit === 'dgh'} />dGH / dKH</label>
+				<label><input type="radio" name="hardnessUnit" value="ppm" defaultChecked={data.hardnessUnit === 'ppm'} />ppm</label>
 			</div>
 		</fieldset>
 

@@ -68,12 +68,12 @@
 					<div class="range" hidden={!tracked[r.id]}>
 						<label class="minmax">
 							<span>Min</span>
-							<input name="min_{r.id}" inputmode="decimal" value={r.min} aria-label="{r.name} minimum" />
+							<input name="min_{r.id}" inputmode="decimal" defaultValue={r.min} aria-label="{r.name} minimum" />
 						</label>
 						<span class="dash" aria-hidden="true">–</span>
 						<label class="minmax">
 							<span>Max</span>
-							<input name="max_{r.id}" inputmode="decimal" value={r.max} aria-label="{r.name} maximum" />
+							<input name="max_{r.id}" inputmode="decimal" defaultValue={r.max} aria-label="{r.name} maximum" />
 						</label>
 						<span class="u">{r.unit || '—'}</span>
 					</div>

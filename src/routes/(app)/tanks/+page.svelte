@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { photoUrl } from '$lib/media';
 	let { data } = $props();
 	const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 </script>
@@ -23,14 +24,16 @@
 	<div class="grid">
 		{#each data.tankCards as t (t.id)}
 			<article class="card tank">
-				<a class="cover photo-placeholder" href="/?tank={t.id}" aria-label="Open {t.name} dashboard"></a>
+				<a class="cover" class:photo-placeholder={!t.cover} href="/?tank={t.id}" aria-label="Open {t.name} dashboard">
+					{#if t.cover}<img src={photoUrl(t.cover, 'full')} alt="" loading="lazy" />{/if}
+				</a>
 				<div class="info">
 					<div class="row">
 						<div>
-							<h2><a href="/?tank={t.id}">{t.name}</a></h2>
+							<h2><a href="/tanks/{t.id}">{t.name}</a></h2>
 							<div class="muted sub">{cap(t.type)}{t.volume ? ` · ${t.volume}` : ''}</div>
 						</div>
-						<a class="btn edit" href="/tanks/{t.id}">Edit</a>
+						<a class="btn edit" href="/tanks/{t.id}">Details</a>
 					</div>
 					<div class="statuses">
 						<span class="st status-{t.status.level}">{t.status.text}</span>
@@ -98,6 +101,13 @@
 		height: 120px;
 		border: none;
 		border-bottom: 1px solid var(--border);
+		overflow: hidden;
+	}
+	.cover img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
 	}
 	.info {
 		padding: 14px;

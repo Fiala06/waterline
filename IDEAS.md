@@ -33,6 +33,9 @@ A running list of ideas and nice-to-haves that aren't in the current scope. For 
   - Don't nag: show it after sign-in or a second visit, make it dismissible, remember "not now", and never show it once installed.
   - Also offer an "Install app" option in Settings.
 
+- **More languages:** translate the app (and emails) beyond English, with a language choice in Settings. Units and date formats already follow user settings; this would add translated text, plus number formats such as a decimal comma.
+- **Spotting trends:** go beyond the Charts screen by pointing out patterns automatically, e.g. "Nitrate has risen in each of your last 4 tests", "KH drifts down about 1 dKH a week between water changes", or "pH dips after dosing". Could appear as a note on the dashboard and in the digest email, and compare tanks side by side.
+
 ## To do later
 
 -

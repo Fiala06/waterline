@@ -13,6 +13,7 @@
 	edited={e.edited}
 	rows={e.rows}
 	note={e.note}
+	photos={e.photos}
 	backHref="/?tank={e.tankId}"
 	editHref="/entries/test/{e.id}/edit"
 >

@@ -40,6 +40,7 @@
 	--google-text: #0c1a1f;
 	--toast-bg: #e6f0f0;
 	--toast-text: #0c1a1f;
+	--toast-action: #1a7a7a;
 	--placeholder-stripe-a: #1a3138;
 	--placeholder-stripe-b: #152a30;
 	--shadow-fab: 0 8px 24px rgba(0, 0, 0, 0.45);
@@ -85,6 +86,7 @@
 	--google-text: #ffffff;
 	--toast-bg: #0f2126;
 	--toast-text: #ffffff;
+	--toast-action: #4fc4bd;
 	--placeholder-stripe-a: #e1e9e8;
 	--placeholder-stripe-b: #eaf0ef;
 	--shadow-fab: 0 8px 24px rgba(15, 33, 38, 0.2);
@@ -131,6 +133,7 @@
 		--google-text: #ffffff;
 		--toast-bg: #0f2126;
 		--toast-text: #ffffff;
+	--toast-action: #4fc4bd;
 		--placeholder-stripe-a: #e1e9e8;
 		--placeholder-stripe-b: #eaf0ef;
 		--shadow-fab: 0 8px 24px rgba(15, 33, 38, 0.2);

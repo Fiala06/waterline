@@ -3,8 +3,10 @@
 	// 05 / 08 / G6 · Water test form. Every field is optional; numeric keypad;
 	// previous reading shown faintly; inline status as you type.
 	import { enhance } from '$app/forms';
+	import { enqueue } from '$lib/offline';
 	import { onMount } from 'svelte';
 	import DateTimePicker from './DateTimePicker.svelte';
+	import PhotoPicker from './PhotoPicker.svelte';
 	import { paramStatus, statusIcon, statusLong, statusMedium } from '$lib/status';
 	import { parseNumber } from '$lib/units';
 	import { whenLabel, type When } from '$lib/time';
@@ -31,6 +33,7 @@
 		error = null,
 		fieldErrors = {},
 		meta = null,
+		existingPhotos = [],
 		ontankclick
 	}: {
 		mode?: 'new' | 'edit';
@@ -45,6 +48,7 @@
 		error?: string | null;
 		fieldErrors?: Record<string, string>;
 		meta?: string | null;
+		existingPhotos?: { id: string }[];
 		ontankclick?: () => void;
 	} = $props();
 
@@ -92,11 +96,29 @@
 
 <form
 	method="POST"
+	enctype="multipart/form-data"
 	class="tform"
-	use:enhance={() => {
+	use:enhance={({ formData, action, cancel }) => {
+		// Offline (G11): keep the entry on this device and sync it later.
+		const queue = async () => {
+			await enqueue(formData, action.pathname + action.search, `Water test · ${filled} reading${filled === 1 ? '' : 's'}`, timeZone);
+			// A full page load, which the service worker can answer from its cache.
+			try {
+				sessionStorage.setItem('wl_toast', "Saved on this phone. It'll sync when you're back online.");
+			} catch {
+				/* storage blocked */
+			}
+			location.assign(closeHref);
+		};
+		if (mode === 'new' && !navigator.onLine) {
+			cancel();
+			queue();
+			return;
+		}
 		busy = true;
-		return async ({ update }) => {
-			await update({ reset: false });
+		return async ({ result, update }) => {
+			if (mode === 'new' && result.type === 'error' && !navigator.onLine) await queue();
+			else await update({ reset: false });
 			busy = false;
 		};
 	}}
@@ -169,11 +191,14 @@
 			{/each}
 		</div>
 
-		<input class="input note" name="note" bind:value={note} maxlength="2000" placeholder="Add note, e.g. before water change" aria-label="Note" />
+		<div class="note-row">
+			<input class="input note" name="note" bind:value={note} maxlength="2000" placeholder="Add note, e.g. before water change" aria-label="Note" />
+			<PhotoPicker compact existing={existingPhotos} />
+		</div>
 
 		{#if task}
 			<label class="check-row">
-				<input type="checkbox" name="completeTask" value={task.id} checked={task.checked} />
+				<input type="checkbox" name="completeTask" value={task.id} defaultChecked={task.checked} />
 				<span>{task.label}</span>
 			</label>
 		{/if}
@@ -341,8 +366,15 @@
 		font-weight: 600;
 		text-align: right;
 	}
-	.note {
+	.note-row {
+		display: flex;
+		gap: 8px;
 		margin-top: 12px;
+		align-items: flex-start;
+	}
+	.note {
+		flex: 1;
+		min-width: 0;
 		height: 48px;
 		font-size: 15px;
 		background: transparent;
@@ -476,7 +508,7 @@
 		.msg {
 			text-align: left;
 		}
-		.note,
+		.note-row,
 		.check-row {
 			margin: 14px 24px 0;
 			width: auto;

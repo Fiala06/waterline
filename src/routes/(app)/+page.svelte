@@ -1,11 +1,13 @@
 <script lang="ts">
 	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
 	import ParamCard from '$lib/components/ParamCard.svelte';
+	import TankThumb from '$lib/components/TankThumb.svelte';
 	import TaskList from '$lib/components/TaskList.svelte';
 	import TrendChart from '$lib/components/TrendChart.svelte';
 	import { displayValue, fmtRange, fmtValue, paramUnit, shortName, statusOf } from '$lib/params';
 	import { statusShort } from '$lib/status';
 	import { ui } from '$lib/ui.svelte';
+	import { photoUrl } from '$lib/media';
 
 	let { data } = $props();
 	const prefs = $derived(data.user);
@@ -69,7 +71,7 @@
 {:else}
 	<div class="page">
 		<button type="button" class="tank-head" onclick={() => (ui.tankSwitcher = true)}>
-			<span class="thumb photo-placeholder"></span>
+			<TankThumb cover={current?.cover} />
 			<span class="th-text">
 				<span class="th-name">{data.tank.name} <span class="caret">▾</span></span>
 				<span class="th-sub"
@@ -190,7 +192,7 @@
 						<a href="/tasks">All tasks</a>
 					</div>
 					{#if data.tasks.length}
-						<TaskList tasks={data.tasks.slice(0, 3)} today={data.today} compact />
+						<TaskList tasks={data.tasks.slice(0, 3)} today={data.today} />
 					{:else}
 						<div class="card nothing">
 							<strong>Nothing due</strong>
@@ -205,6 +207,17 @@
 						<a href="/history">History</a>
 					</div>
 					<ul class="feed">
+						{#each ui.queue.filter((q) => q.tankId === data.tank?.id) as q (q.id)}
+							<li>
+								<div class="queued">
+									<CategoryIcon kind={q.title.startsWith('Water test') ? 'test' : 'note'} size={40} />
+									<span class="f-text">
+										<span class="f-title">{q.title}</span>
+										<span class="f-sub" class:status-warn={!q.error} class:status-bad={!!q.error}>{q.error ? `✕ ${q.error}` : '▲ Waiting to sync'}</span>
+									</span>
+								</div>
+							</li>
+						{/each}
 						{#each data.activity as a (a.href)}
 							<li>
 								<a href={a.href}>
@@ -213,7 +226,11 @@
 										<span class="f-title">{a.title}</span>
 										<span class="f-sub">{a.sub}</span>
 									</span>
-									<span class="chev" aria-hidden="true">›</span>
+									{#if a.thumb}
+										<img class="f-thumb" src={photoUrl(a.thumb)} alt="" loading="lazy" />
+									{:else}
+										<span class="chev" aria-hidden="true">›</span>
+									{/if}
 								</a>
 							</li>
 						{/each}
@@ -243,12 +260,6 @@
 		padding: 8px 0;
 		color: var(--text);
 		text-align: left;
-	}
-	.thumb {
-		width: 44px;
-		height: 44px;
-		border-radius: 12px;
-		flex-shrink: 0;
 	}
 	.th-text {
 		display: flex;
@@ -455,6 +466,22 @@
 	.chev {
 		font-size: 18px;
 		color: var(--placeholder);
+	}
+	.queued {
+		display: flex;
+		gap: 12px;
+		align-items: center;
+		padding: 8px 0;
+	}
+	.queued .f-sub {
+		font-weight: 600;
+	}
+	.f-thumb {
+		width: 52px;
+		height: 52px;
+		border-radius: 10px;
+		object-fit: cover;
+		flex-shrink: 0;
 	}
 
 	@media (min-width: 1024px) {

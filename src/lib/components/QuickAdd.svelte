@@ -128,7 +128,10 @@
 			</a>
 			<a class="choice" href={href('/log/event', { category: 'note' })} onclick={() => (open = false)}>
 				<CategoryIcon kind="note" size={44} />
-				<span class="t"><span class="title">Add note</span></span>
+				<span class="t">
+					<span class="title">Add note or photo</span>
+					<span class="sub">Opens camera or library</span>
+				</span>
 				<kbd>N</kbd>
 			</a>
 		</div>

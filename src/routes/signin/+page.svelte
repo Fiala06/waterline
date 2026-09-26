@@ -1,6 +1,9 @@
 <script lang="ts">
 	import Logo from '$lib/components/Logo.svelte';
+	import { onMount } from 'svelte';
 	let { data, form } = $props();
+	// Signed out: forget pages the service worker cached for the last user.
+	onMount(() => navigator.serviceWorker?.controller?.postMessage('clear-user-cache'));
 	let showLocal = $state(false);
 	const error = $derived(form?.error ?? data.error);
 	$effect(() => {

@@ -10,7 +10,10 @@ export default defineConfig({
 				runes: ({ filename }) =>
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
-			adapter: adapter()
+			adapter: adapter(),
+			// Origin checks are done in hooks.server.ts, so one-click unsubscribe
+			// (a cross-site POST from mail providers) can be allowed.
+			csrf: { trustedOrigins: ['*'] }
 		})
 	],
 	test: {

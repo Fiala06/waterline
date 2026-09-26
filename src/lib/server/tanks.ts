@@ -49,6 +49,12 @@ export interface TankInput {
 	heightCm?: number | null;
 	startDate?: string | null;
 	notes?: string | null;
+	specBrand?: string | null;
+	specModel?: string | null;
+	glass?: string | null;
+	substrate?: string | null;
+	waterSource?: string | null;
+	photoperiodH?: number | null;
 }
 
 /**
