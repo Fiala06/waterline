@@ -26,4 +26,4 @@ SvelteKit (adapter-node) · TypeScript · Drizzle ORM + better-sqlite3 (`/data/w
 ## Workflow
 - Work milestone by milestone from `BUILD_PLAN.md`. After each: run `npm run check`, `npm test`, and the Playwright core-flow test once it exists, then commit.
 - Compare each finished screen against its design label (e.g. `03 Dashboard`, `D5 Tasks`) at 390px and 1280px widths, in both themes.
-- Ask the product owner before inventing features not in the designs. Open items: reef default targets; source for the bundled species list.
+- Ask the product owner before inventing features not in the designs. Decided: reef and other tank-type presets live in `defaultParameters()` in `src/lib/params.ts`; the bundled species list is built from Wikipedia + Wikidata (`npm run build:species`, see `src/lib/server/data/SPECIES_SOURCES.md`).
