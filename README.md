@@ -42,21 +42,56 @@ docker compose up -d
 
 Edit the environment in [`docker-compose.yml`](docker-compose.yml) first. Everything the app stores (SQLite database, later photos) lives in the `/data` volume.
 
+GitHub Actions also publishes ready-built images (linux/amd64), so you don't have to build on the server:
+
+| Image | Built from |
+|---|---|
+| `ghcr.io/fiala06/waterline:latest` | every push to `main` (also tagged `:main`) |
+| `ghcr.io/fiala06/waterline:dev` | every push to `dev` |
+| `ghcr.io/fiala06/waterline:sha-xxxxxxx` | every build, for pinning or rolling back |
+
+**HTTPS or plain HTTP.** With an HTTPS name (`ORIGIN=https://tanks.example.com` behind a reverse proxy) everything works, including Google sign-in, offline logging and the install prompt. The name can be LAN-only (local DNS plus a DNS-challenge certificate); email links and public pages then only work on your network.
+
+To keep it on your network without a domain, set `ORIGIN` to the plain address, e.g. `http://192.168.1.50:3000`, and sign in with the local admin login (`LOCAL_ADMIN_PASSWORD_HASH`). Google won't accept a plain-HTTP address, and browsers turn off offline logging and the install prompt; everything else works.
+
 | Variable | Needed | What it does |
 |---|---|---|
-| `ORIGIN` | yes | Public URL people open, e.g. `https://tanks.example.home` |
+| `ORIGIN` | yes | Public URL people open, e.g. `https://tanks.example.com` |
 | `AUTH_SECRET` | yes | Session secret: `openssl rand -base64 32` |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | yes | Google OAuth client. Redirect URI: `<ORIGIN>/auth/callback/google` |
 | `ADMIN_EMAIL` | recommended | This Google account becomes the admin |
 | `ALLOWED_EMAILS` | optional | Who else may sign in: emails and `@domains`, comma-separated. Unset = only the admin. Removing someone signs them out on their next visit |
 | `OPEN_SIGNUP` | optional | `true` lets anyone with a Google account sign up. Off by default |
-| `LOCAL_ADMIN_PASSWORD_HASH` | optional | Enables the local admin fallback login. Create with `npm run hash-password -- 'your password'` |
+| `LOCAL_ADMIN_PASSWORD_HASH` | optional | Enables the local admin fallback login. Create with `hash-password` in the container's console, or `npm run hash-password` in the repo |
 | `LOCAL_ADMIN_USERNAME` | optional | Defaults to `admin` |
 | `ENCRYPTION_KEY` | recommended | Encrypts the stored mail password/API key. Falls back to a key derived from `AUTH_SECRET` |
 | `EMAIL_SCHEDULER` | optional | `off` stops reminder and digest emails |
 | `DATA_DIR` | optional | Defaults to `/data` in Docker, `./data` locally |
 | `BODY_SIZE_LIMIT` | optional | Largest upload. The Docker image sets `64M` so photos fit; outside Docker set it yourself, since Node defaults to 512K |
 | `ADDRESS_HEADER` / `XFF_DEPTH` | behind a proxy | e.g. `X-Forwarded-For` and `1`, so failed local admin logins are limited per visitor rather than for everyone at once |
+
+### Unraid
+
+1. In the Unraid terminal, create the data folder. The container runs as uid 1000, so it needs to own it:
+
+   ```bash
+   mkdir -p /mnt/cache/appdata/waterline/data && chown 1000:1000 /mnt/cache/appdata/waterline/data
+   ```
+
+   Use your pool's path (`/mnt/cache/...`) rather than `/mnt/user/...`: SQLite's WAL mode doesn't get along with Unraid's FUSE share layer.
+
+2. **Docker › Add Container**:
+   - Repository: `ghcr.io/fiala06/waterline:latest` (or `:dev`)
+   - Port: container `3000` → any free host port
+   - Path: container `/data` → `/mnt/cache/appdata/waterline/data`
+   - Variables: `ORIGIN`, `AUTH_SECRET`, `ENCRYPTION_KEY`, `ADMIN_EMAIL`, then `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` for Google sign-in and/or `LOCAL_ADMIN_PASSWORD_HASH` for the local admin login, plus any optional ones from the table above. Behind a reverse proxy, also `ADDRESS_HEADER=X-Forwarded-For` and `XFF_DEPTH=1`.
+   - WebUI (under *Show more settings*): your `ORIGIN` URL. On plain HTTP, `http://[IP]:[PORT:3000]/` follows IP and port changes, but `ORIGIN` must still match the address you open.
+
+3. With HTTPS, point your reverse proxy (Nginx Proxy Manager, SWAG, Cloudflare Tunnel…) at `http://<unraid-ip>:<host port>`. Either way, open the `ORIGIN` URL and always use that one: any other address loads, but saving fails the cross-site check.
+
+**Updates:** each push to `main` (or `dev`) publishes a new image, and Unraid's Docker tab shows *update ready* for the container. Applying it keeps everything in `/data`; database migrations run on start.
+
+To run `latest` and `dev` side by side, create two containers with different names, host ports, data folders and `ORIGIN` values. Never point two containers at the same data folder.
 
 ### Security notes
 
