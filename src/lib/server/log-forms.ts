@@ -11,7 +11,7 @@ import {
 	WATER_SOURCES
 } from '$lib/events';
 import { fmtRange, fmtValue, paramDecimals, paramUnit, storedValue } from '$lib/params';
-import { dueInfo, nextDueAfterCompletion } from '$lib/tasks';
+import { dueInfo, effectiveDue, nextDueAfterCompletion } from '$lib/tasks';
 import { fmtDate, todayInZone, utcToZoned } from '$lib/time';
 import { formatNumber, toDisplay, toStored, unitLabel } from '$lib/units';
 import { EVENT_CATEGORIES, type EventCategory, type Tank, type TankParameter, type User } from './db/schema';
@@ -84,15 +84,16 @@ export function completableTask(
 		fromRequest = true;
 	} else if (kind) {
 		const t = taskOfKind(user.id, tankId, kind);
-		if (t?.nextDue && dueInfo(t.nextDue, today).section !== 'later') task = t;
+		if (t && dueInfo(t.due, today).section !== 'later') task = t;
 	}
-	if (!task || !task.nextDue) return null;
+	const due = task ? effectiveDue(task) : null;
+	if (!task || !due) return null;
 	const next = nextDueAfterCompletion(task, today, today);
 	return {
 		id: task.id,
 		name: task.name,
 		label: `Also complete task “${task.name}”${next ? ` (next due ${fmtDate(next)})` : ''}`,
-		checked: fromRequest || dueInfo(task.nextDue, today).days <= 0
+		checked: fromRequest || dueInfo(due, today).days <= 0
 	};
 }
 

@@ -192,7 +192,7 @@
 						<a href="/tasks">All tasks</a>
 					</div>
 					{#if data.tasks.length}
-						<TaskList tasks={data.tasks.slice(0, 3)} today={data.today} compact />
+						<TaskList tasks={data.tasks.slice(0, 3)} today={data.today} />
 					{:else}
 						<div class="card nothing">
 							<strong>Nothing due</strong>

@@ -145,7 +145,7 @@
 <TankSwitcher bind:open={ui.tankSwitcher} tanks={data.tanks} currentId={data.currentTankId} onpick={pickTank} />
 
 {#key data.flash?.id}
-	<Toast message={data.flash?.text} raised={showTabs} />
+	<Toast message={data.flash?.text} undo={data.flash?.undo} raised={showTabs} />
 {/key}
 
 <style>

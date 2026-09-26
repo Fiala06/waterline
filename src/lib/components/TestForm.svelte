@@ -180,7 +180,7 @@
 
 		{#if task}
 			<label class="check-row">
-				<input type="checkbox" name="completeTask" value={task.id} checked={task.checked} />
+				<input type="checkbox" name="completeTask" value={task.id} defaultChecked={task.checked} />
 				<span>{task.label}</span>
 			</label>
 		{/if}

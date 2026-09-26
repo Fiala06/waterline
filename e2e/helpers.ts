@@ -1,9 +1,15 @@
 import { expect, type Page } from '@playwright/test';
 import sharp from 'sharp';
 
+/** Navigate and wait until the app has hydrated, so typed input isn't lost. */
+export async function open(page: Page, url: string) {
+	await page.goto(url);
+	await page.locator('html[data-ready="true"]').waitFor();
+}
+
 /** Sign in with the mock Google login, finish setup and create a tank. */
 export async function newKeeperWithTank(page: Page, tag: string, type: 'Freshwater' | 'Planted' | 'Reef' = 'Planted') {
-	await page.goto('/signin');
+	await open(page, '/signin');
 	await page.getByPlaceholder('Email').fill(`${tag}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}@example.com`);
 	await page.getByRole('button', { name: /Sign in with Google/ }).click();
 	await page.getByRole('button', { name: 'Continue to first tank' }).click();

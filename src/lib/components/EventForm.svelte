@@ -83,6 +83,10 @@
 			: `≈ ${formatNumber((a / tankVolume) * 100, 0)}% of ${of}`;
 	});
 
+	let note = $state(untrack(() => initialNote));
+	let livestockStatus = $state(untrack(() => v('status') || 'in_tank'));
+	let recheck = $state('3');
+
 	// Dosing
 	let product = $state(v('product'));
 	let dosingUnit = $state(v('unit') || 'mL');
@@ -182,7 +186,7 @@
 					<legend class="label">Source water</legend>
 					<div class="options three">
 						{#each WATER_SOURCES as s (s.value)}
-							<label class="option"><input type="radio" name="source" value={s.value} checked={(v('source') || 'tap') === s.value} />{s.label}</label>
+							<label class="option"><input type="radio" name="source" value={s.value} defaultChecked={(v('source') || 'tap') === s.value} />{s.label}</label>
 						{/each}
 					</div>
 				</fieldset>
@@ -205,7 +209,7 @@
 				<div class="pair">
 					<div class="field">
 						<label class="label" for="amount">Amount</label>
-						<input class="input" id="amount" name="amount" inputmode="decimal" value={v('amount')} />
+						<input class="input" id="amount" name="amount" inputmode="decimal" defaultValue={v('amount')} />
 					</div>
 					<div class="field">
 						<label class="label" for="unit">Unit</label>
@@ -222,7 +226,7 @@
 					<legend class="label">What did you do?</legend>
 					<div class="options two">
 						{#each MAINTENANCE_ACTIONS as a (a)}
-							<label class="option"><input type="checkbox" name="actions" value={a} checked={list('actions').includes(a)} />{a}</label>
+							<label class="option"><input type="checkbox" name="actions" value={a} defaultChecked={list('actions').includes(a)} />{a}</label>
 						{/each}
 					</div>
 					{#if errors.actions}<span class="error-text">✕ {errors.actions}</span>{/if}
@@ -232,26 +236,26 @@
 					<legend class="sr-only">Change</legend>
 					<div class="options three">
 						{#each LIVESTOCK_ACTIONS as a (a.value)}
-							<label class="option"><input type="radio" name="action" value={a.value} checked={(v('action') || 'added') === a.value} />{a.label}</label>
+							<label class="option"><input type="radio" name="action" value={a.value} defaultChecked={(v('action') || 'added') === a.value} />{a.label}</label>
 						{/each}
 					</div>
 					{#if errors.action}<span class="error-text">✕ {errors.action}</span>{/if}
 				</fieldset>
 				<div class="field">
 					<label class="label" for="name">Species</label>
-					<input class="input" id="name" name="name" value={v('name')} maxlength="80" placeholder="e.g. Ember tetra" aria-invalid={!!errors.name} />
+					<input class="input" id="name" name="name" defaultValue={v('name')} maxlength="80" placeholder="e.g. Ember tetra" aria-invalid={!!errors.name} />
 					{#if errors.name}<span class="error-text">✕ {errors.name}</span>{/if}
 				</div>
 				<div class="pair">
 					<div class="field">
 						<label class="label" for="count">Count</label>
-						<input class="input" id="count" name="count" inputmode="numeric" value={v('count')} />
+						<input class="input" id="count" name="count" inputmode="numeric" defaultValue={v('count')} />
 						{#if errors.count}<span class="error-text">✕ {errors.count}</span>{/if}
 					</div>
 					<div class="field">
 						<label class="label" for="status">Status</label>
-						<select class="input" id="status" name="status">
-							{#each LIVESTOCK_STATUS as s (s.value)}<option value={s.value} selected={v('status') === s.value}>{s.label}</option>{/each}
+						<select class="input" id="status" name="status" bind:value={livestockStatus}>
+							{#each LIVESTOCK_STATUS as s (s.value)}<option value={s.value}>{s.label}</option>{/each}
 						</select>
 					</div>
 				</div>
@@ -260,20 +264,20 @@
 					<legend class="sr-only">Change</legend>
 					<div class="options four">
 						{#each EQUIPMENT_ACTIONS as a (a.value)}
-							<label class="option"><input type="radio" name="action" value={a.value} checked={(v('action') || 'adjusted') === a.value} />{a.label}</label>
+							<label class="option"><input type="radio" name="action" value={a.value} defaultChecked={(v('action') || 'adjusted') === a.value} />{a.label}</label>
 						{/each}
 					</div>
 				</fieldset>
 				<div class="field">
 					<label class="label" for="item">Item</label>
-					<input class="input" id="item" name="item" value={v('item')} maxlength="80" placeholder="e.g. Canister filter" aria-invalid={!!errors.item} />
+					<input class="input" id="item" name="item" defaultValue={v('item')} maxlength="80" placeholder="e.g. Canister filter" aria-invalid={!!errors.item} />
 					{#if errors.item}<span class="error-text">✕ {errors.item}</span>{/if}
 				</div>
 				<fieldset class="field">
 					<legend class="label">Why</legend>
 					<div class="options two">
 						{#each EQUIPMENT_REASONS as r (r)}
-							<label class="option"><input type="checkbox" name="reasons" value={r} checked={list('reasons').includes(r)} />{r}</label>
+							<label class="option"><input type="checkbox" name="reasons" value={r} defaultChecked={list('reasons').includes(r)} />{r}</label>
 						{/each}
 					</div>
 				</fieldset>
@@ -282,7 +286,7 @@
 					<legend class="label">What did you notice?</legend>
 					<div class="options two">
 						{#each OBSERVATION_TAGS as t (t)}
-							<label class="option"><input type="checkbox" name="tags" value={t} checked={list('tags').includes(t)} />{t}</label>
+							<label class="option"><input type="checkbox" name="tags" value={t} defaultChecked={list('tags').includes(t)} />{t}</label>
 						{/each}
 					</div>
 					{#if errors.tags}<span class="error-text">✕ {errors.tags}</span>{/if}
@@ -298,8 +302,9 @@
 					rows={category === 'note' ? 5 : 2}
 					maxlength="2000"
 					placeholder={category === 'maintenance' ? 'e.g. swapped sponge, kept ceramic' : 'Optional'}
-					aria-invalid={!!errors.note}>{initialNote}</textarea
-				>
+					aria-invalid={!!errors.note}
+					bind:value={note}
+				></textarea>
 				{#if errors.note}<span class="error-text">✕ {errors.note}</span>{/if}
 			</div>
 
@@ -308,15 +313,15 @@
 			{#if category === 'observation' && mode === 'new'}
 				<div class="field">
 					<label class="label" for="recheck">Remind me to check again</label>
-					<select class="input" id="recheck" name="recheck">
-						{#each RECHECK_OPTIONS as o (o.value)}<option value={o.value} selected={o.value === '3'}>{o.label}</option>{/each}
+					<select class="input" id="recheck" name="recheck" bind:value={recheck}>
+						{#each RECHECK_OPTIONS as o (o.value)}<option value={o.value}>{o.label}</option>{/each}
 					</select>
 				</div>
 			{/if}
 
 			{#if task}
 				<label class="check-row">
-					<input type="checkbox" name="completeTask" value={task.id} checked={task.checked} />
+					<input type="checkbox" name="completeTask" value={task.id} defaultChecked={task.checked} />
 					<span>{task.label}</span>
 				</label>
 			{/if}

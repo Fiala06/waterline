@@ -35,7 +35,7 @@ export const load: PageServerLoad = ({ locals }) => {
 					}
 				: { level: 'ok', text: '✓ All in range' };
 
-		const mine = tasks.filter((k) => k.tankId === t.id && k.nextDue).map((k) => dueInfo(k.nextDue!, today));
+		const mine = tasks.filter((k) => k.tankId === t.id).map((k) => dueInfo(k.due, today));
 		const overdue = mine.filter((d) => d.days < 0).length;
 		const dueToday = mine.filter((d) => d.days === 0).length;
 		const task = overdue

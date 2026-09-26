@@ -40,7 +40,7 @@
 				class="input"
 				id="name"
 				name="name"
-				value={values.name ?? ''}
+				defaultValue={values.name ?? ''}
 				required
 				maxlength="80"
 				placeholder="e.g. Riverbed 40"
@@ -53,7 +53,7 @@
 			<div class="options two">
 				{#each types as t (t.value)}
 					<label class="option">
-						<input type="radio" name="type" value={t.value} checked={(values.type ?? 'freshwater') === t.value} />{t.label}
+						<input type="radio" name="type" value={t.value} defaultChecked={(values.type ?? 'freshwater') === t.value} />{t.label}
 					</label>
 				{/each}
 			</div>
@@ -62,7 +62,7 @@
 		<div class="field">
 			<label class="label" for="nominalVolume">Volume</label>
 			<div class="unit-input">
-				<input id="nominalVolume" name="nominalVolume" inputmode="decimal" value={values.nominalVolume ?? ''} placeholder="—" />
+				<input id="nominalVolume" name="nominalVolume" inputmode="decimal" defaultValue={values.nominalVolume ?? ''} placeholder="—" />
 				<span class="unit">{volUnit}</span>
 			</div>
 			{#if errors.nominalVolume}<span class="error-text">✕ {errors.nominalVolume}</span>{/if}

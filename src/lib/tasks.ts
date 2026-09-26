@@ -8,6 +8,12 @@ interface Schedulable {
 	nextDue: string | null;
 }
 
+/** The date a task is actually due: a snooze moves only this occurrence. */
+export function effectiveDue(task: { nextDue: string | null; snoozedUntil?: string | null }): string | null {
+	if (!task.nextDue) return null;
+	return task.snoozedUntil && task.snoozedUntil > task.nextDue ? task.snoozedUntil : task.nextDue;
+}
+
 /**
  * Next due date after completing on `doneOn` ('YYYY-MM-DD').
  * - one-off: null (task is closed)
@@ -57,4 +63,30 @@ export function intervalText(task: { recurring: boolean; intervalDays: number | 
 	const d = task.intervalDays;
 	if (d % 7 === 0 && d >= 14) return `every ${d / 7} weeks`;
 	return d === 1 ? 'every day' : `every ${d} days`;
+}
+
+/** Snooze choices (G8): tomorrow, in 3 days, next weekend (the coming Saturday after this week's). */
+export function snoozeOptions(today: string, due: string) {
+	const base = due > today ? due : today;
+	const dow = new Date(today + 'T12:00:00Z').getUTCDay(); // 0 Sun … 6 Sat
+	const toSat = ((6 - dow + 7) % 7) || 7;
+	const weekend = addDays(today, toSat < 3 ? toSat + 7 : toSat);
+	return [
+		{ label: 'Tomorrow', date: addDays(base, 1) },
+		{ label: 'In 3 days', date: addDays(base, 3) },
+		{ label: 'Next weekend', date: weekend }
+	].filter((o, i, all) => all.findIndex((x) => x.date === o.date) === i);
+}
+
+/** Example under each schedule mode (15): "Done late on Sep 26 → next due Oct 3". */
+export function scheduleExamples(nextDue: string, intervalDays: number) {
+	const late = addDays(nextDue, 1);
+	const weekday = new Date(nextDue + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
+	return {
+		completion: `Done late on ${fmtDate(late)} → next due ${fmtDate(addDays(late, intervalDays))}`,
+		fixed:
+			intervalDays % 7 === 0
+				? `Always every ${intervalDays === 7 ? '' : `${intervalDays / 7} weeks on `}${weekday}, whenever it's done`
+				: `Always ${fmtDate(addDays(nextDue, intervalDays))} next, whenever it's done`
+	};
 }

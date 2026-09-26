@@ -16,7 +16,7 @@
 			<h2 class="caps">Profile</h2>
 			<div class="field">
 				<label class="label" for="displayName">Name</label>
-				<input class="input" id="displayName" name="displayName" value={u.displayName} required maxlength="80" />
+				<input class="input" id="displayName" name="displayName" defaultValue={u.displayName} required maxlength="80" />
 			</div>
 			<div class="field">
 				<span class="label">Email</span>
@@ -29,15 +29,15 @@
 			<fieldset class="field">
 				<legend class="label">Unit system</legend>
 				<div class="segmented">
-					<label><input type="radio" name="unitSystem" value="imperial" checked={u.unitSystem === 'imperial'} />Imperial<small>gal · °F · in</small></label>
-					<label><input type="radio" name="unitSystem" value="metric" checked={u.unitSystem === 'metric'} />Metric<small>L · °C · cm</small></label>
+					<label><input type="radio" name="unitSystem" value="imperial" defaultChecked={u.unitSystem === 'imperial'} />Imperial<small>gal · °F · in</small></label>
+					<label><input type="radio" name="unitSystem" value="metric" defaultChecked={u.unitSystem === 'metric'} />Metric<small>L · °C · cm</small></label>
 				</div>
 			</fieldset>
 			<fieldset class="field">
 				<legend class="label">Hardness</legend>
 				<div class="segmented">
-					<label><input type="radio" name="hardnessUnit" value="dgh" checked={u.hardnessUnit === 'dgh'} />dGH / dKH</label>
-					<label><input type="radio" name="hardnessUnit" value="ppm" checked={u.hardnessUnit === 'ppm'} />ppm</label>
+					<label><input type="radio" name="hardnessUnit" value="dgh" defaultChecked={u.hardnessUnit === 'dgh'} />dGH / dKH</label>
+					<label><input type="radio" name="hardnessUnit" value="ppm" defaultChecked={u.hardnessUnit === 'ppm'} />ppm</label>
 				</div>
 			</fieldset>
 			<div class="field">
@@ -51,9 +51,9 @@
 		<section class="stack">
 			<h2 class="caps">Theme</h2>
 			<div class="segmented">
-				<label><input type="radio" name="theme" value="light" checked={u.theme === 'light'} />Light</label>
-				<label><input type="radio" name="theme" value="dark" checked={u.theme === 'dark'} />Dark</label>
-				<label><input type="radio" name="theme" value="system" checked={u.theme === 'system'} />System</label>
+				<label><input type="radio" name="theme" value="light" defaultChecked={u.theme === 'light'} />Light</label>
+				<label><input type="radio" name="theme" value="dark" defaultChecked={u.theme === 'dark'} />Dark</label>
+				<label><input type="radio" name="theme" value="system" defaultChecked={u.theme === 'system'} />System</label>
 			</div>
 		</section>
 

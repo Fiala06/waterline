@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { photoUrl } from '$lib/media';
+	import { untrack } from 'svelte';
 	let { data, form } = $props();
 	let coverPreview = $state<string | null>(null);
+	let notes = $state(untrack(() => data.tank.notes));
 	function pickCover(e: Event) {
 		const f = (e.currentTarget as HTMLInputElement).files?.[0];
 		if (coverPreview) URL.revokeObjectURL(coverPreview);
@@ -43,7 +45,7 @@
 
 			<div class="field">
 				<label class="label" for="name">Name</label>
-				<input class="input" id="name" name="name" value={data.tank.name} required maxlength="80" />
+				<input class="input" id="name" name="name" defaultValue={data.tank.name} required maxlength="80" />
 				{#if errors.name}<span class="error-text">✕ {errors.name}</span>{/if}
 			</div>
 
@@ -51,7 +53,7 @@
 				<legend class="label">Type</legend>
 				<div class="options four">
 					{#each types as t (t.value)}
-						<label class="option"><input type="radio" name="type" value={t.value} checked={data.tank.type === t.value} />{t.label}</label>
+						<label class="option"><input type="radio" name="type" value={t.value} defaultChecked={data.tank.type === t.value} />{t.label}</label>
 					{/each}
 				</div>
 			</fieldset>
@@ -60,7 +62,7 @@
 				<div class="field">
 					<label class="label" for="nominalVolume">Nominal volume</label>
 					<div class="unit-input">
-						<input id="nominalVolume" name="nominalVolume" inputmode="decimal" value={data.tank.nominalVolume} />
+						<input id="nominalVolume" name="nominalVolume" inputmode="decimal" defaultValue={data.tank.nominalVolume} />
 						<span class="unit">{data.volUnit}</span>
 					</div>
 					{#if errors.nominalVolume}<span class="error-text">✕ {errors.nominalVolume}</span>{/if}
@@ -68,7 +70,7 @@
 				<div class="field">
 					<label class="label" for="actualVolume">Actual volume</label>
 					<div class="unit-input">
-						<input id="actualVolume" name="actualVolume" inputmode="decimal" value={data.tank.actualVolume} />
+						<input id="actualVolume" name="actualVolume" inputmode="decimal" defaultValue={data.tank.actualVolume} />
 						<span class="unit">{data.volUnit}</span>
 					</div>
 					{#if errors.actualVolume}<span class="error-text">✕ {errors.actualVolume}</span>{/if}
@@ -80,7 +82,7 @@
 				<div class="triple">
 					{#each [['length', 'Length'], ['width', 'Width'], ['height', 'Height']] as [key, label] (key)}
 						<div class="unit-input">
-							<input name={key} inputmode="decimal" aria-label={label} value={data.tank[key as 'length' | 'width' | 'height']} />
+							<input name={key} inputmode="decimal" aria-label={label} defaultValue={data.tank[key as 'length' | 'width' | 'height']} />
 							<span class="unit">{data.lenUnit}</span>
 						</div>
 					{/each}
@@ -89,12 +91,12 @@
 
 			<div class="field">
 				<label class="label" for="startDate">Start date</label>
-				<input class="input" id="startDate" name="startDate" type="date" value={data.tank.startDate} />
+				<input class="input" id="startDate" name="startDate" type="date" defaultValue={data.tank.startDate} />
 			</div>
 
 			<div class="field">
 				<label class="label" for="notes">Notes</label>
-				<textarea class="input" id="notes" name="notes" rows="3" maxlength="2000">{data.tank.notes}</textarea>
+				<textarea class="input" id="notes" name="notes" rows="3" maxlength="2000" bind:value={notes}></textarea>
 			</div>
 		</div>
 

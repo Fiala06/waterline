@@ -183,7 +183,10 @@ export const taskCompletions = sqliteTable('task_completions', {
 		.notNull()
 		.references(() => tasks.id, { onDelete: 'cascade' }),
 	completedAt: text('completed_at').notNull(),
-	eventId: text('event_id').references(() => events.id, { onDelete: 'set null' })
+	eventId: text('event_id').references(() => events.id, { onDelete: 'set null' }),
+	// schedule before this completion, so Mark done can be undone
+	prevNextDue: text('prev_next_due'),
+	prevSnoozedUntil: text('prev_snoozed_until')
 });
 
 export type User = typeof users.$inferSelect;

@@ -24,7 +24,7 @@ export const load: LayoutServerLoad = ({ locals, url, cookies }) => {
 	const overdueByTank = new Map<string, number>();
 	let overdueCount = 0;
 	for (const { task } of tasks) {
-		if (task.nextDue && dueInfo(task.nextDue, today).section === 'overdue') {
+		if (dueInfo(task.due, today).section === 'overdue') {
 			overdueCount++;
 			overdueByTank.set(task.tankId, (overdueByTank.get(task.tankId) ?? 0) + 1);
 		}
@@ -70,8 +70,8 @@ export const load: LayoutServerLoad = ({ locals, url, cookies }) => {
 		overdueCount,
 		quick: {
 			lastTest: lastTest ? `Last test ${fmtWhen(lastTest.takenAt, user.timeZone).replace(/^Today/, 'today').replace(/^Yesterday/, 'yesterday')}` : 'No tests yet',
-			wcDue: wcTask?.nextDue ? dueInfo(wcTask.nextDue, today) : null
+			wcDue: wcTask ? dueInfo(wcTask.due, today) : null
 		},
-		flash: flash ? { text: flash, id: crypto.randomUUID() } : null
+		flash: flash ? { ...flash, id: crypto.randomUUID() } : null
 	};
 };
