@@ -27,6 +27,11 @@ A running list of ideas and nice-to-haves that aren't in the current scope. For 
   - Notes as a running, dated list per tank (or pinned notes), not just one text field.
   - Quick "remind me about this tank" one-off reminder straight from the tank page or dashboard.
   - Let custom parameters be saved and reused across tanks.
+- **"Add to home screen" prompt on mobile:** the brief already makes the site an installable PWA; add a friendly prompt offering to install it as a phone app shortcut.
+  - Android/Chrome: use the browser's install prompt (`beforeinstallprompt`) behind an "Install app" button.
+  - iPhone/Safari: no automatic prompt exists, so show short instructions ("Tap Share, then Add to Home Screen").
+  - Don't nag: show it after sign-in or a second visit, make it dismissible, remember "not now", and never show it once installed.
+  - Also offer an "Install app" option in Settings.
 
 ## To do later
 
