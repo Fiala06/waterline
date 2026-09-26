@@ -1,0 +1,290 @@
+// Water tests and events: create, read, edit, delete, and the activity feed.
+import { error } from '@sveltejs/kit';
+import { and, desc, eq, gte, inArray } from 'drizzle-orm';
+import { statusOf } from '$lib/params';
+import { db } from './db';
+import {
+	events,
+	tankParameters,
+	tanks,
+	testReadings,
+	tests,
+	type Event,
+	type EventCategory,
+	type TankParameter,
+	type Test
+} from './db/schema';
+import { getTank } from './tanks';
+import { completeTask } from './tasks';
+
+// ── Tests ───────────────────────────────────────────────────────────────────
+
+export interface TestInput {
+	takenAt: string;
+	note: string | null;
+	/** parameter id → stored (metric/dGH) value */
+	readings: Map<string, number>;
+	clientId?: string | null;
+}
+
+export function createTest(
+	userId: string,
+	tankId: string,
+	input: TestInput,
+	opts: { completeTaskId?: string | null; timeZone: string }
+): { test: Test; count: number; outOfRange: number; duplicate: boolean } {
+	getTank(userId, tankId);
+	const params = paramsById(tankId);
+	for (const id of input.readings.keys()) {
+		if (!params.has(id)) error(400, 'Unknown parameter');
+	}
+
+	if (input.clientId) {
+		const existing = db
+			.select()
+			.from(tests)
+			.where(and(eq(tests.tankId, tankId), eq(tests.clientId, input.clientId)))
+			.get();
+		if (existing) return { test: existing, ...summarize(existing.id, params), duplicate: true };
+	}
+
+	const test = db.transaction((tx) => {
+		const t = tx
+			.insert(tests)
+			.values({ tankId, takenAt: input.takenAt, note: input.note, clientId: input.clientId ?? null })
+			.returning()
+			.get();
+		if (input.readings.size) {
+			tx.insert(testReadings)
+				.values([...input.readings].map(([parameterId, value]) => ({ testId: t.id, parameterId, value })))
+				.run();
+		}
+		return t;
+	});
+	if (opts.completeTaskId) {
+		completeTask(userId, opts.completeTaskId, { at: input.takenAt, timeZone: opts.timeZone });
+	}
+	return { test, ...summarize(test.id, params), duplicate: false };
+}
+
+function paramsById(tankId: string) {
+	const rows = db.select().from(tankParameters).where(eq(tankParameters.tankId, tankId)).all();
+	return new Map(rows.map((p) => [p.id, p]));
+}
+
+function summarize(testId: string, params: Map<string, TankParameter>) {
+	const readings = db.select().from(testReadings).where(eq(testReadings.testId, testId)).all();
+	let outOfRange = 0;
+	for (const r of readings) {
+		const p = params.get(r.parameterId);
+		if (p && statusOf(p, r.value).level === 'bad') outOfRange++;
+	}
+	return { count: readings.length, outOfRange };
+}
+
+export function getTest(userId: string, testId: string) {
+	const row = db
+		.select({ test: tests })
+		.from(tests)
+		.innerJoin(tanks, eq(tanks.id, tests.tankId))
+		.where(and(eq(tests.id, testId), eq(tanks.userId, userId)))
+		.get();
+	if (!row) error(404, 'Entry not found');
+	const readings = db.select().from(testReadings).where(eq(testReadings.testId, testId)).all();
+	return { test: row.test, readings: new Map(readings.map((r) => [r.parameterId, r.value])) };
+}
+
+export function updateTest(userId: string, testId: string, input: Omit<TestInput, 'clientId'>) {
+	const { test } = getTest(userId, testId);
+	const params = paramsById(test.tankId);
+	for (const id of input.readings.keys()) {
+		if (!params.has(id)) error(400, 'Unknown parameter');
+	}
+	db.transaction((tx) => {
+		tx.update(tests)
+			.set({ takenAt: input.takenAt, note: input.note, editedAt: new Date().toISOString() })
+			.where(eq(tests.id, testId))
+			.run();
+		tx.delete(testReadings).where(eq(testReadings.testId, testId)).run();
+		if (input.readings.size) {
+			tx.insert(testReadings)
+				.values([...input.readings].map(([parameterId, value]) => ({ testId, parameterId, value })))
+				.run();
+		}
+	});
+	return summarize(testId, params);
+}
+
+export function deleteTest(userId: string, testId: string) {
+	const { test } = getTest(userId, testId);
+	db.delete(tests).where(eq(tests.id, testId)).run();
+	return test;
+}
+
+/** Latest reading per parameter (from the most recent test that has that parameter). */
+export function latestReadings(tankId: string) {
+	const rows = db
+		.select({ parameterId: testReadings.parameterId, value: testReadings.value, takenAt: tests.takenAt })
+		.from(testReadings)
+		.innerJoin(tests, eq(tests.id, testReadings.testId))
+		.where(eq(tests.tankId, tankId))
+		.orderBy(desc(tests.takenAt))
+		.all();
+	const latest = new Map<string, { value: number; takenAt: string }>();
+	for (const r of rows) if (!latest.has(r.parameterId)) latest.set(r.parameterId, r);
+	return latest;
+}
+
+export function latestTest(tankId: string) {
+	return db.select().from(tests).where(eq(tests.tankId, tankId)).orderBy(desc(tests.takenAt)).get();
+}
+
+/** Readings for one parameter since an instant, oldest first. */
+export function series(tankId: string, parameterId: string, since: string) {
+	return db
+		.select({ value: testReadings.value, takenAt: tests.takenAt })
+		.from(testReadings)
+		.innerJoin(tests, eq(tests.id, testReadings.testId))
+		.where(
+			and(eq(tests.tankId, tankId), eq(testReadings.parameterId, parameterId), gte(tests.takenAt, since))
+		)
+		.orderBy(tests.takenAt)
+		.all();
+}
+
+// ── Events ──────────────────────────────────────────────────────────────────
+
+export interface EventInput {
+	category: EventCategory;
+	occurredAt: string;
+	note: string | null;
+	data: Record<string, unknown>;
+	clientId?: string | null;
+}
+
+export function createEvent(
+	userId: string,
+	tankId: string,
+	input: EventInput,
+	opts: { completeTaskId?: string | null; timeZone: string }
+): { event: Event; duplicate: boolean } {
+	getTank(userId, tankId);
+	if (input.clientId) {
+		const existing = db
+			.select()
+			.from(events)
+			.where(and(eq(events.tankId, tankId), eq(events.clientId, input.clientId)))
+			.get();
+		if (existing) return { event: existing, duplicate: true };
+	}
+	const event = db
+		.insert(events)
+		.values({ ...input, tankId, clientId: input.clientId ?? null })
+		.returning()
+		.get();
+	if (opts.completeTaskId) {
+		completeTask(userId, opts.completeTaskId, {
+			at: input.occurredAt,
+			eventId: event.id,
+			timeZone: opts.timeZone
+		});
+	}
+	return { event, duplicate: false };
+}
+
+export function getEvent(userId: string, eventId: string): Event {
+	const row = db
+		.select({ event: events })
+		.from(events)
+		.innerJoin(tanks, eq(tanks.id, events.tankId))
+		.where(and(eq(events.id, eventId), eq(tanks.userId, userId)))
+		.get();
+	if (!row) error(404, 'Entry not found');
+	return row.event;
+}
+
+export function updateEvent(
+	userId: string,
+	eventId: string,
+	patch: Pick<EventInput, 'occurredAt' | 'note' | 'data'>
+) {
+	getEvent(userId, eventId);
+	return db
+		.update(events)
+		.set({ ...patch, editedAt: new Date().toISOString() })
+		.where(eq(events.id, eventId))
+		.returning()
+		.get();
+}
+
+export function deleteEvent(userId: string, eventId: string) {
+	const e = getEvent(userId, eventId);
+	db.delete(events).where(eq(events.id, eventId)).run();
+	return e;
+}
+
+export function lastEventOf(tankId: string, category: EventCategory) {
+	return db
+		.select()
+		.from(events)
+		.where(and(eq(events.tankId, tankId), eq(events.category, category)))
+		.orderBy(desc(events.occurredAt))
+		.get();
+}
+
+export function eventsSince(tankId: string, categories: EventCategory[], since: string) {
+	return db
+		.select()
+		.from(events)
+		.where(
+			and(eq(events.tankId, tankId), inArray(events.category, categories), gte(events.occurredAt, since))
+		)
+		.orderBy(events.occurredAt)
+		.all();
+}
+
+/** Recently used dosing products, most recent first. */
+export function recentDosingProducts(tankId: string, limit = 6) {
+	const rows = db
+		.select()
+		.from(events)
+		.where(and(eq(events.tankId, tankId), eq(events.category, 'dosing')))
+		.orderBy(desc(events.occurredAt))
+		.limit(50)
+		.all();
+	const seen = new Map<string, { product: string; amount: unknown; unit: unknown; at: string }>();
+	for (const e of rows) {
+		const product = String(e.data.product ?? '').trim();
+		if (product && !seen.has(product.toLowerCase())) {
+			seen.set(product.toLowerCase(), { product, amount: e.data.amount, unit: e.data.unit, at: e.occurredAt });
+		}
+	}
+	return [...seen.values()].slice(0, limit);
+}
+
+// ── Activity feed ───────────────────────────────────────────────────────────
+
+export type FeedItem =
+	| { kind: 'test'; id: string; at: string; test: Test; count: number; outOfRange: number }
+	| { kind: 'event'; id: string; at: string; event: Event };
+
+export function recentActivity(tankId: string, limit = 5): FeedItem[] {
+	const params = paramsById(tankId);
+	const t = db
+		.select()
+		.from(tests)
+		.where(eq(tests.tankId, tankId))
+		.orderBy(desc(tests.takenAt))
+		.limit(limit)
+		.all()
+		.map((test) => ({ kind: 'test' as const, id: test.id, at: test.takenAt, test, ...summarize(test.id, params) }));
+	const e = db
+		.select()
+		.from(events)
+		.where(eq(events.tankId, tankId))
+		.orderBy(desc(events.occurredAt))
+		.limit(limit)
+		.all()
+		.map((event) => ({ kind: 'event' as const, id: event.id, at: event.occurredAt, event }));
+	return [...t, ...e].sort((a, b) => b.at.localeCompare(a.at)).slice(0, limit);
+}

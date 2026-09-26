@@ -1,0 +1,142 @@
+// Time helpers. Instants are stored as UTC ISO strings; calendar dates
+// ('YYYY-MM-DD') are always in the user's time zone.
+
+const DAY_MS = 86_400_000;
+
+/** A wall-clock moment picked by the user, in their time zone. null elsewhere means "now". */
+export interface When {
+	date: string; // YYYY-MM-DD
+	time: string; // HH:MM
+}
+
+/** "Now" or "Wed, Sep 24 · 7:15 PM". */
+export function whenLabel(w: When | null): string {
+	if (!w) return 'Now';
+	const d = new Date(w.date + 'T12:00:00Z').toLocaleDateString('en-US', {
+		weekday: 'short',
+		month: 'short',
+		day: 'numeric',
+		timeZone: 'UTC'
+	});
+	const [h, m] = w.time.split(':').map(Number);
+	const t = new Date(Date.UTC(2000, 0, 1, h, m)).toLocaleTimeString('en-US', {
+		hour: 'numeric',
+		minute: '2-digit',
+		timeZone: 'UTC'
+	});
+	return `${d} · ${t}`;
+}
+
+/** Calendar date of an instant in a time zone, as 'YYYY-MM-DD'. */
+export function dateInZone(instant: Date | string, timeZone: string): string {
+	const d = typeof instant === 'string' ? new Date(instant) : instant;
+	// en-CA formats as YYYY-MM-DD
+	return new Intl.DateTimeFormat('en-CA', {
+		timeZone,
+		year: 'numeric',
+		month: '2-digit',
+		day: '2-digit'
+	}).format(d);
+}
+
+export function todayInZone(timeZone: string, now = new Date()): string {
+	return dateInZone(now, timeZone);
+}
+
+/** Whole days from date a to date b (both 'YYYY-MM-DD'). */
+export function daysBetween(a: string, b: string): number {
+	return Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / DAY_MS);
+}
+
+export function addDays(date: string, days: number): string {
+	const t = Date.parse(date + 'T00:00:00Z') + days * DAY_MS;
+	return new Date(t).toISOString().slice(0, 10);
+}
+
+/** "Sep 27" for a 'YYYY-MM-DD' date. */
+export function fmtDate(date: string): string {
+	return new Date(date + 'T12:00:00Z').toLocaleDateString('en-US', {
+		month: 'short',
+		day: 'numeric',
+		timeZone: 'UTC'
+	});
+}
+
+/** "Mar 8, 2025" for a 'YYYY-MM-DD' date. */
+export function fmtDateLong(date: string): string {
+	return new Date(date + 'T12:00:00Z').toLocaleDateString('en-US', {
+		month: 'short',
+		day: 'numeric',
+		year: 'numeric',
+		timeZone: 'UTC'
+	});
+}
+
+export function fmtTime(instant: string, timeZone: string): string {
+	return new Date(instant).toLocaleTimeString('en-US', {
+		hour: 'numeric',
+		minute: '2-digit',
+		timeZone
+	});
+}
+
+/** "Today, 8:12 AM", "Yesterday, 7:15 PM" or "Sep 17, 8:12 AM". */
+export function fmtWhen(instant: string, timeZone: string, now = new Date()): string {
+	const day = dateInZone(instant, timeZone);
+	const diff = daysBetween(day, todayInZone(timeZone, now));
+	const time = fmtTime(instant, timeZone);
+	if (diff === 0) return `Today, ${time}`;
+	if (diff === 1) return `Yesterday, ${time}`;
+	return `${fmtDate(day)}, ${time}`;
+}
+
+/** "Today", "Yesterday" or "Sep 17". */
+export function fmtDay(instant: string, timeZone: string, now = new Date()): string {
+	const day = dateInZone(instant, timeZone);
+	const diff = daysBetween(day, todayInZone(timeZone, now));
+	if (diff === 0) return 'Today';
+	if (diff === 1) return 'Yesterday';
+	return fmtDate(day);
+}
+
+/**
+ * Convert a wall-clock date + time in a time zone to a UTC instant.
+ * `date` is 'YYYY-MM-DD', `time` is 'HH:MM'.
+ */
+export function zonedToUtc(date: string, time: string, timeZone: string): Date {
+	const guess = new Date(`${date}T${time}:00Z`);
+	// Offset of the zone at that moment, found by formatting the guess in the zone.
+	const parts = new Intl.DateTimeFormat('en-US', {
+		timeZone,
+		hourCycle: 'h23',
+		year: 'numeric',
+		month: '2-digit',
+		day: '2-digit',
+		hour: '2-digit',
+		minute: '2-digit'
+	}).formatToParts(guess);
+	const get = (t: string) => Number(parts.find((p) => p.type === t)?.value);
+	const asZone = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'));
+	return new Date(guess.getTime() - (asZone - guess.getTime()));
+}
+
+/** Wall-clock parts of an instant in a zone: { date: 'YYYY-MM-DD', time: 'HH:MM' }. */
+export function utcToZoned(instant: string | Date, timeZone: string) {
+	const d = typeof instant === 'string' ? new Date(instant) : instant;
+	const time = new Intl.DateTimeFormat('en-GB', {
+		timeZone,
+		hour: '2-digit',
+		minute: '2-digit',
+		hourCycle: 'h23'
+	}).format(d);
+	return { date: dateInZone(d, timeZone), time };
+}
+
+export function isValidTimeZone(tz: string): boolean {
+	try {
+		new Intl.DateTimeFormat('en-US', { timeZone: tz });
+		return true;
+	} catch {
+		return false;
+	}
+}

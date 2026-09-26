@@ -1,0 +1,38 @@
+{
+	"name": "waterline",
+	"private": true,
+	"version": "0.0.1",
+	"type": "module",
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"preview": "vite preview",
+		"prepare": "svelte-kit sync || echo ''",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"start": "node build",
+		"test": "vitest run",
+		"test:e2e": "playwright test",
+		"db:generate": "drizzle-kit generate",
+		"hash-password": "node scripts/hash-password.mjs"
+	},
+	"devDependencies": {
+		"@playwright/test": "^1.63.0",
+		"@sveltejs/adapter-node": "^5.5.7",
+		"@sveltejs/kit": "^2.63.0",
+		"@sveltejs/vite-plugin-svelte": "^7.1.2",
+		"@types/better-sqlite3": "^9.6.0",
+		"drizzle-kit": "^0.31.11",
+		"svelte": "^5.56.1",
+		"svelte-check": "^4.6.0",
+		"typescript": "^6.0.3",
+		"vite": "^8.0.16",
+		"vitest": "^5.0.2"
+	},
+	"dependencies": {
+		"@auth/core": "^0.41.3",
+		"@auth/sveltekit": "^1.11.3",
+		"better-sqlite3": "^13.0.3",
+		"drizzle-orm": "^0.45.3"
+	}
+}

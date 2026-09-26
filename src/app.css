@@ -1,0 +1,654 @@
+/* Waterline design tokens (README → Design tokens). Dark is the default;
+   light applies with data-theme="light" or, with no data-theme, when the OS
+   prefers light. */
+
+:root,
+:root[data-theme='dark'] {
+	--page: #081317;
+	--bg: #0c1a1f;
+	--surface-2: #0f2126;
+	--surface: #13262c;
+	--surface-hi: #1a3138;
+	--selected: #17363a;
+	--border: #24414a;
+	--border-strong: #2f525c;
+	--divider-soft: #1c353c;
+	--handle: #3a5c65;
+	--text: #e6f0f0;
+	--text-2: #b8cacd;
+	--text-muted: #9fb4b8;
+	--text-faint: #7d9397;
+	--placeholder: #4a6a72;
+	--accent: #4fc4bd;
+	--accent-hover: #8fe0da;
+	--on-accent: #06201f;
+	--on-accent-2: #0b3b38;
+	--ok: #6fd39a;
+	--ok-bg: #143a2c;
+	--ok-text: #9fe5bb;
+	--warn: #e8c060;
+	--warn-bg: #3a3218;
+	--warn-border: #5e5020;
+	--warn-text: #ecd699;
+	--bad: #f08a78;
+	--bad-bg: #3f201c;
+	--bad-border: #6b3129;
+	--bad-text: #f5b6aa;
+	--scrim: rgba(3, 10, 12, 0.7);
+	--band: rgba(79, 196, 189, 0.12);
+	--google-bg: #f3f6f5;
+	--google-text: #0c1a1f;
+	--toast-bg: #e6f0f0;
+	--toast-text: #0c1a1f;
+	--placeholder-stripe-a: #1a3138;
+	--placeholder-stripe-b: #152a30;
+	--shadow-fab: 0 8px 24px rgba(0, 0, 0, 0.45);
+	--shadow-modal: 0 24px 64px rgba(0, 0, 0, 0.5);
+	--shadow-toast: 0 10px 30px rgba(0, 0, 0, 0.4);
+	color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+	--page: #e9eeed;
+	--bg: #f4f7f6;
+	--surface-2: #eef3f2;
+	--surface: #ffffff;
+	--surface-hi: #eaf0ef;
+	--selected: #dcefed;
+	--border: #d5e0df;
+	--border-strong: #bccccb;
+	--divider-soft: #e1e9e8;
+	--handle: #bccccb;
+	--text: #0f2126;
+	--text-2: #3f5559;
+	--text-muted: #4f666b;
+	--text-faint: #627a7e;
+	--placeholder: #9fb0b3;
+	--accent: #1a7a7a;
+	--accent-hover: #146262;
+	--on-accent: #ffffff;
+	--on-accent-2: #d9f0ee;
+	--ok: #1d7a47;
+	--ok-bg: #e3f3ea;
+	--ok-text: #1d6a3f;
+	--warn: #8a6300;
+	--warn-bg: #fbf2d9;
+	--warn-border: #e8d49a;
+	--warn-text: #6e5000;
+	--bad: #b8412c;
+	--bad-bg: #fbe9e5;
+	--bad-border: #efc3b9;
+	--bad-text: #8f2f1f;
+	--scrim: rgba(15, 33, 38, 0.4);
+	--band: rgba(26, 122, 122, 0.1);
+	--google-bg: #0f2126;
+	--google-text: #ffffff;
+	--toast-bg: #0f2126;
+	--toast-text: #ffffff;
+	--placeholder-stripe-a: #e1e9e8;
+	--placeholder-stripe-b: #eaf0ef;
+	--shadow-fab: 0 8px 24px rgba(15, 33, 38, 0.2);
+	--shadow-modal: 0 24px 64px rgba(15, 33, 38, 0.2);
+	--shadow-toast: 0 10px 30px rgba(15, 33, 38, 0.18);
+	color-scheme: light;
+}
+
+@media (prefers-color-scheme: light) {
+	:root:not([data-theme]) {
+		--page: #e9eeed;
+		--bg: #f4f7f6;
+		--surface-2: #eef3f2;
+		--surface: #ffffff;
+		--surface-hi: #eaf0ef;
+		--selected: #dcefed;
+		--border: #d5e0df;
+		--border-strong: #bccccb;
+		--divider-soft: #e1e9e8;
+		--handle: #bccccb;
+		--text: #0f2126;
+		--text-2: #3f5559;
+		--text-muted: #4f666b;
+		--text-faint: #627a7e;
+		--placeholder: #9fb0b3;
+		--accent: #1a7a7a;
+		--accent-hover: #146262;
+		--on-accent: #ffffff;
+		--on-accent-2: #d9f0ee;
+		--ok: #1d7a47;
+		--ok-bg: #e3f3ea;
+		--ok-text: #1d6a3f;
+		--warn: #8a6300;
+		--warn-bg: #fbf2d9;
+		--warn-border: #e8d49a;
+		--warn-text: #6e5000;
+		--bad: #b8412c;
+		--bad-bg: #fbe9e5;
+		--bad-border: #efc3b9;
+		--bad-text: #8f2f1f;
+		--scrim: rgba(15, 33, 38, 0.4);
+		--band: rgba(26, 122, 122, 0.1);
+		--google-bg: #0f2126;
+		--google-text: #ffffff;
+		--toast-bg: #0f2126;
+		--toast-text: #ffffff;
+		--placeholder-stripe-a: #e1e9e8;
+		--placeholder-stripe-b: #eaf0ef;
+		--shadow-fab: 0 8px 24px rgba(15, 33, 38, 0.2);
+		--shadow-modal: 0 24px 64px rgba(15, 33, 38, 0.2);
+		--shadow-toast: 0 10px 30px rgba(15, 33, 38, 0.18);
+		color-scheme: light;
+	}
+}
+
+/* ── Base ─────────────────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html {
+	background: var(--page);
+	-webkit-text-size-adjust: 100%;
+}
+
+body {
+	margin: 0;
+	min-height: 100dvh;
+	background: var(--bg);
+	color: var(--text);
+	font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+	font-size: 15px;
+	line-height: 1.4;
+	-webkit-font-smoothing: antialiased;
+	-webkit-tap-highlight-color: transparent;
+}
+
+a {
+	color: var(--accent);
+	text-decoration: none;
+}
+a:hover {
+	color: var(--accent-hover);
+}
+
+button,
+input,
+select,
+textarea {
+	font: inherit;
+	color: inherit;
+}
+
+button {
+	cursor: pointer;
+	background: none;
+	border: none;
+	padding: 0;
+}
+
+:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+input::placeholder,
+textarea::placeholder {
+	color: var(--placeholder);
+}
+
+.num {
+	font-variant-numeric: tabular-nums;
+}
+
+.mono {
+	font-family: ui-monospace, Menlo, monospace;
+}
+
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+.muted {
+	color: var(--text-muted);
+}
+.faint {
+	color: var(--text-faint);
+}
+
+.status-ok {
+	color: var(--ok);
+}
+.status-warn {
+	color: var(--warn);
+}
+.status-bad {
+	color: var(--bad);
+}
+.status-none {
+	color: var(--text-muted);
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+
+.btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	min-height: 44px;
+	padding: 0 16px;
+	border-radius: 12px;
+	font-size: 15px;
+	font-weight: 600;
+	border: 1px solid var(--border-strong);
+	background: transparent;
+	color: var(--text);
+	text-align: center;
+	white-space: nowrap;
+	user-select: none;
+	transition: transform 0.1s;
+}
+.btn:active {
+	transform: scale(0.98);
+}
+.btn:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+	transform: none;
+}
+.btn-primary {
+	background: var(--accent);
+	border-color: var(--accent);
+	color: var(--on-accent);
+	font-weight: 700;
+}
+.btn-primary:hover {
+	color: var(--on-accent);
+}
+.btn-danger {
+	border-color: var(--bad-border);
+	color: var(--bad);
+}
+.btn-lg {
+	height: 56px;
+	border-radius: 14px;
+	font-size: 17px;
+	width: 100%;
+}
+.btn-text {
+	border: none;
+	padding: 0 8px;
+	color: var(--accent);
+	font-weight: 600;
+}
+.btn-icon {
+	width: 44px;
+	height: 44px;
+	padding: 0;
+	border-radius: 22px;
+	border: none;
+	background: var(--surface);
+	color: var(--text-muted);
+	font-size: 18px;
+}
+
+/* ── Chips and segmented controls ─────────────────────────────────────────── */
+
+.chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 36px;
+	padding: 0 14px;
+	border-radius: 18px;
+	border: 1px solid var(--border-strong);
+	font-size: 14px;
+	white-space: nowrap;
+	background: transparent;
+	color: var(--text);
+}
+.chip[aria-pressed='true'],
+.chip.selected {
+	background: var(--accent);
+	border-color: var(--accent);
+	color: var(--on-accent);
+	font-weight: 700;
+}
+.chip-pill {
+	height: 40px;
+	border-radius: 20px;
+	background: var(--surface-hi);
+	font-weight: 600;
+}
+.chip-pill .caret {
+	color: var(--text-muted);
+	font-weight: 400;
+}
+
+/* Option tiles (tank type, water change amount, source water) */
+.options {
+	display: grid;
+	gap: 8px;
+}
+.option {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 48px;
+	border-radius: 12px;
+	border: 1px solid var(--border-strong);
+	background: var(--surface-hi);
+	font-size: 15px;
+	font-weight: 600;
+	cursor: pointer;
+	text-align: center;
+	padding: 0 8px;
+}
+.option:has(input:checked) {
+	background: var(--accent);
+	border-color: var(--accent);
+	color: var(--on-accent);
+}
+.option:has(input:focus-visible) {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+.option input {
+	position: absolute;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.segmented {
+	display: grid;
+	grid-auto-columns: 1fr;
+	grid-auto-flow: column;
+	gap: 4px;
+	padding: 4px;
+	border-radius: 14px;
+	background: var(--surface);
+	border: 1px solid var(--border);
+}
+.segmented label {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 2px;
+	min-height: 48px;
+	border-radius: 10px;
+	cursor: pointer;
+	font-size: 16px;
+	color: var(--text-muted);
+}
+.segmented label small {
+	font-size: 12px;
+	color: var(--text-faint);
+}
+.segmented label:has(input:checked) {
+	background: var(--border);
+	color: var(--text);
+	font-weight: 600;
+}
+.segmented label:has(input:checked) small {
+	color: var(--text-2);
+	font-weight: 400;
+}
+.segmented label:has(input:focus-visible) {
+	outline: 2px solid var(--accent);
+}
+.segmented input {
+	position: absolute;
+	opacity: 0;
+	pointer-events: none;
+}
+
+/* ── Cards, fields ────────────────────────────────────────────────────────── */
+
+.card {
+	border-radius: 16px;
+	background: var(--surface);
+	border: 1px solid var(--border);
+}
+
+.section-head {
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+	gap: 12px;
+}
+.section-head h2 {
+	margin: 0;
+	font-size: 17px;
+	font-weight: 600;
+}
+.section-head .meta {
+	font-size: 13px;
+	color: var(--text-muted);
+}
+.section-head a {
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.field {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+.field > .label,
+.field > label.label {
+	font-size: 14px;
+	color: var(--text-muted);
+}
+.field .hint {
+	font-size: 13px;
+	color: var(--text-faint);
+}
+
+.input {
+	height: 52px;
+	width: 100%;
+	border-radius: 12px;
+	background: var(--surface);
+	border: 1px solid var(--border);
+	padding: 0 16px;
+	font-size: 17px;
+	color: var(--text);
+}
+.input:focus {
+	outline: none;
+	border-color: var(--accent);
+}
+textarea.input {
+	height: auto;
+	min-height: 96px;
+	padding: 14px 16px;
+	line-height: 1.5;
+	resize: vertical;
+}
+
+/* Input with a trailing unit label */
+.unit-input {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	height: 52px;
+	border-radius: 12px;
+	background: var(--surface);
+	border: 1px solid var(--border);
+	padding: 0 16px;
+}
+.unit-input:focus-within {
+	border-color: var(--accent);
+}
+.unit-input input {
+	flex: 1;
+	min-width: 0;
+	background: transparent;
+	border: none;
+	font-size: 17px;
+	outline: none;
+}
+.unit-input .unit {
+	font-size: 15px;
+	color: var(--text-muted);
+}
+
+.error-text {
+	color: var(--bad);
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.banner {
+	border-radius: 14px;
+	padding: 12px 14px;
+	font-size: 14px;
+	font-weight: 600;
+}
+.banner-bad {
+	background: var(--bad-bg);
+	color: var(--bad-text);
+	border: 1px solid var(--bad-border);
+}
+.banner-ok {
+	background: var(--ok-bg);
+	color: var(--ok-text);
+}
+
+/* Toggle switch (checkbox) */
+.switch {
+	position: relative;
+	display: inline-flex;
+	width: 52px;
+	height: 32px;
+	flex-shrink: 0;
+}
+.switch input {
+	position: absolute;
+	inset: 0;
+	opacity: 0;
+	margin: 0;
+	cursor: pointer;
+	z-index: 1;
+}
+.switch span {
+	width: 100%;
+	height: 100%;
+	border-radius: 16px;
+	background: var(--border-strong);
+	padding: 3px;
+	display: flex;
+	transition: background 0.15s;
+}
+.switch span::after {
+	content: '';
+	width: 26px;
+	height: 26px;
+	border-radius: 13px;
+	background: var(--text);
+	transition: transform 0.15s;
+}
+.switch input:checked + span {
+	background: var(--accent);
+}
+.switch input:checked + span::after {
+	transform: translateX(20px);
+	background: #e6f0f0;
+}
+.switch input:focus-visible + span {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+/* Checkbox row: "Also complete task …" */
+.check-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	min-height: 44px;
+	cursor: pointer;
+	font-size: 15px;
+}
+.check-row input {
+	appearance: none;
+	width: 24px;
+	height: 24px;
+	margin: 0;
+	border-radius: 7px;
+	border: 2px solid var(--border-strong);
+	display: grid;
+	place-content: center;
+	flex-shrink: 0;
+	cursor: pointer;
+}
+.check-row input:checked {
+	background: var(--accent);
+	border-color: var(--accent);
+}
+.check-row input:checked::after {
+	content: '✓';
+	color: var(--on-accent);
+	font-size: 14px;
+	font-weight: 700;
+}
+
+/* Striped placeholder for photos (imagery is placeholder in v1). */
+.photo-placeholder {
+	background: repeating-linear-gradient(
+		135deg,
+		var(--placeholder-stripe-a) 0 5px,
+		var(--placeholder-stripe-b) 5px 10px
+	);
+	border: 1px solid var(--border);
+}
+
+/* ── Motion ───────────────────────────────────────────────────────────────── */
+
+@keyframes wl-pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.45;
+	}
+}
+@keyframes wl-slide-up {
+	from {
+		transform: translateY(100%);
+	}
+	to {
+		transform: none;
+	}
+}
+@keyframes wl-fade {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation: none !important;
+		transition: none !important;
+	}
+}

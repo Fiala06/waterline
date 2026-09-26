@@ -1,2 +1,54 @@
-# waterline
-Self-hosted, mobile-first aquarium tracker. Log water tests and water changes tank-side, spot trends on charts, and get email reminders for maintenance. Google sign-in, imperial/metric units, full data export
+# Waterline
+
+Self-hosted, mobile-first aquarium tracker. Log water tests and water changes tank-side, spot trends on charts, and get email reminders for maintenance. Google sign-in, imperial/metric units, full data export.
+
+Design handoff and specs live in [`design_handoff_waterline/`](design_handoff_waterline/README.md); the build order is in [`BUILD_PLAN.md`](design_handoff_waterline/BUILD_PLAN.md). Ideas for later are in [`IDEAS.md`](IDEAS.md).
+
+## Status
+
+Milestones 1–5 of the build plan are done: scaffold, sign-in (Google + optional local admin), first-login setup, tanks with parameters and targets, logging (water tests, water changes and other events, backdating, edit/delete), and the dashboard. History, charts, photos, full tasks, email, export and PWA come next.
+
+## Run it locally
+
+Needs Node 22.
+
+```bash
+npm install
+cp .env.example .env   # then set AUTH_SECRET and either Google keys or AUTH_DEV_LOGIN=true
+npm run dev
+```
+
+Open http://localhost:5173. With `AUTH_DEV_LOGIN=true` the sign-in page shows a test form in place of Google, so you can try the app without OAuth keys. Never turn that on for a real server.
+
+## Deploy with Docker
+
+```bash
+docker compose up -d
+```
+
+Edit the environment in [`docker-compose.yml`](docker-compose.yml) first. Everything the app stores (SQLite database, later photos) lives in the `/data` volume.
+
+| Variable | Needed | What it does |
+|---|---|---|
+| `ORIGIN` | yes | Public URL people open, e.g. `https://tanks.example.home` |
+| `AUTH_SECRET` | yes | Session secret: `openssl rand -base64 32` |
+| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | yes | Google OAuth client. Redirect URI: `<ORIGIN>/auth/callback/google` |
+| `ADMIN_EMAIL` | recommended | This Google account becomes the admin |
+| `ALLOWED_EMAILS` | optional | Only these emails / `@domains` may sign in. Unset = anyone with a Google account |
+| `LOCAL_ADMIN_PASSWORD_HASH` | optional | Enables the local admin fallback login. Create with `npm run hash-password -- 'your password'` |
+| `LOCAL_ADMIN_USERNAME` | optional | Defaults to `admin` |
+| `DATA_DIR` | optional | Defaults to `/data` in Docker, `./data` locally |
+
+## Tests
+
+```bash
+npm run check      # types + Svelte
+npm test           # unit tests (units, status, passwords)
+npm run test:e2e   # Playwright: sign in → setup → create tank → log test → dashboard → complete task
+```
+
+The first time, install the Playwright browser with `npx playwright install chromium`.
+
+## Stack
+
+SvelteKit 2 (Svelte 5, adapter-node) · TypeScript · Drizzle ORM + better-sqlite3 · Auth.js · Vitest + Playwright. Values are stored metric (L, °C, cm, dGH) and converted for display in `src/lib/units.ts`; parameter status rules are in `src/lib/status.ts`.

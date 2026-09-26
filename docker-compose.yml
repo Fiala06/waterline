@@ -1,0 +1,25 @@
+# Example: docker compose up -d
+# Fill in the values below (or put them in a .env file next to this one).
+services:
+  waterline:
+    build: .
+    # image: ghcr.io/fiala06/waterline:latest
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    volumes:
+      - waterline-data:/data
+    environment:
+      ORIGIN: https://tanks.example.home # the URL people open
+      AUTH_SECRET: ${AUTH_SECRET} # openssl rand -base64 32
+      AUTH_GOOGLE_ID: ${AUTH_GOOGLE_ID}
+      AUTH_GOOGLE_SECRET: ${AUTH_GOOGLE_SECRET}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      # Optional: restrict who can sign in
+      ALLOWED_EMAILS: ${ALLOWED_EMAILS:-}
+      # Optional local admin fallback: npm run hash-password -- 'your password'
+      LOCAL_ADMIN_PASSWORD_HASH: ${LOCAL_ADMIN_PASSWORD_HASH:-}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+
+volumes:
+  waterline-data:
