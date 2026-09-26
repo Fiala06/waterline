@@ -29,6 +29,21 @@ const csrf: Handle = ({ event, resolve }) => {
 };
 
 /**
+ * Plain-HTTP servers (ORIGIN=http://…, e.g. LAN-only): SvelteKit marks cookies
+ * Secure everywhere but localhost, and browsers drop Secure cookies sent over HTTP.
+ */
+const httpCookies: Handle = ({ event, resolve }) => {
+	if (event.url.protocol === 'http:') {
+		const { cookies } = event;
+		const set = cookies.set.bind(cookies);
+		const del = cookies.delete.bind(cookies);
+		cookies.set = (name, value, opts) => set(name, value, { secure: false, ...opts });
+		cookies.delete = (name, opts) => del(name, { secure: false, ...opts });
+	}
+	return resolve(event);
+};
+
+/**
  * Auth.js also takes local admin logins at /auth/callback/local directly; the
  * sign-in page's own action applies the same limit with a friendlier message.
  */
@@ -118,7 +133,7 @@ const appHandle: Handle = async ({ event, resolve }) => {
 	return res;
 };
 
-export const handle = sequence(securityHeaders, csrf, loginLimit, authHandle, appHandle);
+export const handle = sequence(securityHeaders, csrf, httpCookies, loginLimit, authHandle, appHandle);
 
 export const init: ServerInit = () => {
 	if (building) return;

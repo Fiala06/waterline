@@ -10,7 +10,8 @@ export const load: PageServerLoad = ({ url }) => {
 		google: googleEnabled(),
 		local: localAdminEnabled(),
 		dev: devLoginEnabled(),
-		showLocal: url.searchParams.has('local'),
+		// Without Google the local admin form is the only way in, so show it on phones too.
+		showLocal: url.searchParams.has('local') || !googleEnabled(),
 		host: url.host,
 		redirectTo: safeReturn(url.searchParams.get('redirectTo')),
 		error: error

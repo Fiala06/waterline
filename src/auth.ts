@@ -19,6 +19,10 @@ export function checkAuthConfig() {
 		throw new Error('AUTH_DEV_LOGIN=true lets anyone sign in as anyone, so it is refused when NODE_ENV=production.');
 	}
 	if (devLoginEnabled()) console.warn('[waterline] AUTH_DEV_LOGIN is on: anyone can sign in as any email. Test use only.');
+	const origin = env.ORIGIN?.trim() ?? '';
+	if (origin.startsWith('http://') && !/^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/.test(origin)) {
+		console.warn('[waterline] ORIGIN is plain http. Fine for a LAN-only server, but Google sign-in, offline logging and the install prompt need HTTPS.');
+	}
 	if (env.LOCAL_ADMIN_PASSWORD_HASH && !localAdminEnabled()) {
 		console.error("[waterline] LOCAL_ADMIN_PASSWORD_HASH isn't a valid hash, so the local admin login is off. Create one with: npm run hash-password -- 'your password'");
 	}
