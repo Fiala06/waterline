@@ -103,6 +103,8 @@ export function queueable(o: {
 	closeHref: () => string;
 	timeZone: string;
 	busy: (b: boolean) => void;
+	/** The entry was saved, on the server or on this device (e.g. to forget its draft) */
+	onsaved?: () => void;
 }): SubmitFunction {
 	return ({ formData, action, cancel }) => {
 		const queue = async () => {
@@ -113,6 +115,7 @@ export function queueable(o: {
 				o.busy(false);
 				return;
 			}
+			o.onsaved?.();
 			try {
 				sessionStorage.setItem('wl_toast', "Saved on this phone. It'll sync when you're back online.");
 			} catch {
@@ -129,6 +132,7 @@ export function queueable(o: {
 		return async ({ result, update }) => {
 			if (o.offline && result.type === 'error' && !navigator.onLine) await queue();
 			else {
+				if (result.type === 'redirect' || result.type === 'success') o.onsaved?.();
 				await update({ reset: false });
 				o.busy(false);
 			}

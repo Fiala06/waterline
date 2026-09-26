@@ -35,5 +35,6 @@
 		error={form?.error}
 		errors={form?.errors}
 		ontankclick={() => (ui.tankSwitcher = true)}
+		draftKey="{data.user.id}:event:{data.tank.id}:{data.category}"
 	/>
 {/key}

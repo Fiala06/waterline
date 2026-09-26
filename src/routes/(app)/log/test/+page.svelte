@@ -19,5 +19,6 @@
 		fieldErrors={form?.errors}
 		ontankclick={() => (ui.tankSwitcher = true)}
 		targetsHref="/tanks/{data.tank.id}/targets"
+		draftKey="{data.user.id}:test:{data.tank.id}"
 	/>
 {/key}

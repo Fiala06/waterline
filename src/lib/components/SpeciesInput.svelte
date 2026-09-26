@@ -1,6 +1,7 @@
 <script lang="ts">
 	// T5 · Species autocomplete from the bundled list; custom names always allowed.
 	import { untrack } from 'svelte';
+	import type { DraftRestoreEvent } from '$lib/draft';
 
 	interface Species {
 		s: string;
@@ -28,6 +29,20 @@
 
 	let text = $state(untrack(() => initialName));
 	let scientific = $state(untrack(() => initialScientific));
+
+	// An unsaved log entry coming back (lib/draft): keep the picked species, no suggestions.
+	let field: HTMLInputElement | undefined = $state();
+	$effect(() => {
+		if (!field) return;
+		const restore = (e: Event) => {
+			const { value, fields } = (e as DraftRestoreEvent).detail;
+			e.preventDefault();
+			text = value;
+			scientific = fields.get('scientificName')?.[0] ?? '';
+		};
+		field.addEventListener('draftrestore', restore);
+		return () => field?.removeEventListener('draftrestore', restore);
+	});
 	let results = $state<Species[]>([]);
 	let open = $state(false);
 	let active = $state(-1);
@@ -97,6 +112,7 @@
 <div class="field species">
 	<label class="label" for={id}>{label}</label>
 	<input
+		bind:this={field}
 		class="input"
 		{id}
 		name="name"

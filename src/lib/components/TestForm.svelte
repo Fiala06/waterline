@@ -3,8 +3,11 @@
 	// 05 / 08 / G6 · Water test form. Every field is optional; numeric keypad;
 	// previous reading shown faintly; inline status as you type.
 	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 	import { queueable } from '$lib/offline';
+	import { clearDraft, logDraft, type Restored } from '$lib/draft';
 	import ConfirmDelete from './ConfirmDelete.svelte';
+	import CustomParamSheet from './CustomParamSheet.svelte';
 	import { ui } from '$lib/ui.svelte';
 	import DateTimePicker from './DateTimePicker.svelte';
 	import PhotoPicker from './PhotoPicker.svelte';
@@ -38,7 +41,8 @@
 		previous = {},
 		remove = null,
 		ontankclick,
-		targetsHref = null
+		targetsHref = null,
+		draftKey = null
 	}: {
 		mode?: 'new' | 'edit';
 		tankName: string;
@@ -60,6 +64,8 @@
 		ontankclick?: () => void;
 		/** 08 "+ Add parameter": the tank's parameters & targets page */
 		targetsHref?: string | null;
+		/** New tests: keep what was typed on this device until it's saved */
+		draftKey?: string | null;
 	} = $props();
 
 	let draft = $state<Record<string, string>>(untrack(() => ({ ...values })));
@@ -67,6 +73,8 @@
 	let note = $state(untrack(() => initialNote));
 	let when = $state<When | null>(untrack(() => initialWhen));
 	let picking = $state(false);
+	// "+ Add parameter" opens G7 here, so the test in progress stays on screen
+	let addOpen = $state(false);
 	let clientId = $state('');
 	let busy = $state(false);
 	let desk = $state(false);
@@ -92,6 +100,20 @@
 		})
 	);
 	const filled = $derived(rows.filter((r) => r.v != null).length);
+
+	// A test that was left before it was saved comes back, with Discard.
+	let restored = $state<{ readings: number; discard: () => Promise<void> } | null>(null);
+	function onrestore(r: Restored) {
+		if (r.date && r.time) when = { date: r.date, time: r.time };
+		restored = {
+			readings: filled,
+			discard: async () => {
+				restored = null;
+				when = initialWhen;
+				await r.discard();
+			}
+		};
+	}
 	const outOfRange = $derived(rows.filter((r) => r.st?.level === 'bad').length);
 	const saveLabel = $derived(
 		mode === 'edit' ? 'Save changes' : filled ? `Save ${filled} reading${filled === 1 ? '' : 's'}` : 'Save'
@@ -135,8 +157,10 @@
 		title: () => `Water test · ${filled} reading${filled === 1 ? '' : 's'}`,
 		closeHref: () => closeHref,
 		timeZone,
-		busy: (b) => (busy = b)
+		busy: (b) => (busy = b),
+		onsaved: () => draftKey && clearDraft(draftKey)
 	})}
+	use:logDraft={{ key: mode === 'new' ? draftKey : null, onrestore, watch: when }}
 >
 	<input type="hidden" name="clientId" value={clientId} />
 	<input type="hidden" name="date" value={when?.date ?? ''} />
@@ -179,6 +203,16 @@
 			{#if meta}<p class="meta">{meta}</p>{/if}
 			{#if mode === 'new'}<p class="hint hide-desk">All fields optional. Previous reading shown for reference.</p>{/if}
 			{#if error}<p class="banner banner-bad" role="alert">✕ {error}</p>{/if}
+			{#if restored}
+				<div class="draft-note" role="status">
+					<span
+						>▲ {restored.readings
+							? `Restored ${restored.readings} unsaved reading${restored.readings === 1 ? '' : 's'}`
+							: "Restored what you hadn't saved"}</span
+					>
+					<button type="button" class="btn-text" onclick={() => restored?.discard()}>Discard</button>
+				</div>
+			{/if}
 
 			<div class="rows">
 				{#each rows as r (r.id)}
@@ -238,7 +272,14 @@
 					</div>
 				{/each}
 				{#if mode === 'new' && targetsHref}
-					<a class="add-param hide-phone" href={targetsHref}>
+					<a
+						class="add-param hide-phone"
+						href={targetsHref}
+						onclick={(e) => {
+							e.preventDefault();
+							addOpen = true;
+						}}
+					>
 						<span class="ap-label">+ Add parameter</span>
 						<span class="ap-box" aria-hidden="true"></span>
 					</a>
@@ -285,6 +326,10 @@
 {/if}
 
 <DateTimePicker bind:open={picking} value={when} {timeZone} onselect={(v) => (when = v)} />
+
+{#if mode === 'new' && targetsHref}
+	<CustomParamSheet bind:open={addOpen} {tankName} action="{targetsHref}?/addCustom" onadded={() => invalidateAll()} />
+{/if}
 
 <style>
 	.tform {

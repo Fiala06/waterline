@@ -719,6 +719,22 @@ select.input:disabled {
 	opacity: 0.6;
 }
 
+/* "▲ Restored 3 unsaved readings · Discard" at the top of a log form (lib/draft) */
+.draft-note {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	min-height: 44px;
+	padding: 0 4px 0 14px;
+	border-radius: 12px;
+	background: var(--warn-bg);
+	border: 1px solid var(--warn-border);
+	color: var(--warn-text);
+	font-size: 14px;
+	font-weight: 600;
+}
+
 /* Radio buttons shown as rings (native ones render as grey discs in dark mode). */
 .radio {
 	appearance: none;

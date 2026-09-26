@@ -2,9 +2,7 @@
 	import { tankTypeLabel } from '$lib/types';
 	import { enhance } from '$app/forms';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
-	import Sheet from '$lib/components/Sheet.svelte';
-	import { paramStatus, statusMedium } from '$lib/status';
-	import { parseNumber } from '$lib/units';
+	import CustomParamSheet from '$lib/components/CustomParamSheet.svelte';
 
 	let { data, form } = $props();
 	const errors = $derived((form?.errors ?? {}) as Record<string, string>);
@@ -16,24 +14,6 @@
 	let addOpen = $state(false);
 	$effect(() => {
 		if (form?.custom) addOpen = true;
-	});
-	const units = ['ppm', 'mg/L', 'dKH', 'µS/cm', 'ppt'];
-	let cName = $state('');
-	let cUnit = $state('ppm');
-	let cCustomUnit = $state('');
-	let cMin = $state('');
-	let cMax = $state('');
-	let cDecimals = $state('2');
-	const previewUnit = $derived(cUnit === 'custom' ? cCustomUnit : cUnit);
-	const preview = $derived.by(() => {
-		const lo = parseNumber(cMin);
-		const hi = parseNumber(cMax);
-		const mid = lo != null && hi != null ? (lo + hi) / 2 : (lo ?? hi);
-		if (mid == null) return null;
-		const d = Number(cDecimals);
-		const v = Math.round(mid * 10 ** d) / 10 ** d;
-		const s = paramStatus(v, { min: lo, max: hi });
-		return { v, st: statusMedium(s), level: s.level };
 	});
 </script>
 
@@ -115,47 +95,7 @@
 	/>
 {/each}
 
-<Sheet bind:open={addOpen} title="Custom parameter" width={480}>
-	<form method="POST" action="?/addCustom" class="custom" use:enhance>
-		{#if form?.custom?.error}<p class="banner banner-bad" role="alert">✕ {form.custom.error}</p>{/if}
-		<div class="field">
-			<label class="label" for="c-name">Name</label>
-			<input class="input" id="c-name" name="name" bind:value={cName} required maxlength="40" placeholder="e.g. Iron (Fe)" />
-		</div>
-		<fieldset class="field">
-			<legend class="label">Unit</legend>
-			<div class="chips units">
-				{#each units as u (u)}
-					<label class="chip"><input type="radio" name="unit" value={u} bind:group={cUnit} />{u}</label>
-				{/each}
-				<label class="chip"><input type="radio" name="unit" value="custom" bind:group={cUnit} />Custom</label>
-			</div>
-			{#if cUnit === 'custom'}
-				<input class="input" name="customUnit" bind:value={cCustomUnit} maxlength="12" placeholder="Unit label" aria-label="Custom unit" />
-			{/if}
-		</fieldset>
-		<div class="c-range">
-			<label class="field"><span class="label">Min</span><input class="input num" name="min" inputmode="decimal" bind:value={cMin} /></label>
-			<label class="field"><span class="label">Max</span><input class="input num" name="max" inputmode="decimal" bind:value={cMax} /></label>
-			<label class="field"
-				><span class="label">Decimals</span>
-				<select class="input num" name="decimals" bind:value={cDecimals}>
-					<option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option>
-				</select>
-			</label>
-		</div>
-		{#if cName && preview}
-			<div class="preview">
-				<div class="pv">
-					<span class="muted sm">Preview</span>
-					<span class="pv-line"><strong>{cName}</strong> <span class="muted"><span class="num">{preview.v}</span> {previewUnit}</span></span>
-				</div>
-				<span class="status-{preview.level} strong">{preview.st}</span>
-			</div>
-		{/if}
-		<button class="btn btn-primary btn-lg">Add to {data.tank.name}</button>
-	</form>
-</Sheet>
+<CustomParamSheet bind:open={addOpen} tankName={data.tank.name} error={form?.custom?.error ?? null} />
 
 <style>
 	.wrap {
@@ -291,78 +231,6 @@
 		color: var(--text-muted);
 		padding: 8px;
 		min-height: 44px;
-	}
-	.custom {
-		display: flex;
-		flex-direction: column;
-		gap: 18px;
-	}
-	fieldset {
-		border: none;
-		margin: 0;
-		padding: 0;
-	}
-	legend {
-		padding: 0;
-		margin-bottom: 8px;
-	}
-	/* G7: the chosen unit is ticked, like the other pick-from-a-list chips */
-	.units label.chip:has(input:checked) {
-		background: var(--selected);
-		border-color: var(--accent);
-		color: var(--text);
-		font-weight: 600;
-	}
-	.units label.chip:has(input:checked)::before {
-		content: '✓';
-		color: var(--accent);
-		font-weight: 700;
-	}
-	.c-range {
-		display: grid;
-		grid-template-columns: 1fr 1fr 1fr;
-		gap: 8px;
-	}
-	/* G7: recessed fields in the sheet; background-color keeps the select's ▾ */
-	.custom .input {
-		background-color: var(--surface-2);
-		border-color: var(--border-strong);
-	}
-	.custom .input:focus {
-		border-color: var(--accent);
-	}
-	.c-range .input {
-		padding: 0 12px;
-		font-weight: 600;
-	}
-	.c-range select.input {
-		padding-right: 32px;
-		background-position:
-			calc(100% - 17px) 52%,
-			calc(100% - 12px) 52%;
-	}
-	.preview {
-		padding: 12px 14px;
-		border-radius: 12px;
-		background: var(--surface-2);
-		border: 1px solid var(--border);
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 12px;
-		font-size: 13px;
-	}
-	.pv {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-		min-width: 0;
-	}
-	.pv-line {
-		font-size: 15px;
-	}
-	.pv-line .muted {
-		font-weight: 400;
 	}
 	.thead {
 		display: none;

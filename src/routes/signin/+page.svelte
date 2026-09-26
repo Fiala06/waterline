@@ -1,9 +1,13 @@
 <script lang="ts">
 	import Logo from '$lib/components/Logo.svelte';
 	import { onMount } from 'svelte';
+	import { clearAllDrafts } from '$lib/draft';
 	let { data, form } = $props();
-	// Signed out: forget pages the service worker cached for the last user.
-	onMount(() => navigator.serviceWorker?.controller?.postMessage('clear-user-cache'));
+	// Signed out: forget pages the service worker cached for the last user, and unsaved log entries.
+	onMount(() => {
+		navigator.serviceWorker?.controller?.postMessage('clear-user-cache');
+		clearAllDrafts();
+	});
 	const error = $derived(form?.error ?? data.error);
 	// Phones open the admin form from a plain link (no JS needed); desktop always shows it (D1).
 	const showLocal = $derived(data.showLocal || !!form?.error);

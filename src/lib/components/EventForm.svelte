@@ -4,6 +4,7 @@
 	import { enhance } from '$app/forms';
 	import { queueable } from '$lib/offline';
 	import { hscroll } from '$lib/actions';
+	import { clearDraft, logDraft, type Restored } from '$lib/draft';
 	import ConfirmDelete from './ConfirmDelete.svelte';
 	import { ui } from '$lib/ui.svelte';
 	import DateTimePicker from './DateTimePicker.svelte';
@@ -48,7 +49,8 @@
 		remove = null,
 		inventory = null,
 		water = null,
-		ontankclick
+		ontankclick,
+		draftKey = null
 	}: {
 		mode?: 'new' | 'edit';
 		category: EventCategory;
@@ -77,6 +79,8 @@
 		} | null;
 		water?: 'fresh' | 'marine' | null;
 		ontankclick?: () => void;
+		/** New entries: keep what was typed on this device until it's saved */
+		draftKey?: string | null;
 	} = $props();
 
 	const v = (k: string) => (typeof values[k] === 'string' ? (values[k] as string) : '');
@@ -103,6 +107,19 @@
 	let clientId = $state('');
 	let busy = $state(false);
 	onMount(() => (clientId = crypto.randomUUID()));
+
+	// An entry that was left before it was saved comes back, with Discard.
+	let restored = $state<{ discard: () => Promise<void> } | null>(null);
+	function onrestore(r: Restored) {
+		if (r.date && r.time) when = { date: r.date, time: r.time };
+		restored = {
+			discard: async () => {
+				restored = null;
+				when = initialWhen;
+				await r.discard();
+			}
+		};
+	}
 
 	// Water change
 	let amountMode = $state(v('amountMode') || 'percent');
@@ -234,8 +251,10 @@
 					: CATEGORY_LABEL[category],
 		closeHref: () => closeHref,
 		timeZone,
-		busy: (b) => (busy = b)
+		busy: (b) => (busy = b),
+		onsaved: () => draftKey && clearDraft(draftKey)
 	})}
+	use:logDraft={{ key: mode === 'new' ? draftKey : null, onrestore, watch: when }}
 >
 	<input type="hidden" name="clientId" value={clientId} />
 	<input type="hidden" name="date" value={when?.date ?? ''} />
@@ -289,6 +308,12 @@
 			{/if}
 
 			{#if error}<p class="banner banner-bad" role="alert">✕ {error}</p>{/if}
+			{#if restored}
+				<div class="draft-note" role="status">
+					<span>▲ Restored what you hadn't saved</span>
+					<button type="button" class="btn-text" onclick={() => restored?.discard()}>Discard</button>
+				</div>
+			{/if}
 
 			<div class="fields">
 				{#if category === 'water_change'}
