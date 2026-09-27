@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { EVENT_CATEGORIES, TANK_TYPES, TASK_KINDS } from '../../types';
+import { EVENT_CATEGORIES, IMPORT_KINDS, TANK_TYPES, TASK_KINDS } from '../../types';
 import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 // All measurements are stored metric (L, °C, cm, hardness in dGH).
@@ -103,7 +103,8 @@ export const tests = sqliteTable(
 		takenAt: text('taken_at').notNull(),
 		note: text('note'),
 		editedAt: text('edited_at'),
-		clientId: text('client_id')
+		clientId: text('client_id'),
+		importId: text('import_id') // the import that added it (undone together)
 	},
 	(t) => [
 		index('tests_tank_taken').on(t.tankId, t.takenAt),
@@ -140,7 +141,8 @@ export const events = sqliteTable(
 		note: text('note'),
 		data: text('data', { mode: 'json' }).$type<Record<string, unknown>>().notNull().default({}),
 		editedAt: text('edited_at'),
-		clientId: text('client_id')
+		clientId: text('client_id'),
+		importId: text('import_id') // the import that added it (undone together)
 	},
 	(t) => [
 		index('events_tank_occurred').on(t.tankId, t.occurredAt),
@@ -303,6 +305,29 @@ export const products = sqliteTable(
 
 export type Product = typeof products.$inferSelect;
 
+// ── Imports from a spreadsheet, so each can be undone in one step ───────────
+
+export const imports = sqliteTable(
+	'imports',
+	{
+		id: id(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		tankId: text('tank_id')
+			.notNull()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		kind: text('kind', { enum: IMPORT_KINDS }).notNull(),
+		fileName: text('file_name'),
+		summary: text('summary').notNull(), // "24 water tests"
+		createdAt: createdAt(),
+		undoneAt: text('undone_at')
+	},
+	(t) => [index('imports_tank').on(t.tankId)]
+);
+
+export type Import = typeof imports.$inferSelect;
+
 // ── Tank specs: equipment, livestock, plants ─────────────────────────────────
 
 export const EQUIPMENT_TYPES = ['filter', 'heater', 'light', 'co2', 'pump', 'skimmer', 'other'] as const;
@@ -322,6 +347,7 @@ export const equipment = sqliteTable(
 		lastServicedAt: text('last_serviced_at'),
 		notes: text('notes'),
 		removedAt: text('removed_at'),
+		importId: text('import_id'),
 		createdAt: createdAt()
 	},
 	(t) => [index('equipment_tank').on(t.tankId)]
@@ -342,6 +368,7 @@ export const livestock = sqliteTable(
 		addedAt: text('added_at'),
 		source: text('source'),
 		removedAt: text('removed_at'),
+		importId: text('import_id'),
 		createdAt: createdAt()
 	},
 	(t) => [index('livestock_tank').on(t.tankId)]
@@ -360,6 +387,7 @@ export const plants = sqliteTable(
 		status: text('status', { enum: ['thriving', 'melting', 'algae', 'other'] }).notNull().default('thriving'),
 		lastTrimmedAt: text('last_trimmed_at'),
 		removedAt: text('removed_at'),
+		importId: text('import_id'),
 		createdAt: createdAt()
 	},
 	(t) => [index('plants_tank').on(t.tankId)]

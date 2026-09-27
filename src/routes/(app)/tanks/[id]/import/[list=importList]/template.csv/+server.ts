@@ -1,16 +1,21 @@
-import { importTemplate, type ImportList } from '$lib/server/import-rows';
+import { error } from '@sveltejs/kit';
+import { importKindOf, isHistoryKind } from '$lib/imports';
+import { historyContext } from '$lib/server/import';
+import { historyTemplate } from '$lib/server/import-history';
+import { importTemplate } from '$lib/server/import-rows';
 import { getTank } from '$lib/server/tanks';
 import type { RequestHandler } from './$types';
 
-/** The CSV to fill in, with the keeper's units in the column names. */
+/** The CSV to fill in, with the keeper's units in the column names (a water test's are the tank's parameters). */
 export const GET: RequestHandler = ({ locals, params }) => {
 	const user = locals.user!;
-	getTank(user.id, params.id);
-	const list = params.list as ImportList;
-	return new Response(importTemplate(list, user), {
+	const tank = getTank(user.id, params.id);
+	const kind = importKindOf(params.list) ?? error(404, 'Not found');
+	const csv = isHistoryKind(kind) ? historyTemplate(kind, historyContext(user, tank)) : importTemplate(kind, user);
+	return new Response(csv, {
 		headers: {
 			'content-type': 'text/csv; charset=utf-8',
-			'content-disposition': `attachment; filename="waterline-${list}.csv"`,
+			'content-disposition': `attachment; filename="waterline-${params.list}.csv"`,
 			'cache-control': 'no-store'
 		}
 	});

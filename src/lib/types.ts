@@ -18,3 +18,7 @@ export type EventCategory = (typeof EVENT_CATEGORIES)[number];
 
 export const TASK_KINDS = ['water_change', 'test', 'maintenance', 'other'] as const;
 export type TaskKind = (typeof TASK_KINDS)[number];
+
+/** What a spreadsheet can be imported as: a tank's lists, or kinds of History entry. */
+export const IMPORT_KINDS = ['livestock', 'plants', 'equipment', 'tests', 'water_changes', 'dosing', 'maintenance', 'observations', 'notes'] as const;
+export type ImportKind = (typeof IMPORT_KINDS)[number];

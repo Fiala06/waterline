@@ -23,11 +23,9 @@ A running list of ideas and nice-to-haves that aren't in the current scope. For 
   - A Changelog page under Settings (the footer's "Waterline v1.0 · self-hosted" could link to it), newest release first, with version, date and a few plain-language lines each.
   - After an update, show a small dismissible "What's new in 1.1" card or sheet once, then remember it was seen.
   - Bundle it with the app (e.g. from a `CHANGELOG.md` at build time) so it works offline and matches the running version.
-- **Importing History from CSV:** bring in past water changes, water tests and other entries from a spreadsheet or another app, instead of logging them one at a time, as livestock, plants and equipment can be.
-  - Upload a CSV, match its columns to Waterline's fields (date, entry type, amount, one column per parameter), and preview the rows with any problems flagged before importing. Each row becomes a normal History entry.
-  - Offer a template per entry type, and make the export's CSV import back unchanged.
-  - Read units and dates the way the person's settings show them.
-  - Let a whole import be undone in one step, the list imports too.
+- **More from importing History:** columns are matched by their names today. Possible extras:
+  - Pick which column is which when a file's names aren't recognized, instead of renaming them in the spreadsheet.
+  - One file with several kinds of entry, read from an entry type column, instead of a file per kind.
 - **Pet names and photos:** fish and other livestock are pets, so let people name them and keep their pictures.
   - An optional nickname on a livestock entry, shown with the species ("Captain · Betta") on the Livestock tab, the dashboard's "In the tank" and in History ("Captain moved into the tank").
   - Livestock is one entry per species with a count, so let a few animals in a group have their own names (2 of 6 corys), or split a named fish into its own entry.
@@ -40,9 +38,10 @@ A running list of ideas and nice-to-haves that aren't in the current scope. For 
 - [x] **Parameter presets by tank type** (Sep 25, 2026): new tanks start with their type's parameters and target ranges (freshwater, planted, brackish, reef), and "Reset to defaults" on Parameters & targets applies them again.
 - [x] **"Add to home screen" prompt** (Sep 25, 2026): offered on phones from the second visit, dismissible and remembered, never once installed; the browser's install button on Android, Share › Add to Home Screen steps on iPhone, and Install app in Settings.
 - [x] **Backdated logs** (Sep 25–26, 2026): every log's date and time can be set to earlier with the date and time picker, or in one tap with 1 hour ago, This morning and Yesterday evening.
-- [x] **Import livestock, plants and equipment from CSV** (Sep 26, 2026): "Import from a spreadsheet" on each list, with a template to download and a preview before anything is added. Importing History is still an idea above.
+- [x] **Import livestock, plants and equipment from CSV** (Sep 26, 2026): "Import from a spreadsheet" on each list, with a template to download and a preview before anything is added.
 - [x] **Summary for an AI assistant** (Sep 26, 2026): a tank's readings, care log and stocking as text to copy into any assistant, from its Overview or Export data. Connecting an assistant directly is still an idea above.
 - [x] **Saved product links** (Sep 26, 2026): Settings → Products, one tap to reorder, and Reorder when dosing a saved product.
 - [x] **Tooltips** (Sep 26, 2026): an ⓘ beside each parameter in the water test and on Parameters & targets, and on tank volume and source water.
 - [x] **Spotting trends** (Sep 26, 2026): a note under the dashboard's Trends chart when a parameter has risen or fallen in each of the last 3 or more tests, or its pace since the last water change would cross a target within two weeks ("Nitrate has risen in each of your last 3 tests (8 → 14 ppm) and is on course to pass 20 ppm in about 9 days"); also in the summary for an AI assistant. More kinds of trend are still an idea above.
 - [x] **Swimming fish in the logo** (Sep 26, 2026): every minute or two a small fish swims through the water in the sidebar and sign-in logos; never with reduced motion or in a background tab.
+- [x] **Importing History from CSV** (Sep 26, 2026): water tests, water changes, dosing, maintenance, observations and notes from a spreadsheet, with a template for each and a preview that flags rows to fix before anything is added. Each row becomes a normal History entry at its own date and time. Columns are found by name (and common other names), units and dates are read the way Settings shows them or as a column names them ("Temperature (°C)"), and the export's water-tests.csv reads back as it is. Any import, the list imports too, can be undone in one step from its toast or its import page. Matching columns by hand is still an idea above.

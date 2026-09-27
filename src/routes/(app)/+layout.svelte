@@ -13,6 +13,7 @@
 	import TankThumb from '$lib/components/TankThumb.svelte';
 	import Toast from '$lib/components/Toast.svelte';
 	import { toast, ui } from '$lib/ui.svelte';
+	import { IMPORTS, importKindOf } from '$lib/imports';
 
 	let { data, children } = $props();
 
@@ -79,7 +80,8 @@
 		)[id];
 		if (tankPage) return { title: tankPage, crumbs: [tanks, { label: tankName, href: `/tanks/${page.params.id}` }] };
 		if (id === '/(app)/tanks/[id]/import/[list=importList]') {
-			return { title: `Import ${page.params.list}`, crumbs: [tanks, { label: tankName, href: `/tanks/${page.params.id}` }] };
+			const kind = importKindOf(page.params.list ?? '');
+			return { title: kind ? IMPORTS[kind].title : 'Import', crumbs: [tanks, { label: tankName, href: `/tanks/${page.params.id}` }] };
 		}
 		if (id === '/(app)/tasks') return { title: 'Tasks', actions: [{ label: 'New task', href: newTaskHref }] };
 		if (id === '/(app)/tasks/new') return { title: 'New task', crumbs: [tasks] };

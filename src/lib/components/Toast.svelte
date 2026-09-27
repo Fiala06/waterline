@@ -2,6 +2,7 @@
 	// Success toast, e.g. "✓ Saved 7 readings · 1 out of range". Auto-hides after 2.8s.
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
+	import type { ToastUndo } from '$lib/ui.svelte';
 	let {
 		message,
 		undo,
@@ -9,7 +10,7 @@
 		lift = 'none'
 	}: {
 		message: string | null | undefined;
-		undo?: string;
+		undo?: ToastUndo;
 		view?: string;
 		/** On phones, sit above the tab bar, or above the tab bar and the + button. */
 		lift?: 'none' | 'tabs' | 'fab';
@@ -29,8 +30,8 @@
 		<div class="toast">
 			<span>{visible}</span>
 			{#if undo}
-				<form method="POST" action="/tasks?/undo" use:enhance>
-					<input type="hidden" name="completionId" value={undo} />
+				<form method="POST" action={undo.action} use:enhance>
+					<input type="hidden" name={undo.name} value={undo.value} />
 					<input type="hidden" name="from" value={page.url.pathname + page.url.search} />
 					<button class="undo">Undo</button>
 				</form>

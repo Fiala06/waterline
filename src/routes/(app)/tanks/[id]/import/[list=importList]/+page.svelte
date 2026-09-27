@@ -1,13 +1,17 @@
 <script lang="ts">
 	// Bulk import, step 1: the template to fill in, what its columns take, and
 	// the file. Step 2 (ImportPreview) shows every row before anything is added.
+	// Past imports of this kind can be undone at the bottom.
 	import { enhance } from '$app/forms';
+	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import ImportPreview from '$lib/components/ImportPreview.svelte';
+	import { HISTORY_IMPORTS, IMPORTS, isHistoryKind } from '$lib/imports';
 	let { data, form } = $props();
 
-	const title = $derived(`Import ${data.list}`);
-	const back = $derived(`/tanks/${data.tank.id}/${data.list}`);
-	const per = $derived({ livestock: 'species', plants: 'plant', equipment: 'piece of equipment' }[data.list]);
+	const info = $derived(IMPORTS[data.kind]);
+	const history = $derived(isHistoryKind(data.kind));
+	const title = $derived(info.title);
+	const back = $derived(history ? `/history?tank=${data.tank.id}&cat=${info.cat}` : `/tanks/${data.tank.id}/${data.kind}`);
 	const preview = $derived(form && 'preview' in form ? form.preview : null);
 	let busy = $state(false);
 </script>
@@ -24,8 +28,17 @@
 
 	<div class="body">
 		{#if preview}
-			{#key preview}<ImportPreview list={data.list} file={preview.file} rows={preview.rows} ignored={preview.ignored} />{/key}
+			{#key preview}<ImportPreview kind={data.kind} file={preview.file} rows={preview.rows} ignored={preview.ignored} csv={preview.csv} />{/key}
 		{:else}
+			{#if history}
+				<nav class="kinds hscroll" aria-label="What to import">
+					{#each HISTORY_IMPORTS as k (k)}
+						<a class="chip" class:selected={k === data.kind} aria-current={k === data.kind ? 'page' : undefined} href="/tanks/{data.tank.id}/import/{IMPORTS[k].slug}"
+							>{IMPORTS[k].label}</a
+						>
+					{/each}
+				</nav>
+			{/if}
 			<form
 				method="POST"
 				action="?/check"
@@ -44,13 +57,14 @@
 						<div class="st">
 							<h2>Start from the template</h2>
 							<p>Its first row names the columns Waterline reads. Open it in Excel, Numbers or Google Sheets and replace the example rows.</p>
+							{#if data.kind === 'tests'}<p>A water-tests.csv from Export data reads back as it is.</p>{/if}
 						</div>
-						<a class="btn" href="/tanks/{data.tank.id}/import/{data.list}/template.csv" download>Download template</a>
+						<a class="btn" href="/tanks/{data.tank.id}/import/{info.slug}/template.csv" download>Download template</a>
 					</li>
 					<li>
 						<div class="st">
-							<h2>Add one row per {per}</h2>
-							<p>Leave a cell empty when you don't know it.</p>
+							<h2>Add one row per {info.per}</h2>
+							<p>{data.kind === 'tests' ? "Leave a cell empty for anything you didn't test." : "Leave a cell empty when you don't know it."}</p>
 						</div>
 						<details class="cols">
 							<summary>What each column takes</summary>
@@ -84,6 +98,39 @@
 					<button class="btn btn-primary go" disabled={busy}>Check the file</button>
 				</div>
 			</form>
+
+			{#if data.recent.length}
+				<section class="recent" aria-labelledby="recent-h">
+					<h2 id="recent-h">Recent imports</h2>
+					<ul>
+						{#each data.recent as r (r.id)}
+							<li>
+								<span class="r-text">
+									<span class="r-title">{r.summary}</span>
+									<span class="r-sub">{r.when}{r.fileName ? ` · ${r.fileName}` : ''}</span>
+								</span>
+								{#if r.undone}
+									<span class="r-undone">Undone</span>
+								{:else}
+									<button type="button" class="btn btn-warn r-undo" popovertarget="undo-{r.id}">Undo</button>
+								{/if}
+							</li>
+						{/each}
+					</ul>
+				</section>
+				{#each data.recent.filter((r) => !r.undone) as r (r.id)}
+					<ConfirmDelete
+						id="undo-{r.id}"
+						trigger={false}
+						title="Undo this import?"
+						body="Everything it added will be removed ({r.summary}), with any changes made since. This can't be undone."
+						action="?/undo"
+						label="Undo import"
+						fields={{ importId: r.id }}
+						tone="warn"
+					/>
+				{/each}
+			{/if}
 		{/if}
 	</div>
 </div>
@@ -128,6 +175,68 @@
 	}
 	.banner {
 		margin: 0;
+	}
+	/* the kinds of History entry, one tap apart */
+	.kinds {
+		display: flex;
+		gap: 8px;
+		margin: 0 -20px 16px;
+		padding: 2px 20px;
+	}
+
+	/* earlier imports of this kind, each can be undone */
+	.recent {
+		padding: 8px 0 calc(24px + env(safe-area-inset-bottom));
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+	.recent h2 {
+		font-size: 15px;
+	}
+	.recent ul {
+		list-style: none;
+		margin: 0;
+		padding: 0 14px;
+		border-radius: 14px;
+		background: var(--surface);
+		border: 1px solid var(--border);
+	}
+	.recent li {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		min-height: 60px;
+		padding: 8px 0;
+	}
+	.recent li + li {
+		border-top: 1px solid var(--divider-soft);
+	}
+	.r-text {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+	.r-title {
+		font-size: 15px;
+		font-weight: 600;
+	}
+	.r-sub {
+		font-size: 13px;
+		color: var(--text-muted);
+		overflow-wrap: anywhere;
+	}
+	.r-undo {
+		flex-shrink: 0;
+		padding: 0 14px;
+		font-size: 14px;
+	}
+	.r-undone {
+		flex-shrink: 0;
+		font-size: 13px;
+		color: var(--text-faint);
 	}
 
 	/* three numbered steps */
@@ -317,6 +426,17 @@
 			padding: 20px 0 0;
 			border-top: 1px solid var(--border);
 			justify-content: flex-end;
+		}
+		.kinds {
+			margin: 0 0 20px;
+			padding: 0;
+			flex-wrap: wrap;
+		}
+		.recent {
+			padding: 28px 0 0;
+		}
+		.recent ul {
+			background: var(--surface-2);
 		}
 		.foot .btn {
 			height: 44px;

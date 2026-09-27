@@ -72,15 +72,17 @@ export interface ImportContext {
 }
 
 /** One row as the preview shows it. `value` is null when the row has a problem. */
-export interface CheckedRow {
+export interface CheckedRow<V = ImportValue> {
 	line: number;
 	title: string;
 	sub: string | null;
 	detail: string;
 	problems: string[];
-	value: ImportValue | null;
+	value: V | null;
 	/** an example row from the template, left as it was */
 	example: boolean;
+	/** another tank's row (the export's Tank column), left out */
+	other: string | null;
 }
 
 const TYPE_PLURAL: Record<EquipmentType, string> = {
@@ -188,7 +190,7 @@ export function parseAmount(v: string): number | null {
 }
 
 /** A word from a list, or one of its synonyms; `undefined` when empty, null when unknown. */
-function pick<T extends string>(v: string, words: Record<string, T>): T | null | undefined {
+export function pick<T extends string>(v: string, words: Record<string, T>): T | null | undefined {
 	const k = v.trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 	if (!k) return undefined;
 	return words[k] ?? null;
@@ -279,7 +281,7 @@ const FILTER_WORDS: Record<string, string> = {
 
 const KIND_LABEL: Record<Kind, string> = { fish: 'Fish', invert: 'Invert', coral: 'Coral' };
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-const quoted = (v: string) => `“${v.length > 40 ? v.slice(0, 40) + '…' : v}”`;
+export const quoted = (v: string) => `“${v.length > 40 ? v.slice(0, 40) + '…' : v}”`;
 
 /** The name as typed (the one the keeper uses), and the scientific name from the species list when the row leaves it out. */
 function species(name: string, scientific: string, water: ImportContext['water']) {
@@ -296,9 +298,9 @@ function dateCell(v: string, what: string, ctx: ImportContext, problems: string[
 	return null;
 }
 
-type Cells = Record<string, string>;
+export type Cells = Record<string, string>;
 
-function checkLivestock(c: Cells, ctx: ImportContext): Omit<CheckedRow, 'line' | 'example'> {
+function checkLivestock(c: Cells, ctx: ImportContext): Omit<CheckedRow, 'line' | 'example' | 'other'> {
 	const problems: string[] = [];
 	const typed = pick(c.type ?? '', KIND_WORDS);
 	const plantWord = /^(plant|plants|moss|stem|stems)$/i.test((c.type ?? '').trim());
@@ -334,7 +336,7 @@ function checkLivestock(c: Cells, ctx: ImportContext): Omit<CheckedRow, 'line' |
 	};
 }
 
-function checkPlant(c: Cells, ctx: ImportContext): Omit<CheckedRow, 'line' | 'example'> {
+function checkPlant(c: Cells, ctx: ImportContext): Omit<CheckedRow, 'line' | 'example' | 'other'> {
 	const problems: string[] = [];
 	const sp = species((c.name ?? '').slice(0, 80), (c.scientific ?? '').slice(0, 120), ctx.water);
 	if (!sp.name) problems.push('No name');
@@ -355,7 +357,7 @@ function checkPlant(c: Cells, ctx: ImportContext): Omit<CheckedRow, 'line' | 'ex
 }
 
 /** The unit a header names, "(L/h)", "(°C)", "(gal)", when it differs from the keeper's. */
-function headerSystem(q: SpecField['quantity'], header: string): UnitSystem | null {
+export function headerSystem(q: SpecField['quantity'], header: string): UnitSystem | null {
 	const u = /\(([^)]*)\)/.exec(header)?.[1].toLowerCase() ?? '';
 	if (!u || !q || q === 'none') return null;
 	if (q === 'flow') return /gph|gal/.test(u) ? 'imperial' : /l\s*\/\s*h|lph|litre|liter/.test(u) ? 'metric' : null;
@@ -363,7 +365,7 @@ function headerSystem(q: SpecField['quantity'], header: string): UnitSystem | nu
 	return /gal/.test(u) ? 'imperial' : /^l$|litre|liter/.test(u) ? 'metric' : null;
 }
 
-function checkEquipment(c: Cells, ctx: ImportContext, headers: Record<string, string>): Omit<CheckedRow, 'line' | 'example'> {
+function checkEquipment(c: Cells, ctx: ImportContext, headers: Record<string, string>): Omit<CheckedRow, 'line' | 'example' | 'other'> {
 	const problems: string[] = [];
 	const rawType = (c.type ?? '').trim();
 	const typed = pick(rawType, EQUIPMENT_WORDS);
@@ -437,11 +439,46 @@ export function importTemplate(list: ImportList, prefs: UnitPrefs): string {
 
 // ── Reading a file ──────────────────────────────────────────────────────────
 
-const key = (s: string) =>
+/** A column name as compared: "Flow rate (gph)" is "flowrate". */
+export const headerKey = (s: string) =>
 	s
 		.toLowerCase()
 		.replace(/\(.*?\)/g, '')
 		.replace(/[^a-z0-9]+/g, '');
+
+/**
+ * A file's header row matched to `columns` by name or synonym, in any order,
+ * and the rows under it (numbered as the spreadsheet numbers them, blank ones
+ * skipped). `need` is the one column a file can't do without.
+ */
+export function readColumns(text: string, columns: Column[], need: { key: string; label: string }, maxRows = MAX_ROWS) {
+	const all = parseCsv(text);
+	const h = all.findIndex((r) => r.some((c) => c.trim()));
+	if (h < 0) return { error: 'This file is empty.' };
+	const found = new Map<number, Column>();
+	const headers: Record<string, string> = {};
+	const ignored: string[] = [];
+	all[h].forEach((raw, i) => {
+		const k = headerKey(raw);
+		const c = columns.find((c) => !(c.key in headers) && [c.header, ...(c.aliases ?? [])].some((a) => headerKey(a) === k));
+		if (c) {
+			found.set(i, c);
+			headers[c.key] = raw;
+		} else if (raw.trim()) ignored.push(raw.trim());
+	});
+	if (!(need.key in headers)) {
+		return { error: `There's no ${need.label} column. Start from the template, or give your columns the names in its first row.` };
+	}
+	const lines = all.map((cells, i) => ({ line: i + 1, cells })).filter((r, i) => i > h && r.cells.some((c) => c.trim()));
+	if (!lines.length) return { error: 'There are no rows under the column names.' };
+	if (lines.length > maxRows) return { error: `That's more than ${maxRows} rows. Split it into smaller files.` };
+	const cellsOf = (cells: string[]) => {
+		const c: Cells = {};
+		for (const [i, col] of found) c[col.key] = (cells[i] ?? '').trim();
+		return c;
+	};
+	return { lines, headers, ignored, cellsOf };
+}
 
 function check(list: ImportList, c: Cells, ctx: ImportContext, headers: Record<string, string>) {
 	return list === 'livestock' ? checkLivestock(c, ctx) : list === 'plants' ? checkPlant(c, ctx) : checkEquipment(c, ctx, headers);
@@ -453,37 +490,15 @@ function check(list: ImportList, c: Cells, ctx: ImportContext, headers: Record<s
  * example rows, left as they were, are marked so they're not imported.
  */
 export function readImport(list: ImportList, text: string, ctx: ImportContext): { rows: CheckedRow[]; ignored: string[] } | { error: string } {
-	const all = parseCsv(text);
-	const h = all.findIndex((r) => r.some((c) => c.trim()));
-	if (h < 0) return { error: 'This file is empty.' };
-	const columns = importColumns(list, ctx.prefs);
-	const found = new Map<number, Column>();
-	const headers: Record<string, string> = {};
-	const ignored: string[] = [];
-	all[h].forEach((raw, i) => {
-		const k = key(raw);
-		const c = columns.find((c) => !(c.key in headers) && [c.header, ...(c.aliases ?? [])].some((a) => key(a) === k));
-		if (c) {
-			found.set(i, c);
-			headers[c.key] = raw;
-		} else if (raw.trim()) ignored.push(raw.trim());
+	const need = list === 'equipment' ? { key: 'type', label: 'Type' } : { key: 'name', label: 'Name' };
+	const t = readColumns(text, importColumns(list, ctx.prefs), need);
+	if ('error' in t) return { error: t.error! };
+	const same = new Set(examples(list, ctx.prefs).map((e) => JSON.stringify(check(list, e, ctx, t.headers).value)));
+	const rows = t.lines.map(({ line, cells }) => {
+		const r = check(list, t.cellsOf(cells), ctx, t.headers);
+		return { line, ...r, example: !!r.value && same.has(JSON.stringify(r.value)), other: null };
 	});
-	const need = list === 'equipment' ? 'Type' : 'Name';
-	if (!(need.toLowerCase() in headers)) {
-		return { error: `There's no ${need} column. Start from the template, or give your columns the names in its first row.` };
-	}
-	const lines = all.map((cells, i) => ({ line: i + 1, cells })).filter((r, i) => i > h && r.cells.some((c) => c.trim()));
-	if (!lines.length) return { error: 'There are no rows under the column names.' };
-	if (lines.length > MAX_ROWS) return { error: `That's more than ${MAX_ROWS} rows. Split it into smaller files.` };
-
-	const same = new Set(examples(list, ctx.prefs).map((e) => JSON.stringify(check(list, e, ctx, headers).value)));
-	const rows = lines.map(({ line, cells }) => {
-		const c: Cells = {};
-		for (const [i, col] of found) c[col.key] = (cells[i] ?? '').trim();
-		const r = check(list, c, ctx, headers);
-		return { line, ...r, example: !!r.value && same.has(JSON.stringify(r.value)) };
-	});
-	return { rows, ignored };
+	return { rows, ignored: t.ignored };
 }
 
 // ── What the import form posts back ─────────────────────────────────────────

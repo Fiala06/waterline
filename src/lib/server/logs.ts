@@ -26,6 +26,8 @@ export interface TestInput {
 	/** parameter id → stored (metric/dGH) value */
 	readings: Map<string, number>;
 	clientId?: string | null;
+	/** made by an import, undone with it */
+	importId?: string | null;
 }
 
 export function createTest(
@@ -52,7 +54,7 @@ export function createTest(
 	const test = db.transaction((tx) => {
 		const t = tx
 			.insert(tests)
-			.values({ tankId, takenAt: input.takenAt, note: input.note, clientId: input.clientId ?? null })
+			.values({ tankId, takenAt: input.takenAt, note: input.note, clientId: input.clientId ?? null, importId: input.importId ?? null })
 			.returning()
 			.get();
 		if (input.readings.size) {
@@ -190,6 +192,8 @@ export interface EventInput {
 	note: string | null;
 	data: Record<string, unknown>;
 	clientId?: string | null;
+	/** made by an import, undone with it */
+	importId?: string | null;
 }
 
 /** The entry an offline-queued form already created, if it was sent before. */
@@ -212,7 +216,7 @@ export function createEvent(
 	if (existing) return { event: existing, duplicate: true };
 	const event = db
 		.insert(events)
-		.values({ ...input, tankId, clientId: input.clientId ?? null })
+		.values({ ...input, tankId, clientId: input.clientId ?? null, importId: input.importId ?? null })
 		.returning()
 		.get();
 	if (opts.completeTaskId) {

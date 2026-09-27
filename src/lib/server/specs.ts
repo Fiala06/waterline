@@ -16,12 +16,22 @@ export interface EntryMeta {
 	note?: string | null;
 	/** the offline queue's id, so a replayed form isn't applied twice */
 	clientId?: string | null;
+	/** made by an import, undone with it */
+	importId?: string | null;
 }
 
 function logEvent(tankId: string, category: 'livestock' | 'equipment' | 'maintenance', data: Record<string, unknown>, meta: EntryMeta = {}) {
 	return db
 		.insert(events)
-		.values({ tankId, category, occurredAt: meta.at ?? now(), note: meta.note ?? null, data, clientId: meta.clientId ?? null })
+		.values({
+			tankId,
+			category,
+			occurredAt: meta.at ?? now(),
+			note: meta.note ?? null,
+			data,
+			clientId: meta.clientId ?? null,
+			importId: meta.importId ?? null
+		})
 		.returning()
 		.get();
 }
@@ -58,12 +68,12 @@ export interface EquipmentInput {
 	notes: string | null;
 }
 
-export function addEquipment(userId: string, tankId: string, input: EquipmentInput, timeZone: string) {
+export function addEquipment(userId: string, tankId: string, input: EquipmentInput, timeZone: string, importId: string | null = null) {
 	getTank(userId, tankId);
-	const e = db.insert(equipment).values({ ...input, tankId }).returning().get();
+	const e = db.insert(equipment).values({ ...input, tankId, importId }).returning().get();
 	// an install date without a time goes on that day at noon, in the user's zone
 	const at = input.installedAt ? zonedToUtc(input.installedAt, '12:00', timeZone).toISOString() : now();
-	logEvent(tankId, 'equipment', { action: 'installed', equipment_id: e.id, item: equipmentName(e) }, { at });
+	logEvent(tankId, 'equipment', { action: 'installed', equipment_id: e.id, item: equipmentName(e) }, { at, importId });
 	return e;
 }
 
@@ -165,7 +175,7 @@ export function addLivestock(userId: string, tankId: string, input: LivestockInp
 	const same = sameSpecies(tankId, input);
 	const row = same
 		? db.update(livestock).set({ count: same.count + input.count }).where(eq(livestock.id, same.id)).returning().get()
-		: db.insert(livestock).values({ ...input, tankId }).returning().get();
+		: db.insert(livestock).values({ ...input, tankId, importId: meta.importId ?? null }).returning().get();
 	const event = logEvent(tankId, 'livestock', {
 		action: 'added',
 		livestock_id: row.id,
@@ -238,7 +248,7 @@ export function getPlant(userId: string, id: string): Plant {
 
 export function addPlant(userId: string, tankId: string, input: Pick<Plant, 'name' | 'scientificName' | 'position' | 'status'>, meta: EntryMeta = {}) {
 	getTank(userId, tankId);
-	const p = db.insert(plants).values({ ...input, tankId }).returning().get();
+	const p = db.insert(plants).values({ ...input, tankId, importId: meta.importId ?? null }).returning().get();
 	const event = logEvent(tankId, 'livestock', { action: 'added', plant_id: p.id, name: p.name, scientific_name: p.scientificName, kind: 'plant' }, meta);
 	return Object.assign(p, { event });
 }

@@ -52,7 +52,7 @@ export const actions: Actions = {
 
 		const done = completeTask(user.id, taskId, { timeZone: user.timeZone });
 		setFlash(cookies, `✓ ${task.name} done${done.nextDue ? ` · next ${fmtDate(done.nextDue)}` : ''}`, {
-			undo: done.completionId
+			undo: { action: '/tasks?/undo', name: 'completionId', value: done.completionId }
 		});
 		redirect(303, safeReturn(form.get('from'), '/tasks'));
 	},

@@ -1,9 +1,12 @@
 <script lang="ts">
 	// Bulk import, step 2: every row of the file before anything is added. Rows
-	// that are fine are ticked; rows the tank already has wait for a tick; rows
-	// with a problem and the template's own examples are listed but can't be.
+	// that are fine are ticked; rows the tank (or History) already has wait for
+	// a tick; rows with a problem and the template's own examples are listed
+	// but can't be. Another tank's rows (an export's) are only counted.
 	import { enhance } from '$app/forms';
 	import { untrack } from 'svelte';
+	import { countOf, isHistoryKind } from '$lib/imports';
+	import type { ImportKind } from '$lib/types';
 
 	interface Row {
 		line: number;
@@ -13,40 +16,50 @@
 		problems: string[];
 		value: unknown;
 		example: boolean;
+		other: string | null;
 		existing: string | null;
 		reminder: string | null;
 	}
 	let {
-		list,
+		kind,
 		file,
 		rows,
-		ignored
-	}: { list: 'livestock' | 'plants' | 'equipment'; file: string; rows: Row[]; ignored: string[] } = $props();
+		ignored,
+		csv = null
+	}: {
+		kind: ImportKind;
+		file: string;
+		rows: Row[];
+		ignored: string[];
+		/** History files: the file itself, sent back with the ticked line numbers (up to 2,000 rows) */
+		csv?: string | null;
+	} = $props();
 
-	const usable = (r: Row) => !!r.value && !r.example;
+	const history = $derived(isHistoryKind(kind));
+	const usable = (r: Row) => !!r.value && !r.example && !r.other;
 	let on = $state(untrack(() => rows.map((r) => usable(r) && !r.existing)));
 	let busy = $state(false);
 
 	const ready = $derived(rows.filter((r) => usable(r) && !r.existing).length);
 	const existing = $derived(rows.filter((r) => usable(r) && r.existing).length);
-	const bad = $derived(rows.filter((r) => !r.value).length);
+	const bad = $derived(rows.filter((r) => !r.value && !r.other).length);
+	const firstBad = $derived(rows.find((r) => !r.value && !r.other)?.line);
 	const examples = $derived(rows.filter((r) => r.example).length);
+	const others = $derived(rows.filter((r) => r.other).length);
 
 	const ticked = $derived(rows.filter((_, i) => on[i]));
 	const animals = $derived(ticked.reduce((s, r) => s + ((r.value as { count?: number }).count ?? 0), 0));
 	const reminders = $derived(ticked.filter((r) => r.reminder).length);
-	const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
-	const label = $derived(
-		!ticked.length
-			? 'Tick rows to add'
-			: `Add ${list === 'livestock' ? plural(animals, 'animal') : list === 'plants' ? plural(ticked.length, 'plant') : plural(ticked.length, 'item')}`
-	);
+	const n = (x: number) => x.toLocaleString('en-US');
+	const plural = (x: number, one: string, many = `${one}s`) => `${n(x)} ${x === 1 ? one : many}`;
+	const label = $derived(!ticked.length ? 'Tick rows to add' : `Add ${countOf(kind, kind === 'livestock' ? animals : ticked.length)}`);
 </script>
 
 <form
 	method="POST"
 	action="?/import"
 	class="preview"
+	enctype={history ? 'multipart/form-data' : undefined}
 	use:enhance={() => {
 		busy = true;
 		return async ({ update }) => {
@@ -55,27 +68,36 @@
 		};
 	}}
 >
+	<input type="hidden" name="file" value={file} />
+	{#if history}<input type="hidden" name="csv" value={csv} />{/if}
 	<div class="summary">
 		<p class="file">{file} · {plural(rows.length, 'row')}</p>
 		<div class="tags">
-			{#if ready}<span class="status-tag tag-ok sm">✓ {ready} to add</span>{/if}
-			{#if existing}<span class="status-tag tag-warn sm">▲ {existing} already in the tank</span>{/if}
-			{#if bad}<span class="status-tag tag-bad sm">✕ {bad} to fix</span>{/if}
+			{#if ready}<span class="status-tag tag-ok sm">✓ {n(ready)} to add</span>{/if}
+			{#if existing}<span class="status-tag tag-warn sm">▲ {n(existing)} already in {history ? 'History' : 'the tank'}</span>{/if}
+			{#if bad}<a class="status-tag tag-bad sm" href="#row-{firstBad}">✕ {n(bad)} to fix</a>{/if}
 			{#if examples}<span class="status-tag tag-none sm">– {plural(examples, 'example')} left out</span>{/if}
+			{#if others}<span class="status-tag tag-none sm">– {n(others)} from other tanks left out</span>{/if}
 		</div>
 		{#if ignored.length}<p class="ignored">Columns not read: {ignored.join(', ')}</p>{/if}
 	</div>
 
 	<ul class="rows">
-		{#each rows as r, i (r.line)}
-			<li>
+		<!-- another tank's rows are only counted above -->
+		{#each rows as r, i (r.line)}{#if !r.other}
+			<li id="row-{r.line}">
 				{#if usable(r)}
 					<label class="row check-row">
-						<input type="checkbox" name="row" value={JSON.stringify(r.value)} bind:checked={on[i]} />
+						{#if history}
+							<input type="checkbox" name="line" value={r.line} bind:checked={on[i]} />
+						{:else}
+							<input type="checkbox" name="row" value={JSON.stringify(r.value)} bind:checked={on[i]} />
+						{/if}
 						<span class="t">
 							<span class="name">{r.title}</span>
-							{#if r.sub}<span class="sci">{r.sub}</span>{/if}
+							{#if r.sub && !history}<span class="sci">{r.sub}</span>{/if}
 							<span class="detail">{r.detail}</span>
+							{#if r.sub && history}<span class="detail said">{r.sub}</span>{/if}
 							{#if r.existing}<span class="note status-warn">▲ {r.existing}</span>{/if}
 						</span>
 					</label>
@@ -95,11 +117,11 @@
 					</div>
 				{/if}
 			</li>
-		{/each}
+		{/if}{/each}
 	</ul>
 	{#if bad}<p class="hint">Fix those rows in your spreadsheet and choose the file again, or add the rest now.</p>{/if}
 
-	{#if list === 'equipment' && rows.some((r) => usable(r) && r.reminder)}
+	{#if kind === 'equipment' && rows.some((r) => usable(r) && r.reminder)}
 		<label class="check-row reminders">
 			<input type="checkbox" name="reminders" defaultChecked />
 			<span>Also add the suggested maintenance reminders{reminders ? ` (${reminders})` : ''}</span>
@@ -180,6 +202,16 @@
 		font-size: 13px;
 		color: var(--text-muted);
 	}
+	/* a History row's note, as written */
+	.said {
+		overflow-wrap: anywhere;
+	}
+	.rows li {
+		scroll-margin-top: 16px;
+	}
+	a.status-tag {
+		text-decoration: none;
+	}
 	.note {
 		font-size: 13px;
 		font-weight: 600;
@@ -207,6 +239,8 @@
 		margin: 0 -20px;
 		padding: 14px 20px calc(24px + env(safe-area-inset-bottom));
 		display: flex;
+		/* a long label ("Add 24 maintenance entries") takes a row of its own, still at the bottom */
+		flex-wrap: wrap;
 		gap: 12px;
 		background: var(--bg);
 		border-top: 1px solid var(--divider-soft);

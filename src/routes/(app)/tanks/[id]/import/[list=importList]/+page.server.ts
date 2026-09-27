@@ -1,21 +1,36 @@
-import { fail, redirect } from '@sveltejs/kit';
-import { todayInZone } from '$lib/time';
+import { error, fail, redirect } from '@sveltejs/kit';
+import { IMPORTS, importKindOf, isHistoryKind } from '$lib/imports';
+import { fmtWhen, todayInZone } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
-import { applyImport, previewImport } from '$lib/server/import';
-import { importColumns, validValue, type ImportList, type ImportValue, type LivestockValue } from '$lib/server/import-rows';
+import { str } from '$lib/server/forms';
+import { applyHistory, applyImport, historyContext, listImports, previewHistory, previewImport, undoImport, undoneText } from '$lib/server/import';
+import { historyColumns, readHistory, trackedOnly } from '$lib/server/import-history';
+import { importColumns, validValue, type ImportValue, type LivestockValue } from '$lib/server/import-rows';
+import { safeReturn } from '$lib/server/redirect';
 import { getTank } from '$lib/server/tanks';
 import type { Actions, PageServerLoad } from './$types';
 
 const MAX_BYTES = 1_000_000;
 
+/** The kind of import at this address (the matcher only lets real ones through). */
+const kindOf = (slug: string) => importKindOf(slug) ?? error(404, 'Not found');
+
 export const load: PageServerLoad = ({ locals, params }) => {
 	const user = locals.user!;
 	const t = getTank(user.id, params.id);
-	const list = params.list as ImportList;
+	const kind = kindOf(params.list);
+	const columns = isHistoryKind(kind) ? historyColumns(kind, trackedOnly(historyContext(user, t))) : importColumns(kind, user);
 	return {
 		tank: { id: t.id, name: t.name },
-		list,
-		columns: importColumns(list, user).map((c) => ({ header: c.header, help: c.help }))
+		kind,
+		columns: columns.map((c) => ({ header: c.header, help: c.help })),
+		recent: listImports(user.id, t.id, kind).map((i) => ({
+			id: i.id,
+			summary: i.summary,
+			fileName: i.fileName,
+			when: fmtWhen(i.createdAt, user.timeZone),
+			undone: !!i.undoneAt
+		}))
 	};
 };
 
@@ -28,30 +43,60 @@ function decode(buf: ArrayBuffer) {
 	}
 }
 
+/** One kind of line break, so the file reads the same when the page sends it back. */
+const lf = (text: string) => text.replace(/\r\n?/g, '\n');
+
 export const actions: Actions = {
 	/** Read the file and show every row before anything is added. */
 	check: async ({ request, locals, params }) => {
 		const user = locals.user!;
 		const tank = getTank(user.id, params.id);
+		const kind = kindOf(params.list);
 		const form = await request.formData();
 		const file = form.get('file');
 		if (!(file instanceof File) || !file.size) return fail(400, { error: 'Choose a CSV file.' });
 		if (file.size > MAX_BYTES) return fail(400, { error: 'That file is over 1 MB. Split it into smaller files.' });
-		const preview = previewImport(params.list as ImportList, decode(await file.arrayBuffer()), user, tank);
+		const text = lf(decode(await file.arrayBuffer()));
+		if (isHistoryKind(kind)) {
+			const preview = previewHistory(kind, text, user, tank);
+			if ('error' in preview) return fail(400, { error: preview.error });
+			// Up to 2,000 rows: the page sends back the file and the ticked line numbers, not each row.
+			return { preview: { file: file.name, ...preview, csv: text } };
+		}
+		const preview = previewImport(kind, text, user, tank);
 		if ('error' in preview) return fail(400, { error: preview.error });
-		return { preview: { file: file.name, ...preview } };
+		return { preview: { file: file.name, ...preview, csv: null } };
 	},
 
 	import: async ({ request, locals, params, cookies }) => {
 		const user = locals.user!;
 		const tank = getTank(user.id, params.id);
-		const list = params.list as ImportList;
+		const kind = kindOf(params.list);
 		const form = await request.formData();
+		const fileName = str(form, 'file') || null;
+		const undo = { action: `/tanks/${tank.id}/import/${params.list}?/undo`, name: 'importId' };
+
+		if (isHistoryKind(kind)) {
+			const csv = form.get('csv');
+			const lines = new Set(form.getAll('line').map(String));
+			if (!lines.size) return fail(400, { error: 'Nothing was ticked. Choose the file again and tick the rows to add.' });
+			if (typeof csv !== 'string' || csv.length > MAX_BYTES) return fail(400, { error: 'Some rows changed on the way. Choose the file again.' });
+			// the same file, read again: a row is only added if it's still fine
+			const read = readHistory(kind, lf(csv), historyContext(user, tank));
+			const picked = 'error' in read ? [] : read.rows.filter((r) => lines.has(String(r.line)));
+			if (picked.length !== lines.size || picked.some((r) => !r.value || r.example || r.other)) {
+				return fail(400, { error: 'Some rows changed on the way. Choose the file again.' });
+			}
+			const { importId, summary } = applyHistory(kind, picked.map((r) => r.value!), user, tank, fileName);
+			setFlash(cookies, `✓ Imported ${summary}`, { undo: { ...undo, value: importId } });
+			redirect(303, `/history?tank=${tank.id}&cat=${IMPORTS[kind].cat}&range=all`);
+		}
+
 		const today = todayInZone(user.timeZone);
 		// the rows come back from the preview as it showed them; check them again
 		const values = form.getAll('row').map((raw) => {
 			try {
-				return validValue(list, JSON.parse(String(raw)), today);
+				return validValue(kind, JSON.parse(String(raw)), today);
 			} catch {
 				return null;
 			}
@@ -59,16 +104,24 @@ export const actions: Actions = {
 		if (!values.length) return fail(400, { error: 'Nothing was ticked. Choose the file again and tick the rows to add.' });
 		if (values.some((v) => !v)) return fail(400, { error: 'Some rows changed on the way. Choose the file again.' });
 		const ok = values as ImportValue[];
-		const { reminders } = applyImport(list, ok, user, tank.id, { reminders: form.get('reminders') === 'on' });
+		const { reminders, importId } = applyImport(kind, ok, user, tank.id, { reminders: form.get('reminders') === 'on', fileName });
 		const n = ok.length;
-		const animals = list === 'livestock' ? (ok as LivestockValue[]).reduce((s, l) => s + l.count, 0) : 0;
+		const animals = kind === 'livestock' ? (ok as LivestockValue[]).reduce((s, l) => s + l.count, 0) : 0;
 		const message =
-			list === 'livestock'
+			kind === 'livestock'
 				? `✓ Imported ${animals} animal${animals === 1 ? '' : 's'} · ${n} species`
-				: list === 'plants'
+				: kind === 'plants'
 					? `✓ Imported ${n} plant${n === 1 ? '' : 's'}`
 					: `✓ Imported ${n} item${n === 1 ? '' : 's'}${reminders ? ` · ${reminders} reminder${reminders === 1 ? '' : 's'} added` : ''}`;
-		setFlash(cookies, message);
-		redirect(303, `/tanks/${tank.id}/${list}`);
+		setFlash(cookies, message, { undo: { ...undo, value: importId } });
+		redirect(303, `/tanks/${tank.id}/${kind}`);
+	},
+
+	/** Take back a whole import: from the toast right after, or from Recent imports. */
+	undo: async ({ request, locals, params, cookies }) => {
+		const form = await request.formData();
+		const imp = undoImport(locals.user!.id, str(form, 'importId'));
+		setFlash(cookies, undoneText(imp));
+		redirect(303, safeReturn(form.get('from'), `/tanks/${params.id}/import/${params.list}`));
 	}
 };

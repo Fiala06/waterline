@@ -84,3 +84,140 @@ test('import works without scripts', async ({ page, browser }, info) => {
 	await expect(plain.getByRole('button', { name: /^Anubias nana/ })).toBeVisible();
 	await ctx.close();
 });
+
+test('import water tests into History, and undo the whole import from the toast', async ({ page }, info) => {
+	await newKeeperWithTank(page, `import-history-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	const file = page.locator('input[type=file][name=file]');
+
+	// From History: the import for the category picked
+	await open(page, `/history?tank=${tankId}&cat=test&range=all`);
+	await page.getByRole('link', { name: 'Import water tests from a spreadsheet' }).click();
+	await expect(page).toHaveURL(`/tanks/${tankId}/import/tests`);
+
+	// The template has a column per parameter, in the keeper's units
+	const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('link', { name: 'Download template' }).click()]);
+	expect(download.suggestedFilename()).toBe('waterline-tests.csv');
+	const header = readFileSync(await download.path(), 'utf8').split('\r\n')[0];
+	expect(header).toMatch(/^﻿Date,Time,pH,Ammonia \(ppm\),/);
+	expect(header).toContain('Temperature (°F)');
+
+	// Columns in any order, a unit named in a column, another tank's row and one to fix
+	await file.setInputFiles(
+		csv(
+			'my-tests.csv',
+			'Date,Time,Tank,pH,Nitrate (ppm),Temperature (°C),Note\n9/1/2026,8:30 AM,Riverbed 40,6.8,10,25,Before the move\n9/8/2026,,Riverbed 40,7.0,15,,\n9/9/2026,,Riverbed 40,high,,,\n9/10/2026,,Reef 24,8.2,,,\n'
+		)
+	);
+	await expect(page.getByText('my-tests.csv · 4 rows')).toBeVisible();
+	await expect(page.getByText('✓ 2 to add')).toBeVisible();
+	await expect(page.getByText('✕ 1 to fix')).toBeVisible();
+	await expect(page.getByText('– 1 from other tanks left out')).toBeVisible();
+	await expect(page.getByText("pH “high” isn't a number")).toBeVisible();
+	await expect(page.getByText('pH 6.8 · Nitrate 10 ppm · Temperature 77 °F')).toBeVisible();
+	await page.getByRole('button', { name: 'Add 2 water tests' }).click();
+
+	// Each row is a History entry at its own date and time
+	await expect(page.getByRole('status')).toContainText('✓ Imported 2 water tests');
+	await expect(page).toHaveURL(`/history?tank=${tankId}&cat=test&range=all`);
+	await expect(page.getByText('Water test · 3 readings')).toBeVisible();
+	await expect(page.getByText('8:30 AM · Before the move')).toBeVisible();
+
+	// One step takes it all back
+	await page.getByRole('status').getByRole('button', { name: 'Undo' }).click();
+	await expect(page.getByRole('status')).toContainText('Import undone · 2 water tests removed');
+	await expect(page.getByText('Water test · 3 readings')).toHaveCount(0);
+	await expect(page.getByText('Nothing logged here yet')).toBeVisible();
+});
+
+test('import water changes and doses; the export reads back as it is', async ({ page }, info) => {
+	await newKeeperWithTank(page, `import-kinds-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	const file = page.locator('input[type=file][name=file]');
+
+	// A percentage or a volume: the other comes from the tank's 40 gal
+	await open(page, `/tanks/${tankId}/import/water-changes`);
+	await file.setInputFiles(csv('changes.csv', 'Date,Amount (%),Volume (gal),Source\n2026-09-01,25,,Tap\n2026-09-08,,10,RO/DI\n'));
+	await page.getByRole('button', { name: 'Add 2 water changes' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Imported 2 water changes');
+	await expect(page.getByRole('link', { name: /^Water change · 25% · Tap/ })).toBeVisible();
+	await expect(page.getByRole('link', { name: /^Water change · 25% · RODI/ })).toBeVisible();
+
+	// The kinds are a chip apart; a unit can follow the amount
+	await open(page, `/tanks/${tankId}/import/water-changes`);
+	await page.getByRole('link', { name: 'Dosing', exact: true }).click();
+	await expect(page).toHaveURL(`/tanks/${tankId}/import/dosing`);
+	await file.setInputFiles(csv('doses.csv', 'Date,Product,Amount\n2026-09-02,Seachem Prime,5 mL\n'));
+	await page.getByRole('button', { name: 'Add 1 dose' }).click();
+	await expect(page.getByRole('link', { name: /^Dosed Seachem Prime · 5 mL/ })).toBeVisible();
+
+	// A water test logged here, exported, reads back as the same entry
+	await open(page, `/entries/test/new?tank=${tankId}`);
+	await page.getByLabel('pH', { exact: true }).fill('6.8');
+	await page.getByLabel('Nitrate', { exact: true }).fill('12');
+	await page.getByLabel('Note').fill('before water change, "big" one');
+	await page.getByRole('button', { name: 'Save 2 readings' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Saved 2 readings');
+	await open(page, '/settings/export');
+	await page.locator('label', { hasText: 'Water tests (CSV)' }).click();
+	await page.getByRole('button', { name: 'Build CSV' }).click();
+	await expect(page.getByText('✓ CSV ready')).toBeVisible({ timeout: 15_000 });
+	const exported = await (await page.request.get((await page.getByRole('link', { name: 'Download' }).first().getAttribute('href'))!)).text();
+
+	await open(page, `/tanks/${tankId}/import/tests`);
+	await file.setInputFiles(csv('water-tests.csv', exported));
+	await expect(page.getByText('▲ 1 already in History')).toBeVisible();
+	await expect(page.getByText('Already in History; tick it to add it again')).toBeVisible();
+	await expect(page.getByText('pH 6.8 · Nitrate 12 ppm')).toBeVisible();
+	await expect(page.getByText('before water change, "big" one')).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Tick rows to add' })).toBeDisabled();
+});
+
+test('any import can be undone later, animals added to a group come off its count', async ({ page }, info) => {
+	await newKeeperWithTank(page, `import-undo-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	const file = page.locator('input[type=file][name=file]');
+	const importFish = async (count: number, total: string) => {
+		await open(page, `/tanks/${tankId}/import/livestock`);
+		await file.setInputFiles(csv('fish.csv', `Name,Count\nNeon tetra,${count}\n`));
+		if (total !== `${count} animals · 1 species`) await page.getByRole('checkbox', { name: /Neon tetra/ }).check();
+		await page.getByRole('button', { name: `Add ${count} animals` }).click();
+		await expect(page.getByText(total, { exact: true })).toBeVisible();
+	};
+	await importFish(10, '10 animals · 1 species');
+	await importFish(5, '15 animals · 1 species');
+
+	// The second import, from Recent imports: the group keeps the first import's 10
+	await open(page, `/tanks/${tankId}/import/livestock`);
+	await expect(page.getByRole('heading', { name: 'Recent imports' })).toBeVisible();
+	await page.getByRole('button', { name: 'Undo', exact: true }).first().click();
+	await expect(page.getByRole('heading', { name: 'Undo this import?' })).toBeVisible();
+	await page.getByRole('button', { name: 'Undo import' }).click();
+	await expect(page.getByRole('status')).toContainText('Import undone · 5 animals · 1 species removed');
+	await expect(page.getByText('Undone', { exact: true })).toBeVisible();
+	await open(page, `/tanks/${tankId}/livestock`);
+	await expect(page.getByText('10 animals · 1 species', { exact: true })).toBeVisible();
+
+	// The first: the group it made goes, and so do its History entries
+	await open(page, `/tanks/${tankId}/import/livestock`);
+	await page.getByRole('button', { name: 'Undo', exact: true }).click();
+	await page.getByRole('button', { name: 'Undo import' }).click();
+	await expect(page.getByRole('status')).toContainText('Import undone · 10 animals · 1 species removed');
+	await open(page, `/history?tank=${tankId}&cat=livestock&range=all`);
+	await expect(page.getByText('+10 Neon tetra')).toHaveCount(0);
+	await expect(page.getByText('+5 Neon tetra')).toHaveCount(0);
+});
+
+test('History import works without scripts', async ({ page, browser }, info) => {
+	await newKeeperWithTank(page, `import-history-plain-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	const ctx = await browser.newContext({ storageState: await page.context().storageState(), javaScriptEnabled: false });
+	const plain = await ctx.newPage();
+	await plain.goto(`/tanks/${tankId}/import/notes`);
+	await plain.locator('input[type=file][name=file]').setInputFiles(csv('notes.csv', 'Date,Note\n2026-09-01,"Moved the tank, and the stand"\n'));
+	await plain.getByRole('button', { name: 'Check the file' }).click();
+	await plain.getByRole('button', { name: 'Add 1 note' }).click();
+	await expect(plain).toHaveURL(`/history?tank=${tankId}&cat=note&range=all`);
+	await expect(plain.getByText('Moved the tank, and the stand').first()).toBeVisible();
+	await ctx.close();
+});
