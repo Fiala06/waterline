@@ -3,6 +3,7 @@
 	// Desktop keys: T water test, W water change, N note.
 	import { goto } from '$app/navigation';
 	import CategoryIcon from './CategoryIcon.svelte';
+	import ImportButton from './ImportButton.svelte';
 	import DateTimePicker from './DateTimePicker.svelte';
 	import Sheet from './Sheet.svelte';
 	import TankSwitcher from './TankSwitcher.svelte';
@@ -155,6 +156,7 @@
 				{/each}
 			</div>
 		</div>
+		<ImportButton href="/tanks/{tankId}/import/tests" onclick={() => (open = false)} />
 		<p class="hint">Press + anywhere to open, then T, W or N.</p>
 	{/if}
 </Sheet>

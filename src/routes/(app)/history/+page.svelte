@@ -5,6 +5,7 @@
 	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import ImportButton from '$lib/components/ImportButton.svelte';
 	import { FILTERS, RANGES } from '$lib/history';
 	import { IMPORTS, importForFilter } from '$lib/imports';
 	import { photoUrl } from '$lib/media';
@@ -31,10 +32,9 @@
 	const kind = (icon: string) => icon as Kind;
 	// The empty list shows the icon of the category picked.
 	const emptyIcon = $derived((data.cat === 'all' ? 'note' : data.cat) as Kind);
-	// Past entries from a spreadsheet: the import for the category picked
+	// Past entries from a spreadsheet: the import for the category picked (water tests for All)
 	const importKind = $derived(importForFilter(data.cat ?? 'all'));
 	const importHref = $derived(data.tank ? `/tanks/${data.tank.id}/import/${IMPORTS[importKind].slug}` : null);
-	const importLabel = $derived(data.cat === 'all' ? 'Import past entries from a spreadsheet' : `${IMPORTS[importKind].title} from a spreadsheet`);
 
 	// A note's first line is already its title: don't repeat it as the body.
 	function noteBody(note: string | null, title: string) {
@@ -105,7 +105,7 @@
 
 				{#if !data.groups?.length}
 					<EmptyState compact icon={emptyIcon} title="Nothing logged here yet" text="Try a longer date range or another category.">
-						{#if importHref}<a class="import-link" href={importHref}>{importLabel}</a>{/if}
+						{#if importHref}<ImportButton href={importHref} />{/if}
 					</EmptyState>
 				{/if}
 
@@ -130,7 +130,7 @@
 						</div>
 					</section>
 				{/each}
-				{#if data.groups?.length && importHref}<a class="import-link" href={importHref}>{importLabel}</a>{/if}
+				{#if data.groups?.length && importHref}<ImportButton href={importHref} />{/if}
 			</div>
 
 			{#if data.detail}

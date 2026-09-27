@@ -274,7 +274,7 @@
 		<section id="data" class="sec" aria-labelledby="data-h">
 			<h2 id="data-h">Data</h2>
 			<div class="group">
-				<a class="row link" href="/settings/export"><span class="k">Export data</span><span class="chev" aria-hidden="true"></span></a>
+				<a class="row link" href="/settings/export"><span class="k">Import & export</span><span class="chev" aria-hidden="true"></span></a>
 				{#if !install.installed}
 					<button
 						type="button"

@@ -3,6 +3,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { untrack } from 'svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import { HISTORY_IMPORTS, IMPORTS } from '$lib/imports';
 
 	let { data, form } = $props();
 
@@ -56,12 +57,12 @@
 		`${e.format === 'zip' ? 'Full backup' : 'Water tests CSV'} · ${e.scope === 'account' ? 'whole account' : (e.tankName ?? 'tank')}`;
 </script>
 
-<svelte:head><title>Export data · Waterline</title></svelte:head>
+<svelte:head><title>Import & export · Waterline</title></svelte:head>
 
 <div class="page sub-page">
 	<div class="head">
 		<a class="back sub-back" href="/settings">‹ Settings</a>
-		<h1>Export data</h1>
+		<h1>Import & export</h1>
 		<p class="muted">Take everything with you. Nothing is deleted.</p>
 	</div>
 
@@ -139,6 +140,36 @@
 		{/if}
 	{/if}
 
+	{#if data.exportTanks.length}
+		<!-- one plain form: the tank, then the kind, on to its import (works without scripts) -->
+		<section class="imports" aria-labelledby="imports-h">
+			<h2 id="imports-h">Import from a spreadsheet</h2>
+			<form method="GET" action="/import" class="card imp">
+				<p class="muted sm">Past entries or a list from another app or spreadsheet, one kind at a time. Each has a template to fill in, and you see every row before anything is added.</p>
+				{#if data.exportTanks.length > 1}
+					<label class="into">
+						<span class="label">Into</span>
+						<select class="input" name="tank" value={data.defaultTank}>
+							{#each data.exportTanks as t (t.id)}<option value={t.id}>{t.name}</option>{/each}
+						</select>
+					</label>
+				{:else}
+					<input type="hidden" name="tank" value={data.exportTanks[0].id} />
+				{/if}
+				<div class="kinds">
+					<span class="k-head">History</span>
+					<div class="k-list">
+						{#each HISTORY_IMPORTS as k (k)}<button class="chip" name="kind" value={IMPORTS[k].slug}>{IMPORTS[k].label}</button>{/each}
+					</div>
+					<span class="k-head">The tank's lists</span>
+					<div class="k-list">
+						{#each ['livestock', 'plants', 'equipment'] as const as k (k)}<button class="chip" name="kind" value={IMPORTS[k].slug}>{IMPORTS[k].label}</button>{/each}
+					</div>
+				</div>
+			</form>
+		</section>
+	{/if}
+
 	{#if older.length}
 		<section class="recent">
 			<h2 class="label">Recent exports</h2>
@@ -158,6 +189,52 @@
 </div>
 
 <style>
+	/* Import from a spreadsheet */
+	.imports {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+	}
+	/* a section of its own, under the page's title */
+	.imports h2 {
+		margin: 8px 0 0;
+		font-size: 17px;
+		font-weight: 600;
+		color: var(--text);
+	}
+	.imp {
+		padding: 16px;
+		display: flex;
+		flex-direction: column;
+		gap: 14px;
+	}
+	.imp p {
+		margin: 0;
+		line-height: 1.5;
+	}
+	.into {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+	.kinds {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+	.k-head {
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--text-muted);
+	}
+	.k-list {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+	.k-list + .k-head {
+		margin-top: 4px;
+	}
 	.page {
 		padding: 8px 20px 24px;
 		display: flex;

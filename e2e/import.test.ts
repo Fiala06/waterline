@@ -92,7 +92,7 @@ test('import water tests into History, and undo the whole import from the toast'
 
 	// From History: the import for the category picked
 	await open(page, `/history?tank=${tankId}&cat=test&range=all`);
-	await page.getByRole('link', { name: 'Import water tests from a spreadsheet' }).click();
+	await page.getByRole('link', { name: 'Import from a spreadsheet' }).click();
 	await expect(page).toHaveURL(`/tanks/${tankId}/import/tests`);
 
 	// The template has a column per parameter, in the keeper's units
@@ -220,4 +220,26 @@ test('History import works without scripts', async ({ page, browser }, info) => 
 	await expect(plain).toHaveURL(`/history?tank=${tankId}&cat=note&range=all`);
 	await expect(plain.getByText('Moved the tank, and the stand').first()).toBeVisible();
 	await ctx.close();
+});
+
+test('imports are found from History, Quick add, Import & export and an empty dashboard', async ({ page }, info) => {
+	await newKeeperWithTank(page, `import-ways-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+
+	// an empty dashboard offers past tests
+	await expect(page.getByRole('link', { name: 'Import past tests' })).toHaveAttribute('href', `/tanks/${tankId}/import/tests`);
+
+	// Quick add
+	await page.getByRole('button', { name: 'Quick add' }).first().click();
+	await page.getByRole('dialog').getByRole('link', { name: 'Import from a spreadsheet' }).click();
+	await expect(page).toHaveURL(`/tanks/${tankId}/import/tests`);
+
+	// Settings › Import & export: the kind, for the tank
+	await open(page, '/settings/export');
+	await expect(page.getByRole('heading', { name: 'Import & export' })).toBeVisible();
+	await page.getByRole('button', { name: 'Water changes' }).click();
+	await expect(page).toHaveURL(`/tanks/${tankId}/import/water-changes`);
+	await open(page, '/settings/export');
+	await page.getByRole('button', { name: 'Plants' }).click();
+	await expect(page).toHaveURL(`/tanks/${tankId}/import/plants`);
 });

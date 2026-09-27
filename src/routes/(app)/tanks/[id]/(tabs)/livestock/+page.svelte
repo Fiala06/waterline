@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import ImportButton from '$lib/components/ImportButton.svelte';
 	let { data, form } = $props();
 	const base = $derived(`/tanks/${data.tankHead.id}`);
 	// pending count per row, confirmed by choosing a reason
@@ -43,7 +44,7 @@
 				label="Add livestock"
 				primary
 			>
-				<a class="import-link" href="{base}/import/livestock">Import a list from a spreadsheet</a>
+				<ImportButton href="{base}/import/livestock" label="Import a list from a spreadsheet" />
 			</EmptyState>
 			{#if data.past.length}{@render past()}{/if}
 		{:else}
@@ -114,7 +115,7 @@
 					<div class="tfoot" role="row"><div role="cell">{@render past()}</div></div>
 				{/if}
 			</div>
-			<a class="import-link" href="{base}/import/livestock">Import from a spreadsheet</a>
+			<ImportButton href="{base}/import/livestock" />
 		{/if}
 	</div>
 

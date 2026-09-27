@@ -1,5 +1,6 @@
 <script lang="ts">
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import ImportButton from '$lib/components/ImportButton.svelte';
 	let { data } = $props();
 	const base = $derived(`/tanks/${data.tankHead.id}`);
 	// T2: "Last serviced Sep 3 · linked task: Clean canister filter"
@@ -35,7 +36,7 @@
 			label="Add equipment"
 			primary
 		>
-			<a class="import-link" href="{base}/import/equipment">Import a list from a spreadsheet</a>
+			<ImportButton href="{base}/import/equipment" label="Import a list from a spreadsheet" />
 		</EmptyState>
 	{/if}
 	{#if data.past.length}
@@ -46,7 +47,7 @@
 			</ul>
 		</details>
 	{/if}
-	{#if data.items.length}<a class="import-link" href="{base}/import/equipment">Import from a spreadsheet</a>{/if}
+	{#if data.items.length}<ImportButton href="{base}/import/equipment" />{/if}
 </div>
 
 <style>

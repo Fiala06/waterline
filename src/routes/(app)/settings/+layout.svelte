@@ -34,7 +34,7 @@
 		{ href: '/settings#notifications', label: 'Notifications', active: on('notifications') },
 		{ href: '/settings#theme', label: 'Theme', active: on('theme') },
 		{ href: '/settings/products', label: 'Products', active: path.startsWith('/settings/products') },
-		{ href: '/settings/export', label: 'Export', active: path.startsWith('/settings/export') },
+		{ href: '/settings/export', label: 'Import & export', active: path.startsWith('/settings/export') },
 		{ href: '/settings/changelog', label: "What's new", active: path.startsWith('/settings/changelog') },
 		...(data.user.isAdmin ? [{ href: '/settings/server', label: 'Server', admin: true, active: path.startsWith('/settings/server') }] : [])
 	]);

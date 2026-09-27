@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { getContext, onDestroy } from 'svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import ImportButton from '$lib/components/ImportButton.svelte';
 	import Sheet from '$lib/components/Sheet.svelte';
 	import SpeciesInput from '$lib/components/SpeciesInput.svelte';
 	let { data, form } = $props();
@@ -45,7 +46,7 @@
 	{#if !data.plants.length}
 		<EmptyState icon="plant" title="No plants yet" text="Add stems, carpets, epiphytes and mosses to track how they're doing.">
 			<button type="button" class="btn btn-primary" onclick={() => (sheets.add = true)}>Add plant</button>
-			<a class="import-link" href="/tanks/{data.tankHead.id}/import/plants">Import a list from a spreadsheet</a>
+			<ImportButton href="/tanks/{data.tankHead.id}/import/plants" label="Import a list from a spreadsheet" />
 		</EmptyState>
 	{/if}
 
@@ -79,7 +80,7 @@
 			</section>
 		{/if}
 	{/each}
-	{#if data.plants.length}<a class="import-link" href="/tanks/{data.tankHead.id}/import/plants">Import from a spreadsheet</a>{/if}
+	{#if data.plants.length}<ImportButton href="/tanks/{data.tankHead.id}/import/plants" />{/if}
 </div>
 
 <Sheet bind:open={sheets.add} title="Add plant" width={480}>

@@ -2,6 +2,7 @@
 	import { tankTypeLabel } from '$lib/types';
 	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import ImportButton from '$lib/components/ImportButton.svelte';
 	import ParamCard from '$lib/components/ParamCard.svelte';
 	import TankThumb from '$lib/components/TankThumb.svelte';
 	import TaskList from '$lib/components/TaskList.svelte';
@@ -137,7 +138,9 @@
 						href="/entries/test/new?tank={data.tank.id}"
 						label="Log first water test"
 						primary
-					/>
+					>
+						<ImportButton href="/tanks/{data.tank.id}/import/tests" label="Import past tests" />
+					</EmptyState>
 				{:else}
 					<div class="summary-row">
 						{#if bad.length}
