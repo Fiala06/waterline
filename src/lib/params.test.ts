@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultParameters, fmtRange } from './params';
+import { compactName, defaultParameters, fmtRange } from './params';
 import { TANK_TYPES } from './types';
 import type { UnitPrefs } from './units';
 
@@ -44,5 +44,21 @@ describe('defaultParameters presets', () => {
 			expect(new Set(ps.map((p) => p.key)).size).toBe(ps.length);
 			expect(ps.map((p) => p.sort)).toEqual(ps.map((_, i) => i));
 		}
+	});
+});
+
+describe('compactName', () => {
+	it("gives every preset's parameters a name short enough for the desktop cards", () => {
+		const us = { unitSystem: 'imperial', hardnessUnit: 'dgh' } as const;
+		for (const type of TANK_TYPES) {
+			for (const p of defaultParameters(us, type)) expect(compactName(p).length, `${type} ${p.name}`).toBeLessThanOrEqual(4);
+		}
+		const names = defaultParameters(us, 'planted').map(compactName);
+		expect(names).toEqual(['pH', 'NH₃', 'NO₂', 'NO₃', 'PO₄', 'K', 'Fe', 'CO₂', 'GH', 'KH', 'Temp']);
+		expect(defaultParameters(us, 'reef').map(compactName)).toEqual(['Sal', 'Alk', 'Ca', 'Mg', 'PO₄', 'NO₃', 'NH₃', 'NO₂', 'pH', 'Temp']);
+	});
+
+	it("keeps a custom parameter's own name", () => {
+		expect(compactName({ key: 'custom', name: 'Silicate', unit: 'ppm', decimals: 1, min: null, max: null })).toBe('Silicate');
 	});
 });

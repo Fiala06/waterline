@@ -169,3 +169,25 @@ export function defaultParameters(prefs: UnitPrefs, type: TankType = 'freshwater
 export function shortName(p: ParamLike): string {
 	return p.key === 'temp' ? 'Temp' : p.name;
 }
+
+const COMPACT_NAMES: Record<string, string> = {
+	nh3: 'NH₃',
+	no2: 'NO₂',
+	no3: 'NO₃',
+	po4: 'PO₄',
+	k: 'K',
+	fe: 'Fe',
+	ca: 'Ca',
+	mg: 'Mg',
+	sal: 'Sal',
+	temp: 'Temp'
+};
+
+/**
+ * The name on the desktop dashboard's seven-across cards (design 1a): the
+ * formula or a short form, so every card's name fits. The full name is on hover.
+ */
+export function compactName(p: ParamLike): string {
+	if (p.key === 'kh') return /^alk/i.test(p.name) ? 'Alk' : p.name;
+	return COMPACT_NAMES[p.key] ?? p.name;
+}

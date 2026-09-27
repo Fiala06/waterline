@@ -6,7 +6,7 @@
 	import TankThumb from '$lib/components/TankThumb.svelte';
 	import TaskList from '$lib/components/TaskList.svelte';
 	import TrendChart from '$lib/components/TrendChart.svelte';
-	import { displayValue, fmtRange, fmtValue, paramUnit, shortName, statusOf } from '$lib/params';
+	import { compactName, displayValue, fmtRange, fmtValue, paramUnit, shortName, statusOf } from '$lib/params';
 	import { statusShort } from '$lib/status';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { discard, retry } from '$lib/offline';
@@ -37,6 +37,8 @@
 			return {
 				id: p.id,
 				label: shortName(p),
+				short: compactName(p),
+				fullName: p.name,
 				value: r ? fmtValue(p, r.value, prefs) : null,
 				unit: paramUnit(p, prefs),
 				level: st.level,
@@ -157,7 +159,7 @@
 						</div>
 					</div>
 
-					<section class="stack">
+					<section class="stack readings">
 						<div class="section-head">
 							<h2>Latest readings</h2>
 							<!-- desktop has no summary card above, so the count is here -->
@@ -677,10 +679,19 @@
 			height: auto;
 			min-height: 240px;
 		}
-		/* 1a: one row, seven at most, then a second row */
+		/* 1a: one row, seven at most, then a second row; four across while the
+		   column is too narrow for seven 76px cards (the widest range, 1250–1400, fits) */
+		.readings {
+			container: readings / inline-size;
+		}
 		.cards {
-			grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+			grid-template-columns: repeat(4, minmax(0, 1fr));
 			gap: 8px;
+		}
+		@container readings (min-width: 580px) {
+			.cards {
+				grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+			}
 		}
 		.summary-row,
 		.wc-small {
