@@ -41,7 +41,9 @@
 				unit: paramUnit(p, prefs),
 				level: st.level,
 				statusText: statusShort(st),
-				sub: r ? (range ? `Target ${range}` : 'No target') : 'Not tested'
+				sub: r ? (range ? `Target ${range}` : 'No target') : 'Not tested',
+				range: r ? range : '',
+				spark: data.sparks?.[p.id] ?? []
 			};
 		})
 	);
@@ -158,11 +160,16 @@
 					<section class="stack">
 						<div class="section-head">
 							<h2>Latest readings</h2>
-							<span class="meta">{data.latestWhen}</span>
+							<!-- desktop has no summary card above, so the count is here -->
+							<span class="meta"
+								>{data.latestWhen}{#if bad.length}<span class="hide-phone"
+										>{' · '}<span class="status-bad">{bad.length} out of range</span></span
+									>{/if}</span
+							>
 						</div>
-						<div class="cards">
+						<div class="cards" style:--cols={Math.min(cards.length, 7)}>
 							{#each cards as c (c.id)}
-								<ParamCard {...c} />
+								<ParamCard {...c} compact />
 							{/each}
 						</div>
 					</section>
@@ -670,15 +677,10 @@
 			height: auto;
 			min-height: 240px;
 		}
+		/* 1a: one row, seven at most, then a second row */
 		.cards {
-			grid-template-columns: repeat(4, 1fr);
-			gap: 12px;
-		}
-		.cards :global(.pcard) {
-			padding: 14px;
-		}
-		.cards :global(.value) {
-			font-size: 28px;
+			grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+			gap: 8px;
 		}
 		.summary-row,
 		.wc-small {

@@ -1,12 +1,16 @@
 <script lang="ts">
-	import type { StatusLevel } from '$lib/status';
+	import { statusIcon, type StatusLevel } from '$lib/status';
+	import Sparkline from './Sparkline.svelte';
 	let {
 		label,
 		value,
 		unit,
 		level,
 		statusText,
-		sub
+		sub,
+		compact = false,
+		range = '',
+		spark = []
 	}: {
 		label: string;
 		value: string | null;
@@ -14,19 +18,32 @@
 		level: StatusLevel;
 		statusText: string;
 		sub: string;
+		/** Design 1a from 1024px wide: the status as its glyph, a sparkline, the target without "Target". Phones keep the full card. */
+		compact?: boolean;
+		/** the target without its unit ("6.5–7.5"), when there's a reading */
+		range?: string;
+		/** the last readings, oldest first, for the sparkline */
+		spark?: number[];
 	} = $props();
+	/** "Near low" from "▲ Near low": beside the glyph on phones, in title and aria-label on desktop */
+	const word = $derived(statusText.replace(/^\S+\s+/, ''));
 </script>
 
-<div class="pcard {level}">
+<div class="pcard {level}" class:compact>
 	<div class="top">
 		<span class="label">{label}</span>
-		<span class="status">{statusText}</span>
+		{#if compact}
+			<span class="status" role="img" title={word} aria-label={word}>{statusIcon[level]}<span class="full">{` ${word}`}</span></span>
+		{:else}
+			<span class="status">{statusText}</span>
+		{/if}
 	</div>
 	<div class="value-row">
 		<span class="value num">{value ?? '—'}</span>
 		{#if value != null && unit}<span class="unit">{unit}</span>{/if}
 	</div>
-	<div class="sub">{sub}</div>
+	{#if compact}<div class="spark-box"><Sparkline values={spark} {level} /></div>{/if}
+	<div class="sub">{#if compact && range}<span class="full">Target{' '}</span>{range}{:else}{sub}{/if}</div>
 </div>
 
 <style>
@@ -103,5 +120,45 @@
 	.sub {
 		font-size: 12px;
 		color: var(--sub);
+	}
+	.spark-box {
+		display: none;
+	}
+
+	/* 1a: seven across on the desktop dashboard */
+	@media (min-width: 1024px) {
+		.compact {
+			padding: 10px 10px 8px;
+			border-radius: 12px;
+			gap: 4px;
+		}
+		.compact .top {
+			font-size: 12px;
+		}
+		.compact .label {
+			color: var(--text-2);
+		}
+		.compact:not(.none) .status {
+			font-weight: 700;
+		}
+		.compact .full {
+			display: none;
+		}
+		.compact .value {
+			font-size: 22px;
+			font-weight: 700;
+		}
+		.compact .unit {
+			font-size: 11px;
+			color: var(--text-muted);
+		}
+		.compact .spark-box {
+			display: block;
+			height: 18px;
+		}
+		.compact .sub {
+			font-size: 11px;
+			white-space: nowrap;
+		}
 	}
 </style>

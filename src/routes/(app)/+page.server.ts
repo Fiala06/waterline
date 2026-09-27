@@ -1,6 +1,9 @@
+import { eq, lte, sql } from 'drizzle-orm';
 import { eventIcon, eventKindLabel, eventTitle } from '$lib/events';
 import { dateInZone, daysBetween, fmtDay, fmtWhen, todayInZone } from '$lib/time';
 import { eventsSince, lastEventOf, latestReadings, recentActivity, series } from '$lib/server/logs';
+import { db } from '$lib/server/db';
+import { testReadings, tests } from '$lib/server/db/schema';
 import { thumbsFor } from '$lib/server/photos';
 import { equipmentName } from '$lib/equipment';
 import { listEquipment, listLivestock, listPlants } from '$lib/server/specs';
@@ -12,6 +15,8 @@ import type { PageServerLoad } from './$types';
 const TREND_DAYS = 28;
 /** Readings looked at for a run or a pace: a longer view than the chart's. */
 const NOTE_DAYS = 90;
+/** Readings in each card's sparkline (design 1a). */
+const SPARK_READINGS = 8;
 
 export const load: PageServerLoad = async ({ locals, parent }) => {
 	const user = locals.user!;
@@ -28,6 +33,23 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		(m, r) => (!m || r.takenAt > m ? r.takenAt : m),
 		null
 	);
+
+	// Each card's sparkline: its parameter's last readings, oldest first, all in one query
+	const ranked = db
+		.select({
+			parameterId: testReadings.parameterId,
+			value: testReadings.value,
+			takenAt: tests.takenAt,
+			n: sql<number>`row_number() over (partition by ${testReadings.parameterId} order by ${tests.takenAt} desc)`.as('n')
+		})
+		.from(testReadings)
+		.innerJoin(tests, eq(tests.id, testReadings.testId))
+		.where(eq(tests.tankId, tank.id))
+		.as('ranked');
+	const sparks: Record<string, number[]> = Object.fromEntries(params.map((p) => [p.id, []]));
+	for (const r of db.select().from(ranked).where(lte(ranked.n, SPARK_READINGS)).orderBy(ranked.takenAt).all()) {
+		sparks[r.parameterId]?.push(r.value);
+	}
 
 	const since = new Date(Date.now() - TREND_DAYS * 86_400_000).toISOString();
 	const trends = params.map((p) => ({
@@ -100,6 +122,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		},
 		params,
 		latest: Object.fromEntries(latest),
+		sparks,
 		latestWhen: latestAt ? fmtWhen(latestAt, tz) : null,
 		trends,
 		trendFrom: Date.parse(since),
