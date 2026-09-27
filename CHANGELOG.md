@@ -4,7 +4,7 @@ What's new in Waterline, newest first. The app shows this list under Settings �
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
-## Unreleased
+## 1.4.0 · 2026-09-27
 
 - **Connect an AI assistant:** let Claude, ChatGPT or another assistant read the tanks you pick, to answer questions about your readings, History, livestock and photos. Make an access token in Settings › AI assistant and paste it into the assistant; it can't change anything, and you can revoke it any time. Waterline stores no AI keys.
 - **Spending:** each tank has a Spending tab for what it costs (livestock, plants, equipment and consumables): this month, this year and all time, the year by category, and month by month. Buying a saved product again logs in one step from Settings › Products, and the currency is in Settings › Units.
@@ -13,8 +13,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 - **Compare tanks:** Charts shows the same parameter in your other tanks, on the same dates, under the chart.
 - **Notes on the tank's page:** its pinned note, then the latest dated notes, with Add note right there.
 - **Remind me:** a one-off reminder about a tank in two taps, from its page or the dashboard: tomorrow, in 3 days, next week, in 2 weeks, or on a date.
-- **Where it came from, editable:** an animal's page now has its Source (the store or breeder), to fix or fill in later.
 - **Custom parameters, again:** adding one offers those from your other tanks, added in one tap with their unit and targets.
+- **Where it came from, editable:** an animal's page now has its Source (the store or breeder), to fix or fill in later.
 
 ## 1.3.0 · 2026-09-27
 
