@@ -1,5 +1,5 @@
-# Example: docker compose up -d
-# Fill in the values below (or put them in a .env file next to this one).
+# Example: set ORIGIN, then docker compose up -d and open it. The first page
+# asks for the setup code in this container's log (docker compose logs waterline).
 services:
   waterline:
     build: .
@@ -11,19 +11,11 @@ services:
       - waterline-data:/data
     environment:
       ORIGIN: https://tanks.example.com # the URL people open
-      AUTH_SECRET: ${AUTH_SECRET} # openssl rand -base64 32
-      AUTH_GOOGLE_ID: ${AUTH_GOOGLE_ID}
-      AUTH_GOOGLE_SECRET: ${AUTH_GOOGLE_SECRET}
-      ADMIN_EMAIL: ${ADMIN_EMAIL}
-      # Who else may sign in besides the admin (emails or @domains, comma-separated)
-      ALLOWED_EMAILS: ${ALLOWED_EMAILS:-}
-      # OPEN_SIGNUP: 'true' # let anyone with a Google account sign up
-      # Behind a reverse proxy, so the admin login limit sees each visitor:
+      # Behind a reverse proxy, so failed logins are limited per visitor:
       # ADDRESS_HEADER: X-Forwarded-For
       # XFF_DEPTH: 1
-      # Optional local admin fallback: run hash-password in the container (or npm run hash-password)
-      LOCAL_ADMIN_PASSWORD_HASH: ${LOCAL_ADMIN_PASSWORD_HASH:-}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      # Everything else (Google sign-in, who can sign in, email) is set in the app,
+      # in Settings › Server settings. The README lists the optional rest.
 
 volumes:
   waterline-data:

@@ -3,14 +3,15 @@ import { count, eq } from 'drizzle-orm';
 import { readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { env } from '$env/dynamic/private';
-import { googleEnabled, localAdminEnabled } from '../../../../auth';
 import { db } from '$lib/server/db';
 import { serverSettings, users } from '$lib/server/db/schema';
 import { num, str } from '$lib/server/forms';
 import { getServerSettings, MailError, outboxMode, storedConfig, transportFrom, type MailConfig } from '$lib/server/mail';
 import { testEmail } from '$lib/server/mail/templates';
 import { baseUrl, prefsFor, recipient, unsubscribeToken } from '$lib/server/notifications';
+import { hashPassword } from '$lib/server/password';
 import { encrypt } from '$lib/server/secrets';
+import { googleAdminPossible, googleClient, localAdminLogin, parseAllowed, signupRules, validAllowed, type SignupMode } from '$lib/server/sign-in';
 import { sitemapEntries } from '$lib/server/public';
 import { outboxTransport } from '$lib/server/mail/outbox';
 import type { Actions, PageServerLoad } from './$types';
@@ -36,18 +37,17 @@ function dirSize(dir: string): number {
 
 const mb = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${Math.round(bytes / 1024 / 1024)} MB`);
 
-/** Plain-language sign-up policy (see isEmailAllowed). */
-function whoCanSignIn() {
-	if (env.OPEN_SIGNUP === 'true') return 'Anyone with a Google account (OPEN_SIGNUP=true)';
-	const n = (env.ALLOWED_EMAILS ?? '').split(',').filter((x) => x.trim()).length;
-	return n ? `The admin and ${n} allowed address${n === 1 ? '' : 'es'} or domain${n === 1 ? '' : 's'} (ALLOWED_EMAILS)` : 'Only the admin. Add people with ALLOWED_EMAILS.';
-}
+const googleIdHint = (id: string) => `…${id.replace('.apps.googleusercontent.com', '').slice(-4)}.apps.googleusercontent.com`;
+const USERNAME = /^[\w.@-]{1,40}$/;
 
-export const load: PageServerLoad = ({ locals }) => {
+export const load: PageServerLoad = ({ locals, url }) => {
 	requireAdmin(locals);
 	const s = getServerSettings();
 	const dataDir = env.DATA_DIR ?? './data';
-	const googleId = env.AUTH_GOOGLE_ID ?? '';
+	const google = googleClient();
+	const local = localAdminLogin();
+	const rules = signupRules(s);
+	const origin = (env.ORIGIN || url.origin).replace(/\/+$/, '');
 	return {
 		mail: {
 			provider: s.emailProvider ?? 'mailgun',
@@ -75,15 +75,29 @@ export const load: PageServerLoad = ({ locals }) => {
 			effectiveBase: (s.publicBaseUrl || env.ORIGIN || '').replace(/\/+$/, '')
 		},
 		signIn: {
-			google: googleEnabled(),
-			googleClient: googleId ? `…${googleId.replace('.apps.googleusercontent.com', '').slice(-4)}.apps.googleusercontent.com` : null,
-			localAdmin: localAdminEnabled(),
-			who: whoCanSignIn()
+			google: {
+				on: !!google,
+				fromEnv: google?.from === 'env' ? googleIdHint(google.clientId) : null,
+				clientId: s.googleClientId ?? '',
+				hasSecret: !!s.googleClientSecretEnc
+			},
+			redirectUri: `${origin}/auth/callback/google`,
+			plainHttp: /^http:\/\/(?!(localhost|127\.0\.0\.1|\[::1\])(:|\/|$))/.test(origin),
+			adminEmail: s.adminEmail ?? '',
+			adminEmailEnv: env.ADMIN_EMAIL?.trim() || null,
+			mode: rules.mode,
+			list: rules.list.join('\n'),
+			accessFromEnv: rules.from === 'env',
+			local: { on: !!local, username: local?.username ?? s.localAdminUsername ?? 'admin', fromApp: !!local?.fromApp, fromEnv: !!local?.fromEnv }
 		},
 		server: {
 			version: pkg.version,
 			data: `${resolve(dataDir)} · ${mb(dirSize(dataDir))}`,
-			users: db.select({ n: count() }).from(users).get()?.n ?? 0
+			users: db.select({ n: count() }).from(users).get()?.n ?? 0,
+			scheduledEmails: s.scheduledEmails,
+			schedulerOff: env.EMAIL_SCHEDULER === 'off',
+			updateCheck: s.updateCheck,
+			updateCheckOff: env.UPDATE_CHECK === 'off'
 		}
 	};
 };
@@ -116,7 +130,85 @@ function readForm(form: FormData, saved: MailConfig) {
 	return { cfg, errors };
 }
 
+const setSettings = (patch: Partial<typeof serverSettings.$inferInsert>) => {
+	getServerSettings();
+	db.update(serverSettings).set(patch).where(eq(serverSettings.id, 1)).run();
+};
+
 export const actions: Actions = {
+	/** Google sign-in's OAuth client. An empty client ID turns it off, unless that leaves no way in. */
+	saveGoogle: async ({ request, locals }) => {
+		requireAdmin(locals);
+		const form = await request.formData();
+		const s = getServerSettings();
+		const clientId = str(form, 'googleClientId');
+		const secret = str(form, 'googleClientSecret');
+		const errors: Record<string, string> = {};
+		if (clientId && !/^[\w.-]+\.apps\.googleusercontent\.com$/.test(clientId)) errors.googleClientId = 'Client IDs end in .apps.googleusercontent.com.';
+		// a saved secret only goes with the client it was saved for
+		else if (clientId && !secret && (clientId !== s.googleClientId || !s.googleClientSecretEnc)) errors.googleClientSecret = 'Paste the client secret too.';
+		if (!clientId && !localAdminLogin() && !(env.AUTH_GOOGLE_ID && env.AUTH_GOOGLE_SECRET)) {
+			errors.googleClientId = "Set a local admin password first: without Google sign-in it's the only way in.";
+		}
+		if (Object.keys(errors).length) return fail(400, { googleErrors: errors });
+		setSettings(
+			clientId
+				? { googleClientId: clientId, googleClientSecretEnc: secret ? encrypt(secret) : s.googleClientSecretEnc }
+				: { googleClientId: null, googleClientSecretEnc: null }
+		);
+		return { googleSaved: true };
+	},
+	/** Who may sign in with Google, and the admin's own account. */
+	saveAccess: async ({ request, locals }) => {
+		requireAdmin(locals);
+		const form = await request.formData();
+		const adminEmail = str(form, 'adminEmail').toLowerCase();
+		const raw = str(form, 'signupMode');
+		const mode: SignupMode = raw === 'list' || raw === 'open' ? raw : 'admin';
+		const entries = parseAllowed(String(form.get('allowedEmails') ?? ''));
+		const errors: Record<string, string> = {};
+		if (adminEmail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(adminEmail)) errors.adminEmail = "Enter the Google account's email address.";
+		const bad = entries.filter((e) => !validAllowed(e));
+		if (bad.length) errors.allowedEmails = `Not an email or @domain: ${bad.slice(0, 3).join(', ')}${bad.length > 3 ? '…' : ''}`;
+		else if (mode === 'list' && !entries.length) errors.allowedEmails = 'Add someone, or choose Only the admin.';
+		if (Object.keys(errors).length) return fail(400, { accessErrors: errors });
+		setSettings({ adminEmail: adminEmail || null, signupMode: mode, allowedEmails: entries.join('\n') || null });
+		return { accessSaved: true };
+	},
+	/** The local admin login: a new username or password, or off (while Google can still let an admin in). */
+	saveLocal: async ({ request, locals }) => {
+		requireAdmin(locals);
+		const form = await request.formData();
+		if (form.get('off')) {
+			if (!googleAdminPossible()) {
+				return fail(400, { localErrors: { password: "Set up Google sign-in for the admin's account first: otherwise nobody could sign in as the admin." } });
+			}
+			setSettings({ localAdminPasswordHash: null });
+			return { localSaved: 'off' };
+		}
+		const s = getServerSettings();
+		const username = str(form, 'username') || 'admin';
+		const password = String(form.get('password') ?? '');
+		const errors: Record<string, string> = {};
+		if (!USERNAME.test(username)) errors.username = 'Use letters, numbers, dots, dashes or underscores.';
+		if (!password && !s.localAdminPasswordHash) errors.password = 'Choose a password.';
+		else if (password && password.length < 8) errors.password = 'Use at least 8 characters.';
+		else if (password.length > 1024) errors.password = 'Use at most 1024 characters.';
+		else if (password && password !== String(form.get('confirm') ?? '')) errors.confirm = "The passwords don't match.";
+		if (Object.keys(errors).length) return fail(400, { localErrors: errors });
+		setSettings({ localAdminUsername: username, ...(password ? { localAdminPasswordHash: hashPassword(password) } : {}) });
+		return { localSaved: true };
+	},
+	/** Scheduled emails and the update check; a switch forced off by the environment keeps its saved value. */
+	saveServer: async ({ request, locals }) => {
+		requireAdmin(locals);
+		const form = await request.formData();
+		setSettings({
+			...(env.EMAIL_SCHEDULER === 'off' ? {} : { scheduledEmails: form.get('scheduledEmails') === 'on' }),
+			...(env.UPDATE_CHECK === 'off' ? {} : { updateCheck: form.get('updateCheck') === 'on' })
+		});
+		return { serverSaved: true };
+	},
 	save: async ({ request, locals }) => {
 		requireAdmin(locals);
 		const { cfg, errors } = readForm(await request.formData(), storedConfig());

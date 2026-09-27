@@ -1,7 +1,9 @@
-// Runs the notification job every 5 minutes. Set EMAIL_SCHEDULER=off to disable.
+// Every 5 minutes: reminders and digests (unless the admin turned them off in
+// Server settings), and tidying up. EMAIL_SCHEDULER=off stops all of it.
 import { env } from '$env/dynamic/private';
 import { pruneActionTokens } from './action-tokens';
 import { cleanupExports } from './export';
+import { getServerSettings } from './mail';
 import { runNotifications } from './notifications';
 
 const EVERY_MS = 5 * 60_000;
@@ -14,7 +16,7 @@ export function startScheduler() {
 		if (running) return;
 		running = true;
 		try {
-			await runNotifications();
+			if (getServerSettings().scheduledEmails) await runNotifications();
 			pruneActionTokens();
 			cleanupExports();
 		} catch (e) {

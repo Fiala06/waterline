@@ -233,7 +233,19 @@ export const serverSettings = sqliteTable('server_settings', {
 	publicBaseUrl: text('public_base_url'),
 	ga4Id: text('ga4_id'),
 	consentBanner: integer('consent_banner', { mode: 'boolean' }).notNull().default(true),
-	searchConsoleTag: text('search_console_tag')
+	searchConsoleTag: text('search_console_tag'),
+	// Sign-in, set in the app. Until one is saved, older installs' environment
+	// variables (AUTH_GOOGLE_ID…, ADMIN_EMAIL, ALLOWED_EMAILS, OPEN_SIGNUP) apply.
+	googleClientId: text('google_client_id'),
+	googleClientSecretEnc: text('google_client_secret_enc'),
+	adminEmail: text('admin_email'),
+	// who may sign in with Google besides the admin; null: the environment decides
+	signupMode: text('signup_mode', { enum: ['admin', 'list', 'open'] }),
+	allowedEmails: text('allowed_emails'), // one email or @domain per line
+	localAdminUsername: text('local_admin_username'),
+	localAdminPasswordHash: text('local_admin_password_hash'), // scrypt, like LOCAL_ADMIN_PASSWORD_HASH
+	scheduledEmails: integer('scheduled_emails', { mode: 'boolean' }).notNull().default(true),
+	updateCheck: integer('update_check', { mode: 'boolean' }).notNull().default(true)
 });
 
 /** Signed single-use links in emails (Mark done / Snooze). Only the hash is stored. */

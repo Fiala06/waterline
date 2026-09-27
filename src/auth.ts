@@ -1,15 +1,19 @@
 import { skipCSRFCheck } from '@auth/core';
 import { SvelteKitAuth } from '@auth/sveltekit';
+import type { RequestEvent } from '@sveltejs/kit';
 import Credentials from '@auth/sveltekit/providers/credentials';
 import Google from '@auth/sveltekit/providers/google';
 import type { Provider } from '@auth/sveltekit/providers';
 import { env } from '$env/dynamic/private';
+import { authSecret } from '$lib/server/instance';
 import { isValidPasswordHash, verifyPassword } from '$lib/server/password';
+import { adminEmail, googleClient, localAdminLogin } from '$lib/server/sign-in';
 import { googleAccountConflict, isEmailAllowed, LOCAL_ADMIN_FALLBACK_EMAIL, upsertUser } from '$lib/server/users';
 
-export const googleEnabled = () => Boolean(env.AUTH_GOOGLE_ID && env.AUTH_GOOGLE_SECRET);
-/** The local admin login is on when a valid LOCAL_ADMIN_PASSWORD_HASH is set. */
-export const localAdminEnabled = () => Boolean(env.LOCAL_ADMIN_PASSWORD_HASH && isValidPasswordHash(env.LOCAL_ADMIN_PASSWORD_HASH));
+/** Google sign-in is on once its client is set, in Server settings (or the environment). */
+export const googleEnabled = () => googleClient() !== null;
+/** The local admin login is on once it has a password: set in the app, or LOCAL_ADMIN_PASSWORD_HASH. */
+export const localAdminEnabled = () => localAdminLogin() !== null;
 /** Test-only sign-in that stands in for Google. Never enable on a real server. */
 export const devLoginEnabled = () => env.AUTH_DEV_LOGIN === 'true';
 
@@ -23,15 +27,17 @@ export function checkAuthConfig() {
 	if (origin.startsWith('http://') && !/^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/.test(origin)) {
 		console.warn('[waterline] ORIGIN is plain http. Fine for a LAN-only server, but Google sign-in, offline logging and the install prompt need HTTPS.');
 	}
-	if (env.LOCAL_ADMIN_PASSWORD_HASH && !localAdminEnabled()) {
-		console.error("[waterline] LOCAL_ADMIN_PASSWORD_HASH isn't a valid hash, so the local admin login is off. Create one with: hash-password (in the Docker container) or npm run hash-password");
+	if (env.LOCAL_ADMIN_PASSWORD_HASH && !isValidPasswordHash(env.LOCAL_ADMIN_PASSWORD_HASH)) {
+		console.error("[waterline] LOCAL_ADMIN_PASSWORD_HASH isn't a valid hash, so it's ignored. Create one with: hash-password (in the Docker container) or npm run hash-password");
 	}
 }
 
 function providers(): Provider[] {
 	const list: Provider[] = [];
-	if (googleEnabled()) list.push(Google);
-	if (localAdminEnabled()) {
+	const google = googleClient();
+	if (google) list.push(Google({ clientId: google.clientId, clientSecret: google.clientSecret }));
+	const local = localAdminLogin();
+	if (local) {
 		list.push(
 			Credentials({
 				id: 'local',
@@ -40,12 +46,11 @@ function providers(): Provider[] {
 				async authorize(c) {
 					const username = String(c.username ?? '').trim();
 					const password = String(c.password ?? '').slice(0, 1024);
-					const expectedUser = env.LOCAL_ADMIN_USERNAME?.trim() || 'admin';
-					// check the password first, so a wrong username takes just as long
-					const ok = await verifyPassword(password, env.LOCAL_ADMIN_PASSWORD_HASH!);
+					// every password is checked, and before the username, so a wrong one takes just as long
+					const checks = await Promise.all(local.hashes.map((h) => verifyPassword(password, h)));
 					// Any capitalization: phone keyboards turn "admin" into "Admin".
-					if (!ok || username.toLowerCase() !== expectedUser.toLowerCase()) return null;
-					const email = env.ADMIN_EMAIL?.trim() || LOCAL_ADMIN_FALLBACK_EMAIL;
+					if (!checks.some(Boolean) || username.toLowerCase() !== local.username.toLowerCase()) return null;
+					const email = adminEmail() || LOCAL_ADMIN_FALLBACK_EMAIL;
 					const user = upsertUser({ email, name: 'Admin' });
 					return { id: user.id, email: user.email, name: user.displayName };
 				}
@@ -72,6 +77,8 @@ function providers(): Provider[] {
 
 export const { handle, signIn, signOut } = SvelteKitAuth(async () => ({
 	providers: providers(),
+	// AUTH_SECRET, or the key this server made for itself on first start
+	secret: authSecret(),
 	trustHost: true,
 	// hooks.server.ts rejects cross-origin posts, which covers /auth/* too;
 	// Auth.js's own CSRF token can't be passed by the server-side signIn().
@@ -106,3 +113,15 @@ export const { handle, signIn, signOut } = SvelteKitAuth(async () => ({
 		}
 	}
 }));
+
+/** Sign in from a form action: Auth.js sees the provider, its credentials and where to go next. */
+export function signInWith(event: RequestEvent, providerId: string, fields: Record<string, string>, redirectTo: string) {
+	const body = new FormData();
+	body.set('providerId', providerId);
+	body.set('redirectTo', redirectTo);
+	for (const [k, v] of Object.entries(fields)) body.set(k, v);
+	const headers = new Headers(event.request.headers);
+	headers.delete('content-type');
+	headers.delete('content-length');
+	return signIn({ ...event, request: new Request(event.request.url, { method: 'POST', body, headers }) });
+}

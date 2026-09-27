@@ -1,28 +1,25 @@
-import { eq } from 'drizzle-orm';
-import { env } from '$env/dynamic/private';
+import { and, eq } from 'drizzle-orm';
 import { VERSION } from '$lib/changelog';
 import { db } from './db';
 import { notificationPrefs, users, type User } from './db/schema';
+import { getServerSettings } from './mail';
+import { adminEmail, listAllows, signupRules } from './sign-in';
 
-const adminEmail = () => env.ADMIN_EMAIL?.trim().toLowerCase() || null;
-
-/** Email used for the local admin account when ADMIN_EMAIL is not set. */
+/** Email used for the local admin account when no admin email is set. */
 export const LOCAL_ADMIN_FALLBACK_EMAIL = 'admin@localhost';
 
 /**
- * Who may sign in: the admin, plus ALLOWED_EMAILS="me@example.com,@family.example"
- * (entries starting with @ allow a whole domain), or anyone with OPEN_SIGNUP=true.
- * Checked at sign-in and on every request, so removing someone locks them out.
+ * Who may sign in (Server settings › Sign-in): the admin, and the people or
+ * @domains on the list, or anyone with a Google account. Checked at sign-in and
+ * on every request, so removing someone locks them out.
  */
 export function isEmailAllowed(email: string): boolean {
-	if (env.OPEN_SIGNUP === 'true') return true;
 	const e = email.trim().toLowerCase();
 	if (e === adminEmail() || e === LOCAL_ADMIN_FALLBACK_EMAIL) return true;
-	const list = (env.ALLOWED_EMAILS ?? '')
-		.split(',')
-		.map((x) => x.trim().toLowerCase())
-		.filter(Boolean);
-	return list.some((entry) => (entry.startsWith('@') ? e.endsWith(entry) : e === entry));
+	const rules = signupRules(getServerSettings());
+	if (rules.mode === 'open' || listAllows(rules.list, e)) return true;
+	// an admin always can, so changing the admin's address never locks them out
+	return !!db.select({ id: users.id }).from(users).where(and(eq(users.email, e), eq(users.isAdmin, true))).get();
 }
 
 /**

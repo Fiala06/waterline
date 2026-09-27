@@ -8,7 +8,7 @@ Design handoff and specs live in [`design_handoff_waterline/`](design_handoff_wa
 
 All 13 milestones of the build plan are done: sign-in, setup, tanks and targets, logging, dashboard, history, charts, photos, tasks, email (reminders, overdue alerts, digests, out-of-range alerts, one-click actions and unsubscribe), settings and server settings, export (full backup ZIP or water tests CSV), and the installable app (home-screen icon, splash, install prompt, offline logging that syncs later), tank specs (equipment, livestock with the bundled species list, plants), and public pages (opt-in read-only tank pages, photo share links, share images, sitemap, optional GA4 with a consent banner).
 
-The admin (the `ADMIN_EMAIL` Google account, or the local admin login) sets up email delivery in **Settings › Server settings**: Mailgun or any SMTP server, with a *Send test email* button.
+The admin sets up the server in **Settings › Server settings**: Google sign-in and who can sign in, the local admin login, email delivery (Mailgun or any SMTP server, with a *Send test email* button), public pages, and switches for reminder emails and the check for new versions.
 
 Emails links (Mark done, Snooze, unsubscribe) use `ORIGIN`, so set it to the address people use to reach the server.
 
@@ -18,11 +18,11 @@ Needs Node 22.
 
 ```bash
 npm install
-cp .env.example .env   # then set AUTH_SECRET and either Google keys or AUTH_DEV_LOGIN=true
+cp .env.example .env   # set AUTH_DEV_LOGIN=true to try it without Google
 npm run dev
 ```
 
-Open http://localhost:5173. With `AUTH_DEV_LOGIN=true` the sign-in page shows a test form in place of Google, so you can try the app without OAuth keys. Never turn that on for a real server.
+Open http://localhost:5173. With `AUTH_DEV_LOGIN=true` the sign-in page shows a test form in place of Google, so you can try the app without OAuth keys. Never turn that on for a real server. Without it, the first page asks for a setup code, as on a real server (see [First start](#first-start)).
 
 ### Demo data
 
@@ -40,7 +40,13 @@ Then sign in with the test form as **demo@example.com**. You get four tanks (pla
 docker compose up -d
 ```
 
-Edit the environment in [`docker-compose.yml`](docker-compose.yml) first. Everything the app stores (SQLite database, later photos) lives in the `/data` volume.
+Set `ORIGIN` in [`docker-compose.yml`](docker-compose.yml) first; it's the only setting the server needs to start. Everything the app stores (the SQLite database, photos, and the keys it makes for itself) lives in the `/data` volume.
+
+### First start
+
+1. Open your `ORIGIN` address. A new server asks for a **setup code** first: it's in the container's log (`docker compose logs waterline`, or on Unraid **Docker › Waterline › Logs**) and in `setup-code.txt` in the data folder. Only someone who can see the server has it, so a new server can't be claimed by whoever reaches it first.
+2. Choose the admin's username and password. That's the local admin login, and you're signed in with it.
+3. In **Settings › Server settings**, set up the rest: Google sign-in (paste the OAuth client's ID and secret; the page shows the redirect URI to give Google), the admin's Google account, who else can sign in, and email delivery.
 
 GitHub Actions also publishes ready-built images (linux/amd64), so you don't have to build on the server:
 
@@ -52,25 +58,21 @@ GitHub Actions also publishes ready-built images (linux/amd64), so you don't hav
 
 **HTTPS or plain HTTP.** With an HTTPS name (`ORIGIN=https://tanks.example.com` behind a reverse proxy) everything works, including Google sign-in, offline logging and the install prompt. The name can be LAN-only (local DNS plus a DNS-challenge certificate); email links and public pages then only work on your network.
 
-To keep it on your network without a domain, set `ORIGIN` to the plain address, e.g. `http://192.168.1.50:3000`, and sign in with the local admin login (`LOCAL_ADMIN_PASSWORD_HASH`). Google won't accept a plain-HTTP address, and browsers turn off offline logging and the install prompt; everything else works.
+To keep it on your network without a domain, set `ORIGIN` to the plain address, e.g. `http://192.168.1.50:3000`, and sign in with the local admin login you create on first start. Google won't accept a plain-HTTP address, and browsers turn off offline logging and the install prompt; everything else works.
+
+Everything else is set in the app. These are the environment variables left, for the few things the server needs before it starts, or that you may want outside the app:
 
 | Variable | Needed | What it does |
 |---|---|---|
 | `ORIGIN` | yes | Public URL people open, e.g. `https://tanks.example.com` |
-| `AUTH_SECRET` | yes | Session secret: `openssl rand -base64 32` |
-| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | yes | Google OAuth client. Redirect URI: `<ORIGIN>/auth/callback/google` |
-| `ADMIN_EMAIL` | recommended | This Google account becomes the admin |
-| `ALLOWED_EMAILS` | optional | Who else may sign in: emails and `@domains`, comma-separated. Unset = only the admin. Removing someone signs them out on their next visit |
-| `OPEN_SIGNUP` | optional | `true` lets anyone with a Google account sign up. Off by default |
-| `LOCAL_ADMIN_PASSWORD_HASH` | optional | Enables the local admin fallback login. Create with `hash-password` in the container's console, or `npm run hash-password` in the repo |
-| `LOCAL_ADMIN_USERNAME` | optional | Defaults to `admin` |
-| `ENCRYPTION_KEY` | recommended | Encrypts the stored mail password/API key. Falls back to a key derived from `AUTH_SECRET` |
-| `EMAIL_SCHEDULER` | optional | `off` stops reminder and digest emails |
-| `UPDATE_CHECK` | optional | `off` stops the check for new versions. Otherwise the server reads `CHANGELOG.md` on GitHub's `main` at most every 12 hours, and admins see *Update to 1.2 available* when it's newer |
-| `UPDATE_CHECK_URL` | optional | Where that check looks instead, e.g. a fork's `https://raw.githubusercontent.com/<you>/waterline/main/CHANGELOG.md` |
+| `ADDRESS_HEADER` / `XFF_DEPTH` | behind a proxy | e.g. `X-Forwarded-For` and `1`, so failed logins are limited per visitor rather than for everyone at once |
 | `DATA_DIR` | optional | Defaults to `/data` in Docker, `./data` locally |
 | `BODY_SIZE_LIMIT` | optional | Largest upload. The Docker image sets `64M` so photos fit; outside Docker set it yourself, since Node defaults to 512K |
-| `ADDRESS_HEADER` / `XFF_DEPTH` | behind a proxy | e.g. `X-Forwarded-For` and `1`, so failed local admin logins are limited per visitor rather than for everyone at once |
+| `AUTH_SECRET` / `ENCRYPTION_KEY` | optional | Keys for sign-in sessions and for the stored email and Google passwords. The server makes its own in `/data/keys.json` (readable only by it); set these to keep them outside the data folder. If you set them before, keep them: changing them signs everyone out, and saved passwords need entering again |
+| `LOCAL_ADMIN_PASSWORD_HASH` | optional | A way back in if the admin password is lost: create one with `hash-password` in the container's console (or `npm run hash-password`); it opens the local admin login alongside the password set in the app |
+| `UPDATE_CHECK_URL` | optional | Where the check for new versions looks, e.g. a fork's `https://raw.githubusercontent.com/<you>/waterline/main/CHANGELOG.md` |
+
+Servers set up before these settings moved into the app keep working: `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `ADMIN_EMAIL`, `ALLOWED_EMAILS`, `OPEN_SIGNUP` and `LOCAL_ADMIN_USERNAME` apply until the same setting is saved in Server settings, and `EMAIL_SCHEDULER=off` and `UPDATE_CHECK=off` still turn those off.
 
 ### Unraid
 
@@ -86,7 +88,7 @@ To keep it on your network without a domain, set `ORIGIN` to the plain address, 
    - Repository: `ghcr.io/fiala06/waterline:latest` (or `:dev`)
    - Port: container `3000` → any free host port
    - Path: container `/data` → `/mnt/cache/appdata/waterline/data`
-   - Variables: `ORIGIN`, `AUTH_SECRET`, `ENCRYPTION_KEY`, `ADMIN_EMAIL`, then `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` for Google sign-in and/or `LOCAL_ADMIN_PASSWORD_HASH` for the local admin login, plus any optional ones from the table above. Behind a reverse proxy, also `ADDRESS_HEADER=X-Forwarded-For` and `XFF_DEPTH=1`.
+   - Variable: `ORIGIN`. Behind a reverse proxy, also `ADDRESS_HEADER=X-Forwarded-For` and `XFF_DEPTH=1`. Everything else is set in the app on first start.
    - WebUI (under *Show more settings*): your `ORIGIN` URL. On plain HTTP, `http://[IP]:[PORT:3000]/` follows IP and port changes, but `ORIGIN` must still match the address you open.
 
 3. With HTTPS, point your reverse proxy (Nginx Proxy Manager, SWAG, Cloudflare Tunnel…) at `http://<unraid-ip>:<host port>`. Either way, open the `ORIGIN` URL and always use that one: any other address loads, but saving fails the cross-site check.
@@ -97,8 +99,9 @@ To run `latest` and `dev` side by side, create two containers with different nam
 
 ### Security notes
 
-- Sign-in is closed by default: only the admin, `ALLOWED_EMAILS`, or everyone with `OPEN_SIGNUP=true`.
-- The local admin login allows 5 failed tries per address every 15 minutes.
+- A new server can only be set up with the setup code from its log, and sign-in is closed by default: only the admin, the people or domains the admin lists, or everyone with a Google account if the admin chooses that.
+- The local admin login and the setup code allow 5 failed tries per address every 15 minutes.
+- The Google client secret and email passwords are stored encrypted, never sent back to the browser.
 - `AUTH_DEV_LOGIN=true` is for tests only. The server refuses to start with it when `NODE_ENV=production` (as in the Docker image).
 - Every response sends `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff` and `Referrer-Policy: same-origin`, plus HSTS when `ORIGIN` is https. Only this site may post forms to it.
 - Signing out clears the app's cached pages and photos on that device (browsers that support `Clear-Site-Data`).

@@ -7,8 +7,9 @@ import { checkAuthConfig, devLoginEnabled, handle as authHandle } from './auth';
 import { clearLoginFailures, loginBlockedMinutes, recordLoginFailure } from '$lib/server/rate-limit';
 import { getUser, isEmailAllowed } from '$lib/server/users';
 import { publicSettings } from '$lib/server/public';
+import { announceSetup } from '$lib/server/setup';
 
-const PUBLIC_PATHS = ['/signin', '/auth', '/e', '/unsubscribe', '/t', '/s', '/p', '/public', '/sitemap.xml', '/robots.txt'];
+const PUBLIC_PATHS = ['/signin', '/first-run', '/auth', '/e', '/unsubscribe', '/t', '/s', '/p', '/public', '/sitemap.xml', '/robots.txt'];
 
 /**
  * Only this site may post to it (the check SvelteKit normally does, for every
@@ -151,6 +152,7 @@ export const handle = sequence(securityHeaders, csrf, movedPaths, httpCookies, l
 export const init: ServerInit = () => {
 	if (building) return;
 	checkAuthConfig();
+	announceSetup();
 	failInterruptedExports();
 	startScheduler();
 };

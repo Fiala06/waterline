@@ -1,8 +1,10 @@
 // Is a newer Waterline out? The server (never the browser) reads the upstream
 // repo's CHANGELOG.md on main, at most every 12 hours, in the background.
-// UPDATE_CHECK=off turns it off; UPDATE_CHECK_URL points it at a fork's changelog.
+// The admin turns it off in Server settings (UPDATE_CHECK=off forces that);
+// UPDATE_CHECK_URL points it at a fork's changelog.
 import { env } from '$env/dynamic/private';
 import { compareVersions, displayVersion, parseChangelog, VERSION, type Release } from '$lib/changelog';
+import { getServerSettings } from './mail';
 
 const SOURCE = 'https://raw.githubusercontent.com/Fiala06/waterline/main/CHANGELOG.md';
 const EVERY_MS = 12 * 3_600_000;
@@ -53,7 +55,7 @@ export function projectPage() {
  * is due it starts one in the background, and the next page shows its result.
  */
 export function availableUpdate(now = Date.now()): Update | null {
-	if (env.UPDATE_CHECK === 'off') return null;
+	if (env.UPDATE_CHECK === 'off' || !getServerSettings().updateCheck) return null;
 	const due = !last || now - last.at > (last.ok ? EVERY_MS : RETRY_MS);
 	if (due && !checking) checking = checkForUpdate().finally(() => (checking = null));
 	const releases = last?.releases ?? [];

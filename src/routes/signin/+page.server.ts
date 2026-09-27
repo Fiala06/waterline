@@ -1,10 +1,13 @@
-import { fail, isRedirect } from '@sveltejs/kit';
-import { devLoginEnabled, googleEnabled, localAdminEnabled, signIn } from '../../auth';
+import { fail, isRedirect, redirect } from '@sveltejs/kit';
+import { devLoginEnabled, googleEnabled, localAdminEnabled, signInWith } from '../../auth';
 import { clearLoginFailures, loginBlockedMinutes, recordLoginFailure } from '$lib/server/rate-limit';
 import { safeReturn } from '$lib/server/redirect';
+import { setupNeeded } from '$lib/server/setup';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ url }) => {
+	// a new server: first, the admin login
+	if (setupNeeded()) redirect(303, '/first-run');
 	const error = url.searchParams.get('error');
 	return {
 		google: googleEnabled(),
@@ -24,19 +27,11 @@ export const load: PageServerLoad = ({ url }) => {
 	};
 };
 
-/** Rebuild the request so Auth.js sees providerId + credentials + redirectTo. */
+/** Sign in with this form's credentials and redirectTo. */
 function withProvider(event: Parameters<Actions[string]>[0], providerId: string, fields: string[]) {
-	return event.request.formData().then((form) => {
-		const body = new FormData();
-		body.set('providerId', providerId);
-		body.set('redirectTo', safeReturn(form.get('redirectTo')));
-		for (const f of fields) body.set(f, String(form.get(f) ?? ''));
-		const headers = new Headers(event.request.headers);
-		headers.delete('content-type');
-		headers.delete('content-length');
-		const request = new Request(event.request.url, { method: 'POST', body, headers });
-		return signIn({ ...event, request });
-	});
+	return event.request.formData().then((form) =>
+		signInWith(event, providerId, Object.fromEntries(fields.map((f) => [f, String(form.get(f) ?? '')])), safeReturn(form.get('redirectTo')))
+	);
 }
 
 /** Auth.js throws on a failed credentials sign-in; turn that into a form error. */

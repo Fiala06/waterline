@@ -1,13 +1,11 @@
-// Encrypt stored secrets (mail passwords/API keys) with AES-256-GCM, and sign
-// stateless links (unsubscribe) with HMAC. Keys come from ENCRYPTION_KEY, or
-// are derived from AUTH_SECRET when it isn't set.
+// Encrypt stored secrets (mail and Google passwords/API keys) with AES-256-GCM,
+// and sign stateless links (unsubscribe) with HMAC. Keys are derived from
+// ENCRYPTION_KEY, else AUTH_SECRET, else the key this server made for itself.
 import { createCipheriv, createDecipheriv, createHmac, hkdfSync, randomBytes, timingSafeEqual } from 'node:crypto';
-import { env } from '$env/dynamic/private';
+import { encryptionBase } from './instance';
 
 function key(purpose: string): Buffer {
-	const base = env.ENCRYPTION_KEY || env.AUTH_SECRET;
-	if (!base) throw new Error('Set ENCRYPTION_KEY (or AUTH_SECRET) to store secrets');
-	return Buffer.from(hkdfSync('sha256', base, 'waterline', purpose, 32));
+	return Buffer.from(hkdfSync('sha256', encryptionBase(), 'waterline', purpose, 32));
 }
 
 /** "v1:<iv>:<tag>:<ciphertext>" (base64url parts) */

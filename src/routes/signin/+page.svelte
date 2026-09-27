@@ -34,7 +34,7 @@
 					<button class="google"><span class="g" aria-hidden="true">G</span>Sign in with Google</button>
 				</form>
 			{:else if !data.dev}
-				<p class="banner banner-warn">▲ Google sign-in isn't set up. Set AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET.</p>
+				<p class="banner banner-warn">▲ Google sign-in isn't set up yet. The admin can turn it on in Settings › Server settings.</p>
 			{/if}
 
 			{#if data.dev}
