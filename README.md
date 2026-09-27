@@ -190,3 +190,7 @@ SvelteKit 2 (Svelte 5, adapter-node) · TypeScript · Drizzle ORM + better-sqlit
 | [`BUILD_PLAN.md`](design_handoff_waterline/BUILD_PLAN.md) | The order the first version was built in |
 | [`design-brief.md`](design-brief.md) | The original brief the design answered |
 | [`SPECIES_SOURCES.md`](src/lib/server/data/SPECIES_SOURCES.md) | Where the bundled species list comes from, and its license |
+
+## License
+
+The code is under the [MIT License](LICENSE). The bundled species list (`src/lib/server/data/species.json`) is shared under CC BY-SA 4.0, because of its Wikipedia sources; see [`SPECIES_SOURCES.md`](src/lib/server/data/SPECIES_SOURCES.md).
