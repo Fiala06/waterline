@@ -80,6 +80,17 @@
 				<EmptyState compact icon="livestock" title="None added yet" href="{base}/plants" label="Add plants" />
 			{/if}
 		</section>
+
+		<section>
+			<div class="sh"><h2>Ask an AI assistant</h2></div>
+			<a class="card ai" href="{base}/summary">
+				<span class="ai-text">
+					<span class="ai-t">Summary for an AI assistant</span>
+					<span class="ai-s">This tank's readings, care log and stocking as text, to paste into ChatGPT, Claude or Gemini with your question.</span>
+				</span>
+				<span class="chev" aria-hidden="true">›</span>
+			</a>
+		</section>
 	</div>
 </div>
 
@@ -113,6 +124,38 @@
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
 		color: var(--text-muted);
+	}
+	.ai {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		padding: 14px 16px;
+		color: var(--text);
+	}
+	.ai-text {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+	}
+	.ai-t {
+		font-size: 15px;
+		font-weight: 600;
+	}
+	.ai-s {
+		font-size: 13px;
+		line-height: 1.45;
+		color: var(--text-muted);
+	}
+	.chev {
+		font-size: 20px;
+		color: var(--text-faint);
+	}
+	@media (hover: hover) {
+		.ai:hover {
+			border-color: var(--border-strong);
+		}
 	}
 	/* a 44px tap target that doesn't make the header taller */
 	.sh a {

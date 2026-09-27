@@ -96,6 +96,15 @@
 						<input class="radio" type="radio" name="format" value="csv" bind:group={format} />
 						<span class="ctext"><strong>Water tests (CSV)</strong><small>One row per test, for spreadsheets</small></span>
 					</label>
+					<!-- not a file to build: the tank's summary page, to copy from -->
+					<a class="choice link" href="/tanks/{tankId}/summary">
+						<span class="ctext"
+							><strong>Summary for an AI assistant</strong><small
+								>{scope === 'tank' && tankName ? `${tankName}'s` : "A tank's"} recent readings and care as text, to paste into a chat</small
+							></span
+						>
+						<span class="chev" aria-hidden="true">›</span>
+					</a>
 				</div>
 			</fieldset>
 			{#if form?.error}<p class="error-text">✕ {form.error}</p>{/if}
@@ -217,6 +226,22 @@
 		display: flex;
 		flex-direction: column;
 		gap: 3px;
+	}
+	.link {
+		align-items: center;
+		color: var(--text);
+	}
+	.link .ctext {
+		flex: 1;
+	}
+	.chev {
+		font-size: 20px;
+		color: var(--text-faint);
+	}
+	@media (hover: hover) {
+		.link:hover {
+			border-color: var(--border-strong);
+		}
 	}
 	.ctext strong {
 		font-size: 16px;

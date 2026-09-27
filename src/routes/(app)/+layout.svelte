@@ -73,7 +73,8 @@
 				'/(app)/tanks/[id]/equipment/[eid]': 'Edit equipment',
 				'/(app)/tanks/[id]/livestock/new': 'Add livestock',
 				'/(app)/tanks/[id]/targets': 'Parameters & targets',
-				'/(app)/tanks/[id]/public': 'Public page'
+				'/(app)/tanks/[id]/public': 'Public page',
+				'/(app)/tanks/[id]/summary': 'Summary for an AI assistant'
 			} as Record<string, string | undefined>
 		)[id];
 		if (tankPage) return { title: tankPage, crumbs: [tanks, { label: tankName, href: `/tanks/${page.params.id}` }] };

@@ -153,6 +153,22 @@ export function latestTest(tankId: string) {
 	return db.select().from(tests).where(eq(tests.tankId, tankId)).orderBy(desc(tests.takenAt)).get();
 }
 
+/** Tests since an instant, oldest first, each with its readings (parameter id → stored value). */
+export function testsSince(tankId: string, since: string) {
+	const list = db
+		.select()
+		.from(tests)
+		.where(and(eq(tests.tankId, tankId), gte(tests.takenAt, since)))
+		.orderBy(tests.takenAt)
+		.all();
+	const ids = list.map((t) => t.id);
+	const rows = ids.length ? db.select().from(testReadings).where(inArray(testReadings.testId, ids)).all() : [];
+	return list.map((test) => ({
+		test,
+		readings: new Map(rows.filter((r) => r.testId === test.id).map((r) => [r.parameterId, r.value]))
+	}));
+}
+
 /** Readings for one parameter since an instant, oldest first. */
 export function series(tankId: string, parameterId: string, since: string) {
 	return db

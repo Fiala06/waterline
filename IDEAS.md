@@ -13,7 +13,7 @@ A running list of ideas and nice-to-haves that aren't in the current scope. For 
 - **Receipt uploads:** attach a photo or PDF receipt to an expense.
 - **Saved product links:** keep links to products the user buys regularly (e.g. Seachem Prime on Amazon) for quick reordering. Could tie into dosing events and expenses.
 - **Backdated logs:** when adding any log, allow picking a different date/time for entries logged after the fact. The brief (5.4, 5.6) already has an editable date/time; make sure it's quick to change, e.g. shortcuts like "1 hour ago", "This morning", "Yesterday".
-- **Optional AI assistant integration:** let users connect an AI agent of their choice (off by default) to help diagnose tank issues, e.g. "why is my nitrate climbing?" or "what's causing this algae?" using the tank's readings, events, and photos. Ideas:
+- **Optional AI assistant integration:** *(first step built: "Summary for an AI assistant" on each tank's Overview and in Export, a text summary to copy into any assistant; Waterline itself sends nothing)* let users connect an AI agent of their choice (off by default) to help diagnose tank issues, e.g. "why is my nitrate climbing?" or "what's causing this algae?" using the tank's readings, events, and photos. Ideas:
   - Make the data AI-friendly: a clean read-only API and/or an MCP server so any agent can read tank history.
   - Per-user opt-in with a user-supplied API key (self-hosted, so no shared keys), and clear control over which tanks/data are shared.
   - Suggestions only; the agent never logs or changes data without the user confirming.
