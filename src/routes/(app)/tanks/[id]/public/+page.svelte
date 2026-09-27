@@ -24,6 +24,7 @@
 		{ k: 'showCharts', t: 'Trend charts', d: 'Last 3 months' },
 		{ k: 'showPhotos', t: 'Photos', d: 'Newest 12' },
 		{ k: 'showLivestock', t: 'Livestock & plants', d: 'Species and counts; no sources or prices' },
+		{ k: 'showPetNames', t: 'Pet names and photos', d: 'Names you gave your pets, and photos tagged with them' },
 		{ k: 'showEquipment', t: 'Equipment', d: 'Brands and models; no notes' },
 		{ k: 'showActivity', t: 'Activity log', d: 'Water changes, dosing, plants; no notes' },
 		{ k: 'showDescription', t: 'Tank description', d: 'A separate public blurb' }

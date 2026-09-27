@@ -56,7 +56,7 @@
 
 	<div class="hero">
 		{#if a.photoId}
-			<a class="pic" href="/photos/{a.photoId}" aria-label="Photo of {title}"><img src={photoUrl(a.photoId)} alt="" /></a>
+			<a class="pic" href="/photos/{a.photoId}" aria-label="Profile photo of {title}"><img src={photoUrl(a.photoId)} alt="" /></a>
 		{:else}
 			<span class="pic none" aria-hidden="true"><CategoryIcon kind="livestock" size={40} /></span>
 		{/if}
@@ -114,6 +114,21 @@
 		</div>
 		<div class="foot"><button class="btn btn-primary" disabled={busy}>Save</button></div>
 	</form>
+
+	{#if data.photos.length || a.nickname}
+		<section class="gallery" aria-labelledby="photos-h">
+			<h2 id="photos-h">Photos{data.photos.length ? ` · ${data.photos.length}` : ''}</h2>
+			{#if data.photos.length}
+				<ul>
+					{#each data.photos as id (id)}
+						<li><a href="/photos/{id}"><img src={photoUrl(id)} alt="Photo of {title}" loading="lazy" /></a></li>
+					{/each}
+				</ul>
+			{:else}
+				<p class="none">Tag {title} in a photo from Photos: open one and choose {title} under In this photo.</p>
+			{/if}
+		</section>
+	{/if}
 
 	<section class="history" aria-labelledby="history-h">
 		<h2 id="history-h">History</h2>
@@ -270,6 +285,7 @@
 	.foot .btn {
 		min-width: 120px;
 	}
+	.gallery h2,
 	.history h2 {
 		margin: 8px 0 8px;
 		font-size: 13px;
@@ -277,6 +293,27 @@
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
 		color: var(--text-muted);
+	}
+	.gallery ul {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+		gap: 6px;
+	}
+	.gallery a {
+		display: block;
+		aspect-ratio: 1;
+		border-radius: 10px;
+		overflow: hidden;
+		background: var(--surface);
+	}
+	.gallery img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
 	}
 	.history ul {
 		margin: 0;

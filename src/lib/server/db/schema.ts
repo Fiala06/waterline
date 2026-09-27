@@ -424,6 +424,20 @@ export const livestock = sqliteTable(
 	(t) => [index('livestock_tank').on(t.tankId)]
 );
 
+/** Pets in a photo (#6): tagged from the photo viewer; a pet's profile photo is tagged too. */
+export const photoLivestock = sqliteTable(
+	'photo_livestock',
+	{
+		photoId: text('photo_id')
+			.notNull()
+			.references(() => photos.id, { onDelete: 'cascade' }),
+		livestockId: text('livestock_id')
+			.notNull()
+			.references(() => livestock.id, { onDelete: 'cascade' })
+	},
+	(t) => [primaryKey({ columns: [t.photoId, t.livestockId] }), index('photo_livestock_livestock').on(t.livestockId)]
+);
+
 export const plants = sqliteTable(
 	'plants',
 	{
@@ -464,6 +478,8 @@ export const publicPages = sqliteTable(
 		showLivestock: integer('show_livestock', { mode: 'boolean' }).notNull().default(true),
 		showEquipment: integer('show_equipment', { mode: 'boolean' }).notNull().default(true),
 		showDescription: integer('show_description', { mode: 'boolean' }).notNull().default(true),
+		// pets' names, and photos tagged with a pet; off: species only, tagged photos hidden
+		showPetNames: integer('show_pet_names', { mode: 'boolean' }).notNull().default(false),
 		description: text('description'),
 		displayName: text('display_name', { enum: ['full', 'short', 'none'] }).notNull().default('short'),
 		indexable: integer('indexable', { mode: 'boolean' }).notNull().default(false),

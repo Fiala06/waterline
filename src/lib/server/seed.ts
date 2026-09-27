@@ -13,7 +13,7 @@ import { events, notificationPrefs, tanks, taskCompletions, tasks, users, type T
 import { createEvent, createTest } from './logs';
 import { preparePhotos, setCover, storePhotos } from './photos';
 import { createShare, getPublicPage, updatePublicPage } from './public';
-import { addEquipment, addLivestock, addPlant, changeCount, logTrim, markServiced, nameLivestock, updateLivestockDetails } from './specs';
+import { addEquipment, addLivestock, addPlant, changeCount, logTrim, markServiced, nameLivestock, tagPhoto, updateLivestockDetails } from './specs';
 import { createTank, listParams, setArchived, updateTank } from './tanks';
 import { createTask } from './tasks';
 import { upsertUser, updateUser } from './users';
@@ -202,6 +202,10 @@ async function seedPlanted(user: User) {
 	}
 	const cover = await photoFor(tank.id, photoN++, 'green', { takenAt: at(-1, '12:00') });
 	setCover(user.id, cover.id);
+	// Zippy's photos: a profile photo, and one more tagged with it
+	const zippyShot = await photoFor(tank.id, photoN++, 'green', { takenAt: at(-40, '19:30') });
+	updateLivestockDetails(user.id, zippy.id, { photoId: zippyShot.id });
+	tagPhoto(user.id, (await photoFor(tank.id, photoN++, 'green', { takenAt: at(-12, '20:15') })).id, zippy.id, true);
 	event(user, tank, -22, '18:00', 'equipment', { action: 'adjusted', item: 'Lumora Pro 90', changes: { photoperiodH: [8.5, 8] }, reasons: ['Algae'] }, 'Cut the photoperiod by half an hour.');
 
 	// Tasks: the water change is a day overdue, a few are due soon, some later.

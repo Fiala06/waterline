@@ -7,7 +7,7 @@ import { events } from '$lib/server/db/schema';
 import { setFlash } from '$lib/server/flash';
 import { optStr } from '$lib/server/forms';
 import { checkPhotoFiles, photoFiles, preparePhotos, storePhotos } from '$lib/server/photos';
-import { getLivestock, nameLivestock, updateLivestockDetails } from '$lib/server/specs';
+import { getLivestock, nameLivestock, petPhotos, updateLivestockDetails } from '$lib/server/specs';
 import { getTank } from '$lib/server/tanks';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -54,7 +54,9 @@ export const load: PageServerLoad = ({ locals, params }) => {
 			notes: l.notes ?? '',
 			photoId: l.photoId
 		},
-		history
+		history,
+		// photos it's tagged in (the profile photo too), newest first
+		photos: petPhotos(user.id, l.id).map((p) => p.id)
 	};
 };
 

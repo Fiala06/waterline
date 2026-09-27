@@ -127,6 +127,20 @@
 			{#if data.entry?.title}<h1 class="title">{data.entry.title}</h1>{/if}
 			{#if data.entry?.note}<p class="note">{data.entry.note}</p>{/if}
 			{#if data.entry}<a class="link" href={data.entry.href}>View entry ›</a>{/if}
+			{#if data.pets.length}
+				<div class="pets" role="group" aria-labelledby="pets-h">
+					<span class="pets-h" id="pets-h">In this photo</span>
+					<div class="chips">
+						{#each data.pets as pet (pet.id)}
+							<form method="POST" action="?/tag" use:enhance={keep}>
+								<input type="hidden" name="livestockId" value={pet.id} />
+								<input type="hidden" name="on" value={pet.tagged ? '0' : '1'} />
+								<button class="chip" aria-pressed={pet.tagged} title={pet.species}>{pet.tagged ? '✓ ' : ''}{pet.name}</button>
+							</form>
+						{/each}
+					</div>
+				</div>
+			{/if}
 		</div>
 		<div class="tools" id="photo-tools">
 			{@render shareCard('panel')}
@@ -298,6 +312,19 @@
 		/* 44px tap target without adding height */
 		padding: 12px 0;
 		margin: -8px 0 -12px;
+	}
+	.pets {
+		margin-top: 10px;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+	.pets-h {
+		font-size: 13px;
+		color: var(--text-muted);
+	}
+	.pets .chips form {
+		display: contents;
 	}
 	/* Actions live in the ••• sheet; without JavaScript the ••• link shows them here. */
 	.tools {

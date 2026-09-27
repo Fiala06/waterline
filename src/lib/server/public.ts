@@ -7,7 +7,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { env } from '$env/dynamic/private';
 import { equipmentName, specSummary } from '$lib/equipment';
 import { eventTitle } from '$lib/events';
-import { speciesKey } from '$lib/livestock';
+import { bySpecies, livestockLabel, speciesKey } from '$lib/livestock';
 import { displayValue, fmtRange, fmtValue, paramDecimals, paramUnit, shortName, statusOf } from '$lib/params';
 import { statusShort } from '$lib/status';
 import { dateInZone, fmtDate, todayInZone } from '$lib/time';
@@ -17,6 +17,7 @@ import {
 	equipment,
 	events,
 	livestock,
+	photoLivestock,
 	photos,
 	photoShares,
 	plants,
@@ -131,16 +132,18 @@ export function displayNameFor(user: User, mode: PublicPage['displayName']) {
 
 const PUBLIC_CATEGORIES = ['water_change', 'dosing', 'maintenance', 'livestock', 'equipment'] as const;
 
-// Pets' names stay private: public titles say the species ("Betta moved into
-// the tank"), naming one isn't tank care, and pets count with their species.
+// Pets' names stay private unless the owner turns on "Pet names and photos":
+// public titles say the species ("Betta moved into the tank"), naming one isn't
+// listed, pets count with their species, and photos tagged with a pet are hidden.
 const withoutPetNames = <E extends { data: Record<string, unknown> }>(e: E): E => ({ ...e, data: { ...e.data, nickname: null, previous: null } });
+const untagged = sql`not exists (select 1 from ${photoLivestock} where ${photoLivestock.photoId} = ${photos.id})`;
 const isNaming = (e: { category: string; data: Record<string, unknown> }) => e.category === 'livestock' && e.data.action === 'named';
 /** Pets count with their species, never by name. */
 function perSpecies(rows: { id: string; commonName: string; scientificName: string | null; count: number }[]) {
-	const groups = new Map<string, { id: string; name: string; count: number }>();
+	const groups = new Map<string, { id: string; name: string; count: number | null }>();
 	for (const l of rows) {
 		const g = groups.get(speciesKey(l));
-		if (g) g.count += l.count;
+		if (g) g.count = (g.count ?? 0) + l.count;
 		else groups.set(speciesKey(l), { id: l.id, name: l.commonName, count: l.count });
 	}
 	return [...groups.values()];
@@ -217,8 +220,16 @@ export function publicView(page: PublicPage, tank: Tank, owner: User) {
 				.filter((c) => c.points.length >= 2)
 		: [];
 
+	const names = page.showPetNames;
 	const photoIds = page.showPhotos
-		? db.select({ id: photos.id }).from(photos).where(eq(photos.tankId, tank.id)).orderBy(desc(photos.takenAt)).limit(12).all().map((p) => p.id)
+		? db
+				.select({ id: photos.id })
+				.from(photos)
+				.where(and(eq(photos.tankId, tank.id), names ? undefined : untagged))
+				.orderBy(desc(photos.takenAt))
+				.limit(12)
+				.all()
+				.map((p) => p.id)
 		: [];
 
 	// quarantined animals aren't in the display tank yet
@@ -250,9 +261,9 @@ export function publicView(page: PublicPage, tank: Tank, owner: User) {
 			.orderBy(desc(events.occurredAt))
 			.limit(16)
 			.all()
-			.filter((e) => !isNaming(e))
+			.filter((e) => names || !isNaming(e))
 			.slice(0, 8)
-			.map((e) => ({ key: `e:${e.id}`, at: e.occurredAt, title: eventTitle(withoutPetNames(e), prefs), kind: e.category }));
+			.map((e) => ({ key: `e:${e.id}`, at: e.occurredAt, title: eventTitle(names ? e : withoutPetNames(e), prefs), kind: e.category }));
 		const ts = db
 			.select({ id: tests.id, at: tests.takenAt, n: sql<number>`count(${testReadings.parameterId})` })
 			.from(tests)
@@ -290,7 +301,10 @@ export function publicView(page: PublicPage, tank: Tank, owner: User) {
 		readings: page.showReadings ? cards : [],
 		charts,
 		photos: photoIds,
-		livestock: perSpecies(animals),
+		// with names: each group, then its pets by name (one animal, no count)
+		livestock: names
+			? bySpecies(animals).map((l) => ({ id: l.id, name: livestockLabel(l), count: l.nickname ? null : l.count }))
+			: perSpecies(animals),
 		plants: plantNames,
 		equipment: gear,
 		activity
@@ -323,7 +337,9 @@ export function ogVersion(page: PublicPage, tank: Tank) {
 export function publicPhoto(page: PublicPage, tank: Tank, photoId: string) {
 	const p = db.select().from(photos).where(and(eq(photos.id, photoId), eq(photos.tankId, tank.id))).get();
 	if (!p) error(404, 'Not found');
-	const allowed = page.showPhotos || photoId === tank.coverPhotoId || photoId === page.ogPhotoId;
+	// the cover and the share image are the owner's own picks
+	const listed = page.showPhotos && (page.showPetNames || !db.select().from(photoLivestock).where(eq(photoLivestock.photoId, photoId)).get());
+	const allowed = listed || photoId === tank.coverPhotoId || photoId === page.ogPhotoId;
 	if (!allowed) error(404, 'Not found');
 	return p;
 }

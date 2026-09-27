@@ -1,11 +1,11 @@
 // Equipment, livestock and plants for a tank. Every change also writes an
 // event, so History shows what was added, removed, counted or trimmed.
 import { error } from '@sveltejs/kit';
-import { and, asc, eq, isNotNull, isNull, ne, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import { equipmentName, type EquipmentType } from '$lib/equipment';
 import { zonedToUtc } from '$lib/time';
 import { db } from './db';
-import { equipment, events, livestock, plants, tanks, tasks, type Equipment, type Livestock, type Plant } from './db/schema';
+import { equipment, events, livestock, photoLivestock, photos, plants, tanks, tasks, type Equipment, type Livestock, type Plant } from './db/schema';
 import { getTank } from './tanks';
 
 const now = () => new Date().toISOString();
@@ -273,10 +273,39 @@ export function nameLivestock(userId: string, id: string, nickname: string | nul
 	return pet;
 }
 
-/** Notes and the profile photo: about the pet, not a change to the tank, so no History entry. */
+/** Notes and the profile photo: about the pet, not a change to the tank, so no History entry. A profile photo is also tagged. */
 export function updateLivestockDetails(userId: string, id: string, patch: Partial<Pick<Livestock, 'notes' | 'photoId'>>) {
 	getLivestock(userId, id);
+	if (patch.photoId) tagPhoto(userId, patch.photoId, id, true);
 	return db.update(livestock).set(patch).where(eq(livestock.id, id)).returning().get();
+}
+
+// ── Pets in photos ──────────────────────────────────────────────────────────
+
+/** Tag (or untag) a pet in one of its tank's photos. */
+export function tagPhoto(userId: string, photoId: string, livestockId: string, on: boolean) {
+	const l = getLivestock(userId, livestockId);
+	const photo = db.select().from(photos).where(eq(photos.id, photoId)).get();
+	if (!photo || photo.tankId !== l.tankId) error(404, 'Photo not found');
+	if (on) db.insert(photoLivestock).values({ photoId, livestockId }).onConflictDoNothing().run();
+	else db.delete(photoLivestock).where(and(eq(photoLivestock.photoId, photoId), eq(photoLivestock.livestockId, livestockId))).run();
+}
+
+/** The pets tagged in a photo (ids). */
+export function photoPets(photoId: string): string[] {
+	return db.select({ id: photoLivestock.livestockId }).from(photoLivestock).where(eq(photoLivestock.photoId, photoId)).all().map((r) => r.id);
+}
+
+/** A pet's photos, newest first. */
+export function petPhotos(userId: string, livestockId: string) {
+	getLivestock(userId, livestockId);
+	return db
+		.select({ id: photos.id, takenAt: photos.takenAt })
+		.from(photoLivestock)
+		.innerJoin(photos, eq(photos.id, photoLivestock.photoId))
+		.where(eq(photoLivestock.livestockId, livestockId))
+		.orderBy(desc(photos.takenAt))
+		.all();
 }
 
 // ── Plants ──────────────────────────────────────────────────────────────────

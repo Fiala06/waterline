@@ -18,6 +18,7 @@ import {
 	livestock,
 	plants,
 	notificationPrefs,
+	photoLivestock,
 	photos,
 	products,
 	tankParameters,
@@ -107,7 +108,12 @@ function dataFor(user: User, list: Tank[]) {
 	const allEquipment = byTank(db.select().from(equipment).where(inArray(equipment.tankId, ids)).all());
 	const allLivestock = byTank(db.select().from(livestock).where(inArray(livestock.tankId, ids)).all());
 	const allPlants = byTank(db.select().from(plants).where(inArray(plants.tankId, ids)).all());
-	return { params, allTests, readings, allEvents, allTasks, completions, allPhotos, allEquipment, allLivestock, allPlants };
+	// the pets tagged in each photo
+	const petsIn = new Map<string, string[]>();
+	for (const t of allPhotos.length ? db.select().from(photoLivestock).where(inArray(photoLivestock.photoId, allPhotos.map((p) => p.id))).all() : []) {
+		petsIn.set(t.photoId, [...(petsIn.get(t.photoId) ?? []), t.livestockId]);
+	}
+	return { params, allTests, readings, allEvents, allTasks, completions, allPhotos, petsIn, allEquipment, allLivestock, allPlants };
 }
 
 async function build(id: string, user: User, list: Tank[], format: 'zip' | 'csv') {
@@ -180,7 +186,16 @@ async function build(id: string, user: User, list: Tank[], format: 'zip' | 'csv'
 				.map((k) => ({ ...k, tankId: undefined, completions: d.completions.filter((c) => c.taskId === k.id) })),
 			photos: d.allPhotos
 				.filter((p) => p.tankId === t.id)
-				.map((p) => ({ id: p.id, eventId: p.eventId, testId: p.testId, takenAt: p.takenAt, width: p.width, height: p.height, file: `photos/${p.path}` }))
+				.map((p) => ({
+					id: p.id,
+					eventId: p.eventId,
+					testId: p.testId,
+					takenAt: p.takenAt,
+					width: p.width,
+					height: p.height,
+					file: `photos/${p.path}`,
+					livestock: d.petsIn.get(p.id) ?? []
+				}))
 		}))
 	};
 	zip.addBuffer(Buffer.from(JSON.stringify(json, null, 2)), 'waterline.json');

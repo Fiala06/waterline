@@ -108,7 +108,7 @@
 						<div class="group">
 							<h3>Livestock</h3>
 							<ul class="tags">
-								{#each v.livestock as l (l.id)}<li class="tag">{l.name}<b class="num">{l.count}</b></li>{/each}
+								{#each v.livestock as l (l.id)}<li class="tag">{l.name}{#if l.count != null}<b class="num">{l.count}</b>{/if}</li>{/each}
 							</ul>
 						</div>
 					{/if}
