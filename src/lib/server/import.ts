@@ -5,7 +5,7 @@
 import { error } from '@sveltejs/kit';
 import { and, desc, eq, inArray, isNotNull } from 'drizzle-orm';
 import { SUGGESTED_TASK, equipmentName } from '$lib/equipment';
-import { countOf, type HistoryKind } from '$lib/imports';
+import { countOf, type HistoryFile, type HistoryKind } from '$lib/imports';
 import { addDays, todayInZone, utcToZoned, zonedToUtc } from '$lib/time';
 import type { EventCategory, ImportKind } from '$lib/types';
 import { db } from './db';
@@ -16,6 +16,7 @@ import {
 	type HistoryContext,
 	type HistoryValue,
 	type MaintenanceValue,
+	type MixedValue,
 	type NoteValue,
 	type ObservationValue,
 	type TestValue,
@@ -24,6 +25,7 @@ import {
 import {
 	readImport,
 	type CheckedRow,
+	type ColumnMap,
 	type EquipmentValue,
 	type ImportList,
 	type ImportValue,
@@ -47,8 +49,8 @@ const water = (t: Tank) => (t.type === 'reef' ? 'marine' : t.type === 'brackish'
 const lower = (s: string | null | undefined) => (s ?? '').trim().toLowerCase();
 
 /** A file's rows, checked and compared with what the tank has. */
-export function previewImport(list: ImportList, text: string, user: User, tank: Tank) {
-	const read = readImport(list, text, { prefs: user, water: water(tank), today: todayInZone(user.timeZone) });
+export function previewImport(list: ImportList, text: string, user: User, tank: Tank, map?: ColumnMap) {
+	const read = readImport(list, text, { prefs: user, water: water(tank), today: todayInZone(user.timeZone) }, map);
 	if ('error' in read) return read;
 	const has = existingIn(list, user, tank.id);
 	const rows: PreviewRow[] = read.rows.map((r) => ({
@@ -56,7 +58,7 @@ export function previewImport(list: ImportList, text: string, user: User, tank: 
 		existing: r.value && !r.example ? has(r.value) : null,
 		reminder: list === 'equipment' && r.value ? reminderFor(r.value as EquipmentValue) : null
 	}));
-	return { rows, ignored: read.ignored };
+	return { rows, ignored: read.ignored, fileColumns: read.fileColumns };
 }
 
 function existingIn(list: ImportList, user: User, tankId: string): (v: ImportValue) => string | null {
@@ -193,16 +195,22 @@ export interface HistoryPreviewRow extends CheckedRow<HistoryValue> {
 }
 
 /** A History file's rows, checked and compared with what History has. */
-export function previewHistory(kind: HistoryKind, text: string, user: User, tank: Tank) {
-	const read = readHistory(kind, text, historyContext(user, tank));
+export function previewHistory(kind: HistoryFile, text: string, user: User, tank: Tank, map?: ColumnMap) {
+	const read = readHistory(kind, text, historyContext(user, tank), map);
 	if ('error' in read) return read;
-	const has = existingHistory(kind, tank.id, user.timeZone);
+	// a file of several kinds compares each row with its own kind's entries
+	const checks = new Map<HistoryKind, (v: HistoryValue) => string | null>();
+	const has = (v: HistoryValue) => {
+		const k = kind === 'history' ? (v as MixedValue).kind : kind;
+		if (!checks.has(k)) checks.set(k, existingHistory(k, tank.id, user.timeZone));
+		return checks.get(k)!(v);
+	};
 	const rows: HistoryPreviewRow[] = read.rows.map((r) => ({
 		...r,
 		existing: r.value && !r.example && !r.other ? has(r.value) : null,
 		reminder: null
 	}));
-	return { rows, ignored: read.ignored };
+	return { rows, ignored: read.ignored, fileColumns: read.fileColumns };
 }
 
 const SAME_DAY: Record<HistoryKind, string> = {
@@ -247,13 +255,14 @@ function existingHistory(kind: HistoryKind, tankId: string, timeZone: string): (
 }
 
 /** Add the rows as History entries, all or none, each as if logged by hand at its date and time. */
-export function applyHistory(kind: HistoryKind, values: HistoryValue[], user: User, tank: Tank, fileName: string | null) {
-	const summary = countOf(kind, values.length);
+export function applyHistory(file: HistoryFile, values: HistoryValue[], user: User, tank: Tank, fileName: string | null) {
+	const summary = countOf(file, values.length);
 	const imp = db.transaction(() => {
-		const imp = record(user, tank.id, kind, fileName, summary);
+		const imp = record(user, tank.id, file, fileName, summary);
 		const opts = { timeZone: user.timeZone };
 		for (const v of values) {
 			const at = zonedToUtc(v.date, v.time, user.timeZone).toISOString();
+			const kind = file === 'history' ? (v as MixedValue).kind : file;
 			if (kind === 'tests') {
 				const t = v as TestValue;
 				createTest(user.id, tank.id, { takenAt: at, note: t.note, readings: new Map(Object.entries(t.readings)), importId: imp.id }, opts);
@@ -333,7 +342,7 @@ export function undoImport(userId: string, importId: string) {
 			.where(
 				and(
 					eq(photos.tankId, imp.tankId),
-					isNotNull(imp.kind === 'tests' ? photos.testId : photos.eventId)
+					imp.kind === 'history' ? undefined : isNotNull(imp.kind === 'tests' ? photos.testId : photos.eventId)
 				)
 			)
 			.all();
@@ -367,6 +376,7 @@ export function undoImport(userId: string, importId: string) {
 		const t = db.delete(tests).where(eq(tests.importId, imp.id)).run().changes;
 		const e = db.delete(events).where(eq(events.importId, imp.id)).run().changes;
 		if (imp.kind === 'tests') removed = t;
+		else if (imp.kind === 'history') removed = t + e;
 		else if (imp.kind in CATEGORY) removed = e;
 		db.update(imports).set({ undoneAt: now }).where(eq(imports.id, imp.id)).run();
 	});

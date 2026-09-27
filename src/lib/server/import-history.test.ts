@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { HISTORY_IMPORTS, type HistoryKind } from '$lib/imports';
+import { HISTORY_FILES, HISTORY_IMPORTS, type HistoryFile } from '$lib/imports';
 import { displayValue, paramDecimals, paramUnit } from '$lib/params';
 import { formatNumber, toStored } from '$lib/units';
-import { historyTemplate, parseTime, readHistory, type HistoryContext, type HistoryParam, type HistoryValue, type TestValue } from './import-history';
+import { historyTemplate, parseTime, readHistory, type HistoryContext, type HistoryParam, type HistoryValue, type MixedValue, type TestValue } from './import-history';
 import type { CheckedRow } from './import-rows';
 
 const us = { unitSystem: 'imperial', hardnessUnit: 'dgh' } as const;
@@ -34,7 +34,7 @@ const ctx: HistoryContext = {
 	tankVolumeL: 100
 };
 
-function rows(kind: HistoryKind, csv: string, c: HistoryContext = ctx): CheckedRow<HistoryValue>[] {
+function rows(kind: HistoryFile, csv: string, c: HistoryContext = ctx): CheckedRow<HistoryValue>[] {
 	const r = readHistory(kind, csv, c);
 	if ('error' in r) throw new Error(r.error);
 	return r.rows;
@@ -135,7 +135,13 @@ describe('water tests', () => {
 	});
 
 	it("needs a date column and one of the tank's parameters", () => {
-		expect(readHistory('tests', 'When,Foo\n2026-09-20,1\n', ctx)).toEqual({ error: "None of the columns is one of this tank's parameters. Name them as Waterline does, like Nitrate (ppm)." });
+		expect(readHistory('tests', 'When,Foo\n2026-09-20,1\n', ctx)).toEqual({
+			error: "None of the columns is one of this tank's parameters. Choose which they are below, or name them as Waterline does, like Nitrate (ppm).",
+			fileColumns: [
+				{ index: 0, header: 'When', key: 'date' },
+				{ index: 1, header: 'Foo', key: null }
+			]
+		});
 		expect(readHistory('tests', 'Day tested?,pH\n2026-09-20,7\n', ctx)).toMatchObject({ error: expect.stringContaining('no Date column') });
 	});
 
@@ -212,11 +218,12 @@ describe('water changes, dosing, maintenance, observations, notes', () => {
 });
 
 describe('templates', () => {
-	it.each(HISTORY_IMPORTS)('%s: the example rows read back as examples, so they are left out', (kind) => {
+	it.each(HISTORY_FILES)('%s: the example rows read back as examples, so they are left out', (kind) => {
 		for (const prefs of [us, eu]) {
 			const c = { ...ctx, prefs };
 			const r = rows(kind, historyTemplate(kind, c), c);
-			expect(r.length).toBe(2);
+			// one of each kind in a file of several
+			expect(r.length).toBe(kind === 'history' ? HISTORY_IMPORTS.length : 2);
 			expect(r.every((x) => x.example && x.value && !x.problems.length)).toBe(true);
 		}
 	});
@@ -224,5 +231,74 @@ describe('templates', () => {
 	it("has a column for each tracked parameter, in the keeper's units", () => {
 		const header = historyTemplate('tests', ctx).replace(/^\uFEFF/, '').split('\r\n')[0];
 		expect(header).toBe('Date,Time,pH,Ammonia (ppm),Nitrate (ppm),GH (dGH),Temperature (°F),TDS (ppm),Note');
+	});
+});
+
+describe('choosing columns by hand', () => {
+	const csv = 'Tag,Uhrzeit,Nitrat,Temp C,Bemerkung\n2026-09-20,9:00,15,25,Nach dem Wechsel\n';
+
+	it('lists the file’s columns, with what each was matched to', () => {
+		const r = readHistory('tests', csv, ctx);
+		expect(r).toMatchObject({ error: expect.stringContaining('no Date column') });
+		expect('fileColumns' in r && r.fileColumns).toEqual([
+			{ index: 0, header: 'Tag', key: null },
+			{ index: 1, header: 'Uhrzeit', key: null },
+			{ index: 2, header: 'Nitrat', key: null },
+			{ index: 3, header: 'Temp C', key: null },
+			{ index: 4, header: 'Bemerkung', key: null }
+		]);
+	});
+
+	it('reads the columns as picked, in the units their Waterline names say', () => {
+		const map = { 0: 'date', 1: 'time', 2: 'p:no3', 3: 'p:temp', 4: 'note' };
+		const r = readHistory('tests', csv, { ...ctx, prefs: eu }, map);
+		if ('error' in r) throw new Error(r.error);
+		expect(r.ignored).toEqual([]);
+		const v = r.rows[0].value as TestValue;
+		expect(v).toMatchObject({ date: '2026-09-20', time: '09:00', note: 'Nach dem Wechsel' });
+		expect(v.readings).toEqual({ no3: 15, temp: 25 });
+	});
+
+	it('leaves out a column picked as not read', () => {
+		const r = readHistory('tests', csv, ctx, { 0: 'date', 1: '', 2: 'p:no3', 3: '', 4: '' });
+		if ('error' in r) throw new Error(r.error);
+		expect(r.ignored).toEqual(['Uhrzeit', 'Temp C', 'Bemerkung']);
+		expect((r.rows[0].value as TestValue).readings).toEqual({ no3: 15 });
+	});
+
+	it('refuses two columns picked as the same one', () => {
+		expect(readHistory('tests', csv, ctx, { 0: 'date', 1: 'date', 2: 'p:no3' })).toMatchObject({ error: 'Two columns are set to Date. Choose it for one of them.' });
+	});
+});
+
+describe('a file with several kinds of entry', () => {
+	const csv = [
+		'Date,Time,Type,Nitrate,pH,Amount,Source,Product,Unit,Done,Noticed,Note',
+		'2026-09-20,9:00,Water test,15,7,,,,,,,',
+		'2026-09-20,10:00,Water change,,,25%,Tap,,,,,',
+		'2026-09-20,10:30,Dose,,,5,,Water conditioner,mL,,,',
+		'2026-09-21,11:00,Maintenance,,,,,,,Cleaned filter,,',
+		'2026-09-21,20:00,Observation,,,,,,,,Cloudy water,',
+		'2026-09-22,12:00,Note,,,,,,,,,Fed frozen food',
+		'2026-09-22,12:00,Party,,,,,,,,,',
+		'2026-09-22,12:00,,,,,,,,,,Something'
+	].join('\n');
+
+	it('reads each row as its Type says, with one Amount for a dose or a water change', () => {
+		const r = rows('history', csv);
+		const kinds = r.map((x) => (x.value as MixedValue | null)?.kind ?? null);
+		expect(kinds).toEqual(['tests', 'water_changes', 'dosing', 'maintenance', 'observations', 'notes', null, null]);
+		expect(r[0].value).toMatchObject({ readings: { no3: 15, ph: 7 } });
+		expect(r[1].value).toMatchObject({ percent: 25, source: 'tap' });
+		expect(r[1].detail).toBe('Water change · 25% · Tap');
+		expect(r[2].value).toMatchObject({ product: 'Water conditioner', amount: 5, unit: 'mL' });
+		expect(r[3].value).toMatchObject({ actions: ['Cleaned filter'] });
+		expect(r[5].value).toMatchObject({ note: 'Fed frozen food' });
+	});
+
+	it('says what’s wrong with a row without a known Type', () => {
+		const r = rows('history', csv);
+		expect(r[6].problems).toEqual(["Type “Party” isn't Water test, Water change, Dosing, Maintenance, Observation or Note"]);
+		expect(r[7].problems).toEqual(['No type']);
 	});
 });

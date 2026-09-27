@@ -3,7 +3,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { untrack } from 'svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
-	import { HISTORY_IMPORTS, IMPORTS } from '$lib/imports';
+	import { HISTORY_FILES, IMPORTS } from '$lib/imports';
 
 	let { data, form } = $props();
 
@@ -159,7 +159,7 @@
 				<div class="kinds">
 					<span class="k-head">History</span>
 					<div class="k-list">
-						{#each HISTORY_IMPORTS as k (k)}<button class="chip" name="kind" value={IMPORTS[k].slug}>{IMPORTS[k].label}</button>{/each}
+						{#each HISTORY_FILES as k (k)}<button class="chip" name="kind" value={IMPORTS[k].slug}>{IMPORTS[k].label}</button>{/each}
 					</div>
 					<span class="k-head">The tank's lists</span>
 					<div class="k-list">

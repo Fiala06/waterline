@@ -7,6 +7,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 ## Unreleased
 
 - **Pet names and photos:** give a fish or any animal a name. Name one of a group and it gets its own entry ("Pepper · Corydoras"), shown by name on the Livestock tab, the dashboard and in History, with its own page for a profile photo, notes, its history and every photo it's in. Tag pets from any photo under In this photo. Public pages show the species only, and hide photos with pets in them, unless you turn on Pet names and photos.
+- **Importing, easier:** when a spreadsheet's columns have other names, pick which is which on the preview instead of renaming them. And one file can hold several kinds of entry (water tests, water changes, doses and more), with a Type column saying what each row is. It's undone in one step, like any import.
 - **Your own profile photo:** add one in Settings › Profile, from your camera or photos, with a preview before it's saved. Signing in with Google doesn't replace it; Use my Google photo switches back, and Remove photo shows your initials.
 
 ## 1.2.0 · 2026-09-27

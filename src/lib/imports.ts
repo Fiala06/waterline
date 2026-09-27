@@ -28,13 +28,19 @@ export const IMPORTS: Record<ImportKind, ImportInfo> = {
 	dosing: { slug: 'dosing', title: 'Import dosing', label: 'Dosing', per: 'dose', one: 'dose', many: 'doses', cat: 'dosing' },
 	maintenance: { slug: 'maintenance', title: 'Import maintenance', label: 'Maintenance', per: 'maintenance entry', one: 'maintenance entry', many: 'maintenance entries', cat: 'maintenance' },
 	observations: { slug: 'observations', title: 'Import observations', label: 'Observations', per: 'observation', one: 'observation', many: 'observations', cat: 'observation' },
-	notes: { slug: 'notes', title: 'Import notes', label: 'Notes', per: 'note', one: 'note', many: 'notes', cat: 'note' }
+	notes: { slug: 'notes', title: 'Import notes', label: 'Notes', per: 'note', one: 'note', many: 'notes', cat: 'note' },
+	// one file with several kinds of entry, each row's kind in its Type column
+	history: { slug: 'history', title: 'Import several kinds', label: 'Several kinds', per: 'entry', one: 'entry', many: 'entries', cat: null }
 };
 
 export const HISTORY_IMPORTS = ['tests', 'water_changes', 'dosing', 'maintenance', 'observations', 'notes'] as const satisfies readonly ImportKind[];
+/** A kind of History entry a file can hold. */
 export type HistoryKind = (typeof HISTORY_IMPORTS)[number];
+/** A History file: one kind of entry, or several (`history`, read from a Type column). */
+export const HISTORY_FILES = [...HISTORY_IMPORTS, 'history'] as const satisfies readonly ImportKind[];
+export type HistoryFile = (typeof HISTORY_FILES)[number];
 
-export const isHistoryKind = (k: ImportKind): k is HistoryKind => (HISTORY_IMPORTS as readonly string[]).includes(k);
+export const isHistoryKind = (k: ImportKind): k is HistoryFile => (HISTORY_FILES as readonly string[]).includes(k);
 
 export function importKindOf(slug: string): ImportKind | null {
 	for (const [kind, info] of Object.entries(IMPORTS)) if (info.slug === slug) return kind as ImportKind;

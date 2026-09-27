@@ -4,12 +4,12 @@
 // The export's water-tests.csv reads back as it is (its Tank column picks
 // this tank's rows). No database here; import.ts compares and saves.
 import { toCsv } from '$lib/csv';
-import type { HistoryKind } from '$lib/imports';
+import { HISTORY_IMPORTS, type HistoryFile, type HistoryKind } from '$lib/imports';
 import { DOSING_UNITS, MAINTENANCE_ACTIONS, OBSERVATION_TAGS, WATER_SOURCES } from '$lib/events';
 import { displayValue, fmtValue, paramDecimals, paramUnit, quantityOf, storedValue, type ParamLike } from '$lib/params';
 import { fmtDateLong, utcToZoned, zonedToUtc } from '$lib/time';
 import { formatNumber, toDisplay, toStored, unitLabel, type UnitPrefs } from '$lib/units';
-import { headerSystem, parseAmount, parseDate, pick, quoted, readColumns, type Cells, type CheckedRow, type Column } from './import-rows';
+import { headerSystem, parseAmount, parseDate, pick, quoted, readColumns, type Cells, type CheckedRow, type Column, type ColumnMap, type FileColumn } from './import-rows';
 
 /** Years of weekly tests fit; a file this long can be split. */
 export const MAX_HISTORY_ROWS = 2000;
@@ -44,6 +44,8 @@ export type MaintenanceValue = When & { actions: string[]; note: string | null }
 export type ObservationValue = When & { tags: string[]; note: string | null };
 export type NoteValue = When & { note: string };
 export type HistoryValue = TestValue | WaterChangeValue | DosingValue | MaintenanceValue | ObservationValue | NoteValue;
+/** A row of a file with several kinds of entry: its value, and which kind it is. */
+export type MixedValue = HistoryValue & { kind: HistoryKind };
 
 // ── Columns ─────────────────────────────────────────────────────────────────
 
@@ -95,8 +97,25 @@ function paramColumns(ctx: Pick<HistoryContext, 'params' | 'prefs'>): Column[] {
 const ACTIONS_HELP = `${MAINTENANCE_ACTIONS.slice(0, -1).join(', ')} or ${MAINTENANCE_ACTIONS.at(-1)}; several with commas. Anything else goes in the note`;
 const TAGS_HELP = `${OBSERVATION_TAGS.slice(0, -1).join(', ')} or ${OBSERVATION_TAGS.at(-1)}; several with commas. Anything else goes in the note`;
 
-export function historyColumns(kind: HistoryKind, ctx: Pick<HistoryContext, 'params' | 'prefs'>): Column[] {
+/** What a row is, in a file with several kinds of entry. */
+const TYPE: Column = {
+	key: 'type',
+	header: 'Type',
+	help: 'Required. Water test, Water change, Dosing, Maintenance, Observation or Note',
+	aliases: ['entry', 'entry type', 'kind', 'category', 'log type']
+};
+
+export function historyColumns(kind: HistoryFile, ctx: Pick<HistoryContext, 'params' | 'prefs'>): Column[] {
 	const vol = unitLabel('volume', ctx.prefs);
+	if (kind === 'history') {
+		// every kind's columns once; one Amount for a dose, or a water change's %
+		const of = (k: HistoryKind) => historyColumns(k, ctx).filter((c) => ![DATE.key, TIME.key, TANK.key, NOTE.key].includes(c.key));
+		const change = of('water_changes').map((c) =>
+			c.key === 'percent' ? { ...c, header: 'Change (%)', help: 'A water change: how much, as a percentage (or in Amount)', aliases: ['percent', 'percentage', 'change'] } : c
+		);
+		const dose = of('dosing').map((c) => (c.key === 'amount' ? { ...c, help: 'A dose: how much. A water change: its % when Change is empty' } : c));
+		return [DATE, TIME, TANK, TYPE, ...of('tests'), ...change, ...dose, ...of('maintenance'), ...of('observations'), NOTE];
+	}
 	switch (kind) {
 		case 'tests':
 			return [DATE, TIME, TANK, ...paramColumns(ctx), NOTE];
@@ -410,8 +429,63 @@ function checkNote(c: Cells, ctx: HistoryContext): Checked {
 	return row(when, note.split('\n')[0].slice(0, 80), null, problems, { ...when!, note });
 }
 
-function check(kind: HistoryKind, c: Cells, ctx: HistoryContext, headers: Record<string, string>): Checked {
+/** The names people give each kind of entry: "Water test", "WC", "Dose"… */
+const TYPE_WORDS: Record<string, HistoryKind> = {
+	'water test': 'tests',
+	'water tests': 'tests',
+	test: 'tests',
+	tests: 'tests',
+	tested: 'tests',
+	reading: 'tests',
+	readings: 'tests',
+	'water change': 'water_changes',
+	'water changes': 'water_changes',
+	wc: 'water_changes',
+	change: 'water_changes',
+	dose: 'dosing',
+	doses: 'dosing',
+	dosed: 'dosing',
+	dosing: 'dosing',
+	fertilizer: 'dosing',
+	fertiliser: 'dosing',
+	maintenance: 'maintenance',
+	maint: 'maintenance',
+	cleaning: 'maintenance',
+	observation: 'observations',
+	observations: 'observations',
+	observed: 'observations',
+	noticed: 'observations',
+	note: 'notes',
+	notes: 'notes'
+};
+const KIND_LABEL: Record<HistoryKind, string> = {
+	tests: 'Water test',
+	water_changes: 'Water change',
+	dosing: 'Dosing',
+	maintenance: 'Maintenance',
+	observations: 'Observation',
+	notes: 'Note'
+};
+
+/** A row of a file with several kinds: its Type picks how the rest is read. */
+function checkMixed(c: Cells, ctx: HistoryContext, headers: Record<string, string>): Checked {
+	const kind = pick(c.type ?? '', TYPE_WORDS);
+	if (!kind) {
+		const problems: string[] = [];
+		const when = whenOf(c, ctx, problems);
+		problems.push(kind === undefined ? 'No type' : `Type ${quoted(c.type)} isn't Water test, Water change, Dosing, Maintenance, Observation or Note`);
+		return row(when, '', null, problems, {} as HistoryValue);
+	}
+	// a water change's % can be in the one Amount column
+	const cells = kind === 'water_changes' && !c.percent && !c.volume && c.amount ? { ...c, percent: c.amount } : c;
+	const r = check(kind, cells, ctx, headers);
+	return { ...r, detail: r.detail ? `${KIND_LABEL[kind]} · ${r.detail}` : KIND_LABEL[kind], value: r.value && ({ ...r.value, kind } as MixedValue) };
+}
+
+function check(kind: HistoryFile, c: Cells, ctx: HistoryContext, headers: Record<string, string>): Checked {
 	switch (kind) {
+		case 'history':
+			return checkMixed(c, ctx, headers);
 		case 'tests':
 			return checkTest(c, ctx, headers);
 		case 'water_changes':
@@ -435,9 +509,12 @@ function exampleValue(p: HistoryParam, prefs: UnitPrefs): string {
 	return v == null ? '' : formatNumber(displayValue(p, v, prefs), paramDecimals(p, prefs));
 }
 
-function examples(kind: HistoryKind, ctx: Pick<HistoryContext, 'params' | 'prefs'>): Cells[] {
+function examples(kind: HistoryFile, ctx: Pick<HistoryContext, 'params' | 'prefs'>): Cells[] {
 	const vol = ctx.prefs.unitSystem === 'imperial' ? '10' : '40';
 	switch (kind) {
+		// one of each kind
+		case 'history':
+			return HISTORY_IMPORTS.map((k) => ({ ...examples(k, ctx)[0], type: KIND_LABEL[k] }));
 		case 'tests':
 			return [
 				{ date: '2026-01-15', time: '09:00', ...Object.fromEntries(ctx.params.map((p) => [paramKey(p), exampleValue(p, ctx.prefs)])) },
@@ -480,7 +557,7 @@ function examples(kind: HistoryKind, ctx: Pick<HistoryContext, 'params' | 'prefs
 export const trackedOnly = <C extends Pick<HistoryContext, 'params'>>(ctx: C): C => ({ ...ctx, params: ctx.params.filter((p) => p.tracked) });
 
 /** A CSV to fill in: this kind's columns (a test's are the tank's tracked parameters), with example rows. */
-export function historyTemplate(kind: HistoryKind, ctx: Pick<HistoryContext, 'params' | 'prefs'>): string {
+export function historyTemplate(kind: HistoryFile, ctx: Pick<HistoryContext, 'params' | 'prefs'>): string {
 	const t = trackedOnly(ctx);
 	const cols = historyColumns(kind, t).filter((c) => c.key !== 'tank');
 	return toCsv([cols.map((c) => c.header), ...examples(kind, t).map((e) => cols.map((c) => e[c.key] ?? ''))]);
@@ -495,11 +572,19 @@ const nameKey = (s: string) => s.trim().toLowerCase();
  * were, and another tank's rows (the export's Tank column) are marked so
  * they're not imported.
  */
-export function readHistory(kind: HistoryKind, text: string, ctx: HistoryContext): { rows: CheckedRow<HistoryValue>[]; ignored: string[] } | { error: string } {
-	const t = readColumns(text, historyColumns(kind, ctx), { key: 'date', label: 'Date' }, MAX_HISTORY_ROWS);
-	if ('error' in t) return { error: t.error! };
+export function readHistory(
+	kind: HistoryFile,
+	text: string,
+	ctx: HistoryContext,
+	map?: ColumnMap
+): { rows: CheckedRow<HistoryValue>[]; ignored: string[]; fileColumns: FileColumn[] } | { error: string; fileColumns?: FileColumn[] } {
+	const t = readColumns(text, historyColumns(kind, ctx), { key: 'date', label: 'Date' }, MAX_HISTORY_ROWS, map);
+	if ('error' in t) return { error: t.error!, fileColumns: t.fileColumns };
 	if (kind === 'tests' && !Object.keys(t.headers).some((k) => k.startsWith('p:'))) {
-		return { error: "None of the columns is one of this tank's parameters. Name them as Waterline does, like Nitrate (ppm)." };
+		return {
+			error: "None of the columns is one of this tank's parameters. Choose which they are below, or name them as Waterline does, like Nitrate (ppm).",
+			fileColumns: t.fileColumns
+		};
 	}
 	const same = new Set(examples(kind, trackedOnly(ctx)).map((e) => JSON.stringify(check(kind, e, ctx, t.headers).value)));
 	const rows = t.lines.map(({ line, cells }) => {
@@ -508,5 +593,5 @@ export function readHistory(kind: HistoryKind, text: string, ctx: HistoryContext
 		const r = check(kind, c, ctx, t.headers);
 		return { line, ...r, example: !other && !!r.value && same.has(JSON.stringify(r.value)), other };
 	});
-	return { rows, ignored: t.ignored };
+	return { rows, ignored: t.ignored, fileColumns: t.fileColumns };
 }

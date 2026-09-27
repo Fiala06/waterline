@@ -4,15 +4,24 @@
 	// Past imports of this kind can be undone at the bottom.
 	import { enhance } from '$app/forms';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
+	import ImportColumns from '$lib/components/ImportColumns.svelte';
 	import ImportPreview from '$lib/components/ImportPreview.svelte';
-	import { HISTORY_IMPORTS, IMPORTS, isHistoryKind } from '$lib/imports';
+	import { HISTORY_FILES, IMPORTS, isHistoryKind } from '$lib/imports';
 	let { data, form } = $props();
 
 	const info = $derived(IMPORTS[data.kind]);
 	const history = $derived(isHistoryKind(data.kind));
 	const title = $derived(info.title);
-	const back = $derived(history ? `/history?tank=${data.tank.id}&cat=${info.cat}` : `/tanks/${data.tank.id}/${data.kind}`);
+	const back = $derived(history ? `/history?tank=${data.tank.id}${info.cat ? `&cat=${info.cat}` : ''}` : `/tanks/${data.tank.id}/${data.kind}`);
 	const preview = $derived(form && 'preview' in form ? form.preview : null);
+	// a file whose columns weren't all found: pick them by hand
+	type Mapping = {
+		file: string;
+		csv: string;
+		fileColumns: { index: number; header: string; key: string | null }[];
+		columns: { key: string; header: string }[];
+	};
+	const mapping = $derived(form && 'mapping' in form && form.mapping ? (form.mapping as Mapping) : null);
 	let busy = $state(false);
 </script>
 
@@ -28,11 +37,18 @@
 
 	<div class="body">
 		{#if preview}
-			{#key preview}<ImportPreview kind={data.kind} file={preview.file} rows={preview.rows} ignored={preview.ignored} csv={preview.csv} />{/key}
+			{#key preview}
+				<ImportColumns file={preview.file} csv={preview.csv} fileColumns={preview.fileColumns} columns={preview.columns} open={preview.ignored.length > 0} />
+				<ImportPreview kind={data.kind} file={preview.file} rows={preview.rows} ignored={preview.ignored} csv={preview.csv} fileColumns={preview.fileColumns} />
+			{/key}
+		{:else if mapping}
+			<p class="banner banner-bad map-error" role="alert">✕ {form?.error}</p>
+			{#key mapping}<ImportColumns file={mapping.file} csv={mapping.csv} fileColumns={mapping.fileColumns} columns={mapping.columns} open />{/key}
+			<div class="foot"><a class="btn again" href="?">Choose another file</a></div>
 		{:else}
 			{#if history}
 				<nav class="kinds hscroll" aria-label="What to import">
-					{#each HISTORY_IMPORTS as k (k)}
+					{#each HISTORY_FILES as k (k)}
 						<a class="chip" class:selected={k === data.kind} aria-current={k === data.kind ? 'page' : undefined} href="/tanks/{data.tank.id}/import/{IMPORTS[k].slug}"
 							>{IMPORTS[k].label}</a
 						>
@@ -52,6 +68,9 @@
 				}}
 			>
 				{#if form && 'error' in form}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
+				{#if data.kind === 'history'}
+					<p class="lead">One file with water tests, water changes, doses and more: its Type column says what each row is.</p>
+				{/if}
 				<ol class="steps">
 					<li>
 						<div class="st">
@@ -380,6 +399,14 @@
 	.drop-s {
 		font-size: 13px;
 		color: var(--text-faint);
+	}
+	.map-error {
+		margin-bottom: 12px;
+	}
+	.lead {
+		margin: 0;
+		font-size: 15px;
+		color: var(--text-2);
 	}
 	.foot {
 		margin-top: auto;

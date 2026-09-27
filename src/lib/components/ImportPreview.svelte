@@ -25,7 +25,8 @@
 		file,
 		rows,
 		ignored,
-		csv = null
+		csv = null,
+		fileColumns = []
 	}: {
 		kind: ImportKind;
 		file: string;
@@ -33,6 +34,8 @@
 		ignored: string[];
 		/** History files: the file itself, sent back with the ticked line numbers (up to 2,000 rows) */
 		csv?: string | null;
+		/** the file's columns as read (picked by hand or by name), sent back with a History file */
+		fileColumns?: { index: number; key: string | null }[];
 	} = $props();
 
 	const history = $derived(isHistoryKind(kind));
@@ -69,7 +72,10 @@
 	}}
 >
 	<input type="hidden" name="file" value={file} />
-	{#if history}<input type="hidden" name="csv" value={csv} />{/if}
+	{#if history}
+		<input type="hidden" name="csv" value={csv} />
+		{#each fileColumns as c (c.index)}<input type="hidden" name="map.{c.index}" value={c.key ?? ''} />{/each}
+	{/if}
 	<div class="summary">
 		<p class="file">{file} · {plural(rows.length, 'row')}</p>
 		<div class="tags">

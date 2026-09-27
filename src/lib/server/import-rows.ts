@@ -446,28 +446,67 @@ export const headerKey = (s: string) =>
 		.replace(/\(.*?\)/g, '')
 		.replace(/[^a-z0-9]+/g, '');
 
+/** A column of the file as the preview lists it: its name, and what it's read as (null: not read). */
+export interface FileColumn {
+	index: number;
+	header: string;
+	key: string | null;
+}
+
+/**
+ * What the keeper picked for each of the file's columns, by position: a
+ * column's key, or '' for "not read". Columns left out are matched by name.
+ */
+export type ColumnMap = Record<number, string>;
+
+/** The picks from the preview's form: map.0=date, map.3=p:…, map.5= (not read). */
+export function columnMapOf(form: FormData): ColumnMap | undefined {
+	const map: ColumnMap = {};
+	let any = false;
+	for (const [k, v] of form) {
+		const m = /^map\.(\d{1,3})$/.exec(k);
+		if (m && typeof v === 'string') {
+			map[Number(m[1])] = v;
+			any = true;
+		}
+	}
+	return any ? map : undefined;
+}
+
 /**
  * A file's header row matched to `columns` by name or synonym, in any order,
- * and the rows under it (numbered as the spreadsheet numbers them, blank ones
- * skipped). `need` is the one column a file can't do without.
+ * or as the keeper picked (`map`), and the rows under it (numbered as the
+ * spreadsheet numbers them, blank ones skipped). `need` is the one column a
+ * file can't do without. `fileColumns` lists the file's columns for the
+ * preview, errors included, so any of them can be picked by hand.
  */
-export function readColumns(text: string, columns: Column[], need: { key: string; label: string }, maxRows = MAX_ROWS) {
+export function readColumns(text: string, columns: Column[], need: { key: string; label: string }, maxRows = MAX_ROWS, map?: ColumnMap) {
 	const all = parseCsv(text);
 	const h = all.findIndex((r) => r.some((c) => c.trim()));
 	if (h < 0) return { error: 'This file is empty.' };
 	const found = new Map<number, Column>();
 	const headers: Record<string, string> = {};
 	const ignored: string[] = [];
+	const fileColumns: FileColumn[] = [];
+	const byKey = new Map(columns.map((c) => [c.key, c]));
+	let twice: string | null = null;
 	all[h].forEach((raw, i) => {
 		const k = headerKey(raw);
-		const c = columns.find((c) => !(c.key in headers) && [c.header, ...(c.aliases ?? [])].some((a) => headerKey(a) === k));
-		if (c) {
+		const picked = map?.[i];
+		const c =
+			picked !== undefined
+				? byKey.get(picked)
+				: columns.find((c) => !(c.key in headers) && [c.header, ...(c.aliases ?? [])].some((a) => headerKey(a) === k));
+		if (c && c.key in headers) twice ??= c.header;
+		if (c && !(c.key in headers)) {
 			found.set(i, c);
-			headers[c.key] = raw;
+			headers[c.key] = picked !== undefined && headerKey(raw) !== headerKey(c.header) ? c.header : raw;
 		} else if (raw.trim()) ignored.push(raw.trim());
+		if (raw.trim() || c) fileColumns.push({ index: i, header: raw.trim() || `Column ${i + 1}`, key: c && found.get(i) === c ? c.key : null });
 	});
+	if (twice) return { error: `Two columns are set to ${twice}. Choose it for one of them.`, fileColumns };
 	if (!(need.key in headers)) {
-		return { error: `There's no ${need.label} column. Start from the template, or give your columns the names in its first row.` };
+		return { error: `There's no ${need.label} column. Choose which of your columns it is below, or start from the template.`, fileColumns };
 	}
 	const lines = all.map((cells, i) => ({ line: i + 1, cells })).filter((r, i) => i > h && r.cells.some((c) => c.trim()));
 	if (!lines.length) return { error: 'There are no rows under the column names.' };
@@ -477,7 +516,7 @@ export function readColumns(text: string, columns: Column[], need: { key: string
 		for (const [i, col] of found) c[col.key] = (cells[i] ?? '').trim();
 		return c;
 	};
-	return { lines, headers, ignored, cellsOf };
+	return { lines, headers, ignored, cellsOf, fileColumns };
 }
 
 function check(list: ImportList, c: Cells, ctx: ImportContext, headers: Record<string, string>) {
@@ -489,16 +528,21 @@ function check(list: ImportList, c: Cells, ctx: ImportContext, headers: Record<s
  * synonym) in any order; others are listed as ignored. The template's own
  * example rows, left as they were, are marked so they're not imported.
  */
-export function readImport(list: ImportList, text: string, ctx: ImportContext): { rows: CheckedRow[]; ignored: string[] } | { error: string } {
+export function readImport(
+	list: ImportList,
+	text: string,
+	ctx: ImportContext,
+	map?: ColumnMap
+): { rows: CheckedRow[]; ignored: string[]; fileColumns: FileColumn[] } | { error: string; fileColumns?: FileColumn[] } {
 	const need = list === 'equipment' ? { key: 'type', label: 'Type' } : { key: 'name', label: 'Name' };
-	const t = readColumns(text, importColumns(list, ctx.prefs), need);
-	if ('error' in t) return { error: t.error! };
+	const t = readColumns(text, importColumns(list, ctx.prefs), need, MAX_ROWS, map);
+	if ('error' in t) return { error: t.error!, fileColumns: t.fileColumns };
 	const same = new Set(examples(list, ctx.prefs).map((e) => JSON.stringify(check(list, e, ctx, t.headers).value)));
 	const rows = t.lines.map(({ line, cells }) => {
 		const r = check(list, t.cellsOf(cells), ctx, t.headers);
 		return { line, ...r, example: !!r.value && same.has(JSON.stringify(r.value)), other: null };
 	});
-	return { rows, ignored: t.ignored };
+	return { rows, ignored: t.ignored, fileColumns: t.fileColumns };
 }
 
 // ── What the import form posts back ─────────────────────────────────────────

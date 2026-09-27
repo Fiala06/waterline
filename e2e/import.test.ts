@@ -243,3 +243,74 @@ test('imports are found from History, Quick add, Import & export and an empty da
 	await page.getByRole('button', { name: 'Plants' }).click();
 	await expect(page).toHaveURL(`/tanks/${tankId}/import/plants`);
 });
+
+test('columns with other names can be picked by hand', async ({ page }, info) => {
+	await newKeeperWithTank(page, `import-columns-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, `/tanks/${tankId}/import/tests`);
+	await page.locator('input[type=file][name=file]').setInputFiles(csv('tagebuch.csv', 'Tag,Nitrat,Bemerkung\n2026-09-20,15,Nach dem Wechsel\n'));
+
+	// no Date column by name: the file's columns, to pick from
+	await expect(page.getByRole('alert')).toContainText("There's no Date column. Choose which of your columns it is below");
+	await page.getByLabel('Tag').selectOption({ label: 'Date' });
+	await expect(page.getByRole('alert')).toContainText("None of the columns is one of this tank's parameters");
+	await page.getByLabel('Nitrat').selectOption({ label: 'Nitrate (ppm)' });
+	await expect(page.getByText('tagebuch.csv · 1 row')).toBeVisible();
+	await expect(page.getByText('Nitrate 15 ppm')).toBeVisible();
+	await expect(page.getByText('Columns not read: Bemerkung')).toBeVisible();
+	await page.getByLabel('Bemerkung').selectOption({ label: 'Note' });
+	await expect(page.getByText('Nach dem Wechsel')).toBeVisible();
+	await expect(page.getByText('All 3 read')).toBeVisible();
+
+	// the picks carry through to the import
+	await page.getByRole('button', { name: 'Add 1 water test' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Imported 1 water test');
+	await expect(page.getByText('Nach dem Wechsel').first()).toBeVisible();
+});
+
+test('one file with several kinds of entry, undone in one step', async ({ page }, info) => {
+	await newKeeperWithTank(page, `import-mixed-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, `/tanks/${tankId}/import/tests`);
+	await page.getByRole('link', { name: 'Several kinds' }).click();
+	await expect(page).toHaveURL(`/tanks/${tankId}/import/history`);
+	const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('link', { name: 'Download template' }).click()]);
+	expect(readFileSync(await download.path(), 'utf8').split('\r\n')[0]).toMatch(/^﻿Date,Time,Type,pH,/);
+
+	await page.locator('input[type=file][name=file]').setInputFiles(
+		csv(
+			'log.csv',
+			'Date,Type,Nitrate (ppm),Amount,Product,Note\n2026-09-20,Water test,15,,,\n2026-09-20,Water change,,30%,,\n2026-09-21,Dose,,5,Water conditioner,\n2026-09-22,Note,,,,Fed frozen food\n2026-09-22,Party,,,,\n'
+		)
+	);
+	await expect(page.getByText('✓ 4 to add')).toBeVisible();
+	await expect(page.getByText('Water change · 30%')).toBeVisible();
+	await expect(page.getByText('Dosing · Water conditioner · 5 mL')).toBeVisible();
+	await expect(page.getByText("Type “Party” isn't Water test, Water change, Dosing, Maintenance, Observation or Note")).toBeVisible();
+	await page.getByRole('button', { name: 'Add 4 entries' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Imported 4 entries');
+	await expect(page).toHaveURL(`/history?tank=${tankId}&range=all`);
+	await expect(page.getByText('Fed frozen food').first()).toBeVisible();
+
+	await page.getByRole('status').getByRole('button', { name: 'Undo' }).click();
+	await expect(page.getByRole('status')).toContainText('Import undone · 4 entries removed');
+	await expect(page.getByText('Fed frozen food')).toHaveCount(0);
+});
+
+test('columns can be picked without scripts', async ({ page, browser }, info) => {
+	await newKeeperWithTank(page, `import-columns-plain-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	const ctx = await browser.newContext({ storageState: await page.context().storageState(), javaScriptEnabled: false });
+	const plain = await ctx.newPage();
+	await plain.goto(`/tanks/${tankId}/import/notes`);
+	await plain.locator('input[type=file][name=file]').setInputFiles(csv('notes.csv', 'Wann,Notiz\n2026-09-20,Moved the tank\n'));
+	await plain.getByRole('button', { name: 'Check the file' }).click();
+	await expect(plain.getByRole('alert')).toContainText("There's no Date column");
+	await plain.getByLabel('Wann').selectOption({ label: 'Date' });
+	await plain.getByLabel('Notiz').selectOption({ label: 'Note' });
+	await plain.getByRole('button', { name: 'Check again' }).click();
+	await expect(plain.getByText('notes.csv · 1 row')).toBeVisible();
+	await plain.getByRole('button', { name: 'Add 1 note' }).click();
+	await expect(plain.getByText('Moved the tank').first()).toBeVisible();
+	await ctx.close();
+});

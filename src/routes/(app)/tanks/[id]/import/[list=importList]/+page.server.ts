@@ -5,9 +5,11 @@ import { setFlash } from '$lib/server/flash';
 import { str } from '$lib/server/forms';
 import { applyHistory, applyImport, historyContext, listImports, previewHistory, previewImport, undoImport, undoneText } from '$lib/server/import';
 import { historyColumns, readHistory, trackedOnly } from '$lib/server/import-history';
-import { importColumns, validValue, type ImportValue, type LivestockValue } from '$lib/server/import-rows';
+import { columnMapOf, importColumns, validValue, type FileColumn, type ImportValue, type LivestockValue } from '$lib/server/import-rows';
 import { safeReturn } from '$lib/server/redirect';
 import { getTank } from '$lib/server/tanks';
+import type { Tank, User } from '$lib/server/db/schema';
+import type { ImportKind } from '$lib/types';
 import type { Actions, PageServerLoad } from './$types';
 import { logger } from '$lib/server/log';
 
@@ -47,6 +49,12 @@ function decode(buf: ArrayBuffer) {
 /** One kind of line break, so the file reads the same when the page sends it back. */
 const lf = (text: string) => text.replace(/\r\n?/g, '\n');
 
+/** What a file's columns can be picked as: everything this kind of import reads. */
+function columnChoices(kind: ImportKind, user: User, tank: Tank) {
+	const cols = isHistoryKind(kind) ? historyColumns(kind, historyContext(user, tank)) : importColumns(kind, user);
+	return cols.map((c) => ({ key: c.key, header: c.header }));
+}
+
 export const actions: Actions = {
 	/** Read the file and show every row before anything is added. */
 	check: async ({ request, locals, params }) => {
@@ -54,28 +62,35 @@ export const actions: Actions = {
 		const tank = getTank(user.id, params.id);
 		const kind = kindOf(params.list);
 		const form = await request.formData();
+		// a new file, or the same one sent back with its columns picked by hand
+		const again = form.get('csv');
 		const file = form.get('file');
-		if (!(file instanceof File) || !file.size) return fail(400, { error: 'Choose a CSV file.' });
-		if (file.size > MAX_BYTES) {
-			logger.warn('import', `${file.name} is over 1 MB`, { userId: user.id, kind, size: file.size });
-			return fail(400, { error: 'That file is over 1 MB. Split it into smaller files.' });
-		}
-		const text = lf(decode(await file.arrayBuffer()));
-		if (isHistoryKind(kind)) {
-			const preview = previewHistory(kind, text, user, tank);
-			if ('error' in preview) {
-				logger.warn('import', `Couldn't read ${file.name}: ${preview.error}`, { userId: user.id, kind });
-				return fail(400, { error: preview.error });
+		let text: string;
+		let name: string;
+		if (typeof again === 'string') {
+			if (again.length > MAX_BYTES) return fail(400, { error: 'That file is over 1 MB. Split it into smaller files.' });
+			text = lf(again);
+			name = str(form, 'fileName').slice(0, 200) || 'file.csv';
+		} else {
+			if (!(file instanceof File) || !file.size) return fail(400, { error: 'Choose a CSV file.' });
+			if (file.size > MAX_BYTES) {
+				logger.warn('import', `${file.name} is over 1 MB`, { userId: user.id, kind, size: file.size });
+				return fail(400, { error: 'That file is over 1 MB. Split it into smaller files.' });
 			}
-			// Up to 2,000 rows: the page sends back the file and the ticked line numbers, not each row.
-			return { preview: { file: file.name, ...preview, csv: text } };
+			text = lf(decode(await file.arrayBuffer()));
+			name = file.name;
 		}
-		const preview = previewImport(kind, text, user, tank);
+		const map = columnMapOf(form);
+		const preview = isHistoryKind(kind) ? previewHistory(kind, text, user, tank, map) : previewImport(kind, text, user, tank, map);
+		const columns = columnChoices(kind, user, tank);
 		if ('error' in preview) {
-			logger.warn('import', `Couldn't read ${file.name}: ${preview.error}`, { userId: user.id, kind });
-			return fail(400, { error: preview.error });
+			logger.warn('import', `Couldn't read ${name}: ${preview.error}`, { userId: user.id, kind });
+			// a column it couldn't find can be picked by hand
+			const fileColumns: FileColumn[] | undefined = preview.fileColumns;
+			return fail(400, { error: preview.error, mapping: fileColumns ? { file: name, csv: text, fileColumns, columns } : null });
 		}
-		return { preview: { file: file.name, ...preview, csv: null } };
+		// History (up to 2,000 rows) sends back the file and the ticked line numbers, not each row; lists send their rows
+		return { preview: { file: name, ...preview, csv: text, columns } };
 	},
 
 	import: async ({ request, locals, params, cookies }) => {
@@ -92,7 +107,7 @@ export const actions: Actions = {
 			if (!lines.size) return fail(400, { error: 'Nothing was ticked. Choose the file again and tick the rows to add.' });
 			if (typeof csv !== 'string' || csv.length > MAX_BYTES) return fail(400, { error: 'Some rows changed on the way. Choose the file again.' });
 			// the same file, read again: a row is only added if it's still fine
-			const read = readHistory(kind, lf(csv), historyContext(user, tank));
+			const read = readHistory(kind, lf(csv), historyContext(user, tank), columnMapOf(form));
 			const picked = 'error' in read ? [] : read.rows.filter((r) => lines.has(String(r.line)));
 			if (picked.length !== lines.size || picked.some((r) => !r.value || r.example || r.other)) {
 				logger.warn('import', `Rows of ${fileName ?? 'a file'} changed between the preview and the import`, { userId: user.id, kind });
@@ -101,7 +116,8 @@ export const actions: Actions = {
 			const { importId, summary } = applyHistory(kind, picked.map((r) => r.value!), user, tank, fileName);
 			logger.info('import', `Imported ${summary}${fileName ? ` from ${fileName}` : ''}`, { userId: user.id, kind });
 			setFlash(cookies, `✓ Imported ${summary}`, { undo: { ...undo, value: importId } });
-			redirect(303, `/history?tank=${tank.id}&cat=${IMPORTS[kind].cat}&range=all`);
+			const cat = IMPORTS[kind].cat;
+			redirect(303, `/history?tank=${tank.id}${cat ? `&cat=${cat}` : ''}&range=all`);
 		}
 
 		const today = todayInZone(user.timeZone);
