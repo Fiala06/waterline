@@ -109,11 +109,13 @@ test('audit every screen', async ({ page, browser, request }) => {
 
 	async function audit(p: Page, route: string, vp: (typeof VIEWPORTS)[number], theme: string) {
 		const errors: string[] = [];
-		const onConsole = (m: import('@playwright/test').ConsoleMessage) => m.type() === 'error' && errors.push(m.text());
+		const expected404 = route.includes('not-a-page') || route.includes('no-such-tank');
+		// a not-found page's own 404 is also logged by the browser; any other failed request is caught below
+		const onConsole = (m: import('@playwright/test').ConsoleMessage) =>
+			m.type() === 'error' && !(expected404 && m.text().startsWith('Failed to load resource') && m.text().includes('404')) && errors.push(m.text());
 		const onPageError = (e: Error) => errors.push(`pageerror: ${e.message}`);
 		const failed: string[] = [];
 		const onResponse = (r: import('@playwright/test').Response) => {
-			const expected404 = route.includes('not-a-page') || route.includes('no-such-tank');
 			if (r.status() >= 400 && !(expected404 && r.status() === 404)) failed.push(`${r.status()} ${r.url()}`);
 		};
 		p.on('console', onConsole);
@@ -162,7 +164,15 @@ test('audit every screen', async ({ page, browser, request }) => {
 					const style = getComputedStyle(el);
 					if (!r.width || style.visibility === 'hidden' || style.display === 'none' || (el as HTMLInputElement).type === 'checkbox' || (el as HTMLInputElement).type === 'radio' || (el as HTMLInputElement).type === 'file') continue;
 					if (el.closest('[popover]:not(:popover-open), dialog:not([open]), [hidden]')) continue;
-					if (r.height < 36) out.push(`${el.tagName.toLowerCase()}${el.className ? '.' + String(el.className).split(' ')[0] : ''} "${(el.textContent || (el as HTMLInputElement).placeholder || el.getAttribute('aria-label') || '').trim().slice(0, 24)}" ${Math.round(r.width)}×${Math.round(r.height)}`);
+					// a small control can have a bigger invisible tap area: an absolutely placed ::before or ::after around it
+					let tall = r.height;
+					for (const pseudo of ['::before', '::after']) {
+						const ps = getComputedStyle(el, pseudo);
+						if (ps.content === 'none' || ps.position !== 'absolute') continue;
+						const top = parseFloat(ps.top), bottom = parseFloat(ps.bottom);
+						if (Number.isFinite(top) && Number.isFinite(bottom)) tall = Math.max(tall, r.height - top - bottom);
+					}
+					if (tall < 36) out.push(`${el.tagName.toLowerCase()}${el.className ? '.' + String(el.className).split(' ')[0] : ''} "${(el.textContent || (el as HTMLInputElement).placeholder || el.getAttribute('aria-label') || '').trim().slice(0, 24)}" ${Math.round(r.width)}×${Math.round(r.height)}`);
 				}
 				return out.slice(0, 8);
 			});

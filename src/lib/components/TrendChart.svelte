@@ -146,6 +146,11 @@
 	const fmt = (t: number) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone });
 	const isToday = (t: number) => Math.abs(t - Date.now()) < 43_200_000;
 	const chosen = $derived(markers.find((m) => m.href === selected) ?? null);
+	/** Each marker's tap width: 44px, narrower where the next one is closer, so no tap area covers another's dot. */
+	const tapWidth = $derived.by(() => {
+		const xs = markers.map((m) => x(m.t));
+		return xs.map((at, i) => Math.max(14, Math.min(44, ...xs.map((o, j) => (j === i ? 44 : Math.abs(o - at))))));
+	});
 
 	// The readout: the reading nearest the pointer, or picked with the keys
 	let active = $state<number | null>(null);
@@ -206,85 +211,84 @@
 	});
 </script>
 
-<div
-	class="chart"
-	class:fit
-	bind:this={el}
-	bind:clientWidth={width}
-	bind:clientHeight={measured}
-	role="slider"
-	tabindex={points.length ? 0 : -1}
-	aria-label={label}
-	aria-valuemin={points.length ? 1 : 0}
-	aria-valuemax={points.length}
-	aria-valuenow={points.length ? shown + 1 : 0}
-	aria-valuetext={spoken(points[shown])}
-	{onpointermove}
-	{onpointerdown}
-	{onpointerleave}
-	{onkeydown}
->
-	<svg {width} height={h} viewBox="0 0 {width} {h}" aria-hidden="true">
-		{#if title}
-			<text class="axis-title" transform="translate(11 {TOP + plotH / 2}) rotate(-90)" text-anchor="middle">{title}</text>
-		{/if}
-		{#each ticks as t (t)}
-			<line x1={LEFT} x2={width} y1={y(t)} y2={y(t)} class="grid"></line>
-			<text x={LEFT - 6} y={y(t) + 4} class="axis" text-anchor="end">{tickText(t)}</text>
-		{/each}
-		{#if hasBand}
-			<rect x={LEFT} y={bandTop} width={Math.max(0, width - LEFT)} height={Math.max(0, bandBottom - bandTop)} fill="var(--band)"></rect>
-			{#if band.max != null}<line x1={LEFT} x2={width} y1={bandTop} y2={bandTop} class="band-edge"></line>{/if}
-			{#if band.min != null}<line x1={LEFT} x2={width} y1={bandBottom} y2={bandBottom} class="band-edge"></line>{/if}
-		{/if}
-		{#each markers as m (m.href)}
-			<line
-				x1={x(m.t)}
-				x2={x(m.t)}
-				y1={TOP - 10}
-				y2={h - BOTTOM}
-				class="marker-line"
-				class:dosing={m.kind === 'dosing'}
-				class:chosen={m.href === selected}
-			></line>
-		{/each}
-		{#if hot}<line x1={x(hot.t)} x2={x(hot.t)} y1={TOP} y2={h - BOTTOM} class="guide"></line>{/if}
-		<polyline points={line} fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"></polyline>
-		{#if full}
-			{#each points as p, i (i)}<circle cx={x(p.t)} cy={y(p.v)} r="2.5" fill="var(--accent)"></circle>{/each}
-		{/if}
-		{#if last}
-			<circle
-				cx={x(last.t)}
-				cy={y(last.v)}
-				r="4.5"
-				fill={lastLevel === 'bad' ? 'var(--bad)' : lastLevel === 'warn' ? 'var(--warn)' : 'var(--accent)'}
-			></circle>
-		{/if}
-		{#if hot}<circle cx={x(hot.t)} cy={y(hot.v)} r="5.5" class="hot"></circle>{/if}
-		<line x1={LEFT} x2={width} y1={h - BOTTOM} y2={h - BOTTOM} stroke="var(--border)"></line>
-		{#each xTicks as t, i (i)}
-			<text
-				x={i === 0 ? LEFT : i === xTicks.length - 1 ? width : x(t)}
-				y={h - 5}
-				class="axis"
-				text-anchor={i === 0 ? 'start' : i === xTicks.length - 1 ? 'end' : 'middle'}
-				>{i === xTicks.length - 1 && isToday(t) ? 'Today' : fmt(t)}</text
-			>
-		{/each}
-	</svg>
-	{#if hot}
-		{@const s = status(hot)}
-		<!-- above the reading, or under it near the top; inside the chart's width -->
-		<div class="readout" style:left="{Math.min(Math.max(x(hot.t) - 80, 0), Math.max(0, width - 160))}px" style:top="{y(hot.v) > 70 ? y(hot.v) - 64 : y(hot.v) + 14}px" aria-hidden="true">
-			<div class="r-when">{when(hot.t)}</div>
-			<div class="r-value">
-				<span class="num">{value(hot)}</span>
-				{#if s}<span class="status-{s.level}">{s.text}</span>{/if}
+<!-- the slider is the plot; the markers are beside it, not inside, so each is its own control -->
+<div class="chart" class:fit bind:this={el} bind:clientWidth={width} bind:clientHeight={measured}>
+	<div
+		class="plot"
+		role="slider"
+		tabindex={points.length ? 0 : -1}
+		aria-label={label}
+		aria-valuemin={points.length ? 1 : 0}
+		aria-valuemax={points.length}
+		aria-valuenow={points.length ? shown + 1 : 0}
+		aria-valuetext={spoken(points[shown])}
+		{onpointermove}
+		{onpointerdown}
+		{onpointerleave}
+		{onkeydown}
+	>
+		<svg {width} height={h} viewBox="0 0 {width} {h}" aria-hidden="true">
+			{#if title}
+				<text class="axis-title" transform="translate(11 {TOP + plotH / 2}) rotate(-90)" text-anchor="middle">{title}</text>
+			{/if}
+			{#each ticks as t (t)}
+				<line x1={LEFT} x2={width} y1={y(t)} y2={y(t)} class="grid"></line>
+				<text x={LEFT - 6} y={y(t) + 4} class="axis" text-anchor="end">{tickText(t)}</text>
+			{/each}
+			{#if hasBand}
+				<rect x={LEFT} y={bandTop} width={Math.max(0, width - LEFT)} height={Math.max(0, bandBottom - bandTop)} fill="var(--band)"></rect>
+				{#if band.max != null}<line x1={LEFT} x2={width} y1={bandTop} y2={bandTop} class="band-edge"></line>{/if}
+				{#if band.min != null}<line x1={LEFT} x2={width} y1={bandBottom} y2={bandBottom} class="band-edge"></line>{/if}
+			{/if}
+			{#each markers as m (m.href)}
+				<line
+					x1={x(m.t)}
+					x2={x(m.t)}
+					y1={TOP - 10}
+					y2={h - BOTTOM}
+					class="marker-line"
+					class:dosing={m.kind === 'dosing'}
+					class:chosen={m.href === selected}
+				></line>
+			{/each}
+			{#if hot}<line x1={x(hot.t)} x2={x(hot.t)} y1={TOP} y2={h - BOTTOM} class="guide"></line>{/if}
+			<polyline points={line} fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"></polyline>
+			{#if full}
+				{#each points as p, i (i)}<circle cx={x(p.t)} cy={y(p.v)} r="2.5" fill="var(--accent)"></circle>{/each}
+			{/if}
+			{#if last}
+				<circle
+					cx={x(last.t)}
+					cy={y(last.v)}
+					r="4.5"
+					fill={lastLevel === 'bad' ? 'var(--bad)' : lastLevel === 'warn' ? 'var(--warn)' : 'var(--accent)'}
+				></circle>
+			{/if}
+			{#if hot}<circle cx={x(hot.t)} cy={y(hot.v)} r="5.5" class="hot"></circle>{/if}
+			<line x1={LEFT} x2={width} y1={h - BOTTOM} y2={h - BOTTOM} stroke="var(--border)"></line>
+			{#each xTicks as t, i (i)}
+				<text
+					x={i === 0 ? LEFT : i === xTicks.length - 1 ? width : x(t)}
+					y={h - 5}
+					class="axis"
+					text-anchor={i === 0 ? 'start' : i === xTicks.length - 1 ? 'end' : 'middle'}
+					>{i === xTicks.length - 1 && isToday(t) ? 'Today' : fmt(t)}</text
+				>
+			{/each}
+		</svg>
+		{#if hot}
+			{@const s = status(hot)}
+			<!-- above the reading, or under it near the top; inside the chart's width -->
+			<div class="readout" style:left="{Math.min(Math.max(x(hot.t) - 80, 0), Math.max(0, width - 160))}px" style:top="{y(hot.v) > 70 ? y(hot.v) - 64 : y(hot.v) + 14}px" aria-hidden="true">
+				<div class="r-when">{when(hot.t)}</div>
+				<div class="r-value">
+					<span class="num">{value(hot)}</span>
+					{#if s}<span class="status-{s.level}">{s.text}</span>{/if}
+				</div>
 			</div>
-		</div>
-	{/if}
-	{#each markers as m (m.href)}
+		{/if}
+	</div>
+	{#each markers as m, i (m.href)}
 		{#if onselect}
 			<button
 				type="button"
@@ -293,12 +297,13 @@
 				class:chosen={m.href === selected}
 				style:left="{x(m.t)}px"
 				style:top="{TOP - 10}px"
+				style:--tap="{tapWidth[i]}px"
 				aria-label="{m.label}, {fmt(m.t)}"
 				aria-pressed={m.href === selected}
 				onclick={() => onselect(m)}
 			></button>
 		{:else}
-			<a class="marker" class:dosing={m.kind === 'dosing'} href={m.href} style:left="{x(m.t)}px" style:top="{TOP - 10}px" title={m.label} aria-label="{m.label}, {fmt(m.t)}"></a>
+			<a class="marker" class:dosing={m.kind === 'dosing'} href={m.href} style:left="{x(m.t)}px" style:top="{TOP - 10}px" style:--tap="{tapWidth[i]}px" title={m.label} aria-label="{m.label}, {fmt(m.t)}"></a>
 		{/if}
 	{/each}
 	{#if chosen && popover}
@@ -319,7 +324,7 @@
 	.chart.fit {
 		height: 100%;
 	}
-	.chart:focus-visible {
+	.plot:focus-visible {
 		outline: 2px solid var(--accent);
 		outline-offset: 4px;
 		border-radius: 8px;
@@ -400,30 +405,42 @@
 	.r-value span:last-child:not(.num) {
 		font-size: 13px;
 	}
+	/* a 44px target, with the 14px dot drawn in its middle */
 	.marker {
 		position: absolute;
+		z-index: 1;
+		width: var(--tap, 44px);
+		height: 44px;
+		margin: -22px 0 0 calc(var(--tap, 44px) / -2);
+		padding: 0;
+		border: none;
+		border-radius: 50%;
+		background: none;
+	}
+	.marker::before {
+		content: '';
+		position: absolute;
+		top: 15px;
+		left: calc(50% - 7px);
 		width: 14px;
 		height: 14px;
-		margin: -7px 0 0 -7px;
-		padding: 0;
+		box-sizing: border-box;
 		border-radius: 50%;
 		background: var(--border);
 		border: 1px solid var(--text-muted);
 	}
-	.marker.dosing {
+	.marker.dosing::before {
 		border-radius: 3px;
 		transform: rotate(45deg) scale(0.85);
 	}
-	.marker::before {
-		/* bigger tap target */
-		content: '';
-		position: absolute;
-		inset: -15px;
-	}
-	.marker:hover,
-	.marker:focus-visible,
-	.marker.chosen {
+	.marker:hover::before,
+	.marker:focus-visible::before,
+	.marker.chosen::before {
 		background: var(--accent);
+	}
+	.marker:focus-visible {
+		outline: 2px solid var(--accent);
+		outline-offset: -8px;
 	}
 	.pop {
 		position: absolute;
