@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
 	// 05 / 08 / G6 · Water test form. Every field is optional; numeric keypad;
-	// previous reading shown faintly; inline status as you type.
+	// previous reading shown faintly; inline status as you type. New tests can
+	// start from the last readings and log a water change alongside.
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
+	import { page } from '$app/state';
 	import { queueable } from '$lib/offline';
 	import { clearDraft, logDraft, type Restored } from '$lib/draft';
 	import ConfirmDelete from './ConfirmDelete.svelte';
@@ -11,6 +13,8 @@
 	import { ui } from '$lib/ui.svelte';
 	import DateTimePicker from './DateTimePicker.svelte';
 	import PhotoPicker from './PhotoPicker.svelte';
+	import WaterChangeFields from './WaterChangeFields.svelte';
+	import { WATER_SOURCES } from '$lib/events';
 	import { paramStatus, statusIcon, statusLong, statusMedium } from '$lib/status';
 	import { parseNumber } from '$lib/units';
 	import { whenLabel, type When } from '$lib/time';
@@ -23,6 +27,7 @@
 		max: number | null;
 		rangeText: string;
 		last: string | null;
+		lastInput?: string | null;
 	}
 	let {
 		mode = 'new',
@@ -42,7 +47,8 @@
 		remove = null,
 		ontankclick,
 		targetsHref = null,
-		draftKey = null
+		draftKey = null,
+		waterChange = null
 	}: {
 		mode?: 'new' | 'edit';
 		tankName: string;
@@ -66,6 +72,17 @@
 		targetsHref?: string | null;
 		/** New tests: keep what was typed on this device until it's saved */
 		draftKey?: string | null;
+		/** New tests: "Also log a water change", on when the last test had one */
+		waterChange?: {
+			on: boolean;
+			amountMode: string;
+			amount: string;
+			source: string;
+			task: { id: string; label: string; checked: boolean } | null;
+			volUnit: string;
+			tankVolume: number | null;
+			tankVolumeIsActual: boolean;
+		} | null;
 	} = $props();
 
 	let draft = $state<Record<string, string>>(untrack(() => ({ ...values })));
@@ -101,6 +118,36 @@
 	);
 	const filled = $derived(rows.filter((r) => r.v != null).length);
 
+	// "Use last readings": each empty field gets its previous reading; Undo
+	// empties the ones still holding it.
+	const fillable = $derived(mode === 'new' ? params.filter((p) => p.lastInput != null && !(draft[p.id] ?? '')) : []);
+	let copied = $state<Record<string, string> | null>(null);
+	// without scripts the link asks the server for the form filled in
+	const fillHref = $derived.by(() => {
+		const q = new URLSearchParams(page.url.searchParams);
+		q.set('fill', 'last');
+		return `?${q}`;
+	});
+	function useLast() {
+		const c: Record<string, string> = {};
+		for (const p of fillable) draft[p.id] = c[p.id] = p.lastInput!;
+		copied = c;
+	}
+	function undoLast() {
+		for (const [id, v] of Object.entries(copied ?? {})) if (draft[id] === v) draft[id] = '';
+		copied = null;
+	}
+
+	// "Also log a water change": saved as its own entry, at the test's time
+	let wcOn = $state(untrack(() => !!waterChange?.on));
+	let wcMode = $state(untrack(() => waterChange?.amountMode ?? 'percent'));
+	let wcAmount = $state(untrack(() => waterChange?.amount ?? '25'));
+	let wcSource = $state(untrack(() => waterChange?.source ?? 'tap'));
+	const wcSummary = $derived(
+		`${wcAmount || '–'}${wcMode === 'percent' ? '%' : ` ${waterChange?.volUnit ?? ''}`} · ${WATER_SOURCES.find((s) => s.value === wcSource)?.label ?? ''}`
+	);
+	const withWc = $derived(mode === 'new' && !!waterChange && wcOn);
+
 	// A test that was left before it was saved comes back, with Discard.
 	let restored = $state<{ readings: number; discard: () => Promise<void> } | null>(null);
 	function onrestore(r: Restored) {
@@ -116,13 +163,20 @@
 	}
 	const outOfRange = $derived(rows.filter((r) => r.st?.level === 'bad').length);
 	const saveLabel = $derived(
-		mode === 'edit' ? 'Save changes' : filled ? `Save ${filled} reading${filled === 1 ? '' : 's'}` : 'Save'
+		mode === 'edit'
+			? 'Save changes'
+			: filled
+				? `Save ${filled} reading${filled === 1 ? '' : 's'}${withWc ? ' + water change' : ''}`
+				: 'Save'
 	);
-	const taskText = $derived.by(() => {
-		if (!task) return null;
-		const m = task.label.match(/^(.*?)\s*(\(next due [^)]*\))$/);
-		return m ? { main: m[1], next: m[2] } : { main: task.label, next: '' };
-	});
+	// "Also complete task “Water test” (next due Oct 3)": the date on its own line
+	function splitTask(t: { label: string } | null | undefined) {
+		if (!t) return null;
+		const m = t.label.match(/^(.*?)\s*(\(next due [^)]*\))$/);
+		return m ? { main: m[1], next: m[2] } : { main: t.label, next: '' };
+	}
+	const taskText = $derived(splitTask(task));
+	const wcTaskText = $derived(splitTask(waterChange?.task));
 
 	// "In range", "Near limit", "Above 5–20": after the icon in 08, 7.5 and G6
 	function statusWord(r: (typeof rows)[number]) {
@@ -154,7 +208,7 @@
 	class:edit={mode === 'edit'}
 	use:enhance={queueable({
 		offline: mode === 'new',
-		title: () => `Water test · ${filled} reading${filled === 1 ? '' : 's'}`,
+		title: () => `Water test · ${filled} reading${filled === 1 ? '' : 's'}${withWc ? ' + water change' : ''}`,
 		closeHref: () => closeHref,
 		timeZone,
 		busy: (b) => (busy = b),
@@ -202,6 +256,23 @@
 		<div class="body">
 			{#if meta}<p class="meta">{meta}</p>{/if}
 			{#if mode === 'new'}<p class="hint hide-desk">All fields optional. Previous reading shown for reference.</p>{/if}
+			{#if mode === 'new' && (copied || fillable.length)}
+				<div class="use-last" aria-live="polite">
+					{#if copied}
+						<span class="filled-note">✓ Filled {Object.keys(copied).length} from last readings</span>
+						<button type="button" class="btn-text" onclick={undoLast}>Undo</button>
+					{:else}
+						<a
+							class="chip"
+							href={fillHref}
+							onclick={(e) => {
+								e.preventDefault();
+								useLast();
+							}}>Use last readings</a
+						>
+					{/if}
+				</div>
+			{/if}
 			{#if error}<p class="banner banner-bad" role="alert">✕ {error}</p>{/if}
 			{#if restored}
 				<div class="draft-note" role="status">
@@ -306,6 +377,39 @@
 					>
 				</label>
 			{/if}
+
+			{#if mode === 'new' && waterChange}
+				<!-- without JS the checkbox opens the card too (:has) -->
+				<div class="wc" class:on={wcOn}>
+					<label class="check-row wc-toggle">
+						<input type="checkbox" name="wc" value="1" bind:checked={wcOn} />
+						<span class="wc-head">
+							<span class="wc-title">Also log a water change</span>
+							<span class="wc-sub">{wcSummary}</span>
+						</span>
+					</label>
+					<div class="wc-body">
+						<WaterChangeFields
+							compact
+							bind:amountMode={wcMode}
+							bind:amount={wcAmount}
+							bind:source={wcSource}
+							volUnit={waterChange.volUnit}
+							tankVolume={waterChange.tankVolume}
+							tankVolumeIsActual={waterChange.tankVolumeIsActual}
+							error={fieldErrors.amount}
+						/>
+						{#if waterChange.task && wcTaskText}
+							<label class="check-row wc-task">
+								<input type="checkbox" name="wcCompleteTask" value={waterChange.task.id} defaultChecked={waterChange.task.checked} />
+								<span class="task-text"
+									><span>{wcTaskText.main}</span>{#if wcTaskText.next}{' '}<span class="next">{wcTaskText.next}</span>{/if}</span
+								>
+							</label>
+						{/if}
+					</div>
+				</div>
+			{/if}
 		</div>
 
 		<footer class="foot">
@@ -332,6 +436,10 @@
 {/if}
 
 <style>
+	/* a field scrolled or tabbed to stays clear of the sticky Save bar */
+	:global(html:has(.tform)) {
+		scroll-padding-bottom: 112px;
+	}
 	.tform {
 		min-height: 100dvh;
 		display: flex;
@@ -428,7 +536,8 @@
 		font-size: 13px;
 		color: var(--text-muted);
 	}
-	.banner {
+	.banner,
+	.draft-note {
 		margin: 10px 0 0;
 	}
 
@@ -601,6 +710,62 @@
 		display: block;
 	}
 
+	/* ── Use last readings ── */
+	.use-last {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		min-height: 44px;
+		margin-top: 6px;
+	}
+	.filled-note {
+		font-size: 13px;
+		color: var(--text-muted);
+	}
+
+	/* ── Also log a water change: a card like the task's that opens up ── */
+	.wc {
+		margin-top: 12px;
+		border-radius: 14px;
+		background: var(--surface);
+		border: 1px solid var(--border);
+	}
+	.wc-toggle {
+		padding: 10px 14px;
+	}
+	.wc-head {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		min-width: 0;
+	}
+	.wc-title {
+		font-size: 15px;
+		font-weight: 600;
+	}
+	.wc-sub {
+		font-size: 13px;
+		color: var(--text-muted);
+	}
+	.wc-body {
+		display: none;
+		flex-direction: column;
+		gap: 16px;
+		padding: 2px 14px 14px;
+	}
+	.wc.on .wc-body,
+	.wc:has(.wc-toggle input:checked) .wc-body {
+		display: flex;
+	}
+	.wc.on .wc-sub,
+	.wc:has(.wc-toggle input:checked) .wc-sub {
+		display: none;
+	}
+	.wc-task {
+		font-size: 14px;
+		line-height: 1.4;
+	}
+
 	/* ── Footer: sticky Save (05); G6 puts Save changes and Delete entry at the end ── */
 	.foot {
 		position: sticky;
@@ -693,7 +858,8 @@
 		.meta {
 			margin: 0 0 16px;
 		}
-		.banner {
+		.banner,
+		.draft-note {
 			margin: 0 0 16px;
 		}
 		.rows {
@@ -791,6 +957,19 @@
 		.task {
 			margin-top: 14px;
 			background: var(--surface-2);
+		}
+		.use-last {
+			margin: -4px 0 12px;
+		}
+		.wc {
+			margin-top: 14px;
+			background: var(--surface-2);
+		}
+		.wc-toggle {
+			padding: 10px 16px;
+		}
+		.wc-body {
+			padding: 4px 16px 16px;
 		}
 		.foot,
 		.edit .foot {

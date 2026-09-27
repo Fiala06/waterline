@@ -16,6 +16,7 @@ import { fmtDate, todayInZone, utcToZoned } from '$lib/time';
 import { formatNumber, toDisplay, toStored, unitLabel } from '$lib/units';
 import { EVENT_CATEGORIES, type EventCategory, type Tank, type TankParameter, type User } from './db/schema';
 import { num, optStr, str, type FieldErrors } from './forms';
+import { lastEventOf, latestTest } from './logs';
 import { getTask, taskOfKind } from './tasks';
 
 export function parseCategory(value: string | null): EventCategory {
@@ -30,6 +31,7 @@ export function testFormParams(
 ) {
 	return params.map((p) => {
 		const last = latest.get(p.id);
+		const lastValue = last ? fmtValue(p, last.value, user) : null;
 		return {
 			id: p.id,
 			key: p.key,
@@ -40,11 +42,29 @@ export function testFormParams(
 			min: p.min == null ? null : displayValue(p, p.min, user),
 			max: p.max == null ? null : displayValue(p, p.max, user),
 			rangeText: fmtRange(p, user),
-			last: last
-				? `Last ${fmtValue(p, last.value, user)} · ${fmtDate(utcToZoned(last.takenAt, user.timeZone).date)}`
-				: null
+			last: last ? `Last ${lastValue} · ${fmtDate(utcToZoned(last.takenAt, user.timeZone).date)}` : null,
+			// what "Use last readings" types in
+			lastInput: lastValue
 		};
 	});
+}
+
+/**
+ * The water test's "Also log a water change" (05, 08): on when the last test
+ * was logged with one, set to the last change's amount and source.
+ */
+export function testWaterChange(tank: Tank, user: User) {
+	const last = lastEventOf(tank.id, 'water_change');
+	const test = latestTest(tank.id);
+	const values = last ? eventFormValues('water_change', last.data, user) : {};
+	return {
+		on: !!last && !!test && last.occurredAt === test.takenAt,
+		amountMode: values.amountMode === 'volume' ? 'volume' : 'percent',
+		amount: (values.amount as string | undefined) || '25',
+		source: (values.source as string | undefined) || 'tap',
+		task: completableTask(user, tank.id, 'water_change', null),
+		...eventFormContext(tank, user)
+	};
 }
 
 /** Readings from the test form (`v_<parameterId>`), converted to stored units. */

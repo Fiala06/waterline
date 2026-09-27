@@ -10,7 +10,7 @@
 	<TestForm
 		tankName={data.tank.name}
 		params={data.params}
-		values={form?.values ?? {}}
+		values={form?.values ?? data.filled ?? {}}
 		initialWhen={data.when}
 		timeZone={data.user.timeZone}
 		closeHref="/?tank={data.tank.id}"
@@ -20,5 +20,6 @@
 		ontankclick={() => (ui.tankSwitcher = true)}
 		targetsHref="/tanks/{data.tank.id}/targets"
 		draftKey="{data.user.id}:test:{data.tank.id}"
+		waterChange={form?.wc ? { ...data.waterChange, ...form.wc } : data.waterChange}
 	/>
 {/key}

@@ -10,6 +10,7 @@
 	import DateTimePicker from './DateTimePicker.svelte';
 	import PhotoPicker from './PhotoPicker.svelte';
 	import SpeciesInput from './SpeciesInput.svelte';
+	import WaterChangeFields from './WaterChangeFields.svelte';
 	import {
 		CATEGORY_LABEL,
 		DOSING_UNITS,
@@ -20,11 +21,9 @@
 		LOG_CATEGORIES,
 		MAINTENANCE_ACTIONS,
 		OBSERVATION_TAGS,
-		RECHECK_OPTIONS,
-		WATER_SOURCES
+		RECHECK_OPTIONS
 	} from '$lib/events';
 	import { whenLabel, type When } from '$lib/time';
-	import { formatNumber, parseNumber } from '$lib/units';
 	import type { EventCategory } from '$lib/types';
 
 	let {
@@ -124,14 +123,6 @@
 	// Water change
 	let amountMode = $state(v('amountMode') || 'percent');
 	let amount = $state(untrack(() => v('amount') || (mode === 'new' ? '25' : '')));
-	const wcNote = $derived.by(() => {
-		const a = parseNumber(amount);
-		if (a == null || !tankVolume) return '';
-		const of = `${formatNumber(tankVolume, 1)} ${volUnit}${tankVolumeIsActual ? ' actual volume' : ''}`;
-		return amountMode === 'percent'
-			? `≈ ${formatNumber((tankVolume * a) / 100, 1)} ${volUnit} of ${of}`
-			: `≈ ${formatNumber((a / tankVolume) * 100, 0)}% of ${of}`;
-	});
 
 	let note = $state(untrack(() => initialNote));
 	let recheck = $state('3');
@@ -317,45 +308,15 @@
 
 			<div class="fields">
 				{#if category === 'water_change'}
-					<div class="field">
-						<div class="amount-head">
-							<label class="label" for="amount">Amount</label>
-							<fieldset class="unit-toggle">
-								<legend class="sr-only">Amount unit</legend>
-								<label><input type="radio" name="amountMode" value="percent" bind:group={amountMode} />%</label>
-								<label><input type="radio" name="amountMode" value="volume" bind:group={amountMode} />{volUnit}</label>
-							</fieldset>
-						</div>
-						<div class="amount-box">
-							<input
-								id="amount"
-								name="amount"
-								inputmode="decimal"
-								autocomplete="off"
-								bind:value={amount}
-								aria-invalid={!!errors.amount}
-								aria-describedby={wcNote ? 'wc-note' : undefined}
-							/>
-							<span class="unit" aria-hidden="true">{amountMode === 'percent' ? '%' : volUnit}</span>
-						</div>
-						{#if wcNote}<span class="hint" id="wc-note">{wcNote}</span>{/if}
-						{#if amountMode === 'percent'}
-							<div class="presets">
-								{#each ['10', '25', '50', '75'] as q (q)}
-									<button type="button" class="chip" aria-pressed={amount === q} onclick={() => (amount = q)}>{q}%</button>
-								{/each}
-							</div>
-						{/if}
-						{#if errors.amount}<span class="error-text">✕ {errors.amount}</span>{/if}
-					</div>
-					<fieldset class="field">
-						<legend class="label">Source water</legend>
-						<div class="options three">
-							{#each WATER_SOURCES as s (s.value)}
-								<label class="option"><input type="radio" name="source" value={s.value} defaultChecked={(v('source') || 'tap') === s.value} />{s.label}</label>
-							{/each}
-						</div>
-					</fieldset>
+					<WaterChangeFields
+						bind:amountMode
+						bind:amount
+						source={v('source') || 'tap'}
+						{volUnit}
+						{tankVolume}
+						{tankVolumeIsActual}
+						error={errors.amount}
+					/>
 				{:else if category === 'dosing'}
 					<div class="dose">
 						<div class="field product">
@@ -640,6 +601,10 @@
 <DateTimePicker bind:open={picking} value={when} {timeZone} onselect={(w) => (when = w)} />
 
 <style>
+	/* a field scrolled or tabbed to stays clear of the sticky Save bar */
+	:global(html:has(.eform)) {
+		scroll-padding-bottom: 112px;
+	}
 	.eform {
 		min-height: 100dvh;
 		display: flex;
@@ -751,7 +716,8 @@
 			order: -1;
 		}
 	}
-	.banner {
+	.banner,
+	.draft-note {
 		margin: 0 0 16px;
 	}
 	.fields {
@@ -772,107 +738,6 @@
 		margin: 0;
 		font-size: 13px;
 		color: var(--text-faint);
-	}
-
-	/* ── Water change: one big amount field (14) ── */
-	.amount-head {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 12px;
-	}
-	.amount-head .label {
-		font-size: 14px;
-		color: var(--text-muted);
-	}
-	.unit-toggle {
-		display: flex;
-		gap: 2px;
-		padding: 2px;
-		border-radius: 8px;
-		background: var(--surface);
-		border: 1px solid var(--border);
-	}
-	.unit-toggle label {
-		position: relative;
-		min-width: 44px;
-		padding: 4px 10px;
-		border-radius: 6px;
-		text-align: center;
-		font-size: 13px;
-		color: var(--text-muted);
-		cursor: pointer;
-	}
-	/* 30px to match the design, 44px to tap */
-	.unit-toggle label::after {
-		content: '';
-		position: absolute;
-		inset: -7px 0;
-	}
-	.unit-toggle label:has(input:checked) {
-		background: var(--border);
-		color: var(--text);
-		font-weight: 600;
-	}
-	.unit-toggle label:has(input:focus-visible) {
-		outline: 2px solid var(--accent);
-	}
-	.unit-toggle input {
-		position: absolute;
-		opacity: 0;
-		pointer-events: none;
-	}
-	.amount-box {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		height: 64px;
-		padding: 0 16px;
-		border-radius: 14px;
-		background: var(--surface);
-		border: 1px solid var(--border);
-	}
-	.amount-box:focus-within {
-		border-color: var(--accent);
-		box-shadow: inset 0 0 0 1px var(--accent);
-	}
-	.amount-box:has(input[aria-invalid='true']) {
-		border-color: var(--bad);
-	}
-	.amount-box input {
-		flex: 1;
-		min-width: 0;
-		align-self: stretch;
-		padding: 0;
-		background: transparent;
-		border: none;
-		outline: none;
-		font-size: 28px;
-		font-weight: 600;
-		font-variant-numeric: tabular-nums;
-	}
-	.amount-box .unit {
-		font-size: 17px;
-		color: var(--text-muted);
-	}
-	.presets {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 8px;
-	}
-	.presets .chip {
-		padding: 0 12px;
-		font-size: 13px;
-	}
-	.presets .chip[aria-pressed='true'] {
-		color: var(--on-accent);
-	}
-	.three {
-		grid-template-columns: repeat(3, 1fr);
-	}
-	/* 14: the choices are outlined; the picked one is filled */
-	.option:not(:has(input:checked)) {
-		background: transparent;
 	}
 
 	/* ── Dosing: product, amount, unit (D13 puts them in one row) ── */
@@ -1120,8 +985,7 @@
 		.fields :global(.field) {
 			gap: 6px;
 		}
-		.fields :global(.field > .label),
-		.amount-head .label {
+		.fields :global(.field > .label) {
 			font-size: 13px;
 		}
 		legend {
@@ -1157,7 +1021,6 @@
 		.product {
 			grid-column: auto;
 		}
-		.amount-box,
 		.stepper {
 			background: var(--surface-2);
 			border-color: var(--border-strong);
