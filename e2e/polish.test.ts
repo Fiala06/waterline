@@ -97,6 +97,22 @@ test('responses carry security headers and refuse cross-site posts', async ({ re
 	expect(post.status()).toBe(403);
 });
 
+test("a page's headers stay small enough for a proxy in front", async ({ page }, info) => {
+	// nginx (and Nginx Proxy Manager) answers 502 when a response's headers pass 4 KB
+	await newKeeperWithTank(page, `headers-${info.project.name}`);
+	for (const path of ['/', '/tasks', '/history']) {
+		const res = await page.request.get(path);
+		expect(res.status()).toBe(200);
+		const headers = res.headersArray();
+		expect(headers.reduce((n, h) => n + h.name.length + h.value.length + 4, 0)).toBeLessThan(2048);
+		expect(headers.some((h) => h.name.toLowerCase() === 'link')).toBe(false);
+		// the preloads are in the page instead
+		expect(await res.text()).toMatch(/<link rel="modulepreload" href="[^"]+\.js">/);
+	}
+	await open(page, '/tasks');
+	await expect(page.getByRole('heading', { name: 'Tasks', exact: true })).toBeVisible();
+});
+
 test('phones reach Charts and Photos from the dashboard', async ({ page }, info) => {
 	test.skip(info.project.name !== 'phone', 'phone layout');
 	await newKeeperWithTank(page, `nav-${info.project.name}`);

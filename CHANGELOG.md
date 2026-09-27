@@ -6,6 +6,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Works behind more proxies:** signing in no longer ends in *502 Bad Gateway* when Waterline runs behind nginx, such as Nginx Proxy Manager, with its default settings.
 - **Account menu:** your profile photo from Google, or your initials, in the upper left: tap it for your settings, What's new and signing out.
 - **Logs for troubleshooting:** Settings › Server settings › Logs shows what went wrong, like emails that didn't send, imports that couldn't be read and sign-in problems, and a page that fails shows a reference to look up there. More detail when you need it, and a download to share.
 - **Easier-to-read charts:** the parameter and its unit up the side, dates along the bottom, and a reading's value, status, date and time when you hover or tap the line, or step through them with the arrow keys.

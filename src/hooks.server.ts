@@ -11,6 +11,7 @@ import { publicSettings } from '$lib/server/public';
 import { announceSetup } from '$lib/server/setup';
 import { logger } from '$lib/server/log';
 import { VERSION } from '$lib/changelog';
+import { preloadsInHead } from '$lib/server/preloads';
 
 const PUBLIC_PATHS = ['/signin', '/first-run', '/auth', '/e', '/unsubscribe', '/t', '/s', '/p', '/public', '/sitemap.xml', '/robots.txt'];
 
@@ -150,7 +151,24 @@ const appHandle: Handle = async ({ event, resolve }) => {
 	return res;
 };
 
-export const handle = sequence(securityHeaders, csrf, movedPaths, httpCookies, loginLimit, authHandle, appHandle);
+/**
+ * A page's preloads go in its <head>, not a Link header: that header grows with
+ * each page's scripts, and past 4 KB of headers proxies like nginx answer 502
+ * Bad Gateway (see $lib/server/preloads).
+ */
+const smallHeaders: Handle = async ({ event, resolve }) => {
+	const res = await resolve(event);
+	const link = res.headers.get('link');
+	if (!link || event.request.method !== 'GET' || !res.headers.get('content-type')?.startsWith('text/html')) return res;
+	const out = preloadsInHead(await res.text(), link);
+	const headers = new Headers(res.headers);
+	if (out.link) headers.set('link', out.link);
+	else headers.delete('link');
+	headers.set('content-length', String(Buffer.byteLength(out.html)));
+	return new Response(out.html, { status: res.status, statusText: res.statusText, headers });
+};
+
+export const handle = sequence(securityHeaders, smallHeaders, csrf, movedPaths, httpCookies, loginLimit, authHandle, appHandle);
 
 /**
  * Something the app didn't expect: logged with a short reference, which the
