@@ -4,7 +4,7 @@ What's new in Waterline, newest first. The app shows this list under Settings �
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
-## Unreleased
+## 1.2.0 · 2026-09-27
 
 - **Works behind more proxies:** signing in no longer ends in *502 Bad Gateway* when Waterline runs behind nginx, such as Nginx Proxy Manager, with its default settings.
 - **Account menu:** your profile photo from Google, or your initials, in the upper left: tap it for your settings, What's new and signing out.
