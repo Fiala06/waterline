@@ -26,6 +26,10 @@ test('saved product links, and reordering from a dosing entry', async ({ page },
 	await page.locator('#add-note').fill('500 mL');
 	await page.getByRole('button', { name: 'Add product' }).click();
 	await expect(page.getByRole('status')).toContainText('✓ Easy Green saved');
+	// ready for the next one: nothing left in the form to add twice
+	await expect(page.locator('#add-name')).toHaveValue('');
+	await expect(page.locator('#add-url')).toHaveValue('');
+	await expect(page.locator('#add-note')).toHaveValue('');
 	const reorder = page.getByRole('link', { name: /Reorder Easy Green/ });
 	await expect(reorder).toHaveAttribute('href', 'https://shop.example.com/easy-green');
 	await expect(reorder).toHaveAttribute('target', '_blank');

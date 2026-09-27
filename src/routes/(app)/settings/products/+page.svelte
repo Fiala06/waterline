@@ -104,7 +104,20 @@
 		<EmptyState compact icon="dosing" title="No products yet" text="Save a link for each thing you buy again, and reordering is one tap." />
 	{/if}
 
-	<form method="POST" action="?/add" class="add" id="add" use:enhance>
+	<form
+		method="POST"
+		action="?/add"
+		class="add"
+		id="add"
+		use:enhance={({ formElement }) =>
+			async ({ result, update }) => {
+				await update();
+				// saved: empty the fields for the next one (the page stays, so they'd keep what was typed)
+				if (result.type === 'redirect') {
+					for (const el of formElement.querySelectorAll('input')) el.value = '';
+				}
+			}}
+	>
 		<h2>Add a product</h2>
 		{@render fields('add', addVal, addErr)}
 		<datalist id="dosed">{#each data.suggestions as s (s)}<option value={s}></option>{/each}</datalist>
