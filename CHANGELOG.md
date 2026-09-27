@@ -13,6 +13,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 - **Compare tanks:** Charts shows the same parameter in your other tanks, on the same dates, under the chart.
 - **Notes on the tank's page:** its pinned note, then the latest dated notes, with Add note right there.
 - **Remind me:** a one-off reminder about a tank in two taps, from its page or the dashboard: tomorrow, in 3 days, next week, in 2 weeks, or on a date.
+- **Where it came from, editable:** an animal's page now has its Source (the store or breeder), to fix or fill in later.
 - **Custom parameters, again:** adding one offers those from your other tanks, added in one tap with their unit and targets.
 
 ## 1.3.0 · 2026-09-27

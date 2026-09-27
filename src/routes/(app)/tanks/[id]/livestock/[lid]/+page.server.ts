@@ -63,13 +63,13 @@ export const load: PageServerLoad = ({ locals, params }) => {
 const back = (tankId: string, id: string) => `/tanks/${tankId}/livestock/${id}`;
 
 export const actions: Actions = {
-	/** The name (for one animal) and the notes. */
+	/** The name (for one animal), where it came from and the notes. */
 	save: async ({ request, locals, params, cookies }) => {
 		const user = locals.user!;
 		const l = entry(user.id, params.id, params.lid);
 		const form = await request.formData();
 		if (l.count === 1 && !l.removedAt && form.has('nickname')) nameLivestock(user.id, l.id, optStr(form, 'nickname', 60));
-		updateLivestockDetails(user.id, l.id, { notes: optStr(form, 'notes', 4000) });
+		updateLivestockDetails(user.id, l.id, { notes: optStr(form, 'notes', 4000), ...(form.has('source') ? { source: optStr(form, 'source', 120) } : {}) });
 		setFlash(cookies, '✓ Saved');
 		redirect(303, back(params.id, l.id));
 	},

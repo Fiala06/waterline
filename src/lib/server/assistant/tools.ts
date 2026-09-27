@@ -211,7 +211,10 @@ const historyTool: Tool = {
 						.orderBy(desc(tests.takenAt))
 						.limit(limit)
 						.all();
-		const params = new Map(listParams(t.id, { all: true }).map((p) => [p.id, p]));
+		const all = listParams(t.id, { all: true });
+		const params = new Map(all.map((p) => [p.id, p]));
+		// a test's readings in the tank's order, as the app lists them
+		const order = new Map(all.map((p, i) => [p.id, i]));
 		const readings = tst.length ? db.select().from(testReadings).where(inArray(testReadings.testId, tst.map((x) => x.id))).all() : [];
 		const photoRows =
 			evs.length || tst.length
@@ -241,6 +244,7 @@ const historyTool: Tool = {
 				kind: 'Water test',
 				title: readings
 					.filter((r) => r.testId === x.id && params.has(r.parameterId))
+					.sort((a, b) => order.get(a.parameterId)! - order.get(b.parameterId)!)
 					.map((r) => {
 						const p = params.get(r.parameterId)!;
 						const unit = paramUnit(p, user);

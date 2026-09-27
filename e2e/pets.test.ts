@@ -23,7 +23,8 @@ test('pets: naming one of a group gives it its own entry, page and history', asy
 	await expect(page.locator('.species')).toHaveText('Corydoras');
 	await expect(page.getByRole('link', { name: /Named Pepper · Corydoras/ })).toBeVisible();
 
-	// notes and a photo, kept with the pet
+	// where it came from, notes and a photo, kept with the pet
+	await page.getByLabel('Source · optional').fill('Local fish store');
 	await page.getByLabel('Notes').fill('Hides under the driftwood');
 	await page.getByRole('button', { name: 'Save', exact: true }).click();
 	await expect(page.getByRole('status')).toContainText('✓ Saved');
@@ -32,6 +33,7 @@ test('pets: naming one of a group gives it its own entry, page and history', asy
 	await expect(page.getByRole('button', { name: 'Remove photo' })).toBeVisible();
 	await page.reload();
 	await expect(page.getByLabel('Notes')).toHaveValue('Hides under the driftwood');
+	await expect(page.getByLabel('Source · optional')).toHaveValue('Local fish store');
 
 	// renamed, in History too
 	await page.getByLabel('Name', { exact: true }).fill('Salt');

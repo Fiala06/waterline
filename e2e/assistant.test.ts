@@ -5,6 +5,14 @@ test('an AI assistant: a token from Settings reads the tank over MCP and the API
 	await newKeeperWithTank(page, `assistant-${info.project.name}`);
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
 
+	// a water test, for History
+	await open(page, `/entries/test/new?tank=${tankId}`);
+	await page.getByLabel('Temperature', { exact: true }).fill('78');
+	await page.getByLabel('Nitrate', { exact: true }).fill('10');
+	await page.getByLabel('pH', { exact: true }).fill('6.8');
+	await page.getByRole('button', { name: 'Save 3 readings' }).click();
+	await expect(page.getByRole('status')).toContainText('Saved');
+
 	// off until a token is made
 	await open(page, '/settings');
 	await expect(page.getByRole('link', { name: 'AI assistant Off' })).toBeVisible();
@@ -43,6 +51,9 @@ test('an AI assistant: a token from Settings reads the tank over MCP and the API
 	expect(listed.structuredContent.tanks).toEqual([expect.objectContaining({ id: tankId, name: 'Riverbed 40', type: 'Planted' })]);
 	const summary = await rpc('tools/call', { name: 'get_tank_summary', arguments: { tank_id: tankId } });
 	expect(summary.content[0].text).toContain('# Riverbed 40: aquarium summary from Waterline');
+	// a test's readings in the tank's order
+	const history = await rpc('tools/call', { name: 'get_history', arguments: { tank_id: tankId } });
+	expect(history.structuredContent.entries[0]).toMatchObject({ category: 'water_test', title: 'pH 6.8, Nitrate 10 ppm, Temperature 78 °F' });
 	const other = await rpc('tools/call', { name: 'get_readings', arguments: { tank_id: 'not-a-tank' } });
 	expect(other.isError).toBe(true);
 
@@ -50,7 +61,7 @@ test('an AI assistant: a token from Settings reads the tank over MCP and the API
 	const api = await page.request.get('/api/v1/tanks', { headers: { authorization: `Bearer ${token}` } });
 	expect((await api.json()).tanks[0].name).toBe('Riverbed 40');
 	const readings = await page.request.get(`/api/v1/tanks/${tankId}/readings?parameter=pH`, { headers: { authorization: `Bearer ${token}` } });
-	expect((await readings.json()).parameters).toEqual([expect.objectContaining({ name: 'pH', latest: null, readings: [] })]);
+	expect((await readings.json()).parameters).toEqual([expect.objectContaining({ name: 'pH', latest: expect.objectContaining({ value: 6.8, status: '✓ OK' }), readings: [expect.objectContaining({ value: 6.8 })] })]);
 
 	// used, then revoked: refused
 	await open(page, '/settings/assistant');

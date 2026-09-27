@@ -273,8 +273,8 @@ export function nameLivestock(userId: string, id: string, nickname: string | nul
 	return pet;
 }
 
-/** Notes and the profile photo: about the pet, not a change to the tank, so no History entry. A profile photo is also tagged. */
-export function updateLivestockDetails(userId: string, id: string, patch: Partial<Pick<Livestock, 'notes' | 'photoId'>>) {
+/** Notes, where it came from and the profile photo: about the animal, not a change to the tank, so no History entry. A profile photo is also tagged. */
+export function updateLivestockDetails(userId: string, id: string, patch: Partial<Pick<Livestock, 'notes' | 'source' | 'photoId'>>) {
 	getLivestock(userId, id);
 	if (patch.photoId) tagPhoto(userId, patch.photoId, id, true);
 	return db.update(livestock).set(patch).where(eq(livestock.id, id)).returning().get();

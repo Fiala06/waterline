@@ -1,6 +1,6 @@
 <script lang="ts">
 	// A pet's page ("Captain · Betta"), or a species' group: its photo, name,
-	// notes and History. Naming one of a group moves it out onto its own page.
+	// where it came from, notes and History. Naming one of a group moves it out onto its own page.
 	import { enhance } from '$app/forms';
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import { onMount } from 'svelte';
@@ -108,6 +108,10 @@
 				<input class="input" id="nickname" name="nickname" maxlength="60" autocomplete="off" defaultValue={a.nickname ?? ''} placeholder="Give it a name" />
 			</div>
 		{/if}
+		<div class="field">
+			<label class="label" for="source">Source · optional</label>
+			<input class="input" id="source" name="source" maxlength="120" autocomplete="off" defaultValue={a.source ?? ''} placeholder="Store, breeder, price" />
+		</div>
 		<div class="field">
 			<label class="label" for="notes">Notes</label>
 			<textarea class="input" id="notes" name="notes" rows="3" maxlength="4000" defaultValue={a.notes} placeholder="Personality, favourite food, where it hides"></textarea>
