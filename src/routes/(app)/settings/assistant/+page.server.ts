@@ -16,6 +16,8 @@ export const load: PageServerLoad = ({ locals, url }) => {
 			id: t.id,
 			name: t.name,
 			hint: t.hint,
+			// connected by signing in (OAuth), rather than a pasted token
+			bySignIn: !!t.clientId,
 			createdAt: t.createdAt,
 			lastUsedAt: t.lastUsedAt,
 			tankIds: t.tankIds.filter((id) => names.has(id)),

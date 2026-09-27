@@ -2,6 +2,7 @@
 // Server settings), and tidying up. EMAIL_SCHEDULER=off stops all of it.
 import { env } from '$env/dynamic/private';
 import { pruneActionTokens } from './action-tokens';
+import { pruneOAuth } from './assistant/oauth';
 import { cleanupExports } from './export';
 import { getServerSettings } from './mail';
 import { logger, pruneLogs } from './log';
@@ -20,6 +21,7 @@ export function startScheduler() {
 			if (getServerSettings().scheduledEmails) await runNotifications();
 			pruneLogs();
 			pruneActionTokens();
+			pruneOAuth();
 			cleanupExports();
 		} catch (e) {
 			logger.error('server', 'The scheduled run failed', { error: e });

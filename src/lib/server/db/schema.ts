@@ -567,9 +567,47 @@ export const assistantTokens = sqliteTable(
 		hint: text('hint').notNull(),
 		tankIds: text('tank_ids', { mode: 'json' }).$type<string[]>().notNull().default([]),
 		createdAt: createdAt(),
-		lastUsedAt: text('last_used_at')
+		lastUsedAt: text('last_used_at'),
+		// connected by signing in (OAuth): the app, when the access token runs out,
+		// and the refresh token that renews it (hashed). Null for a pasted token.
+		clientId: text('client_id').references(() => oauthClients.id, { onDelete: 'cascade' }),
+		expiresAt: text('expires_at'),
+		refreshHash: text('refresh_hash'),
+		refreshExpiresAt: text('refresh_expires_at')
 	},
-	(t) => [uniqueIndex('assistant_tokens_hash').on(t.tokenHash), index('assistant_tokens_user').on(t.userId)]
+	(t) => [
+		uniqueIndex('assistant_tokens_hash').on(t.tokenHash),
+		index('assistant_tokens_user').on(t.userId),
+		uniqueIndex('assistant_tokens_refresh').on(t.refreshHash)
+	]
 );
 
 export type AssistantToken = typeof assistantTokens.$inferSelect;
+
+/** Apps that registered themselves to connect by signing in (OAuth dynamic client registration). */
+export const oauthClients = sqliteTable('oauth_clients', {
+	id: text('id').primaryKey(), // the client_id
+	name: text('name').notNull(),
+	redirectUris: text('redirect_uris', { mode: 'json' }).$type<string[]>().notNull(),
+	// set for apps that authenticate with a secret (hashed); null for public apps using PKCE alone
+	secretHash: text('secret_hash'),
+	createdAt: createdAt()
+});
+
+export type OAuthClient = typeof oauthClients.$inferSelect;
+
+/** One-time codes from the consent page, swapped for tokens within minutes. */
+export const oauthCodes = sqliteTable('oauth_codes', {
+	codeHash: text('code_hash').primaryKey(),
+	clientId: text('client_id')
+		.notNull()
+		.references(() => oauthClients.id, { onDelete: 'cascade' }),
+	userId: text('user_id')
+		.notNull()
+		.references(() => users.id, { onDelete: 'cascade' }),
+	redirectUri: text('redirect_uri').notNull(),
+	codeChallenge: text('code_challenge').notNull(),
+	tankIds: text('tank_ids', { mode: 'json' }).$type<string[]>().notNull(),
+	expiresAt: text('expires_at').notNull(),
+	usedAt: text('used_at')
+});

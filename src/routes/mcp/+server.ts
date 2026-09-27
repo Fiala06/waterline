@@ -1,20 +1,24 @@
 // The MCP endpoint for a connected AI assistant (#9): Streamable HTTP, POST
 // only, answered with JSON. Signed in by its access token, never the session
-// cookie; tokens are made in Settings › AI assistant.
+// cookie: pasted from Settings › AI assistant, or given to an app that
+// connected by signing in (OAuth, see $lib/server/assistant/oauth).
 import { json } from '@sveltejs/kit';
 import { authenticateAssistant } from '$lib/server/assistant/tokens';
 import { handleBody, PARSE_ERROR, PROTOCOL_VERSIONS } from '$lib/server/assistant/mcp';
+import { bearerChallenge } from '$lib/server/assistant/discovery';
 import type { RequestHandler } from './$types';
 
-const unauthorized = () =>
+// without a token (or with one that ran out), where to learn how to sign in
+const unauthorized = (origin: string, hadToken: boolean) =>
 	json(
-		{ error: 'An access token is needed: make one in Waterline under Settings › AI assistant, and send it as "Authorization: Bearer <token>".' },
-		{ status: 401, headers: { 'www-authenticate': 'Bearer realm="waterline"' } }
+		{ error: 'Sign in to connect, or make an access token in Waterline under Settings › AI assistant and send it as "Authorization: Bearer <token>".' },
+		{ status: 401, headers: { 'www-authenticate': bearerChallenge(origin, '/mcp', hadToken) } }
 	);
 
-export const POST: RequestHandler = async ({ request }) => {
-	const access = authenticateAssistant(request.headers.get('authorization'));
-	if (!access) return unauthorized();
+export const POST: RequestHandler = async ({ request, url }) => {
+	const auth = request.headers.get('authorization');
+	const access = authenticateAssistant(auth);
+	if (!access) return unauthorized(url.origin, !!auth);
 	const version = request.headers.get('mcp-protocol-version');
 	if (version && !PROTOCOL_VERSIONS.includes(version)) {
 		return json({ error: `Unsupported MCP-Protocol-Version ${version}; this server speaks ${PROTOCOL_VERSIONS.join(', ')}.` }, { status: 400 });

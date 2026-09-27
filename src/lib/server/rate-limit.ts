@@ -26,3 +26,14 @@ export function recordLoginFailure(key: string, now = Date.now()) {
 export function clearLoginFailures(key: string) {
 	failures.delete(key);
 }
+
+// Other endpoints anyone can call (an app registering to connect): at most
+// `max` a window per address.
+const hits = new Map<string, number[]>();
+export function allowRate(key: string, max: number, windowMs = 60 * 60_000, now = Date.now()): boolean {
+	if (hits.size > 10_000) for (const [k, v] of hits) if (!v.some((t) => now - t < windowMs)) hits.delete(k);
+	const list = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
+	if (list.length >= max) return false;
+	hits.set(key, [...list, now]);
+	return true;
+}

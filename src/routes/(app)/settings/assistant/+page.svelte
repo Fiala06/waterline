@@ -68,7 +68,7 @@
 		<h1>AI assistant</h1>
 		<p class="muted">
 			Let an assistant like Claude or ChatGPT read your tanks, to answer questions about them. It can read readings, History, livestock and photos, but can't change
-			anything. Waterline stores no AI keys and sends nothing: the assistant asks, with an access token you make here.
+			anything. Waterline stores no AI keys and sends nothing: the assistant asks, after you sign in to connect it or with an access token you make here.
 		</p>
 	</div>
 
@@ -89,9 +89,11 @@
 					<li>
 						<div class="item">
 							<div class="t">
-								<span class="name">{t.name} <span class="mono hint-code">…{t.hint}</span></span>
+								<span class="name">{t.name}{#if !t.bySignIn}{' '}<span class="mono hint-code">…{t.hint}</span>{/if}</span>
 								<span class="meta">Reads {tankList(t.tankNames)}</span>
-								<span class="meta">Made {fmtWhen(t.createdAt, tz)} · {t.lastUsedAt ? `Last used ${fmtWhen(t.lastUsedAt, tz)}` : 'Not used yet'}</span>
+								<span class="meta"
+									>{t.bySignIn ? 'Connected by signing in' : 'Made'} {fmtWhen(t.createdAt, tz)} · {t.lastUsedAt ? `Last used ${fmtWhen(t.lastUsedAt, tz)}` : 'Not used yet'}</span
+								>
 							</div>
 							<div class="acts">
 								<a
@@ -138,13 +140,14 @@
 				{/each}
 			</ul>
 		{:else}
-			<p class="none">No assistant connected. Nothing can read your tanks until you make a token.</p>
+			<p class="none">No assistant connected. Nothing can read your tanks until you connect one.</p>
 		{/if}
 	</section>
 
 	{#if data.tanks.length}
 		<form method="POST" action="?/create" class="card add" id="add" use:enhance={() => async ({ update }) => update({ reset: false })}>
-			<h2>Connect an assistant</h2>
+			<h2>Make an access token</h2>
+			<p class="muted small">For apps you paste a token into, like Claude Code. Apps that connect by signing in don't need one.</p>
 			<div class="field">
 				<label class="label" for="a-name">Name</label>
 				<input
@@ -167,13 +170,17 @@
 
 	<section class="card how" aria-labelledby="how-h">
 		<h2 id="how-h">How to connect</h2>
-		<p class="muted small">Waterline is an MCP server: most assistants that use tools can connect to it. {created ? 'These have your new token in them.' : 'Replace <your token> with yours.'}</p>
+		<p class="muted small">Waterline is an MCP server: most assistants that use tools can connect to it.</p>
 		{@render copyField('how-url', 'Server address (MCP, Streamable HTTP)', data.mcpUrl)}
+		<p class="muted small">
+			<strong class="strong">By signing in</strong>, in claude.ai, ChatGPT and other apps with custom connectors: add one with the server address above. Waterline
+			asks you to sign in here and pick the tanks, and it shows up under Connected.
+		</p>
+		<p class="muted small"><strong class="strong">With a token</strong>: {created ? 'these have your new token in them.' : 'make one above and put it in place of <your token>.'}</p>
 		{@render copyField('how-code', 'Claude Code: run in a terminal', claudeCode)}
 		{@render copyField('how-desktop', 'Claude Desktop: in claude_desktop_config.json (needs Node.js)', desktop, true)}
 		<p class="muted small">
-			Other MCP clients: the server address above, with the header <span class="mono">Authorization: Bearer &lt;your token&gt;</span>. Apps that connect only by
-			signing in, like custom connectors on claude.ai, can't use a token.
+			Other MCP clients: the server address above, with the header <span class="mono">Authorization: Bearer &lt;your token&gt;</span>.
 		</p>
 		{@render copyField('how-api', 'Or the JSON API', curl)}
 		<p class="muted small">
@@ -326,6 +333,10 @@
 	.card :global(.input) {
 		background: var(--surface-2);
 		border-color: var(--border-strong);
+	}
+	.strong {
+		color: var(--text);
+		font-weight: 600;
 	}
 	.copy-row {
 		justify-content: space-between;

@@ -81,7 +81,13 @@ exports          id, user_id, scope(tank|account), tank_id?, format(zip|csv), st
                  progress, progress_text?, file_path?, file_name?, size?, summary?,
                  error?, created_at, expires_at?
 assistant_tokens id, user_id, name, token_hash (SHA-256), hint (last 4), tank_ids JSON,
-                 created_at, last_used_at? (read-only access for an AI assistant)
+                 created_at, last_used_at? (read-only access for an AI assistant);
+                 connected by signing in: client_id?, expires_at?, refresh_hash?,
+                 refresh_expires_at?
+oauth_clients    id (client_id), name, redirect_uris JSON, secret_hash?, created_at
+                 (apps that registered to connect by signing in)
+oauth_codes      code_hash, client_id, user_id, redirect_uri, code_challenge (PKCE S256),
+                 tank_ids JSON, expires_at, used_at? (one-time, 10 minutes)
 
 ── Server ─────────────────────────────────────────────────────────────────────
 server_settings  singleton: email_provider?(mailgun|smtp), mailgun_api_key_enc?,
@@ -101,4 +107,4 @@ logs             id, created_at, level(error|warn|info|debug), area, message, de
 
 Everything that belongs to a tank is deleted with it, and everything that belongs to a user with them. `import_id` ties rows to the import that added them, so an import is undone in one step.
 
-Indexes: `tests(tank_id, taken_at)`, `events(tank_id, occurred_at)`, `tasks(next_due)`, `expenses(tank_id, date)`, `public_pages(slug)`, `assistant_tokens(token_hash)`, plus one per `tank_id` or `user_id` foreign key.
+Indexes: `tests(tank_id, taken_at)`, `events(tank_id, occurred_at)`, `tasks(next_due)`, `expenses(tank_id, date)`, `public_pages(slug)`, `assistant_tokens(token_hash)`, `assistant_tokens(refresh_hash)`, plus one per `tank_id` or `user_id` foreign key.

@@ -22,7 +22,7 @@ Only `ORIGIN` is required. Google sign-in, the admin, who can sign in, the local
 - Every write that changes tank state also writes an `events` row, so History stays complete.
 - Public routes (`/t/[slug]`, `/s/[id]`) are SSR, never expose private fields, and load GA4 only when configured and consented.
 - Email sending goes through `src/lib/server/mail/` with `mailgun.ts` and `smtp.ts` behind one interface.
-- AI assistant access (`/mcp`, `/api/v1`, `src/lib/server/assistant/`) is read-only, limited to a token's tanks, and signed in by the token alone, never the session cookie.
+- AI assistant access (`/mcp`, `/api/v1`, `src/lib/server/assistant/`) is read-only, limited to a token's tanks, and signed in by the token alone, never the session cookie. Tokens are pasted from Settings or issued by the OAuth sign-in (`/oauth/*`, `/.well-known/oauth-*`, `assistant/oauth.ts`: PKCE always, exact redirect addresses).
 - Server problems go to the log (`logger` in `src/lib/server/log.ts`), which admins read in Settings › Server settings › Logs.
 
 ## Workflow

@@ -62,6 +62,10 @@ test('audit every screen', async ({ page, browser, request }) => {
 		}
 	}
 
+	// an app asking to connect by signing in, for the consent page
+	const app = await (await request.post('/oauth/register', { data: { client_name: 'Claude', redirect_uris: ['https://claude.ai/api/mcp/auth_callback'] } })).json();
+	const consent = `/oauth/authorize?${new URLSearchParams({ response_type: 'code', client_id: app.client_id, redirect_uri: 'https://claude.ai/api/mcp/auth_callback', code_challenge: 'a'.repeat(43), code_challenge_method: 'S256' })}`;
+
 	const routes = [
 		'/',
 		'/tanks',
@@ -99,6 +103,7 @@ test('audit every screen', async ({ page, browser, request }) => {
 		'/settings',
 		'/settings/export',
 		'/settings/assistant',
+		consent,
 		'/definitely-not-a-page'
 	].filter(Boolean) as string[];
 

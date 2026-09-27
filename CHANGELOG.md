@@ -4,6 +4,10 @@ What's new in Waterline, newest first. The app shows this list under Settings �
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
+## Unreleased
+
+- **Connect claude.ai or ChatGPT by signing in:** add Waterline as a custom connector with its address, then sign in here and pick the tanks it can read. Nothing to copy, and it shows under Settings › AI assistant, where you can disconnect it.
+
 ## 1.4.1 · 2026-09-27
 
 - **Charts, easier to use by keyboard and screen reader:** the water change and dose markers are controls of their own rather than inside the chart, with bigger tap areas that never cover a neighbour's, so tapping a marker always opens that one.

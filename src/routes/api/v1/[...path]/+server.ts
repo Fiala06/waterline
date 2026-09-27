@@ -3,6 +3,7 @@
 // from Settings › AI assistant.
 import { json } from '@sveltejs/kit';
 import { authenticateAssistant } from '$lib/server/assistant/tokens';
+import { bearerChallenge } from '$lib/server/assistant/discovery';
 import { photoFor, photoImage, runTool, ToolError } from '$lib/server/assistant/tools';
 import type { RequestHandler } from './$types';
 
@@ -17,9 +18,13 @@ const TANK_TOOLS: Record<string, string> = {
 };
 
 export const GET: RequestHandler = async ({ request, params, url }) => {
-	const access = authenticateAssistant(request.headers.get('authorization'));
+	const auth = request.headers.get('authorization');
+	const access = authenticateAssistant(auth);
 	if (!access) {
-		return json({ error: 'An access token is needed: send it as "Authorization: Bearer <token>".' }, { status: 401, headers: { 'www-authenticate': 'Bearer realm="waterline"' } });
+		return json(
+			{ error: 'An access token is needed: send it as "Authorization: Bearer <token>".' },
+			{ status: 401, headers: { 'www-authenticate': bearerChallenge(url.origin, '/api/v1', !!auth) } }
+		);
 	}
 	const q = Object.fromEntries(url.searchParams);
 	const parts = params.path.split('/').filter(Boolean);

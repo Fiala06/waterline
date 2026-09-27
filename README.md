@@ -142,11 +142,12 @@ To run `latest` and `dev` side by side, create two containers with different nam
 
 ### AI assistants (MCP)
 
-Each person can let an AI assistant, like Claude or ChatGPT, read their tanks: in **Settings › AI assistant** they make an access token for the tanks they pick and paste it into the assistant. It's off until they do, and a token can be revoked there at any time. Assistants can read readings, History, livestock, plants, trends and photos, and can't change anything. Waterline stores no AI keys and calls no AI service: the assistant asks.
+Each person can let an AI assistant, like Claude or ChatGPT, read their tanks, and picks which ones. It's off until they connect one, and each connection can be disconnected in **Settings › AI assistant** at any time. Assistants can read readings, History, livestock, plants, trends and photos, and can't change anything. Waterline stores no AI keys and calls no AI service: the assistant asks.
 
-- MCP server (Streamable HTTP): `<ORIGIN>/mcp`, with the header `Authorization: Bearer <token>`. For Claude Code: `claude mcp add --transport http waterline <ORIGIN>/mcp --header "Authorization: Bearer <token>"`. The settings page shows this, and a Claude Desktop config, filled in.
-- The same as JSON: `GET <ORIGIN>/api/v1/tanks`, then `/api/v1/tanks/<id>/summary` (Markdown), `readings`, `history`, `livestock`, `trends`, `photos`, and `/api/v1/photos/<id>?size=small|large`.
-- Tokens are stored hashed. Assistants that connect only by signing in (OAuth), such as custom connectors on claude.ai, can't use them yet. The assistant has to reach your server, so one running in the cloud needs Waterline on a public address.
+- **By signing in (OAuth):** in claude.ai, ChatGPT or another app with custom connectors, add a connector with the address `<ORIGIN>/mcp`. The app registers itself, sends you to Waterline to sign in and pick the tanks, and renews its access on its own (access tokens last an hour, refresh tokens 60 days of use). Waterline follows the MCP authorization spec: `/.well-known/oauth-protected-resource`, `/.well-known/oauth-authorization-server`, dynamic client registration at `/oauth/register`, and PKCE (S256) always.
+- **With a token:** for Claude Code, Claude Desktop and scripts, make an access token in Settings › AI assistant. For Claude Code: `claude mcp add --transport http waterline <ORIGIN>/mcp --header "Authorization: Bearer <token>"`. The settings page shows this, and a Claude Desktop config, filled in.
+- **JSON API:** the same data as JSON: `GET <ORIGIN>/api/v1/tanks`, then `/api/v1/tanks/<id>/summary` (Markdown), `readings`, `history`, `livestock`, `trends`, `photos`, and `/api/v1/photos/<id>?size=small|large`.
+- The assistant has to reach your server, so one running in the cloud (claude.ai, ChatGPT) needs Waterline on a public HTTPS address.
 
 ### Security notes
 
@@ -157,7 +158,7 @@ Each person can let an AI assistant, like Claude or ChatGPT, read their tanks: i
 - `AUTH_DEV_LOGIN=true` is for tests only. The server refuses to start with it when `NODE_ENV=production` (as in the Docker image).
 - Every response sends `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff` and `Referrer-Policy: same-origin`, plus HSTS when `ORIGIN` is https. Only this site may post forms to it.
 - Signing out clears the app's cached pages and photos on that device (browsers that support `Clear-Site-Data`).
-- AI assistant tokens read only the tanks they were made for, never write, and are refused once revoked. `/mcp` and `/api/v1` accept only a token, never the session cookie, and refuse requests from other sites' pages.
+- AI assistant access reads only the tanks it was given, never writes, and is refused once disconnected. Tokens and sign-in codes are stored hashed. `/mcp` and `/api/v1` accept only a token, never the session cookie, and refuse requests from other sites' pages. An app connecting by signing in is sent back only to an address it registered (https, or http on the same computer), must use PKCE, and each sign-in code works once, for 10 minutes; registration allows 20 apps an hour per address.
 
 ## Tests
 

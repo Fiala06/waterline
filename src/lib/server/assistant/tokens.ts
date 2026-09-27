@@ -11,21 +11,24 @@ const PREFIX = 'wl_';
 const TOUCH_MS = 60_000;
 export const MAX_TOKENS = 20;
 
-const hash = (t: string) => createHash('sha256').update(t).digest('hex');
+export const hash = (t: string) => createHash('sha256').update(t).digest('hex');
+/** A new random token with this prefix: `wl_` for access, `wlr_` for refresh. */
+export const newToken = (prefix = PREFIX) => prefix + randomBytes(32).toString('base64url');
 
+/** Every connection: pasted tokens and apps connected by signing in. */
 export function listAssistantTokens(userId: string): AssistantToken[] {
 	return db.select().from(assistantTokens).where(eq(assistantTokens.userId, userId)).orderBy(desc(assistantTokens.createdAt)).all();
 }
 
 /** The keeper's own tanks among these ids, in their order. */
-function ownTanks(userId: string, tankIds: string[]) {
+export function ownTanks(userId: string, tankIds: string[]) {
 	const mine = new Set(db.select({ id: tanks.id }).from(tanks).where(eq(tanks.userId, userId)).all().map((t) => t.id));
 	return [...new Set(tankIds)].filter((id) => mine.has(id));
 }
 
 /** A new token for these tanks: the token itself, to show once, and its row. */
 export function createAssistantToken(userId: string, name: string, tankIds: string[]) {
-	const token = PREFIX + randomBytes(32).toString('base64url');
+	const token = newToken();
 	const row = db
 		.insert(assistantTokens)
 		.values({ userId, name: name.trim().slice(0, 60) || 'AI assistant', tokenHash: hash(token), hint: token.slice(-4), tankIds: ownTanks(userId, tankIds) })
@@ -70,6 +73,8 @@ export function authenticateAssistant(authorization: string | null, now = Date.n
 		.where(eq(assistantTokens.tokenHash, hash(m[1])))
 		.get();
 	if (!row) return null;
+	// connected by signing in: the access token lasts an hour, then the app renews it
+	if (row.token.expiresAt && row.token.expiresAt <= new Date(now).toISOString()) return null;
 	if (!row.token.lastUsedAt || now - Date.parse(row.token.lastUsedAt) > TOUCH_MS) {
 		const at = new Date(now).toISOString();
 		db.update(assistantTokens).set({ lastUsedAt: at }).where(eq(assistantTokens.id, row.token.id)).run();
