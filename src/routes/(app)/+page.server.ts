@@ -6,9 +6,12 @@ import { equipmentName } from '$lib/equipment';
 import { listEquipment, listLivestock, listPlants } from '$lib/server/specs';
 import { getTank, listParams } from '$lib/server/tanks';
 import { listTasks } from '$lib/server/tasks';
+import { trendNote } from '$lib/trends';
 import type { PageServerLoad } from './$types';
 
 const TREND_DAYS = 28;
+/** Readings looked at for a run or a pace: a longer view than the chart's. */
+const NOTE_DAYS = 90;
 
 export const load: PageServerLoad = async ({ locals, parent }) => {
 	const user = locals.user!;
@@ -40,6 +43,17 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 	const tasks = listTasks(user.id, tank.id).map((r) => r.task);
 	const wcTask = tasks.find((t) => t.kind === 'water_change');
 	const lastWc = lastEventOf(tank.id, 'water_change');
+
+	// Spotting trends: what stands out, most urgent first, at most three
+	const noteSince = new Date(Date.now() - NOTE_DAYS * 86_400_000).toISOString();
+	const notes = params
+		.flatMap((p) => {
+			const points = series(tank.id, p.id, noteSince).map((r) => ({ t: Date.parse(r.takenAt), value: r.value }));
+			const n = trendNote(p, points, { prefs: user, since: lastWc ? Date.parse(lastWc.occurredAt) : null });
+			return n ? [n] : [];
+		})
+		.sort((a, b) => Number(b.warn) - Number(a.warn))
+		.slice(0, 3);
 
 	const recent = recentActivity(tank.id, 5);
 	const thumbs = thumbsFor(
@@ -89,6 +103,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		latestWhen: latestAt ? fmtWhen(latestAt, tz) : null,
 		trends,
 		trendFrom: Date.parse(since),
+		notes,
 		markers,
 		tasks,
 		today,

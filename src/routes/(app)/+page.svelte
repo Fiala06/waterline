@@ -209,6 +209,27 @@
 								<p class="muted chart-empty">Charts appear after your second test. Tap + to log another.</p>
 							{/if}
 						</div>
+						{#if data.notes?.length}
+							<!-- Spotting trends: tap one to see its chart -->
+							<ul class="noticed" aria-label="Noticed">
+								{#each data.notes as n (n.parameterId)}
+									{@const chartable = trendable.some((p) => p.id === n.parameterId)}
+									<li>
+										<svelte:element
+											this={chartable ? 'button' : 'div'}
+											type={chartable ? 'button' : undefined}
+											class="note"
+											aria-pressed={chartable ? chosen?.id === n.parameterId : undefined}
+											onclick={chartable ? () => (selected = n.parameterId) : undefined}
+											role={chartable ? undefined : 'note'}
+										>
+											<span class="arrow" class:status-warn={n.warn} aria-hidden="true">{n.direction === 'up' ? '↗' : '↘'}</span>
+											<span>{n.text}</span>
+										</svelte:element>
+									</li>
+								{/each}
+							</ul>
+						{/if}
 					</section>
 				{/if}
 			</div>
@@ -469,6 +490,43 @@
 		margin: 8px 0;
 		font-size: 14px;
 		line-height: 1.5;
+	}
+	/* Spotting trends: a line or two under the chart */
+	.noticed {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+	}
+	.note {
+		display: flex;
+		align-items: baseline;
+		gap: 10px;
+		width: 100%;
+		min-height: 44px;
+		padding: 10px 2px;
+		text-align: left;
+		font-size: 14px;
+		line-height: 1.45;
+		color: var(--text-2);
+	}
+	.noticed li + li .note {
+		border-top: 1px solid var(--divider-soft);
+	}
+	.arrow {
+		flex-shrink: 0;
+		width: 16px;
+		font-weight: 700;
+		color: var(--text-muted);
+	}
+	button.note[aria-pressed='true'] {
+		color: var(--text);
+	}
+	@media (hover: hover) {
+		button.note:hover {
+			color: var(--text);
+		}
 	}
 	.legend {
 		display: flex;

@@ -9,7 +9,8 @@ import { addDays, daysBetween, fmtDateLong, todayInZone, utcToZoned, zonedToUtc 
 import { tankTypeLabel } from '$lib/types';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { EVENT_CATEGORIES, type User } from './db/schema';
-import { eventsSince, latestReadings, testsSince } from './logs';
+import { trendNote } from '$lib/trends';
+import { eventsSince, lastEventOf, latestReadings, testsSince } from './logs';
 import { listEquipment, listLivestock, listPlants } from './specs';
 import { getTank, listParams } from './tanks';
 import { listTasks } from './tasks';
@@ -124,6 +125,15 @@ export function tankSummary(user: User, tankId: string, days: number, now = new 
 				)
 			: ['No parameters are tracked.']
 	);
+
+	// ── Trends: runs and paces, as on the dashboard ─────────────────────────
+	const lastWc = lastEventOf(t.id, 'water_change');
+	const noticed = params.flatMap((p) => {
+		const points = all.flatMap((x) => (x.readings.has(p.id) ? [{ t: Date.parse(x.test.takenAt), value: x.readings.get(p.id)! }] : []));
+		const n = trendNote(p, points, { prefs: user, since: lastWc ? Date.parse(lastWc.occurredAt) : null });
+		return n ? [`- ${n.text}`] : [];
+	});
+	if (noticed.length) section('Trends', noticed);
 
 	// ── Water tests ─────────────────────────────────────────────────────────
 	const used = params.filter((p) => tests.some((x) => x.readings.has(p.id)));
