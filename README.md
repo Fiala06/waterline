@@ -107,6 +107,7 @@ To run `latest` and `dev` side by side, create two containers with different nam
 - A new server can only be set up with the setup code from its log, and sign-in is closed by default: only the admin, the people or domains the admin lists, or everyone with a Google account if the admin chooses that.
 - The local admin login and the setup code allow 5 failed tries per address every 15 minutes.
 - The Google client secret and email passwords are stored encrypted, never sent back to the browser.
+- The profile photo in the account menu is copied from Google at each Google sign-in into `/data/avatars` and shown only to its owner, so browsers never load it from Google.
 - `AUTH_DEV_LOGIN=true` is for tests only. The server refuses to start with it when `NODE_ENV=production` (as in the Docker image).
 - Every response sends `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff` and `Referrer-Policy: same-origin`, plus HSTS when `ORIGIN` is https. Only this site may post forms to it.
 - Signing out clears the app's cached pages and photos on that device (browsers that support `Clear-Site-Data`).
