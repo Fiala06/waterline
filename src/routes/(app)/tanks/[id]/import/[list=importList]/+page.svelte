@@ -57,7 +57,7 @@
 						<div class="st">
 							<h2>Start from the template</h2>
 							<p>Its first row names the columns Waterline reads. Open it in Excel, Numbers or Google Sheets and replace the example rows.</p>
-							{#if data.kind === 'tests'}<p>A water-tests.csv from Export data reads back as it is.</p>{/if}
+							{#if data.kind === 'tests'}<p>A water-tests.csv from Settings › Import & export reads back as it is.</p>{/if}
 						</div>
 						<a class="btn" href="/tanks/{data.tank.id}/import/{info.slug}/template.csv" download>Download template</a>
 					</li>

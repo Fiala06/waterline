@@ -14,7 +14,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 - **Quicker backdating:** 1 hour ago, This morning and Yesterday evening in the date and time picker.
 - **Saved product links** in Settings › Products: one tap to reorder, and a Reorder link when you dose one.
 - **Tips:** an ⓘ beside each parameter, and beside a few less obvious fields, explains what it is.
-- **Summary for an AI assistant:** a tank's readings, care log and stocking as text to paste into a chat, from its Overview or Export data.
+- **Summary for an AI assistant:** a tank's readings, care log and stocking as text to paste into a chat, from its Overview or Settings › Import & export.
 - **Easier to set up:** a new server needs only its address. The first page asks for a setup code from the server's log, then Google sign-in, who can sign in, the admin's login and a few switches are all in Settings › Server settings.
 - **What's new:** this list, in Settings, and a note on the dashboard after each update.
 - **Smaller things:** a log entry you leave unsaved is kept for when you come back; species search finds the names people use; saving works with ad blockers turned on; new category icons, with one for plants; and now and then a small fish swims through the logo.
