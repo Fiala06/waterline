@@ -45,9 +45,9 @@ export const actions: Actions = {
 		// Completing a water change or test opens the matching log form.
 		if (task.openFormOnDone && (task.kind === 'water_change' || task.kind === 'test')) {
 			const q = new URLSearchParams({ tank: task.tankId, task: task.id });
-			if (task.kind === 'test') redirect(303, `/log/test?${q}`);
+			if (task.kind === 'test') redirect(303, `/entries/test/new?${q}`);
 			q.set('category', 'water_change');
-			redirect(303, `/log/event?${q}`);
+			redirect(303, `/entries/event/new?${q}`);
 		}
 
 		const done = completeTask(user.id, taskId, { timeZone: user.timeZone });

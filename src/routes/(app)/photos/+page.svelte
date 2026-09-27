@@ -35,7 +35,7 @@
 			icon="note"
 			title="No photos yet"
 			text="Photos you add to entries appear here."
-			href={data.tank ? '/log/event?category=note' : undefined}
+			href={data.tank ? '/entries/event/new?category=note' : undefined}
 			label="Add photo"
 		/>
 	{/if}

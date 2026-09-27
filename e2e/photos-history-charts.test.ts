@@ -8,23 +8,23 @@ test('photos, history and charts', async ({ page }, info) => {
 	// Two tests a week apart so the chart has a line; the older one is backdated through the URL.
 	const tankId = new URL(tankUrl).searchParams.get('tank')!;
 	const lastWeek = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
-	await open(page, `/log/test?tank=${tankId}&date=${lastWeek}&time=08:00`);
+	await open(page, `/entries/test/new?tank=${tankId}&date=${lastWeek}&time=08:00`);
 	await page.getByLabel(/^Nitrate /).fill('12');
 	await page.getByRole('button', { name: 'Save 1 reading' }).click();
 	await expect(page.getByRole('status')).toContainText('✓ Saved 1 reading');
 
-	await open(page, `/log/event?tank=${tankId}&category=water_change`);
+	await open(page, `/entries/event/new?tank=${tankId}&category=water_change`);
 	await page.getByRole('button', { name: 'Save water change' }).click();
 	await expect(page.getByRole('status')).toContainText('✓ Water change logged');
 
-	await open(page, `/log/test?tank=${tankId}`);
+	await open(page, `/entries/test/new?tank=${tankId}`);
 	await page.getByLabel(/^Nitrate /).fill('35');
 	await page.locator('input[type=file][name=photos]').setInputFiles(await jpeg());
 	await page.getByRole('button', { name: 'Save 1 reading' }).click();
 	await expect(page.getByRole('status')).toContainText('1 out of range');
 
 	// Note with only a photo
-	await open(page, `/log/event?tank=${tankId}&category=note`);
+	await open(page, `/entries/event/new?tank=${tankId}&category=note`);
 	await page.locator('input[type=file][name=photos]').setInputFiles(await jpeg('#c8a040', 'plants.jpg'));
 	await page.getByRole('button', { name: 'Save note' }).click();
 	await expect(page.getByRole('status')).toContainText('✓ Photo added');

@@ -137,7 +137,7 @@
 					{#if c.allTime >= 2}
 						<EmptyState compact icon="test" title="Fewer than 2 readings in this range" text="Try a longer range." />
 					{:else}
-						<EmptyState compact icon="test" title="Charts appear after your second test." href="/log/test?tank={data.tank.id}" label="Log water test" />
+						<EmptyState compact icon="test" title="Charts appear after your second test." href="/entries/test/new?tank={data.tank.id}" label="Log water test" />
 					{/if}
 				</div>
 			{/if}

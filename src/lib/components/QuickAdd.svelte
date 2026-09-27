@@ -71,11 +71,11 @@
 		const k = e.key.toLowerCase();
 		const target =
 			k === 't'
-				? href('/log/test')
+				? href('/entries/test/new')
 				: k === 'w'
-					? href('/log/event', { category: 'water_change' })
+					? href('/entries/event/new', { category: 'water_change' })
 					: k === 'n'
-						? href('/log/event', { category: 'note' })
+						? href('/entries/event/new', { category: 'note' })
 						: null;
 		if (target) {
 			e.preventDefault();
@@ -108,7 +108,7 @@
 
 		<!-- phones: three wide rows (04); desktop: three tiles with their key (D12) -->
 		<div class="big">
-			<a class="choice primary" href={href('/log/test')} onclick={() => (open = false)}>
+			<a class="choice primary" href={href('/entries/test/new')} onclick={() => (open = false)}>
 				<span class="ic hide-desk"><CategoryIcon kind="test" size={44} inverted /></span>
 				<span class="ic hide-phone"><CategoryIcon kind="test" size={36} inverted /></span>
 				<span class="t">
@@ -119,7 +119,7 @@
 			</a>
 			<a
 				class="choice"
-				href={href('/log/event', { category: 'water_change' })}
+				href={href('/entries/event/new', { category: 'water_change' })}
 				onclick={() => (open = false)}
 			>
 				<span class="ic hide-desk"><CategoryIcon kind="water_change" size={44} /></span>
@@ -134,7 +134,7 @@
 				</span>
 				<kbd>W</kbd>
 			</a>
-			<a class="choice" href={href('/log/event', { category: 'note' })} onclick={() => (open = false)}>
+			<a class="choice" href={href('/entries/event/new', { category: 'note' })} onclick={() => (open = false)}>
 				<span class="ic hide-desk"><CategoryIcon kind="note" size={44} /></span>
 				<span class="ic hide-phone"><CategoryIcon kind="note" size={36} /></span>
 				<span class="t">
@@ -149,7 +149,7 @@
 			<div class="more-label">More</div>
 			<div class="more-list">
 				{#each more as m (m.category)}
-					<a class="btn" href={href('/log/event', { category: m.category })} onclick={() => (open = false)}
+					<a class="btn" href={href('/entries/event/new', { category: m.category })} onclick={() => (open = false)}
 						>{m.label}</a
 					>
 				{/each}

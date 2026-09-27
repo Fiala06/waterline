@@ -127,7 +127,7 @@
 						icon="test"
 						title="No readings yet"
 						text="Log your first water test to see status for each parameter. Every field is optional."
-						href="/log/test?tank={data.tank.id}"
+						href="/entries/test/new?tank={data.tank.id}"
 						label="Log first water test"
 						primary
 					/>

@@ -6,7 +6,7 @@ test('public tank page and photo share link', async ({ page, browser }, info) =>
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
 
 	// A test with a private note and a photo
-	await open(page, `/log/test?tank=${tankId}`);
+	await open(page, `/entries/test/new?tank=${tankId}`);
 	await page.getByLabel(/^Nitrate /).fill('35');
 	await page.getByLabel(/^pH /).fill('6.8');
 	await page.getByLabel('Note').fill('SECRET private note');

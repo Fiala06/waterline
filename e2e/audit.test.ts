@@ -89,9 +89,9 @@ test('audit every screen', async ({ page, browser, request }) => {
 		`${testEntry}/edit`,
 		eventEntries[0],
 		`${eventEntries[0]}/edit`,
-		`/log/test?tank=${tank}`,
+		`/entries/test/new?tank=${tank}`,
 		...['water_change', 'dosing', 'maintenance', 'livestock', 'equipment', 'observation', 'note'].map(
-			(c) => `/log/event?tank=${tank}&category=${c}`
+			(c) => `/entries/event/new?tank=${tank}&category=${c}`
 		),
 		'/settings',
 		'/settings/export',

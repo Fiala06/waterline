@@ -9,7 +9,7 @@
 		const q = new URLSearchParams(page.url.searchParams);
 		q.set('category', c);
 		q.delete('task');
-		return `/log/event?${q}`;
+		return `/entries/event/new?${q}`;
 	}
 </script>
 

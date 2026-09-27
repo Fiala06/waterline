@@ -11,7 +11,7 @@ const STORE = 'queue';
 type Field = [string, string | { name: string; type: string; blob: Blob }];
 export interface Queued {
 	id: string;
-	url: string; // the form action, e.g. /log/test?tank=…
+	url: string; // the form action, e.g. /entries/test/new?tank=…
 	fields: Field[];
 	title: string; // "Water test · 5 readings"
 	tankId: string | null;
@@ -142,6 +142,13 @@ export function queueable(o: {
 
 let flushing = false;
 
+/**
+ * Entries queued before the log forms moved from /log/… still post: ad
+ * blockers' privacy lists block /log/event?…, so they aren't left to the
+ * server's redirect.
+ */
+export const currentUrl = (url: string) => url.replace(/^\/log\/(test|event)(?=[?#]|$)/, '/entries/$1/new');
+
 /** Post queued entries in order. Stops at the first network failure. */
 export async function flushQueue(): Promise<number> {
 	if (flushing || !navigator.onLine) return 0;
@@ -157,7 +164,7 @@ export async function flushQueue(): Promise<number> {
 			}
 			let res: Response;
 			try {
-				res = await fetch(item.url, { method: 'POST', body, headers: { 'x-sveltekit-action': 'true', accept: 'application/json', 'x-waterline-sync': '1' } });
+				res = await fetch(currentUrl(item.url), { method: 'POST', body, headers: { 'x-sveltekit-action': 'true', accept: 'application/json', 'x-waterline-sync': '1' } });
 			} catch {
 				break; // still offline
 			}

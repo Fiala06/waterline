@@ -29,6 +29,19 @@ const csrf: Handle = ({ event, resolve }) => {
 };
 
 /**
+ * The log forms moved from /log/test and /log/event to /entries/…/new: ad
+ * blockers' privacy lists block posts to /log/event?…. Old links, and pages
+ * still running the previous version, follow; 308 keeps a POST a POST. The
+ * request's own URL, since event.url drops a data request's /__data.json.
+ */
+const movedPaths: Handle = ({ event, resolve }) => {
+	const url = new URL(event.request.url);
+	const moved = url.pathname.replace(/^\/log\/(test|event)(?=\/|$)/, '/entries/$1/new');
+	if (moved === url.pathname) return resolve(event);
+	return new Response(null, { status: 308, headers: { location: moved + url.search } });
+};
+
+/**
  * Plain-HTTP servers (ORIGIN=http://…, e.g. LAN-only): SvelteKit marks cookies
  * Secure everywhere but localhost, and browsers drop Secure cookies sent over HTTP.
  */
@@ -133,7 +146,7 @@ const appHandle: Handle = async ({ event, resolve }) => {
 	return res;
 };
 
-export const handle = sequence(securityHeaders, csrf, httpCookies, loginLimit, authHandle, appHandle);
+export const handle = sequence(securityHeaders, csrf, movedPaths, httpCookies, loginLimit, authHandle, appHandle);
 
 export const init: ServerInit = () => {
 	if (building) return;

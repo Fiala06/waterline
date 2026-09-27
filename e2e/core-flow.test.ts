@@ -50,7 +50,7 @@ test('core flow', async ({ page }, info) => {
 
 	// Complete a task: the water change reminder opens its log form
 	await page.getByRole('button', { name: 'Mark done' }).first().click();
-	await expect(page).toHaveURL(/\/log\/event\?.*category=water_change/);
+	await expect(page).toHaveURL(/\/entries\/event\/new\?.*category=water_change/);
 	await expect(page.getByLabel(/Also complete task “Water change 25%”/)).toBeChecked();
 	await page.locator('label', { hasText: 'RODI' }).click();
 	await page.getByRole('button', { name: 'Save water change' }).click();

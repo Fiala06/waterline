@@ -27,9 +27,11 @@
 	const showFab = $derived(fabRoutes.includes(path));
 	// The photo viewer is full screen, without the sidebar or header.
 	const fullscreen = $derived(path.startsWith('/photos/'));
+	// The log forms: a new water test or event for the current tank (05, 08, 14).
+	const logForm = $derived(/^\/entries\/(test|event)\/new$/.test(path));
 	// The header's tank switcher only on pages about the current tank; Tasks,
 	// Tanks and Settings cover every tank.
-	const tankScoped = $derived(path === '/' || /^\/(charts|history|photos|log)(\/|$)/.test(path));
+	const tankScoped = $derived(path === '/' || logForm || /^\/(charts|history|photos)(\/|$)/.test(path));
 
 	const nav = [
 		{ href: '/', label: 'Dashboard' },
@@ -46,7 +48,7 @@
 	// Desktop header (README → Navigation). The dashboard and log forms get the big tank
 	// switcher (07, 08); History, Charts and Photos a title and a small switcher (D6, D7, 19);
 	// every other page its title, under a breadcrumb when it belongs to another page (D3–D5, D9).
-	const bigSwitcher = $derived(path === '/' || path.startsWith('/log/'));
+	const bigSwitcher = $derived(path === '/' || logForm);
 	const sectionTitle = $derived(({ '/history': 'History', '/charts': 'Charts', '/photos': 'Photos' } as Record<string, string | undefined>)[path]);
 	const tankName = $derived(
 		(page.data.tankHead?.name ?? page.data.tank?.name ?? data.tanks.find((t) => t.id === page.params.id)?.name ?? 'Tank') as string
@@ -78,7 +80,7 @@
 		if (id === '/(app)/tasks') return { title: 'Tasks', actions: [{ label: 'New task', href: newTaskHref }] };
 		if (id === '/(app)/tasks/new') return { title: 'New task', crumbs: [tasks] };
 		if (id === '/(app)/tasks/[id]') return { title: 'Edit task', crumbs: [tasks] };
-		if (id.startsWith('/(app)/entries/')) {
+		if (id.startsWith('/(app)/entries/') && !logForm) {
 			const history = { label: 'History', href: ui.prev?.startsWith('/history') ? ui.prev : '/history' };
 			return { title: id.endsWith('/edit') ? 'Edit entry' : ((page.data.entry?.kindLabel as string | undefined) ?? 'Entry'), crumbs: [history] };
 		}
@@ -90,7 +92,7 @@
 		const u = new URL(page.url);
 		u.searchParams.set('tank', id);
 		u.searchParams.delete('task');
-		const keepPage = tabRoutes.includes(u.pathname) || u.pathname.startsWith('/log/');
+		const keepPage = tabRoutes.includes(u.pathname) || logForm;
 		goto(keepPage ? `${u.pathname}?${u.searchParams}` : `/?tank=${id}`);
 	}
 
@@ -158,7 +160,7 @@
 	afterNavigate(({ from, to }) => {
 		const f = from?.url;
 		if (!f || f.pathname === to?.url.pathname) return;
-		ui.prev = /^\/(entries|log|photos\/|setup)/.test(f.pathname) ? ui.prev : f.pathname + f.search;
+		ui.prev = /^\/(entries|photos\/|setup)/.test(f.pathname) ? ui.prev : f.pathname + f.search;
 	});
 
 	// Skeleton while a page takes a moment to load (7.9); quick loads never show it.

@@ -7,7 +7,7 @@ test('editing a test keeps exact readings and shows what they were', async ({ pa
 	await newKeeperWithTank(page, `edit-${info.project.name}`);
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
 
-	await open(page, `/log/test?tank=${tankId}`);
+	await open(page, `/entries/test/new?tank=${tankId}`);
 	await page.getByLabel(/^pH /).fill('7.54');
 	await page.getByRole('button', { name: 'Save 1 reading' }).click();
 	await expect(page.getByRole('status')).toContainText('1 out of range');
@@ -50,7 +50,7 @@ test('editing a test keeps exact readings and shows what they were', async ({ pa
 test('deleting an entry opened from History goes back to History', async ({ page }, info) => {
 	await newKeeperWithTank(page, `hist-${info.project.name}`);
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
-	await open(page, `/log/test?tank=${tankId}`);
+	await open(page, `/entries/test/new?tank=${tankId}`);
 	await page.getByLabel(/^pH /).fill('6.8');
 	await page.getByRole('button', { name: 'Save 1 reading' }).click();
 	await expect(page.getByRole('status')).toContainText('Saved 1 reading');
@@ -77,9 +77,9 @@ test('targets show saved switches before scripts load', async ({ page, browser }
 test('impossible dates are refused, not a server error', async ({ page, baseURL }, info) => {
 	await newKeeperWithTank(page, `dates-${info.project.name}`);
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
-	await open(page, `/log/test?tank=${tankId}`);
+	await open(page, `/entries/test/new?tank=${tankId}`);
 	const field = await page.getByLabel(/^pH /).getAttribute('name');
-	const res = await page.request.post(`/log/test?tank=${tankId}`, {
+	const res = await page.request.post(`/entries/test/new?tank=${tankId}`, {
 		form: { date: '2026-13-45', time: '25:00', [field!]: '7' },
 		headers: { origin: new URL(baseURL!).origin, 'x-sveltekit-action': 'true', accept: 'application/json' }
 	});
@@ -101,7 +101,7 @@ test('phones reach Charts and Photos from the dashboard', async ({ page }, info)
 	test.skip(info.project.name !== 'phone', 'phone layout');
 	await newKeeperWithTank(page, `nav-${info.project.name}`);
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
-	await open(page, `/log/test?tank=${tankId}`);
+	await open(page, `/entries/test/new?tank=${tankId}`);
 	await page.getByLabel(/^pH /).fill('6.8');
 	await page.getByRole('button', { name: 'Save 1 reading' }).click();
 	await expect(page.getByRole('link', { name: 'Charts' })).toBeVisible();

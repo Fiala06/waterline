@@ -18,7 +18,7 @@ test('logging offline saves on the device and syncs later', async ({ page, conte
 	// Let the service worker install and take control.
 	await page.evaluate(() => navigator.serviceWorker.ready);
 	await open(page, `/?tank=${tankId}`);
-	await open(page, `/log/test?tank=${tankId}`);
+	await open(page, `/entries/test/new?tank=${tankId}`);
 
 	await context.setOffline(true);
 	await page.getByLabel(/^Nitrate /).fill('15');

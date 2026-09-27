@@ -10,7 +10,7 @@ test('daily digest instead of individual emails', async ({ page }, info) => {
 
 	// With a digest, a bad reading doesn't send its own alert...
 	const tankId = (await page.request.get('/tanks').then((r) => r.text())).match(/\/\?tank=([0-9a-f-]{36})/)![1];
-	await open(page, `/log/test?tank=${tankId}`);
+	await open(page, `/entries/test/new?tank=${tankId}`);
 	await page.getByLabel(/^Nitrate /).fill('40');
 	await page.getByRole('button', { name: 'Save 1 reading' }).click();
 	await expect(page.getByRole('status')).toContainText('1 out of range');

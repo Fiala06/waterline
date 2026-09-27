@@ -44,7 +44,7 @@ test('equipment, livestock and plants', async ({ page }, info) => {
 	await expect(page.getByText('13 animals · 1 species')).toBeVisible();
 
 	// Plants via Log event (linked), then trim
-	await open(page, `/log/event?tank=${tankId}&category=livestock`);
+	await open(page, `/entries/event/new?tank=${tankId}&category=livestock`);
 	await page.locator('label', { hasText: /^Plant$/ }).click();
 	await page.getByLabel('Species').pressSequentially('Java fern', { delay: 20 });
 	await page.getByRole('option', { name: /Use “Java fern” as a custom name|Java fern/ }).first().click();
