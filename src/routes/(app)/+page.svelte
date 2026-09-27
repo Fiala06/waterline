@@ -240,7 +240,7 @@
 						{#if data.notes?.length}
 							<!-- Spotting trends: tap one to see its chart -->
 							<ul class="noticed" aria-label="Noticed">
-								{#each data.notes as n (n.parameterId)}
+								{#each data.notes as n (`${n.parameterId}:${n.kind}`)}
 									{@const chartable = trendable.some((p) => p.id === n.parameterId)}
 									<li>
 										<svelte:element

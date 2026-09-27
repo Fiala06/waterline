@@ -175,6 +175,42 @@
 					</div>
 				{/if}
 			</div>
+
+			{#if c.others.length}
+				<section class="compare" aria-labelledby="compare-h">
+					<h2 id="compare-h">{c.name} in your other tanks</h2>
+					<div class="cmp-grid">
+						{#each c.others as o (o.tankId)}
+							<div class="card cmp">
+								<div class="cmp-head">
+									<a class="cmp-tank" href="/charts?tank={o.tankId}&p={o.paramId}&r={data.range}">{o.tankName}</a>
+									<span class="cmp-latest"><span class="num">{o.latest}</span> <span class="status-{o.level} cmp-st">{o.status}</span></span>
+								</div>
+								{#if o.points.length >= 2}
+									<div class="cmp-chart">
+										<TrendChart
+											fit
+											points={o.points}
+											band={o.band}
+											from={c.from}
+											to={c.to}
+											lastLevel={o.level}
+											label="{c.name} in {o.tankName}"
+											name={c.name}
+											unit={c.unit}
+											decimals={o.decimals}
+											timeZone={data.user.timeZone}
+										/>
+									</div>
+								{:else}
+									<p class="cmp-none">Fewer than 2 readings in this range</p>
+								{/if}
+								{#if o.target}<p class="cmp-target">Target {o.target}</p>{/if}
+							</div>
+						{/each}
+					</div>
+				</section>
+			{/if}
 		</div>
 	{/if}
 </div>
@@ -214,14 +250,71 @@
 		gap: 14px;
 		min-width: 0;
 	}
+	/* Compare: the same parameter in the other tanks, on the same dates */
+	.compare {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		min-width: 0;
+	}
+	.compare h2 {
+		margin: 8px 0 0;
+		font-size: 17px;
+		font-weight: 600;
+	}
+	.cmp-grid {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: 10px;
+	}
+	.cmp {
+		padding: 12px 14px;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		min-width: 0;
+	}
+	.cmp-head {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 12px;
+	}
+	.cmp-tank {
+		font-weight: 600;
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
+		margin: -12px 0;
+	}
+	.cmp-latest {
+		font-size: 15px;
+		font-weight: 600;
+		white-space: nowrap;
+	}
+	.cmp-st {
+		font-size: 13px;
+	}
+	.cmp-chart {
+		height: 140px;
+	}
+	.cmp-none,
+	.cmp-target {
+		margin: 0;
+		font-size: 13px;
+		color: var(--text-muted);
+	}
 	.plist,
 	.c-title,
 	.events {
 		display: none;
 	}
-	/* 12: stats, then the legend */
+	/* 12: stats, then the legend; then the other tanks */
 	.legend {
 		order: 1;
+	}
+	.compare {
+		order: 2;
 	}
 	fieldset {
 		border: none;
@@ -390,6 +483,12 @@
 
 	/* ── 19: parameters | chart | stats and events ───────────────── */
 	@media (min-width: 1024px) {
+		.compare {
+			grid-area: compare;
+		}
+		.cmp-grid {
+			grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+		}
 		.page {
 			padding: 28px 32px;
 		}
@@ -402,11 +501,12 @@
 		.layout {
 			display: grid;
 			grid-template-columns: clamp(168px, 13.9vw, 200px) minmax(0, 1fr) clamp(260px, 20.8vw, 300px);
-			grid-template-rows: auto auto auto 1fr;
+			grid-template-rows: auto auto auto auto 1fr;
 			grid-template-areas:
 				'plist head side'
 				'plist chart side'
 				'plist legend side'
+				'plist compare side'
 				'plist . side';
 			column-gap: 24px;
 			row-gap: 16px;
@@ -565,12 +665,13 @@
 	@media (min-width: 1024px) and (max-width: 1279px) {
 		.layout {
 			grid-template-columns: 168px minmax(0, 1fr);
-			grid-template-rows: auto auto auto auto 1fr;
+			grid-template-rows: auto auto auto auto auto 1fr;
 			grid-template-areas:
 				'plist head'
 				'plist chart'
 				'plist legend'
 				'plist side'
+				'plist compare'
 				'plist .';
 		}
 		.c-head {

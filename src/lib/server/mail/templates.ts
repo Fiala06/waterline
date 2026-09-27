@@ -147,6 +147,8 @@ export interface DigestTank {
 	sub: string; // "Planted · 40 gal"
 	tasks: { name: string; due: string; level: Level; doneUrl: string }[];
 	readings: { text: string; target: string; date: string }[]; // out of range
+	/** what stands out in its readings (Spotting trends), ▲ when heading for a limit */
+	noticed?: { text: string; warn: boolean }[];
 }
 
 export interface DigestEmail {
@@ -188,10 +190,19 @@ export function digestEmail(e: DigestEmail): Rendered {
 						)
 						.join('')
 				: `<tr><td colspan="2" style="padding:10px 0;border-top:1px solid ${C.divider};font:600 14px ${FONT};color:${C.ok}">✓ All readings in range</td></tr>`;
+			const noticedRows = t.noticed?.length
+				? `<tr><td colspan="2" style="padding:10px 0 2px;border-top:1px solid ${C.divider};font:600 13px ${FONT};color:${C.muted}">Worth a look</td></tr>` +
+					t.noticed
+						.map(
+							(n) =>
+								`<tr><td colspan="2" style="padding:4px 0;font:14px ${FONT};color:${C.text}"><span style="color:${n.warn ? C.warn : C.muted};font-weight:700">${n.warn ? '▲' : '•'}</span> ${esc(n.text)}</td></tr>`
+						)
+						.join('')
+				: '';
 			return `<div style="margin:0 0 24px">
 <div style="font:600 17px ${FONT};color:${C.text}">${esc(t.name)}</div>
 <div style="font:13px ${FONT};color:${C.muted};margin:0 0 6px">${esc(t.sub)}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${taskRows}${readingRows}</table></div>`;
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${taskRows}${readingRows}${noticedRows}</table></div>`;
 		})
 		.join('');
 
@@ -210,7 +221,8 @@ export function digestEmail(e: DigestEmail): Rendered {
 					`${t.name} (${t.sub})\n` +
 					t.tasks.map((k) => `- ${k.name}: ${k.due} — mark done: ${k.doneUrl}`).join('\n') +
 					(t.tasks.length ? '\n' : '') +
-					(t.readings.length ? t.readings.map((r) => `- ${r.text} (target ${r.target}, ${r.date})`).join('\n') : '- ✓ All readings in range')
+					(t.readings.length ? t.readings.map((r) => `- ${r.text} (target ${r.target}, ${r.date})`).join('\n') : '- ✓ All readings in range') +
+					(t.noticed?.length ? `\nWorth a look:\n${t.noticed.map((n) => `- ${n.warn ? '▲ ' : ''}${n.text}`).join('\n')}` : '')
 			)
 			.join('\n\n') +
 		`\n\nOpen Waterline: ${e.openUrl}\n${e.sentLabel}` +

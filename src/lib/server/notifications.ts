@@ -14,6 +14,7 @@ import { emailLog, notificationPrefs, taskCompletions, tests, testReadings, user
 import { lastEventOf, latestReadings } from './logs';
 import { emailConfigured, sendMail } from './mail';
 import { digestEmail, outOfRangeEmail, taskEmail, type DigestTank, type Footer, type Rendered } from './mail/templates';
+import { tankNotes } from './trends';
 import { sign } from './secrets';
 import { listParams, listTanks } from './tanks';
 import { listTasks } from './tasks';
@@ -186,7 +187,9 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 			.map((t) => ({ t, d: dueInfo(t.due, today) }))
 			.filter(({ d }) => (d.days < 0 ? prefs.overdueAlerts : prefs.taskReminders && d.days <= horizon));
 		const readings = prefs.outOfRangeAlerts ? badReadings(tank.id, user) : [];
-		if (!mine.length && !readings.length) continue;
+		// what stands out: with the rest of a tank's news, or on its own in the weekly digest
+		const noticed = tankNotes(tank.id, user, { limit: 3, now: now.getTime() }).map((n) => ({ text: n.text, warn: n.warn }));
+		if (!mine.length && !readings.length && !(weekly && noticed.length)) continue;
 		summary.overdue += mine.filter(({ d }) => d.days < 0).length;
 		summary.due += mine.filter(({ d }) => d.days >= 0).length;
 		summary.outOfRange += readings.length;
@@ -200,7 +203,8 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 				// a function, so tokens are only made when the digest is really sent
 				doneUrl: () => `${base}/e/${createActionToken(t.id, 'done', t.nextDue!)}`
 			})),
-			readings
+			readings,
+			noticed
 		});
 	}
 	if (!tanksOut.length) return { sent };

@@ -58,7 +58,11 @@ describe('email templates', () => {
 					name: 'Riverbed 40',
 					sub: 'Planted · 40 gal',
 					tasks: [{ name: 'Water change 25%', due: '✕ Overdue 1 day', level: 'bad', doneUrl: 'd' }],
-					readings: [{ text: '✕ Nitrate 35 ppm', target: '5–20', date: 'Sep 25' }]
+					readings: [{ text: '✕ Nitrate 35 ppm', target: '5–20', date: 'Sep 25' }],
+					noticed: [
+						{ text: 'Nitrate is on course to pass 20 ppm in about 4 days.', warn: true },
+						{ text: 'KH drifts down about 1 dKH a week between water changes (in 4 of your last 5).', warn: false }
+					]
 				},
 				{ name: 'Reef 24', sub: 'Reef · 24 gal', tasks: [{ name: 'Top off ATO reservoir', due: '▲ Due today', level: 'warn', doneUrl: 'd2' }], readings: [] }
 			],
@@ -70,6 +74,12 @@ describe('email templates', () => {
 		expect(r.subject).toBe('Today: 1 overdue, 1 due, 1 reading out of range');
 		expect(r.html).toContain('✓ All readings in range');
 		expect(r.html).toContain('Switch to weekly or individual emails');
+		// what stands out, with its mark: ▲ heading for a limit
+		expect(r.html).toContain('Worth a look');
+		expect(r.html).toContain('▲</span> Nitrate is on course to pass 20 ppm in about 4 days.');
+		expect(r.text).toContain('Worth a look:\n- ▲ Nitrate is on course to pass 20 ppm in about 4 days.\n- KH drifts down about 1 dKH a week');
+		// a tank with nothing to notice has no such section
+		expect(r.html.match(/Worth a look/g)).toHaveLength(1);
 	});
 
 	it('E4 out-of-range alert', () => {

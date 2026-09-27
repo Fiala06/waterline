@@ -6,6 +6,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **More trends:** the dashboard also points out what keeps happening, like "KH drifts down about 1 dKH a week between water changes" or "pH dips about 0.2 after dosing Excel", only when it happens most times and more than it changes anyway. The daily or weekly digest has these under Worth a look.
+- **Compare tanks:** Charts shows the same parameter in your other tanks, on the same dates, under the chart.
 - **Notes on the tank's page:** its pinned note, then the latest dated notes, with Add note right there.
 - **Remind me:** a one-off reminder about a tank in two taps, from its page or the dashboard: tomorrow, in 3 days, next week, in 2 weeks, or on a date.
 - **Custom parameters, again:** adding one offers those from your other tanks, added in one tap with their unit and targets.

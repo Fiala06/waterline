@@ -3,10 +3,12 @@
 // a run of tests that each rose (or fell), and, when the readings since the
 // last water change line up well, when that pace would cross a target limit.
 import { displayValue, fmtTarget, fmtValue, paramDecimals, paramUnit, type ParamLike } from './params';
-import type { UnitPrefs } from './units';
+import { formatNumber, type UnitPrefs } from './units';
 
 export interface TrendNote {
 	parameterId: string;
+	/** a run of tests or a pace (run), a drift between water changes, a change after dosing */
+	kind: 'run' | 'drift' | 'dose';
 	direction: 'up' | 'down';
 	/** heading for a target limit, or further past one */
 	warn: boolean;
@@ -91,5 +93,126 @@ export function trendNote(
 		: `${p.name} is ${course}.`;
 	// past a limit and still moving away from the target
 	const beyond = up ? p.max != null && last > p.max : !!p.min && last < p.min;
-	return { parameterId: p.id, direction: up ? 'up' : 'down', warn: !!cross || beyond, text };
+	return { parameterId: p.id, kind: 'run', direction: up ? 'up' : 'down', warn: !!cross || beyond, text };
+}
+
+// ── Patterns ────────────────────────────────────────────────────────────────
+// What keeps happening, not just lately: how a parameter moves between water
+// changes, and how it changes after a dose. Just as cautious: at least 3 times,
+// and 3 in 4 of them (or more) the same way, by an amount the app would show.
+
+/** Times something must have happened to be a pattern. */
+export const MIN_TIMES = 3;
+/** How near a dose a test must be to count as before or after it. */
+const NEAR = 2 * DAY;
+/** The stretches between water changes looked at, newest first. */
+const STRETCHES = 6;
+
+const median = (xs: number[]) => {
+	const s = [...xs].sort((a, b) => a - b);
+	const m = s.length >> 1;
+	return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
+
+/** Most of these the same way (3 in 4 or more, at least MIN_TIMES): that sign, and how many. */
+function agree(xs: number[]): { sign: number; k: number } | null {
+	for (const sign of [1, -1]) {
+		const k = xs.filter((x) => Math.sign(x) === sign).length;
+		if (k >= MIN_TIMES && k >= Math.ceil(xs.length * 0.75)) return { sign, k };
+	}
+	return null;
+}
+
+/** A change in stored units as the keeper reads it ("1 dKH", "0.2"), or null when it'd show as 0. */
+function shownChange(p: ParamLike, base: number, change: number, prefs: UnitPrefs) {
+	const d = Math.abs(displayValue(p, base + change, prefs) - displayValue(p, base, prefs));
+	const dec = paramDecimals(p, prefs);
+	const s = formatNumber(d, dec);
+	return Number(s) === 0 ? null : s;
+}
+
+/**
+ * Patterns in one parameter's readings (oldest first, stored units) around
+ * the tank's water changes and doses (their times, oldest first).
+ */
+export function patternNotes(
+	p: ParamLike & { id: string },
+	points: { t: number; value: number }[],
+	around: { waterChanges: number[]; doses: { t: number; product: string }[] },
+	opts: { prefs: UnitPrefs }
+): TrendNote[] {
+	const { prefs } = opts;
+	if (points.length < 3) return [];
+	const unit = paramUnit(p, prefs) ? ` ${paramUnit(p, prefs)}` : '';
+	const last = points[points.length - 1].value;
+	const notes: TrendNote[] = [];
+
+	// between water changes: each stretch's pace, per week
+	const wcs = around.waterChanges;
+	const paces: number[] = [];
+	for (let i = wcs.length - 1; i >= 0 && paces.length < STRETCHES; i--) {
+		const end = i + 1 < wcs.length ? wcs[i + 1] : Infinity;
+		const inside = points.filter((x) => x.t > wcs[i] && x.t < end);
+		if (inside.length < 2 || inside[inside.length - 1].t - inside[0].t < 2 * DAY) continue;
+		const line = inside.length >= 3 ? fit(inside) : null;
+		const slope = line ? line.slope : (inside[inside.length - 1].value - inside[0].value) / ((inside[inside.length - 1].t - inside[0].t) / DAY);
+		paces.push(slope * 7);
+	}
+	const drift = agree(paces);
+	const perWeek = drift && shownChange(p, last, median(paces.filter((x) => Math.sign(x) === drift.sign)), prefs);
+	if (drift && perWeek) {
+		notes.push({
+			parameterId: p.id,
+			kind: 'drift',
+			direction: drift.sign > 0 ? 'up' : 'down',
+			warn: false,
+			text: `${p.name} drifts ${drift.sign > 0 ? 'up' : 'down'} about ${perWeek}${unit} a week between water changes (in ${drift.k} of your last ${paces.length}).`
+		});
+	}
+
+	// after a dose: the test just before it against the one just after, per product,
+	// next to how much it changes between two tests without one (which is the
+	// drift, or noise): only a change well beyond that is the dose's
+	const between = (a: number, b: number, ts: number[]) => ts.some((w) => w > a && w < b);
+	const doseTimes = around.doses.map((d) => d.t);
+	const usual: number[] = [];
+	for (let i = 1; i < points.length; i++) {
+		const [a, b] = [points[i - 1], points[i]];
+		if (b.t - a.t <= 2 * NEAR && !between(a.t, b.t, doseTimes) && !between(a.t, b.t, wcs)) usual.push(b.value - a.value);
+	}
+	const byProduct = new Map<string, { name: string; changes: number[] }>();
+	for (const d of around.doses) {
+		const before = points.filter((x) => x.t < d.t && x.t >= d.t - NEAR).at(-1);
+		const after = points.find((x) => x.t > d.t && x.t <= d.t + NEAR);
+		// a water change in between would be the reason instead
+		if (!before || !after || between(before.t, after.t, wcs)) continue;
+		const key = d.product.trim().toLowerCase();
+		const g = byProduct.get(key) ?? { name: '', changes: [] };
+		g.name = d.product.trim(); // as it was last written
+		g.changes.push(after.value - before.value);
+		byProduct.set(key, g);
+	}
+	// dosed every time it's tested: nothing to compare with
+	const base = usual.length >= MIN_TIMES ? median(usual) : null;
+	const scatter = base == null ? 0 : median(usual.map((u) => Math.abs(u - base)));
+	const doses = [...byProduct.values()]
+		.map((g) => ({ ...g, effects: g.changes.map((c) => c - (base ?? 0)) }))
+		.map((g) => ({ ...g, a: base == null ? null : agree(g.effects) }))
+		.filter((g) => g.a)
+		.sort((x, y) => y.changes.length - x.changes.length);
+	for (const g of doses) {
+		const effect = median(g.effects.filter((x) => Math.sign(x) === g.a!.sign));
+		if (Math.abs(effect) < 2 * scatter) continue;
+		const by = shownChange(p, last, effect, prefs);
+		if (!by) continue;
+		notes.push({
+			parameterId: p.id,
+			kind: 'dose',
+			direction: g.a!.sign > 0 ? 'up' : 'down',
+			warn: false,
+			text: `${p.name} ${g.a!.sign > 0 ? 'rises' : 'dips'} about ${by}${unit} after dosing ${g.name} (${g.a!.k} of ${g.changes.length} times).`
+		});
+		break; // the product with the most doses tested around it
+	}
+	return notes;
 }
