@@ -30,14 +30,25 @@ describe('zonedToUtc', () => {
 		expect(iso('2026-10-04', '03:30', 'Australia/Sydney')).toBe('2026-10-03T16:30:00.000Z');
 	});
 
-	// whether any instant shows this wall-clock time in the zone
-	const exists = (date: string, time: string, tz: string) => {
-		const base = Date.parse(`${date}T${time}:00Z`);
-		for (let off = -14 * 60; off <= 14 * 60; off += 15) {
-			const z = utcToZoned(new Date(base - off * 60_000), tz);
-			if (z.date === date && z.time === time) return true;
+	// the zone's offsets (ms) in the days around a date, sampled hourly
+	const offsetsAround = (date: string, tz: string) => {
+		const offsets = new Set<number>();
+		const midnight = Date.parse(`${date}T00:00:00Z`);
+		for (let h = -24; h <= 48; h++) {
+			const t = midnight + h * 3_600_000;
+			const z = utcToZoned(new Date(t), tz);
+			offsets.add(Date.parse(`${z.date}T${z.time}:00Z`) - t);
 		}
-		return false;
+		return [...offsets];
+	};
+
+	// whether any instant shows this wall-clock time in the zone
+	const exists = (date: string, time: string, tz: string, offsets: number[]) => {
+		const base = Date.parse(`${date}T${time}:00Z`);
+		return offsets.some((off) => {
+			const z = utcToZoned(new Date(base - off), tz);
+			return z.date === date && z.time === time;
+		});
 	};
 
 	it('round-trips every quarter hour around the changes', () => {
@@ -49,9 +60,11 @@ describe('zonedToUtc', () => {
 			['2026-04-05', 'Australia/Sydney']
 		];
 		for (const [date, tz] of days) {
+			const offsets = offsetsAround(date, tz);
+			expect(offsets, `${date} ${tz} changes offset`).toHaveLength(2);
 			for (let m = 0; m < 24 * 60; m += 15) {
 				const time = `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
-				if (!exists(date, time, tz)) continue; // skipped by a spring-forward
+				if (!exists(date, time, tz, offsets)) continue; // skipped by a spring-forward
 				expect(utcToZoned(zonedToUtc(date, time, tz), tz), `${date} ${time} ${tz}`).toEqual({ date, time });
 			}
 		}

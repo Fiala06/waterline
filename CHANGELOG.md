@@ -16,6 +16,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 - **Tips:** an ⓘ beside each parameter, and beside a few less obvious fields, explains what it is.
 - **Summary for an AI assistant:** a tank's readings, care log and stocking as text to paste into a chat, from its Overview or Export data.
 - **What's new:** this list, in Settings, and a note on the dashboard after each update.
+- **Set up in the app:** a new server needs only its web address. Its first page asks for the setup code from the server's log, then the admin's username and password. Google sign-in, who can sign in, and the switches for reminder emails and the update check are all in Server settings.
 - **Smaller things:** a log entry you leave unsaved is kept for when you come back; species search finds the names people use; saving works with ad blockers turned on; new category icons, with one for plants; and now and then a small fish swims through the logo.
 
 ## 1.0.0 · 2026-09-26
