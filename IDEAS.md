@@ -23,6 +23,10 @@ A running list of ideas and nice-to-haves that aren't in the current scope. For 
   - Hover (or tap, on a phone) to see a reading: its value, unit, date and time.
   - Axes that say what's plotted: the parameter and its unit up the side, dates along the bottom.
   - On the dashboard's chart and on Charts alike.
+- **Logging for troubleshooting:** a record of what the server did and what went wrong, to track down problems.
+  - Errors and warnings with enough to trace them: what failed, when, and for which request or account (emails that didn't send, imports that failed, sign-in problems).
+  - Recent entries for the admin in Server settings, filtered by level, and a download to share when asking for help.
+  - More detail on demand while troubleshooting, and old entries cleaned up on their own.
 - **Account menu:** a circle with your profile photo in the upper left of the app. Tapping it opens a menu to update your account, sign out and so on.
   - The photo from your Google account, or your initials when there isn't one (as with the local admin login).
 - **More from importing History:** columns are matched by their names today. Possible extras:
