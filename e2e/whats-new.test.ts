@@ -4,6 +4,11 @@ import { readFileSync } from 'node:fs';
 import { newKeeperWithTank, open } from './helpers';
 
 const version = JSON.parse(readFileSync('package.json', 'utf8')).version.replace(/^(\d+\.\d+)\.0$/, '$1');
+/** How many lines the newest release has in CHANGELOG.md (the card shows the first 3). */
+const lines = readFileSync('CHANGELOG.md', 'utf8')
+	.split(/^## \d/m)[1]
+	.split('\n')
+	.filter((l) => l.startsWith('- ')).length;
 
 /** Change an account in the test database. */
 function setUser(email: string, set: string) {
@@ -27,8 +32,9 @@ test("What's new: once after an update, then in Settings", async ({ page }, info
 	fromBefore(email);
 	await open(page, '/');
 	await expect(card).toBeVisible();
-	await expect(card.getByRole('listitem')).toHaveCount(3);
-	await expect(card.getByText(/^and \d+ more$/)).toBeVisible();
+	await expect(card.getByRole('listitem')).toHaveCount(Math.min(3, lines));
+	if (lines > 3) await expect(card.getByText(`and ${lines - 3} more`, { exact: true })).toBeVisible();
+	else await expect(card.getByText(/^and \d+ more$/)).toHaveCount(0);
 	await card.getByRole('button', { name: "See what's new" }).click();
 	await expect(page).toHaveURL('/settings/changelog');
 	await expect(page.getByRole('heading', { name: "What's new", exact: true })).toBeVisible();
