@@ -12,6 +12,8 @@ export default defineConfig({
 	testDir: 'e2e',
 	fullyParallel: true,
 	retries: process.env.CI ? 1 : 0,
+	// On GitHub: failures annotated on the run, and a report kept with the run's files.
+	reporter: process.env.CI ? [['list'], ['github'], ['html', { open: 'never' }]] : 'list',
 	// Service workers are off except in the offline test, so caching can't hide bugs.
 	use: { baseURL: `http://localhost:${PORT}`, trace: 'retain-on-failure', serviceWorkers: 'block' },
 	projects: [

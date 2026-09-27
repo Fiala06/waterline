@@ -48,11 +48,12 @@ Set `ORIGIN` in [`docker-compose.yml`](docker-compose.yml) first; it's the only 
 2. Choose the admin's username and password. That's the local admin login, and you're signed in with it.
 3. In **Settings › Server settings**, set up the rest: Google sign-in (paste the OAuth client's ID and secret; the page shows the redirect URI to give Google), the admin's Google account, who else can sign in, and email delivery.
 
-GitHub Actions also publishes ready-built images (linux/amd64), so you don't have to build on the server:
+GitHub Actions also publishes ready-built images (linux/amd64), so you don't have to build on the server. An image is only published once the checks and tests pass:
 
 | Image | Built from |
 |---|---|
 | `ghcr.io/fiala06/waterline:latest` | every push to `main` (also tagged `:main`) |
+| `ghcr.io/fiala06/waterline:1.1.0` | each release, for staying on a version; `:1.1` is the newest 1.1.x |
 | `ghcr.io/fiala06/waterline:dev` | every push to `dev` |
 | `ghcr.io/fiala06/waterline:sha-xxxxxxx` | every build, for pinning or rolling back |
 
@@ -119,6 +120,8 @@ The first time, install the Playwright browser with `npx playwright install chro
 ## Releases
 
 Each release is a section of [`CHANGELOG.md`](CHANGELOG.md), written for the people who use the app: the app shows it under **Settings › What's new**, and its first lines once on the dashboard after an update. To release, bump `version` in `package.json` and add a `## <version> · <date>` section with a few lines, each starting with its name in bold; a unit test fails if the two don't match. The *update available* note admins see comes from the changelog on `main`.
+
+Changes go to `dev` first, then to `main` through a pull request (`gh pr create --base main --head dev`), which runs the checks and tests before the merge. When `main` reaches a version that hasn't been released yet, the workflow ([`ci.yml`](.github/workflows/ci.yml)) tags that build `v<version>`, publishes `:<version>` and `:<major>.<minor>` images, and makes a [GitHub release](https://github.com/Fiala06/waterline/releases) with the version's changelog section as its notes. Ideas and planned work are [issues](https://github.com/Fiala06/waterline/issues), grouped into a milestone for the next release; a commit that finishes one says `Closes #N`, and the issue closes when it reaches `main`.
 
 ## Stack
 
