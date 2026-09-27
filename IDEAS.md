@@ -8,10 +8,10 @@ A running list of ideas and nice-to-haves that aren't in the current scope. For 
 
 ## Features
 
-- **Tooltips:** short explanations on hover/long-press for parameters, units, and less obvious controls (e.g. what KH means, why nitrite matters).
+- **Tooltips:** *(built: an ⓘ beside each parameter in the water test and on Parameters & targets, and on tank volume and source water)* short explanations on hover/long-press for parameters, units, and less obvious controls (e.g. what KH means, why nitrite matters).
 - **Expense tracking:** log what's spent on each tank (livestock, plants, equipment, consumables) with totals over time.
 - **Receipt uploads:** attach a photo or PDF receipt to an expense.
-- **Saved product links:** keep links to products the user buys regularly (e.g. Seachem Prime on Amazon) for quick reordering. Could tie into dosing events and expenses.
+- **Saved product links:** *(built: Settings → Products, with Reorder when dosing a saved product; expenses still to do)* keep links to products the user buys regularly (e.g. Seachem Prime on Amazon) for quick reordering. Could tie into dosing events and expenses.
 - **Backdated logs:** when adding any log, allow picking a different date/time for entries logged after the fact. The brief (5.4, 5.6) already has an editable date/time; make sure it's quick to change, e.g. shortcuts like "1 hour ago", "This morning", "Yesterday".
 - **Optional AI assistant integration:** *(first step built: "Summary for an AI assistant" on each tank's Overview and in Export, a text summary to copy into any assistant; Waterline itself sends nothing)* let users connect an AI agent of their choice (off by default) to help diagnose tank issues, e.g. "why is my nitrate climbing?" or "what's causing this algae?" using the tank's readings, events, and photos. Ideas:
   - Make the data AI-friendly: a clean read-only API and/or an MCP server so any agent can read tank history.

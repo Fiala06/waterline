@@ -9,7 +9,7 @@ test('photos, history and charts', async ({ page }, info) => {
 	const tankId = new URL(tankUrl).searchParams.get('tank')!;
 	const lastWeek = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
 	await open(page, `/entries/test/new?tank=${tankId}&date=${lastWeek}&time=08:00`);
-	await page.getByLabel(/^Nitrate /).fill('12');
+	await page.getByLabel('Nitrate', { exact: true }).fill('12');
 	await page.getByRole('button', { name: 'Save 1 reading' }).click();
 	await expect(page.getByRole('status')).toContainText('✓ Saved 1 reading');
 
@@ -18,7 +18,7 @@ test('photos, history and charts', async ({ page }, info) => {
 	await expect(page.getByRole('status')).toContainText('✓ Water change logged');
 
 	await open(page, `/entries/test/new?tank=${tankId}`);
-	await page.getByLabel(/^Nitrate /).fill('35');
+	await page.getByLabel('Nitrate', { exact: true }).fill('35');
 	await page.locator('input[type=file][name=photos]').setInputFiles(await jpeg());
 	await page.getByRole('button', { name: 'Save 1 reading' }).click();
 	await expect(page.getByRole('status')).toContainText('1 out of range');

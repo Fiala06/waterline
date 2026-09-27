@@ -10,27 +10,27 @@ test('water test: use last readings, with undo', async ({ page }, info) => {
 	// Nothing to copy before the first test
 	await open(page, form);
 	await expect(useLast).toHaveCount(0);
-	await page.getByLabel(/^pH /).fill('7.2');
-	await page.getByLabel(/^Nitrate /).fill('30');
+	await page.getByLabel('pH', { exact: true }).fill('7.2');
+	await page.getByLabel('Nitrate', { exact: true }).fill('30');
 	await page.getByRole('button', { name: 'Save 2 readings' }).click();
 	await expect(page.getByRole('status')).toContainText('✓ Saved 2 readings');
 
 	// Each empty field gets its last reading; what's typed stays
 	await open(page, form);
-	await page.getByLabel(/^pH /).fill('7.4');
+	await page.getByLabel('pH', { exact: true }).fill('7.4');
 	await useLast.click();
 	await expect(page.getByText('✓ Filled 1 from last readings')).toBeVisible();
-	await expect(page.getByLabel(/^pH /)).toHaveValue('7.4');
-	await expect(page.getByLabel(/^Nitrate /)).toHaveValue('30');
-	await expect(page.getByLabel(/^Ammonia /)).toHaveValue('');
+	await expect(page.getByLabel('pH', { exact: true })).toHaveValue('7.4');
+	await expect(page.getByLabel('Nitrate', { exact: true })).toHaveValue('30');
+	await expect(page.getByLabel('Ammonia', { exact: true })).toHaveValue('');
 	await expect(page).toHaveURL(form);
 
 	// Undo empties only the copied values nobody changed
 	await page.getByRole('button', { name: 'Undo' }).click();
-	await expect(page.getByLabel(/^Nitrate /)).toHaveValue('');
-	await expect(page.getByLabel(/^pH /)).toHaveValue('7.4');
+	await expect(page.getByLabel('Nitrate', { exact: true })).toHaveValue('');
+	await expect(page.getByLabel('pH', { exact: true })).toHaveValue('7.4');
 	await useLast.click();
-	await page.getByLabel(/^Nitrate /).fill('25');
+	await page.getByLabel('Nitrate', { exact: true }).fill('25');
 	await page.getByRole('button', { name: 'Save 2 readings' }).click();
 	await expect(page.getByRole('status')).toContainText('✓ Saved 2 readings · 1 out of range');
 });
@@ -54,7 +54,7 @@ test('water test: also log a water change', async ({ page }, info) => {
 	await expect(wc).not.toBeChecked();
 	await expect(page.getByText('25% · Tap')).toBeVisible();
 	await expect(amount).toBeHidden();
-	await page.getByLabel(/^Nitrate /).fill('30');
+	await page.getByLabel('Nitrate', { exact: true }).fill('30');
 	await wc.check();
 	await expect(amount).toHaveValue('25');
 	await page.getByRole('button', { name: '50%' }).click();
@@ -77,11 +77,11 @@ test('water test: also log a water change', async ({ page }, info) => {
 	await expect(page.getByRole('radio', { name: 'RODI' })).toBeChecked();
 
 	// A bad amount keeps what was entered and says what's wrong
-	await page.getByLabel(/^Nitrate /).fill('12');
+	await page.getByLabel('Nitrate', { exact: true }).fill('12');
 	await amount.fill('150');
 	await page.getByRole('button', { name: 'Save 1 reading + water change' }).click();
 	await expect(page.getByText('✕ Enter a percentage up to 100.')).toBeVisible();
-	await expect(page.getByLabel(/^Nitrate /)).toHaveValue('12');
+	await expect(page.getByLabel('Nitrate', { exact: true })).toHaveValue('12');
 	await expect(wc).toBeChecked();
 });
 
@@ -94,13 +94,13 @@ test('water test extras work without scripts', async ({ page, browser }, info) =
 	await expect(plain.getByLabel('Amount', { exact: true })).toBeHidden();
 	await plain.getByRole('checkbox', { name: /Also log a water change/ }).check();
 	await expect(plain.getByLabel('Amount', { exact: true })).toBeVisible();
-	await plain.getByLabel(/^Nitrate /).fill('10');
+	await plain.getByLabel('Nitrate', { exact: true }).fill('10');
 	await plain.getByRole('button', { name: 'Save' }).click();
 	await expect(plain.getByText('Water change · 25% · Tap')).toBeVisible();
 
 	// "Use last readings" asks the server for the form filled in
 	await plain.goto(`/entries/test/new?tank=${tankId}`);
 	await plain.getByRole('link', { name: 'Use last readings' }).click();
-	await expect(plain.getByLabel(/^Nitrate /)).toHaveValue('10');
+	await expect(plain.getByLabel('Nitrate', { exact: true })).toHaveValue('10');
 	await ctx.close();
 });

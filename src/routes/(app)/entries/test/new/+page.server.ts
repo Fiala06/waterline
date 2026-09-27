@@ -22,7 +22,7 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 	const tank = getTank(user.id, tankId);
 	const date = url.searchParams.get('date');
 	const time = url.searchParams.get('time');
-	const params = testFormParams(listParams(tank.id), latestReadings(tank.id), user);
+	const params = testFormParams(listParams(tank.id), latestReadings(tank.id), user, tank.type);
 	return {
 		tank: { id: tank.id, name: tank.name },
 		params,

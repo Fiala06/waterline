@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { tankTypeLabel } from '$lib/types';
+	import Tip from '$lib/components/Tip.svelte';
 	import { enhance } from '$app/forms';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import CustomParamSheet from '$lib/components/CustomParamSheet.svelte';
@@ -40,7 +41,7 @@
 				<div class="card prow" class:off={!tracked[r.id]}>
 					<div class="p-head">
 						<div class="p-name">
-							<span class="nm">{r.name}</span>
+							<span class="nm-line"><span class="nm">{r.name}</span>{#if r.tip}<Tip text={r.tip} label="About {r.name}" />{/if}</span>
 							<span class="faint sm">{tracked[r.id] ? r.defaultText : 'Not tracked · hidden from tests'}</span>
 						</div>
 						<label class="switch" aria-label="Track {r.name}">
@@ -112,6 +113,11 @@
 		margin: 0;
 		font-size: 28px;
 		font-weight: 600;
+	}
+	.nm-line {
+		display: inline-flex;
+		align-items: center;
+		gap: 7px;
 	}
 	.intro {
 		margin: 8px 0 0;

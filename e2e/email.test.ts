@@ -6,7 +6,7 @@ test('out-of-range alert and one-click unsubscribe', async ({ page, request }, i
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
 
 	await open(page, `/entries/test/new?tank=${tankId}`);
-	await page.getByLabel(/^Nitrate /).fill('40');
+	await page.getByLabel('Nitrate', { exact: true }).fill('40');
 	await page.getByRole('button', { name: 'Save 1 reading' }).click();
 	await expect(page.getByRole('status')).toContainText('1 out of range');
 
@@ -25,7 +25,7 @@ test('out-of-range alert and one-click unsubscribe', async ({ page, request }, i
 
 	// ...and no more alerts arrive
 	await open(page, `/entries/test/new?tank=${tankId}`);
-	await page.getByLabel(/^Nitrate /).fill('45');
+	await page.getByLabel('Nitrate', { exact: true }).fill('45');
 	await page.getByRole('button', { name: 'Save 1 reading' }).click();
 	await expect(page.getByRole('status')).toContainText('1 out of range');
 	await expect(waitForMail(email, (m) => m.subject.includes(': 45 ppm'), 1500)).rejects.toThrow();

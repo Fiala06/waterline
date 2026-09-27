@@ -21,8 +21,8 @@ test('logging offline saves on the device and syncs later', async ({ page, conte
 	await open(page, `/entries/test/new?tank=${tankId}`);
 
 	await context.setOffline(true);
-	await page.getByLabel(/^Nitrate /).fill('15');
-	await page.getByLabel(/^pH /).fill('7.1');
+	await page.getByLabel('Nitrate', { exact: true }).fill('15');
+	await page.getByLabel('pH', { exact: true }).fill('7.1');
 	await page.getByRole('button', { name: 'Save 2 readings' }).click();
 	await expect(page.getByText("Saved on this phone. It'll sync when you're back online.")).toBeVisible();
 	await expect(page.getByText('Offline · 1 entry waiting')).toBeVisible();

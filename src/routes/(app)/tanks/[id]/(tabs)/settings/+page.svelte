@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import Tip from '$lib/components/Tip.svelte';
+	import { TIPS } from '$lib/tips';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import DateField from '$lib/components/DateField.svelte';
 	import { photoUrl } from '$lib/media';
@@ -57,7 +59,9 @@
 
 			<div class="pair">
 				<div class="field">
-					<label class="label" for="nominalVolume">Nominal volume</label>
+					<div class="label-row">
+						<label class="label" for="nominalVolume">Nominal volume</label><Tip text={TIPS.nominalVolume} label="About nominal volume" />
+					</div>
 					<div class="unit-input">
 						<input id="nominalVolume" name="nominalVolume" inputmode="decimal" defaultValue={data.tank.nominalVolume} />
 						<span class="unit">{data.volUnit}</span>
@@ -65,7 +69,9 @@
 					{#if errors.nominalVolume}<span class="error-text">✕ {errors.nominalVolume}</span>{/if}
 				</div>
 				<div class="field">
-					<label class="label" for="actualVolume">Actual volume</label>
+					<div class="label-row">
+						<label class="label" for="actualVolume">Actual volume</label><Tip text={TIPS.actualVolume} label="About actual volume" />
+					</div>
 					<div class="unit-input">
 						<input id="actualVolume" name="actualVolume" inputmode="decimal" defaultValue={data.tank.actualVolume} />
 						<span class="unit">{data.volUnit}</span>

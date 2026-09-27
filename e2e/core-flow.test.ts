@@ -32,10 +32,10 @@ test('core flow', async ({ page }, info) => {
 	// Log a water test with inline status
 	await page.getByRole('link', { name: 'Log first water test' }).click();
 	await expect(page.getByRole('heading', { name: 'Water test' })).toBeVisible();
-	await page.getByLabel(/^pH /).fill('6.8');
-	await page.getByLabel(/^Nitrate /).fill('40');
+	await page.getByLabel('pH', { exact: true }).fill('6.8');
+	await page.getByLabel('Nitrate', { exact: true }).fill('40');
 	await expect(page.getByText('✕ Above target 5–20 ppm')).toBeVisible();
-	await page.getByLabel(/^KH /).fill('2');
+	await page.getByLabel('KH', { exact: true }).fill('2');
 	await expect(page.getByText('▲ Near limit · 2–5 dKH')).toBeVisible();
 	await page.getByRole('button', { name: 'Save 3 readings' }).click();
 

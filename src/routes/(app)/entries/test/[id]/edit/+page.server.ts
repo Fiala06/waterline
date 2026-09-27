@@ -20,7 +20,7 @@ export const load: PageServerLoad = ({ locals, params }) => {
 	const ps = editableParams(tank.id, readings);
 	return {
 		entry: { id: test.id, tankId: tank.id, tankName: tank.name, note: test.note ?? '', day: fmtDate(dateInZone(test.takenAt, user.timeZone)) },
-		params: testFormParams(ps, new Map(), user),
+		params: testFormParams(ps, new Map(), user, tank.type),
 		values: Object.fromEntries(ps.filter((p) => readings.has(p.id)).map((p) => [p.id, fmtValue(p, readings.get(p.id)!, user)])),
 		previous: Object.fromEntries(ps.filter((p) => previous.has(p.id)).map((p) => [p.id, fmtValue(p, previous.get(p.id)!, user)])),
 		when: utcToZoned(test.takenAt, user.timeZone),

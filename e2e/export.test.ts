@@ -5,8 +5,8 @@ test('export a full backup and a CSV', async ({ page }, info) => {
 	await newKeeperWithTank(page, `export-${info.project.name}`);
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
 	await open(page, `/entries/test/new?tank=${tankId}`);
-	await page.getByLabel(/^pH /).fill('6.8');
-	await page.getByLabel(/^Nitrate /).fill('12');
+	await page.getByLabel('pH', { exact: true }).fill('6.8');
+	await page.getByLabel('Nitrate', { exact: true }).fill('12');
 	await page.getByLabel('Note').fill('before water change, "big" one');
 	await page.locator('input[type=file][name=photos]').setInputFiles(await jpeg());
 	await page.getByRole('button', { name: 'Save 2 readings' }).click();

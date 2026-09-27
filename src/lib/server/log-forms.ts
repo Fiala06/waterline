@@ -12,6 +12,7 @@ import {
 } from '$lib/events';
 import { displayValue, fmtRange, fmtValue, paramDecimals, paramUnit, storedValue } from '$lib/params';
 import { dueInfo, effectiveDue, nextDueAfterCompletion } from '$lib/tasks';
+import { paramTip } from '$lib/tips';
 import { fmtDate, todayInZone, utcToZoned } from '$lib/time';
 import { formatNumber, toDisplay, toStored, unitLabel } from '$lib/units';
 import { EVENT_CATEGORIES, type EventCategory, type Tank, type TankParameter, type User } from './db/schema';
@@ -27,7 +28,8 @@ export function parseCategory(value: string | null): EventCategory {
 export function testFormParams(
 	params: TankParameter[],
 	latest: Map<string, { value: number; takenAt: string }>,
-	user: User
+	user: User,
+	tankType: string
 ) {
 	return params.map((p) => {
 		const last = latest.get(p.id);
@@ -44,7 +46,8 @@ export function testFormParams(
 			rangeText: fmtRange(p, user),
 			last: last ? `Last ${lastValue} · ${fmtDate(utcToZoned(last.takenAt, user.timeZone).date)}` : null,
 			// what "Use last readings" types in
-			lastInput: lastValue
+			lastInput: lastValue,
+			tip: p.isCustom ? null : paramTip(p.key, tankType)
 		};
 	});
 }

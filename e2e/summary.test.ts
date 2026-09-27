@@ -8,8 +8,8 @@ test('summary for an AI assistant', async ({ page, context }, info) => {
 
 	// Something to summarize: a test, a water change and some fish
 	await open(page, `/entries/test/new?tank=${tankId}`);
-	await page.getByLabel(/^pH /).fill('6.8');
-	await page.getByLabel(/^Nitrate /).fill('40');
+	await page.getByLabel('pH', { exact: true }).fill('6.8');
+	await page.getByLabel('Nitrate', { exact: true }).fill('40');
 	await page.getByLabel('Note').fill('Cloudy | green tint');
 	await page.getByRole('button', { name: 'Save 2 readings' }).click();
 	await expect(page.getByRole('status')).toContainText('✓ Saved 2 readings');

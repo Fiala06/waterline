@@ -646,6 +646,16 @@ label.chip:has(input:focus-visible) {
 	font-size: 13px;
 	color: var(--text-faint);
 }
+/* a field's label with an ⓘ beside it (a button can't sit inside a label) */
+.label-row {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+}
+.field > .label-row > .label {
+	font-size: 14px;
+	color: var(--text-muted);
+}
 
 .input {
 	height: 52px;

@@ -7,8 +7,8 @@ test('public tank page and photo share link', async ({ page, browser }, info) =>
 
 	// A test with a private note and a photo
 	await open(page, `/entries/test/new?tank=${tankId}`);
-	await page.getByLabel(/^Nitrate /).fill('35');
-	await page.getByLabel(/^pH /).fill('6.8');
+	await page.getByLabel('Nitrate', { exact: true }).fill('35');
+	await page.getByLabel('pH', { exact: true }).fill('6.8');
 	await page.getByLabel('Note').fill('SECRET private note');
 	await page.locator('input[type=file][name=photos]').setInputFiles(await jpeg());
 	await page.getByRole('button', { name: 'Save 2 readings' }).click();

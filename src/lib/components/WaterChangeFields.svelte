@@ -4,6 +4,8 @@
 	// change" card uses it `compact`, sized like the readings around it.
 	import { WATER_SOURCES } from '$lib/events';
 	import { formatNumber, parseNumber } from '$lib/units';
+	import { TIPS } from '$lib/tips';
+	import Tip from './Tip.svelte';
 
 	let {
 		amountMode = $bindable('percent'),
@@ -69,7 +71,7 @@
 		{#if error}<span class="error-text">✕ {error}</span>{/if}
 	</div>
 	<fieldset class="field">
-		<legend class="label">Source water</legend>
+		<legend class="label src">Source water <Tip text={TIPS.sourceWater} label="About source water" /></legend>
 		<div class="options three">
 			{#each WATER_SOURCES as s (s.value)}
 				<label class="option"><input type="radio" name="source" value={s.value} bind:group={source} />{s.label}</label>
@@ -93,6 +95,11 @@
 	legend {
 		padding: 0;
 		margin-bottom: 8px;
+	}
+	.src {
+		display: flex;
+		align-items: center;
+		gap: 7px;
 	}
 	.hint {
 		margin: 0;

@@ -13,6 +13,7 @@
 	import { ui } from '$lib/ui.svelte';
 	import DateTimePicker from './DateTimePicker.svelte';
 	import PhotoPicker from './PhotoPicker.svelte';
+	import Tip from './Tip.svelte';
 	import WaterChangeFields from './WaterChangeFields.svelte';
 	import { WATER_SOURCES } from '$lib/events';
 	import { paramStatus, statusIcon, statusLong, statusMedium } from '$lib/status';
@@ -28,6 +29,8 @@
 		rangeText: string;
 		last: string | null;
 		lastInput?: string | null;
+		/** what the parameter is (ⓘ), for standard ones */
+		tip?: string | null;
 	}
 	let {
 		mode = 'new',
@@ -289,9 +292,12 @@
 				{#each rows as r (r.id)}
 					<div class="row">
 						<div class="line">
-							<label class="lbl" for="v_{r.id}">
-								<span class="pname">{r.name}</span>
-								<span class="last">
+							<!-- the name is the field's label; "Last 7.0 · Sep 18" describes it -->
+							<div class="lbl">
+								<span class="pline"
+									><label class="pname" for="v_{r.id}">{r.name}</label>{#if r.tip}<Tip text={r.tip} label="About {r.name}" />{/if}</span
+								>
+								<span class="last" id="last_{r.id}">
 									{#if mode === 'edit'}
 										{#if r.st}
 											<span class="status-{r.st.level}"
@@ -306,7 +312,7 @@
 										{r.rangeText ? `Target ${r.rangeText}` : 'No target'}
 									{/if}
 								</span>
-							</label>
+							</div>
 							<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 							<div
 								class="box"
@@ -324,7 +330,7 @@
 									placeholder="—"
 									value={r.raw}
 									oninput={(e) => clean(r.id, e)}
-									aria-describedby={mode === 'new' && r.st ? `s_${r.id}` : undefined}
+									aria-describedby={[`last_${r.id}`, mode === 'new' && r.st ? `s_${r.id}` : ''].filter(Boolean).join(' ')}
 									aria-invalid={r.st?.level === 'bad' || !!fieldErrors[r.id]}
 								/>
 								{#if r.unit}<span class="unit">{r.unit}</span>{/if}
@@ -571,6 +577,12 @@
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
+	}
+	.pline {
+		display: inline-flex;
+		align-items: center;
+		gap: 7px;
+		min-width: 0;
 	}
 	.pname {
 		font-size: 16px;

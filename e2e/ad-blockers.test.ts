@@ -32,7 +32,7 @@ test('logging works with an ad blocker', async ({ page }, info) => {
 	await expect(page.getByRole('status')).toContainText('✓ Water change logged');
 
 	await quickAdd(/water test/i);
-	await page.getByLabel(/^Nitrate /).fill('10');
+	await page.getByLabel('Nitrate', { exact: true }).fill('10');
 	await page.getByRole('button', { name: 'Save 1 reading' }).click();
 	await expect(page.getByRole('status')).toContainText('✓ Saved 1 reading');
 
