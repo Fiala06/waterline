@@ -1,5 +1,6 @@
 <script lang="ts">
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import RemindMe from '$lib/components/RemindMe.svelte';
 	import { photoUrl } from '$lib/media';
 	let { data } = $props();
 	const base = $derived(`/tanks/${data.tankHead.id}`);
@@ -30,7 +31,31 @@
 					label="Add specs"
 				/>
 			{/if}
-			{#if data.notes}<p class="notes">{data.notes}</p>{/if}
+		</section>
+		<section aria-labelledby="notes-h">
+			<div class="sh">
+				<h2 id="notes-h">Notes</h2>
+				{#if data.recentNotes.length}<a href="/history?tank={data.tankHead.id}&cat=note&range=all">All ›</a>{/if}
+			</div>
+			{#if data.notes}
+				<div class="card pinned">
+					<div class="pin-h"><span class="caps">Pinned</span><a href="{base}/settings#notes">Edit</a></div>
+					<p class="notes">{data.notes}</p>
+				</div>
+			{/if}
+			{#if data.recentNotes.length}
+				<ul class="card list note-list">
+					{#each data.recentNotes as n (n.id)}
+						<li><a href="/entries/event/{n.id}"><span class="nd">{n.day}</span><span class="nt">{n.text}</span></a></li>
+					{/each}
+				</ul>
+			{:else if !data.notes}
+				<p class="none">Dated notes about this tank, newest first. They're in History too.</p>
+			{/if}
+			<div class="note-acts">
+				<a class="btn" href="/entries/event/new?tank={data.tankHead.id}&category=note&from={encodeURIComponent(base)}">Add note</a>
+				<RemindMe tankId={data.tankHead.id} tankName={data.tankHead.name} today={data.today} />
+			</div>
 		</section>
 	</div>
 	<div class="col">
@@ -201,6 +226,67 @@
 		line-height: 1.5;
 		color: var(--text-2);
 		white-space: pre-wrap;
+	}
+	/* the pinned note, then the latest dated ones */
+	.pinned {
+		padding: 12px 14px;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+	.pin-h {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		font-size: 12px;
+		font-weight: 600;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: var(--text-muted);
+	}
+	.pin-h a {
+		font-size: 14px;
+		letter-spacing: normal;
+		text-transform: none;
+	}
+	.note-list {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.note-list li + li {
+		border-top: 1px solid var(--border);
+	}
+	.note-list a {
+		min-height: 52px;
+		padding: 10px 14px;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		color: var(--text);
+	}
+	.nd {
+		font-size: 12px;
+		color: var(--text-muted);
+	}
+	.nt {
+		font-size: 14px;
+		line-height: 1.4;
+		overflow: hidden;
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+	}
+	.none {
+		margin: 0;
+		font-size: 14px;
+		color: var(--text-faint);
+	}
+	.note-acts {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
 	}
 	.list {
 		display: flex;

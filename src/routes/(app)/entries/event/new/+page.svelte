@@ -27,7 +27,8 @@
 		initialNote={typeof form?.values?.note === 'string' ? form.values.note : ''}
 		initialWhen={data.when}
 		timeZone={data.user.timeZone}
-		closeHref="/?tank={data.tank.id}"
+		closeHref={data.returnTo ?? `/?tank=${data.tank.id}`}
+		returnTo={data.returnTo}
 		task={data.task}
 		recentProducts={data.recentProducts}
 		productLinks={data.productLinks}

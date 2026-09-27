@@ -18,6 +18,7 @@ import { createTask, getTask } from '$lib/server/tasks';
 import { equipmentName } from '$lib/equipment';
 import { handleLinkedLivestock } from '$lib/server/log-livestock';
 import { getEquipment, listEquipment, listLivestock, listPlants, markServiced, removeEquipment } from '$lib/server/specs';
+import { safeReturn } from '$lib/server/redirect';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, url, parent }) => {
@@ -33,7 +34,10 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 	const category = parseCategory(url.searchParams.get('category'));
 	const date = url.searchParams.get('date');
 	const time = url.searchParams.get('time');
+	// back to where it was opened from ("Add note" on a tank's Overview)
+	const returnTo = safeReturn(url.searchParams.get('from'), '') || null;
 	return {
+		returnTo,
 		tank: { id: tank.id, name: tank.name },
 		category,
 		context: eventFormContext(tank, user),
@@ -168,6 +172,6 @@ export const actions: Actions = {
 			message = `✓ Saved · task done`;
 		}
 		setFlash(cookies, message, { view: `/entries/event/${event.id}` });
-		redirect(303, `/?tank=${tank.id}`);
+		redirect(303, safeReturn(form.get('from'), `/?tank=${tank.id}`));
 	}
 };

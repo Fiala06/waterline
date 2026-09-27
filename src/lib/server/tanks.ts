@@ -171,6 +171,30 @@ export function addCustomParam(
 		.get();
 }
 
+/**
+ * Custom parameters from the keeper's other tanks that this one doesn't have
+ * (by name), to add again in one tap: each once, with the tank it's from.
+ */
+export function reusableCustomParams(userId: string, tankId: string) {
+	getTank(userId, tankId);
+	const here = new Set(listParams(tankId, { all: true }).map((p) => p.name.trim().toLowerCase()));
+	const seen = new Set<string>();
+	return db
+		.select({ p: tankParameters, tank: tanks.name })
+		.from(tankParameters)
+		.innerJoin(tanks, eq(tanks.id, tankParameters.tankId))
+		.where(and(eq(tanks.userId, userId), eq(tankParameters.isCustom, true), sql`${tanks.id} <> ${tankId}`))
+		.orderBy(asc(tanks.createdAt), asc(tankParameters.sort))
+		.all()
+		.filter(({ p }) => {
+			const k = p.name.trim().toLowerCase();
+			if (here.has(k) || seen.has(k)) return false;
+			seen.add(k);
+			return true;
+		})
+		.map(({ p, tank }) => ({ name: p.name, unit: p.unit, min: p.min, max: p.max, decimals: p.decimals, tank }));
+}
+
 /** Number of readings per parameter of a tank, for the "Remove" confirmation. */
 export function readingCounts(tankId: string): Map<string, number> {
 	const rows = db

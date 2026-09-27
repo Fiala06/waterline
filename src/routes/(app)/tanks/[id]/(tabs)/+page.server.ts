@@ -1,6 +1,10 @@
 import { EQUIPMENT_TYPE_LABEL, equipmentName } from '$lib/equipment';
 import { bySpecies, livestockLabel, speciesCount } from '$lib/livestock';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
+import { and, desc, eq as is, sql } from 'drizzle-orm';
+import { dateInZone, fmtDateLong, todayInZone } from '$lib/time';
+import { db } from '$lib/server/db';
+import { events } from '$lib/server/db/schema';
 import { getTank } from '$lib/server/tanks';
 import { listEquipment, listLivestock, listPlants } from '$lib/server/specs';
 import type { PageServerLoad } from './$types';
@@ -28,7 +32,18 @@ export const load: PageServerLoad = ({ locals, params }) => {
 			['Water source', t.waterSource ? SOURCES[t.waterSource] : null],
 			['Photoperiod', t.photoperiodH != null ? `${t.photoperiodH} h` : null]
 		].filter(([, v]) => v) as [string, string][],
+		today: todayInZone(user.timeZone),
+		// the pinned note (the tank's notes), then its latest dated notes from History
 		notes: t.notes,
+		recentNotes: db
+			.select({ id: events.id, at: events.occurredAt, note: events.note })
+			.from(events)
+			.where(and(is(events.tankId, t.id), is(events.category, 'note'), sql`json_extract(${events.data}, '$.system') is null`))
+			.orderBy(desc(events.occurredAt))
+			.limit(3)
+			.all()
+			.filter((n) => n.note)
+			.map((n) => ({ id: n.id, day: fmtDateLong(dateInZone(n.at, user.timeZone)), text: n.note! })),
 		equipment: eq.map((e) => ({ id: e.id, type: EQUIPMENT_TYPE_LABEL[e.type], name: equipmentName(e) })),
 		livestock: ls.map((l) => ({ id: l.id, name: livestockLabel(l), count: l.count, quarantine: l.status === 'quarantine' })),
 		animals: ls.reduce((n, l) => n + l.count, 0),

@@ -7,6 +7,7 @@
 	import ParamCard from '$lib/components/ParamCard.svelte';
 	import TankThumb from '$lib/components/TankThumb.svelte';
 	import TaskList from '$lib/components/TaskList.svelte';
+	import RemindMe from '$lib/components/RemindMe.svelte';
 	import TrendChart from '$lib/components/TrendChart.svelte';
 	import WhatsNew from '$lib/components/WhatsNew.svelte';
 	import { compactName, displayValue, fmtRange, fmtValue, paramDecimals, paramUnit, shortName, statusOf } from '$lib/params';
@@ -278,7 +279,9 @@
 				<section class="stack">
 					<div class="section-head">
 						<h2>Due</h2>
-						<a href="/tasks">All tasks</a>
+						<span class="links"
+							><RemindMe tankId={data.tank.id} tankName={data.tank.name} today={data.today} cls="remind-link" /><a href="/tasks">All tasks</a></span
+						>
 					</div>
 					{#if data.tasks.length}
 						<TaskList tasks={data.tasks.slice(0, 3)} today={data.today} />

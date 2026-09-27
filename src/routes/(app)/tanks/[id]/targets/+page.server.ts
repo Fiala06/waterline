@@ -9,6 +9,7 @@ import {
 	getTank,
 	listParams,
 	readingCounts,
+	reusableCustomParams,
 	resetParamDefaults,
 	updateParams
 } from '$lib/server/tanks';
@@ -21,6 +22,7 @@ export const load: PageServerLoad = ({ locals, params }) => {
 	const counts = readingCounts(tank.id);
 	return {
 		tank: { id: tank.id, name: tank.name, type: tank.type },
+		reusable: reusableCustomParams(user.id, tank.id),
 		rows: listParams(tank.id, { all: true }).map((p) => {
 			const d = defaults.get(p.key);
 			return {

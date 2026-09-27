@@ -19,6 +19,7 @@
 		fieldErrors={form?.errors}
 		ontankclick={() => (ui.tankSwitcher = true)}
 		targetsHref="/tanks/{data.tank.id}/targets"
+		reusable={data.reusable}
 		draftKey="{data.user.id}:test:{data.tank.id}"
 		waterChange={form?.wc ? { ...data.waterChange, ...form.wc } : data.waterChange}
 	/>

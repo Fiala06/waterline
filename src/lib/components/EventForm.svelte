@@ -39,6 +39,7 @@
 		initialWhen = null,
 		timeZone,
 		closeHref,
+		returnTo = null,
 		task = null,
 		recentProducts = [],
 		productLinks = [],
@@ -64,6 +65,8 @@
 		initialWhen?: When | null;
 		timeZone: string;
 		closeHref: string;
+		/** where saving goes back to (a page in the app), instead of the dashboard */
+		returnTo?: string | null;
 		task?: { id: string; label: string; checked: boolean } | null;
 		recentProducts?: { product: string; amount: unknown; unit: unknown; at: string }[];
 		/** Saved products (Settings → Products): dosing one shows its Reorder link */
@@ -252,6 +255,7 @@
 	use:logDraft={{ key: mode === 'new' ? draftKey : null, onrestore, watch: when }}
 >
 	<input type="hidden" name="clientId" value={clientId} />
+	{#if returnTo}<input type="hidden" name="from" value={returnTo} />{/if}
 	<input type="hidden" name="date" value={when?.date ?? ''} />
 	<input type="hidden" name="time" value={when?.time ?? ''} />
 

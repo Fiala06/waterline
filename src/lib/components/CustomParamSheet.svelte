@@ -13,6 +13,7 @@
 		tankName,
 		action = '?/addCustom',
 		error = null,
+		reusable = [],
 		onadded
 	}: {
 		open?: boolean;
@@ -23,7 +24,14 @@
 		error?: string | null;
 		/** Stay on this page: called once the parameter is added */
 		onadded?: () => void | Promise<void>;
+		/** custom parameters from the keeper's other tanks, to add again in one tap */
+		reusable?: { name: string; unit: string; min: number | null; max: number | null; decimals: number; tank: string }[];
 	} = $props();
+	/** "5–20 ppm", "above 30", "any" */
+	const range = (r: { unit: string; min: number | null; max: number | null }) => {
+		const u = r.unit ? ` ${r.unit}` : '';
+		return r.min != null && r.max != null ? `${r.min}–${r.max}${u}` : r.min != null ? `above ${r.min}${u}` : r.max != null ? `below ${r.max}${u}` : r.unit;
+	};
 
 	const units = ['ppm', 'mg/L', 'dKH', 'µS/cm', 'ppt'];
 	let cName = $state('');
@@ -72,6 +80,30 @@
 </script>
 
 <Sheet bind:open title="Custom parameter" width={480}>
+	{#if reusable.length}
+		<section class="reuse" aria-labelledby="reuse-h">
+			<h3 id="reuse-h">From your other tanks</h3>
+			<ul>
+				{#each reusable as r (r.name)}
+					<li>
+						<form method="POST" {action} use:enhance={submit}>
+							<input type="hidden" name="name" value={r.name} />
+							<input type="hidden" name="unit" value="custom" />
+							<input type="hidden" name="customUnit" value={r.unit} />
+							<input type="hidden" name="min" value={r.min ?? ''} />
+							<input type="hidden" name="max" value={r.max ?? ''} />
+							<input type="hidden" name="decimals" value={r.decimals} />
+							<button class="reuse-row" aria-label="Add {r.name} to {tankName}">
+								<span class="rt"><strong>{r.name}</strong><span class="muted">{[range(r), r.tank].filter(Boolean).join(' · ')}</span></span>
+								<span class="add" aria-hidden="true">+ Add</span>
+							</button>
+						</form>
+					</li>
+				{/each}
+			</ul>
+			<p class="or">Or make a new one</p>
+		</section>
+	{/if}
 	<form method="POST" {action} class="custom" use:enhance={submit}>
 		{#if shown}<p class="banner banner-bad" role="alert">✕ {shown}</p>{/if}
 		<div class="field">
@@ -114,6 +146,62 @@
 </Sheet>
 
 <style>
+	.reuse {
+		margin-bottom: 18px;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+	.reuse h3 {
+		margin: 0;
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--text-muted);
+	}
+	.reuse ul {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		border-radius: 12px;
+		background: var(--surface-2);
+		border: 1px solid var(--border);
+	}
+	.reuse li + li {
+		border-top: 1px solid var(--border);
+	}
+	.reuse-row {
+		width: 100%;
+		min-height: 52px;
+		padding: 8px 14px;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		text-align: left;
+		color: var(--text);
+	}
+	.rt {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		min-width: 0;
+		font-size: 15px;
+	}
+	.rt .muted {
+		font-size: 13px;
+	}
+	.add {
+		flex-shrink: 0;
+		font-size: 14px;
+		font-weight: 600;
+		color: var(--accent);
+	}
+	.or {
+		margin: 8px 0 0;
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--text-muted);
+	}
 	.custom {
 		display: flex;
 		flex-direction: column;

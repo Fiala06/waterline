@@ -74,6 +74,7 @@
 				'/(app)/tanks/[id]/equipment/new': 'Add equipment',
 				'/(app)/tanks/[id]/equipment/[eid]': 'Edit equipment',
 				'/(app)/tanks/[id]/livestock/new': 'Add livestock',
+				'/(app)/tanks/[id]/remind': 'Remind me',
 				'/(app)/tanks/[id]/targets': 'Parameters & targets',
 				'/(app)/tanks/[id]/public': 'Public page',
 				'/(app)/tanks/[id]/summary': 'Summary for an AI assistant'

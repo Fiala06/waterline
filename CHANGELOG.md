@@ -4,6 +4,12 @@ What's new in Waterline, newest first. The app shows this list under Settings �
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
+## Unreleased
+
+- **Notes on the tank's page:** its pinned note, then the latest dated notes, with Add note right there.
+- **Remind me:** a one-off reminder about a tank in two taps, from its page or the dashboard: tomorrow, in 3 days, next week, in 2 weeks, or on a date.
+- **Custom parameters, again:** adding one offers those from your other tanks, added in one tap with their unit and targets.
+
 ## 1.3.0 · 2026-09-27
 
 - **Pet names and photos:** give a fish or any animal a name. Name one of a group and it gets its own entry ("Pepper · Corydoras"), shown by name on the Livestock tab, the dashboard and in History, with its own page for a profile photo, notes, its history and every photo it's in. Tag pets from any photo under In this photo. Public pages show the species only, and hide photos with pets in them, unless you turn on Pet names and photos.

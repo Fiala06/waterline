@@ -6,7 +6,7 @@ import { completableTask, parseEventData, parseReadings, testFormParams, testWat
 import { createEvent, createTest, latestReadings } from '$lib/server/logs';
 import { photoFiles, preparePhotos, storePhotos } from '$lib/server/photos';
 import { alertOutOfRange } from '$lib/server/notifications';
-import { getTank, listParams } from '$lib/server/tanks';
+import { getTank, listParams, reusableCustomParams } from '$lib/server/tanks';
 import { getTask } from '$lib/server/tasks';
 import type { Actions, PageServerLoad } from './$types';
 import { logger } from '$lib/server/log';
@@ -35,7 +35,9 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 		when: date && time ? { date, time } : null,
 		task: completableTask(user, tank.id, 'test', url.searchParams.get('task')),
 		waterChange: testWaterChange(tank, user),
-		today: todayInZone(user.timeZone)
+		today: todayInZone(user.timeZone),
+		// "+ Add parameter": custom ones from other tanks, in one tap
+		reusable: reusableCustomParams(user.id, tank.id)
 	};
 };
 

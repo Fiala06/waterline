@@ -1,5 +1,5 @@
 // Task scheduling and due-state logic (shared by server and UI).
-import { addDays, daysBetween, fmtDate } from './time';
+import { addDays, daysBetween, fmtDate, isDate } from './time';
 
 interface Schedulable {
 	recurring: boolean;
@@ -96,4 +96,20 @@ export function scheduleExamples(nextDue: string, intervalDays: number) {
 				? `Always every ${intervalDays === 7 ? '' : `${intervalDays / 7} weeks on `}${weekday}, whenever it's done`
 				: `Always ${fmtDate(addDays(nextDue, intervalDays))} next, whenever it's done`
 	};
+}
+
+/** "Remind me about this tank": when, in one tap, or on a date. */
+export const REMIND_WHEN = [
+	{ value: '1', label: 'Tomorrow' },
+	{ value: '3', label: 'In 3 days' },
+	{ value: '7', label: 'Next week' },
+	{ value: '14', label: 'In 2 weeks' },
+	{ value: 'date', label: 'On a date' }
+] as const;
+
+/** The day a reminder is due: days from today, or a date after today. Null when it's not one. */
+export function reminderDue(when: string, date: string, today: string): string | null {
+	if (when === 'date') return isDate(date) && date > today ? date : null;
+	const days = Number(when);
+	return REMIND_WHEN.some((w) => w.value === when) && Number.isInteger(days) ? addDays(today, days) : null;
 }

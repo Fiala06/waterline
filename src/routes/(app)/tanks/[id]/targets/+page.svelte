@@ -96,7 +96,7 @@
 	/>
 {/each}
 
-<CustomParamSheet bind:open={addOpen} tankName={data.tank.name} error={form?.custom?.error ?? null} />
+<CustomParamSheet bind:open={addOpen} tankName={data.tank.name} error={form?.custom?.error ?? null} reusable={data.reusable} />
 
 <style>
 	.wrap {

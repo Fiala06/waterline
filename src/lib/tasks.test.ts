@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dueInfo, effectiveDue, intervalText, nextDueAfterCompletion, scheduleExamples, snoozeOptions } from './tasks';
+import { dueInfo, effectiveDue, intervalText, nextDueAfterCompletion, reminderDue, scheduleExamples, snoozeOptions } from './tasks';
 
 const weekly = { recurring: true, intervalDays: 7, scheduleMode: 'completion' as const, nextDue: '2026-09-24' };
 
@@ -62,5 +62,23 @@ describe('text', () => {
 		const ex = scheduleExamples('2026-09-25', 7);
 		expect(ex.completion).toBe('Done late on Sep 26 → next due Oct 3');
 		expect(ex.fixed).toBe("Always every Friday, whenever it's done");
+	});
+});
+
+describe('reminderDue', () => {
+	const today = '2026-09-27';
+	it('counts days from today, in one tap', () => {
+		expect(reminderDue('1', '', today)).toBe('2026-09-28');
+		expect(reminderDue('7', '', today)).toBe('2026-10-04');
+		expect(reminderDue('14', '', today)).toBe('2026-10-11');
+	});
+	it('takes a date after today', () => {
+		expect(reminderDue('date', '2026-12-01', today)).toBe('2026-12-01');
+		expect(reminderDue('date', today, today)).toBeNull();
+		expect(reminderDue('date', '2026-02-30', today)).toBeNull();
+	});
+	it('refuses anything else', () => {
+		expect(reminderDue('5', '', today)).toBeNull();
+		expect(reminderDue('', '', today)).toBeNull();
 	});
 });

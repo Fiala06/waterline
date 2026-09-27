@@ -50,6 +50,7 @@
 		remove = null,
 		ontankclick,
 		targetsHref = null,
+		reusable = [],
 		draftKey = null,
 		waterChange = null
 	}: {
@@ -73,6 +74,8 @@
 		ontankclick?: () => void;
 		/** 08 "+ Add parameter": the tank's parameters & targets page */
 		targetsHref?: string | null;
+		/** custom parameters from other tanks, offered by "+ Add parameter" */
+		reusable?: { name: string; unit: string; min: number | null; max: number | null; decimals: number; tank: string }[];
 		/** New tests: keep what was typed on this device until it's saved */
 		draftKey?: string | null;
 		/** New tests: "Also log a water change", on when the last test had one */
@@ -438,7 +441,7 @@
 <DateTimePicker bind:open={picking} value={when} {timeZone} onselect={(v) => (when = v)} />
 
 {#if mode === 'new' && targetsHref}
-	<CustomParamSheet bind:open={addOpen} {tankName} action="{targetsHref}?/addCustom" onadded={() => invalidateAll()} />
+	<CustomParamSheet bind:open={addOpen} {tankName} {reusable} action="{targetsHref}?/addCustom" onadded={() => invalidateAll()} />
 {/if}
 
 <style>
