@@ -19,6 +19,12 @@ A running list of ideas and nice-to-haves that aren't in the current scope. For 
 
 ## To do later
 
+- **Easier-to-read charts:** the charts are hard to read. Hovering over a line does nothing, and there are no axes saying what's shown.
+  - Hover (or tap, on a phone) to see a reading: its value, unit, date and time.
+  - Axes that say what's plotted: the parameter and its unit up the side, dates along the bottom.
+  - On the dashboard's chart and on Charts alike.
+- **Account menu:** a circle with your profile photo in the upper left of the app. Tapping it opens a menu to update your account, sign out and so on.
+  - The photo from your Google account, or your initials when there isn't one (as with the local admin login).
 - **In-app changelog:** a "What's new" list in the app, so people see what changed after an update.
   - A Changelog page under Settings (the footer's "Waterline v1.0 · self-hosted" could link to it), newest release first, with version, date and a few plain-language lines each.
   - After an update, show a small dismissible "What's new in 1.1" card or sheet once, then remember it was seen.
