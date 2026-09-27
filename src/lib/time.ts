@@ -27,11 +27,21 @@ export function whenLabel(w: When | null): string {
 	return `${d} · ${t}`;
 }
 
+// Building an Intl.DateTimeFormat is slow and these run for every row shown,
+// so each kind is made once per zone and reused.
+const formatters = new Map<string, Intl.DateTimeFormat>();
+function formatter(kind: string, locale: string, options: Intl.DateTimeFormatOptions) {
+	const key = `${kind} ${options.timeZone}`;
+	let fmt = formatters.get(key);
+	if (!fmt) formatters.set(key, (fmt = new Intl.DateTimeFormat(locale, options)));
+	return fmt;
+}
+
 /** Calendar date of an instant in a time zone, as 'YYYY-MM-DD'. */
 export function dateInZone(instant: Date | string, timeZone: string): string {
 	const d = typeof instant === 'string' ? new Date(instant) : instant;
 	// en-CA formats as YYYY-MM-DD
-	return new Intl.DateTimeFormat('en-CA', {
+	return formatter('date', 'en-CA', {
 		timeZone,
 		year: 'numeric',
 		month: '2-digit',
@@ -121,7 +131,7 @@ export const isTime = (s: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
  */
 export function zonedToUtc(date: string, time: string, timeZone: string): Date {
 	if (!isDate(date) || !isTime(time)) return new Date(NaN);
-	const fmt = new Intl.DateTimeFormat('en-US', {
+	const fmt = formatter('parts', 'en-US', {
 		timeZone,
 		hourCycle: 'h23',
 		year: 'numeric',
@@ -145,7 +155,7 @@ export function zonedToUtc(date: string, time: string, timeZone: string): Date {
 /** Wall-clock parts of an instant in a zone: { date: 'YYYY-MM-DD', time: 'HH:MM' }. */
 export function utcToZoned(instant: string | Date, timeZone: string) {
 	const d = typeof instant === 'string' ? new Date(instant) : instant;
-	const time = new Intl.DateTimeFormat('en-GB', {
+	const time = formatter('time', 'en-GB', {
 		timeZone,
 		hour: '2-digit',
 		minute: '2-digit',
