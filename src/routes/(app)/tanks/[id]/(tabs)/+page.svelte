@@ -52,7 +52,7 @@
 
 		<section>
 			<div class="sh">
-				<h2>Livestock{data.livestock.length ? ` · ${data.animals} in ${data.livestock.length} species` : ''}</h2>
+				<h2>Livestock{data.livestock.length ? ` · ${data.animals} in ${data.species} species` : ''}</h2>
 				{#if data.livestock.length}<a href="{base}/livestock">All ›</a>{/if}
 			</div>
 			{#if data.livestock.length}

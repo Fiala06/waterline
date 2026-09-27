@@ -2,6 +2,7 @@
 // "Added" adds to Livestock or Plants, "Removed" takes from them. Each
 // writes its own History entry; this returns that entry so photos attach.
 import { dateInZone } from '$lib/time';
+import { livestockLabel } from '$lib/livestock';
 import type { Tank, User } from './db/schema';
 import { num, optStr, str } from './forms';
 import { addLivestock, addPlant, changeCount, getLivestock, getPlant, removePlant, type EntryMeta } from './specs';
@@ -68,7 +69,7 @@ export function handleLinkedLivestock(user: User, tank: Tank, form: FormData, at
 		if (!Number.isInteger(n) || n < 1 || n > l.count) return { errors: { count: `Enter 1 to ${l.count}.` } };
 		const reason = str(form, 'reason') === 'rehomed' ? 'rehomed' : 'loss';
 		const r = changeCount(user.id, id, l.count - n, reason, meta);
-		return { eventId: r.event?.id ?? '', message: `✓ ${l.commonName} ${l.count} → ${l.count - n}` };
+		return { eventId: r.event?.id ?? '', message: l.nickname ? `✓ ${livestockLabel(l)} removed` : `✓ ${l.commonName} ${l.count} → ${l.count - n}` };
 	}
 	return null;
 }

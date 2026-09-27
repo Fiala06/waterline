@@ -80,6 +80,10 @@
 			} as Record<string, string | undefined>
 		)[id];
 		if (tankPage) return { title: tankPage, crumbs: [tanks, { label: tankName, href: `/tanks/${page.params.id}` }] };
+		if (id === '/(app)/tanks/[id]/livestock/[lid]') {
+			const a = page.data.animal as { nickname: string | null; commonName: string } | undefined;
+			return { title: a?.nickname ?? a?.commonName ?? 'Livestock', crumbs: [tanks, { label: tankName, href: `/tanks/${page.params.id}/livestock` }] };
+		}
 		if (id === '/(app)/tanks/[id]/import/[list=importList]') {
 			const kind = importKindOf(page.params.list ?? '');
 			return { title: kind ? IMPORTS[kind].title : 'Import', crumbs: [tanks, { label: tankName, href: `/tanks/${page.params.id}` }] };

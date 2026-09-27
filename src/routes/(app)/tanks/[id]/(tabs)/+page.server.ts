@@ -1,4 +1,5 @@
 import { EQUIPMENT_TYPE_LABEL, equipmentName } from '$lib/equipment';
+import { bySpecies, livestockLabel, speciesCount } from '$lib/livestock';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { getTank } from '$lib/server/tanks';
 import { listEquipment, listLivestock, listPlants } from '$lib/server/specs';
@@ -10,7 +11,7 @@ export const load: PageServerLoad = ({ locals, params }) => {
 	const user = locals.user!;
 	const t = getTank(user.id, params.id);
 	const eq = listEquipment(user.id, t.id);
-	const ls = listLivestock(user.id, t.id);
+	const ls = bySpecies(listLivestock(user.id, t.id));
 	const pl = listPlants(user.id, t.id);
 	const len = (cm: number) => formatNumber(toDisplay(cm, 'length', user), 0);
 	const size =
@@ -29,8 +30,9 @@ export const load: PageServerLoad = ({ locals, params }) => {
 		].filter(([, v]) => v) as [string, string][],
 		notes: t.notes,
 		equipment: eq.map((e) => ({ id: e.id, type: EQUIPMENT_TYPE_LABEL[e.type], name: equipmentName(e) })),
-		livestock: ls.map((l) => ({ id: l.id, name: l.commonName, count: l.count, quarantine: l.status === 'quarantine' })),
+		livestock: ls.map((l) => ({ id: l.id, name: livestockLabel(l), count: l.count, quarantine: l.status === 'quarantine' })),
 		animals: ls.reduce((n, l) => n + l.count, 0),
+		species: speciesCount(ls),
 		plants: pl.map((p) => p.name)
 	};
 };

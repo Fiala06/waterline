@@ -1,5 +1,6 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { EQUIPMENT_REASONS, taskKindFor } from '$lib/events';
+import { bySpecies, livestockLabel } from '$lib/livestock';
 import { addDays, dateInZone, fmtDate } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
 import { num, optStr, parseWhen, str } from '$lib/server/forms';
@@ -43,9 +44,9 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 		productLinks: category === 'dosing' ? listProducts(user.id).map((p) => ({ name: p.name, url: p.url })) : [],
 		inventory: ['livestock', 'equipment', 'maintenance'].includes(category)
 			? {
-					livestock: listLivestock(user.id, tank.id).map((l) => ({
+					livestock: bySpecies(listLivestock(user.id, tank.id)).map((l) => ({
 						id: l.id,
-						name: l.commonName,
+						name: livestockLabel(l),
 						count: l.count,
 						// for the "Livestock tab: Ember tetra 0 → 10" preview (G3)
 						status: l.status,

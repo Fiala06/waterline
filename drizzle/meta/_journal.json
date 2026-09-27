@@ -99,6 +99,13 @@
       "when": 1790535112005,
       "tag": "0013_own_avatars",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1790535938985,
+      "tag": "0014_pet_names",
+      "breakpoints": true
     }
   ]
 }

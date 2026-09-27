@@ -7,6 +7,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { env } from '$env/dynamic/private';
 import { equipmentName, specSummary } from '$lib/equipment';
 import { eventTitle } from '$lib/events';
+import { speciesKey } from '$lib/livestock';
 import { displayValue, fmtRange, fmtValue, paramDecimals, paramUnit, shortName, statusOf } from '$lib/params';
 import { statusShort } from '$lib/status';
 import { dateInZone, fmtDate, todayInZone } from '$lib/time';
@@ -129,6 +130,21 @@ export function displayNameFor(user: User, mode: PublicPage['displayName']) {
 }
 
 const PUBLIC_CATEGORIES = ['water_change', 'dosing', 'maintenance', 'livestock', 'equipment'] as const;
+
+// Pets' names stay private: public titles say the species ("Betta moved into
+// the tank"), naming one isn't tank care, and pets count with their species.
+const withoutPetNames = <E extends { data: Record<string, unknown> }>(e: E): E => ({ ...e, data: { ...e.data, nickname: null, previous: null } });
+const isNaming = (e: { category: string; data: Record<string, unknown> }) => e.category === 'livestock' && e.data.action === 'named';
+/** Pets count with their species, never by name. */
+function perSpecies(rows: { id: string; commonName: string; scientificName: string | null; count: number }[]) {
+	const groups = new Map<string, { id: string; name: string; count: number }>();
+	for (const l of rows) {
+		const g = groups.get(speciesKey(l));
+		if (g) g.count += l.count;
+		else groups.set(speciesKey(l), { id: l.id, name: l.commonName, count: l.count });
+	}
+	return [...groups.values()];
+}
 const monthYear = (d: string) =>
 	new Date(d.slice(0, 10) + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 
@@ -232,9 +248,11 @@ export function publicView(page: PublicPage, tank: Tank, owner: User) {
 			.from(events)
 			.where(and(eq(events.tankId, tank.id), inArray(events.category, [...PUBLIC_CATEGORIES])))
 			.orderBy(desc(events.occurredAt))
-			.limit(8)
+			.limit(16)
 			.all()
-			.map((e) => ({ key: `e:${e.id}`, at: e.occurredAt, title: eventTitle(e, prefs), kind: e.category }));
+			.filter((e) => !isNaming(e))
+			.slice(0, 8)
+			.map((e) => ({ key: `e:${e.id}`, at: e.occurredAt, title: eventTitle(withoutPetNames(e), prefs), kind: e.category }));
 		const ts = db
 			.select({ id: tests.id, at: tests.takenAt, n: sql<number>`count(${testReadings.parameterId})` })
 			.from(tests)
@@ -272,7 +290,7 @@ export function publicView(page: PublicPage, tank: Tank, owner: User) {
 		readings: page.showReadings ? cards : [],
 		charts,
 		photos: photoIds,
-		livestock: animals.map((l) => ({ id: l.id, name: l.commonName, count: l.count })),
+		livestock: perSpecies(animals),
 		plants: plantNames,
 		equipment: gear,
 		activity
@@ -374,7 +392,7 @@ export function findShare(id: string) {
 	if (!row) error(404, 'Not found');
 	const { share, photo, tank, user, event } = row;
 	const day = dateInZone(photo.takenAt, user.timeZone);
-	const title = event && share.includeNote ? (event.category === 'note' ? (event.note?.split('\n')[0] ?? null) : eventTitle(event, user)) : null;
+	const title = event && share.includeNote ? (event.category === 'note' ? (event.note?.split('\n')[0] ?? null) : eventTitle(withoutPetNames(event), user)) : null;
 	return {
 		id: share.id,
 		photoId: photo.id,

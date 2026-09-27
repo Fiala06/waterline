@@ -13,7 +13,7 @@ import { events, notificationPrefs, tanks, taskCompletions, tasks, users, type T
 import { createEvent, createTest } from './logs';
 import { preparePhotos, setCover, storePhotos } from './photos';
 import { createShare, getPublicPage, updatePublicPage } from './public';
-import { addEquipment, addLivestock, addPlant, changeCount, logTrim, markServiced } from './specs';
+import { addEquipment, addLivestock, addPlant, changeCount, logTrim, markServiced, nameLivestock, updateLivestockDetails } from './specs';
 import { createTank, listParams, setArchived, updateTank } from './tanks';
 import { createTask } from './tasks';
 import { upsertUser, updateUser } from './users';
@@ -115,7 +115,10 @@ async function seedPlanted(user: User) {
 	// Livestock arrives over time; one loss along the way.
 	const rasbora = addLivestock(user.id, tank.id, { kind: 'fish', commonName: 'Harlequin rasbora', scientificName: 'Trigonostigma heteromorpha', count: 15, status: 'in_tank', addedAt: day(-DAYS + 5), source: null }, { at: at(-DAYS + 5, '17:30') }).row;
 	addLivestock(user.id, tank.id, { kind: 'invert', commonName: 'Amano shrimp', scientificName: 'Caridina multidentata', count: 8, status: 'in_tank', addedAt: day(-DAYS + 5), source: null }, { at: at(-DAYS + 5, '17:40') });
-	addLivestock(user.id, tank.id, { kind: 'fish', commonName: 'Otocinclus', scientificName: 'Otocinclus vittatus', count: 5, status: 'in_tank', addedAt: day(-110), source: null }, { at: at(-110, '18:00') });
+	const otos = addLivestock(user.id, tank.id, { kind: 'fish', commonName: 'Otocinclus', scientificName: 'Otocinclus vittatus', count: 5, status: 'in_tank', addedAt: day(-110), source: null }, { at: at(-110, '18:00') }).row;
+	// a pet: one of the otos, named
+	const zippy = nameLivestock(user.id, otos.id, 'Zippy', { at: at(-100, '19:10') });
+	updateLivestockDetails(user.id, zippy.id, { notes: 'The boldest of the group. Always first to the algae wafer.' });
 	addLivestock(user.id, tank.id, { kind: 'invert', commonName: 'Nerite snail', scientificName: 'Neritina natalensis', count: 3, status: 'in_tank', addedAt: day(-150), source: null }, { at: at(-150, '18:00') });
 	addLivestock(user.id, tank.id, { kind: 'fish', commonName: 'Honey gourami', scientificName: 'Trichogaster chuna', count: 1, status: 'quarantine', addedAt: day(-5), source: null }, { at: at(-5, '16:20') });
 	changeCount(user.id, rasbora.id, 14, 'loss', { at: at(-45, '08:05') });

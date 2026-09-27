@@ -113,6 +113,16 @@ export function eventTitle(e: EventLike, prefs: UnitPrefs): string {
 			const name = str(d.name) || (d.kind === 'plant' ? 'plant' : 'livestock');
 			const n = typeof d.count === 'number' && d.count > 0 ? d.count : null;
 			if (d.kind === 'plant') return d.action === 'removed' ? `Removed ${name}` : `Planted ${name}`;
+			const pet = str(d.nickname);
+			if (d.action === 'named') {
+				const before = str(d.previous);
+				if (pet) return before ? `Renamed ${before} to ${pet} · ${name}` : `Named ${pet} · ${name}`;
+				return before ? `Removed the name ${before} · ${name}` : `Named a ${name}`;
+			}
+			// a pet is one animal: "Captain moved into the tank", "Removed Captain · Betta · loss"
+			if (pet && d.action === 'status') return `${pet} ${d.status === 'quarantine' ? 'to quarantine' : 'moved into the tank'}`;
+			if (pet && d.action === 'removed') return `Removed ${pet} · ${name}${d.reason ? ` · ${d.reason}` : ''}`;
+			if (pet && d.action === 'added') return `${pet} is back · ${name}`;
 			if (d.action === 'recount') return `Recount · ${name} ${d.from} → ${d.to}`;
 			if (d.action === 'status') return `${name} ${d.status === 'quarantine' ? 'to quarantine' : 'moved into the tank'}`;
 			if (d.action === 'added') return `+${n ?? 1} ${name}${d.status === 'quarantine' ? ' · quarantine' : ''}`;

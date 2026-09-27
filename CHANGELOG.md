@@ -6,6 +6,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Pet names:** give a fish or any animal a name. Name one of a group and it gets its own entry ("Pepper · Corydoras"), shown by name on the Livestock tab, the dashboard and in History, with its own page for a photo, notes and its history. Public pages still show the species only.
 - **Your own profile photo:** add one in Settings › Profile, from your camera or photos, with a preview before it's saved. Signing in with Google doesn't replace it; Use my Google photo switches back, and Remove photo shows your initials.
 
 ## 1.2.0 · 2026-09-27

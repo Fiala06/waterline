@@ -1,5 +1,6 @@
 import { eq, lte, sql } from 'drizzle-orm';
 import { displayVersion, whatsNewSince } from '$lib/changelog';
+import { bySpecies, livestockLabel } from '$lib/livestock';
 import { eventIcon, eventKindLabel, eventTitle } from '$lib/events';
 import { dateInZone, daysBetween, fmtDay, fmtWhen, todayInZone } from '$lib/time';
 import { eventsSince, lastEventOf, latestReadings, recentActivity, series } from '$lib/server/logs';
@@ -102,10 +103,11 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 	);
 
 	// "In the tank": what lives in it and what runs it, each opening its tab
-	const animals = listLivestock(user.id, tank.id);
+	const animals = bySpecies(listLivestock(user.id, tank.id));
 	const inTank = animals.filter((l) => l.status === 'in_tank');
 	const contents = {
-		livestock: inTank.map((l) => `${l.commonName} ${l.count}`),
+		// "Corydoras 4, Pepper · Corydoras": a pet by name, one animal
+		livestock: inTank.map((l) => (l.nickname ? livestockLabel(l) : `${l.commonName} ${l.count}`)),
 		animals: inTank.reduce((n, l) => n + l.count, 0),
 		quarantine: animals.filter((l) => l.status === 'quarantine').reduce((n, l) => n + l.count, 0),
 		plants: listPlants(user.id, tank.id).map((p) => p.name),

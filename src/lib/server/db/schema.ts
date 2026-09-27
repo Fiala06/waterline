@@ -414,6 +414,11 @@ export const livestock = sqliteTable(
 		source: text('source'),
 		removedAt: text('removed_at'),
 		importId: text('import_id'),
+		// a pet's name ("Captain"): one animal, its own entry, never merged into a group
+		nickname: text('nickname'),
+		notes: text('notes'),
+		// its profile photo, one of the tank's photos
+		photoId: text('photo_id').references(() => photos.id, { onDelete: 'set null' }),
 		createdAt: createdAt()
 	},
 	(t) => [index('livestock_tank').on(t.tankId)]

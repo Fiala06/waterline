@@ -2,6 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import { EQUIPMENT_TYPE_LABEL, equipmentName, specSummary } from '$lib/equipment';
 import { eventTitle } from '$lib/events';
+import { bySpecies, speciesCount } from '$lib/livestock';
 import { dateInZone, fmtDate } from '$lib/time';
 import { db } from '$lib/server/db';
 import { events } from '$lib/server/db/schema';
@@ -18,6 +19,8 @@ export const load: PageServerLoad = ({ locals, params }) => {
 	const view = (l: ReturnType<typeof listLivestock>[number]) => ({
 		id: l.id,
 		name: l.commonName,
+		// a pet: "Captain", shown as "Captain · Betta"
+		nickname: l.nickname,
 		scientific: l.scientificName,
 		kind: l.kind,
 		count: l.count,
@@ -32,11 +35,13 @@ export const load: PageServerLoad = ({ locals, params }) => {
 		.limit(6)
 		.all()
 		.map((e) => ({ id: e.id, title: eventTitle(e, user), day: fmtDate(dateInZone(e.occurredAt, user.timeZone)) }));
-	const items = listLivestock(user.id, params.id).map(view);
+	const rows = bySpecies(listLivestock(user.id, params.id));
+	const items = rows.map(view);
 	return {
 		items,
-		past: listLivestock(user.id, params.id, { removed: true }).map(view),
+		past: bySpecies(listLivestock(user.id, params.id, { removed: true })).map(view),
 		animals: items.reduce((n, l) => n + l.count, 0),
+		species: speciesCount(rows),
 		equipment: listEquipment(user.id, params.id).map((e) => {
 			const name = equipmentName(e);
 			// T6: "Tidewell 200 W · 77 °F", not the wattage twice
@@ -58,6 +63,7 @@ export const actions: Actions = {
 		if (!['loss', 'rehomed', 'recount', 'added'].includes(reason)) return fail(400, { error: 'Choose why the count changed.' });
 		const before = getLivestock(user.id, id);
 		if (before.tankId !== params.id) return fail(404);
+		if (before.nickname && count > 1) return fail(400, { error: `${before.nickname} is one animal. Add more ${before.commonName} as their own entry.` });
 		changeCount(user.id, id, count, reason);
 		setFlash(cookies, `✓ ${before.commonName} ${before.count} → ${count}`);
 		redirect(303, `/tanks/${params.id}/livestock`);

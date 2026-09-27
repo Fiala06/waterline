@@ -2,6 +2,7 @@
 // assistant with a question. Written to be read, in the keeper's units and
 // time zone, and without account details. Waterline sends it nowhere.
 import { EQUIPMENT_TYPE_LABEL, equipmentName, specSummary } from '$lib/equipment';
+import { bySpecies, speciesCount } from '$lib/livestock';
 import { eventKindLabel, eventTitle } from '$lib/events';
 import { fmtRange, fmtValue, paramUnit, statusOf } from '$lib/params';
 import { dueInfo, effectiveDue, intervalText } from '$lib/tasks';
@@ -169,13 +170,14 @@ export function tankSummary(user: User, tankId: string, days: number, now = new 
 	);
 
 	// ── What's in the tank ──────────────────────────────────────────────────
-	const animals = listLivestock(user.id, t.id);
+	const animals = bySpecies(listLivestock(user.id, t.id));
 	section(
-		animals.length ? `Livestock (${plural(animals.reduce((n, l) => n + l.count, 0), 'animal')}, ${plural(animals.length, 'species', 'species')})` : 'Livestock',
+		animals.length ? `Livestock (${plural(animals.reduce((n, l) => n + l.count, 0), 'animal')}, ${plural(speciesCount(animals), 'species', 'species')})` : 'Livestock',
 		animals.length
 			? animals.map(
 					(l) =>
-						`- ${l.count} × ${l.commonName}${l.scientificName ? ` (${l.scientificName})` : ''}, ${l.kind}` +
+						// a pet: "- Captain, a Betta (Betta splendens), fish"
+						`- ${l.nickname ? `${cell(l.nickname)}, a` : `${l.count} ×`} ${l.commonName}${l.scientificName ? ` (${l.scientificName})` : ''}, ${l.kind}` +
 						`${l.status === 'quarantine' ? ', in quarantine' : ''}${l.addedAt ? `, added ${l.addedAt}` : ''}${l.source ? `, from ${cell(l.source)}` : ''}`
 				)
 			: ['None recorded.']

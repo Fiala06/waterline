@@ -66,6 +66,7 @@ function existingIn(list: ImportList, user: User, tankId: string): (v: ImportVal
 			const l = v as LivestockValue;
 			const same = rows.find(
 				(r) =>
+					!r.nickname &&
 					r.status === l.status && (l.scientific && r.scientificName ? r.scientificName === l.scientific : lower(r.commonName) === lower(l.name))
 			);
 			return same ? `Already in the tank (${same.count}); tick it to add ${l.count} more` : null;

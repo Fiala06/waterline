@@ -12,6 +12,7 @@
 		if (next === current) delete pending[id];
 		else pending[id] = next;
 	}
+	const label = (l: { name: string; nickname: string | null }) => (l.nickname ? `${l.nickname} · ${l.name}` : l.name);
 	// "−1 Harlequin rasbora · loss": the part after the first " · " is muted (T6)
 	function split(title: string) {
 		const i = title.indexOf(' · ');
@@ -25,7 +26,7 @@
 	<details class="past">
 		<summary><span class="show">Show past livestock ({data.past.length})</span><span class="hide">Hide past livestock</span></summary>
 		<ul>
-			{#each data.past as l (l.id)}<li><span>{l.name}</span><span class="muted">{KIND[l.kind]}</span></li>{/each}
+			{#each data.past as l (l.id)}<li><a href="{base}/livestock/{l.id}">{label(l)}</a><span class="muted">{KIND[l.kind]}</span></li>{/each}
 		</ul>
 	</details>
 {/snippet}
@@ -48,7 +49,7 @@
 			</EmptyState>
 			{#if data.past.length}{@render past()}{/if}
 		{:else}
-			<p class="total">{data.animals} animal{data.animals === 1 ? '' : 's'} · {data.items.length} species</p>
+			<p class="total">{data.animals} animal{data.animals === 1 ? '' : 's'} · {data.species} species</p>
 			<div class="table" role="table" aria-label="Livestock">
 				<div class="thead" role="row">
 					<span role="columnheader">Species</span><span role="columnheader">Type</span><span role="columnheader">Added</span
@@ -58,7 +59,7 @@
 					{@const next = pending[l.id]}
 					<div class="tr" class:pending={next != null} role="row">
 						<div class="sp" role="cell">
-							<span class="name">{l.name}</span>
+							<a class="name" href="{base}/livestock/{l.id}">{l.nickname ?? l.name}{#if l.nickname}<span class="of">{' · ' + l.name}</span>{/if}</a>
 							{#if l.scientific}<span class="sci">{l.scientific}</span>{/if}
 						</div>
 						<span class="d" role="cell">{KIND[l.kind]}</span>
@@ -77,9 +78,10 @@
 						</div>
 						<div class="cnt" role="cell">
 							<div class="count-stepper">
-								<button type="button" aria-label="One fewer {l.name}" onclick={() => step(l.id, l.count, -1)}>−</button>
+								<button type="button" aria-label="One fewer {label(l)}" onclick={() => step(l.id, l.count, -1)}>−</button>
 								<span class="value" class:changed={next != null}>{next ?? l.count}</span>
-								<button type="button" aria-label="One more {l.name}" onclick={() => step(l.id, l.count, 1)}>+</button>
+								<!-- a named pet is one animal -->
+								<button type="button" aria-label="One more {label(l)}" disabled={!!l.nickname && (next ?? l.count) >= 1} onclick={() => step(l.id, l.count, 1)}>+</button>
 							</div>
 						</div>
 						{#if next != null}
@@ -206,6 +208,15 @@
 	.name {
 		font-size: 16px;
 		font-weight: 600;
+		color: var(--text);
+		overflow-wrap: anywhere;
+	}
+	.name:hover {
+		color: var(--accent);
+	}
+	.of {
+		font-weight: 400;
+		color: var(--text-muted);
 	}
 	.sci {
 		font-size: 13px;

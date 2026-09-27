@@ -150,7 +150,7 @@ export interface LivestockInput {
 	source: string | null;
 }
 
-/** A current row for the same species with this status, other than `except`. */
+/** A current group (not a named pet) of the same species with this status, other than `except`. */
 function sameSpecies(tankId: string, l: Pick<Livestock, 'status' | 'scientificName' | 'commonName'>, except?: string) {
 	return db
 		.select()
@@ -159,6 +159,7 @@ function sameSpecies(tankId: string, l: Pick<Livestock, 'status' | 'scientificNa
 			and(
 				eq(livestock.tankId, tankId),
 				isNull(livestock.removedAt),
+				isNull(livestock.nickname),
 				eq(livestock.status, l.status),
 				except ? ne(livestock.id, except) : undefined,
 				l.scientificName
@@ -205,6 +206,7 @@ export function changeCount(userId: string, id: string, newCount: number, reason
 		reason: delta > 0 && reason !== 'recount' ? null : reason,
 		livestock_id: id,
 		name: l.commonName,
+		nickname: l.nickname,
 		count: Math.abs(delta),
 		delta,
 		from: l.count,
@@ -213,19 +215,68 @@ export function changeCount(userId: string, id: string, newCount: number, reason
 	return Object.assign(getLivestock(userId, id), { event });
 }
 
-/** Quarantine ↔ in tank. Moving in joins an existing group of the same species. */
+/** Quarantine ↔ in tank. Moving in joins an existing group of the same species; a named pet stays its own. */
 export function setLivestockStatus(userId: string, id: string, status: Livestock['status']) {
 	const l = getLivestock(userId, id);
 	if (l.status === status) return l;
-	const same = sameSpecies(l.tankId, { ...l, status }, l.id);
+	const same = l.nickname ? undefined : sameSpecies(l.tankId, { ...l, status }, l.id);
 	if (same) {
 		db.update(livestock).set({ count: same.count + l.count }).where(eq(livestock.id, same.id)).run();
 		db.delete(livestock).where(eq(livestock.id, id)).run();
 	} else {
 		db.update(livestock).set({ status }).where(eq(livestock.id, id)).run();
 	}
-	logEvent(l.tankId, 'livestock', { action: 'status', livestock_id: same?.id ?? id, name: l.commonName, count: l.count, status });
+	logEvent(l.tankId, 'livestock', { action: 'status', livestock_id: same?.id ?? id, name: l.commonName, nickname: l.nickname, count: l.count, status });
 	return l;
+}
+
+/**
+ * Name an animal, or rename or unname a pet. In a group, naming one takes it
+ * out into its own entry ("Corydoras ×6" becomes "×5" and "Pepper"), so each
+ * pet has its own photo, notes and history. Returns the pet's entry.
+ */
+export function nameLivestock(userId: string, id: string, nickname: string | null, meta: EntryMeta = {}) {
+	const l = getLivestock(userId, id);
+	if (l.removedAt) error(400, "Livestock that has left the tank can't be renamed");
+	nickname = nickname?.trim().slice(0, 60) || null;
+	if (nickname === l.nickname) return l;
+	if (!nickname && !l.nickname) return l;
+	let pet = l;
+	if (nickname && !l.nickname && l.count > 1) {
+		db.update(livestock).set({ count: l.count - 1 }).where(eq(livestock.id, l.id)).run();
+		pet = db
+			.insert(livestock)
+			.values({
+				tankId: l.tankId,
+				kind: l.kind,
+				commonName: l.commonName,
+				scientificName: l.scientificName,
+				count: 1,
+				status: l.status,
+				addedAt: l.addedAt,
+				source: l.source,
+				nickname
+			})
+			.returning()
+			.get();
+	} else {
+		pet = db.update(livestock).set({ nickname }).where(eq(livestock.id, l.id)).returning().get();
+	}
+	logEvent(l.tankId, 'livestock', {
+		action: 'named',
+		livestock_id: pet.id,
+		...(pet.id !== l.id ? { from_id: l.id } : {}),
+		name: l.commonName,
+		nickname,
+		previous: l.nickname
+	}, meta);
+	return pet;
+}
+
+/** Notes and the profile photo: about the pet, not a change to the tank, so no History entry. */
+export function updateLivestockDetails(userId: string, id: string, patch: Partial<Pick<Livestock, 'notes' | 'photoId'>>) {
+	getLivestock(userId, id);
+	return db.update(livestock).set(patch).where(eq(livestock.id, id)).returning().get();
 }
 
 // ── Plants ──────────────────────────────────────────────────────────────────
