@@ -142,6 +142,11 @@ function firstLine(s: string | null) {
 	return line.length > 60 ? line.slice(0, 57) + '…' : line;
 }
 
+/** The category icon for an entry: plant changes are logged as livestock, but show a plant. */
+export function eventIcon(e: EventLike) {
+	return e.category === 'livestock' && e.data.kind === 'plant' ? ('plant' as const) : e.category;
+}
+
 /** Category word shown under a feed title ("Sep 17 · Water change"). */
 export function eventKindLabel(e: EventLike): string {
 	if (e.category === 'livestock') return e.data.kind === 'plant' ? 'Plant change' : 'Livestock change';

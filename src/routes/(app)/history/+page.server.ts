@@ -1,5 +1,5 @@
 import { and, desc, eq, gte } from 'drizzle-orm';
-import { eventKindLabel, eventTitle } from '$lib/events';
+import { eventIcon, eventKindLabel, eventTitle } from '$lib/events';
 import { shortName, statusOf, fmtValue } from '$lib/params';
 import { dateInZone, daysBetween, fmtTime, todayInZone } from '$lib/time';
 import { db } from '$lib/server/db';
@@ -86,7 +86,7 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 			key: `event:${e.id}`,
 			href: `/entries/event/${e.id}`,
 			at: e.occurredAt,
-			icon: e.category,
+			icon: eventIcon(e),
 			title: eventTitle(e, user),
 			sub: `${fmtTime(e.occurredAt, tz)}${e.category === 'water_change' ? '' : ` · ${eventKindLabel(e)}`}`,
 			bad: null,

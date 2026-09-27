@@ -43,7 +43,7 @@
 	{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
 
 	{#if !data.plants.length}
-		<EmptyState icon="livestock" title="No plants yet" text="Add stems, carpets, epiphytes and mosses to track how they're doing.">
+		<EmptyState icon="plant" title="No plants yet" text="Add stems, carpets, epiphytes and mosses to track how they're doing.">
 			<button type="button" class="btn btn-primary" onclick={() => (sheets.add = true)}>Add plant</button>
 			<a class="import-link" href="/tanks/{data.tankHead.id}/import/plants">Import a list from a spreadsheet</a>
 		</EmptyState>

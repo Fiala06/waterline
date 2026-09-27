@@ -2,9 +2,9 @@
 	// 7.8 · Empty state: dashed card, category icon, title, one line of help and
 	// an optional action. `compact` for side columns and narrow panes.
 	import type { Snippet } from 'svelte';
-	import CategoryIcon from './CategoryIcon.svelte';
+	import CategoryIcon, { type Kind as IconKind } from './CategoryIcon.svelte';
 
-	type Kind = 'test' | 'water_change' | 'dosing' | 'maintenance' | 'livestock' | 'equipment' | 'observation' | 'note' | 'tank';
+	type Kind = IconKind | 'tank';
 	let {
 		icon = 'note',
 		title,

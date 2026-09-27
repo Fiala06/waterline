@@ -77,7 +77,7 @@
 			{#if data.plants.length}
 				<p class="plants">{data.plants.join(', ')}</p>
 			{:else}
-				<EmptyState compact icon="livestock" title="None added yet" href="{base}/plants" label="Add plants" />
+				<EmptyState compact icon="plant" title="None added yet" href="{base}/plants" label="Add plants" />
 			{/if}
 		</section>
 

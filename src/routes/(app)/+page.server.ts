@@ -1,4 +1,4 @@
-import { eventKindLabel, eventTitle } from '$lib/events';
+import { eventIcon, eventKindLabel, eventTitle } from '$lib/events';
 import { dateInZone, daysBetween, fmtDay, fmtWhen, todayInZone } from '$lib/time';
 import { eventsSince, lastEventOf, latestReadings, recentActivity, series } from '$lib/server/logs';
 import { thumbsFor } from '$lib/server/photos';
@@ -71,7 +71,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 				}
 			: {
 					href: `/entries/event/${item.id}`,
-					icon: item.event.category,
+					icon: eventIcon(item.event),
 					title: eventTitle(item.event, user),
 					thumb: thumbs.get(item.id) ?? null,
 					sub: `${fmtDay(item.at, tz)} · ${eventKindLabel(item.event)}`
