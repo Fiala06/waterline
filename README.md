@@ -2,7 +2,7 @@
 
 Self-hosted, mobile-first aquarium tracker. Log water tests and water changes tank-side, spot trends on charts, and get email reminders for maintenance. Google sign-in, imperial/metric units, full data export.
 
-Design handoff and specs live in [`design_handoff_waterline/`](design_handoff_waterline/README.md); the build order is in [`BUILD_PLAN.md`](design_handoff_waterline/BUILD_PLAN.md). Ideas for later are in [`IDEAS.md`](IDEAS.md); what's changed, release by release, is in [`CHANGELOG.md`](CHANGELOG.md).
+Design handoff and specs live in [`design_handoff_waterline/`](design_handoff_waterline/README.md); the build order is in [`BUILD_PLAN.md`](design_handoff_waterline/BUILD_PLAN.md). Ideas for later are tracked as [GitHub issues](https://github.com/Fiala06/waterline/issues); what's changed, release by release, is in [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Status
 

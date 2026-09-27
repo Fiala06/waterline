@@ -1,6 +1,6 @@
 <script lang="ts">
 	// Mark 2c ("inset water"); below 24px use 2a (solid). With `fish`, a small
-	// fish swims through the water every so often (IDEAS): now and then, never
+	// fish swims through the water every so often: now and then, never
 	// constant, and not at all with reduced motion.
 	import { onMount } from 'svelte';
 	let {

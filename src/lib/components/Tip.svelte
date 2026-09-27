@@ -1,5 +1,5 @@
 <script lang="ts">
-	// ⓘ: a short explanation beside a parameter or field (IDEAS: tooltips). Tap
+	// ⓘ: a short explanation beside a parameter or field. Tap
 	// or click to open, hover with a mouse; tap outside or Esc closes. A native
 	// popover, so it works without scripts (in the middle of the screen); with
 	// them it sits by its button. Screen readers hear the text on the button.
