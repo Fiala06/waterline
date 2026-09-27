@@ -98,6 +98,7 @@ test('audit every screen', async ({ page, browser, request }) => {
 		),
 		'/settings',
 		'/settings/export',
+		'/settings/assistant',
 		'/definitely-not-a-page'
 	].filter(Boolean) as string[];
 

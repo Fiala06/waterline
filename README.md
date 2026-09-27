@@ -102,6 +102,14 @@ To run `latest` and `dev` side by side, create two containers with different nam
 
 **Settings › Server settings › Logs** shows what went wrong: emails that didn't send, imports that couldn't be read, sign-in problems, and pages that failed, each with the reference its error page showed. Choose *What the server does too* to also see sign-ins, emails sent, imports and changes to settings, or *Everything, for 24 hours* while you track something down. **Download** gives a text file to share when asking for help, with email addresses shortened. Entries are kept for 30 days, and the container's log (`docker compose logs waterline`) has the same lines.
 
+### AI assistants (MCP)
+
+Each person can let an AI assistant, like Claude or ChatGPT, read their tanks: in **Settings › AI assistant** they make an access token for the tanks they pick and paste it into the assistant. It's off until they do, and a token can be revoked there at any time. Assistants can read readings, History, livestock, plants, trends and photos, and can't change anything. Waterline stores no AI keys and calls no AI service: the assistant asks.
+
+- MCP server (Streamable HTTP): `<ORIGIN>/mcp`, with the header `Authorization: Bearer <token>`. For Claude Code: `claude mcp add --transport http waterline <ORIGIN>/mcp --header "Authorization: Bearer <token>"`. The settings page shows this, and a Claude Desktop config, filled in.
+- The same as JSON: `GET <ORIGIN>/api/v1/tanks`, then `/api/v1/tanks/<id>/summary` (Markdown), `readings`, `history`, `livestock`, `trends`, `photos`, and `/api/v1/photos/<id>?size=small|large`.
+- Tokens are stored hashed. Assistants that connect only by signing in (OAuth), such as custom connectors on claude.ai, can't use them yet. The assistant has to reach your server, so one running in the cloud needs Waterline on a public address.
+
 ### Security notes
 
 - A new server can only be set up with the setup code from its log, and sign-in is closed by default: only the admin, the people or domains the admin lists, or everyone with a Google account if the admin chooses that.
@@ -111,6 +119,7 @@ To run `latest` and `dev` side by side, create two containers with different nam
 - `AUTH_DEV_LOGIN=true` is for tests only. The server refuses to start with it when `NODE_ENV=production` (as in the Docker image).
 - Every response sends `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff` and `Referrer-Policy: same-origin`, plus HSTS when `ORIGIN` is https. Only this site may post forms to it.
 - Signing out clears the app's cached pages and photos on that device (browsers that support `Clear-Site-Data`).
+- AI assistant tokens read only the tanks they were made for, never write, and are refused once revoked. `/mcp` and `/api/v1` accept only a token, never the session cookie, and refuse requests from other sites' pages.
 
 ## Tests
 

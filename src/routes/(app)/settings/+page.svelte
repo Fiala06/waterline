@@ -287,6 +287,10 @@
 			<h2 id="data-h">Data</h2>
 			<div class="group">
 				<a class="row link" href="/settings/export"><span class="k">Import & export</span><span class="chev" aria-hidden="true"></span></a>
+				<a class="row link" href="/settings/assistant"
+					><span class="k">AI assistant</span><span class="v">{data.assistants ? `${data.assistants} connected` : 'Off'}</span><span class="chev" aria-hidden="true"
+					></span></a
+				>
 				{#if !install.installed}
 					<button
 						type="button"

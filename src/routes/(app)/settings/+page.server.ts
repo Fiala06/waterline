@@ -9,6 +9,7 @@ import { parseTimeZone, str } from '$lib/server/forms';
 import { emailConfigured } from '$lib/server/mail';
 import { prefsFor } from '$lib/server/notifications';
 import { listProducts } from '$lib/server/products';
+import { listAssistantTokens } from '$lib/server/assistant/tokens';
 import { updateUser } from '$lib/server/users';
 import { isCurrency } from '$lib/money';
 import { LEAD_OPTIONS } from '$lib/notify-options';
@@ -29,7 +30,8 @@ export const load: PageServerLoad = ({ locals }) => {
 			unsubscribedAt: prefs.unsubscribedAt
 		},
 		emailReady: emailConfigured(),
-		products: listProducts(locals.user!.id).length
+		products: listProducts(locals.user!.id).length,
+		assistants: listAssistantTokens(locals.user!.id).length
 	};
 };
 

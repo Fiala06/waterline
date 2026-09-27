@@ -22,6 +22,7 @@ const NO_CACHE = [
 	/^\/unsubscribe\//,
 	/^\/settings\/export\//,
 	/^\/dev\//,
+	/^\/(mcp|api\/v1)(\/|$)/, // an AI assistant's reads (#9)
 	// public pages are for visitors; always fresh
 	/^\/t\//,
 	/^\/s\//,

@@ -549,3 +549,27 @@ export const photoShares = sqliteTable('photo_shares', {
 });
 
 export type PublicPage = typeof publicPages.$inferSelect;
+
+/**
+ * Access for an AI assistant the keeper connects (#9): read-only, to the tanks
+ * they picked. The token is shown once; the database keeps its SHA-256 hash.
+ */
+export const assistantTokens = sqliteTable(
+	'assistant_tokens',
+	{
+		id: id(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		name: text('name').notNull(),
+		tokenHash: text('token_hash').notNull(),
+		// the token's last 4 characters, to tell tokens apart
+		hint: text('hint').notNull(),
+		tankIds: text('tank_ids', { mode: 'json' }).$type<string[]>().notNull().default([]),
+		createdAt: createdAt(),
+		lastUsedAt: text('last_used_at')
+	},
+	(t) => [uniqueIndex('assistant_tokens_hash').on(t.tokenHash), index('assistant_tokens_user').on(t.userId)]
+);
+
+export type AssistantToken = typeof assistantTokens.$inferSelect;

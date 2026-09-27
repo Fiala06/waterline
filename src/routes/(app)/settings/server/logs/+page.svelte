@@ -24,7 +24,8 @@
 		import: 'Import',
 		export: 'Export',
 		settings: 'Settings',
-		update: 'Updates'
+		update: 'Updates',
+		assistant: 'AI assistant'
 	};
 	const DETAILS = [
 		{ value: 'warn', label: 'Errors and warnings', d: 'What went wrong' },

@@ -13,12 +13,16 @@ import { logger } from '$lib/server/log';
 import { VERSION } from '$lib/changelog';
 import { preloadsInHead } from '$lib/server/preloads';
 
-const PUBLIC_PATHS = ['/signin', '/first-run', '/auth', '/e', '/unsubscribe', '/t', '/s', '/p', '/public', '/sitemap.xml', '/robots.txt'];
+const PUBLIC_PATHS = ['/signin', '/first-run', '/auth', '/e', '/unsubscribe', '/t', '/s', '/p', '/public', '/sitemap.xml', '/robots.txt', '/mcp', '/api/v1'];
+/** For AI assistants (#9): signed in by an access token, never the session cookie. */
+const TOKEN_PATHS = ['/mcp', '/api/v1'];
 
 /**
  * Only this site may post to it (the check SvelteKit normally does, for every
  * content type). Exceptions: one-click unsubscribe, which mail providers POST
- * without an Origin, and the test-only /dev endpoints (404 unless AUTH_DEV_LOGIN).
+ * without an Origin, the test-only /dev endpoints (404 unless AUTH_DEV_LOGIN),
+ * and an AI assistant's calls without an Origin: they carry an access token,
+ * not cookies. A web page elsewhere (it sends an Origin) is still refused.
  */
 const csrf: Handle = ({ event, resolve }) => {
 	const { request, url } = event;
@@ -26,7 +30,8 @@ const csrf: Handle = ({ event, resolve }) => {
 		!['GET', 'HEAD', 'OPTIONS'].includes(request.method) &&
 		request.headers.get('origin') !== url.origin &&
 		!url.pathname.startsWith('/unsubscribe/') &&
-		!url.pathname.startsWith('/dev/')
+		!url.pathname.startsWith('/dev/') &&
+		!(request.headers.get('origin') === null && TOKEN_PATHS.some((p) => url.pathname === p || url.pathname.startsWith(p + '/')))
 	) {
 		return new Response(`Cross-site ${request.method} requests are forbidden`, { status: 403 });
 	}
