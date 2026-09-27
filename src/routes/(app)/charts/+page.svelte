@@ -3,6 +3,8 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import TrendChart from '$lib/components/TrendChart.svelte';
 	import { CHART_RANGES } from '$lib/charts';
+	import { fmtDisplayValue } from '$lib/params';
+	import { fmtWhen } from '$lib/time';
 	import { ui } from '$lib/ui.svelte';
 
 	let { data } = $props();
@@ -105,6 +107,10 @@
 								to={c.to}
 								lastLevel={c.stats?.latestLevel}
 								label="{c.name} over time"
+								name={c.name}
+								unit={c.unit}
+								format={(v) => fmtDisplayValue(c.param, v, data.user)}
+								when={(t) => fmtWhen(new Date(t).toISOString(), data.user.timeZone)}
 								{selected}
 								onselect={(m) => (selected = selected === m.href ? null : m.href)}
 							>

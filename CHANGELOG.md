@@ -4,6 +4,10 @@ What's new in Waterline, newest first. The app shows this list under Settings �
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
+## Unreleased
+
+- **Easier-to-read charts:** hover over a chart, tap it on a phone, or use the arrow keys to see a reading's value and when it was taken. The side of each chart says what's plotted and in what unit, with dates along the bottom, on the dashboard and on Charts alike.
+
 ## 1.1.0 · 2026-09-27
 
 - **Import History from a spreadsheet:** past water tests, water changes, doses, maintenance, observations and notes, with a template for each and a preview before anything is added. Any import can be undone in one step.

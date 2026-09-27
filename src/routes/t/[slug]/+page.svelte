@@ -6,6 +6,8 @@
 	import PublicAnalytics from '$lib/components/PublicAnalytics.svelte';
 	import PublicHead from '$lib/components/PublicHead.svelte';
 	import TrendChart from '$lib/components/TrendChart.svelte';
+	import { fmtDate } from '$lib/time';
+	import { formatNumber } from '$lib/units';
 
 	let { data } = $props();
 	const v = $derived(data.view);
@@ -88,6 +90,10 @@
 									to={now}
 									lastLevel={chart.lastLevel}
 									label="{chart.name} over the last 3 months"
+									name={chart.name}
+									unit={chart.unit}
+									format={(v) => formatNumber(v, chart.decimals)}
+									when={(t) => fmtDate(new Date(t).toISOString().slice(0, 10))}
 								/>
 							</div>
 						</div>

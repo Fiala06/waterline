@@ -77,6 +77,8 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 		list,
 		chart: {
 			paramId: param.id,
+			// for formatting a reading the chart shows
+			param: { key: param.key, name: param.name, unit: param.unit, decimals: param.decimals, min: param.min, max: param.max },
 			name: param.name,
 			unit: paramUnit(param, user),
 			target: fmtRange(param, user),

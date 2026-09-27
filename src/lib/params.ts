@@ -65,6 +65,11 @@ export function fmtValue(p: ParamLike, stored: number, prefs: UnitPrefs): string
 	return out;
 }
 
+/** A value already in display units, as charts hold them, shown as fmtValue shows it. */
+export function fmtDisplayValue(p: ParamLike, display: number, prefs: UnitPrefs): string {
+	return fmtValue(p, storedValue(p, display, prefs), prefs);
+}
+
 /**
  * A target limit in display units, with one more decimal when the usual
  * rounding would move it: 4 dGH is "71.4" ppm, not "71".

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compactName, defaultParameters, fmtRange } from './params';
+import { compactName, defaultParameters, fmtDisplayValue, fmtRange, type ParamLike } from './params';
 import { TANK_TYPES } from './types';
 import type { UnitPrefs } from './units';
 
@@ -60,5 +60,19 @@ describe('compactName', () => {
 
 	it("keeps a custom parameter's own name", () => {
 		expect(compactName({ key: 'custom', name: 'Silicate', unit: 'ppm', decimals: 1, min: null, max: null })).toBe('Silicate');
+	});
+});
+
+describe('fmtDisplayValue', () => {
+	const param = (key: string, over: Partial<ParamLike> = {}): ParamLike => ({ key, name: key, unit: '', decimals: 1, min: null, max: null, ...over });
+
+	it('shows a chart value as the rest of the app shows it', () => {
+		// 25.3 °C is 77.54 °F; °F are whole numbers
+		expect(fmtDisplayValue(param('temp'), 77.54, imperial)).toBe('78');
+		expect(fmtDisplayValue(param('nitrate', { unit: 'ppm', decimals: 0 }), 14.2, imperial)).toBe('14');
+	});
+
+	it('keeps the decimal that decides the status', () => {
+		expect(fmtDisplayValue(param('ph', { min: 6.5, max: 7.5 }), 7.54, imperial)).toBe('7.54');
 	});
 });

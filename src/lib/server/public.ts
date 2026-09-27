@@ -7,7 +7,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { env } from '$env/dynamic/private';
 import { equipmentName, specSummary } from '$lib/equipment';
 import { eventTitle } from '$lib/events';
-import { displayValue, fmtRange, fmtValue, paramUnit, shortName, statusOf } from '$lib/params';
+import { displayValue, fmtRange, fmtValue, paramDecimals, paramUnit, shortName, statusOf } from '$lib/params';
 import { statusShort } from '$lib/status';
 import { dateInZone, fmtDate, todayInZone } from '$lib/time';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
@@ -181,6 +181,7 @@ export function publicView(page: PublicPage, tank: Tank, owner: User) {
 					id: p.id,
 					name: p.name,
 					unit: paramUnit(p, prefs),
+					decimals: paramDecimals(p, prefs),
 					target: fmtRange(p, prefs),
 					band: {
 						min: p.min == null ? null : displayValue(p, p.min, prefs),

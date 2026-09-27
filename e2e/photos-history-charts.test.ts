@@ -54,7 +54,24 @@ test('photos, history and charts', async ({ page }, info) => {
 
 	// Charts: nitrate line with the water change marker and stats
 	await open(page, '/charts');
-	await expect(page.getByRole('img', { name: /Nitrate over time/ })).toBeVisible();
+	const chart = page.getByRole('group', { name: /Nitrate over time/ });
+	await expect(chart).toBeVisible();
+	await expect(chart.locator('.axis-title')).toHaveText('Nitrate (ppm)');
+	// Reading a point: the arrow keys, Home and End, then a mouse or a finger
+	await chart.focus();
+	await page.keyboard.press('Home');
+	await expect(chart.locator('.tip')).toContainText('12 ppm');
+	await expect(chart.locator('.tip')).toContainText('8:00 AM');
+	await page.keyboard.press('ArrowRight');
+	await expect(chart.locator('.tip')).toContainText('35 ppm');
+	await expect(chart.getByText('35 ppm, Today,')).toBeAttached();
+	await page.keyboard.press('Escape');
+	await expect(chart.locator('.tip')).toHaveCount(0);
+	const box = (await chart.boundingBox())!;
+	const lastWeekPoint = { x: box.width * 0.72, y: box.height / 2 };
+	if (info.project.name === 'phone') await chart.tap({ position: lastWeekPoint });
+	else await chart.hover({ position: lastWeekPoint });
+	await expect(chart.locator('.tip')).toContainText('12 ppm');
 	await expect(page.locator('.stat').filter({ hasText: 'Latest' })).toContainText('35');
 	await expect(page.locator('.stat').filter({ hasText: 'In range' })).toContainText('50%');
 	await page.getByRole('button', { name: /Water change · 25% · Tap/ }).first().click();

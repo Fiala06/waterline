@@ -7,7 +7,8 @@
 	import TaskList from '$lib/components/TaskList.svelte';
 	import TrendChart from '$lib/components/TrendChart.svelte';
 	import WhatsNew from '$lib/components/WhatsNew.svelte';
-	import { compactName, displayValue, fmtRange, fmtValue, paramUnit, shortName, statusOf } from '$lib/params';
+	import { compactName, displayValue, fmtDisplayValue, fmtRange, fmtValue, paramUnit, shortName, statusOf } from '$lib/params';
+	import { fmtWhen } from '$lib/time';
 	import { statusShort } from '$lib/status';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { discard, retry } from '$lib/offline';
@@ -210,6 +211,10 @@
 									to={Date.now()}
 									lastLevel={statusOf(chosen, data.latest?.[chosen.id]?.value).level}
 									label="{chosen.name} over the last 4 weeks"
+									name={chosen.name}
+									unit={paramUnit(chosen, prefs)}
+									format={(v) => fmtDisplayValue(chosen, v, prefs)}
+									when={(t) => fmtWhen(new Date(t).toISOString(), prefs.timeZone)}
 								/></div></div>
 								<div class="legend">
 									{#if fmtRange(chosen, prefs)}
