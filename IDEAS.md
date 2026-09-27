@@ -46,3 +46,9 @@ A running list of ideas and nice-to-haves that aren't in the current scope. For 
   - Upload a CSV, match its columns to Waterline's fields (date, entry type, amount, one column per parameter), and preview the rows with any problems flagged before importing. Each row becomes a normal History entry.
   - Offer a template per entry type, and make the export's CSV import back unchanged.
   - Read units and dates the way the person's settings show them, and let the whole import be undone in one step.
+- **Pet names and photos:** fish and other livestock are pets, so let people name them and keep their pictures.
+  - An optional nickname on a livestock entry, shown with the species ("Captain · Betta") on the Livestock tab, the dashboard's "In the tank" and in History ("Captain moved into the tank").
+  - Livestock is one entry per species with a count, so let a few animals in a group have their own names (2 of 6 corys), or split a named fish into its own entry.
+  - Photos of each pet: a profile photo, plus tagging photos from entries or the Photos page with the pet, so each one has its own gallery.
+  - A small page per pet: name, species, photo, date added, notes and its own history.
+  - On the public page, names and pet photos only if the owner turns them on.
