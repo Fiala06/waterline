@@ -5,14 +5,48 @@
 		href: string;
 		kind?: 'water_change' | 'dosing' | 'other';
 	}
+
+	/** About `count` round values across lo…hi, for the side axis; never fewer than two. */
+	export function niceTicks(lo: number, hi: number, count: number): number[] {
+		const span = hi - lo;
+		if (!(span > 0) || count < 1) return [];
+		const raw = span / count;
+		const mag = 10 ** Math.floor(Math.log10(raw));
+		const steps = [0.5, 1, 2, 2.5, 5, 10].map((m) => m * mag);
+		const within = (step: number) => {
+			const out: number[] = [];
+			for (let v = Math.ceil(lo / step - 1e-9) * step; v <= hi + 1e-9; v += step) out.push(Math.round(v * 1e6) / 1e6 || 0);
+			return out;
+		};
+		// the round step nearest the ideal one, then a smaller one if that leaves just one number
+		const i = steps.reduce((best, s, j) => (Math.abs(Math.log(s / raw)) < Math.abs(Math.log(steps[best] / raw)) ? j : best), 0);
+		const out = within(steps[i]);
+		return out.length >= 2 || i === 0 ? out : within(steps[i - 1]);
+	}
+
+	/** Which of the points (their x positions, left to right) is nearest to px. */
+	export function nearestIndex(xs: number[], px: number): number {
+		let lo = 0;
+		let hi = xs.length - 1;
+		while (hi - lo > 1) {
+			const mid = (lo + hi) >> 1;
+			if (xs[mid] < px) lo = mid;
+			else hi = mid;
+		}
+		return Math.abs(xs[hi] - px) < Math.abs(xs[lo] - px) ? hi : lo;
+	}
 </script>
 
 <script lang="ts">
-	// Trend chart: target band, reading line, event markers (tap to open), and the
-	// latest point colored by status. Sized to its container so nothing distorts.
-	// `full` adds y-axis ticks, more x labels and a popover for the chosen marker.
+	// Trend chart: target band, reading line, event markers (tap to open), the
+	// latest point colored by status, and axes: the parameter and its unit up
+	// the side, dates along the bottom. Hover, tap or drag (or the arrow keys)
+	// for a reading's value, status and when it was taken. Sized to its
+	// container so nothing distorts. `full` adds a dot per reading and a
+	// popover for the chosen marker.
 	import type { Snippet } from 'svelte';
-	import type { StatusLevel } from '$lib/status';
+	import { paramStatus, statusShort, type StatusLevel } from '$lib/status';
+	import { formatNumber } from '$lib/units';
 
 	interface Point {
 		t: number; // ms
@@ -27,6 +61,11 @@
 		lastLevel = 'ok',
 		height = 132,
 		label,
+		name = '',
+		unit = '',
+		decimals = 1,
+		timeZone,
+		times = true,
 		full = false,
 		selected = null,
 		onselect,
@@ -41,6 +80,14 @@
 		lastLevel?: StatusLevel;
 		height?: number;
 		label: string;
+		/** for the side axis and the readout: "Nitrate", "ppm" */
+		name?: string;
+		unit?: string;
+		decimals?: number;
+		/** the keeper's time zone, for dates and times */
+		timeZone?: string;
+		/** false: dates only (public pages never show times) */
+		times?: boolean;
 		full?: boolean;
 		selected?: string | null;
 		onselect?: (m: Marker) => void;
@@ -49,12 +96,13 @@
 		fit?: boolean;
 	} = $props();
 
+	let el = $state<HTMLDivElement>();
 	let width = $state(320);
 	let measured = $state(0);
 	const h = $derived(fit && measured > 0 ? measured : height);
 	const TOP = 22; // room for marker dots
-	const BOTTOM = 20;
-	const LEFT = $derived(full ? 34 : 10);
+	const BOTTOM = 22;
+	const plotH = $derived(Math.max(1, h - TOP - BOTTOM));
 
 	const domain = $derived.by(() => {
 		const vals = points.map((p) => p.v);
@@ -71,25 +119,23 @@
 		return { lo: lo >= 0 ? Math.max(0, lo - pad) : lo - pad, hi: hi + pad };
 	});
 
-	/** Round tick values across the domain. */
-	const ticks = $derived.by(() => {
-		if (!full) return [];
-		const span = domain.hi - domain.lo;
-		const raw = span / 4;
-		const mag = 10 ** Math.floor(Math.log10(raw));
-		const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= raw) ?? raw;
-		const out: number[] = [];
-		for (let v = Math.ceil(domain.lo / step) * step; v <= domain.hi + 1e-9; v += step) out.push(Math.round(v * 1e6) / 1e6);
-		return out;
+	// fewer numbers up the side of a short chart
+	const ticks = $derived(niceTicks(domain.lo, domain.hi, plotH < 70 ? 2 : plotH < 200 ? 3 : 4));
+	const tickText = (v: number) => String(v);
+	// "Nitrate (ppm)" up the side; just the unit when a short chart has no room for the rest
+	const title = $derived.by(() => {
+		const long = name ? (unit ? `${name} (${unit})` : name) : unit;
+		return long.length * 6.5 <= plotH ? long : unit || name;
 	});
-
-	const xTicks = $derived.by(() => {
-		const n = full ? Math.max(2, Math.min(5, Math.floor(width / 110))) : 2;
-		return Array.from({ length: n }, (_, i) => from + ((to - from) * i) / (n - 1));
-	});
+	const LEFT = $derived((title ? 18 : 4) + Math.max(1, ...ticks.map((t) => tickText(t).length)) * 7 + 8);
 
 	const x = (t: number) => LEFT + ((t - from) / Math.max(1, to - from)) * (width - LEFT - 10);
-	const y = (v: number) => TOP + (1 - (v - domain.lo) / (domain.hi - domain.lo)) * (h - TOP - BOTTOM);
+	const y = (v: number) => TOP + (1 - (v - domain.lo) / (domain.hi - domain.lo)) * plotH;
+
+	const xTicks = $derived.by(() => {
+		const n = Math.max(2, Math.min(5, Math.floor((width - LEFT) / 90)));
+		return Array.from({ length: n }, (_, i) => from + ((to - from) * i) / (n - 1));
+	});
 
 	const line = $derived(points.map((p) => `${x(p.t).toFixed(1)},${y(p.v).toFixed(1)}`).join(' '));
 	const last = $derived(points.at(-1));
@@ -97,16 +143,94 @@
 	const bandBottom = $derived(band.min != null ? y(band.min) : h - BOTTOM);
 	const hasBand = $derived(band.min != null || band.max != null);
 
-	const fmt = (t: number) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+	const fmt = (t: number) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone });
 	const isToday = (t: number) => Math.abs(t - Date.now()) < 43_200_000;
 	const chosen = $derived(markers.find((m) => m.href === selected) ?? null);
+
+	// The readout: the reading nearest the pointer, or picked with the keys
+	let active = $state<number | null>(null);
+	const hot = $derived(active != null ? (points[active] ?? null) : null);
+	const shown = $derived(active ?? points.length - 1);
+	const when = (t: number) => {
+		const d = new Date(t);
+		const day = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone });
+		return times ? `${day} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone })}` : day;
+	};
+	const value = (p: Point) => `${formatNumber(p.v, decimals)}${unit ? ` ${unit}` : ''}`;
+	/** "✕ High", when there's a target to measure against */
+	const status = (p: Point) => (hasBand ? { level: paramStatus(p.v, band).level, text: statusShort(paramStatus(p.v, band)) } : null);
+	const spoken = (p: Point | undefined) => (p ? `${when(p.t)}: ${value(p)}${status(p) ? `, ${status(p)!.text.replace(/^\S+ /, '')}` : ''}` : 'No readings');
+
+	const onMarker = (e: Event) => !!(e.target as Element | null)?.closest?.('.marker, .pop');
+	function showAt(clientX: number) {
+		if (!el || !points.length) return;
+		active = nearestIndex(
+			points.map((p) => x(p.t)),
+			clientX - el.getBoundingClientRect().left
+		);
+	}
+	function onpointermove(e: PointerEvent) {
+		// a mouse just hovers; a finger or pen drags along the line
+		if (!onMarker(e) && (e.pointerType === 'mouse' || e.buttons)) showAt(e.clientX);
+	}
+	function onpointerdown(e: PointerEvent) {
+		if (!onMarker(e)) showAt(e.clientX);
+	}
+	function onpointerleave(e: PointerEvent) {
+		if (e.pointerType === 'mouse') active = null;
+	}
+	function onkeydown(e: KeyboardEvent) {
+		const end = points.length - 1;
+		if (end < 0) return;
+		if (e.key === 'ArrowRight' || e.key === 'ArrowUp') active = Math.min(end, (active ?? -1) + 1);
+		else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') active = Math.max(0, (active ?? end + 1) - 1);
+		else if (e.key === 'Home') active = 0;
+		else if (e.key === 'End') active = end;
+		else if (e.key === 'Escape') active = null;
+		else return;
+		e.preventDefault();
+	}
+	// a tap outside the chart puts a finger's readout away
+	$effect(() => {
+		if (active == null) return;
+		const away = (e: PointerEvent) => {
+			if (el && !el.contains(e.target as Node)) active = null;
+		};
+		window.addEventListener('pointerdown', away);
+		return () => window.removeEventListener('pointerdown', away);
+	});
+	// another series (a different parameter or range): start over
+	$effect(() => {
+		void points;
+		active = null;
+	});
 </script>
 
-<div class="chart" class:fit bind:clientWidth={width} bind:clientHeight={measured}>
-	<svg {width} height={h} viewBox="0 0 {width} {h}" role="img" aria-label={label}>
+<div
+	class="chart"
+	class:fit
+	bind:this={el}
+	bind:clientWidth={width}
+	bind:clientHeight={measured}
+	role="slider"
+	tabindex={points.length ? 0 : -1}
+	aria-label={label}
+	aria-valuemin={points.length ? 1 : 0}
+	aria-valuemax={points.length}
+	aria-valuenow={points.length ? shown + 1 : 0}
+	aria-valuetext={spoken(points[shown])}
+	{onpointermove}
+	{onpointerdown}
+	{onpointerleave}
+	{onkeydown}
+>
+	<svg {width} height={h} viewBox="0 0 {width} {h}" aria-hidden="true">
+		{#if title}
+			<text class="axis-title" transform="translate(11 {TOP + plotH / 2}) rotate(-90)" text-anchor="middle">{title}</text>
+		{/if}
 		{#each ticks as t (t)}
 			<line x1={LEFT} x2={width} y1={y(t)} y2={y(t)} class="grid"></line>
-			<text x={LEFT - 6} y={y(t) + 4} class="axis" text-anchor="end">{t}</text>
+			<text x={LEFT - 6} y={y(t) + 4} class="axis" text-anchor="end">{tickText(t)}</text>
 		{/each}
 		{#if hasBand}
 			<rect x={LEFT} y={bandTop} width={Math.max(0, width - LEFT)} height={Math.max(0, bandBottom - bandTop)} fill="var(--band)"></rect>
@@ -124,6 +248,7 @@
 				class:chosen={m.href === selected}
 			></line>
 		{/each}
+		{#if hot}<line x1={x(hot.t)} x2={x(hot.t)} y1={TOP} y2={h - BOTTOM} class="guide"></line>{/if}
 		<polyline points={line} fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"></polyline>
 		{#if full}
 			{#each points as p, i (i)}<circle cx={x(p.t)} cy={y(p.v)} r="2.5" fill="var(--accent)"></circle>{/each}
@@ -136,17 +261,29 @@
 				fill={lastLevel === 'bad' ? 'var(--bad)' : lastLevel === 'warn' ? 'var(--warn)' : 'var(--accent)'}
 			></circle>
 		{/if}
+		{#if hot}<circle cx={x(hot.t)} cy={y(hot.v)} r="5.5" class="hot"></circle>{/if}
 		<line x1={LEFT} x2={width} y1={h - BOTTOM} y2={h - BOTTOM} stroke="var(--border)"></line>
 		{#each xTicks as t, i (i)}
 			<text
 				x={i === 0 ? LEFT : i === xTicks.length - 1 ? width : x(t)}
-				y={h - 4}
+				y={h - 5}
 				class="axis"
 				text-anchor={i === 0 ? 'start' : i === xTicks.length - 1 ? 'end' : 'middle'}
 				>{i === xTicks.length - 1 && isToday(t) ? 'Today' : fmt(t)}</text
 			>
 		{/each}
 	</svg>
+	{#if hot}
+		{@const s = status(hot)}
+		<!-- above the reading, or under it near the top; inside the chart's width -->
+		<div class="readout" style:left="{Math.min(Math.max(x(hot.t) - 80, 0), Math.max(0, width - 160))}px" style:top="{y(hot.v) > 70 ? y(hot.v) - 64 : y(hot.v) + 14}px" aria-hidden="true">
+			<div class="r-when">{when(hot.t)}</div>
+			<div class="r-value">
+				<span class="num">{value(hot)}</span>
+				{#if s}<span class="status-{s.level}">{s.text}</span>{/if}
+			</div>
+		</div>
+	{/if}
 	{#each markers as m (m.href)}
 		{#if onselect}
 			<button
@@ -175,9 +312,17 @@
 	.chart {
 		position: relative;
 		width: 100%;
+		/* a finger drags along the line; the page still scrolls up and down */
+		touch-action: pan-y;
+		-webkit-tap-highlight-color: transparent;
 	}
 	.chart.fit {
 		height: 100%;
+	}
+	.chart:focus-visible {
+		outline: 2px solid var(--accent);
+		outline-offset: 4px;
+		border-radius: 8px;
 	}
 	svg {
 		display: block;
@@ -208,6 +353,52 @@
 	.axis {
 		fill: var(--text-faint);
 		font-size: 12px;
+	}
+	.axis-title {
+		fill: var(--text-muted);
+		font-size: 12px;
+		font-weight: 600;
+	}
+	/* the reading being read out */
+	.guide {
+		stroke: var(--text-muted);
+		stroke-opacity: 0.5;
+	}
+	.hot {
+		fill: var(--bg);
+		stroke: var(--accent);
+		stroke-width: 2.5;
+	}
+	.readout {
+		position: absolute;
+		z-index: 3;
+		width: max-content;
+		max-width: 200px;
+		padding: 8px 12px;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		border-radius: 12px;
+		background: var(--bg);
+		border: 1px solid var(--border-strong);
+		box-shadow: var(--shadow-toast);
+		pointer-events: none;
+	}
+	.r-when {
+		font-size: 12px;
+		color: var(--text-muted);
+		white-space: nowrap;
+	}
+	.r-value {
+		display: flex;
+		align-items: baseline;
+		gap: 8px;
+		font-size: 14px;
+		font-weight: 600;
+		white-space: nowrap;
+	}
+	.r-value span:last-child:not(.num) {
+		font-size: 13px;
 	}
 	.marker {
 		position: absolute;

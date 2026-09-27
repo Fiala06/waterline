@@ -1,5 +1,5 @@
 import { eventTitle } from '$lib/events';
-import { displayValue, fmtRange, fmtValue, paramUnit, statusOf } from '$lib/params';
+import { displayValue, fmtRange, fmtValue, paramDecimals, paramUnit, statusOf } from '$lib/params';
 import { statusIcon, statusShort } from '$lib/status';
 import { fmtDate, dateInZone } from '$lib/time';
 import { eventsSince, latestReadings, series } from '$lib/server/logs';
@@ -79,6 +79,7 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 			paramId: param.id,
 			name: param.name,
 			unit: paramUnit(param, user),
+			decimals: paramDecimals(param, user),
 			target: fmtRange(param, user),
 			// "5–20", for "ppm · target 5–20" next to the unit
 			targetBare: fmtRange(param, user, false),

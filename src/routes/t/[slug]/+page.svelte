@@ -88,6 +88,11 @@
 									to={now}
 									lastLevel={chart.lastLevel}
 									label="{chart.name} over the last 3 months"
+									name={chart.name}
+									unit={chart.unit}
+									decimals={chart.decimals}
+									timeZone="UTC"
+									times={false}
 								/>
 							</div>
 						</div>

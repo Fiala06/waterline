@@ -54,7 +54,7 @@ test('photos, history and charts', async ({ page }, info) => {
 
 	// Charts: nitrate line with the water change marker and stats
 	await open(page, '/charts');
-	await expect(page.getByRole('img', { name: /Nitrate over time/ })).toBeVisible();
+	await expect(page.getByRole('slider', { name: /Nitrate over time/ })).toBeVisible();
 	await expect(page.locator('.stat').filter({ hasText: 'Latest' })).toContainText('35');
 	await expect(page.locator('.stat').filter({ hasText: 'In range' })).toContainText('50%');
 	await page.getByRole('button', { name: /Water change · 25% · Tap/ }).first().click();

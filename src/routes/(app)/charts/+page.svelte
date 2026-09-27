@@ -105,6 +105,10 @@
 								to={c.to}
 								lastLevel={c.stats?.latestLevel}
 								label="{c.name} over time"
+								name={c.name}
+								unit={c.unit}
+								decimals={c.decimals}
+								timeZone={data.user.timeZone}
 								{selected}
 								onselect={(m) => (selected = selected === m.href ? null : m.href)}
 							>
