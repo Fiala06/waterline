@@ -72,6 +72,7 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 			hardnessUnit: user.hardnessUnit,
 			timeZone: user.timeZone,
 			theme: user.theme,
+			currency: user.currency,
 			// the account menu's photo; a new address each time it changes
 			avatar: avatar ? `/avatar?v=${Date.parse(avatar.at)}` : null,
 			// for Settings › Profile: which photo it is, and whether there's a Google one to go back to

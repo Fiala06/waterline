@@ -12,6 +12,7 @@
 		{ href: `${base}/equipment`, label: 'Equipment' },
 		{ href: `${base}/livestock`, label: 'Livestock' },
 		{ href: `${base}/plants`, label: 'Plants' },
+		{ href: `${base}/spending`, label: 'Spending' },
 		{ href: `${base}/settings`, label: 'Settings' }
 	]);
 	const overview = $derived(path === base);
@@ -49,6 +50,10 @@
 			{:else if path === `${base}/livestock`}
 				<div class="acts">
 					<a class="btn" href="{base}/livestock/new"><span class="hide-desk">+ Add</span><span class="hide-phone">+ Add livestock</span></a>
+				</div>
+			{:else if path === `${base}/spending`}
+				<div class="acts">
+					<a class="btn" href="{base}/spending/new"><span class="hide-desk">+ Add</span><span class="hide-phone">+ Add expense</span></a>
 				</div>
 			{:else if path === `${base}/plants`}
 				<div class="acts">

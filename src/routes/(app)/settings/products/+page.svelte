@@ -71,6 +71,11 @@
 									editing = editing === p.id ? null : p.id;
 								}}>Edit<span class="sr-only"> {p.name}</span></a
 							>
+							{#if data.currentTankId}
+								<a class="btn-text log-link" href="/tanks/{data.currentTankId}/spending/new?product={p.id}"
+									>Log a purchase<span class="sr-only"> of {p.name}</span></a
+								>
+							{/if}
 							<a class="btn reorder" href={p.url} target="_blank" rel="noopener noreferrer"
 								>Reorder<span aria-hidden="true"> ↗</span><span class="sr-only"> {p.name}, opens {p.host} in a new tab</span></a
 							>
@@ -191,6 +196,9 @@
 	}
 	.edit-link {
 		color: var(--text-muted);
+		font-weight: 600;
+	}
+	.log-link {
 		font-weight: 600;
 	}
 	.reorder {

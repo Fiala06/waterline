@@ -36,6 +36,7 @@
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import { untrack } from 'svelte';
 	import ProfilePhoto from '$lib/components/ProfilePhoto.svelte';
+	import { CURRENCIES, currencyName } from '$lib/money';
 	import { LEAD_OPTIONS, SEND_TIMES } from '$lib/notify-options';
 	import { install, promptInstall } from '$lib/install.svelte';
 	import { displayVersion, VERSION } from '$lib/changelog';
@@ -54,6 +55,7 @@
 	// 16 shows values, not controls: each picker row draws its value over an invisible native select.
 	let unitSystem = $state(untrack(() => u.unitSystem));
 	let hardnessUnit = $state(untrack(() => u.hardnessUnit));
+	let currency = $state(untrack(() => u.currency));
 	let timeZone = $state(untrack(() => u.timeZone));
 	let leadDays = $state(untrack(() => p.leadDays));
 	let sendTime = $state(untrack(() => p.sendTime));
@@ -182,6 +184,14 @@
 					<select id="hardnessUnit" name="hardnessUnit" form="settings-form" bind:value={hardnessUnit}>
 						<option value="dgh">dGH / dKH</option>
 						<option value="ppm">ppm</option>
+					</select>
+				</div>
+				<div class="row pick">
+					<label class="k" for="currency">Currency</label>
+					<span class="v" aria-hidden="true">{currencyName(currency)}</span>
+					<span class="chev" aria-hidden="true"></span>
+					<select id="currency" name="currency" form="settings-form" bind:value={currency}>
+						{#each CURRENCIES as c (c)}<option value={c}>{currencyName(c)}</option>{/each}
 					</select>
 				</div>
 				<div class="row pick">

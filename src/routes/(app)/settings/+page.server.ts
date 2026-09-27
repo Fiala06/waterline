@@ -10,6 +10,7 @@ import { emailConfigured } from '$lib/server/mail';
 import { prefsFor } from '$lib/server/notifications';
 import { listProducts } from '$lib/server/products';
 import { updateUser } from '$lib/server/users';
+import { isCurrency } from '$lib/money';
 import { LEAD_OPTIONS } from '$lib/notify-options';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -43,6 +44,7 @@ export const actions: Actions = {
 			displayName,
 			unitSystem: str(form, 'unitSystem') === 'metric' ? 'metric' : 'imperial',
 			hardnessUnit: str(form, 'hardnessUnit') === 'ppm' ? 'ppm' : 'dgh',
+			currency: isCurrency(str(form, 'currency')) ? str(form, 'currency') : user.currency,
 			timeZone: parseTimeZone(str(form, 'timeZone'), user.timeZone),
 			theme: theme === 'dark' || theme === 'light' ? theme : 'system'
 		});

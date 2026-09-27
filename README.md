@@ -40,7 +40,7 @@ Then sign in with the test form as **demo@example.com**. You get four tanks (pla
 docker compose up -d
 ```
 
-Set `ORIGIN` in [`docker-compose.yml`](docker-compose.yml) first; it's the only setting the server needs to start. Everything the app stores (the SQLite database, photos, and the keys it makes for itself) lives in the `/data` volume.
+Set `ORIGIN` in [`docker-compose.yml`](docker-compose.yml) first; it's the only setting the server needs to start. Everything the app stores (the SQLite database, photos, receipts, and the keys it makes for itself) lives in the `/data` volume.
 
 ### First start
 

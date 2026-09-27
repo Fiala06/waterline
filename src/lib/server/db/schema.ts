@@ -25,6 +25,8 @@ export const users = sqliteTable('users', {
 	hardnessUnit: text('hardness_unit', { enum: ['dgh', 'ppm'] }).notNull().default('dgh'),
 	timeZone: text('time_zone').notNull().default('UTC'),
 	theme: text('theme', { enum: ['system', 'dark', 'light'] }).notNull().default('system'),
+	// what spending is shown in (ISO 4217)
+	currency: text('currency').notNull().default('USD'),
 	setupDone: integer('setup_done', { mode: 'boolean' }).notNull().default(false),
 	// the last release whose What's new was dismissed; 1.0.0, the release before it existed,
 	// for accounts from then (new accounts start at the running version)
@@ -349,6 +351,36 @@ export const products = sqliteTable(
 );
 
 export type Product = typeof products.$inferSelect;
+
+// ── Spending ─────────────────────────────────────────────────────────────────
+
+export const EXPENSE_CATEGORIES = ['livestock', 'plants', 'equipment', 'consumables', 'other'] as const;
+
+/** What's spent on a tank (#7), in the keeper's currency, with an optional receipt (#8). */
+export const expenses = sqliteTable(
+	'expenses',
+	{
+		id: id(),
+		tankId: text('tank_id')
+			.notNull()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		/** YYYY-MM-DD */
+		date: text('date').notNull(),
+		/** in cents (hundredths of the currency) */
+		amountCents: integer('amount_cents').notNull(),
+		category: text('category', { enum: EXPENSE_CATEGORIES }).notNull().default('other'),
+		what: text('what').notNull(),
+		note: text('note'),
+		productId: text('product_id').references(() => products.id, { onDelete: 'set null' }),
+		/** DATA_DIR/receipts/<tank>/<file>; a JPEG or a PDF */
+		receiptPath: text('receipt_path'),
+		receiptType: text('receipt_type', { enum: ['image/jpeg', 'application/pdf'] }),
+		createdAt: createdAt()
+	},
+	(t) => [index('expenses_tank_date').on(t.tankId, t.date)]
+);
+
+export type Expense = typeof expenses.$inferSelect;
 
 // ── Imports from a spreadsheet, so each can be undone in one step ───────────
 

@@ -11,6 +11,13 @@ test('export a full backup and a CSV', async ({ page }, info) => {
 	await page.locator('input[type=file][name=photos]').setInputFiles(await jpeg());
 	await page.getByRole('button', { name: 'Save 2 readings' }).click();
 	await expect(page.getByRole('status')).toContainText('✓ Saved 2 readings');
+	// an expense with a receipt
+	await open(page, `/tanks/${tankId}/spending/new`);
+	await page.getByLabel('Amount').fill('19.99');
+	await page.getByLabel('What for').fill('Test kit');
+	await page.locator('input[name=receipt]').setInputFiles({ name: 'r.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF\n') });
+	await page.getByRole('button', { name: 'Add expense' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Expense added');
 
 	// Full backup
 	await open(page, '/settings/export');
@@ -28,6 +35,7 @@ test('export a full backup and a CSV', async ({ page }, info) => {
 	expect(names).toContain('waterline.json');
 	expect(names).toContain('water-tests.csv');
 	expect(names).toMatch(/photos\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.jpg/);
+	expect(names).toMatch(/receipts\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.pdf/);
 
 	// CSV of water tests
 	await page.locator('label', { hasText: 'Water tests (CSV)' }).click();

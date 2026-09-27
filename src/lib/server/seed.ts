@@ -11,6 +11,7 @@ import { addDays, todayInZone, zonedToUtc } from '$lib/time';
 import { db } from './db';
 import { events, notificationPrefs, tanks, taskCompletions, tasks, users, type Tank, type User } from './db/schema';
 import { createEvent, createTest } from './logs';
+import { addExpense } from './expenses';
 import { preparePhotos, setCover, storePhotos } from './photos';
 import { createShare, getPublicPage, updatePublicPage } from './public';
 import { addEquipment, addLivestock, addPlant, changeCount, logTrim, markServiced, nameLivestock, tagPhoto, updateLivestockDetails } from './specs';
@@ -202,6 +203,20 @@ async function seedPlanted(user: User) {
 	}
 	const cover = await photoFor(tank.id, photoN++, 'green', { takenAt: at(-1, '12:00') });
 	setCover(user.id, cover.id);
+	// what the tank has cost
+	for (const [d, cents, category, what] of [
+		[-DAYS + 2, 23900, 'equipment', 'Aqualine 90P and canister filter'],
+		[-DAYS + 3, 4499, 'plants', 'Stem plants and a Java fern'],
+		[-DAYS + 5, 5250, 'livestock', '15 Harlequin rasboras, 8 Amano shrimp'],
+		[-110, 1500, 'livestock', '5 Otocinclus'],
+		[-60, 1850, 'consumables', 'All-in-one fertilizer'],
+		[-30, 3999, 'equipment', 'Tidewell 200 W heater'],
+		[-12, 1850, 'consumables', 'All-in-one fertilizer'],
+		[-5, 1299, 'livestock', 'Honey gourami']
+	] as const) {
+		addExpense(user.id, tank.id, { date: day(d), amountCents: cents, category, what, note: null });
+	}
+
 	// Zippy's photos: a profile photo, and one more tagged with it
 	const zippyShot = await photoFor(tank.id, photoN++, 'green', { takenAt: at(-40, '19:30') });
 	updateLivestockDetails(user.id, zippy.id, { photoId: zippyShot.id });

@@ -13,6 +13,7 @@ import { utcToZoned } from '$lib/time';
 import { db } from './db';
 import {
 	equipment,
+	expenses,
 	events,
 	exports,
 	livestock,
@@ -31,6 +32,7 @@ import {
 	type User
 } from './db/schema';
 import { photoFilePath } from './photos';
+import { receiptFilePath } from './expenses';
 import { getTank, listTanks } from './tanks';
 import { logger } from './log';
 
@@ -62,6 +64,13 @@ export function estimateBackupBytes(user: User, scope: 'tank' | 'account', tankI
 	for (const p of db.select().from(photos).where(inArray(photos.tankId, ids)).all()) {
 		try {
 			bytes += statSync(photoFilePath(p, 'full')).size;
+		} catch {
+			/* missing file */
+		}
+	}
+	for (const e of db.select({ path: expenses.receiptPath }).from(expenses).where(inArray(expenses.tankId, ids)).all()) {
+		try {
+			if (e.path) bytes += statSync(receiptFilePath(e.path)).size;
 		} catch {
 			/* missing file */
 		}
@@ -113,7 +122,8 @@ function dataFor(user: User, list: Tank[]) {
 	for (const t of allPhotos.length ? db.select().from(photoLivestock).where(inArray(photoLivestock.photoId, allPhotos.map((p) => p.id))).all() : []) {
 		petsIn.set(t.photoId, [...(petsIn.get(t.photoId) ?? []), t.livestockId]);
 	}
-	return { params, allTests, readings, allEvents, allTasks, completions, allPhotos, petsIn, allEquipment, allLivestock, allPlants };
+	const allExpenses = db.select().from(expenses).where(inArray(expenses.tankId, ids)).orderBy(asc(expenses.date)).all();
+	return { params, allTests, readings, allEvents, allTasks, completions, allPhotos, petsIn, allEquipment, allLivestock, allPlants, allExpenses };
 }
 
 async function build(id: string, user: User, list: Tank[], format: 'zip' | 'csv') {
@@ -195,14 +205,18 @@ async function build(id: string, user: User, list: Tank[], format: 'zip' | 'csv'
 					height: p.height,
 					file: `photos/${p.path}`,
 					livestock: d.petsIn.get(p.id) ?? []
-				}))
+				})),
+			// in hundredths of the currency the keeper chose
+			expenses: d.allExpenses
+				.filter((e) => e.tankId === t.id)
+				.map(({ receiptPath, tankId: _, ...e }) => ({ ...e, currency: user.currency, receipt: receiptPath ? `receipts/${receiptPath}` : null }))
 		}))
 	};
 	zip.addBuffer(Buffer.from(JSON.stringify(json, null, 2)), 'waterline.json');
 	zip.addBuffer(Buffer.from(testsCsv(user, list, d)), 'water-tests.csv');
 	zip.addBuffer(
 		Buffer.from(
-			`Waterline backup — ${stamp}\n\nwaterline.json   everything: tanks, parameters, tests, events, tasks, photo list\nwater-tests.csv  one row per water test, in your units\nphotos/          full-size photos, by tank\n`
+			`Waterline backup — ${stamp}\n\nwaterline.json   everything: tanks, parameters, tests, events, tasks, spending, photo list\nwater-tests.csv  one row per water test, in your units\nphotos/          full-size photos, by tank\nreceipts/        receipts for spending, by tank\n`
 		),
 		'README.txt'
 	);
@@ -218,6 +232,15 @@ async function build(id: string, user: User, list: Tank[], format: 'zip' | 'csv'
 			/* skip missing file */
 		}
 		if (i % 5 === 0 || i === total - 1) progress(id, 10 + (80 * (i + 1)) / total, `Packing photos · ${i + 1} of ${total}`);
+	}
+	for (const e of d.allExpenses) {
+		if (!e.receiptPath) continue;
+		try {
+			statSync(receiptFilePath(e.receiptPath));
+			zip.addFile(receiptFilePath(e.receiptPath), `receipts/${e.receiptPath}`);
+		} catch {
+			/* skip missing file */
+		}
 	}
 	progress(id, 95, 'Finishing…');
 	zip.end();
