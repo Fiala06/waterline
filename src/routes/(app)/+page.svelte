@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { tankTypeLabel } from '$lib/types';
 	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
+	import AccountMenu from '$lib/components/AccountMenu.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ImportButton from '$lib/components/ImportButton.svelte';
 	import ParamCard from '$lib/components/ParamCard.svelte';
@@ -99,12 +100,18 @@
 
 {#if !data.tank}
 	<div class="page">
-		<h1 class="title">Dashboard</h1>
+		<div class="head-row">
+			<span class="hide-desk"><AccountMenu user={data.user} id="account-menu-dash" /></span>
+			<h1 class="title">Dashboard</h1>
+		</div>
 		<EmptyState icon="tank" title="No tanks yet" text="Add your first tank to start logging." href="/tanks/new" label="Add tank" primary />
 	</div>
 {:else}
 	<div class="page">
 		<h1 class="sr-only">{data.tank.name} dashboard</h1>
+		<div class="head-row">
+			<!-- phones: your account in the upper left; desktop has it in the sidebar -->
+			<AccountMenu user={data.user} id="account-menu-dash" />
 		<button
 			type="button"
 			class="tank-head"
@@ -125,6 +132,7 @@
 				>
 			</span>
 		</button>
+		</div>
 
 		{#if data.whatsNew}<WhatsNew {...data.whatsNew} />{/if}
 
@@ -365,6 +373,12 @@
 		margin: 8px 0;
 		font-size: 28px;
 		font-weight: 600;
+	}
+	.head-row {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin-left: -4px;
 	}
 	.tank-head {
 		display: flex;
@@ -654,8 +668,7 @@
 		.page {
 			padding: 28px 32px;
 		}
-		.tank-head,
-		.title {
+		.head-row {
 			display: none;
 		}
 		.grid {

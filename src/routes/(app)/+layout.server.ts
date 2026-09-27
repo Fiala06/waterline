@@ -69,7 +69,9 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 			unitSystem: user.unitSystem,
 			hardnessUnit: user.hardnessUnit,
 			timeZone: user.timeZone,
-			theme: user.theme
+			theme: user.theme,
+			// the account menu's photo; a new address each time it's copied again
+			avatar: user.avatarAt ? `/avatar?v=${Date.parse(user.avatarAt)}` : null
 		},
 		tanks: summaries,
 		currentTankId,

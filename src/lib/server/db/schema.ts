@@ -29,6 +29,8 @@ export const users = sqliteTable('users', {
 	// the last release whose What's new was dismissed; 1.0.0, the release before it existed,
 	// for accounts from then (new accounts start at the running version)
 	seenVersion: text('seen_version').notNull().default('1.0.0'),
+	// when the Google profile photo was last copied to DATA_DIR/avatars (null: initials)
+	avatarAt: text('avatar_at'),
 	createdAt: createdAt()
 });
 

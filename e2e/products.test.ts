@@ -8,12 +8,12 @@ test('saved product links, and reordering from a dosing entry', async ({ page },
 
 	// A product dosed before is offered a reorder link
 	await open(page, dosing);
-	await page.getByLabel('Product').fill('Easy Green');
+	await page.getByLabel('Product', { exact: true }).fill('Easy Green');
 	await expect(page.getByRole('link', { name: 'Save a reorder link' })).toHaveCount(0);
 	await page.getByRole('button', { name: 'Save dosing' }).click();
 	await expect(page.getByRole('status')).toContainText('✓ Saved');
 	await open(page, dosing);
-	await page.getByLabel('Product').fill('Easy Green');
+	await page.getByLabel('Product', { exact: true }).fill('Easy Green');
 	await page.getByRole('link', { name: 'Save a reorder link' }).click();
 	await expect(page).toHaveURL(/\/settings\/products\?name=Easy%20Green#add$/);
 	await expect(page.locator('#add-name')).toHaveValue('Easy Green');
@@ -38,7 +38,7 @@ test('saved product links, and reordering from a dosing entry', async ({ page },
 
 	// Dosing it again: one tap to reorder
 	await open(page, dosing);
-	await page.getByLabel('Product').fill('easy green');
+	await page.getByLabel('Product', { exact: true }).fill('easy green');
 	await expect(page.getByRole('link', { name: /Reorder Easy Green/ })).toHaveAttribute('href', 'https://shop.example.com/easy-green');
 
 	// Edit, then delete

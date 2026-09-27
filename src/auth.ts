@@ -5,6 +5,7 @@ import Credentials from '@auth/sveltekit/providers/credentials';
 import Google from '@auth/sveltekit/providers/google';
 import type { Provider } from '@auth/sveltekit/providers';
 import { env } from '$env/dynamic/private';
+import { copyGoogleAvatar } from '$lib/server/avatar';
 import { authSecret } from '$lib/server/instance';
 import { logger } from '$lib/server/log';
 import { isValidPasswordHash, verifyPassword } from '$lib/server/password';
@@ -124,6 +125,8 @@ export const { handle, signIn, signOut } = SvelteKitAuth(async () => ({
 					googleSub: account.providerAccountId
 				});
 				logger.info('sign-in', 'Signed in with Google', { userId: u.id });
+				// the account's photo, copied in the background (initials until then)
+				if (typeof profile.picture === 'string') void copyGoogleAvatar(u.id, profile.picture);
 				token.uid = u.id;
 			} else if (user?.id) {
 				token.uid = user.id;

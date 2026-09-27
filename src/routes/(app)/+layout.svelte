@@ -7,6 +7,7 @@
 	import { listenForInstall } from '$lib/install.svelte';
 	import { navigating, page } from '$app/state';
 	import Logo from '$lib/components/Logo.svelte';
+	import AccountMenu from '$lib/components/AccountMenu.svelte';
 	import QuickAdd from '$lib/components/QuickAdd.svelte';
 	import TankMenu from '$lib/components/TankMenu.svelte';
 	import TankSwitcher from '$lib/components/TankSwitcher.svelte';
@@ -203,7 +204,10 @@
 
 <div class="shell" class:fullscreen>
 	<aside class="sidebar" aria-label="Main">
-		<a class="brand" href="/"><Logo size={28} wordmark wordSize={19} fish /></a>
+		<div class="brand-row">
+			<a class="brand" href="/"><Logo size={28} wordmark wordSize={19} fish /></a>
+			<AccountMenu user={data.user} id="account-menu-side" />
+		</div>
 		<nav class="nav">
 			{#each nav as n (n.href)}
 				<a href={n.href} class:active={isActive(n.href)} aria-current={isActive(n.href) ? 'page' : undefined}>
@@ -545,6 +549,13 @@
 			background: var(--surface-2);
 			border-right: 1px solid var(--border);
 			padding: 22px 14px;
+		}
+		/* the logo, and your account at the end of its row */
+		.brand-row {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 8px;
 		}
 		.brand {
 			padding: 0 8px;

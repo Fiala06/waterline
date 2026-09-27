@@ -85,6 +85,13 @@
       "when": 1790525299646,
       "tag": "0011_logs",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1790526295957,
+      "tag": "0012_avatars",
+      "breakpoints": true
     }
   ]
 }
