@@ -4,7 +4,7 @@ What's new in Waterline, newest first. The app shows this list under Settings �
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
-## Unreleased
+## 1.4.1 · 2026-09-27
 
 - **Charts, easier to use by keyboard and screen reader:** the water change and dose markers are controls of their own rather than inside the chart, with bigger tap areas that never cover a neighbour's, so tapping a marker always opens that one.
 
