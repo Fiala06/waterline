@@ -25,6 +25,8 @@
 				? 'Please try again. If it keeps happening, the server log has the details.'
 				: (page.error?.message ?? '')
 	);
+	// what went wrong is in the log under this reference
+	const ref = $derived(status >= 500 ? page.error?.ref : undefined);
 </script>
 
 <svelte:head><title>{title} · Waterline</title></svelte:head>
@@ -34,6 +36,7 @@
 	<p class="code mono">{status}</p>
 	<h1>{title}</h1>
 	{#if detail}<p class="muted">{detail}</p>{/if}
+	{#if ref}<p class="ref">Reference <span class="mono">{ref}</span>: the admin can look it up in Settings › Server settings › Logs.</p>{/if}
 	<div class="actions">
 		{#if isPublic}
 			<a class="btn btn-primary" href="/">Go to Waterline</a>
@@ -45,6 +48,16 @@
 </main>
 
 <style>
+	.ref {
+		margin: 0;
+		font-size: 13px;
+		line-height: 1.5;
+		color: var(--text-faint);
+	}
+	.ref .mono {
+		color: var(--text-muted);
+		user-select: all;
+	}
 	.err {
 		min-height: 100dvh;
 		max-width: 440px;

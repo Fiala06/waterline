@@ -245,8 +245,32 @@ export const serverSettings = sqliteTable('server_settings', {
 	localAdminUsername: text('local_admin_username'),
 	localAdminPasswordHash: text('local_admin_password_hash'), // scrypt, like LOCAL_ADMIN_PASSWORD_HASH
 	scheduledEmails: integer('scheduled_emails', { mode: 'boolean' }).notNull().default(true),
-	updateCheck: integer('update_check', { mode: 'boolean' }).notNull().default(true)
+	updateCheck: integer('update_check', { mode: 'boolean' }).notNull().default(true),
+	// what the log keeps: errors and warnings, or also what the server did;
+	// everything (debug) only until log_debug_until, while troubleshooting
+	logLevel: text('log_level', { enum: ['warn', 'info'] }).notNull().default('warn'),
+	logDebugUntil: text('log_debug_until')
 });
+
+/** The server's log, for troubleshooting (Server settings › Logs). Kept for 30 days. */
+export const LOG_LEVELS = ['error', 'warn', 'info', 'debug'] as const;
+export const logs = sqliteTable(
+	'logs',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		at: createdAt(),
+		level: text('level', { enum: LOG_LEVELS }).notNull(),
+		area: text('area').notNull(), // email, sign-in, import, export, request, server…
+		message: text('message').notNull(),
+		details: text('details', { mode: 'json' }).$type<Record<string, unknown>>(),
+		// the account it's about; no foreign key, so entries outlive a deleted account
+		userId: text('user_id'),
+		// the reference an error page shows, to find its entry
+		ref: text('ref')
+	},
+	(t) => [index('logs_at').on(t.at), index('logs_ref').on(t.ref)]
+);
+export type LogEntry = typeof logs.$inferSelect;
 
 /** Signed single-use links in emails (Mark done / Snooze). Only the hash is stored. */
 export const actionTokens = sqliteTable('action_tokens', {
