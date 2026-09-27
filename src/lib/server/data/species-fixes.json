@@ -1,6 +1,6 @@
 {
-	"about": "Hand-kept fixes to species.json, applied when the app loads, so rebuilding species.json (npm run build:species) keeps them. drop: entries that aren't species (Wikipedia headings). dropNames: junk names. replace: a species' whole name list, for garbled names, typos and a better first name (the first is the one saved). names: hobby names added after the species' own. kind: corrections. add: popular species the sources lack.",
-	"drop": ["Guppies and", "Platies and", "African killifishes"],
+	"about": "Hand-kept fixes to species.json, applied when the app loads, so rebuilding species.json (npm run build:species) keeps them. drop: entries that aren't species (Wikipedia headings) or repeat one (a misspelling, a second scientific name for the same plant). dropNames: junk names. replace: a species' whole name list, for garbled names, typos and a better first name (the first is the one saved). names: hobby names added after the species' own. kind: corrections. add: popular species the sources lack.",
+	"drop": ["Guppies and", "Platies and", "African killifishes", "Balantiocheilus melanopterus", "Leptochilus pteropus"],
 	"dropNames": ["Needs quality image", "Species code: Rm"],
 	"kind": {
 		"Tubastrea aurea": "coral"
