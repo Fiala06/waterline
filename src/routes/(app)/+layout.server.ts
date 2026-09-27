@@ -2,10 +2,12 @@ import { dueInfo } from '$lib/tasks';
 import { fmtWhen, todayInZone } from '$lib/time';
 import { statusOf } from '$lib/params';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
+import { displayVersion, VERSION } from '$lib/changelog';
 import { takeFlash } from '$lib/server/flash';
 import { latestReadings, latestTest } from '$lib/server/logs';
 import { listParams, listTanks } from '$lib/server/tanks';
 import { listTasks } from '$lib/server/tasks';
+import { availableUpdate, projectPage } from '$lib/server/updates';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) => {
@@ -76,6 +78,8 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 			lastTest: lastTest ? `Last test ${fmtWhen(lastTest.takenAt, user.timeZone).replace(/^Today/, 'today').replace(/^Yesterday/, 'yesterday')}` : 'No tests yet',
 			wcDue: wcTask ? dueInfo(wcTask.due, today) : null
 		},
-		flash: flash ? { ...flash, id: crypto.randomUUID() } : null
+		flash: flash ? { ...flash, id: crypto.randomUUID() } : null,
+		// the version running; a newer release only for admins, who can update the server
+		app: { version: displayVersion(VERSION), update: user.isAdmin ? availableUpdate() : null, repo: projectPage() }
 	};
 };

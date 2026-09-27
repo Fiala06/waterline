@@ -26,6 +26,9 @@ export const users = sqliteTable('users', {
 	timeZone: text('time_zone').notNull().default('UTC'),
 	theme: text('theme', { enum: ['system', 'dark', 'light'] }).notNull().default('system'),
 	setupDone: integer('setup_done', { mode: 'boolean' }).notNull().default(false),
+	// the last release whose What's new was dismissed; 1.0.0, the release before it existed,
+	// for accounts from then (new accounts start at the running version)
+	seenVersion: text('seen_version').notNull().default('1.0.0'),
 	createdAt: createdAt()
 });
 

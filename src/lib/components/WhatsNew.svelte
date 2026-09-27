@@ -1,0 +1,118 @@
+<script lang="ts">
+	// Once after an update, on the dashboard: what's new in this version, until
+	// Got it or See what's new (both remember it, and work without scripts).
+	import { enhance } from '$app/forms';
+	import { page } from '$app/state';
+	import Logo from './Logo.svelte';
+	let { version, leads, more }: { version: string; leads: string[]; more: number } = $props();
+	let gone = $state(false);
+</script>
+
+{#if !gone}
+	<section class="whats-new" aria-labelledby="whats-new-h">
+		<div class="top">
+			<span class="icon" aria-hidden="true"><Logo size={30} /></span>
+			<div class="text">
+				<h2 id="whats-new-h">What's new in {version}</h2>
+				<ul>
+					{#each leads as l (l)}<li>{l}</li>{/each}
+				</ul>
+				{#if more}<p class="more">and {more} more</p>{/if}
+			</div>
+		</div>
+		<form
+			method="POST"
+			action="/settings/changelog?/seen"
+			class="actions"
+			use:enhance={() => {
+				gone = true;
+				return async ({ update }) => update();
+			}}
+		>
+			<button class="btn" name="to" value={page.url.pathname + page.url.search}>Got it</button>
+			<button class="btn btn-primary" name="to" value="/settings/changelog">See what's new</button>
+		</form>
+	</section>
+{/if}
+
+<style>
+	.whats-new {
+		padding: 16px;
+		display: flex;
+		flex-direction: column;
+		gap: 14px;
+		border-radius: 16px;
+		background: var(--surface);
+		border: 1px solid var(--border-strong);
+	}
+	.top {
+		display: flex;
+		align-items: flex-start;
+		gap: 14px;
+	}
+	.icon {
+		width: 48px;
+		height: 48px;
+		flex-shrink: 0;
+		border-radius: 12px;
+		background: var(--bg);
+		border: 1px solid var(--border);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+	.text {
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+	h2 {
+		margin: 0;
+		font-size: 17px;
+		font-weight: 600;
+	}
+	ul {
+		margin: 0;
+		padding-left: 18px;
+		font-size: 14px;
+		line-height: 1.5;
+		color: var(--text-2);
+	}
+	.more {
+		margin: 0;
+		font-size: 13px;
+		color: var(--text-muted);
+	}
+	.actions {
+		display: flex;
+		gap: 8px;
+	}
+	.actions .btn {
+		flex: 1;
+		height: 46px;
+		font-size: 15px;
+	}
+	.actions .btn:not(.btn-primary) {
+		font-weight: 400;
+	}
+
+	/* desktop: one row, the buttons at the end */
+	@media (min-width: 1024px) {
+		.whats-new {
+			flex-direction: row;
+			align-items: center;
+			gap: 20px;
+			padding: 16px 20px;
+		}
+		.top {
+			flex: 1;
+			align-items: center;
+		}
+		.actions .btn {
+			flex: none;
+			height: 44px;
+			padding: 0 18px;
+		}
+	}
+</style>

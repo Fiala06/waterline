@@ -6,6 +6,7 @@
 	import TankThumb from '$lib/components/TankThumb.svelte';
 	import TaskList from '$lib/components/TaskList.svelte';
 	import TrendChart from '$lib/components/TrendChart.svelte';
+	import WhatsNew from '$lib/components/WhatsNew.svelte';
 	import { compactName, displayValue, fmtRange, fmtValue, paramUnit, shortName, statusOf } from '$lib/params';
 	import { statusShort } from '$lib/status';
 	import { goto, invalidateAll } from '$app/navigation';
@@ -123,6 +124,8 @@
 				>
 			</span>
 		</button>
+
+		{#if data.whatsNew}<WhatsNew {...data.whatsNew} />{/if}
 
 		<div class="grid">
 			<div class="col-main">

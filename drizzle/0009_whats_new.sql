@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `seen_version` text DEFAULT '1.0.0' NOT NULL;

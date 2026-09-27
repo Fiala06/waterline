@@ -32,6 +32,8 @@ export default defineConfig({
 			BODY_SIZE_LIMIT: '64M',
 			EMAIL_TRANSPORT: 'outbox',
 			EMAIL_SCHEDULER: 'off',
+			// the update check reads a test changelog with a newer release
+			UPDATE_CHECK_URL: `http://localhost:${PORT}/dev/next-release`,
 			LOCAL_ADMIN_PASSWORD_HASH: hash
 		}
 	}

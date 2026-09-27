@@ -25,10 +25,6 @@ A running list of ideas and nice-to-haves that aren't in the current scope. For 
   - On the dashboard's chart and on Charts alike.
 - **Account menu:** a circle with your profile photo in the upper left of the app. Tapping it opens a menu to update your account, sign out and so on.
   - The photo from your Google account, or your initials when there isn't one (as with the local admin login).
-- **In-app changelog:** a "What's new" list in the app, so people see what changed after an update.
-  - A Changelog page under Settings (the footer's "Waterline v1.0 · self-hosted" could link to it), newest release first, with version, date and a few plain-language lines each.
-  - After an update, show a small dismissible "What's new in 1.1" card or sheet once, then remember it was seen.
-  - Bundle it with the app (e.g. from a `CHANGELOG.md` at build time) so it works offline and matches the running version.
 - **More from importing History:** columns are matched by their names today. Possible extras:
   - Pick which column is which when a file's names aren't recognized, instead of renaming them in the spreadsheet.
   - One file with several kinds of entry, read from an entry type column, instead of a file per kind.
@@ -51,3 +47,4 @@ A running list of ideas and nice-to-haves that aren't in the current scope. For 
 - [x] **Spotting trends** (Sep 26, 2026): a note under the dashboard's Trends chart when a parameter has risen or fallen in each of the last 3 or more tests, or its pace since the last water change would cross a target within two weeks ("Nitrate has risen in each of your last 3 tests (8 → 14 ppm) and is on course to pass 20 ppm in about 9 days"); also in the summary for an AI assistant. More kinds of trend are still an idea above.
 - [x] **Swimming fish in the logo** (Sep 26, 2026): every minute or two a small fish swims through the water in the sidebar and sign-in logos; never with reduced motion or in a background tab.
 - [x] **Importing History from CSV** (Sep 26, 2026): water tests, water changes, dosing, maintenance, observations and notes from a spreadsheet, with a template for each and a preview that flags rows to fix before anything is added. Each row becomes a normal History entry at its own date and time. Columns are found by name (and common other names), units and dates are read the way Settings shows them or as a column names them ("Temperature (°C)"), and the export's water-tests.csv reads back as it is. Any import, the list imports too, can be undone in one step from its toast or its import page. Matching columns by hand is still an idea above.
+- [x] **In-app changelog** (Sep 27, 2026): Settings › What's new lists every release, newest first, from `CHANGELOG.md` bundled into the app, so it works offline and matches the running version (now 1.1). After an update the dashboard shows "What's new in 1.1" once, until Got it or See what's new; new accounts don't see it. The Settings footer shows the running version and links there.

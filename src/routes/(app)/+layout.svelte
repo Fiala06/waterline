@@ -239,6 +239,9 @@
 		{/if}
 		<div class="spacer"></div>
 		<a href="/settings" class="settings" class:active={isActive('/settings')}>Settings</a>
+		<a href="/settings/changelog" class="app-version" class:update={!!data.app.update}>
+			Waterline v{data.app.version}{#if data.app.update}<span class="update-note">Update to {data.app.update.version} available</span>{/if}
+		</a>
 	</aside>
 
 	<div class="main">
@@ -566,6 +569,25 @@
 		.nav a:hover,
 		.settings:hover {
 			background: var(--surface);
+		}
+		/* the version running, under Settings; a newer one in the accent, for admins */
+		.app-version {
+			min-height: 44px;
+			padding: 4px 12px;
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			gap: 2px;
+			font-size: 12px;
+			color: var(--text-faint);
+		}
+		.app-version:hover {
+			color: var(--text-muted);
+			text-decoration: underline;
+		}
+		.update-note {
+			font-weight: 600;
+			color: var(--accent);
 		}
 		.nav a.active,
 		.settings.active {

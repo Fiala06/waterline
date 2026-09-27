@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { env } from '$env/dynamic/private';
+import { VERSION } from '$lib/changelog';
 import { db } from './db';
 import { notificationPrefs, users, type User } from './db/schema';
 
@@ -55,7 +56,9 @@ export function upsertUser(input: { email: string; name?: string | null; googleS
 				email,
 				displayName: input.name?.trim() || email.split('@')[0],
 				googleSub: input.googleSub ?? null,
-				isAdmin
+				isAdmin,
+				// nothing new to them yet
+				seenVersion: VERSION
 			})
 			.returning()
 			.get();

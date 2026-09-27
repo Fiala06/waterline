@@ -37,6 +37,7 @@
 	import { untrack } from 'svelte';
 	import { LEAD_OPTIONS, SEND_TIMES } from '$lib/notify-options';
 	import { install, promptInstall } from '$lib/install.svelte';
+	import { displayVersion, VERSION } from '$lib/changelog';
 	import { toast, ui } from '$lib/ui.svelte';
 	let installHelp = $state(false);
 	let { data, form } = $props();
@@ -307,7 +308,11 @@
 			<button class="btn signout">Sign out</button>
 			{#if unsynced}<p class="unsynced status-warn">{unsynced}</p>{/if}
 		</form>
-		<p class="version mono">Waterline v1.0 · self-hosted</p>
+		<a class="version mono" href="/settings/changelog"
+			>Waterline v{displayVersion(VERSION)} · self-hosted · What's new{#if data.app.update}<span class="update-note"
+					>{` · Update to ${data.app.update.version} available`}</span
+				>{/if}</a
+		>
 	</div>
 </div>
 
@@ -541,11 +546,25 @@
 		font-weight: 600;
 		text-align: center;
 	}
+	/* the running version, a link to What's new */
 	.version {
+		align-self: center;
+		display: flex;
+		align-items: center;
+		min-height: 44px;
 		margin: 0;
-		text-align: center;
 		font-size: 12px;
 		color: var(--text-faint);
+	}
+	@media (hover: hover) {
+		.version:hover {
+			color: var(--text-muted);
+			text-decoration: underline;
+		}
+	}
+	.update-note {
+		font-weight: 600;
+		color: var(--accent);
 	}
 
 	@media (min-width: 1024px) {
@@ -600,7 +619,7 @@
 			text-align: right;
 		}
 		.version {
-			text-align: left;
+			align-self: flex-start;
 		}
 	}
 </style>

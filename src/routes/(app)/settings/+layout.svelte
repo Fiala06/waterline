@@ -1,6 +1,6 @@
 <script lang="ts">
 	// Settings shell: on desktop, one "Settings" heading and section menu for the
-	// main page and its sub-pages (Export, Server). Phones use back links instead.
+	// main page and its sub-pages (Products, Export, What's new, Server). Phones use back links instead.
 	import { page } from '$app/state';
 	import { ui } from '$lib/ui.svelte';
 	let { data, children } = $props();
@@ -35,6 +35,7 @@
 		{ href: '/settings#theme', label: 'Theme', active: on('theme') },
 		{ href: '/settings/products', label: 'Products', active: path.startsWith('/settings/products') },
 		{ href: '/settings/export', label: 'Export', active: path.startsWith('/settings/export') },
+		{ href: '/settings/changelog', label: "What's new", active: path.startsWith('/settings/changelog') },
 		...(data.user.isAdmin ? [{ href: '/settings/server', label: 'Server', admin: true, active: path.startsWith('/settings/server') }] : [])
 	]);
 </script>

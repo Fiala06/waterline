@@ -2,7 +2,7 @@
 
 Self-hosted, mobile-first aquarium tracker. Log water tests and water changes tank-side, spot trends on charts, and get email reminders for maintenance. Google sign-in, imperial/metric units, full data export.
 
-Design handoff and specs live in [`design_handoff_waterline/`](design_handoff_waterline/README.md); the build order is in [`BUILD_PLAN.md`](design_handoff_waterline/BUILD_PLAN.md). Ideas for later are in [`IDEAS.md`](IDEAS.md).
+Design handoff and specs live in [`design_handoff_waterline/`](design_handoff_waterline/README.md); the build order is in [`BUILD_PLAN.md`](design_handoff_waterline/BUILD_PLAN.md). Ideas for later are in [`IDEAS.md`](IDEAS.md); what's changed, release by release, is in [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Status
 
@@ -66,6 +66,8 @@ To keep it on your network without a domain, set `ORIGIN` to the plain address, 
 | `LOCAL_ADMIN_USERNAME` | optional | Defaults to `admin` |
 | `ENCRYPTION_KEY` | recommended | Encrypts the stored mail password/API key. Falls back to a key derived from `AUTH_SECRET` |
 | `EMAIL_SCHEDULER` | optional | `off` stops reminder and digest emails |
+| `UPDATE_CHECK` | optional | `off` stops the check for new versions. Otherwise the server reads `CHANGELOG.md` on GitHub's `main` at most every 12 hours, and admins see *Update to 1.2 available* when it's newer |
+| `UPDATE_CHECK_URL` | optional | Where that check looks instead, e.g. a fork's `https://raw.githubusercontent.com/<you>/waterline/main/CHANGELOG.md` |
 | `DATA_DIR` | optional | Defaults to `/data` in Docker, `./data` locally |
 | `BODY_SIZE_LIMIT` | optional | Largest upload. The Docker image sets `64M` so photos fit; outside Docker set it yourself, since Node defaults to 512K |
 | `ADDRESS_HEADER` / `XFF_DEPTH` | behind a proxy | e.g. `X-Forwarded-For` and `1`, so failed local admin logins are limited per visitor rather than for everyone at once |
@@ -89,7 +91,7 @@ To keep it on your network without a domain, set `ORIGIN` to the plain address, 
 
 3. With HTTPS, point your reverse proxy (Nginx Proxy Manager, SWAG, Cloudflare Tunnel…) at `http://<unraid-ip>:<host port>`. Either way, open the `ORIGIN` URL and always use that one: any other address loads, but saving fails the cross-site check.
 
-**Updates:** each push to `main` (or `dev`) publishes a new image, and Unraid's Docker tab shows *update ready* for the container. Applying it keeps everything in `/data`; database migrations run on start.
+**Updates:** each push to `main` (or `dev`) publishes a new image, and Unraid's Docker tab shows *update ready* for the container. Applying it keeps everything in `/data`; database migrations run on start. When a new version is on `main`, admins also see *Update to 1.2 available* under Settings in the app's menu; after updating, everyone gets the release's highlights once on the dashboard, and the full list is in **Settings › What's new**.
 
 To run `latest` and `dev` side by side, create two containers with different names, host ports, data folders and `ORIGIN` values. Never point two containers at the same data folder.
 
@@ -110,6 +112,10 @@ npm run test:e2e   # Playwright: sign in → setup → create tank → log test 
 ```
 
 The first time, install the Playwright browser with `npx playwright install chromium`.
+
+## Releases
+
+Each release is a section of [`CHANGELOG.md`](CHANGELOG.md), written for the people who use the app: the app shows it under **Settings › What's new**, and its first lines once on the dashboard after an update. To release, bump `version` in `package.json` and add a `## <version> · <date>` section with a few lines, each starting with its name in bold; a unit test fails if the two don't match. The *update available* note admins see comes from the changelog on `main`.
 
 ## Stack
 

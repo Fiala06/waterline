@@ -1,4 +1,5 @@
 import { eq, lte, sql } from 'drizzle-orm';
+import { displayVersion, whatsNewSince } from '$lib/changelog';
 import { eventIcon, eventKindLabel, eventTitle } from '$lib/events';
 import { dateInZone, daysBetween, fmtDay, fmtWhen, todayInZone } from '$lib/time';
 import { eventsSince, lastEventOf, latestReadings, recentActivity, series } from '$lib/server/logs';
@@ -111,7 +112,16 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		equipment: listEquipment(user.id, tank.id).map(equipmentName)
 	};
 
+	// once after an update: the new version's first lines, by name
+	const release = whatsNewSince(user.seenVersion);
+	const whatsNew = release && {
+		version: displayVersion(release.version),
+		leads: release.lines.slice(0, 3).map((l) => l.lead ?? l.parts.map((x) => x.text).join('')),
+		more: Math.max(0, release.lines.length - 3)
+	};
+
 	return {
+		whatsNew,
 		contents,
 		tank: {
 			id: tank.id,
