@@ -1,5 +1,5 @@
-// Short explanations behind the ⓘ next to parameters and less obvious fields
-// (IDEAS: tooltips). Plain hobby guidance; each tank's own targets still rule.
+// Short explanations behind the ⓘ next to parameters and less obvious fields.
+// Plain hobby guidance; each tank's own targets still rule.
 
 const PARAMS: Record<string, string> = {
 	ph: 'How acidic or alkaline the water is, from 0 to 14. Most fish do well across a range; keeping it steady matters more than a perfect number.',

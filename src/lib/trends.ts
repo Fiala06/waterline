@@ -1,4 +1,4 @@
-// Spotting trends (IDEAS): a plain note about where a parameter is heading,
+// Spotting trends: a plain note about where a parameter is heading,
 // from its recent readings. Deliberately cautious, so a note means something:
 // a run of tests that each rose (or fell), and, when the readings since the
 // last water change line up well, when that pace would cross a target limit.
