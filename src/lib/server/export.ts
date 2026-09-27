@@ -31,6 +31,7 @@ import {
 } from './db/schema';
 import { photoFilePath } from './photos';
 import { getTank, listTanks } from './tanks';
+import { logger } from './log';
 
 export const EXPORT_TTL_HOURS = 24;
 const dir = () => join(env.DATA_DIR ?? './data', 'exports');
@@ -78,8 +79,10 @@ export function startExport(user: User, scope: 'tank' | 'account', tankId: strin
 		.returning()
 		.get();
 	// Runs in the background; the page polls for progress.
-	build(row.id, user, list, format).catch((e) => {
-		console.error('[waterline] export failed:', e);
+	build(row.id, user, list, format)
+		.then(() => logger.info('export', `Built a ${format === 'zip' ? 'backup' : 'CSV'} export`, { userId: user.id, scope }))
+		.catch((e) => {
+		logger.error('export', `A ${format === 'zip' ? 'backup' : 'CSV'} export failed`, { userId: user.id, scope, error: e });
 		db.update(exports).set({ status: 'failed', error: 'The export failed. Try again.' }).where(eq(exports.id, row.id)).run();
 	});
 	return row;

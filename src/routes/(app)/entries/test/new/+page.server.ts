@@ -9,6 +9,7 @@ import { alertOutOfRange } from '$lib/server/notifications';
 import { getTank, listParams } from '$lib/server/tanks';
 import { getTask } from '$lib/server/tasks';
 import type { Actions, PageServerLoad } from './$types';
+import { logger } from '$lib/server/log';
 
 export const load: PageServerLoad = async ({ locals, url, parent }) => {
 	const user = locals.user!;
@@ -75,7 +76,7 @@ export const actions: Actions = {
 		if (!result.duplicate) {
 			storePhotos(tank.id, prepared, { testId: result.test.id, takenAt: when.at });
 			// E4 goes out in the background; a mail problem never blocks saving.
-			if (result.outOfRange) alertOutOfRange(user, tank.id, result.test.id).catch((e) => console.error(e));
+			if (result.outOfRange) alertOutOfRange(user, tank.id, result.test.id).catch((e) => logger.error('email', "The out-of-range alert didn't send", { userId: user.id, error: e }));
 		}
 		if (wc) {
 			// a replayed offline entry finds the change it already made by the same id

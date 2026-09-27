@@ -16,6 +16,7 @@ import { sitemapEntries } from '$lib/server/public';
 import { outboxTransport } from '$lib/server/mail/outbox';
 import type { Actions, PageServerLoad } from './$types';
 import pkg from '../../../../../package.json';
+import { logCounts, logger } from '$lib/server/log';
 
 function requireAdmin(locals: App.Locals) {
 	if (!locals.user?.isAdmin) error(404, 'Not found');
@@ -98,7 +99,9 @@ export const load: PageServerLoad = ({ locals, url }) => {
 			schedulerOff: env.EMAIL_SCHEDULER === 'off',
 			updateCheck: s.updateCheck,
 			updateCheckOff: env.UPDATE_CHECK === 'off'
-		}
+		},
+		// what went wrong in the last day
+		logs: logCounts(new Date(Date.now() - 86_400_000).toISOString())
 	};
 };
 
@@ -156,6 +159,7 @@ export const actions: Actions = {
 				? { googleClientId: clientId, googleClientSecretEnc: secret ? encrypt(secret) : s.googleClientSecretEnc }
 				: { googleClientId: null, googleClientSecretEnc: null }
 		);
+		logger.info('settings', clientId ? 'Google sign-in client saved' : 'Google sign-in turned off in the app', { userId: locals.user!.id });
 		return { googleSaved: true };
 	},
 	/** Who may sign in with Google, and the admin's own account. */
@@ -173,6 +177,7 @@ export const actions: Actions = {
 		else if (mode === 'list' && !entries.length) errors.allowedEmails = 'Add someone, or choose Only the admin.';
 		if (Object.keys(errors).length) return fail(400, { accessErrors: errors });
 		setSettings({ adminEmail: adminEmail || null, signupMode: mode, allowedEmails: entries.join('\n') || null });
+		logger.info('settings', 'Who can sign in saved', { userId: locals.user!.id, mode, listed: entries.length });
 		return { accessSaved: true };
 	},
 	/** The local admin login: a new username or password, or off (while Google can still let an admin in). */
@@ -184,6 +189,7 @@ export const actions: Actions = {
 				return fail(400, { localErrors: { password: "Set up Google sign-in for the admin's account first: otherwise nobody could sign in as the admin." } });
 			}
 			setSettings({ localAdminPasswordHash: null });
+			logger.info('settings', 'Local admin login turned off', { userId: locals.user!.id });
 			return { localSaved: 'off' };
 		}
 		const s = getServerSettings();
@@ -197,6 +203,7 @@ export const actions: Actions = {
 		else if (password && password !== String(form.get('confirm') ?? '')) errors.confirm = "The passwords don't match.";
 		if (Object.keys(errors).length) return fail(400, { localErrors: errors });
 		setSettings({ localAdminUsername: username, ...(password ? { localAdminPasswordHash: hashPassword(password) } : {}) });
+		logger.info('settings', password ? 'Local admin password changed' : 'Local admin username saved', { userId: locals.user!.id });
 		return { localSaved: true };
 	},
 	/** Scheduled emails and the update check; a switch forced off by the environment keeps its saved value. */
@@ -207,6 +214,7 @@ export const actions: Actions = {
 			...(env.EMAIL_SCHEDULER === 'off' ? {} : { scheduledEmails: form.get('scheduledEmails') === 'on' }),
 			...(env.UPDATE_CHECK === 'off' ? {} : { updateCheck: form.get('updateCheck') === 'on' })
 		});
+		logger.info('settings', 'Server switches saved', { userId: locals.user!.id, scheduledEmails: form.get('scheduledEmails') === 'on', updateCheck: form.get('updateCheck') === 'on' });
 		return { serverSaved: true };
 	},
 	save: async ({ request, locals }) => {
@@ -229,6 +237,7 @@ export const actions: Actions = {
 			})
 			.where(eq(serverSettings.id, 1))
 			.run();
+		logger.info('settings', 'Email delivery settings saved', { userId: locals.user!.id, provider: cfg.emailProvider });
 		return { saved: true };
 	},
 	savePublic: async ({ request, locals }) => {
@@ -256,6 +265,7 @@ export const actions: Actions = {
 			})
 			.where(eq(serverSettings.id, 1))
 			.run();
+		logger.info('settings', 'Public page settings saved', { userId: locals.user!.id });
 		return { publicSaved: true };
 	},
 	// Sends E5 with what's in the form right now, saved or not.
@@ -291,9 +301,11 @@ export const actions: Actions = {
 			await t.transport.send(t.from, { to, subject: r.subject, html: r.html, text: r.text });
 		} catch (e) {
 			const message = e instanceof MailError ? e.message : `Sending failed. (${(e as Error).message})`;
+			logger.error('email', "The test email didn't send", { userId: user.id, via: t.transport.describe, error: e });
 			return fail(502, { errors: {}, test: { ok: false, message } });
 		}
 		const via = cfg.emailProvider === 'smtp' ? 'your SMTP server' : 'Mailgun';
+		logger.info('email', 'Sent a test email', { userId: user.id, via: t.transport.describe });
 		return { test: { ok: true, message: `Sent via ${outboxMode() ? 'the outbox' : via} to ${to}. Check your inbox.` } };
 	}
 };

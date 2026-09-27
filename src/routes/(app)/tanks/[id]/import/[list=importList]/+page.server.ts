@@ -9,6 +9,7 @@ import { importColumns, validValue, type ImportValue, type LivestockValue } from
 import { safeReturn } from '$lib/server/redirect';
 import { getTank } from '$lib/server/tanks';
 import type { Actions, PageServerLoad } from './$types';
+import { logger } from '$lib/server/log';
 
 const MAX_BYTES = 1_000_000;
 
@@ -55,16 +56,25 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const file = form.get('file');
 		if (!(file instanceof File) || !file.size) return fail(400, { error: 'Choose a CSV file.' });
-		if (file.size > MAX_BYTES) return fail(400, { error: 'That file is over 1 MB. Split it into smaller files.' });
+		if (file.size > MAX_BYTES) {
+			logger.warn('import', `${file.name} is over 1 MB`, { userId: user.id, kind, size: file.size });
+			return fail(400, { error: 'That file is over 1 MB. Split it into smaller files.' });
+		}
 		const text = lf(decode(await file.arrayBuffer()));
 		if (isHistoryKind(kind)) {
 			const preview = previewHistory(kind, text, user, tank);
-			if ('error' in preview) return fail(400, { error: preview.error });
+			if ('error' in preview) {
+				logger.warn('import', `Couldn't read ${file.name}: ${preview.error}`, { userId: user.id, kind });
+				return fail(400, { error: preview.error });
+			}
 			// Up to 2,000 rows: the page sends back the file and the ticked line numbers, not each row.
 			return { preview: { file: file.name, ...preview, csv: text } };
 		}
 		const preview = previewImport(kind, text, user, tank);
-		if ('error' in preview) return fail(400, { error: preview.error });
+		if ('error' in preview) {
+			logger.warn('import', `Couldn't read ${file.name}: ${preview.error}`, { userId: user.id, kind });
+			return fail(400, { error: preview.error });
+		}
 		return { preview: { file: file.name, ...preview, csv: null } };
 	},
 
@@ -85,9 +95,11 @@ export const actions: Actions = {
 			const read = readHistory(kind, lf(csv), historyContext(user, tank));
 			const picked = 'error' in read ? [] : read.rows.filter((r) => lines.has(String(r.line)));
 			if (picked.length !== lines.size || picked.some((r) => !r.value || r.example || r.other)) {
+				logger.warn('import', `Rows of ${fileName ?? 'a file'} changed between the preview and the import`, { userId: user.id, kind });
 				return fail(400, { error: 'Some rows changed on the way. Choose the file again.' });
 			}
 			const { importId, summary } = applyHistory(kind, picked.map((r) => r.value!), user, tank, fileName);
+			logger.info('import', `Imported ${summary}${fileName ? ` from ${fileName}` : ''}`, { userId: user.id, kind });
 			setFlash(cookies, `✓ Imported ${summary}`, { undo: { ...undo, value: importId } });
 			redirect(303, `/history?tank=${tank.id}&cat=${IMPORTS[kind].cat}&range=all`);
 		}
@@ -104,7 +116,8 @@ export const actions: Actions = {
 		if (!values.length) return fail(400, { error: 'Nothing was ticked. Choose the file again and tick the rows to add.' });
 		if (values.some((v) => !v)) return fail(400, { error: 'Some rows changed on the way. Choose the file again.' });
 		const ok = values as ImportValue[];
-		const { reminders, importId } = applyImport(kind, ok, user, tank.id, { reminders: form.get('reminders') === 'on', fileName });
+		const { reminders, importId, summary } = applyImport(kind, ok, user, tank.id, { reminders: form.get('reminders') === 'on', fileName });
+		logger.info('import', `Imported ${summary}${fileName ? ` from ${fileName}` : ''}`, { userId: user.id, kind });
 		const n = ok.length;
 		const animals = kind === 'livestock' ? (ok as LivestockValue[]).reduce((s, l) => s + l.count, 0) : 0;
 		const message =
@@ -121,6 +134,7 @@ export const actions: Actions = {
 	undo: async ({ request, locals, params, cookies }) => {
 		const form = await request.formData();
 		const imp = undoImport(locals.user!.id, str(form, 'importId'));
+		if (!imp.already) logger.info('import', `Undid the import of ${imp.summary}`, { userId: locals.user!.id, kind: imp.kind });
 		setFlash(cookies, undoneText(imp));
 		redirect(303, safeReturn(form.get('from'), `/tanks/${params.id}/import/${params.list}`));
 	}

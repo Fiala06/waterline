@@ -98,6 +98,10 @@ Servers set up before these settings moved into the app keep working: `AUTH_GOOG
 
 To run `latest` and `dev` side by side, create two containers with different names, host ports, data folders and `ORIGIN` values. Never point two containers at the same data folder.
 
+### Troubleshooting
+
+**Settings › Server settings › Logs** shows what went wrong: emails that didn't send, imports that couldn't be read, sign-in problems, and pages that failed, each with the reference its error page showed. Choose *What the server does too* to also see sign-ins, emails sent, imports and changes to settings, or *Everything, for 24 hours* while you track something down. **Download** gives a text file to share when asking for help, with email addresses shortened. Entries are kept for 30 days, and the container's log (`docker compose logs waterline`) has the same lines.
+
 ### Security notes
 
 - A new server can only be set up with the setup code from its log, and sign-in is closed by default: only the admin, the people or domains the admin lists, or everyone with a Google account if the admin chooses that.

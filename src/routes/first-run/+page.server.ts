@@ -1,6 +1,7 @@
 import { fail, isRedirect, redirect } from '@sveltejs/kit';
 import { signInWith } from '../../auth';
 import { str } from '$lib/server/forms';
+import { logger } from '$lib/server/log';
 import { clearLoginFailures, loginBlockedMinutes, recordLoginFailure } from '$lib/server/rate-limit';
 import { codeMatches, finishSetup, setupCode, setupNeeded } from '$lib/server/setup';
 import type { Actions, PageServerLoad } from './$types';
@@ -23,6 +24,7 @@ export const actions: Actions = {
 		if (wait) return fail(429, { values, errors: { code: `Too many tries. Try again in ${wait} minute${wait === 1 ? '' : 's'}.` } });
 		if (!codeMatches(str(form, 'code'))) {
 			recordLoginFailure(address);
+			logger.warn('setup', 'Wrong setup code entered', { address });
 			return fail(400, { values, errors: { code: "That isn't the setup code. Copy it from the server's log." } });
 		}
 		const password = String(form.get('password') ?? '');
@@ -35,6 +37,7 @@ export const actions: Actions = {
 		if (Object.keys(errors).length) return fail(400, { values: { ...values, code: str(form, 'code') }, errors });
 		clearLoginFailures(address);
 		finishSetup(username, password);
+		logger.info('setup', `Admin login “${username}” created on first start`);
 		// in, as the admin: the account's own setup comes next
 		try {
 			await signInWith(event, 'local', { username, password }, '/');

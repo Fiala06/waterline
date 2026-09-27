@@ -382,35 +382,51 @@
 		</form>
 	</section>
 
-	<form method="POST" action="?/saveServer" class="sec" use:enhance={saved('✓ Server settings saved')}>
-		<h2>Server</h2>
+	<section class="sec" aria-labelledby="server-h">
+		<h2 id="server-h">Server</h2>
+		<form method="POST" action="?/saveServer" class="block" use:enhance={saved('✓ Server settings saved')}>
+			<div class="group">
+				<div class="row">
+					<label for="sv-emails" class="ttext"
+						><span class="tt">Send reminders and digests</span><span class="td"
+							>{data.server.schedulerOff
+								? 'Off: EMAIL_SCHEDULER=off is set.'
+								: 'Checked every 5 minutes, for everyone on this server. Alerts for readings out of range go out either way.'}</span
+						></label
+					>
+					<span class="switch"><input id="sv-emails" type="checkbox" name="scheduledEmails" defaultChecked={data.server.scheduledEmails && !data.server.schedulerOff} disabled={data.server.schedulerOff} /><span></span></span>
+				</div>
+				<div class="row">
+					<label for="sv-update" class="ttext"
+						><span class="tt">Check for new versions</span><span class="td"
+							>{data.server.updateCheckOff
+								? 'Off: UPDATE_CHECK=off is set.'
+								: "Reads Waterline's changelog on GitHub twice a day, and tells admins when there's a new version."}</span
+						></label
+					>
+					<span class="switch"><input id="sv-update" type="checkbox" name="updateCheck" defaultChecked={data.server.updateCheck && !data.server.updateCheckOff} disabled={data.server.updateCheckOff} /><span></span></span>
+				</div>
+			</div>
+			<div class="actions"><button class="btn btn-primary">Save</button></div>
+		</form>
 		<div class="group">
-			<div class="row">
-				<label for="sv-emails" class="ttext"
-					><span class="tt">Send reminders and digests</span><span class="td"
-						>{data.server.schedulerOff
-							? 'Off: EMAIL_SCHEDULER=off is set.'
-							: 'Checked every 5 minutes, for everyone on this server. Alerts for readings out of range go out either way.'}</span
-					></label
+			<a class="row logs" href="/settings/server/logs">
+				<span class="ttext"
+					><span class="tt">Logs</span><span class="td"
+						>{data.logs.error || data.logs.warn
+							? [data.logs.error && `${data.logs.error} error${data.logs.error === 1 ? '' : 's'}`, data.logs.warn && `${data.logs.warn} warning${data.logs.warn === 1 ? '' : 's'}`]
+									.filter(Boolean)
+									.join(' and ') + ' in the last day'
+							: 'Nothing went wrong in the last day'}</span
+					></span
 				>
-				<span class="switch"><input id="sv-emails" type="checkbox" name="scheduledEmails" defaultChecked={data.server.scheduledEmails && !data.server.schedulerOff} disabled={data.server.schedulerOff} /><span></span></span>
-			</div>
-			<div class="row">
-				<label for="sv-update" class="ttext"
-					><span class="tt">Check for new versions</span><span class="td"
-						>{data.server.updateCheckOff
-							? 'Off: UPDATE_CHECK=off is set.'
-							: "Reads Waterline's changelog on GitHub twice a day, and tells admins when there's a new version."}</span
-					></label
-				>
-				<span class="switch"><input id="sv-update" type="checkbox" name="updateCheck" defaultChecked={data.server.updateCheck && !data.server.updateCheckOff} disabled={data.server.updateCheckOff} /><span></span></span>
-			</div>
+				<span class="chev" aria-hidden="true">›</span>
+			</a>
 		</div>
 		<pre class="card mono info">version  {data.server.version}
 data     {data.server.data}
 users    {data.server.users}</pre>
-		<div class="actions"><button class="btn btn-primary">Save</button></div>
-	</form>
+	</section>
 </div>
 
 <style>
@@ -678,6 +694,13 @@ users    {data.server.users}</pre>
 	}
 	.access:has(input[name='signupMode'][value='list']:checked) .list-field {
 		display: flex;
+	}
+	.logs {
+		color: var(--text);
+	}
+	.logs .chev {
+		font-size: 18px;
+		color: var(--placeholder);
 	}
 	.info {
 		margin: 0;

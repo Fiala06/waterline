@@ -4,6 +4,7 @@ import { env } from '$env/dynamic/private';
 import { pruneActionTokens } from './action-tokens';
 import { cleanupExports } from './export';
 import { getServerSettings } from './mail';
+import { logger, pruneLogs } from './log';
 import { runNotifications } from './notifications';
 
 const EVERY_MS = 5 * 60_000;
@@ -17,10 +18,11 @@ export function startScheduler() {
 		running = true;
 		try {
 			if (getServerSettings().scheduledEmails) await runNotifications();
+			pruneLogs();
 			pruneActionTokens();
 			cleanupExports();
 		} catch (e) {
-			console.error('[waterline] scheduler run failed:', e);
+			logger.error('server', 'The scheduled run failed', { error: e });
 		} finally {
 			running = false;
 		}

@@ -9,6 +9,7 @@ import { dateInZone, daysBetween, fmtDate, fmtTime, todayInZone, utcToZoned } fr
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { createActionToken } from './action-tokens';
 import { db } from './db';
+import { logger } from './log';
 import { emailLog, notificationPrefs, taskCompletions, tests, testReadings, users, type User } from './db/schema';
 import { lastEventOf, latestReadings } from './logs';
 import { emailConfigured, sendMail } from './mail';
@@ -65,12 +66,23 @@ async function sendOnce(user: User, to: string, key: string, render: () => Rende
 			text: r.text,
 			headers: { 'List-Unsubscribe': `<${unsub}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' }
 		});
+		logger.info('email', `Sent ${emailKind(key)}`, { userId: user.id });
 		return true;
 	} catch (e) {
 		db.delete(emailLog).where(and(eq(emailLog.userId, user.id), eq(emailLog.key, key))).run();
-		console.error(`[waterline] email "${key}" to user ${user.id} failed:`, (e as Error).message);
+		logger.error('email', `${cap(emailKind(key))} didn't send`, { userId: user.id, error: e });
 		return false;
 	}
+}
+
+/** "a task reminder", from an email's key */
+function emailKind(key: string) {
+	const kind = key.split(':')[0];
+	return (
+		{ reminder: 'a task reminder', overdue: 'an overdue alert', 'daily-digest': 'the daily digest', 'weekly-digest': 'the weekly digest', oor: 'an out-of-range alert' }[
+			kind
+		] ?? `an email (${kind})`
+	);
 }
 
 const longDate = (d: string) =>
@@ -224,7 +236,7 @@ export async function runNotifications(now = new Date()) {
 		try {
 			sent += (await notifyUser(user, now)).sent;
 		} catch (e) {
-			console.error(`[waterline] notifications for user ${user.id} failed:`, e);
+			logger.error('email', "Reminders and digests couldn't be worked out for an account", { userId: user.id, error: e });
 		}
 	}
 	return { sent };

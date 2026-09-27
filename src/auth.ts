@@ -6,6 +6,7 @@ import Google from '@auth/sveltekit/providers/google';
 import type { Provider } from '@auth/sveltekit/providers';
 import { env } from '$env/dynamic/private';
 import { authSecret } from '$lib/server/instance';
+import { logger } from '$lib/server/log';
 import { isValidPasswordHash, verifyPassword } from '$lib/server/password';
 import { adminEmail, googleClient, localAdminLogin } from '$lib/server/sign-in';
 import { googleAccountConflict, isEmailAllowed, LOCAL_ADMIN_FALLBACK_EMAIL, upsertUser } from '$lib/server/users';
@@ -22,13 +23,13 @@ export function checkAuthConfig() {
 	if (devLoginEnabled() && process.env.NODE_ENV === 'production') {
 		throw new Error('AUTH_DEV_LOGIN=true lets anyone sign in as anyone, so it is refused when NODE_ENV=production.');
 	}
-	if (devLoginEnabled()) console.warn('[waterline] AUTH_DEV_LOGIN is on: anyone can sign in as any email. Test use only.');
+	if (devLoginEnabled()) logger.warn('server', 'AUTH_DEV_LOGIN is on: anyone can sign in as any email. Test use only.');
 	const origin = env.ORIGIN?.trim() ?? '';
 	if (origin.startsWith('http://') && !/^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/.test(origin)) {
-		console.warn('[waterline] ORIGIN is plain http. Fine for a LAN-only server, but Google sign-in, offline logging and the install prompt need HTTPS.');
+		logger.warn('server', 'ORIGIN is plain http. Fine for a LAN-only server, but Google sign-in, offline logging and the install prompt need HTTPS.');
 	}
 	if (env.LOCAL_ADMIN_PASSWORD_HASH && !isValidPasswordHash(env.LOCAL_ADMIN_PASSWORD_HASH)) {
-		console.error("[waterline] LOCAL_ADMIN_PASSWORD_HASH isn't a valid hash, so it's ignored. Create one with: hash-password (in the Docker container) or npm run hash-password");
+		logger.error('server', "LOCAL_ADMIN_PASSWORD_HASH isn't a valid hash, so it's ignored. Create one with: hash-password (in the Docker container) or npm run hash-password");
 	}
 }
 
@@ -52,6 +53,7 @@ function providers(): Provider[] {
 					if (!checks.some(Boolean) || username.toLowerCase() !== local.username.toLowerCase()) return null;
 					const email = adminEmail() || LOCAL_ADMIN_FALLBACK_EMAIL;
 					const user = upsertUser({ email, name: 'Admin' });
+					logger.info('sign-in', 'Signed in with the local admin login', { userId: user.id });
 					return { id: user.id, email: user.email, name: user.displayName };
 				}
 			})
@@ -85,12 +87,32 @@ export const { handle, signIn, signOut } = SvelteKitAuth(async () => ({
 	skipCSRFCheck,
 	session: { strategy: 'jwt', maxAge: 60 * 60 * 24 * 90 },
 	pages: { signIn: '/signin', error: '/signin' },
+	logger: {
+		error(error) {
+			// a wrong password is logged where it's typed, on the sign-in page
+			if (error.name !== 'CredentialsSignin') logger.error('sign-in', `Sign-in failed (${error.name})`, { error });
+		},
+		warn(code) {
+			logger.warn('sign-in', `Sign-in warning: ${code}`);
+		},
+		debug() {}
+	},
 	callbacks: {
 		signIn({ account, profile }) {
 			if (account?.provider === 'google') {
-				if (!profile?.email || profile.email_verified === false || !isEmailAllowed(profile.email)) return false;
+				if (!profile?.email || profile.email_verified === false) {
+					logger.warn('sign-in', 'Google sign-in refused: the account has no verified email address');
+					return false;
+				}
+				if (!isEmailAllowed(profile.email)) {
+					logger.warn('sign-in', `Google sign-in refused: ${profile.email} isn't allowed on this server`);
+					return false;
+				}
 				// An address that now belongs to a different Google account doesn't get the old owner's data.
-				return !googleAccountConflict(profile.email, account.providerAccountId);
+				if (googleAccountConflict(profile.email, account.providerAccountId)) {
+					logger.warn('sign-in', `Google sign-in refused: ${profile.email} belongs to a different Google account now`);
+					return false;
+				}
 			}
 			return true;
 		},
@@ -101,6 +123,7 @@ export const { handle, signIn, signOut } = SvelteKitAuth(async () => ({
 					name: profile.name,
 					googleSub: account.providerAccountId
 				});
+				logger.info('sign-in', 'Signed in with Google', { userId: u.id });
 				token.uid = u.id;
 			} else if (user?.id) {
 				token.uid = user.id;

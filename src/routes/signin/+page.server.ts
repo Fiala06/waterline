@@ -3,6 +3,7 @@ import { devLoginEnabled, googleEnabled, localAdminEnabled, signInWith } from '.
 import { clearLoginFailures, loginBlockedMinutes, recordLoginFailure } from '$lib/server/rate-limit';
 import { safeReturn } from '$lib/server/redirect';
 import { setupNeeded } from '$lib/server/setup';
+import { logger } from '$lib/server/log';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ url }) => {
@@ -51,10 +52,18 @@ export const actions: Actions = {
 		if (!localAdminEnabled()) return fail(404);
 		const address = event.getClientAddress();
 		const wait = loginBlockedMinutes(address);
-		if (wait) return fail(429, { error: `Too many tries. Try again in ${wait} minute${wait === 1 ? '' : 's'}.` });
+		if (wait) {
+			logger.debug('sign-in', 'Local admin sign-in refused while paused', { address });
+			return fail(429, { error: `Too many tries. Try again in ${wait} minute${wait === 1 ? '' : 's'}.` });
+		}
+		const username = String((await event.request.clone().formData()).get('username') ?? '').slice(0, 60);
 		try {
 			const failed = await attempt(() => withProvider(event, 'local', ['username', 'password']), 'Wrong username or password.');
-			if (failed) recordLoginFailure(address);
+			if (failed) {
+				recordLoginFailure(address);
+				logger.warn('sign-in', 'Local admin sign-in failed: wrong username or password', { address, username });
+				if (loginBlockedMinutes(address)) logger.warn('sign-in', 'Local admin sign-in paused for 15 minutes after 5 wrong tries', { address });
+			}
 			return failed;
 		} catch (e) {
 			if (isRedirect(e)) clearLoginFailures(address); // signed in

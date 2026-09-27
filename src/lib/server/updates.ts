@@ -5,6 +5,7 @@
 import { env } from '$env/dynamic/private';
 import { compareVersions, displayVersion, parseChangelog, VERSION, type Release } from '$lib/changelog';
 import { getServerSettings } from './mail';
+import { logger } from './log';
 
 const SOURCE = 'https://raw.githubusercontent.com/Fiala06/waterline/main/CHANGELOG.md';
 const EVERY_MS = 12 * 3_600_000;
@@ -26,8 +27,11 @@ export async function checkForUpdate(fetcher: typeof fetch = fetch, now = Date.n
 	try {
 		const res = await fetcher(env.UPDATE_CHECK_URL || SOURCE, { signal: AbortSignal.timeout(8000) });
 		if (!res.ok) throw new Error(`HTTP ${res.status}`);
-		last = { at: now, ok: true, releases: newerReleases(await res.text()) };
-	} catch {
+		const releases = newerReleases(await res.text());
+		if (releases[0] && releases[0].version !== last?.releases[0]?.version) logger.info('update', `Waterline ${displayVersion(releases[0].version)} is available`);
+		last = { at: now, ok: true, releases };
+	} catch (e) {
+		logger.debug('update', "Couldn't check for a new version", { error: e });
 		last = { at: now, ok: false, releases: last?.releases ?? [] };
 	}
 }
