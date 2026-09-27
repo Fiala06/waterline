@@ -1,40 +1,21 @@
 # Ideas & Later
 
-A running list of ideas and nice-to-haves that aren't in the current scope. For planned post-v1 features, see section 10 of [design-brief.md](design-brief.md).
-
-## Delight / polish
-
-- **Swimming fish in the logo:** every so often, a small fish swims through the logo. Keep it subtle and occasional, not constant. Respect `prefers-reduced-motion` (no animation when it's set).
+A running list of ideas and nice-to-haves that aren't in the current scope. For planned post-v1 features, see section 10 of [design-brief.md](design-brief.md). When an idea is built it moves to [Done](#done); when part of one is built, that part moves there and the rest stays here.
 
 ## Features
 
-- **Tooltips:** *(built: an ⓘ beside each parameter in the water test and on Parameters & targets, and on tank volume and source water)* short explanations on hover/long-press for parameters, units, and less obvious controls (e.g. what KH means, why nitrite matters).
-- **Expense tracking:** log what's spent on each tank (livestock, plants, equipment, consumables) with totals over time.
+- **Expense tracking:** log what's spent on each tank (livestock, plants, equipment, consumables) with totals over time. Buying a saved product again could log its cost.
 - **Receipt uploads:** attach a photo or PDF receipt to an expense.
-- **Saved product links:** *(built: Settings → Products, with Reorder when dosing a saved product; expenses still to do)* keep links to products the user buys regularly (e.g. Seachem Prime on Amazon) for quick reordering. Could tie into dosing events and expenses.
-- **Backdated logs:** when adding any log, allow picking a different date/time for entries logged after the fact. The brief (5.4, 5.6) already has an editable date/time; make sure it's quick to change, e.g. shortcuts like "1 hour ago", "This morning", "Yesterday".
-- **Optional AI assistant integration:** *(first step built: "Summary for an AI assistant" on each tank's Overview and in Export, a text summary to copy into any assistant; Waterline itself sends nothing)* let users connect an AI agent of their choice (off by default) to help diagnose tank issues, e.g. "why is my nitrate climbing?" or "what's causing this algae?" using the tank's readings, events, and photos. Ideas:
+- **Optional AI assistant integration:** beyond copying a tank's summary into a chat, let users connect an AI agent of their choice (off by default) to help diagnose tank issues, e.g. "why is my nitrate climbing?" or "what's causing this algae?" using the tank's readings, events, and photos. Ideas:
   - Make the data AI-friendly: a clean read-only API and/or an MCP server so any agent can read tank history.
   - Per-user opt-in with a user-supplied API key (self-hosted, so no shared keys), and clear control over which tanks/data are shared.
   - Suggestions only; the agent never logs or changes data without the user confirming.
-- **Parameter presets by tank type:** *(built: new tanks get their type's preset; "Reset to defaults" on the targets page applies it)* when creating a tank, pre-select a suggested parameter set for its type, which the user can adjust. Examples:
-  - Freshwater: pH, ammonia, nitrite, nitrate, GH, KH, temperature.
-  - Planted: freshwater set + CO2, iron, phosphate, potassium.
-  - Brackish: freshwater set + salinity/specific gravity.
-  - Reef/saltwater: salinity/specific gravity, alkalinity, calcium, magnesium, phosphate, nitrate, ammonia, pH, temperature.
-  - Presets could also supply sensible default target ranges per type.
-- **Custom tank notes, one-off reminders, custom parameters:** already in the brief (tank notes field in 5.8, one-off tasks in 5.12, custom parameters in 5.8). Possible extras:
+- **More from notes, reminders and custom parameters:** tank notes, one-off tasks and custom parameters exist. Possible extras:
   - Notes as a running, dated list per tank (or pinned notes), not just one text field.
   - Quick "remind me about this tank" one-off reminder straight from the tank page or dashboard.
   - Let custom parameters be saved and reused across tanks.
-- **"Add to home screen" prompt on mobile:** the brief already makes the site an installable PWA; add a friendly prompt offering to install it as a phone app shortcut.
-  - Android/Chrome: use the browser's install prompt (`beforeinstallprompt`) behind an "Install app" button.
-  - iPhone/Safari: no automatic prompt exists, so show short instructions ("Tap Share, then Add to Home Screen").
-  - Don't nag: show it after sign-in or a second visit, make it dismissible, remember "not now", and never show it once installed.
-  - Also offer an "Install app" option in Settings.
-
 - **More languages:** translate the app (and emails) beyond English, with a language choice in Settings. Units and date formats already follow user settings; this would add translated text, plus number formats such as a decimal comma.
-- **Spotting trends:** go beyond the Charts screen by pointing out patterns automatically, e.g. "Nitrate has risen in each of your last 4 tests", "KH drifts down about 1 dKH a week between water changes", or "pH dips after dosing". Could appear as a note on the dashboard and in the digest email, and compare tanks side by side.
+- **More trends:** beyond runs of rising or falling tests and when a limit would be crossed, point out patterns like "KH drifts down about 1 dKH a week between water changes" or "pH dips after dosing". Could also appear in the digest email, and compare tanks side by side.
 
 ## To do later
 
@@ -42,13 +23,26 @@ A running list of ideas and nice-to-haves that aren't in the current scope. For 
   - A Changelog page under Settings (the footer's "Waterline v1.0 · self-hosted" could link to it), newest release first, with version, date and a few plain-language lines each.
   - After an update, show a small dismissible "What's new in 1.1" card or sheet once, then remember it was seen.
   - Bundle it with the app (e.g. from a `CHANGELOG.md` at build time) so it works offline and matches the running version.
-- **Bulk import from CSV:** *(built for livestock, plants and equipment: a template to download, a preview, then import, from each list's "Import from a spreadsheet"; History entries are still to do, and an import can't be undone in one step yet)* bring in past water changes, water tests and other entries from a spreadsheet or another app, instead of logging them one at a time.
+- **Importing History from CSV:** bring in past water changes, water tests and other entries from a spreadsheet or another app, instead of logging them one at a time, as livestock, plants and equipment can be.
   - Upload a CSV, match its columns to Waterline's fields (date, entry type, amount, one column per parameter), and preview the rows with any problems flagged before importing. Each row becomes a normal History entry.
   - Offer a template per entry type, and make the export's CSV import back unchanged.
-  - Read units and dates the way the person's settings show them, and let the whole import be undone in one step.
+  - Read units and dates the way the person's settings show them.
+  - Let a whole import be undone in one step, the list imports too.
 - **Pet names and photos:** fish and other livestock are pets, so let people name them and keep their pictures.
   - An optional nickname on a livestock entry, shown with the species ("Captain · Betta") on the Livestock tab, the dashboard's "In the tank" and in History ("Captain moved into the tank").
   - Livestock is one entry per species with a count, so let a few animals in a group have their own names (2 of 6 corys), or split a named fish into its own entry.
   - Photos of each pet: a profile photo, plus tagging photos from entries or the Photos page with the pet, so each one has its own gallery.
   - A small page per pet: name, species, photo, date added, notes and its own history.
   - On the public page, names and pet photos only if the owner turns them on.
+
+## Done
+
+- [x] **Parameter presets by tank type** (Sep 25, 2026): new tanks start with their type's parameters and target ranges (freshwater, planted, brackish, reef), and "Reset to defaults" on Parameters & targets applies them again.
+- [x] **"Add to home screen" prompt** (Sep 25, 2026): offered on phones from the second visit, dismissible and remembered, never once installed; the browser's install button on Android, Share › Add to Home Screen steps on iPhone, and Install app in Settings.
+- [x] **Backdated logs** (Sep 25–26, 2026): every log's date and time can be set to earlier with the date and time picker, or in one tap with 1 hour ago, This morning and Yesterday evening.
+- [x] **Import livestock, plants and equipment from CSV** (Sep 26, 2026): "Import from a spreadsheet" on each list, with a template to download and a preview before anything is added. Importing History is still an idea above.
+- [x] **Summary for an AI assistant** (Sep 26, 2026): a tank's readings, care log and stocking as text to copy into any assistant, from its Overview or Export data. Connecting an assistant directly is still an idea above.
+- [x] **Saved product links** (Sep 26, 2026): Settings → Products, one tap to reorder, and Reorder when dosing a saved product.
+- [x] **Tooltips** (Sep 26, 2026): an ⓘ beside each parameter in the water test and on Parameters & targets, and on tank volume and source water.
+- [x] **Spotting trends** (Sep 26, 2026): a note under the dashboard's Trends chart when a parameter has risen or fallen in each of the last 3 or more tests, or its pace since the last water change would cross a target within two weeks ("Nitrate has risen in each of your last 3 tests (8 → 14 ppm) and is on course to pass 20 ppm in about 9 days"); also in the summary for an AI assistant. More kinds of trend are still an idea above.
+- [x] **Swimming fish in the logo** (Sep 26, 2026): every minute or two a small fish swims through the water in the sidebar and sign-in logos; never with reduced motion or in a background tab.
