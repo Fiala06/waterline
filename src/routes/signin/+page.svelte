@@ -18,7 +18,7 @@
 
 <div class="wrap">
 	<div class="hero">
-		<Logo size={88} />
+		<Logo size={88} fish />
 		<h1>Waterline</h1>
 		<p>Water tests, water changes and maintenance for every tank you keep.</p>
 	</div>

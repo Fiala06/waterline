@@ -201,7 +201,7 @@
 
 <div class="shell" class:fullscreen>
 	<aside class="sidebar" aria-label="Main">
-		<a class="brand" href="/"><Logo size={28} wordmark wordSize={19} /></a>
+		<a class="brand" href="/"><Logo size={28} wordmark wordSize={19} fish /></a>
 		<nav class="nav">
 			{#each nav as n (n.href)}
 				<a href={n.href} class:active={isActive(n.href)} aria-current={isActive(n.href) ? 'page' : undefined}>
