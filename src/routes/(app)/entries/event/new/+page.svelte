@@ -30,6 +30,7 @@
 		closeHref="/?tank={data.tank.id}"
 		task={data.task}
 		recentProducts={data.recentProducts}
+		productLinks={data.productLinks}
 		inventory={data.inventory}
 		water={data.water}
 		error={form?.error}

@@ -50,6 +50,13 @@
       "when": 1790439461026,
       "tag": "0006_reading_prev_value",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1790475516884,
+      "tag": "0007_saved_products",
+      "breakpoints": true
     }
   ]
 }

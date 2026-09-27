@@ -7,6 +7,7 @@ import { setFlash } from '$lib/server/flash';
 import { parseTimeZone, str } from '$lib/server/forms';
 import { emailConfigured } from '$lib/server/mail';
 import { prefsFor } from '$lib/server/notifications';
+import { listProducts } from '$lib/server/products';
 import { updateUser } from '$lib/server/users';
 import { LEAD_OPTIONS } from '$lib/notify-options';
 import type { Actions, PageServerLoad } from './$types';
@@ -25,7 +26,8 @@ export const load: PageServerLoad = ({ locals }) => {
 			notifyEmail: prefs.notifyEmail ?? '',
 			unsubscribedAt: prefs.unsubscribedAt
 		},
-		emailReady: emailConfigured()
+		emailReady: emailConfigured(),
+		products: listProducts(locals.user!.id).length
 	};
 };
 

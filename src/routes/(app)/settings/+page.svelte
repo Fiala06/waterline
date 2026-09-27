@@ -260,6 +260,16 @@
 			<noscript><button class="btn btn-lg" form="settings-form">Save settings</button></noscript>
 		</section>
 
+		<section id="products" class="sec" aria-labelledby="products-h">
+			<h2 id="products-h">Products</h2>
+			<div class="group">
+				<a class="row link" href="/settings/products"
+					><span class="k">Saved product links</span>{#if data.products}<span class="v">{data.products}</span>{/if}<span class="chev" aria-hidden="true"
+					></span></a
+				>
+			</div>
+		</section>
+
 		<section id="data" class="sec" aria-labelledby="data-h">
 			<h2 id="data-h">Data</h2>
 			<div class="group">

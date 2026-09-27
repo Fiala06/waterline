@@ -19,6 +19,7 @@ import {
 	plants,
 	notificationPrefs,
 	photos,
+	products,
 	tankParameters,
 	tanks,
 	taskCompletions,
@@ -148,7 +149,13 @@ async function build(id: string, user: User, list: Tank[], format: 'zip' | 'csv'
 			unitSystem: user.unitSystem,
 			hardnessUnit: user.hardnessUnit,
 			timeZone: user.timeZone,
-			notifications: prefs ? { ...prefs, userId: undefined } : null
+			notifications: prefs ? { ...prefs, userId: undefined } : null,
+			products: db
+				.select()
+				.from(products)
+				.where(eq(products.userId, user.id))
+				.all()
+				.map((p) => ({ ...p, userId: undefined }))
 		},
 		tanks: list.map((t) => ({
 			...t,

@@ -41,6 +41,7 @@
 		closeHref,
 		task = null,
 		recentProducts = [],
+		productLinks = [],
 		error = null,
 		errors = {},
 		meta = null,
@@ -65,6 +66,8 @@
 		closeHref: string;
 		task?: { id: string; label: string; checked: boolean } | null;
 		recentProducts?: { product: string; amount: unknown; unit: unknown; at: string }[];
+		/** Saved products (Settings → Products): dosing one shows its Reorder link */
+		productLinks?: { name: string; url: string }[];
 		error?: string | null;
 		errors?: Record<string, string>;
 		meta?: string | null;
@@ -139,6 +142,7 @@
 	}
 	const fmtDose = (r: (typeof recentProducts)[number]) =>
 		`Last dosed ${r.amount ?? ''} ${r.unit ?? ''} on ${new Date(r.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone })}.`.replace(/\s+/g, ' ');
+	const savedLink = $derived(productLinks.find((l) => l.name.trim().toLowerCase() === product.trim().toLowerCase()));
 	const doseHint = $derived(
 		[lastDose ? fmtDose(lastDose) : '', recentProducts.length ? 'Recent products are listed first.' : ''].filter(Boolean).join(' ')
 	);
@@ -347,6 +351,14 @@
 						</div>
 					</div>
 					{#if doseHint}<span class="hint">{doseHint}</span>{/if}
+					{#if mode === 'new' && savedLink}
+						<a class="reorder" href={savedLink.url} target="_blank" rel="noopener noreferrer"
+							>Reorder {savedLink.name}<span aria-hidden="true"> ↗</span><span class="sr-only"> (opens in a new tab)</span></a
+						>
+					{:else if mode === 'new' && lastDose}
+						<!-- a product dosed before is one worth a link -->
+						<a class="reorder" href="/settings/products?name={encodeURIComponent(product.trim())}#add">Save a reorder link</a>
+					{/if}
 				{:else if category === 'maintenance'}
 					<fieldset class="field">
 						<legend class="label">What did you do?</legend>
@@ -738,6 +750,17 @@
 		margin: 0;
 		font-size: 13px;
 		color: var(--text-faint);
+	}
+	/* "Reorder Seachem Prime ↗" under the dosing fields */
+	.reorder {
+		align-self: flex-start;
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		margin: -12px 0 -8px;
+		font-size: 14px;
+		font-weight: 600;
+		color: var(--accent);
 	}
 
 	/* ── Dosing: product, amount, unit (D13 puts them in one row) ── */

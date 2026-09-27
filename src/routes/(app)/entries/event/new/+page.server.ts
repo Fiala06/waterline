@@ -11,6 +11,7 @@ import {
 } from '$lib/server/log-forms';
 import { createEvent, eventByClientId, recentDosingProducts } from '$lib/server/logs';
 import { photoFiles, preparePhotos, storePhotos } from '$lib/server/photos';
+import { listProducts } from '$lib/server/products';
 import { getTank } from '$lib/server/tanks';
 import { createTask, getTask } from '$lib/server/tasks';
 import { equipmentName } from '$lib/equipment';
@@ -38,6 +39,8 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 		when: date && time ? { date, time } : null,
 		task: completableTask(user, tank.id, taskKindFor(category), url.searchParams.get('task')),
 		recentProducts: category === 'dosing' ? recentDosingProducts(tank.id) : [],
+		// "Reorder" for a dosed product with a saved link
+		productLinks: category === 'dosing' ? listProducts(user.id).map((p) => ({ name: p.name, url: p.url })) : [],
 		inventory: ['livestock', 'equipment', 'maintenance'].includes(category)
 			? {
 					livestock: listLivestock(user.id, tank.id).map((l) => ({

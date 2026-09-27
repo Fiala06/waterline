@@ -284,6 +284,25 @@ export const exports = sqliteTable(
 	(t) => [index('exports_user').on(t.userId)]
 );
 
+// ── Saved products: links to reorder what the keeper buys again ──────────────
+
+export const products = sqliteTable(
+	'products',
+	{
+		id: id(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		name: text('name').notNull(),
+		url: text('url').notNull(),
+		note: text('note'), // "500 mL · about $19"
+		createdAt: createdAt()
+	},
+	(t) => [index('products_user').on(t.userId)]
+);
+
+export type Product = typeof products.$inferSelect;
+
 // ── Tank specs: equipment, livestock, plants ─────────────────────────────────
 
 export const EQUIPMENT_TYPES = ['filter', 'heater', 'light', 'co2', 'pump', 'skimmer', 'other'] as const;

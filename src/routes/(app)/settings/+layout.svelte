@@ -33,6 +33,7 @@
 		{ href: '/settings#units', label: 'Units', active: on('units') },
 		{ href: '/settings#notifications', label: 'Notifications', active: on('notifications') },
 		{ href: '/settings#theme', label: 'Theme', active: on('theme') },
+		{ href: '/settings/products', label: 'Products', active: path.startsWith('/settings/products') },
 		{ href: '/settings/export', label: 'Export', active: path.startsWith('/settings/export') },
 		...(data.user.isAdmin ? [{ href: '/settings/server', label: 'Server', admin: true, active: path.startsWith('/settings/server') }] : [])
 	]);
