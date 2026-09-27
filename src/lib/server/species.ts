@@ -99,4 +99,28 @@ export function searchSpecies(
 		.map(({ sp, name }) => (name && name !== sp.c[0] ? { ...sp, c: [name, ...sp.c.filter((n) => n !== name)] } : sp));
 }
 
+/**
+ * What a name exactly is (a common or scientific name, ignoring case, accents
+ * and punctuation), for imports. Common names and the tank's water count first.
+ * A name several species share ("Nerite snail") gives only their kind, if they
+ * share one.
+ */
+export function exactSpecies(name: string, water?: 'fresh' | 'marine' | null) {
+	const q = norm(name);
+	if (q.length < 2) return null;
+	const found: { sp: Species; rank: number }[] = [];
+	for (const { sp, keys } of index) {
+		const k = keys.find((k) => k.text === q);
+		if (k) found.push({ sp, rank: (k.name != null ? 2 : 0) + (water && sp.water === water ? 1 : 0) });
+	}
+	if (!found.length) return null;
+	const top = Math.max(...found.map((f) => f.rank));
+	const best = found.filter((f) => f.rank === top);
+	const kinds = new Set(best.map((f) => f.sp.kind));
+	return {
+		species: best.length === 1 ? best[0].sp : null,
+		kind: kinds.size === 1 ? best[0].sp.kind : null
+	};
+}
+
 export const speciesCount = species.length;

@@ -34,7 +34,9 @@
 			href="{base}/equipment/new"
 			label="Add equipment"
 			primary
-		/>
+		>
+			<a class="import-link" href="{base}/import/equipment">Import a list from a spreadsheet</a>
+		</EmptyState>
 	{/if}
 	{#if data.past.length}
 		<details class="past">
@@ -44,6 +46,7 @@
 			</ul>
 		</details>
 	{/if}
+	{#if data.items.length}<a class="import-link" href="{base}/import/equipment">Import from a spreadsheet</a>{/if}
 </div>
 
 <style>

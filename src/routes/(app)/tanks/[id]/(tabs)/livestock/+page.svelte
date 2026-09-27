@@ -42,7 +42,9 @@
 				href="{base}/livestock/new"
 				label="Add livestock"
 				primary
-			/>
+			>
+				<a class="import-link" href="{base}/import/livestock">Import a list from a spreadsheet</a>
+			</EmptyState>
 			{#if data.past.length}{@render past()}{/if}
 		{:else}
 			<p class="total">{data.animals} animal{data.animals === 1 ? '' : 's'} · {data.items.length} species</p>
@@ -112,6 +114,7 @@
 					<div class="tfoot" role="row"><div role="cell">{@render past()}</div></div>
 				{/if}
 			</div>
+			<a class="import-link" href="{base}/import/livestock">Import from a spreadsheet</a>
 		{/if}
 	</div>
 

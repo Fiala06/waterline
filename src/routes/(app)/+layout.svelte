@@ -77,6 +77,9 @@
 			} as Record<string, string | undefined>
 		)[id];
 		if (tankPage) return { title: tankPage, crumbs: [tanks, { label: tankName, href: `/tanks/${page.params.id}` }] };
+		if (id === '/(app)/tanks/[id]/import/[list=importList]') {
+			return { title: `Import ${page.params.list}`, crumbs: [tanks, { label: tankName, href: `/tanks/${page.params.id}` }] };
+		}
 		if (id === '/(app)/tasks') return { title: 'Tasks', actions: [{ label: 'New task', href: newTaskHref }] };
 		if (id === '/(app)/tasks/new') return { title: 'New task', crumbs: [tasks] };
 		if (id === '/(app)/tasks/[id]') return { title: 'Edit task', crumbs: [tasks] };

@@ -918,6 +918,22 @@ select.input:disabled {
 	outline-offset: 2px;
 }
 
+/* "Import from a spreadsheet" under a tank's livestock, plants and equipment */
+.import-link {
+	align-self: flex-start;
+	display: inline-flex;
+	align-items: center;
+	min-height: 44px;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--accent);
+}
+@media (hover: hover) {
+	.import-link:hover {
+		text-decoration: underline;
+	}
+}
+
 /* Checkbox row: "Also complete task …" */
 .check-row {
 	display: flex;

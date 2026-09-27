@@ -42,7 +42,7 @@ A running list of ideas and nice-to-haves that aren't in the current scope. For 
   - A Changelog page under Settings (the footer's "Waterline v1.0 · self-hosted" could link to it), newest release first, with version, date and a few plain-language lines each.
   - After an update, show a small dismissible "What's new in 1.1" card or sheet once, then remember it was seen.
   - Bundle it with the app (e.g. from a `CHANGELOG.md` at build time) so it works offline and matches the running version.
-- **Bulk import from CSV:** bring in past water changes, water tests and other entries from a spreadsheet or another app, instead of logging them one at a time.
+- **Bulk import from CSV:** *(built for livestock, plants and equipment: a template to download, a preview, then import, from each list's "Import from a spreadsheet"; History entries are still to do, and an import can't be undone in one step yet)* bring in past water changes, water tests and other entries from a spreadsheet or another app, instead of logging them one at a time.
   - Upload a CSV, match its columns to Waterline's fields (date, entry type, amount, one column per parameter), and preview the rows with any problems flagged before importing. Each row becomes a normal History entry.
   - Offer a template per entry type, and make the export's CSV import back unchanged.
   - Read units and dates the way the person's settings show them, and let the whole import be undone in one step.

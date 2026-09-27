@@ -1,0 +1,331 @@
+<script lang="ts">
+	// Bulk import, step 1: the template to fill in, what its columns take, and
+	// the file. Step 2 (ImportPreview) shows every row before anything is added.
+	import { enhance } from '$app/forms';
+	import ImportPreview from '$lib/components/ImportPreview.svelte';
+	let { data, form } = $props();
+
+	const title = $derived(`Import ${data.list}`);
+	const back = $derived(`/tanks/${data.tank.id}/${data.list}`);
+	const per = $derived({ livestock: 'species', plants: 'plant', equipment: 'piece of equipment' }[data.list]);
+	const preview = $derived(form && 'preview' in form ? form.preview : null);
+	let busy = $state(false);
+</script>
+
+<svelte:head><title>{title} · {data.tank.name}</title></svelte:head>
+
+<div class="imp">
+	<!-- phones; on desktop the header has the title -->
+	<div class="bar hide-desk">
+		<a class="cancel" href={back}>Cancel</a>
+		<h1>{title}</h1>
+		<span aria-hidden="true"></span>
+	</div>
+
+	<div class="body">
+		{#if preview}
+			{#key preview}<ImportPreview list={data.list} file={preview.file} rows={preview.rows} ignored={preview.ignored} />{/key}
+		{:else}
+			<form
+				method="POST"
+				action="?/check"
+				enctype="multipart/form-data"
+				use:enhance={() => {
+					busy = true;
+					return async ({ update }) => {
+						await update();
+						busy = false;
+					};
+				}}
+			>
+				{#if form && 'error' in form}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
+				<ol class="steps">
+					<li>
+						<div class="st">
+							<h2>Start from the template</h2>
+							<p>Its first row names the columns Waterline reads. Open it in Excel, Numbers or Google Sheets and replace the example rows.</p>
+						</div>
+						<a class="btn" href="/tanks/{data.tank.id}/import/{data.list}/template.csv" download>Download template</a>
+					</li>
+					<li>
+						<div class="st">
+							<h2>Add one row per {per}</h2>
+							<p>Leave a cell empty when you don't know it.</p>
+						</div>
+						<details class="cols">
+							<summary>What each column takes</summary>
+							<dl>
+								{#each data.columns as c (c.header)}
+									<div><dt>{c.header}</dt><dd>{c.help}</dd></div>
+								{/each}
+							</dl>
+						</details>
+					</li>
+					<li>
+						<div class="st">
+							<h2>Choose the file</h2>
+							<p>Save it as CSV. You'll see every row before anything is added.</p>
+						</div>
+						<label class="drop" class:busy>
+							<input
+								type="file"
+								name="file"
+								accept=".csv,text/csv"
+								required
+								onchange={(e) => e.currentTarget.files?.length && e.currentTarget.form?.requestSubmit()}
+							/>
+							<span class="drop-t">{busy ? 'Reading the file…' : 'Choose a CSV file'}</span>
+							<span class="drop-s hide-phone">or drop it here</span>
+						</label>
+					</li>
+				</ol>
+				<div class="foot">
+					<a class="btn hide-phone" href={back}>Cancel</a>
+					<button class="btn btn-primary go" disabled={busy}>Check the file</button>
+				</div>
+			</form>
+		{/if}
+	</div>
+</div>
+
+<style>
+	.imp {
+		max-width: 560px;
+		min-height: 100dvh;
+		display: flex;
+		flex-direction: column;
+	}
+	.bar {
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
+		align-items: center;
+		padding: 8px 20px;
+	}
+	.cancel {
+		font-size: 15px;
+		color: var(--text-muted);
+		min-height: 44px;
+		display: flex;
+		align-items: center;
+		justify-self: start;
+	}
+	h1 {
+		margin: 0;
+		font-size: 17px;
+		font-weight: 600;
+	}
+	.body {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		padding: 8px 20px 0;
+	}
+	form {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+	}
+	.banner {
+		margin: 0;
+	}
+
+	/* three numbered steps */
+	.steps {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		counter-reset: step;
+		display: flex;
+		flex-direction: column;
+		gap: 22px;
+	}
+	.steps li {
+		counter-increment: step;
+		position: relative;
+		padding-left: 42px;
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 12px;
+	}
+	.steps li::before {
+		content: counter(step);
+		position: absolute;
+		left: 0;
+		top: -2px;
+		width: 28px;
+		height: 28px;
+		border-radius: 14px;
+		display: grid;
+		place-items: center;
+		background: var(--surface-hi);
+		color: var(--accent);
+		font-size: 14px;
+		font-weight: 700;
+	}
+	.st {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+	h2 {
+		margin: 0;
+		font-size: 16px;
+		font-weight: 600;
+	}
+	.st p {
+		margin: 0;
+		font-size: 14px;
+		line-height: 1.45;
+		color: var(--text-muted);
+	}
+
+	/* the columns, folded away until wanted */
+	.cols {
+		width: 100%;
+		border-radius: 12px;
+		background: var(--surface);
+		border: 1px solid var(--border);
+	}
+	.cols summary {
+		min-height: 44px;
+		padding: 0 14px;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 14px;
+		font-weight: 600;
+		cursor: pointer;
+		list-style: none;
+	}
+	.cols summary::-webkit-details-marker {
+		display: none;
+	}
+	.cols summary::after {
+		content: '▾';
+		margin-left: auto;
+		color: var(--text-muted);
+	}
+	.cols[open] summary::after {
+		content: '▴';
+	}
+	dl {
+		margin: 0;
+		padding: 0 14px 12px;
+		display: flex;
+		flex-direction: column;
+	}
+	dl div {
+		padding: 8px 0;
+		border-top: 1px solid var(--divider-soft);
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+	dt {
+		font-size: 14px;
+		font-weight: 600;
+	}
+	dd {
+		margin: 0;
+		font-size: 13px;
+		color: var(--text-muted);
+	}
+
+	/* the file picker as a drop area: the input covers it, so a dropped file lands in it */
+	.drop {
+		position: relative;
+		width: 100%;
+		min-height: 88px;
+		padding: 16px;
+		border-radius: 14px;
+		border: 1px dashed var(--border-strong);
+		background: var(--surface-2);
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 2px;
+		text-align: center;
+		cursor: pointer;
+	}
+	.drop input {
+		position: absolute;
+		inset: 0;
+		opacity: 0;
+		cursor: pointer;
+	}
+	.drop:focus-within {
+		outline: 2px solid var(--accent);
+		outline-offset: 2px;
+	}
+	.drop-t {
+		font-size: 15px;
+		font-weight: 600;
+		color: var(--accent);
+	}
+	.busy .drop-t {
+		color: var(--text-muted);
+	}
+	.drop-s {
+		font-size: 13px;
+		color: var(--text-faint);
+	}
+	.foot {
+		margin-top: auto;
+		padding: 8px 0 calc(24px + env(safe-area-inset-bottom));
+		display: flex;
+		gap: 12px;
+	}
+	.go {
+		flex: 1;
+		height: 56px;
+		border-radius: 14px;
+		font-size: 17px;
+	}
+
+	@media (hover: hover) {
+		.drop:hover {
+			border-color: var(--accent);
+		}
+	}
+
+	/* Desktop: a centered card, like Add livestock (the header has the title) */
+	@media (min-width: 1024px) {
+		.imp {
+			min-height: 0;
+			max-width: 720px;
+			width: calc(100% - 64px);
+			margin: 28px auto;
+			padding: 24px 28px;
+			background: var(--surface);
+			border: 1px solid var(--border);
+			border-radius: 20px;
+		}
+		.body {
+			padding: 0;
+		}
+		.cols {
+			background: var(--surface-2);
+		}
+		.drop {
+			background: var(--bg);
+		}
+		.foot {
+			margin-top: 8px;
+			padding: 20px 0 0;
+			border-top: 1px solid var(--border);
+			justify-content: flex-end;
+		}
+		.foot .btn {
+			height: 44px;
+			border-radius: 12px;
+			font-size: 15px;
+		}
+		.go {
+			flex: none;
+			padding: 0 22px;
+		}
+	}
+</style>

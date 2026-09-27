@@ -45,6 +45,7 @@
 	{#if !data.plants.length}
 		<EmptyState icon="livestock" title="No plants yet" text="Add stems, carpets, epiphytes and mosses to track how they're doing.">
 			<button type="button" class="btn btn-primary" onclick={() => (sheets.add = true)}>Add plant</button>
+			<a class="import-link" href="/tanks/{data.tankHead.id}/import/plants">Import a list from a spreadsheet</a>
 		</EmptyState>
 	{/if}
 
@@ -78,6 +79,7 @@
 			</section>
 		{/if}
 	{/each}
+	{#if data.plants.length}<a class="import-link" href="/tanks/{data.tankHead.id}/import/plants">Import from a spreadsheet</a>{/if}
 </div>
 
 <Sheet bind:open={sheets.add} title="Add plant" width={480}>
