@@ -12,6 +12,8 @@ The files in `designs/` are **design references built in HTML** — they show in
 **High-fidelity.** Colors, type sizes, spacing, radii, copy and states are final. Recreate pixel-accurately. Imagery is placeholder (striped boxes labelled "tank cover photo" etc.) — real user photos go there.
 
 ## Recommended stack (no codebase exists yet)
+*As built, the app follows this with a few changes: its own 5-minute scheduler instead of `node-cron`, a hand-written service worker instead of `@vite-pwa/sveltekit`, full photos at 2048px and thumbnails at 400px as planned, and hand-rolled SVG charts. Most configuration moved from env vars into Settings › Server settings; see the repo's README.*
+
 - **SvelteKit** (Node adapter) — pages + server + form actions in one app; SSR is required for public pages (SEO).
 - **SQLite** via Drizzle ORM (single file in `/data`).
 - **Auth.js** (`@auth/sveltekit`) with Google provider + credentials provider for the optional local admin.

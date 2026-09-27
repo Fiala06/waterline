@@ -1,6 +1,6 @@
 # CLAUDE.md — Waterline
 
-You are building **Waterline**, a self-hosted aquarium tank log (PWA). The design is final and lives in `design_handoff_waterline/`. Read `design_handoff_waterline/README.md`, `DATA_MODEL.md` and `BUILD_PLAN.md` before writing code.
+You are building **Waterline**, a self-hosted aquarium tank log (PWA). The design is final and lives in `design_handoff_waterline/`. Read `design_handoff_waterline/README.md` and `DATA_MODEL.md` before writing code. Version 1 (`BUILD_PLAN.md`) is done; new work comes from GitHub issues.
 
 ## Ground rules
 - The `designs/*.dc.html` files are **visual references**, not code to copy. Open them in a browser (keep `support.js` beside them) or read their inline styles for exact values. Dark files are canonical; `* Light.dc.html` show the light theme.
@@ -10,10 +10,10 @@ You are building **Waterline**, a self-hosted aquarium tank log (PWA). The desig
 - Copy (button labels, empty states, error text) comes from the designs verbatim unless it contains sample data.
 
 ## Stack
-SvelteKit (adapter-node) · TypeScript · Drizzle ORM + better-sqlite3 (`/data/waterline.db`) · Auth.js (Google + credentials for local admin) · Nodemailer (SMTP) + Mailgun HTTP API · node-cron · sharp · satori + resvg (OG images) · @vite-pwa/sveltekit · Vitest + Playwright. Single Dockerfile, volume `/data`.
+SvelteKit (adapter-node) · TypeScript · Drizzle ORM + better-sqlite3 (`/data/waterline.db`, migrations in `drizzle/` via `npm run db:generate`) · Auth.js (Google + credentials for local admin) · Nodemailer (SMTP) + Mailgun HTTP API · a 5-minute scheduler (`src/lib/server/scheduler.ts`) · sharp · satori + resvg (OG images) · yazl (backup ZIPs) · a hand-written service worker (`src/service-worker.ts`) · Vitest + Playwright. Single Dockerfile, volume `/data`.
 
 ## Env vars
-`ORIGIN`, `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `ADMIN_EMAIL` (becomes admin on first Google sign-in), `LOCAL_ADMIN_PASSWORD_HASH` (optional), `DATA_DIR=/data`, `ENCRYPTION_KEY` (for stored mail secrets).
+Only `ORIGIN` is required. Google sign-in, the admin, who can sign in, the local admin login and email are set in the app (Settings › Server settings, stored in `server_settings`, secrets encrypted). Optional: `DATA_DIR` (`/data`), `AUTH_SECRET` / `ENCRYPTION_KEY` (otherwise generated into `/data/keys.json`), `LOCAL_ADMIN_PASSWORD_HASH`, `BODY_SIZE_LIMIT`, `ADDRESS_HEADER` / `XFF_DEPTH`, `UPDATE_CHECK_URL`. The older `AUTH_GOOGLE_*`, `ADMIN_EMAIL`, `ALLOWED_EMAILS`, `OPEN_SIGNUP` still apply until saved in the app. Tests use `AUTH_DEV_LOGIN=true` and `EMAIL_TRANSPORT=outbox` (never in production).
 
 ## Conventions
 - Store metric; convert at the edge with helpers in `src/lib/units.ts` (unit-tested).
@@ -22,8 +22,11 @@ SvelteKit (adapter-node) · TypeScript · Drizzle ORM + better-sqlite3 (`/data/w
 - Every write that changes tank state also writes an `events` row, so History stays complete.
 - Public routes (`/t/[slug]`, `/s/[id]`) are SSR, never expose private fields, and load GA4 only when configured and consented.
 - Email sending goes through `src/lib/server/mail/` with `mailgun.ts` and `smtp.ts` behind one interface.
+- AI assistant access (`/mcp`, `/api/v1`, `src/lib/server/assistant/`) is read-only, limited to a token's tanks, and signed in by the token alone, never the session cookie.
+- Server problems go to the log (`logger` in `src/lib/server/log.ts`), which admins read in Settings › Server settings › Logs.
 
 ## Workflow
-- Work milestone by milestone from `BUILD_PLAN.md`. After each: run `npm run check`, `npm test`, and the Playwright core-flow test once it exists, then commit.
+- Work one GitHub issue at a time, on `dev`; `main` gets releases through a pull request. After each change: run `npm run check`, `npm test` and the Playwright tests (`npm run test:e2e`), add a line for people who use the app under `## Unreleased` in `CHANGELOG.md`, then commit with `Closes #N`.
+- Keep `design_handoff_waterline/DATA_MODEL.md` in step with the schema, and the README with what the app does.
 - Compare each finished screen against its design label (e.g. `03 Dashboard`, `D5 Tasks`) at 390px and 1280px widths, in both themes.
 - Ask the product owner before inventing features not in the designs. Decided: reef and other tank-type presets live in `defaultParameters()` in `src/lib/params.ts`; the bundled species list is built from Wikipedia + Wikidata (`npm run build:species`, see `src/lib/server/data/SPECIES_SOURCES.md`).

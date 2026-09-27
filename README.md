@@ -1,16 +1,54 @@
-# Waterline
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/logo-dark.svg">
+    <img src="docs/logo-light.svg" alt="Waterline" width="240" height="56">
+  </picture>
+</h1>
 
-Self-hosted, mobile-first aquarium tracker. Log water tests and water changes tank-side, spot trends on charts, and get email reminders for maintenance. Google sign-in, imperial/metric units, full data export.
+<p align="center">
+  A self-hosted, phone-first log for your aquariums.<br>
+  Log water tests at the tank, see trends on charts, and get reminded when maintenance is due.
+</p>
 
-Design handoff and specs live in [`design_handoff_waterline/`](design_handoff_waterline/README.md); the build order is in [`BUILD_PLAN.md`](design_handoff_waterline/BUILD_PLAN.md). Ideas for later are tracked as [GitHub issues](https://github.com/Fiala06/waterline/issues); what's changed, release by release, is in [`CHANGELOG.md`](CHANGELOG.md).
+<p align="center">
+  <a href="https://github.com/Fiala06/waterline/actions/workflows/ci.yml"><img src="https://github.com/Fiala06/waterline/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+  <a href="https://github.com/Fiala06/waterline/releases"><img src="https://img.shields.io/github/v/release/Fiala06/waterline" alt="Latest release"></a>
+</p>
 
-## Status
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/desktop-dashboard-dark.png">
+  <img src="docs/screenshots/desktop-dashboard-light.png" alt="The dashboard on a computer: latest readings with their status, days since the last water change, tasks due, a nitrate chart and recent activity">
+</picture>
 
-All 13 milestones of the build plan are done: sign-in, setup, tanks and targets, logging, dashboard, history, charts, photos, tasks, email (reminders, overdue alerts, digests, out-of-range alerts, one-click actions and unsubscribe), settings and server settings, export (full backup ZIP or water tests CSV), and the installable app (home-screen icon, splash, install prompt, offline logging that syncs later), tank specs (equipment, livestock with the bundled species list, plants), and public pages (opt-in read-only tank pages, photo share links, share images, sitemap, optional GA4 with a consent banner).
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/phone-dashboard-dark.png">
+    <img src="docs/screenshots/phone-dashboard-light.png" alt="The dashboard on a phone: two readings out of range, days since the water change, and each reading's status" width="260">
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/phone-log-test-dark.png">
+    <img src="docs/screenshots/phone-log-test-light.png" alt="Logging a water test: every parameter with its last reading, and Use last readings" width="260">
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/phone-charts-dark.png">
+    <img src="docs/screenshots/phone-charts-light.png" alt="Charts: nitrate over a month against its target band, with water changes marked" width="260">
+  </picture>
+</p>
 
-The admin sets up the server in **Settings › Server settings**: Google sign-in and who can sign in, the local admin login, email delivery (Mailgun or any SMTP server, with a *Send test email* button), public pages, and switches for reminder emails and the check for new versions.
+Each server is yours: people sign in with Google (or the local admin login) and see only their own tanks. It works in any browser and installs as an app on phones, with offline logging that syncs later. What's changed, release by release, is in [`CHANGELOG.md`](CHANGELOG.md); ideas and planned work are [GitHub issues](https://github.com/Fiala06/waterline/issues).
 
-Emails links (Mark done, Snooze, unsubscribe) use `ORIGIN`, so set it to the address people use to reach the server.
+## What it does
+
+- **Log at the tank:** water tests with each reading's status as you type (`✓ OK`, `▲ Near`, `✕ High`), water changes, dosing, maintenance, livestock and equipment changes, observations, notes and photos. Every field is optional, times can be backdated, *Use last readings* fills in the previous test, and entries made offline sync later.
+- **See how it's going:** a dashboard per tank with the latest readings, days since the water change and what's due; charts with water changes and doses marked, and the same parameter in your other tanks; notes when a reading keeps rising, is heading past its target, drifts between water changes or changes after a dose; History and Photos.
+- **Tasks and email:** recurring or one-off tasks, from completion or on a fixed schedule, with snooze. Reminders, overdue and out-of-range alerts by email, one at a time or as a daily or weekly digest, with *Mark done* and *Snooze* right in the email.
+- **What's in the tank:** livestock (with a built-in species list, and names and photos for pets), plants and equipment, and what each tank costs, with receipts.
+- **Parameters your way:** presets for freshwater, planted, brackish and reef tanks, your own targets and custom parameters, imperial or metric, and hardness in dGH or ppm.
+- **Share it, if you like:** an opt-in public page per tank, with share images and search settings, and share links for single photos. Private notes, tasks and exact times are never public.
+- **Your data:** a full backup (ZIP with photos) or a CSV of water tests, imports from spreadsheets (undone in one step), a summary to paste into an AI assistant, or [read-only access for one](#ai-assistants-mcp) over MCP.
+- **Easy to run:** one Docker container and one data folder. The admin sets up sign-in, email (Mailgun or any SMTP server) and public pages in the app, with logs for troubleshooting and a note when a new version is out.
+
+The design it was built from is in [`design_handoff_waterline/`](design_handoff_waterline/README.md).
 
 ## Run it locally
 
@@ -53,7 +91,7 @@ GitHub Actions also publishes ready-built images (linux/amd64), so you don't hav
 | Image | Built from |
 |---|---|
 | `ghcr.io/fiala06/waterline:latest` | every push to `main` (also tagged `:main`) |
-| `ghcr.io/fiala06/waterline:1.1.0` | each release, for staying on a version; `:1.1` is the newest 1.1.x |
+| `ghcr.io/fiala06/waterline:1.3.0` | each release, for staying on a version; `:1.3` is the newest 1.3.x |
 | `ghcr.io/fiala06/waterline:dev` | every push to `dev` |
 | `ghcr.io/fiala06/waterline:sha-xxxxxxx` | every build, for pinning or rolling back |
 
@@ -65,7 +103,7 @@ Everything else is set in the app. These are the environment variables left, for
 
 | Variable | Needed | What it does |
 |---|---|---|
-| `ORIGIN` | yes | Public URL people open, e.g. `https://tanks.example.com` |
+| `ORIGIN` | yes | Public URL people open, e.g. `https://tanks.example.com`. Links in emails (Mark done, Snooze, unsubscribe) and public pages use it too |
 | `ADDRESS_HEADER` / `XFF_DEPTH` | behind a proxy | e.g. `X-Forwarded-For` and `1`, so failed logins are limited per visitor rather than for everyone at once |
 | `DATA_DIR` | optional | Defaults to `/data` in Docker, `./data` locally |
 | `BODY_SIZE_LIMIT` | optional | Largest upload. The Docker image sets `64M` so photos fit; outside Docker set it yourself, since Node defaults to 512K |
@@ -94,7 +132,7 @@ Servers set up before these settings moved into the app keep working: `AUTH_GOOG
 
 3. With HTTPS, point your reverse proxy (Nginx Proxy Manager, SWAG, Cloudflare Tunnel…) at `http://<unraid-ip>:<host port>`. Either way, open the `ORIGIN` URL and always use that one: any other address loads, but saving fails the cross-site check.
 
-**Updates:** each push to `main` (or `dev`) publishes a new image, and Unraid's Docker tab shows *update ready* for the container. Applying it keeps everything in `/data`; database migrations run on start. When a new version is on `main`, admins also see *Update to 1.2 available* under Settings in the app's menu; after updating, everyone gets the release's highlights once on the dashboard, and the full list is in **Settings › What's new**.
+**Updates:** each push to `main` (or `dev`) publishes a new image, and Unraid's Docker tab shows *update ready* for the container. Applying it keeps everything in `/data`; database migrations run on start. When a new version is on `main`, admins also see *Update to 1.4 available* under Settings in the app's menu; after updating, everyone gets the release's highlights once on the dashboard, and the full list is in **Settings › What's new**.
 
 To run `latest` and `dev` side by side, create two containers with different names, host ports, data folders and `ORIGIN` values. Never point two containers at the same data folder.
 
@@ -125,11 +163,11 @@ Each person can let an AI assistant, like Claude or ChatGPT, read their tanks: i
 
 ```bash
 npm run check      # types + Svelte
-npm test           # unit tests (units, status, time zones, passwords, sign-in limits)
-npm run test:e2e   # Playwright: sign in → setup → create tank → log test → dashboard → complete task
+npm test           # unit tests: units, status, trends, time zones, imports, money, email, MCP and more
+npm run test:e2e   # Playwright, on a phone and a desktop viewport: the core flow and each feature
 ```
 
-The first time, install the Playwright browser with `npx playwright install chromium`.
+The first time, install the Playwright browser with `npx playwright install chromium`. The core flow (`e2e/core-flow.test.ts`) is sign in → setup → create tank → log test → dashboard → complete task. `AUDIT=1 npx playwright test e2e/audit.test.ts --project=desktop` also checks every screen, at phone and desktop sizes in both themes, for accessibility problems, small tap targets and overflow, and writes what it finds to `test-results/audit.json`.
 
 ## Releases
 
@@ -139,4 +177,16 @@ Changes go to `dev` first, then to `main` through a pull request (`gh pr create 
 
 ## Stack
 
-SvelteKit 2 (Svelte 5, adapter-node) · TypeScript · Drizzle ORM + better-sqlite3 · Auth.js · Vitest + Playwright. Values are stored metric (L, °C, cm, dGH) and converted for display in `src/lib/units.ts`; parameter status rules are in `src/lib/status.ts`.
+SvelteKit 2 (Svelte 5, adapter-node) · TypeScript · Drizzle ORM + better-sqlite3 · Auth.js · Nodemailer and the Mailgun HTTP API · sharp (photos) · satori + resvg (share images) · a hand-written service worker (offline) · Vitest + Playwright. Values are stored metric (L, °C, cm, dGH) and converted for display in `src/lib/units.ts`; parameter status rules are in `src/lib/status.ts`. Database migrations are in `drizzle/` (`npm run db:generate` after changing `src/lib/server/db/schema.ts`) and run on start.
+
+## Documentation
+
+| File | What's in it |
+|---|---|
+| [`CHANGELOG.md`](CHANGELOG.md) | What's new in each release, as the app shows it |
+| [`CLAUDE.md`](CLAUDE.md) | Ground rules and conventions for working on the code |
+| [`design_handoff_waterline/`](design_handoff_waterline/README.md) | The design: tokens, screens, behavior, and the HTML design files |
+| [`DATA_MODEL.md`](design_handoff_waterline/DATA_MODEL.md) | The database tables |
+| [`BUILD_PLAN.md`](design_handoff_waterline/BUILD_PLAN.md) | The order the first version was built in |
+| [`design-brief.md`](design-brief.md) | The original brief the design answered |
+| [`SPECIES_SOURCES.md`](src/lib/server/data/SPECIES_SOURCES.md) | Where the bundled species list comes from, and its license |

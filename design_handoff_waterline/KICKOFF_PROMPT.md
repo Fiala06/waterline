@@ -1,5 +1,7 @@
 # Kickoff prompt for Claude Code
 
+*Kept for history: this is the prompt the project was started with. `CLAUDE.md` is now at the repo root, and all milestones of `BUILD_PLAN.md` are done.*
+
 Paste this into Claude Code from the root of an empty repo (e.g. `Fiala06/waterline`) with the `design_handoff_waterline/` folder copied in. Move `design_handoff_waterline/CLAUDE.md` to the repo root first.
 
 ---

@@ -1,5 +1,7 @@
 # Waterline — suggested build order
 
+All 13 milestones are done: they were the first release, 1.0.0. Later work is tracked as [GitHub issues](https://github.com/Fiala06/waterline/issues), and each release's changes are in [`CHANGELOG.md`](../CHANGELOG.md).
+
 1. **Scaffold**: SvelteKit + Drizzle/SQLite + Dockerfile (`/data` volume) + design tokens as CSS variables (dark/light via `data-theme`, default system).
 2. **Auth**: Google (Auth.js) + optional local admin (env-seeded password hash). First-login setup (02/D2).
 3. **Tanks**: create/edit/archive (10/D4), parameters & targets with custom params (G7).

@@ -2,7 +2,7 @@
 
 **Design brief for site layout and UI**
 
-*Version 1 scope.*
+*Version 1 scope. Kept for history: the design answered it (`design_handoff_waterline/`), and the app built from that is described in the [README](README.md).*
 
 ## 1. Project overview
 
