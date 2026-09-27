@@ -1,7 +1,9 @@
-// Your profile photo, copied from your Google account at each Google sign-in
-// into DATA_DIR/avatars, so browsers never load it from Google (it stays
-// private, and it works offline). Without one, the account menu shows initials.
-import { mkdirSync, writeFileSync } from 'node:fs';
+// Profile photos in DATA_DIR/avatars, served only to their owner from /avatar,
+// so browsers never load them from Google (they stay private, and work
+// offline). The Google photo is copied again at each Google sign-in; a photo
+// someone uploads is kept beside it and shown instead, whatever Google has.
+// Without either, the account menu shows initials.
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { eq } from 'drizzle-orm';
 import { avatarImage, largerGooglePhoto } from './avatar-image';
@@ -11,7 +13,15 @@ import { dataDir } from './instance';
 import { logger } from './log';
 
 const MAX_BYTES = 5_000_000;
+/** the largest photo someone can upload (phones' own photos are well under) */
+export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 export const avatarFile = (userId: string) => join(dataDir(), 'avatars', `${userId}.jpg`);
+export const ownAvatarFile = (userId: string) => join(dataDir(), 'avatars', `${userId}-own.jpg`);
+
+function write(file: string, img: Buffer) {
+	mkdirSync(join(dataDir(), 'avatars'), { recursive: true });
+	writeFileSync(file, img);
+}
 
 /** Copy the photo in the background; sign-in doesn't wait for it, and a failure only means initials. */
 export async function copyGoogleAvatar(userId: string, url: string) {
@@ -22,11 +32,30 @@ export async function copyGoogleAvatar(userId: string, url: string) {
 		if (Number(res.headers.get('content-length') ?? 0) > MAX_BYTES) throw new Error('The photo is too large');
 		const buf = Buffer.from(await res.arrayBuffer());
 		if (buf.length > MAX_BYTES) throw new Error('The photo is too large');
-		const img = await avatarImage(buf);
-		mkdirSync(join(dataDir(), 'avatars'), { recursive: true });
-		writeFileSync(avatarFile(userId), img);
+		write(avatarFile(userId), await avatarImage(buf));
 		db.update(users).set({ avatarAt: new Date().toISOString() }).where(eq(users.id, userId)).run();
 	} catch (e) {
 		logger.warn('sign-in', "Couldn't copy the Google profile photo", { userId, error: e });
 	}
+}
+
+/** A photo they chose, shown from now on. Resizing drops its metadata, location included. */
+export async function saveOwnAvatar(userId: string, file: File): Promise<{ error: string } | null> {
+	if (!file.size) return { error: 'Choose a photo.' };
+	if (file.size > MAX_UPLOAD_BYTES) return { error: 'That photo is over 20 MB.' };
+	let img: Buffer;
+	try {
+		img = await avatarImage(Buffer.from(await file.arrayBuffer()));
+	} catch {
+		return { error: "That file couldn't be read as a photo." };
+	}
+	write(ownAvatarFile(userId), img);
+	db.update(users).set({ avatarChoice: 'own', ownAvatarAt: new Date().toISOString() }).where(eq(users.id, userId)).run();
+	return null;
+}
+
+/** Back to the Google photo, or to initials; the photo they uploaded is deleted. */
+export function setAvatarChoice(userId: string, choice: 'google' | 'none') {
+	rmSync(ownAvatarFile(userId), { force: true });
+	db.update(users).set({ avatarChoice: choice, ownAvatarAt: null }).where(eq(users.id, userId)).run();
 }

@@ -29,8 +29,12 @@ export const users = sqliteTable('users', {
 	// the last release whose What's new was dismissed; 1.0.0, the release before it existed,
 	// for accounts from then (new accounts start at the running version)
 	seenVersion: text('seen_version').notNull().default('1.0.0'),
-	// when the Google profile photo was last copied to DATA_DIR/avatars (null: initials)
+	// when the Google profile photo was last copied to DATA_DIR/avatars (null: none)
 	avatarAt: text('avatar_at'),
+	// which photo the account shows: the Google one, one they uploaded, or initials
+	avatarChoice: text('avatar_choice', { enum: ['google', 'own', 'none'] }).notNull().default('google'),
+	// when they uploaded their own photo (null: none)
+	ownAvatarAt: text('own_avatar_at'),
 	createdAt: createdAt()
 });
 

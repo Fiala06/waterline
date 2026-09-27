@@ -1,7 +1,7 @@
 <script lang="ts">
 	// 7.6 · Photo upload. On phones the file input offers camera or library.
 	// With JS, images are shrunk in the browser (max 2560px) before upload.
-	import { photoUrl } from '$lib/media';
+	import { photoUrl, shrinkImage } from '$lib/media';
 
 	let { existing = [], compact = false }: { existing?: { id: string }[]; compact?: boolean } = $props();
 	const max = 10; // per entry
@@ -13,21 +13,6 @@
 	let error = $state<string | null>(null);
 
 	const MAX_EDGE = 2560;
-
-	async function shrink(file: File): Promise<File> {
-		if (!file.type.startsWith('image/') || file.type === 'image/gif') return file;
-		try {
-			const bmp = await createImageBitmap(file);
-			const scale = Math.min(1, MAX_EDGE / Math.max(bmp.width, bmp.height));
-			if (scale === 1 && file.size < 2_500_000) return file;
-			const canvas = new OffscreenCanvas(Math.round(bmp.width * scale), Math.round(bmp.height * scale));
-			canvas.getContext('2d')!.drawImage(bmp, 0, 0, canvas.width, canvas.height);
-			const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.88 });
-			return new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' });
-		} catch {
-			return file; // server will resize (or reject) it
-		}
-	}
 
 	async function onchange() {
 		if (!input?.files) return;
@@ -41,7 +26,7 @@
 		previews.forEach((p) => URL.revokeObjectURL(p.url));
 		previews = [];
 		pending = files.length;
-		const shrunk = await Promise.all(files.map(shrink));
+		const shrunk = await Promise.all(files.map((f) => shrinkImage(f, MAX_EDGE)));
 		const dt = new DataTransfer();
 		shrunk.forEach((f) => dt.items.add(f));
 		input.files = dt.files;

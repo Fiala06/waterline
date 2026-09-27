@@ -1,6 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { signOut } from '../../../auth';
+import { saveOwnAvatar, setAvatarChoice } from '$lib/server/avatar';
 import { db } from '$lib/server/db';
 import { notificationPrefs } from '$lib/server/db/schema';
 import { setFlash } from '$lib/server/flash';
@@ -48,6 +49,25 @@ export const actions: Actions = {
 		cookies.set('wl_theme', theme, { path: '/', httpOnly: true, sameSite: 'lax', maxAge: 31536000 });
 		setFlash(cookies, '✓ Settings saved');
 		redirect(303, '/settings');
+	},
+	// Profile photo: one they upload, back to the Google one, or initials
+	photo: async ({ request, locals, cookies }) => {
+		const file = (await request.formData()).get('photo');
+		const failed = await saveOwnAvatar(locals.user!.id, file instanceof File ? file : new File([], ''));
+		if (failed) return fail(400, { photoError: failed.error });
+		setFlash(cookies, '✓ Photo saved');
+		redirect(303, '/settings#profile');
+	},
+	googlePhoto: async ({ locals, cookies }) => {
+		if (!locals.user!.avatarAt) return fail(400, { photoError: "There's no Google photo for this account." });
+		setAvatarChoice(locals.user!.id, 'google');
+		setFlash(cookies, '✓ Using your Google photo');
+		redirect(303, '/settings#profile');
+	},
+	removePhoto: async ({ locals, cookies }) => {
+		setAvatarChoice(locals.user!.id, 'none');
+		setFlash(cookies, '✓ Photo removed');
+		redirect(303, '/settings#profile');
 	},
 	notifications: async ({ request, locals, cookies }) => {
 		const user = locals.user!;

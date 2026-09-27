@@ -6,6 +6,7 @@ import { displayVersion, VERSION } from '$lib/changelog';
 import { takeFlash } from '$lib/server/flash';
 import { latestReadings, latestTest } from '$lib/server/logs';
 import { listParams, listTanks } from '$lib/server/tanks';
+import { shownAvatar } from '$lib/server/avatar-image';
 import { listTasks } from '$lib/server/tasks';
 import { availableUpdate, projectPage } from '$lib/server/updates';
 import type { LayoutServerLoad } from './$types';
@@ -60,6 +61,7 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 	const wcTask = tasks.find((r) => r.task.tankId === currentTankId && r.task.kind === 'water_change')?.task;
 
 	const flash = takeFlash(cookies);
+	const avatar = shownAvatar(user);
 	return {
 		user: {
 			id: user.id,
@@ -70,8 +72,11 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 			hardnessUnit: user.hardnessUnit,
 			timeZone: user.timeZone,
 			theme: user.theme,
-			// the account menu's photo; a new address each time it's copied again
-			avatar: user.avatarAt ? `/avatar?v=${Date.parse(user.avatarAt)}` : null
+			// the account menu's photo; a new address each time it changes
+			avatar: avatar ? `/avatar?v=${Date.parse(avatar.at)}` : null,
+			// for Settings › Profile: which photo it is, and whether there's a Google one to go back to
+			avatarKind: avatar?.kind ?? null,
+			hasGooglePhoto: !!user.avatarAt
 		},
 		tanks: summaries,
 		currentTankId,

@@ -92,6 +92,13 @@
       "when": 1790526295957,
       "tag": "0012_avatars",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1790535112005,
+      "tag": "0013_own_avatars",
+      "breakpoints": true
     }
   ]
 }

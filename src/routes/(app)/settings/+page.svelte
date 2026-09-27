@@ -35,6 +35,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import { untrack } from 'svelte';
+	import ProfilePhoto from '$lib/components/ProfilePhoto.svelte';
 	import { LEAD_OPTIONS, SEND_TIMES } from '$lib/notify-options';
 	import { install, promptInstall } from '$lib/install.svelte';
 	import { displayVersion, VERSION } from '$lib/changelog';
@@ -124,6 +125,7 @@
 		<section id="profile" class="sec" aria-labelledby="profile-h">
 			<h2 id="profile-h">Profile</h2>
 			<div class="group">
+				<div class="row photo-row"><ProfilePhoto user={u} error={form?.photoError} /></div>
 				<label class="row edit">
 					<span class="k">Name</span>
 					<input
@@ -400,6 +402,10 @@
 	}
 	.row + .row {
 		border-top: 1px solid var(--border);
+	}
+	.row.photo-row {
+		padding-top: 14px;
+		padding-bottom: 14px;
 	}
 	.row:first-child {
 		border-radius: 15px 15px 0 0;

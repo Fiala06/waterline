@@ -12,5 +12,17 @@ export async function avatarImage(input: Buffer): Promise<Buffer> {
 		.toBuffer();
 }
 
+export type AvatarChoice = 'google' | 'own' | 'none';
+
+/**
+ * The photo an account shows: the one they uploaded, the Google one, or none
+ * (initials). `at` is when that photo was saved, for its address.
+ */
+export function shownAvatar(u: { avatarChoice: AvatarChoice; avatarAt: string | null; ownAvatarAt: string | null }) {
+	if (u.avatarChoice === 'own' && u.ownAvatarAt) return { kind: 'own' as const, at: u.ownAvatarAt };
+	if (u.avatarChoice === 'google' && u.avatarAt) return { kind: 'google' as const, at: u.avatarAt };
+	return null;
+}
+
 /** Google's photo address asks for 96px; ask for a size that's still sharp at 192. */
 export const largerGooglePhoto = (url: string) => url.replace(/=s\d+(-c)?$/, '=s256-c');
