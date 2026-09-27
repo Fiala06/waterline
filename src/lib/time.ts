@@ -154,6 +154,18 @@ export function utcToZoned(instant: string | Date, timeZone: string) {
 	return { date: dateInZone(d, timeZone), time };
 }
 
+/**
+ * One-tap times for logging after the fact (G9): an hour ago, this morning
+ * (once it's past 9) and yesterday evening, in the keeper's time zone.
+ */
+export function quickWhens(timeZone: string, now = new Date()): { label: string; when: When }[] {
+	const z = utcToZoned(now, timeZone);
+	const picks = [{ label: '1 hour ago', when: utcToZoned(new Date(now.getTime() - 3_600_000), timeZone) }];
+	if (z.time >= '09:00') picks.push({ label: 'This morning', when: { date: z.date, time: '08:00' } });
+	picks.push({ label: 'Yesterday evening', when: { date: addDays(z.date, -1), time: '18:00' } });
+	return picks;
+}
+
 export function isValidTimeZone(tz: string): boolean {
 	try {
 		new Intl.DateTimeFormat('en-US', { timeZone: tz });

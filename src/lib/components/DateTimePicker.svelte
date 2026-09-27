@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	// G9 · Date / time picker. Backdating is allowed; future dates are disabled.
+	// Quick picks under the title set an earlier time in one tap, like Now.
 	import Sheet from './Sheet.svelte';
-	import { addDays, todayInZone, utcToZoned, whenLabel, type When } from '$lib/time';
+	import { addDays, quickWhens, todayInZone, utcToZoned, whenLabel, type When } from '$lib/time';
 
 	let {
 		open = $bindable(false),
@@ -22,6 +23,7 @@
 	let date = $state('');
 	let time = $state('');
 	let month = $state(''); // YYYY-MM shown
+	let quick = $state<ReturnType<typeof quickWhens>>([]);
 
 	// Start from the current choice each time it opens. Untracked, so picking a day
 	// (which changes `date`) doesn't re-run this and undo the pick.
@@ -33,6 +35,7 @@
 			date = value?.date ?? now.date;
 			time = value?.time ?? now.time;
 			month = date.slice(0, 7);
+			quick = quickWhens(timeZone);
 		});
 	});
 
@@ -85,6 +88,20 @@
 				open = false;
 			}}>Now</button
 		>
+	</div>
+
+	<div class="quick" role="group" aria-label="Earlier">
+		{#each quick as q (q.label)}
+			<button
+				type="button"
+				class="chip"
+				aria-label="{q.label}, {whenLabel(q.when)}"
+				onclick={() => {
+					onselect(q.when);
+					open = false;
+				}}>{q.label}</button
+			>
+		{/each}
 	</div>
 
 	<div class="cal">
@@ -152,6 +169,12 @@
 	}
 	.head .chip {
 		font-weight: 600;
+	}
+	.quick {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		margin-top: -4px;
 	}
 	.nav {
 		display: flex;

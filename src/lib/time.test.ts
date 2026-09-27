@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isDate, isTime, utcToZoned, zonedToUtc } from './time';
+import { isDate, isTime, quickWhens, utcToZoned, zonedToUtc } from './time';
 
 describe('isDate / isTime', () => {
 	it('accepts real dates and times only', () => {
@@ -65,5 +65,29 @@ describe('zonedToUtc', () => {
 		]) {
 			expect(Number.isNaN(zonedToUtc(d, t, 'UTC').getTime())).toBe(true);
 		}
+	});
+});
+
+describe('quickWhens', () => {
+	const tz = 'America/Los_Angeles';
+	const at = (iso: string) => quickWhens(tz, new Date(iso));
+
+	it('offers an hour ago, this morning and yesterday evening', () => {
+		// 2:30 PM in Los Angeles
+		expect(at('2026-09-26T21:30:00Z')).toEqual([
+			{ label: '1 hour ago', when: { date: '2026-09-26', time: '13:30' } },
+			{ label: 'This morning', when: { date: '2026-09-26', time: '08:00' } },
+			{ label: 'Yesterday evening', when: { date: '2026-09-25', time: '18:00' } }
+		]);
+	});
+
+	it('goes back past midnight, and leaves out a morning that is still to come', () => {
+		// 12:20 AM
+		expect(at('2026-09-26T07:20:00Z')).toEqual([
+			{ label: '1 hour ago', when: { date: '2026-09-25', time: '23:20' } },
+			{ label: 'Yesterday evening', when: { date: '2026-09-25', time: '18:00' } }
+		]);
+		// 8:30 AM: "this morning" at 8 would be half an hour ago
+		expect(at('2026-09-26T15:30:00Z').map((q) => q.label)).toEqual(['1 hour ago', 'Yesterday evening']);
 	});
 });
