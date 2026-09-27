@@ -1,5 +1,4 @@
-import { redirect, type Handle, type HandleServerError, type ServerInit } from '@sveltejs/kit';
-import { randomBytes } from 'node:crypto';
+import { redirect, type Handle, type ServerInit } from '@sveltejs/kit';
 import { building } from '$app/environment';
 import { startScheduler } from '$lib/server/scheduler';
 import { failInterruptedExports } from '$lib/server/export';
@@ -9,8 +8,6 @@ import { clearLoginFailures, loginBlockedMinutes, recordLoginFailure } from '$li
 import { getUser, isEmailAllowed } from '$lib/server/users';
 import { publicSettings } from '$lib/server/public';
 import { announceSetup } from '$lib/server/setup';
-import { logger } from '$lib/server/log';
-import { VERSION } from '$lib/changelog';
 
 const PUBLIC_PATHS = ['/signin', '/first-run', '/auth', '/e', '/unsubscribe', '/t', '/s', '/p', '/public', '/sitemap.xml', '/robots.txt'];
 
@@ -152,26 +149,8 @@ const appHandle: Handle = async ({ event, resolve }) => {
 
 export const handle = sequence(securityHeaders, csrf, movedPaths, httpCookies, loginLimit, authHandle, appHandle);
 
-/**
- * Something the app didn't expect: logged with a short reference, which the
- * error page shows so the admin can find the entry. The route is logged as its
- * pattern (/unsubscribe/[token]), so tokens in links stay out of the log.
- */
-export const handleError: HandleServerError = ({ error, event, status, message }) => {
-	if (status === 404) return { message };
-	const ref = randomBytes(4).toString('hex');
-	logger.error('request', `${event.request.method} ${event.route.id ?? event.url.pathname} failed`, {
-		error,
-		ref,
-		status,
-		userId: event.locals.user?.id ?? null
-	});
-	return { message: 'Something went wrong', ref };
-};
-
 export const init: ServerInit = () => {
 	if (building) return;
-	logger.info('server', `Waterline ${VERSION} started`, { node: process.version });
 	checkAuthConfig();
 	announceSetup();
 	failInterruptedExports();

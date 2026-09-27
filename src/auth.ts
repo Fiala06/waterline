@@ -6,7 +6,6 @@ import Google from '@auth/sveltekit/providers/google';
 import type { Provider } from '@auth/sveltekit/providers';
 import { env } from '$env/dynamic/private';
 import { authSecret } from '$lib/server/instance';
-import { logger } from '$lib/server/log';
 import { isValidPasswordHash, verifyPassword } from '$lib/server/password';
 import { adminEmail, googleClient, localAdminLogin } from '$lib/server/sign-in';
 import { googleAccountConflict, isEmailAllowed, LOCAL_ADMIN_FALLBACK_EMAIL, upsertUser } from '$lib/server/users';
@@ -23,13 +22,13 @@ export function checkAuthConfig() {
 	if (devLoginEnabled() && process.env.NODE_ENV === 'production') {
 		throw new Error('AUTH_DEV_LOGIN=true lets anyone sign in as anyone, so it is refused when NODE_ENV=production.');
 	}
-	if (devLoginEnabled()) logger.warn('server', 'AUTH_DEV_LOGIN is on: anyone can sign in as any email. Test use only.');
+	if (devLoginEnabled()) console.warn('[waterline] AUTH_DEV_LOGIN is on: anyone can sign in as any email. Test use only.');
 	const origin = env.ORIGIN?.trim() ?? '';
 	if (origin.startsWith('http://') && !/^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/.test(origin)) {
-		logger.warn('server', 'ORIGIN is plain http. Fine for a LAN-only server, but Google sign-in, offline logging and the install prompt need HTTPS.');
+		console.warn('[waterline] ORIGIN is plain http. Fine for a LAN-only server, but Google sign-in, offline logging and the install prompt need HTTPS.');
 	}
 	if (env.LOCAL_ADMIN_PASSWORD_HASH && !isValidPasswordHash(env.LOCAL_ADMIN_PASSWORD_HASH)) {
-		logger.error('server', "LOCAL_ADMIN_PASSWORD_HASH isn't a valid hash, so it's ignored. Create one with: hash-password (in the Docker container) or npm run hash-password");
+		console.error("[waterline] LOCAL_ADMIN_PASSWORD_HASH isn't a valid hash, so it's ignored. Create one with: hash-password (in the Docker container) or npm run hash-password");
 	}
 }
 
