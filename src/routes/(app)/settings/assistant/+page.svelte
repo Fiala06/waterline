@@ -1,6 +1,7 @@
 <script lang="ts">
 	// AI assistant (#9): let an assistant like Claude read the tanks you pick,
-	// over MCP or a JSON API, with an access token made here. Read-only; no AI
+	// over MCP or a JSON API: connected by signing in (steps per app), or with
+	// an access token made here. Read-only; no AI
 	// keys are stored and nothing is sent anywhere: the assistant asks.
 	import { enhance } from '$app/forms';
 	import { untrack } from 'svelte';
@@ -27,14 +28,8 @@
 		}
 	}
 	const token = $derived(created?.token ?? '<your token>');
-	const claudeCode = $derived(`claude mcp add --transport http waterline ${data.mcpUrl} --header "Authorization: Bearer ${token}"`);
-	const desktop = $derived(
-		JSON.stringify(
-			{ mcpServers: { waterline: { command: 'npx', args: ['-y', 'mcp-remote', data.mcpUrl, '--header', `Authorization: Bearer ${token}`] } } },
-			null,
-			2
-		)
-	);
+	// Claude Code signs in by itself (/mcp › Authenticate), so no token in it
+	const claudeCode = $derived(`claude mcp add --transport http waterline ${data.mcpUrl}`);
 	const curl = $derived(`curl -H "Authorization: Bearer ${token}" ${data.apiUrl}/tanks`);
 	const tankList = (names: string[]) => (names.length ? names.join(', ') : 'No tanks');
 </script>
@@ -77,7 +72,7 @@
 			<h2 id="made-h">✓ Access token for {created.name}</h2>
 			<p class="warn-text status-warn">▲ Copy it now: it's shown only this once.</p>
 			{@render copyField('made-token', 'Access token', created.token)}
-			<p class="muted small">Paste it into your assistant, as below. Anyone with it can read the tanks you picked, so keep it like a password.</p>
+			<p class="muted small">Paste it into your app or script, as below. Anyone with it can read the tanks you picked, so keep it like a password.</p>
 		</section>
 	{/if}
 
@@ -144,45 +139,76 @@
 		{/if}
 	</section>
 
-	{#if data.tanks.length}
-		<form method="POST" action="?/create" class="card add" id="add" use:enhance={() => async ({ update }) => update({ reset: false })}>
-			<h2>Make an access token</h2>
-			<p class="muted small">For apps you paste a token into, like Claude Code. Apps that connect by signing in don't need one.</p>
-			<div class="field">
-				<label class="label" for="a-name">Name</label>
-				<input
-					class="input"
-					id="a-name"
-					name="name"
-					maxlength="60"
-					autocomplete="off"
-					placeholder="e.g. Claude on my laptop"
-					value={form?.create?.name ?? ''}
-					aria-invalid={!!createErr.name}
-				/>
-				{#if createErr.name}<span class="error-text">✕ {createErr.name}</span>{/if}
-			</div>
-			{@render tankChecks('a', createPicked, createErr.tanks)}
-			<p class="muted small">Tanks you add later aren't shared until you tick them here.</p>
-			<button class="btn btn-primary go">Create access token</button>
-		</form>
-	{/if}
-
 	<section class="card how" aria-labelledby="how-h">
 		<h2 id="how-h">How to connect</h2>
-		<p class="muted small">Waterline is an MCP server: most assistants that use tools can connect to it.</p>
-		{@render copyField('how-url', 'Server address (MCP, Streamable HTTP)', data.mcpUrl)}
 		<p class="muted small">
-			<strong class="strong">By signing in</strong>, in claude.ai, ChatGPT and other apps with custom connectors: add one with the server address above. Waterline
-			asks you to sign in here and pick the tanks, and it shows up under Connected.
+			Waterline is an MCP server. Add it to your assistant with this address, then sign in to Waterline when it asks, pick the tanks and choose Allow. It shows up
+			under Connected.
 		</p>
-		<p class="muted small"><strong class="strong">With a token</strong>: {created ? 'these have your new token in them.' : 'make one above and put it in place of <your token>.'}</p>
-		{@render copyField('how-code', 'Claude Code: run in a terminal', claudeCode)}
-		{@render copyField('how-desktop', 'Claude Desktop: in claude_desktop_config.json (needs Node.js)', desktop, true)}
-		<p class="muted small">
-			Other MCP clients: the server address above, with the header <span class="mono">Authorization: Bearer &lt;your token&gt;</span>.
-		</p>
-		{@render copyField('how-api', 'Or the JSON API', curl)}
+		{@render copyField('how-url', 'Server address', data.mcpUrl)}
+		<div class="apps">
+			<details>
+				<summary>claude.ai, Claude Desktop and mobile</summary>
+				<ol>
+					<li>On claude.ai, open Settings › Connectors and choose Add custom connector.</li>
+					<li>Name it Waterline, paste the server address, and add it.</li>
+					<li>Choose Connect, sign in to Waterline, pick the tanks and choose Allow.</li>
+				</ol>
+				<p class="muted small">It's then in the Claude Desktop and mobile apps too. On a Team or Enterprise plan, an owner may need to add it first.</p>
+			</details>
+			<details>
+				<summary>ChatGPT</summary>
+				<ol>
+					<li>In ChatGPT's settings, turn on developer mode (under Apps or Connectors, then Advanced).</li>
+					<li>Create a connector with the server address, signing in with OAuth.</li>
+					<li>Sign in to Waterline, pick the tanks and choose Allow, then turn the connector on in a chat.</li>
+				</ol>
+			</details>
+			<details>
+				<summary>Claude Code</summary>
+				<ol>
+					<li>In a terminal, add Waterline:{@render copyField('how-code', 'Claude Code command', claudeCode)}</li>
+					<li>In Claude Code, run <span class="mono">/mcp</span>, choose waterline and Authenticate. Your browser opens to sign in to Waterline.</li>
+				</ol>
+			</details>
+			<details>
+				<summary>Cursor, VS Code and other apps</summary>
+				<ol>
+					<li>Add an MCP server with the server address (type HTTP, or Streamable HTTP).</li>
+					<li>Apps that can sign in open Waterline for you to allow it. For one that can't, make an access token below and send it as a header.</li>
+				</ol>
+			</details>
+		</div>
+		<p class="muted small">These apps rename their menus now and then: if a name differs, look for Connectors or MCP servers.</p>
+	</section>
+
+	<section class="card tokens" aria-labelledby="tok-h">
+		<h2 id="tok-h">Or use an access token</h2>
+		<p class="muted small">For scripts, the JSON API and apps that can't sign in. You copy it once, into the app.</p>
+		{#if data.tanks.length}
+			<form method="POST" action="?/create" class="add" id="add" use:enhance={() => async ({ update }) => update({ reset: false })}>
+				<div class="field">
+					<label class="label" for="a-name">Name</label>
+					<input
+						class="input"
+						id="a-name"
+						name="name"
+						maxlength="60"
+						autocomplete="off"
+						placeholder="e.g. My script"
+						value={form?.create?.name ?? ''}
+						aria-invalid={!!createErr.name}
+					/>
+					{#if createErr.name}<span class="error-text">✕ {createErr.name}</span>{/if}
+				</div>
+				{@render tankChecks('a', createPicked, createErr.tanks)}
+				<p class="muted small">Tanks you add later aren't shared until you tick them here.</p>
+				<button class="btn btn-primary go">Create access token</button>
+			</form>
+		{/if}
+		<p class="muted small">{created ? 'These have your new token in them.' : 'Put your token in place of <your token>.'}</p>
+		{@render copyField('tok-header', 'MCP clients: send this header', `Authorization: Bearer ${token}`)}
+		{@render copyField('tok-api', 'The JSON API', curl)}
 		<p class="muted small">
 			Also <span class="mono">/tanks/&lt;id&gt;/summary</span>, <span class="mono">readings</span>, <span class="mono">history</span>,
 			<span class="mono">livestock</span>, <span class="mono">trends</span> and <span class="mono">photos</span>, and <span class="mono">/photos/&lt;id&gt;</span>.
@@ -334,9 +360,60 @@
 		background: var(--surface-2);
 		border-color: var(--border-strong);
 	}
-	.strong {
-		color: var(--text);
+	/* one app's steps, opened on tap (works without scripts) */
+	.apps {
+		border-top: 1px solid var(--border);
+	}
+	details {
+		border-bottom: 1px solid var(--border);
+	}
+	summary {
+		min-height: 48px;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		font-size: 15px;
 		font-weight: 600;
+		cursor: pointer;
+		list-style: none;
+	}
+	summary::-webkit-details-marker {
+		display: none;
+	}
+	summary::after {
+		content: '';
+		flex-shrink: 0;
+		width: 8px;
+		height: 8px;
+		border-right: 2px solid var(--text-muted);
+		border-bottom: 2px solid var(--text-muted);
+		transform: rotate(45deg) translate(-2px, -2px);
+		transition: transform 0.15s;
+	}
+	details[open] summary::after {
+		transform: rotate(-135deg) translate(-2px, -2px);
+	}
+	details ol {
+		margin: 0 0 12px;
+		padding-left: 22px;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		font-size: 14px;
+		line-height: 1.5;
+		color: var(--text-2);
+	}
+	details ol :global(.field) {
+		margin-top: 8px;
+	}
+	details > p.small {
+		margin: -4px 0 14px;
+	}
+	.tokens .add {
+		display: flex;
+		flex-direction: column;
+		gap: 14px;
 	}
 	.copy-row {
 		justify-content: space-between;

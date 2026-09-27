@@ -31,9 +31,14 @@ test('an AI assistant: a token from Settings reads the tank over MCP and the API
 	await expect(page.getByText("Copy it now: it's shown only this once.")).toBeVisible();
 	const token = (await page.locator('#made-token').textContent())!.trim();
 	expect(token).toMatch(/^wl_[\w-]{40,}$/);
-	await expect(page.locator('#how-code')).toContainText(`Bearer ${token}`);
-	await expect(page.getByRole('listitem').filter({ hasText: 'Claude' })).toContainText('Reads Riverbed 40');
-	await expect(page.getByRole('listitem').filter({ hasText: 'Claude' })).toContainText('Not used yet');
+	await expect(page.locator('#tok-header')).toHaveText(`Authorization: Bearer ${token}`);
+	// steps per app; Claude Code signs in by itself, so its command has no token
+	await page.locator('summary', { hasText: 'Claude Code' }).click();
+	await expect(page.locator('#how-code')).toHaveText(`claude mcp add --transport http waterline ${new URL(page.url()).origin}/mcp`);
+	await page.locator('summary', { hasText: 'claude.ai' }).click();
+	await expect(page.getByText('Settings › Connectors and choose Add custom connector')).toBeVisible();
+	await expect(page.getByRole('region', { name: 'Connected' }).getByRole('listitem').filter({ hasText: 'Claude' })).toContainText('Reads Riverbed 40');
+	await expect(page.getByRole('region', { name: 'Connected' }).getByRole('listitem').filter({ hasText: 'Claude' })).toContainText('Not used yet');
 
 	// MCP
 	const headers = { authorization: `Bearer ${token}`, accept: 'application/json, text/event-stream' };
@@ -65,7 +70,7 @@ test('an AI assistant: a token from Settings reads the tank over MCP and the API
 
 	// used, then revoked: refused
 	await open(page, '/settings/assistant');
-	await expect(page.getByRole('listitem').filter({ hasText: 'Claude' })).toContainText('Last used Today');
+	await expect(page.getByRole('region', { name: 'Connected' }).getByRole('listitem').filter({ hasText: 'Claude' })).toContainText('Last used Today');
 	await page.getByRole('button', { name: 'Revoke Claude' }).click();
 	await page.getByRole('alertdialog').getByRole('button', { name: 'Revoke' }).click();
 	await expect(page.getByRole('status')).toContainText("Claude can't read your tanks any more");
