@@ -9,11 +9,12 @@ How to write a line:
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
-## Unreleased
+## 1.8.1 · 2026-09-28
 
 - **Add several at once:** Stocking a tank? On the tank's [Livestock](/tanks/current/livestock/several) or [Plants](/tanks/current/plants/several) tab, choose Add several, search the species list and tick everything that's going in, with a count for each fish and invert, or where each plant goes, then add them all in one go. Undo takes the whole lot back.
 - **Import spending:** Bring in past purchases from a spreadsheet (date, what, amount, category and a note) on the tank's [Spending tab](/tanks/current/spending) with Import from a spreadsheet, with a template and a preview first. Undo takes the import back.
-- **Fix an import's words on the page:** When a spreadsheet uses a word Waterline doesn't know, like "New" for a plant's status or "Floating" for where it goes, the preview lists each one with how many rows have it. Choose what it means and every row with it is fixed, with no need to change the file and start again. For livestock, plants and spending, from [Livestock](/tanks/current/livestock), [Plants](/tanks/current/plants) or [Spending](/tanks/current/spending).
+- **Fix an import's words on the page:** When a spreadsheet uses a word Waterline doesn't know, like "New" or "Struggling" for a plant's status, the preview lists each one with how many rows have it. Choose what it means and every row with it is fixed, with no need to change the file and start again. For livestock, plants and spending, from [Livestock](/tanks/current/livestock), [Plants](/tanks/current/plants) or [Spending](/tanks/current/spending).
+- **Floating plants:** Water lettuce, frogbit and other plants on the surface can be Floating, with their own group at the top of the tank's [Plants tab](/tanks/current/plants). Spreadsheets can say Floating too.
 - **Import, in the same place:** Import from a spreadsheet is below the list on every tab, and below the empty box when there's nothing yet.
 
 ## 1.8.0 · 2026-09-28
