@@ -70,9 +70,13 @@ export function plainText(html: string | null | undefined, max = 120): string {
 		.slice(0, max);
 }
 
-/** The Commons file a Wikipedia page's photo is; null for one only on Wikipedia (those aren't free). */
+/**
+ * The Commons file a Wikipedia page's photo is; null for one only on Wikipedia
+ * (those aren't free). Wikipedia adds "?utm_source=…" to the address, which
+ * isn't part of the name.
+ */
 export function commonsFile(src: string): string | null {
-	const m = /\/wikipedia\/commons\/(?:thumb\/)?[0-9a-f]\/[0-9a-f]{2}\/([^/]+)/.exec(src);
+	const m = /\/wikipedia\/commons\/(?:thumb\/)?[0-9a-f]\/[0-9a-f]{2}\/([^/?#]+)/.exec(src);
 	return m ? decodeURIComponent(m[1]) : null;
 }
 

@@ -4,7 +4,7 @@ import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 
 // DEVELOPMENT ONLY (AUTH_DEV_LOGIN=true): Wikipedia and Commons as the species
-// photos read them, for the end-to-end tests (STOCK_PHOTO_WIKI and
+// photos read them (with the ?utm_source=… Wikipedia adds), for the end-to-end tests (STOCK_PHOTO_WIKI and
 // STOCK_PHOTO_COMMONS point here). Two species have a free photo, one has a
 // photo that isn't free, and anything else has no page.
 const PAGES: Record<string, { file: string; license: string; color: string }> = {
@@ -21,7 +21,7 @@ export const GET: RequestHandler = async ({ params, url }) => {
 	if (summary) {
 		const p = PAGES[decodeURIComponent(summary[1])];
 		if (!p) error(404, 'Not found');
-		return json({ type: 'standard', originalimage: { source: `${base}/wikipedia/commons/a/ab/${p.file}` } });
+		return json({ type: 'standard', originalimage: { source: `${base}/wikipedia/commons/a/ab/${p.file}?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled` } });
 	}
 	if (path === 'w/api.php') {
 		const file = (url.searchParams.get('titles') ?? '').replace(/^File:/, '');

@@ -38,6 +38,10 @@ describe('the credit', () => {
 		expect(commonsFile('https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Java_fern.jpg/640px-Java_fern.jpg')).toBe('Java_fern.jpg');
 		expect(commonsFile('https://upload.wikimedia.org/wikipedia/commons/a/ab/Neon%20tetra.jpg')).toBe('Neon tetra.jpg');
 		expect(commonsFile('https://upload.wikimedia.org/wikipedia/en/1/1a/Poster.jpg')).toBeNull();
+		// as Wikipedia gives it now, with where the link came from
+		expect(commonsFile('https://upload.wikimedia.org/wikipedia/commons/8/89/Microsorum_pteropus.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled')).toBe(
+			'Microsorum_pteropus.jpg'
+		);
 	});
 });
 
