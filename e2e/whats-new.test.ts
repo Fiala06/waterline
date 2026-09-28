@@ -42,7 +42,7 @@ test("What's new: once after an update, then in Settings", async ({ page }, info
 	// the version installed, plainly, and its release marked
 	await expect(page.getByLabel('Installed version')).toContainText(`Installed Waterline ${version}`);
 	await expect(page.getByRole('heading', { name: new RegExp(`^${version.replace('.', '\\.')} .*✓ Installed$`) })).toBeVisible();
-	await expect(page.getByText('✓ Installed')).toHaveCount(1);
+	await expect(page.getByText('✓ Installed', { exact: true })).toHaveCount(1);
 	await expect(page.getByRole('link', { name: 'Waterline on GitHub' })).toHaveAttribute('href', 'https://github.com/Fiala06/waterline');
 	await expect(page.getByRole('heading', { name: new RegExp(`^${version.replace('.', '\\.')} `) })).toBeVisible();
 	// older releases fold away by version, and open on tap

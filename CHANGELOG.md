@@ -9,7 +9,7 @@ How to write a line:
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
-## Unreleased
+## 1.8.4 · 2026-09-28
 
 - **Cultivars get their own photo:** A plant like Java fern 'Trident' on the [Plants tab](/tanks/current/plants) shows a photo of that cultivar from Wikimedia Commons, or none until you add your own, instead of the plain Java fern's.
 - **Which version you have:** [What's new](/settings/changelog) starts with the version installed on this server and when it came out, and marks its release ✓ Installed.
