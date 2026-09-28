@@ -3,7 +3,7 @@
 	// task opens the matching log form instead.
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
-	import { dueInfo, intervalText } from '$lib/tasks';
+	import { amountText, dueInfo, intervalText } from '$lib/tasks';
 	import { fmtDate } from '$lib/time';
 
 	interface TaskRow {
@@ -12,7 +12,12 @@
 		due: string;
 		recurring: boolean;
 		intervalDays: number | null;
+		scheduleMode?: string;
+		weekdays?: string | null;
 		tankId?: string;
+		/** a routine's amount (#17): "1 pump" */
+		amount?: number | null;
+		amountUnit?: string | null;
 	}
 	let { tasks, today }: { tasks: TaskRow[]; today: string } = $props();
 
@@ -24,10 +29,11 @@
 			{@const d = dueInfo(t.due, today)}
 			<!-- refresh 1c: "✕ 1 day over", "▲ Today", or the date; the primary button only on the most urgent -->
 			{@const when = d.days < 0 ? `✕ ${-d.days} day${d.days === -1 ? '' : 's'} over` : d.days === 0 ? '▲ Today' : `${fmtDate(t.due)} · ${intervalText(t)}`}
+			{@const dose = amountText(t.amount, t.amountUnit)}
 			<div class="row">
 				<div class="text">
 					<div class="name">{t.name}</div>
-					<div class="due data-meta {d.days > 0 ? 'plain' : `status-${d.level}`}">{when}</div>
+					<div class="due data-meta {d.days > 0 ? 'plain' : `status-${d.level}`}">{when}{#if dose}<span class="plain">{` · ${dose}`}</span>{/if}</div>
 				</div>
 				<form method="POST" action="/tasks?/done" use:enhance>
 					<input type="hidden" name="taskId" value={t.id} />
@@ -67,6 +73,10 @@
 	.due {
 		font-size: 12px;
 		font-weight: 600;
+	}
+	.due .plain {
+		color: var(--text-muted);
+		font-weight: 400;
 	}
 	.due.plain {
 		color: var(--text-muted);

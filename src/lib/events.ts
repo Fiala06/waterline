@@ -1,5 +1,6 @@
 // Event categories: labels, form options and one-line titles for feeds.
 import type { EventCategory } from './types';
+import { amountText } from './tasks';
 import { formatNumber, toDisplay, unitLabel, type UnitPrefs } from './units';
 
 export const CATEGORY_LABEL: Record<EventCategory, string> = {
@@ -9,7 +10,8 @@ export const CATEGORY_LABEL: Record<EventCategory, string> = {
 	livestock: 'Livestock / plants',
 	equipment: 'Equipment',
 	observation: 'Observation',
-	note: 'Note'
+	note: 'Note',
+	feeding: 'Feeding'
 };
 
 /** Category tabs on the log event form, in design order. */
@@ -100,8 +102,12 @@ export function eventTitle(e: EventLike, prefs: UnitPrefs): string {
 		}
 		case 'dosing': {
 			const product = str(d.product) || 'product';
-			const amount = typeof d.amount === 'number' ? ` · ${formatNumber(d.amount, 2)} ${str(d.unit)}`.trimEnd() : '';
-			return `Dosed ${product}${amount}`;
+			const amount = typeof d.amount === 'number' ? amountText(d.amount, str(d.unit) || null) : null;
+			return `Dosed ${product}${amount ? ` · ${amount}` : ''}`;
+		}
+		case 'feeding': {
+			const amount = typeof d.amount === 'number' ? amountText(d.amount, str(d.unit) || null) : null;
+			return `Fed ${str(d.food) || 'food'}${amount ? ` · ${amount}` : ''}`;
 		}
 		case 'maintenance': {
 			const actions = Array.isArray(d.actions) ? (d.actions as string[]) : [];

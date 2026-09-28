@@ -7,6 +7,8 @@ import { db } from '$lib/server/db';
 import { events } from '$lib/server/db/schema';
 import { getTank } from '$lib/server/tanks';
 import { listEquipment, listLivestock, listPlants } from '$lib/server/specs';
+import { listTasks } from '$lib/server/tasks';
+import { dueInfo, isRoutine, routineLine } from '$lib/tasks';
 import type { PageServerLoad } from './$types';
 
 const SOURCES: Record<string, string> = { tap: 'Tap', rodi: 'RODI', mix: 'Mix', well: 'Well' };
@@ -48,6 +50,13 @@ export const load: PageServerLoad = ({ locals, params }) => {
 		livestock: ls.map((l) => ({ id: l.id, name: livestockLabel(l), count: l.count, quarantine: l.status === 'quarantine' })),
 		animals: ls.reduce((n, l) => n + l.count, 0),
 		species: speciesCount(ls),
-		plants: pl.map((p) => p.name)
+		plants: pl.map((p) => p.name),
+		// dosing and feeding routines (#17), soonest first
+		routines: listTasks(user.id, t.id)
+			.filter((r) => isRoutine(r.task.kind))
+			.map(({ task }) => {
+				const d = dueInfo(task.due, todayInZone(user.timeZone));
+				return { id: task.id, name: task.name, line: routineLine(task), due: d.days < 0 ? d.text : d.days === 0 ? '▲ Today' : d.text.replace(/^▲ /, ''), level: d.level, now: d.days <= 0 };
+			})
 	};
 };

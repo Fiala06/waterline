@@ -6,7 +6,7 @@
 import { and, desc, eq, isNull } from 'drizzle-orm';
 import { env } from '$env/dynamic/private';
 import { fmtRange, fmtValue, paramUnit, shortName, statusOf } from '$lib/params';
-import { dueInfo, intervalText } from '$lib/tasks';
+import { dueInfo, intervalText, isRoutine } from '$lib/tasks';
 import { dateInZone, daysBetween, fmtDate, fmtTime, todayInZone, utcToZoned } from '$lib/time';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { createActionToken } from './action-tokens';
@@ -162,13 +162,17 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 	let sent = 0;
 
 	const tasks = listTasks(user.id).map((r) => ({ ...r.task, tankName: r.tankName }));
+	// a routine (daily feeding, a dose on set days) is reminded on the day, not days ahead,
+	// and a missed one isn't an alert: it shows as overdue in the app, and the next one comes
+	const leadFor = (t: { kind: string }) => (isRoutine(t.kind) ? 0 : prefs.leadDays);
 
 	// push: each task on its own, the same days as the emails
 	if (push) {
 		for (const t of tasks) {
 			const d = dueInfo(t.due, today);
 			const overdue = d.days < 0;
-			if (overdue ? !prefs.pushOverdueAlerts : !prefs.pushTaskReminders || d.days > prefs.leadDays) continue;
+			if (overdue ? !prefs.pushOverdueAlerts : !prefs.pushTaskReminders || d.days > leadFor(t)) continue;
+			if (overdue && isRoutine(t.kind)) continue;
 			const key = `${overdue ? 'overdue' : 'reminder'}:${t.id}:${t.due}`;
 			const ok = await pushOnce(user, prefs, key, () => taskNotice(t, d.days, overdue ? lastDone(t.id, today, tz) : null, base), base);
 			if (ok) sent++;
@@ -180,7 +184,8 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 		for (const t of tasks) {
 			const d = dueInfo(t.due, today);
 			const overdue = d.days < 0;
-			if (overdue ? !prefs.overdueAlerts : !prefs.taskReminders || d.days > prefs.leadDays) continue;
+			if (overdue ? !prefs.overdueAlerts : !prefs.taskReminders || d.days > leadFor(t)) continue;
+			if (overdue && isRoutine(t.kind)) continue;
 			const key = `${overdue ? 'overdue' : 'reminder'}:${t.id}:${t.due}`;
 			const ok = await sendOnce(
 				user,
@@ -218,7 +223,7 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 		const mine = tasks
 			.filter((t) => t.tankId === tank.id)
 			.map((t) => ({ t, d: dueInfo(t.due, today) }))
-			.filter(({ d }) => (d.days < 0 ? prefs.overdueAlerts : prefs.taskReminders && d.days <= horizon));
+			.filter(({ t, d }) => (d.days < 0 ? prefs.overdueAlerts : prefs.taskReminders && d.days <= (isRoutine(t.kind) ? 0 : horizon)));
 		const readings = prefs.outOfRangeAlerts ? badReadings(tank.id, user) : [];
 		// what stands out: with the rest of a tank's news, or on its own in the weekly digest
 		const noticed = tankNotes(tank.id, user, { limit: 3, now: now.getTime() }).map((n) => ({ text: n.text, warn: n.warn }));

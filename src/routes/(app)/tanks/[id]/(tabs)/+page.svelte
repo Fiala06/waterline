@@ -1,10 +1,12 @@
 <script lang="ts">
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import RemindMe from '$lib/components/RemindMe.svelte';
+	import { enhance } from '$app/forms';
 	import { photoUrl } from '$lib/media';
 	let { data } = $props();
 	const base = $derived(`/tanks/${data.tankHead.id}`);
 	const cover = $derived(data.tankHead.cover);
+	const newRoutine = (type: 'dosing' | 'feeding') => `/tasks/new?tank=${data.tankHead.id}&type=${type}&from=${encodeURIComponent(base)}`;
 </script>
 
 <svelte:head><title>{data.tankHead.name} · Waterline</title></svelte:head>
@@ -55,6 +57,35 @@
 			<div class="note-acts">
 				<a class="btn" href="/entries/event/new?tank={data.tankHead.id}&category=note&from={encodeURIComponent(base)}">Add note</a>
 				<RemindMe tankId={data.tankHead.id} tankName={data.tankHead.name} today={data.today} />
+			</div>
+		</section>
+		<section aria-labelledby="routines-h">
+			<div class="sh">
+				<h2 id="routines-h">Routines{data.routines.length ? ` · ${data.routines.length}` : ''}</h2>
+				{#if data.routines.length}<a href="/tasks?filter={data.tankHead.id}">All ›</a>{/if}
+			</div>
+			{#if data.routines.length}
+				<ul class="card list routines">
+					{#each data.routines as r (r.id)}
+						<li>
+							<a class="r-text" href="/tasks/{r.id}">
+								<span class="r-name">{r.name}</span>
+								<span class="r-line">{r.line} · <span class={r.level === 'ok' ? '' : `status-${r.level}`}>{r.due}</span></span>
+							</a>
+							<form method="POST" action="/tasks?/done" use:enhance>
+								<input type="hidden" name="taskId" value={r.id} />
+								<input type="hidden" name="from" value={base} />
+								<button class="btn" class:btn-primary={r.now} aria-label="Mark {r.name} done">Done</button>
+							</form>
+						</li>
+					{/each}
+				</ul>
+			{:else}
+				<p class="none">Dosing and feeding on a schedule. Marking one done logs it in History.</p>
+			{/if}
+			<div class="note-acts">
+				<a class="btn" href={newRoutine('dosing')}>Add dosing</a>
+				<a class="btn" href={newRoutine('feeding')}>Add feeding</a>
 			</div>
 		</section>
 	</div>
@@ -277,6 +308,42 @@
 		-webkit-box-orient: vertical;
 		-webkit-line-clamp: 2;
 		line-clamp: 2;
+	}
+	/* routines (#17): what, how much and when, with Done */
+	.routines {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.routines li {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		padding: 8px 14px;
+		min-height: 60px;
+	}
+	.routines li + li {
+		border-top: 1px solid var(--border);
+	}
+	.r-text {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		color: var(--text);
+	}
+	.r-name {
+		font-size: 15px;
+		font-weight: 600;
+	}
+	.r-line {
+		font-size: 13px;
+		color: var(--text-muted);
+	}
+	.routines .btn {
+		min-height: 44px;
+		padding: 0 16px;
 	}
 	.none {
 		margin: 0;

@@ -1,9 +1,9 @@
 import { error } from '@sveltejs/kit';
 import { and, desc, eq, isNotNull, isNull } from 'drizzle-orm';
 import { addDays, dateInZone, todayInZone } from '$lib/time';
-import { effectiveDue, nextDueAfterCompletion } from '$lib/tasks';
+import { effectiveDue, isRoutine, nextDueAfterCompletion } from '$lib/tasks';
 import { db } from './db';
-import { taskCompletions, tanks, tasks, type Task } from './db/schema';
+import { events, taskCompletions, tanks, tasks, type Task } from './db/schema';
 import { getTank } from './tanks';
 
 /** Open tasks (with a due date) across the user's active tanks, soonest first. */
@@ -36,21 +36,34 @@ export function getTask(userId: string, taskId: string): Task {
 	return row.task;
 }
 
+/** What a routine's Done logs in History (#17): the dose, or the feeding. */
+function routineEntry(task: Task) {
+	const amount = task.amount != null ? { amount: task.amount } : {};
+	if (task.kind === 'dosing') return { category: 'dosing' as const, data: { product: task.product ?? task.name, ...amount, unit: task.amountUnit ?? 'mL', task_id: task.id } };
+	return { category: 'feeding' as const, data: { food: task.product ?? task.name, ...amount, ...(task.amountUnit ? { unit: task.amountUnit } : {}), task_id: task.id } };
+}
+
 /**
  * Mark a task done at `at` (ISO instant) and move it to its next occurrence.
- * The previous schedule is kept on the completion so it can be undone.
+ * The previous schedule is kept on the completion so it can be undone. A
+ * dosing or feeding routine also logs its entry, wherever it's marked done
+ * (the Tasks page, the dashboard, an email or a notification).
  */
 export function completeTask(userId: string, taskId: string, opts: { at?: string; eventId?: string; timeZone: string }) {
 	const task = getTask(userId, taskId);
 	const at = opts.at ?? new Date().toISOString();
 	const nextDue = nextDueAfterCompletion(task, dateInZone(at, opts.timeZone), todayInZone(opts.timeZone));
 	const completion = db.transaction((tx) => {
+		const logged =
+			!opts.eventId && isRoutine(task.kind)
+				? tx.insert(events).values({ tankId: task.tankId, occurredAt: at, note: null, ...routineEntry(task) }).returning().get()
+				: null;
 		const c = tx
 			.insert(taskCompletions)
 			.values({
 				taskId,
 				completedAt: at,
-				eventId: opts.eventId ?? null,
+				eventId: opts.eventId ?? logged?.id ?? null,
 				prevNextDue: task.nextDue,
 				prevSnoozedUntil: task.snoozedUntil
 			})
@@ -59,7 +72,7 @@ export function completeTask(userId: string, taskId: string, opts: { at?: string
 		tx.update(tasks).set({ nextDue, snoozedUntil: null }).where(eq(tasks.id, taskId)).run();
 		return c;
 	});
-	return { ...task, nextDue, completionId: completion.id };
+	return { ...task, nextDue, completionId: completion.id, eventId: completion.eventId };
 }
 
 /** Undo the latest completion of a task, restoring its previous schedule. */
@@ -85,6 +98,8 @@ export function undoCompletion(userId: string, completionId: string) {
 			.where(eq(tasks.id, row.task.id))
 			.run();
 		tx.delete(taskCompletions).where(eq(taskCompletions.id, completionId)).run();
+		// a routine's dose or feeding was logged by Done: undoing takes it back out of History
+		if (isRoutine(row.task.kind) && row.c.eventId) tx.delete(events).where(eq(events.id, row.c.eventId)).run();
 	});
 	return row.task;
 }
@@ -103,7 +118,7 @@ export function taskOfKind(userId: string, tankId: string, kind: Task['kind']) {
 }
 
 export type TaskInput = Pick<Task, 'name' | 'kind' | 'recurring' | 'intervalDays' | 'scheduleMode' | 'nextDue' | 'openFormOnDone'> &
-	Partial<Pick<Task, 'equipmentId'>>;
+	Partial<Pick<Task, 'equipmentId' | 'weekdays' | 'product' | 'amount' | 'amountUnit'>>;
 
 export function createTask(userId: string, tankId: string, input: TaskInput) {
 	getTank(userId, tankId);

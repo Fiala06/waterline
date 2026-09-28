@@ -214,13 +214,20 @@ export const tasks = sqliteTable(
 		kind: text('kind', { enum: TASK_KINDS }).notNull().default('other'),
 		recurring: integer('recurring', { mode: 'boolean' }).notNull().default(true),
 		intervalDays: integer('interval_days'),
-		scheduleMode: text('schedule_mode', { enum: ['completion', 'fixed'] })
+		// weekdays: on the days in `weekdays` (#17), whenever it's done
+		scheduleMode: text('schedule_mode', { enum: ['completion', 'fixed', 'weekdays'] })
 			.notNull()
 			.default('completion'),
+		/** "1,3,5": the days of the week it's due (0 Sunday … 6 Saturday), for schedule_mode weekdays */
+		weekdays: text('weekdays'),
 		nextDue: text('next_due'), // YYYY-MM-DD; null once a one-off task is done
 		snoozedUntil: text('snoozed_until'),
 		equipmentId: text('equipment_id'),
 		openFormOnDone: integer('open_form_on_done', { mode: 'boolean' }).notNull().default(false),
+		// a routine (#17): the product dosed or the food fed, and how much; done logs it
+		product: text('product'),
+		amount: real('amount'),
+		amountUnit: text('amount_unit'),
 		createdAt: createdAt()
 	},
 	(t) => [index('tasks_next_due').on(t.nextDue)]

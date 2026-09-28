@@ -4,8 +4,42 @@ import { addDays, daysBetween, fmtDate, isDate } from './time';
 interface Schedulable {
 	recurring: boolean;
 	intervalDays: number | null;
-	scheduleMode: 'completion' | 'fixed';
+	scheduleMode: 'completion' | 'fixed' | 'weekdays';
 	nextDue: string | null;
+	/** "1,3,5" (0 Sunday … 6 Saturday), for scheduleMode weekdays */
+	weekdays?: string | null;
+}
+
+export const WEEKDAYS = [
+	{ day: 1, short: 'Mon', letter: 'M', name: 'Monday' },
+	{ day: 2, short: 'Tue', letter: 'T', name: 'Tuesday' },
+	{ day: 3, short: 'Wed', letter: 'W', name: 'Wednesday' },
+	{ day: 4, short: 'Thu', letter: 'T', name: 'Thursday' },
+	{ day: 5, short: 'Fri', letter: 'F', name: 'Friday' },
+	{ day: 6, short: 'Sat', letter: 'S', name: 'Saturday' },
+	{ day: 0, short: 'Sun', letter: 'S', name: 'Sunday' }
+] as const;
+
+/** "1,3,5" → [1, 3, 5]; anything else is left out. */
+export function parseWeekdays(s: string | null | undefined): number[] {
+	const days = new Set(
+		(s ?? '')
+			.split(',')
+			.filter((d) => d.trim() !== '')
+			.map(Number)
+			.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6)
+	);
+	return [...days].sort((a, b) => a - b);
+}
+
+const weekdayOf = (date: string) => new Date(date + 'T12:00:00Z').getUTCDay();
+
+/** The first of `days` on or after `date` ('YYYY-MM-DD'). */
+export function onOrAfterWeekday(date: string, days: number[]): string {
+	if (!days.length) return date;
+	let d = date;
+	while (!days.includes(weekdayOf(d))) d = addDays(d, 1);
+	return d;
 }
 
 /** The date a task is actually due: a snooze moves only this occurrence. */
@@ -19,8 +53,17 @@ export function effectiveDue(task: { nextDue: string | null; snoozedUntil?: stri
  * - one-off: null (task is closed)
  * - from completion: doneOn + interval
  * - fixed calendar: step the current due date forward by the interval until it is after today
+ * - on set days: the next of those days after the due date (or after the day it's done, if later),
+ *   so doing Wednesday's dose early on Monday doesn't bring Wednesday back
  */
 export function nextDueAfterCompletion(task: Schedulable, doneOn: string, today: string): string | null {
+	// on set days: the next of them after this one, or after the day it's done if that's later
+	if (task.recurring && task.scheduleMode === 'weekdays') {
+		const days = parseWeekdays(task.weekdays);
+		if (!days.length) return null;
+		const from = task.nextDue && task.nextDue > doneOn ? task.nextDue : doneOn;
+		return onOrAfterWeekday(addDays(from, 1), days);
+	}
 	if (!task.recurring || !task.intervalDays) return null;
 	if (task.scheduleMode === 'completion' || !task.nextDue) return addDays(doneOn, task.intervalDays);
 	let next = addDays(task.nextDue, task.intervalDays);
@@ -57,8 +100,16 @@ export function dueInfo(nextDue: string, today: string): DueInfo {
 	return { days, level: 'ok', text: fmtDate(nextDue), section: 'later' };
 }
 
-/** "every 7 days", "every 2 weeks", "one-off" */
-export function intervalText(task: { recurring: boolean; intervalDays: number | null }): string {
+/** "every 7 days", "every 2 weeks", "Mon, Wed, Fri", "every day but Sun", "one-off" */
+export function intervalText(task: { recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null }): string {
+	if (task.recurring && task.scheduleMode === 'weekdays') {
+		const days = parseWeekdays(task.weekdays);
+		if (days.length === 7) return 'every day';
+		const on = WEEKDAYS.filter((w) => days.includes(w.day));
+		if (days.length === 6) return `every day but ${WEEKDAYS.find((w) => !days.includes(w.day))!.short}`;
+		if (days.length === 5 && !days.includes(0) && !days.includes(6)) return 'Mon–Fri';
+		return on.map((w) => w.short).join(', ') || 'one-off';
+	}
 	if (!task.recurring || !task.intervalDays) return 'one-off';
 	const d = task.intervalDays;
 	if (d % 7 === 0 && d >= 14) return `every ${d / 7} weeks`;
@@ -113,3 +164,22 @@ export function reminderDue(when: string, date: string, today: string): string |
 	const days = Number(when);
 	return REMIND_WHEN.some((w) => w.value === when) && Number.isInteger(days) ? addDays(today, days) : null;
 }
+
+/** Food for a feeding routine: how it's measured. */
+export const FEED_UNITS = ['pinches', 'pellets', 'cubes', 'wafers', 'scoops', 'g'];
+
+const ONE: Record<string, string> = { drops: 'drop', pumps: 'pump', pinches: 'pinch', pellets: 'pellet', cubes: 'cube', wafers: 'wafer', scoops: 'scoop' };
+/** "1 pump", "2 pumps", "5 mL": an amount with its unit. */
+export function amountText(amount: number | null | undefined, unit: string | null | undefined): string | null {
+	if (amount == null) return null;
+	const n = Math.round(amount * 100) / 100;
+	const u = unit ? (n === 1 ? (ONE[unit] ?? unit) : unit) : '';
+	return `${n}${u ? ` ${u}` : ''}`;
+}
+
+/** A routine's line under its name: "1 pump · Mon, Wed, Fri". */
+export function routineLine(task: { kind: string; amount: number | null; amountUnit: string | null; recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null }) {
+	return [amountText(task.amount, task.amountUnit), intervalText(task)].filter(Boolean).join(' · ');
+}
+
+export const isRoutine = (kind: string) => kind === 'dosing' || kind === 'feeding';

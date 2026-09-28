@@ -11,7 +11,7 @@ import {
 	WATER_SOURCES
 } from '$lib/events';
 import { displayValue, fmtRange, fmtValue, paramDecimals, paramUnit, storedValue } from '$lib/params';
-import { dueInfo, effectiveDue, nextDueAfterCompletion } from '$lib/tasks';
+import { dueInfo, effectiveDue, FEED_UNITS, nextDueAfterCompletion } from '$lib/tasks';
 import { paramTip } from '$lib/tips';
 import { fmtDate, todayInZone, utcToZoned } from '$lib/time';
 import { formatNumber, toDisplay, toStored, unitLabel } from '$lib/units';
@@ -194,6 +194,14 @@ export function parseEventData(
 			if (amount != null && amount < 0) errors.amount = 'Enter an amount of 0 or more.';
 			return { data: { product, ...(amount != null ? { amount } : {}), unit }, errors };
 		}
+		case 'feeding': {
+			const food = str(form, 'food').slice(0, 80);
+			const amount = num(form, 'amount');
+			const unit = pick('unit', FEED_UNITS);
+			if (!food) errors.food = 'Enter the food.';
+			if (amount != null && amount < 0) errors.amount = 'Enter an amount of 0 or more.';
+			return { data: { food, ...(amount != null ? { amount } : {}), ...(unit ? { unit } : {}) }, errors };
+		}
 		case 'maintenance': {
 			const actions = many('actions', MAINTENANCE_ACTIONS);
 			if (!actions.length && !optStr(form, 'note')) errors.actions = 'Pick what you did or add a note.';
@@ -256,6 +264,8 @@ export function eventFormValues(
 					};
 		case 'dosing':
 			return { product: s(data.product), amount: s(data.amount), unit: s(data.unit) || 'mL' };
+		case 'feeding':
+			return { food: s(data.food), amount: s(data.amount), unit: s(data.unit) };
 		case 'maintenance':
 			return { actions: (data.actions as string[]) ?? [] };
 		case 'livestock':

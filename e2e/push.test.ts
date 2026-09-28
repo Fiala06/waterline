@@ -101,7 +101,7 @@ test('push: a device and ntfy get a test, reminders with Mark done, and out-of-r
 
 		// a task due tomorrow: pushed once, with Mark done and Snooze
 		await open(page, '/tasks/new');
-		await page.getByLabel('Task').fill('Trim stem plants');
+		await page.getByRole('textbox', { name: 'Task' }).fill('Trim stem plants');
 		const today = await dateValue(page, 'nextDue');
 		await pickDate(page, 'nextDue', new Date(Date.parse(today + 'T12:00:00Z') + 86_400_000).toISOString().slice(0, 10));
 		await page.getByRole('button', { name: 'Save' }).last().click();

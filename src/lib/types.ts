@@ -12,11 +12,14 @@ export const EVENT_CATEGORIES = [
 	'livestock',
 	'equipment',
 	'observation',
-	'note'
+	'note',
+	// logged when a feeding routine is marked done (#17)
+	'feeding'
 ] as const;
 export type EventCategory = (typeof EVENT_CATEGORIES)[number];
 
-export const TASK_KINDS = ['water_change', 'test', 'maintenance', 'other'] as const;
+// dosing and feeding are routines (#17): marking one done logs the dose or the feeding
+export const TASK_KINDS = ['water_change', 'test', 'maintenance', 'other', 'dosing', 'feeding'] as const;
 export type TaskKind = (typeof TASK_KINDS)[number];
 
 /** What a spreadsheet can be imported as: a tank's lists, or kinds of History entry. */

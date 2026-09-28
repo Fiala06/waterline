@@ -6,9 +6,11 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import SnoozeSheet from '$lib/components/SnoozeSheet.svelte';
 	import TaskForm from '$lib/components/TaskForm.svelte';
-	import { dueInfo, intervalText } from '$lib/tasks';
+	import { dueInfo, intervalText, isRoutine, routineLine } from '$lib/tasks';
 
 	let { data } = $props();
+	// a routine's line has its amount too: "1 pump · Mon, Wed, Fri"
+	const every = (t: (typeof data.tasks)[number]) => (isRoutine(t.kind) ? routineLine(t) : intervalText(t));
 	// The pane posts to /tasks/[id] or /tasks/new; TaskForm puts their errors in page.form.
 	const paneForm = $derived(
 		page.form as { values?: NonNullable<typeof data.pane>['values']; errors?: Record<string, string> } | null
@@ -101,10 +103,10 @@
 					<div class="card ocard" class:selected={selectedId === t.id}>
 						<a class="otext t-link" href="/tasks/{t.id}" onclick={(e) => openEdit(e, t.id)}>
 							<span class="name">{t.name}</span>
-							<span class="meta hide-desk">{tankNames[t.tankId]} · due {fmtShort(t.due)} · {intervalText(t)}</span>
+							<span class="meta hide-desk">{tankNames[t.tankId]} · due {fmtShort(t.due)} · {every(t)}</span>
 							<span class="d-due status-bad hide-phone">{dueInfo(t.due, data.today).text}</span>
 							<span class="d-tank hide-phone">{tankNames[t.tankId]}</span>
-							<span class="d-int hide-phone">{cap(intervalText(t))}</span>
+							<span class="d-int hide-phone">{cap(every(t))}</span>
 						</a>
 						<div class="oactions">
 							<form method="POST" action="/tasks?/done" use:enhance class="grow">
@@ -140,11 +142,11 @@
 									<span class="name">{t.name}</span>
 									<!-- 06: only "Today" stands out; the section header carries the ▲ -->
 									<span class="meta hide-desk"
-										>{tankNames[t.tankId]}{' · '}{#if d.days === 0}<span class="today">Today</span>{:else}{fmtShort(t.due)}{/if}{' · '}{intervalText(t)}</span
+										>{tankNames[t.tankId]}{' · '}{#if d.days === 0}<span class="today">Today</span>{:else}{fmtShort(t.due)}{/if}{' · '}{every(t)}</span
 									>
 									<span class="d-due hide-phone {d.level === 'ok' ? 'plain' : `status-${d.level}`}">{dueLabel(t)}</span>
 									<span class="d-tank hide-phone">{tankNames[t.tankId]}</span>
-									<span class="d-int hide-phone">{cap(intervalText(t))}</span>
+									<span class="d-int hide-phone">{cap(every(t))}</span>
 								</a>
 								<form method="POST" action="/tasks?/done" use:enhance>
 									<input type="hidden" name="taskId" value={t.id} />
@@ -170,6 +172,7 @@
 						tanks={data.formTanks}
 						values={paneForm?.values ?? data.pane.values}
 						errors={paneForm?.errors}
+						products={data.products}
 						action={data.pane.taskId ? `/tasks/${data.pane.taskId}` : '/tasks/new'}
 						cancelHref={q({ edit: null, new: null })}
 						afterSave={q(data.pane.taskId ? { edit: data.pane.taskId, new: null } : { edit: null, new: null })}

@@ -43,7 +43,7 @@ test('reminder email: Mark done link works once without signing in', async ({ pa
 
 	// A task due tomorrow → "Due tomorrow" reminder (default lead time is 1 day)
 	await open(page, '/tasks/new');
-	await page.getByLabel('Task').fill('Trim stem plants');
+	await page.getByRole('textbox', { name: 'Task' }).fill('Trim stem plants');
 	const today = await dateValue(page, 'nextDue');
 	const tomorrow = new Date(Date.parse(today + 'T12:00:00Z') + 86_400_000).toISOString().slice(0, 10);
 	await pickDate(page, 'nextDue', tomorrow);

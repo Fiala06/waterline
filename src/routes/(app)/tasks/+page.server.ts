@@ -4,7 +4,7 @@ import { setFlash } from '$lib/server/flash';
 import { str } from '$lib/server/forms';
 import { safeReturn } from '$lib/server/redirect';
 import { listTanks } from '$lib/server/tanks';
-import { taskFormValues } from '$lib/server/task-form';
+import { routineProducts, taskFormValues, taskType } from '$lib/server/task-form';
 import { completeTask, getTask, listTasks, snoozeTask, undoCompletion } from '$lib/server/tasks';
 import { effectiveDue } from '$lib/tasks';
 import type { Actions, PageServerLoad } from './$types';
@@ -19,7 +19,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
 	const editing = rows.find((r) => r.task.id === url.searchParams.get('edit'))?.task;
 	let pane: { mode: 'new' | 'edit'; taskId: string | null; values: ReturnType<typeof taskFormValues> } | null = null;
 	if (!editing && url.searchParams.has('new')) {
-		pane = { mode: 'new', taskId: null, values: taskFormValues(null, user, filter) };
+		pane = { mode: 'new', taskId: null, values: taskFormValues(null, user, filter, taskType(url.searchParams.get('type'))) };
 	} else {
 		const task = editing ?? rows[0]?.task;
 		if (task) pane = { mode: 'edit', taskId: task.id, values: taskFormValues(task, user, null) };
@@ -30,7 +30,8 @@ export const load: PageServerLoad = ({ locals, url }) => {
 		today: todayInZone(user.timeZone),
 		tasks: rows.map((r) => r.task),
 		pane,
-		formTanks: listTanks(user.id).map((t) => ({ id: t.id, name: t.name }))
+		formTanks: listTanks(user.id).map((t) => ({ id: t.id, name: t.name })),
+		products: routineProducts(user.id)
 	};
 };
 

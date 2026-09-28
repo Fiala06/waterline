@@ -92,8 +92,11 @@
 			return { title: kind ? IMPORTS[kind].title : 'Import', crumbs: [tanks, { label: tankName, href: `/tanks/${page.params.id}` }] };
 		}
 		if (id === '/(app)/tasks') return { title: 'Tasks', actions: [{ label: 'New task', href: newTaskHref }] };
-		if (id === '/(app)/tasks/new') return { title: 'New task', crumbs: [tasks] };
-		if (id === '/(app)/tasks/[id]') return { title: 'Edit task', crumbs: [tasks] };
+		// a routine (#17): dosing or feeding
+		const taskType = (page.data.values as { type?: string } | undefined)?.type;
+		if (id === '/(app)/tasks/new')
+			return { title: taskType === 'dosing' ? 'New dosing routine' : taskType === 'feeding' ? 'New feeding routine' : 'New task', crumbs: [tasks] };
+		if (id === '/(app)/tasks/[id]') return { title: taskType === 'dosing' || taskType === 'feeding' ? 'Edit routine' : 'Edit task', crumbs: [tasks] };
 		if (id.startsWith('/(app)/entries/') && !logForm) {
 			const history = { label: 'History', href: ui.prev?.startsWith('/history') ? ui.prev : '/history' };
 			return { title: id.endsWith('/edit') ? 'Edit entry' : ((page.data.entry?.kindLabel as string | undefined) ?? 'Entry'), crumbs: [history] };

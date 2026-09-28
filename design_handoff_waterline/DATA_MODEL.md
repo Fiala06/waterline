@@ -32,11 +32,12 @@ tests            id, tank_id, taken_at, note?, edited_at?, client_id? (offline d
 test_readings    test_id, parameter_id, value, prev_value? (before the last edit: "was 40")
 
 events           id, tank_id, category(water_change|dosing|maintenance|livestock|
-                 equipment|observation|note), occurred_at, note?, data JSON, edited_at?,
+                 equipment|observation|note|feeding), occurred_at, note?, data JSON, edited_at?,
                  client_id?, import_id?
                  -- data examples:
                  -- water_change {percent, volume_l, source: tap|rodi|mix}
-                 -- dosing {product, amount, unit}
+                 -- dosing {product, amount, unit, task_id? (logged by a routine's Done)}
+                 -- feeding {food, amount?, unit?, task_id?}
                  -- maintenance {actions:[...], equipment_id?}
                  -- livestock {action: added|removed|moved|status|named, livestock_id, delta,
                  --            reason: loss|rehomed|recount}
@@ -47,9 +48,11 @@ photos           id, tank_id, event_id?, test_id?, path, thumb_path, width, heig
 photo_livestock  photo_id, livestock_id (pets tagged in a photo)
 
 ── Tasks ──────────────────────────────────────────────────────────────────────
-tasks            id, tank_id, name, kind(water_change|test|maintenance|other), recurring,
-                 interval_days?, schedule_mode(completion|fixed), next_due?,
-                 snoozed_until?, equipment_id?, open_form_on_done, created_at
+tasks            id, tank_id, name, kind(water_change|test|maintenance|other|dosing|feeding),
+                 recurring, interval_days?, schedule_mode(completion|fixed|weekdays),
+                 weekdays? ("1,3,5", 0 = Sunday), next_due?, snoozed_until?, equipment_id?,
+                 open_form_on_done, product?, amount?, amount_unit? (a dosing or feeding
+                 routine: Done logs the dose or feeding, and Undo removes it), created_at
 task_completions id, task_id, completed_at, event_id?,
                  prev_next_due?, prev_snoozed_until? (to undo)
 

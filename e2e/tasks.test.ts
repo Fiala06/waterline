@@ -6,7 +6,7 @@ test('tasks: create, complete with undo, snooze, edit, delete', async ({ page },
 
 	// Create a one-off task due today
 	await open(page, '/tasks/new');
-	await page.getByLabel('Task').fill('Clean canister filter');
+	await page.getByRole('textbox', { name: 'Task' }).fill('Clean canister filter');
 	await page.locator('label', { hasText: 'One-off' }).click();
 	const today = await dateValue(page, 'nextDue');
 	await page.getByRole('button', { name: 'Save' }).last().click();

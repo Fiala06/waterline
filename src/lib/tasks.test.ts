@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dueInfo, effectiveDue, intervalText, nextDueAfterCompletion, reminderDue, scheduleExamples, snoozeOptions } from './tasks';
+import { amountText, dueInfo, effectiveDue, intervalText, nextDueAfterCompletion, onOrAfterWeekday, parseWeekdays, reminderDue, routineLine, scheduleExamples, snoozeOptions } from './tasks';
 
 const weekly = { recurring: true, intervalDays: 7, scheduleMode: 'completion' as const, nextDue: '2026-09-24' };
 
@@ -80,5 +80,59 @@ describe('reminderDue', () => {
 	it('refuses anything else', () => {
 		expect(reminderDue('5', '', today)).toBeNull();
 		expect(reminderDue('', '', today)).toBeNull();
+	});
+});
+
+// 2026-09-28 is a Monday
+describe('on set days of the week (#17)', () => {
+	const mwf = { recurring: true, intervalDays: null, scheduleMode: 'weekdays' as const, weekdays: '1,3,5', nextDue: '2026-09-28' };
+
+	it('moves to the next day picked', () => {
+		expect(nextDueAfterCompletion(mwf, '2026-09-28', '2026-09-28')).toBe('2026-09-30');
+		expect(nextDueAfterCompletion({ ...mwf, nextDue: '2026-10-02' }, '2026-10-02', '2026-10-02')).toBe('2026-10-05');
+	});
+
+	it("done late: the next day picked after today; done early: Wednesday's dose doesn't come back", () => {
+		expect(nextDueAfterCompletion(mwf, '2026-09-29', '2026-09-29')).toBe('2026-09-30');
+		expect(nextDueAfterCompletion({ ...mwf, nextDue: '2026-09-30' }, '2026-09-28', '2026-09-28')).toBe('2026-10-02');
+	});
+
+	it('every day, and a lone Sunday', () => {
+		expect(nextDueAfterCompletion({ ...mwf, weekdays: '0,1,2,3,4,5,6' }, '2026-09-28', '2026-09-28')).toBe('2026-09-29');
+		expect(nextDueAfterCompletion({ ...mwf, weekdays: '0' }, '2026-09-28', '2026-09-28')).toBe('2026-10-04');
+	});
+
+	it('the first day picked on or after a date', () => {
+		expect(onOrAfterWeekday('2026-09-29', [1, 3, 5])).toBe('2026-09-30');
+		expect(onOrAfterWeekday('2026-09-28', [1])).toBe('2026-09-28');
+	});
+
+	it('reads days as written, and drops anything else', () => {
+		expect(parseWeekdays('5,1,3,3,9,x')).toEqual([1, 3, 5]);
+		expect(parseWeekdays(null)).toEqual([]);
+	});
+
+	it('says which days', () => {
+		expect(intervalText(mwf)).toBe('Mon, Wed, Fri');
+		expect(intervalText({ ...mwf, weekdays: '0,1,2,3,4,5,6' })).toBe('every day');
+		expect(intervalText({ ...mwf, weekdays: '1,2,3,4,5,6' })).toBe('every day but Sun');
+		expect(intervalText({ ...mwf, weekdays: '1,2,3,4,5' })).toBe('Mon–Fri');
+		expect(intervalText({ ...mwf, weekdays: '6,0' })).toBe('Sat, Sun');
+	});
+});
+
+describe('a routine’s amount', () => {
+	it('one pump, two pumps, 1.5 mL', () => {
+		expect(amountText(1, 'pumps')).toBe('1 pump');
+		expect(amountText(2, 'pumps')).toBe('2 pumps');
+		expect(amountText(1.5, 'mL')).toBe('1.5 mL');
+		expect(amountText(1, 'pinches')).toBe('1 pinch');
+		expect(amountText(3, null)).toBe('3');
+		expect(amountText(null, 'mL')).toBeNull();
+	});
+
+	it('its line: how much, then when', () => {
+		expect(routineLine({ kind: 'dosing', amount: 1, amountUnit: 'pumps', recurring: true, intervalDays: null, scheduleMode: 'weekdays', weekdays: '1,3,5' })).toBe('1 pump · Mon, Wed, Fri');
+		expect(routineLine({ kind: 'feeding', amount: null, amountUnit: null, recurring: true, intervalDays: 1, scheduleMode: 'completion' })).toBe('every day');
 	});
 });

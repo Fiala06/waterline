@@ -5,6 +5,7 @@
 		| 'test'
 		| 'water_change'
 		| 'dosing'
+		| 'feeding'
 		| 'maintenance'
 		| 'livestock'
 		| 'plant'
@@ -40,6 +41,9 @@
 			<path d="M12 2.5s-6.5 7-6.5 11.5a6.5 6.5 0 0 0 13 0C18.5 9.5 12 2.5 12 2.5Z" /><path d="M8.8 15c1.1.8 2.1.8 3.2 0s2.1-.8 3.2 0" />
 		{:else if kind === 'dosing'}
 			<path d="m2 22 1-1h3l9-9" /><path d="M3 21v-3l9-9" /><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z" />
+		{:else if kind === 'feeding'}
+			<!-- a food shaker -->
+			<rect x="6" y="8" width="12" height="13" rx="2" /><path d="M8 8V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v3" /><path d="M10 6h.01M12 6h.01M14 6h.01" /><path d="M6 13h12" />
 		{:else if kind === 'maintenance'}
 			<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
 		{:else if kind === 'livestock'}

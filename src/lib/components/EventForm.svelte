@@ -23,6 +23,7 @@
 		OBSERVATION_TAGS,
 		RECHECK_OPTIONS
 	} from '$lib/events';
+	import { FEED_UNITS } from '$lib/tasks';
 	import { whenLabel, type When } from '$lib/time';
 	import type { EventCategory } from '$lib/types';
 
@@ -211,6 +212,7 @@
 			: {
 					water_change: 'Save water change',
 					dosing: 'Save dosing',
+					feeding: 'Save feeding',
 					maintenance: 'Save maintenance',
 					livestock: 'Save change',
 					equipment: 'Save equipment change',
@@ -363,6 +365,27 @@
 						<!-- a product dosed before is one worth a link -->
 						<a class="reorder" href="/settings/products?name={encodeURIComponent(product.trim())}#add">Save a reorder link</a>
 					{/if}
+				{:else if category === 'feeding'}
+					<!-- logged by a feeding routine's Done (#17), edited here -->
+					<div class="dose">
+						<div class="field product">
+							<label class="label" for="food">Food</label>
+							<input class="input" id="food" name="food" defaultValue={v('food')} maxlength="80" autocomplete="off" placeholder="e.g. Micro pellets" aria-invalid={!!errors.food} />
+							{#if errors.food}<span class="error-text">✕ {errors.food}</span>{/if}
+						</div>
+						<div class="field">
+							<label class="label" for="amount">Amount</label>
+							<input class="input" id="amount" name="amount" inputmode="decimal" autocomplete="off" defaultValue={v('amount')} aria-invalid={!!errors.amount} />
+							{#if errors.amount}<span class="error-text">✕ {errors.amount}</span>{/if}
+						</div>
+						<div class="field">
+							<label class="label" for="unit">Unit</label>
+							<select class="input" id="unit" name="unit" value={v('unit')}>
+								<option value="">—</option>
+								{#each FEED_UNITS as u (u)}<option value={u}>{u}</option>{/each}
+							</select>
+						</div>
+					</div>
 				{:else if category === 'maintenance'}
 					<fieldset class="field">
 						<legend class="label">What did you do?</legend>

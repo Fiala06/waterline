@@ -10,6 +10,7 @@ import {
 } from '$lib/events';
 import { fmtValue, paramUnit, statusOf } from '$lib/params';
 import { statusMedium } from '$lib/status';
+import { amountText } from '$lib/tasks';
 import { dateInZone, fmtDate, fmtTime, fmtWhen } from '$lib/time';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import type { User } from './db/schema';
@@ -98,6 +99,10 @@ export function eventView(user: User, id: string): EntryView {
 		case 'dosing':
 			add('Product', d.product);
 			add('Amount', typeof d.amount === 'number' ? `${formatNumber(d.amount, 2)} ${d.unit ?? ''}` : null);
+			break;
+		case 'feeding':
+			add('Food', d.food);
+			add('Amount', typeof d.amount === 'number' ? amountText(d.amount, typeof d.unit === 'string' ? d.unit : null) : null);
 			break;
 		case 'maintenance':
 			add('Done', d.actions);

@@ -4,6 +4,7 @@ export const FILTERS = [
 	{ key: 'test', label: 'Water tests', short: 'Tests' },
 	{ key: 'water_change', label: 'Water changes' },
 	{ key: 'dosing', label: 'Dosing' },
+	{ key: 'feeding', label: 'Feeding' },
 	{ key: 'maintenance', label: 'Maintenance' },
 	{ key: 'livestock', label: 'Livestock / plants' },
 	{ key: 'equipment', label: 'Equipment' },

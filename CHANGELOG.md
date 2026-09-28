@@ -9,6 +9,11 @@ How to write a line:
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
+## Unreleased
+
+- **Dosing and feeding routines:** Save what you dose and feed, how much and when, like "Thrive S, 1 pump, Mon, Wed, Fri" or "Micro pellets, 2 pinches, every day". They're on the tank's [Overview](/tanks/current) under Routines, and in [Tasks](/tasks) and the dashboard's Due list; tap Done and the dose or feeding is logged in [History](/history), with Undo if you tapped too soon. Routines remind you on the day, not days ahead.
+- **Tasks on set days:** Any task can repeat on chosen days of the week, like every Sunday, with On days when you [add a task](/tasks/new).
+
 ## 1.7.0 · 2026-09-28
 
 - **Push notifications:** Get task reminders, overdue alerts and out-of-range alerts on your phone or computer, even with Waterline closed, with Mark done and Snooze right on the notification. Turn it on for each device in [Settings › Notifications](/settings#push), or use the [ntfy](https://ntfy.sh) app instead. Each kind of notice has its own Email and Push switches, so you can have alerts pushed and the digest by email. On iPhone, add Waterline to your Home Screen first.
