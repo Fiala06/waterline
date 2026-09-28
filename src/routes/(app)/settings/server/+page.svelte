@@ -3,6 +3,8 @@
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import { untrack } from 'svelte';
 	import { toast } from '$lib/ui.svelte';
+	import SectionLink from '$lib/components/SectionLink.svelte';
+	import { SERVER_SECTIONS } from '$lib/settings-sections';
 	let { data, form } = $props();
 
 	// who else may sign in with Google
@@ -57,10 +59,163 @@
 		<p class="muted">Only visible to the server owner.</p>
 	</div>
 
+	<!-- phones: where each part is; the desktop menu lists them beside the page -->
+	<nav class="jump hide-desk" aria-label="On this page">
+		{#each SERVER_SECTIONS as sec (sec.id)}<a href="#{sec.id}">{sec.label}</a>{/each}
+	</nav>
+
+	<section class="sec" id="sign-in" aria-labelledby="signin-h">
+		<div class="sec-head">
+			<h2 id="signin-h">Sign-in<SectionLink id="sign-in" label="Sign-in" /></h2>
+			<p class="sub">How people sign in to this server, and who can.</p>
+		</div>
+
+		<form method="POST" action="?/saveGoogle" class="block" id="google" use:enhance={saved((d) => (d?.needsAdmin ? "✓ Google sign-in saved. Now enter your Google account as the admin's, under Who can sign in." : '✓ Google sign-in saved'))}>
+			<div class="line">
+				<h3>Google sign-in<SectionLink id="google" label="Google sign-in" /></h3>
+				<span class="state {data.signIn.google.on ? 'status-ok' : 'status-none'}">{data.signIn.google.on ? '✓ On' : '– Off'}</span>
+			</div>
+			{#if data.signIn.google.fromEnv}
+				<p class="hint">Set by environment variables now (client <span class="mono">{data.signIn.google.fromEnv}</span>). A client saved here takes over.</p>
+			{/if}
+			<div class="field">
+				<label class="label" for="g-id">Client ID</label>
+				<input
+					class="input mono"
+					id="g-id"
+					name="googleClientId"
+					defaultValue={data.signIn.google.clientId}
+					placeholder="….apps.googleusercontent.com"
+					autocomplete="off"
+					spellcheck="false"
+					aria-invalid={!!googleErrors.googleClientId}
+				/>
+				{#if googleErrors.googleClientId}<span class="error-text">✕ {googleErrors.googleClientId}</span>{/if}
+			</div>
+			<div class="field">
+				<label class="label" for="g-secret">Client secret</label>
+				<input
+					class="input mono"
+					id="g-secret"
+					name="googleClientSecret"
+					type="password"
+					autocomplete="off"
+					placeholder={data.signIn.google.hasSecret ? 'Saved · leave empty to keep it' : ''}
+					aria-invalid={!!googleErrors.googleClientSecret}
+				/>
+				{#if googleErrors.googleClientSecret}<span class="error-text">✕ {googleErrors.googleClientSecret}</span>{/if}
+			</div>
+			<div class="field">
+				<span class="label">Authorized redirect URI</span>
+				<code class="uri mono">{data.signIn.redirectUri}</code>
+				<span class="hint"
+					>In Google Cloud Console › Credentials, create an OAuth client ID for a web application and add this redirect URI.{data.signIn.plainHttp
+						? ' Google only accepts https addresses.'
+						: ''} Empty the client ID to turn Google sign-in off.</span
+				>
+			</div>
+			<div class="actions"><button class="btn btn-primary">Save</button></div>
+		</form>
+
+		<form method="POST" action="?/saveAccess" class="block access" id="who-can-sign-in" use:enhance={saved('✓ Sign-in settings saved')}>
+			<h3>Who can sign in<SectionLink id="who-can-sign-in" label="Who can sign in" /></h3>
+			{#if data.signIn.needsAdmin}
+				<p class="banner banner-warn">▲ Enter your own Google account as the admin's, then save, to sign in with Google. Until then it turns you away too.</p>
+			{/if}
+			{#if data.signIn.accessFromEnv}
+				<p class="hint">Set by environment variables now (ALLOWED_EMAILS, OPEN_SIGNUP). Saving here takes over.</p>
+			{/if}
+			<div class="field">
+				<label class="label" for="a-admin">Admin's Google account</label>
+				<input
+					class="input"
+					id="a-admin"
+					name="adminEmail"
+					type="email"
+					defaultValue={data.signIn.adminEmail}
+					placeholder={data.signIn.adminEmailEnv ?? 'you@gmail.com'}
+					autocomplete="off"
+					aria-invalid={!!accessErrors.adminEmail}
+				/>
+				<span class="hint">Becomes an admin when it signs in, like the local admin login.</span>
+				{#if accessErrors.adminEmail}<span class="error-text">✕ {accessErrors.adminEmail}</span>{/if}
+			</div>
+			<fieldset>
+				<legend class="label">With a Google account, also</legend>
+				<div class="group">
+					{#each MODES as m (m.value)}
+						<label class="row choice">
+							<input type="radio" name="signupMode" value={m.value} defaultChecked={data.signIn.mode === m.value} />
+							<span class="ttext"><span class="tt">{m.label}</span><span class="td">{m.d}</span></span>
+						</label>
+					{/each}
+				</div>
+			</fieldset>
+			<div class="field list-field">
+				<label class="label" for="a-list">Emails and domains</label>
+				<textarea
+					class="input area mono"
+					id="a-list"
+					name="allowedEmails"
+					rows="4"
+					defaultValue={data.signIn.list}
+					placeholder={'me@example.com\n@family.example'}
+					aria-invalid={!!accessErrors.allowedEmails}
+				></textarea>
+				<span class="hint">One per line. @family.example lets in everyone at that domain. Someone taken off is signed out on their next visit.</span>
+				{#if accessErrors.allowedEmails}<span class="error-text">✕ {accessErrors.allowedEmails}</span>{/if}
+			</div>
+			<div class="actions"><button class="btn btn-primary">Save</button></div>
+		</form>
+
+		<form method="POST" action="?/saveLocal" class="block" id="local-admin" use:enhance={saved((d) => (d?.localSaved === 'off' ? 'Local admin login turned off' : '✓ Local admin login saved'))}>
+			<div class="line">
+				<h3>Local admin login<SectionLink id="local-admin" label="Local admin login" /></h3>
+				<span class="state {data.signIn.local.on ? 'status-ok' : 'status-none'}">{data.signIn.local.on ? '✓ On' : '– Off'}</span>
+			</div>
+			<p class="hint">
+				A username and password for the admin, for when Google sign-in isn't set up or doesn't work.{data.signIn.local.fromEnv
+					? ' The password in LOCAL_ADMIN_PASSWORD_HASH works too.'
+					: ''}
+			</p>
+			<div class="field">
+				<label class="label" for="l-user">Username</label>
+				<input class="input" id="l-user" name="username" defaultValue={data.signIn.local.username} autocomplete="username" autocapitalize="off" spellcheck="false" aria-invalid={!!localErrors.username} />
+				{#if localErrors.username}<span class="error-text">✕ {localErrors.username}</span>{/if}
+			</div>
+			<div class="pair pw">
+				<div class="field">
+					<label class="label" for="l-pw">{data.signIn.local.fromApp ? 'New password' : 'Password'}</label>
+					<input
+						class="input"
+						id="l-pw"
+						name="password"
+						type="password"
+						autocomplete="new-password"
+						placeholder={data.signIn.local.fromApp ? 'Leave empty to keep it' : ''}
+						aria-invalid={!!localErrors.password}
+					/>
+				</div>
+				<div class="field">
+					<label class="label" for="l-pw2">Password again</label>
+					<input class="input" id="l-pw2" name="confirm" type="password" autocomplete="new-password" aria-invalid={!!localErrors.confirm} />
+				</div>
+			</div>
+			{#if localErrors.password}<span class="error-text">✕ {localErrors.password}</span>{/if}
+			{#if localErrors.confirm}<span class="error-text">✕ {localErrors.confirm}</span>{/if}
+			<div class="actions">
+				{#if data.signIn.local.fromApp}<button class="btn" name="off" value="1">Turn off</button>{/if}
+				<button class="btn btn-primary">Save</button>
+			</div>
+		</form>
+	</section>
+
 	<form
 		method="POST"
 		action="?/save"
 		class="sec"
+		id="email"
+		aria-labelledby="email-h"
 		use:enhance={({ action }) => {
 			busy = action.search.includes('test') ? 'test' : 'save';
 			return async ({ result, update }) => {
@@ -71,7 +226,7 @@
 		}}
 	>
 		<div class="sec-head">
-			<h2>Email delivery</h2>
+			<h2 id="email-h">Email delivery<SectionLink id="email" label="Email delivery" /></h2>
 			<p class="sub hide-phone">Used for reminders, alerts and digests for everyone on this server.</p>
 		</div>
 		{#if data.outbox}
@@ -173,6 +328,8 @@
 		method="POST"
 		action="?/savePublic"
 		class="sec"
+		id="public-pages"
+		aria-labelledby="public-h"
 		use:enhance={() =>
 			async ({ result, update }) => {
 				await update({ reset: false });
@@ -180,7 +337,7 @@
 			}}
 	>
 		<div class="sec-head">
-			<h2>Public pages</h2>
+			<h2 id="public-h">Public pages<SectionLink id="public-pages" label="Public pages" /></h2>
 			<p class="sub">Applies to everyone on this server.</p>
 		</div>
 		<div class="group">
@@ -212,8 +369,8 @@
 			{#if form?.publicErrors?.publicBaseUrl}<span class="error-text">✕ {form.publicErrors.publicBaseUrl}</span>{/if}
 		</div>
 
-		<div class="sec-head next">
-			<h2>Analytics</h2>
+		<div class="sec-head next" id="analytics">
+			<h2>Analytics<SectionLink id="analytics" label="Analytics" /></h2>
 			<p class="sub">Loaded on public pages only. Never on signed-in app screens.</p>
 		</div>
 		<div class="field">
@@ -242,154 +399,11 @@
 		<div class="actions"><button class="btn btn-primary">Save</button></div>
 	</form>
 
-	<section class="sec" aria-labelledby="signin-h">
+	<section class="sec" id="features" aria-labelledby="features-h">
 		<div class="sec-head">
-			<h2 id="signin-h">Sign-in</h2>
-			<p class="sub">How people sign in to this server, and who can.</p>
+			<h2 id="features-h">Features<SectionLink id="features" label="Features" /></h2>
+			<p class="sub">What this server does by itself, for everyone on it.</p>
 		</div>
-
-		<form method="POST" action="?/saveGoogle" class="block" use:enhance={saved((d) => (d?.needsAdmin ? "✓ Google sign-in saved. Now enter your Google account as the admin's, under Who can sign in." : '✓ Google sign-in saved'))}>
-			<div class="line">
-				<h3>Google sign-in</h3>
-				<span class="state {data.signIn.google.on ? 'status-ok' : 'status-none'}">{data.signIn.google.on ? '✓ On' : '– Off'}</span>
-			</div>
-			{#if data.signIn.google.fromEnv}
-				<p class="hint">Set by environment variables now (client <span class="mono">{data.signIn.google.fromEnv}</span>). A client saved here takes over.</p>
-			{/if}
-			<div class="field">
-				<label class="label" for="g-id">Client ID</label>
-				<input
-					class="input mono"
-					id="g-id"
-					name="googleClientId"
-					defaultValue={data.signIn.google.clientId}
-					placeholder="….apps.googleusercontent.com"
-					autocomplete="off"
-					spellcheck="false"
-					aria-invalid={!!googleErrors.googleClientId}
-				/>
-				{#if googleErrors.googleClientId}<span class="error-text">✕ {googleErrors.googleClientId}</span>{/if}
-			</div>
-			<div class="field">
-				<label class="label" for="g-secret">Client secret</label>
-				<input
-					class="input mono"
-					id="g-secret"
-					name="googleClientSecret"
-					type="password"
-					autocomplete="off"
-					placeholder={data.signIn.google.hasSecret ? 'Saved · leave empty to keep it' : ''}
-					aria-invalid={!!googleErrors.googleClientSecret}
-				/>
-				{#if googleErrors.googleClientSecret}<span class="error-text">✕ {googleErrors.googleClientSecret}</span>{/if}
-			</div>
-			<div class="field">
-				<span class="label">Authorized redirect URI</span>
-				<code class="uri mono">{data.signIn.redirectUri}</code>
-				<span class="hint"
-					>In Google Cloud Console › Credentials, create an OAuth client ID for a web application and add this redirect URI.{data.signIn.plainHttp
-						? ' Google only accepts https addresses.'
-						: ''} Empty the client ID to turn Google sign-in off.</span
-				>
-			</div>
-			<div class="actions"><button class="btn btn-primary">Save</button></div>
-		</form>
-
-		<form method="POST" action="?/saveAccess" class="block access" use:enhance={saved('✓ Sign-in settings saved')}>
-			<h3>Who can sign in</h3>
-			{#if data.signIn.needsAdmin}
-				<p class="banner banner-warn">▲ Enter your own Google account as the admin's, then save, to sign in with Google. Until then it turns you away too.</p>
-			{/if}
-			{#if data.signIn.accessFromEnv}
-				<p class="hint">Set by environment variables now (ALLOWED_EMAILS, OPEN_SIGNUP). Saving here takes over.</p>
-			{/if}
-			<div class="field">
-				<label class="label" for="a-admin">Admin's Google account</label>
-				<input
-					class="input"
-					id="a-admin"
-					name="adminEmail"
-					type="email"
-					defaultValue={data.signIn.adminEmail}
-					placeholder={data.signIn.adminEmailEnv ?? 'you@gmail.com'}
-					autocomplete="off"
-					aria-invalid={!!accessErrors.adminEmail}
-				/>
-				<span class="hint">Becomes an admin when it signs in, like the local admin login.</span>
-				{#if accessErrors.adminEmail}<span class="error-text">✕ {accessErrors.adminEmail}</span>{/if}
-			</div>
-			<fieldset>
-				<legend class="label">With a Google account, also</legend>
-				<div class="group">
-					{#each MODES as m (m.value)}
-						<label class="row choice">
-							<input type="radio" name="signupMode" value={m.value} defaultChecked={data.signIn.mode === m.value} />
-							<span class="ttext"><span class="tt">{m.label}</span><span class="td">{m.d}</span></span>
-						</label>
-					{/each}
-				</div>
-			</fieldset>
-			<div class="field list-field">
-				<label class="label" for="a-list">Emails and domains</label>
-				<textarea
-					class="input area mono"
-					id="a-list"
-					name="allowedEmails"
-					rows="4"
-					defaultValue={data.signIn.list}
-					placeholder={'me@example.com\n@family.example'}
-					aria-invalid={!!accessErrors.allowedEmails}
-				></textarea>
-				<span class="hint">One per line. @family.example lets in everyone at that domain. Someone taken off is signed out on their next visit.</span>
-				{#if accessErrors.allowedEmails}<span class="error-text">✕ {accessErrors.allowedEmails}</span>{/if}
-			</div>
-			<div class="actions"><button class="btn btn-primary">Save</button></div>
-		</form>
-
-		<form method="POST" action="?/saveLocal" class="block" use:enhance={saved((d) => (d?.localSaved === 'off' ? 'Local admin login turned off' : '✓ Local admin login saved'))}>
-			<div class="line">
-				<h3>Local admin login</h3>
-				<span class="state {data.signIn.local.on ? 'status-ok' : 'status-none'}">{data.signIn.local.on ? '✓ On' : '– Off'}</span>
-			</div>
-			<p class="hint">
-				A username and password for the admin, for when Google sign-in isn't set up or doesn't work.{data.signIn.local.fromEnv
-					? ' The password in LOCAL_ADMIN_PASSWORD_HASH works too.'
-					: ''}
-			</p>
-			<div class="field">
-				<label class="label" for="l-user">Username</label>
-				<input class="input" id="l-user" name="username" defaultValue={data.signIn.local.username} autocomplete="username" autocapitalize="off" spellcheck="false" aria-invalid={!!localErrors.username} />
-				{#if localErrors.username}<span class="error-text">✕ {localErrors.username}</span>{/if}
-			</div>
-			<div class="pair pw">
-				<div class="field">
-					<label class="label" for="l-pw">{data.signIn.local.fromApp ? 'New password' : 'Password'}</label>
-					<input
-						class="input"
-						id="l-pw"
-						name="password"
-						type="password"
-						autocomplete="new-password"
-						placeholder={data.signIn.local.fromApp ? 'Leave empty to keep it' : ''}
-						aria-invalid={!!localErrors.password}
-					/>
-				</div>
-				<div class="field">
-					<label class="label" for="l-pw2">Password again</label>
-					<input class="input" id="l-pw2" name="confirm" type="password" autocomplete="new-password" aria-invalid={!!localErrors.confirm} />
-				</div>
-			</div>
-			{#if localErrors.password}<span class="error-text">✕ {localErrors.password}</span>{/if}
-			{#if localErrors.confirm}<span class="error-text">✕ {localErrors.confirm}</span>{/if}
-			<div class="actions">
-				{#if data.signIn.local.fromApp}<button class="btn" name="off" value="1">Turn off</button>{/if}
-				<button class="btn btn-primary">Save</button>
-			</div>
-		</form>
-	</section>
-
-	<section class="sec" aria-labelledby="server-h">
-		<h2 id="server-h">Server</h2>
 		<form method="POST" action="?/saveServer" class="block" use:enhance={saved('✓ Server settings saved')}>
 			<div class="group">
 				<div class="row">
@@ -412,7 +426,7 @@
 					>
 					<span class="switch"><input id="sv-update" type="checkbox" name="updateCheck" defaultChecked={data.server.updateCheck && !data.server.updateCheckOff} disabled={data.server.updateCheckOff} /><span></span></span>
 				</div>
-				<div class="row">
+				<div class="row" id="species-photos">
 					<label for="sv-stock" class="ttext"
 						><span class="tt">Species photos</span><span class="td"
 							>{data.server.stockPhotosOff
@@ -462,6 +476,10 @@
 				{/if}
 			</form>
 		{/if}
+	</section>
+
+	<section class="sec" id="about" aria-labelledby="about-h">
+		<h2 id="about-h">Logs & version<SectionLink id="about" label="Logs & version" /></h2>
 		<div class="group">
 			<a class="row logs" href="/settings/server/logs">
 				<span class="ttext"
@@ -750,6 +768,31 @@ users    {data.server.users}</pre>
 	}
 	.logs {
 		color: var(--text);
+	}
+	/* a shared link lands on the heading, not under the header */
+	.sec,
+	.block,
+	#analytics,
+	#species-photos {
+		scroll-margin-top: 16px;
+	}
+	.jump {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		margin-top: -6px;
+	}
+	.jump a {
+		min-height: 44px;
+		padding: 0 14px;
+		display: flex;
+		align-items: center;
+		border-radius: 22px;
+		border: 1px solid var(--border);
+		background: var(--surface);
+		color: var(--text);
+		font-size: 14px;
+		font-weight: 600;
 	}
 	.look {
 		flex-shrink: 0;

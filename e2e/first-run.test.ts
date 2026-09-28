@@ -141,9 +141,14 @@ test('the admin sets up sign-in and the server in the app', async ({ page }) => 
 	await expect(page.locator('form.access').getByLabel('Emails and domains')).toHaveValue('friend@example.com\n@family.example');
 
 	// signed out: Google is offered, and only the new password opens the admin login
-	await page.goto(at('/settings'));
+	// from the account menu, under the photo (the dashboard has it on phones too)
+	await page.goto(at('/'));
 	await page.locator('html[data-ready="true"]').waitFor();
-	await page.getByRole('button', { name: 'Sign out' }).first().click();
+	await page.getByRole('button', { name: /^Account: / }).locator('visible=true').click();
+	await page.getByRole('button', { name: 'Sign out' }).locator('visible=true').click();
+	await expect(page).toHaveURL(/\/signin/);
+	await page.goto(at('/'));
+	await expect(page).toHaveURL(/\/signin/);
 	await page.goto(at('/signin?local'));
 	await expect(page.getByRole('button', { name: 'Sign in with Google' })).toBeVisible();
 	await page.getByPlaceholder('Admin username').fill('admin');

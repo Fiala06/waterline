@@ -9,6 +9,12 @@ How to write a line:
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
+## Unreleased
+
+- **Server settings, easier to find your way:** [Server settings](/settings/server) now goes in the order you set a server up: sign-in, email, public pages, features, then logs and the version. On a computer its parts are listed in the Settings menu, and on a phone at the top of the page.
+- **A link to every section:** Each heading in [Settings](/settings) and Server settings has its own link (#), so a shared address like [Server settings › Species photos](/settings/server#species-photos) opens right at it. Tapping # copies the link.
+- **Sign out from your photo:** Sign out is no longer at the bottom of the Settings menu on a computer. It's in the menu under your photo, as it was already.
+
 ## 1.8.4 · 2026-09-28
 
 - **Cultivars get their own photo:** A plant like Java fern 'Trident' on the [Plants tab](/tanks/current/plants) shows a photo of that cultivar from Wikimedia Commons, or none until you add your own, instead of the plain Java fern's.

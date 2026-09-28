@@ -32,6 +32,7 @@
 
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import SectionLink from '$lib/components/SectionLink.svelte';
 	import { invalidateAll } from '$app/navigation';
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import { untrack } from 'svelte';
@@ -140,7 +141,7 @@
 	<h1 class="title hide-desk">Settings</h1>
 	<div class="sections">
 		<section id="profile" class="sec" aria-labelledby="profile-h">
-			<h2 id="profile-h">Profile</h2>
+			<h2 id="profile-h">Profile<SectionLink id="profile" label="Profile" /></h2>
 			<div class="group">
 				<div class="row photo-row"><ProfilePhoto user={u} error={form?.photoError} /></div>
 				<label class="row edit">
@@ -181,7 +182,7 @@
 		</section>
 
 		<section id="units" class="sec" aria-labelledby="units-h">
-			<h2 id="units-h">Units</h2>
+			<h2 id="units-h">Units<SectionLink id="units" label="Units" /></h2>
 			<div class="group">
 				<div class="row pick">
 					<label class="k" for="unitSystem">Unit system</label>
@@ -226,7 +227,7 @@
 
 		<section id="notifications" class="sec" aria-labelledby="notifications-h">
 			<div class="sec-head">
-				<h2 id="notifications-h">Notifications</h2>
+				<h2 id="notifications-h">Notifications<SectionLink id="notifications" label="Notifications" /></h2>
 				<p class="sub hide-phone">Sent to {p.notifyEmail || u.email} · <label class="change" for="notifyEmail">Change</label></p>
 			</div>
 			{#if !data.emailReady}
@@ -295,7 +296,7 @@
 		</section>
 
 		<section id="calendar" class="sec" aria-labelledby="calendar-h">
-			<h2 id="calendar-h">Calendar</h2>
+			<h2 id="calendar-h">Calendar<SectionLink id="calendar" label="Calendar" /></h2>
 			{#if data.calendar}
 				<div class="group">
 					<div class="row stack">
@@ -332,7 +333,7 @@
 		</section>
 
 		<section id="theme" class="sec" aria-labelledby="theme-h">
-			<h2 id="theme-h">Theme</h2>
+			<h2 id="theme-h">Theme<SectionLink id="theme" label="Theme" /></h2>
 			<div class="segmented theme" role="radiogroup" aria-labelledby="theme-h">
 				<label><input type="radio" name="theme" value="light" form="settings-form" defaultChecked={u.theme === 'light'} />Light</label>
 				<label><input type="radio" name="theme" value="dark" form="settings-form" defaultChecked={u.theme === 'dark'} />Dark</label>
@@ -342,7 +343,7 @@
 		</section>
 
 		<section id="products" class="sec" aria-labelledby="products-h">
-			<h2 id="products-h">Products</h2>
+			<h2 id="products-h">Products<SectionLink id="products" label="Products" /></h2>
 			<div class="group">
 				<a class="row link" href="/settings/products"
 					><span class="k">Saved product links</span>{#if data.products}<span class="v">{data.products}</span>{/if}<span class="chev" aria-hidden="true"
@@ -352,7 +353,7 @@
 		</section>
 
 		<section id="data" class="sec" aria-labelledby="data-h">
-			<h2 id="data-h">Data</h2>
+			<h2 id="data-h">Data<SectionLink id="data" label="Data" /></h2>
 			<div class="group">
 				<a class="row link" href="/settings/export"><span class="k">Import & export</span><span class="chev" aria-hidden="true"></span></a>
 				<a class="row link" href="/settings/assistant"

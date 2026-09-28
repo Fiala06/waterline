@@ -1,18 +1,19 @@
 <script lang="ts">
 	// Settings shell: on desktop, one "Settings" heading and section menu for the
-	// main page and its sub-pages (Products, Export, AI assistant, What's new, Server). Phones use back links instead.
+	// main page and its sub-pages (Products, Export, AI assistant, What's new, Server),
+	// with Server's own parts under it. Phones use back links instead. Signing
+	// out is in the account menu, under your photo.
 	import { page } from '$app/state';
-	import { ui } from '$lib/ui.svelte';
+	import { SERVER_SECTIONS, SETTINGS_SECTIONS } from '$lib/settings-sections';
 	let { data, children } = $props();
-	// Signing out clears this device, including entries still waiting to sync.
-	const unsynced = $derived(ui.queue.length);
 
 	const path = $derived(page.url.pathname);
-	// On the settings page, light up the section being read (D9).
-	let section = $state('profile');
+	// the page whose parts the menu follows as you scroll (D9)
+	const parts = $derived(path === '/settings' ? SETTINGS_SECTIONS : path === '/settings/server' ? SERVER_SECTIONS : null);
+	let section = $state('');
 	$effect(() => {
-		if (path !== '/settings') return;
-		const ids = ['profile', 'units', 'notifications', 'calendar', 'theme'];
+		if (!parts) return;
+		const ids = parts.map((p) => p.id);
 		const onScroll = () => {
 			let current = ids[0];
 			for (const id of ids) {
@@ -29,11 +30,7 @@
 	});
 	const on = (id: string) => path === '/settings' && section === id;
 	const items = $derived([
-		{ href: '/settings#profile', label: 'Profile', active: on('profile') },
-		{ href: '/settings#units', label: 'Units', active: on('units') },
-		{ href: '/settings#notifications', label: 'Notifications', active: on('notifications') },
-		{ href: '/settings#calendar', label: 'Calendar', active: on('calendar') },
-		{ href: '/settings#theme', label: 'Theme', active: on('theme') },
+		...SETTINGS_SECTIONS.map((s) => ({ href: `/settings#${s.id}`, label: s.label, active: on(s.id) })),
 		{ href: '/settings/products', label: 'Products', active: path.startsWith('/settings/products') },
 		{ href: '/settings/export', label: 'Import & export', active: path.startsWith('/settings/export') },
 		{ href: '/settings/assistant', label: 'AI assistant', active: path.startsWith('/settings/assistant') },
@@ -49,12 +46,18 @@
 				<a href={it.href} class:active={it.active} aria-current={it.active ? 'page' : undefined}>
 					{it.label}{#if 'admin' in it}<span class="badge">Admin</span>{/if}
 				</a>
+				{#if 'admin' in it && path.startsWith('/settings/server')}
+					<!-- Server's parts, each its own address -->
+					{#each SERVER_SECTIONS as sec (sec.id)}
+						<a
+							class="sub"
+							href="/settings/server#{sec.id}"
+							class:current={path === '/settings/server' && section === sec.id}
+							aria-current={path === '/settings/server' && section === sec.id ? 'location' : undefined}>{sec.label}</a
+						>
+					{/each}
+				{/if}
 			{/each}
-			<form method="POST" action="/settings?/signout">
-				<input type="hidden" name="redirectTo" value="/signin" />
-				<button class="signout">Sign out</button>
-				{#if unsynced}<p class="unsynced status-warn">▲ {unsynced} {unsynced === 1 ? "entry hasn't" : "entries haven't"} synced yet</p>{/if}
-			</form>
 		</nav>
 		<div class="content">{@render children()}</div>
 	</div>
@@ -91,16 +94,12 @@
 			overflow-y: auto;
 			padding: 24px 14px;
 		}
-		.side form {
-			margin-top: auto;
-		}
 		.content {
 			min-width: 0;
 			max-width: 800px;
 			padding: 28px 36px 48px;
 		}
-		.side a,
-		.signout {
+		.side a {
 			height: 40px;
 			padding: 0 12px;
 			border-radius: 10px;
@@ -115,8 +114,7 @@
 		.side a {
 			justify-content: space-between;
 		}
-		.side a:hover,
-		.signout:hover {
+		.side a:hover {
 			background: var(--surface);
 		}
 		.side a.active {
@@ -124,12 +122,15 @@
 			color: var(--accent);
 			font-weight: 600;
 		}
-		.signout {
-			color: var(--bad);
+		/* Server's parts, under it */
+		.side a.sub {
+			height: 36px;
+			padding-left: 26px;
+			font-size: 14px;
+			color: var(--text-muted);
 		}
-		.unsynced {
-			margin: 4px 12px 0;
-			font-size: 13px;
+		.side a.sub.current {
+			color: var(--accent);
 			font-weight: 600;
 		}
 		.badge {

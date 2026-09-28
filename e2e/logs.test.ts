@@ -26,8 +26,8 @@ test("the admin sees what went wrong, finds an error page's reference, and downl
 	db.prepare('update users set is_admin = 1 where email = ?').run(email);
 	db.close();
 	await open(page, '/settings/server');
-	await expect(page.getByRole('link', { name: /^Logs/ })).toContainText(/error|warning/);
-	await page.getByRole('link', { name: /^Logs/ }).click();
+	await expect(page.getByRole('link', { name: /^Logs \d|^Logs Nothing/ })).toContainText(/error|warning/);
+	await page.getByRole('link', { name: /^Logs \d|^Logs Nothing/ }).click();
 	await expect(page).toHaveURL('/settings/server/logs');
 
 	// by level

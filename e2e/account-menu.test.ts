@@ -36,6 +36,9 @@ test('the account menu: your initials, your settings, and signing out', async ({
 	// signing out, from the menu
 	await page.getByRole('button', { name: 'Sign out' }).click();
 	await expect(page).toHaveURL(/\/signin/);
+	// and really signed out
+	await page.goto('/');
+	await expect(page).toHaveURL(/\/signin/);
 });
 
 test('the account menu opens without scripts', async ({ page, browser }, info) => {
