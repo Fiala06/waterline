@@ -10,6 +10,8 @@ export interface ToastUndo {
 export const ui = $state({
 	quickAdd: false,
 	tankSwitcher: false,
+	/** the desktop tank dropdown (G12): in the header, or the dashboard's hero */
+	tankMenu: false,
 	online: true,
 	/** the list page the user came from (History, Charts…), for entry Back links and deletes */
 	prev: null as string | null,

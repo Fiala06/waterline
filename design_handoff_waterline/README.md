@@ -110,6 +110,7 @@ Font: `"Helvetica Neue", Helvetica, Arial, sans-serif` (single family). Monospac
 | `Waterline Prototype.dc.html` | **Clickable** core flow: sign in → setup → create tank → log test → dashboard → complete task; entry detail; parameters & targets editor |
 | `Brand Explorations.dc.html` | Name/logo exploration (history only) |
 | `Desktop Sidebar(.Light).dc.html` | Shared desktop sidebar component (`active` prop) |
+| `Waterline Refresh.dc.html` | Dashboard refresh, direction 1c (built in 1.6): 1c, 2a desktop dark, 2b phone light; notes in [`REFRESH_1C.md`](REFRESH_1C.md) |
 
 Treat the dark files as canonical; Light files are the same layouts with the light token column.
 

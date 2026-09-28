@@ -2,6 +2,25 @@
    light applies with data-theme="light" or, with no data-theme, when the OS
    prefers light. */
 
+@font-face {
+	font-family: 'IBM Plex Mono';
+	src: url('/fonts/IBMPlexMono-Regular.woff2') format('woff2');
+	font-weight: 400;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'IBM Plex Mono';
+	src: url('/fonts/IBMPlexMono-Medium.woff2') format('woff2');
+	font-weight: 500;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'IBM Plex Mono';
+	src: url('/fonts/IBMPlexMono-SemiBold.woff2') format('woff2');
+	font-weight: 600;
+	font-display: swap;
+}
+
 :root,
 :root[data-theme='dark'] {
 	--page: #081317;
@@ -50,6 +69,11 @@
 	--shadow-fab: 0 8px 24px rgba(0, 0, 0, 0.45);
 	--shadow-modal: 0 24px 64px rgba(0, 0, 0, 0.5);
 	--shadow-toast: 0 10px 30px rgba(0, 0, 0, 0.4);
+	/* dashboard refresh (1c): values in Plex Mono, one waterline, the cadence bar */
+	--font-data: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+	--waterline: linear-gradient(to right, var(--accent), transparent);
+	--warn-fill: #e8c060;
+	--track: var(--surface-hi);
 	color-scheme: dark;
 }
 
@@ -94,6 +118,7 @@
 	--placeholder-stripe-a: #e1e9e8;
 	--placeholder-stripe-b: #eaf0ef;
 	--overlay-bg: rgba(255, 255, 255, 0.92);
+	--warn-fill: #c99a1e; /* --warn is too dark to read as a bar */
 	--overlay-text: #0f2126;
 	--viewer-bg: #0f2126;
 	--shadow-fab: 0 8px 24px rgba(15, 33, 38, 0.2);
@@ -144,6 +169,7 @@
 		--placeholder-stripe-a: #e1e9e8;
 		--placeholder-stripe-b: #eaf0ef;
 		--overlay-bg: rgba(255, 255, 255, 0.92);
+		--warn-fill: #c99a1e; /* --warn is too dark to read as a bar */
 		--overlay-text: #0f2126;
 		--viewer-bg: #0f2126;
 		--shadow-fab: 0 8px 24px rgba(15, 33, 38, 0.2);
@@ -256,6 +282,19 @@ textarea::placeholder {
 
 .mono {
 	font-family: ui-monospace, Menlo, monospace;
+}
+
+/* Values, units, times and meta lines only; labels, headings and buttons stay Helvetica. */
+.data {
+	font-family: var(--font-data);
+	font-variant-numeric: tabular-nums;
+	font-weight: 500;
+}
+.data-meta {
+	font-family: var(--font-data);
+	font-size: 12px;
+	letter-spacing: 0.02em;
+	text-transform: uppercase;
 }
 
 .sr-only {

@@ -17,13 +17,13 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/desktop-dashboard-dark.png">
-  <img src="docs/screenshots/desktop-dashboard-light.png" alt="The dashboard on a computer: latest readings with their status, days since the last water change, tasks due, a nitrate chart and recent activity">
+  <img src="docs/screenshots/desktop-dashboard-light.png" alt="The dashboard on a computer: the tank's photo and name, what needs attention with each reading's recent line, the readings in range, tasks due and recent activity">
 </picture>
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/phone-dashboard-dark.png">
-    <img src="docs/screenshots/phone-dashboard-light.png" alt="The dashboard on a phone: two readings out of range, days since the water change, and each reading's status" width="260">
+    <img src="docs/screenshots/phone-dashboard-light.png" alt="The dashboard on a phone: two readings out of range, one near its limit and the overdue water change under Needs attention, then the readings in range" width="260">
   </picture>
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/phone-log-test-dark.png">
@@ -40,7 +40,7 @@ Each server is yours: people sign in with Google (or the local admin login) and 
 ## What it does
 
 - **Log at the tank:** water tests with each reading's status as you type (`✓ OK`, `▲ Near`, `✕ High`), water changes, dosing, maintenance, livestock and equipment changes, observations, notes and photos. Every field is optional, times can be backdated, *Use last readings* fills in the previous test, and entries made offline sync later.
-- **See how it's going:** a dashboard per tank with the latest readings, days since the water change and what's due; charts with water changes and doses marked, and the same parameter in your other tanks; notes when a reading keeps rising, is heading past its target, drifts between water changes or changes after a dose; History and Photos.
+- **See how it's going:** a dashboard per tank with its photo, what needs attention first (readings out of range or near a limit, and an overdue water change), the rest at a glance, and what's due; charts with water changes and doses marked, and the same parameter in your other tanks; notes when a reading keeps rising, is heading past its target, drifts between water changes or changes after a dose; History and Photos.
 - **Tasks and email:** recurring or one-off tasks, from completion or on a fixed schedule, with snooze. Reminders, overdue and out-of-range alerts by email, one at a time or as a daily or weekly digest, with *Mark done* and *Snooze* right in the email. A private calendar link puts them in Google Calendar, Apple Calendar or Outlook.
 - **What's in the tank:** livestock (with a built-in species list, and names and photos for pets), plants and equipment, and what each tank costs, with receipts.
 - **Parameters your way:** presets for freshwater, planted, brackish and reef tanks, your own targets and custom parameters, imperial or metric, and hardness in dGH or ppm.
@@ -196,4 +196,4 @@ SvelteKit 2 (Svelte 5, adapter-node) · TypeScript · Drizzle ORM + better-sqlit
 
 ## License
 
-The code is under the [MIT License](LICENSE). The bundled species list (`src/lib/server/data/species.json`) is shared under CC BY-SA 4.0, because of its Wikipedia sources; see [`SPECIES_SOURCES.md`](src/lib/server/data/SPECIES_SOURCES.md).
+The code is under the [MIT License](LICENSE). The IBM Plex Mono font in `static/fonts/` is under the SIL Open Font License ([`IBMPlexMono-OFL.txt`](static/fonts/IBMPlexMono-OFL.txt)). The bundled species list (`src/lib/server/data/species.json`) is shared under CC BY-SA 4.0, because of its Wikipedia sources; see [`SPECIES_SOURCES.md`](src/lib/server/data/SPECIES_SOURCES.md).

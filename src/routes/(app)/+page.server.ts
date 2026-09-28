@@ -2,7 +2,7 @@ import { eq, lte, sql } from 'drizzle-orm';
 import { displayVersion, whatsNewSince } from '$lib/changelog';
 import { bySpecies, livestockLabel } from '$lib/livestock';
 import { eventIcon, eventKindLabel, eventTitle } from '$lib/events';
-import { dateInZone, daysBetween, fmtDay, fmtWhen, todayInZone } from '$lib/time';
+import { dateInZone, daysBetween, fmtDate, fmtDay, fmtWhen, todayInZone } from '$lib/time';
 import { eventsSince, lastEventOf, latestReadings, recentActivity, series } from '$lib/server/logs';
 import { tankNotes } from '$lib/server/trends';
 import { db } from '$lib/server/db';
@@ -135,7 +135,9 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		today,
 		waterChange: {
 			days: lastWc ? daysBetween(dateInZone(lastWc.occurredAt, tz), today) : null,
-			goal: wcTask?.intervalDays ?? 7
+			goal: wcTask?.intervalDays ?? 7,
+			// "Sep 19", for "Every 7 days · last Sep 19"
+			last: lastWc ? fmtDate(dateInZone(lastWc.occurredAt, tz)) : null
 		},
 		activity
 	};

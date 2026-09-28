@@ -32,6 +32,8 @@ test('charts say what they show, and read out a reading on hover, tap or the arr
 	await expect(chart.locator('.readout')).toHaveCount(0);
 
 	// pointing at the line (a hover on desktop, a tap on a phone)
+	// in the middle of the screen, clear of the phone's + button
+	await chart.evaluate((el) => el.scrollIntoView({ block: 'center' }));
 	const box = (await chart.boundingBox())!;
 	await page.mouse.click(box.x + box.width - 12, box.y + box.height / 2);
 	await expect(chart.locator('.readout')).toContainText('30 ppm');

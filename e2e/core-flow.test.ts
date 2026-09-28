@@ -41,12 +41,16 @@ test('core flow', async ({ page }, info) => {
 
 	// Dashboard shows statuses
 	await expect(page.getByRole('status')).toContainText('✓ Saved 3 readings · 1 out of range');
-	const cards = page.locator('.pcard');
-	await expect(cards.filter({ hasText: 'Nitrate' })).toContainText('✕ High');
-	await expect(cards.filter({ hasText: 'KH' })).toContainText('▲ Near low');
-	await expect(cards.filter({ hasText: /^pH/ })).toContainText('✓ OK');
-	await expect(cards.filter({ hasText: 'CO₂' })).toContainText('– No data');
-	await expect(cards.filter({ hasText: 'Ammonia' })).toContainText('– No data');
+	// needs attention: out of range, then near a limit; then what's fine, and what's untested
+	const attention = page.getByRole('region', { name: 'Needs attention' }).locator('a.row');
+	await expect(attention).toHaveCount(2);
+	await expect(attention.nth(0)).toContainText('Nitrate ✕ High');
+	await expect(attention.nth(0)).toContainText('40');
+	await expect(attention.nth(1)).toContainText('KH ▲ Near low');
+	const inRange = page.getByRole('region', { name: 'In range' });
+	await expect(inRange).toContainText('✓ 1 of 3');
+	await expect(inRange.getByRole('link', { name: /pH\s*6\.8/ })).toHaveAttribute('href', /\/charts\?p=/);
+	await expect(inRange.getByText(/^Not tested: .*Ammonia.*CO₂/)).toBeVisible();
 
 	// Complete a task: the water change reminder opens its log form
 	await page.getByRole('button', { name: 'Mark done' }).first().click();

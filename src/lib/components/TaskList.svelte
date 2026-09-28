@@ -4,6 +4,7 @@
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import { dueInfo, intervalText } from '$lib/tasks';
+	import { fmtDate } from '$lib/time';
 
 	interface TaskRow {
 		id: string;
@@ -19,20 +20,19 @@
 </script>
 
 	<div class="card list">
-		{#each tasks as t (t.id)}
+		{#each tasks as t, i (t.id)}
 			{@const d = dueInfo(t.due, today)}
-			{@const urgent = d.days <= 0}
+			<!-- refresh 1c: "✕ 1 day over", "▲ Today", or the date; the primary button only on the most urgent -->
+			{@const when = d.days < 0 ? `✕ ${-d.days} day${d.days === -1 ? '' : 's'} over` : d.days === 0 ? '▲ Today' : `${fmtDate(t.due)} · ${intervalText(t)}`}
 			<div class="row">
 				<div class="text">
 					<div class="name">{t.name}</div>
-					<div class="due {d.level === 'ok' ? 'plain' : `status-${d.level}`}">
-						{d.level === 'warn' ? d.text : `${d.text} · ${intervalText(t)}`}
-					</div>
+					<div class="due data-meta {d.days > 0 ? 'plain' : `status-${d.level}`}">{when}</div>
 				</div>
 				<form method="POST" action="/tasks?/done" use:enhance>
 					<input type="hidden" name="taskId" value={t.id} />
 					<input type="hidden" name="from" value={from} />
-					<button class="btn" class:btn-primary={urgent}>Mark done</button>
+					<button class="btn" class:btn-primary={i === 0 && d.days <= 0}>Mark done</button>
 				</form>
 			</div>
 		{/each}
@@ -65,7 +65,7 @@
 		font-weight: 600;
 	}
 	.due {
-		font-size: 13px;
+		font-size: 12px;
 		font-weight: 600;
 	}
 	.due.plain {

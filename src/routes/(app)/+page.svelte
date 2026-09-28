@@ -1,18 +1,18 @@
 <script lang="ts">
-	import { tankTypeLabel } from '$lib/types';
 	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
 	import AccountMenu from '$lib/components/AccountMenu.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ImportButton from '$lib/components/ImportButton.svelte';
-	import ParamCard from '$lib/components/ParamCard.svelte';
-	import TankThumb from '$lib/components/TankThumb.svelte';
+	import AttentionList from '$lib/components/AttentionList.svelte';
+	import InRangeList from '$lib/components/InRangeList.svelte';
+	import TankHero from '$lib/components/TankHero.svelte';
 	import TaskList from '$lib/components/TaskList.svelte';
 	import RemindMe from '$lib/components/RemindMe.svelte';
 	import TrendChart from '$lib/components/TrendChart.svelte';
 	import WhatsNew from '$lib/components/WhatsNew.svelte';
 	import { compactName, displayValue, fmtRange, fmtValue, paramDecimals, paramUnit, shortName, statusOf } from '$lib/params';
 	import { statusShort } from '$lib/status';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { invalidateAll } from '$app/navigation';
 	import { discard, retry } from '$lib/offline';
 	import { toast, ui } from '$lib/ui.svelte';
 	import { photoUrl } from '$lib/media';
@@ -49,12 +49,19 @@
 				statusText: statusShort(st),
 				sub: r ? (range ? `Target ${range}` : 'No target') : 'Not tested',
 				range: r ? range : '',
-				spark: data.sparks?.[p.id] ?? []
+				spark: data.sparks?.[p.id] ?? [],
+				// the target band behind its line (stored units, as the readings)
+				lo: p.min,
+				hi: p.max,
+				key: p.key
 			};
 		})
 	);
 	const hasReadings = $derived(cards.some((c) => c.value != null));
-	const bad = $derived(cards.filter((c) => c.level === 'bad'));
+	// Refresh (1c): what needs attention (out of range, then near a limit), what's fine, what's never been tested
+	const attention = $derived([...cards.filter((c) => c.level === 'bad'), ...cards.filter((c) => c.level === 'warn')]);
+	const inRange = $derived(cards.filter((c) => c.level === 'ok').map((c) => ({ ...c, unit: c.key === 'temp' ? c.unit : '' })));
+	const untested = $derived(cards.filter((c) => c.level === 'none').map((c) => c.fullName));
 
 	// Trends: parameters with at least one reading in the window; pick one.
 	const trendable = $derived(
@@ -75,26 +82,9 @@
 			: []
 	);
 
-	// G1: swipe left or right on the tank name for the next or previous tank; a tap opens the switcher.
-	let touch = { x: 0, y: 0 };
-	let swiped = false;
-	function swipeStart(e: TouchEvent) {
-		touch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-		swiped = false;
-	}
-	function swipeEnd(e: TouchEvent) {
-		const dx = e.changedTouches[0].clientX - touch.x;
-		const dy = e.changedTouches[0].clientY - touch.y;
-		if (Math.abs(dx) < 48 || Math.abs(dy) > 32 || data.tanks.length < 2) return;
-		const i = data.tanks.findIndex((t) => t.id === data.currentTankId);
-		const next = data.tanks[(i + (dx < 0 ? 1 : -1) + data.tanks.length) % data.tanks.length];
-		swiped = true;
-		e.preventDefault(); // no click, so the switcher doesn't open too
-		goto(`/?tank=${next.id}`);
-	}
-
 	const wc = $derived(data.waterChange);
-	const wcOver = $derived(wc && wc.days != null && wc.days > wc.goal ? wc.days - wc.goal : 0);
+	// the water change needs attention once it's due
+	const wcDue = $derived(wc && wc.days != null && wc.days >= wc.goal ? { days: wc.days, goal: wc.goal, last: wc.last } : null);
 </script>
 
 <svelte:head><title>{data.tank ? `${data.tank.name} · Waterline` : 'Waterline'}</title></svelte:head>
@@ -110,30 +100,15 @@
 {:else}
 	<div class="page">
 		<h1 class="sr-only">{data.tank.name} dashboard</h1>
-		<div class="head-row">
-			<!-- phones: your account in the upper left; desktop has it in the sidebar -->
-			<AccountMenu user={data.user} id="account-menu-dash" />
-		<button
-			type="button"
-			class="tank-head"
-			ontouchstart={swipeStart}
-			ontouchend={swipeEnd}
-			onclick={() => {
-				if (!swiped) ui.tankSwitcher = true;
-				swiped = false;
-			}}
-		>
-			<TankThumb cover={current?.cover} />
-			<span class="th-text">
-				<span class="th-name">{data.tank.name} <span class="caret">▾</span></span>
-				<span class="th-sub"
-					>{tankTypeLabel(data.tank.type)}{current?.volume ? ` · ${current.volume}` : ''}{data.tanks.length > 1
-						? ` · ${data.tanks.length} tanks`
-						: ''}</span
-				>
-			</span>
-		</button>
-		</div>
+		<TankHero
+			tank={data.tank}
+			tanks={data.tanks}
+			cover={current?.cover}
+			volume={current?.volume}
+			today={data.today}
+			lastTest={data.latestWhen ? `Last test ${data.latestWhen}` : 'No tests yet'}
+			user={data.user}
+		/>
 
 		{#if data.whatsNew}<WhatsNew {...data.whatsNew} />{/if}
 
@@ -151,45 +126,10 @@
 						<ImportButton href="/tanks/{data.tank.id}/import/tests" label="Import past tests" />
 					</EmptyState>
 				{:else}
-					<div class="summary-row">
-						{#if bad.length}
-							<div class="summary bad">
-								<div class="s-title">✕ {bad.length} out of range</div>
-								<div class="s-detail">{bad.map((c) => `${c.label} ${c.value}${c.unit ? ' ' + c.unit : ''}`).join(', ')}</div>
-							</div>
-						{:else}
-							<div class="summary ok">
-								<div class="s-title">✓ All in range</div>
-								<div class="s-detail">
-									{cards.filter((c) => c.value != null).length} parameters tested
-								</div>
-							</div>
-						{/if}
-						<div class="card wc-small">
-							<div class="muted sm">Since water change</div>
-							<div class="big-num">
-								<span class="num">{wc?.days ?? '—'}</span>
-								<span class="muted">{wc?.days == null ? 'none logged' : `day${wc.days === 1 ? '' : 's'} · goal ${wc.goal}`}</span>
-							</div>
-						</div>
-					</div>
-
-					<section class="stack readings">
-						<div class="section-head">
-							<h2>Latest readings</h2>
-							<!-- desktop has no summary card above, so the count is here -->
-							<span class="meta"
-								>{data.latestWhen}{#if bad.length}<span class="hide-phone"
-										>{' · '}<span class="status-bad">{bad.length} out of range</span></span
-									>{/if}</span
-							>
-						</div>
-						<div class="cards" style:--cols={Math.min(cards.length, 7)}>
-							{#each cards as c (c.id)}
-								<ParamCard {...c} compact />
-							{/each}
-						</div>
-					</section>
+					{#if attention.length || wcDue}
+						<AttentionList items={attention} wc={wcDue} when={data.latestWhen} />
+					{/if}
+					<InRangeList items={inRange} {untested} total={cards.length - untested.length} />
 
 					<section class="stack trends">
 						<div class="section-head">
@@ -263,19 +203,6 @@
 			</div>
 
 			<div class="col-side">
-				{#if hasReadings}
-					<div class="card wc-large">
-						<div>
-							<div class="muted sm">Since last water change</div>
-							<div class="big-num">
-								<span class="num">{wc?.days ?? '—'}</span>
-								<span class="muted">{wc?.days == null ? 'none logged' : `day${wc.days === 1 ? '' : 's'} · goal ${wc.goal}`}</span>
-							</div>
-						</div>
-						{#if wcOver}<span class="status-bad sm strong">✕ {wcOver} day{wcOver === 1 ? '' : 's'} over</span>{/if}
-					</div>
-				{/if}
-
 				<section class="stack">
 					<div class="section-head">
 						<h2>Due</h2>
@@ -383,31 +310,6 @@
 		gap: 8px;
 		margin-left: -4px;
 	}
-	.tank-head {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-		padding: 8px 0;
-		color: var(--text);
-		text-align: left;
-	}
-	.th-text {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-	}
-	.th-name {
-		font-size: 22px;
-		font-weight: 600;
-	}
-	.caret {
-		font-size: 14px;
-		color: var(--text-muted);
-	}
-	.th-sub {
-		font-size: 13px;
-		color: var(--text-muted);
-	}
 	.grid,
 	.col-main,
 	.col-side {
@@ -425,7 +327,7 @@
 		display: flex;
 		gap: 16px;
 	}
-	/* Phones read top to bottom: summary, readings, due, trends, recent activity (03). */
+	/* Phones read top to bottom (refresh 1c): attention, in range, due, trends, recent activity, in the tank. */
 	@media (max-width: 1023px) {
 		.col-main,
 		.col-side {
@@ -440,68 +342,6 @@
 		.in-tank {
 			order: 3;
 		}
-	}
-	.sm {
-		font-size: 13px;
-	}
-	.strong {
-		font-weight: 600;
-	}
-	.summary-row {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 10px;
-	}
-	.summary {
-		border-radius: 16px;
-		padding: 14px;
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
-	}
-	.summary.bad {
-		background: var(--bad-bg);
-	}
-	.summary.ok {
-		background: var(--ok-bg);
-	}
-	.s-title {
-		font-size: 13px;
-		font-weight: 600;
-	}
-	.bad .s-title {
-		color: var(--bad-text);
-	}
-	.ok .s-title {
-		color: var(--ok-text);
-	}
-	.s-detail {
-		font-size: 15px;
-		line-height: 1.35;
-	}
-	.wc-small {
-		padding: 14px;
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
-	}
-	.big-num {
-		display: flex;
-		align-items: baseline;
-		gap: 6px;
-		font-size: 14px;
-	}
-	.big-num .num {
-		font-size: 26px;
-		font-weight: 600;
-	}
-	.wc-large {
-		display: none;
-	}
-	.cards {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 10px;
 	}
 	/* chips run to the screen edge on phones (03) */
 	.chips {
@@ -704,37 +544,6 @@
 			flex: 1;
 			height: auto;
 			min-height: 240px;
-		}
-		/* 1a: one row, seven at most, then a second row; four across while the
-		   column is too narrow for seven 76px cards (the widest range, 1250–1400, fits) */
-		.readings {
-			container: readings / inline-size;
-		}
-		.cards {
-			grid-template-columns: repeat(4, minmax(0, 1fr));
-			gap: 8px;
-		}
-		@container readings (min-width: 580px) {
-			.cards {
-				grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
-			}
-		}
-		.summary-row,
-		.wc-small {
-			display: none;
-		}
-		.wc-large {
-			display: flex;
-			align-items: center;
-			gap: 16px;
-			justify-content: space-between;
-			padding: 18px;
-		}
-		.wc-large .big-num .num {
-			font-size: 34px;
-		}
-		.wc-large .big-num {
-			font-size: 15px;
 		}
 	}
 </style>

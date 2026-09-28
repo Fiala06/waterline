@@ -188,13 +188,12 @@
 		return () => clearTimeout(t);
 	});
 
-	// Desktop header dropdown (G12); phones use the bottom sheet.
-	let tankMenu = $state(false);
+	// Desktop header dropdown (G12, ui.tankMenu); phones use the bottom sheet.
 
 	function onkeydown(e: KeyboardEvent) {
 		if (e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey) && data.tanks.length) {
 			e.preventDefault();
-			if (tankScoped && matchMedia('(min-width: 1024px)').matches) tankMenu = !tankMenu;
+			if (tankScoped && matchMedia('(min-width: 1024px)').matches) ui.tankMenu = !ui.tankMenu;
 			else ui.tankSwitcher = true;
 			return;
 		}
@@ -256,27 +255,29 @@
 	</aside>
 
 	<div class="main">
-		<header class="topbar">
-			{#if current && tankScoped && bigSwitcher}
+		<!-- the dashboard's tank hero (refresh 1c) has the name, Quick add and last test itself -->
+		<header class="topbar" class:hero-page={path === '/' && !!current}>
+			<!-- on the dashboard the hero has the tank's name and switcher -->
+			{#if current && tankScoped && bigSwitcher && path !== '/'}
 				<div class="tank-pick">
-					<button type="button" class="tank-btn" aria-expanded={tankMenu} onclick={() => (tankMenu = !tankMenu)}>
+					<button type="button" class="tank-btn" aria-expanded={ui.tankMenu} onclick={() => (ui.tankMenu = !ui.tankMenu)}>
 						<TankThumb cover={current.cover} size={40} radius={10} />
 						<span class="tb-text">
-							<span class="tb-name">{current.name} <span class="caret">{tankMenu ? '▴' : '▾'}</span></span>
+							<span class="tb-name">{current.name} <span class="caret">{ui.tankMenu ? '▴' : '▾'}</span></span>
 							<span class="tb-sub">{tankTypeLabel(current.type)}{current.volume ? ` · ${current.volume}` : ''}</span>
 						</span>
 					</button>
-					<TankMenu bind:open={tankMenu} tanks={data.tanks} currentId={data.currentTankId} onpick={pickTank} />
+					<TankMenu bind:open={ui.tankMenu} tanks={data.tanks} currentId={data.currentTankId} onpick={pickTank} />
 				</div>
 			{:else if tankScoped && sectionTitle}
 				<div class="h-left">
 					<h1 class="h-title">{sectionTitle}</h1>
 					{#if current}
 						<div class="tank-pick">
-							<button type="button" class="tank-mini" aria-expanded={tankMenu} aria-label="{current.name}, switch tank" onclick={() => (tankMenu = !tankMenu)}>
-								{current.name} <span class="caret" aria-hidden="true">{tankMenu ? '▴' : '▾'}</span>
+							<button type="button" class="tank-mini" aria-expanded={ui.tankMenu} aria-label="{current.name}, switch tank" onclick={() => (ui.tankMenu = !ui.tankMenu)}>
+								{current.name} <span class="caret" aria-hidden="true">{ui.tankMenu ? '▴' : '▾'}</span>
 							</button>
-							<TankMenu bind:open={tankMenu} tanks={data.tanks} currentId={data.currentTankId} onpick={pickTank} />
+							<TankMenu bind:open={ui.tankMenu} tanks={data.tanks} currentId={data.currentTankId} onpick={pickTank} />
 						</div>
 					{/if}
 				</div>
@@ -472,10 +473,23 @@
 		color: var(--text-muted);
 		--c: var(--text-muted);
 	}
+	.tabbar a {
+		position: relative;
+	}
 	.tabbar a.active {
 		color: var(--accent);
 		font-weight: 600;
 		--c: var(--accent);
+	}
+	/* the active tab: a 2px accent line on the bar's top edge (refresh 1c) */
+	.tabbar a.active::before {
+		content: '';
+		position: absolute;
+		top: -11px;
+		left: 0;
+		right: 0;
+		height: 2px;
+		background: var(--accent);
 	}
 	.ti {
 		display: block;
@@ -686,6 +700,9 @@
 			height: 72px;
 			padding: 0 32px;
 			border-bottom: 1px solid var(--border);
+		}
+		.topbar.hero-page {
+			display: none;
 		}
 		.tank-pick {
 			position: relative;
