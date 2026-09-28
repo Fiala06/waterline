@@ -5,6 +5,10 @@
 # :<version>, :<major>.<minor> and :sha-xxxxxxx, and a GitHub release is made
 # with that version's section of CHANGELOG.md. So :latest is always a release,
 # and the version a server shows is the one it runs.
+#
+# For speed: the end-to-end tests run on three machines at once, and the image
+# is built while the tests run. Publishing waits for every test, then pushes
+# the same build from the cache.
 name: CI
 
 on:
@@ -38,8 +42,12 @@ jobs:
       - run: npm test
 
   e2e:
-    name: End-to-end tests
+    name: End-to-end tests (${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v7
 
@@ -50,27 +58,26 @@ jobs:
 
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npx playwright test
+      - run: npx playwright test --shard=${{ matrix.shard }}/3
 
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: |
             playwright-report/
             test-results/
           retention-days: 14
 
+  # Built alongside the tests, on every push, so a broken image shows before a
+  # release. Nothing is pushed here.
   docker:
     name: Docker image
-    needs: [check, e2e]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
     outputs:
       version: ${{ steps.version.outputs.version }}
+      minor: ${{ steps.version.outputs.minor }}
       new: ${{ steps.version.outputs.new }}
     steps:
       - uses: actions/checkout@v7
@@ -80,17 +87,35 @@ jobs:
         run: |
           v=$(node -p "require('./package.json').version")
           echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "minor=${v%.*}" >> "$GITHUB_OUTPUT"
           if git ls-remote --exit-code --tags origin "refs/tags/v$v" > /dev/null; then
             echo "new=false" >> "$GITHUB_OUTPUT"
           else
             echo "new=true" >> "$GITHUB_OUTPUT"
-            {
-              echo "tags<<EOF"
-              echo "type=raw,value=$v"
-              echo "type=raw,value=${v%.*}"
-              echo "EOF"
-            } >> "$GITHUB_OUTPUT"
           fi
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # A release: once every check and test has passed, the same image (all of it
+  # from the build's cache) is pushed to ghcr.io.
+  publish:
+    name: Publish image
+    needs: [check, e2e, docker]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.docker.outputs.new == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
 
       - uses: docker/setup-buildx-action@v4
 
@@ -107,22 +132,21 @@ jobs:
           tags: |
             type=raw,value=latest
             type=sha
-            ${{ steps.version.outputs.tags }}
+            type=raw,value=${{ needs.docker.outputs.version }}
+            type=raw,value=${{ needs.docker.outputs.minor }}
 
       - uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64
-          # built on every push, so a broken image shows before a release; pushed only for one
-          push: ${{ steps.version.outputs.new == 'true' }}
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
 
   release:
     name: GitHub release
-    needs: docker
+    needs: [docker, publish]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.docker.outputs.new == 'true'
     runs-on: ubuntu-latest
     permissions:
