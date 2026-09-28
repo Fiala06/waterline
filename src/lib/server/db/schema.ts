@@ -517,7 +517,7 @@ export const plants = sqliteTable(
 			.references(() => tanks.id, { onDelete: 'cascade' }),
 		name: text('name').notNull(),
 		scientificName: text('scientific_name'),
-		position: text('position', { enum: ['background', 'midground', 'foreground', 'epiphyte'] }).notNull().default('midground'),
+		position: text('position', { enum: ['background', 'midground', 'foreground', 'epiphyte', 'floating'] }).notNull().default('midground'),
 		status: text('status', { enum: ['thriving', 'melting', 'algae', 'other'] }).notNull().default('thriving'),
 		lastTrimmedAt: text('last_trimmed_at'),
 		removedAt: text('removed_at'),

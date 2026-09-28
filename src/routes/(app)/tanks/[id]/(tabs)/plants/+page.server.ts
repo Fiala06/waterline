@@ -5,7 +5,7 @@ import { optStr, str } from '$lib/server/forms';
 import { addPlant, getPlant, listPlants, logTrim, removePlant, updatePlant } from '$lib/server/specs';
 import type { Actions, PageServerLoad } from './$types';
 
-const POSITIONS = ['background', 'midground', 'foreground', 'epiphyte'] as const;
+const POSITIONS = ['background', 'midground', 'foreground', 'epiphyte', 'floating'] as const;
 const STATUSES = ['thriving', 'melting', 'algae', 'other'] as const;
 const pick = <T extends string>(v: string, list: readonly T[], d: T): T => (list.includes(v as T) ? (v as T) : d);
 

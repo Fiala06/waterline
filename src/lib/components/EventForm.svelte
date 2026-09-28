@@ -433,6 +433,7 @@
 									<option value="midground" selected>Midground</option>
 									<option value="foreground">Foreground</option>
 									<option value="epiphyte">Epiphyte</option>
+									<option value="floating">Floating</option>
 								</select>
 							</div>
 						{:else}

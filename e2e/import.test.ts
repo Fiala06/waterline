@@ -339,15 +339,15 @@ test('words a file uses that Waterline does not know are chosen once, for every 
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
 	await open(page, `/tanks/${tankId}/import/plants`);
 	await page.locator('input[type=file][name=file]').setInputFiles('e2e/files/plants-with-words.csv');
-	await expect(page.getByText('✓ 7 to add')).toBeVisible();
-	await expect(page.getByText('✕ 7 to fix')).toBeVisible();
+	// Water lettuce is Floating; "New" and "Struggling" need choosing
+	await expect(page.getByText('✓ 8 to add')).toBeVisible();
+	await expect(page.getByText('✕ 6 to fix')).toBeVisible();
 
 	const words = page.getByRole('region', { name: 'Words to check' });
-	await expect(words).toContainText('3 to choose');
+	await expect(words).toContainText('2 to choose');
 	await words.getByLabel('Status: “New” 5 rows').selectOption('thriving');
-	await expect(page.getByText('✓ 12 to add')).toBeVisible();
+	await expect(page.getByText('✓ 13 to add')).toBeVisible();
 	await words.getByLabel('Status: “Struggling” 1 row').selectOption('melting');
-	await words.getByLabel('Position: “Floating” 1 row').selectOption('foreground');
 	await expect(page.getByText('✓ 14 to add')).toBeVisible();
 	await expect(words).toContainText('✓ All chosen');
 	// a column picked again keeps the words chosen
@@ -358,4 +358,6 @@ test('words a file uses that Waterline does not know are chosen once, for every 
 	await page.getByRole('button', { name: 'Add 14 plants' }).click();
 	await expect(page.getByRole('status')).toContainText('✓ Imported 14 plants');
 	await expect(page.getByRole('button', { name: /^Water lettuce/ })).toBeVisible();
+	// floating plants have their own group
+	await expect(page.getByRole('heading', { name: 'Floating' })).toBeVisible();
 });

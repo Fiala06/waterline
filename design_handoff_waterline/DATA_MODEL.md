@@ -65,7 +65,7 @@ livestock        id, tank_id, kind(fish|invert|coral), common_name, scientific_n
                  nickname? (a pet: one animal, its own entry), notes?, photo_id?,
                  import_id?, created_at
 plants           id, tank_id, name, scientific_name?, position(background|midground|
-                 foreground|epiphyte), status(thriving|melting|algae|other),
+                 foreground|epiphyte|floating), status(thriving|melting|algae|other),
                  last_trimmed_at?, removed_at?, import_id?, created_at
 products         id, user_id, name, url, note?, created_at (saved reorder links)
 expenses         id, tank_id, date, amount_cents, category(livestock|plants|equipment|

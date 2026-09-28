@@ -33,7 +33,7 @@ export interface Column {
 }
 
 const LIVESTOCK_KINDS = ['fish', 'invert', 'coral'] as const;
-const POSITIONS = ['background', 'midground', 'foreground', 'epiphyte'] as const;
+const POSITIONS = ['background', 'midground', 'foreground', 'epiphyte', 'floating'] as const;
 const PLANT_STATUSES = ['thriving', 'melting', 'algae', 'other'] as const;
 type Kind = (typeof LIVESTOCK_KINDS)[number];
 type Position = (typeof POSITIONS)[number];
@@ -167,7 +167,7 @@ export function importColumns(list: ImportList, prefs: UnitPrefs): Column[] {
 		return [
 			{ key: 'name', header: 'Name', help: 'Required. The name you use, e.g. Java fern', aliases: ['plant', 'common name', 'species'] },
 			{ key: 'scientific', header: 'Scientific name', help: 'Filled in when the name is in the species list', aliases: ['scientific', 'latin name', 'latin'] },
-			{ key: 'position', header: 'Position', help: 'Background, Midground, Foreground or Epiphyte. Midground when empty', aliases: ['placement', 'zone', 'where'] },
+			{ key: 'position', header: 'Position', help: 'Background, Midground, Foreground, Epiphyte or Floating. Midground when empty', aliases: ['placement', 'zone', 'where'] },
 			{ key: 'status', header: 'Status', help: 'Thriving, Melting, Algae or Other. Thriving when empty', aliases: ['health', 'condition'] },
 			{ key: 'added', header: 'Added', help: 'The date it went in, for History. Today when empty', aliases: ['date added', 'added on', 'date'] }
 		];
@@ -282,7 +282,12 @@ const POSITION_WORDS: Record<string, Position> = {
 	carpet: 'foreground',
 	epiphyte: 'epiphyte',
 	epiphytes: 'epiphyte',
-	attached: 'epiphyte'
+	attached: 'epiphyte',
+	floating: 'floating',
+	floater: 'floating',
+	floaters: 'floating',
+	surface: 'floating',
+	float: 'floating'
 };
 const PLANT_STATUS_WORDS: Record<string, PlantStatus> = {
 	thriving: 'thriving',
@@ -468,7 +473,7 @@ function checkPlant(c: Cells, ctx: ImportContext): Omit<CheckedRow, 'line' | 'ex
 	if (!sp.name) problems.push('No name');
 	else if (sp.kind && sp.kind !== 'plant') problems.push(`${sp.name} is an animal: import it on the Livestock tab`);
 	const position = pick(c.position ?? '', wordsFor<Position>('plants', 'position', ctx));
-	if (position === null) problems.push(`Position ${quoted(c.position)} isn't Background, Midground, Foreground or Epiphyte`);
+	if (position === null) problems.push(`Position ${quoted(c.position)} isn't Background, Midground, Foreground, Epiphyte or Floating`);
 	const status = pick(c.status ?? '', wordsFor<PlantStatus>('plants', 'status', ctx));
 	if (status === null) problems.push(`Status ${quoted(c.status)} isn't Thriving, Melting, Algae or Other`);
 	const added = dateCell(c.added ?? '', 'Added', ctx, problems);

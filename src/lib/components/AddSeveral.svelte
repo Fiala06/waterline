@@ -7,7 +7,7 @@
 	import DateField from './DateField.svelte';
 
 	type Kind = 'fish' | 'invert' | 'coral';
-	type Position = 'background' | 'midground' | 'foreground' | 'epiphyte';
+	type Position = 'background' | 'midground' | 'foreground' | 'epiphyte' | 'floating';
 	interface Species {
 		s: string;
 		c: string[];
@@ -43,7 +43,8 @@
 		{ value: 'background', label: 'Background' },
 		{ value: 'midground', label: 'Midground' },
 		{ value: 'foreground', label: 'Foreground' },
-		{ value: 'epiphyte', label: 'Epiphyte' }
+		{ value: 'epiphyte', label: 'Epiphyte' },
+		{ value: 'floating', label: 'Floating' }
 	];
 	const KINDS: { value: Kind; label: string }[] = [
 		{ value: 'fish', label: 'Fish' },

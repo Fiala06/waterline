@@ -8,6 +8,8 @@
 	let { data, form } = $props();
 
 	const GROUPS = [
+		// on the surface, like water lettuce and frogbit
+		{ key: 'floating', label: 'Floating', match: ['floating'] },
 		{ key: 'background', label: 'Background', match: ['background'] },
 		{ key: 'midground', label: 'Midground & epiphytes', match: ['midground', 'epiphyte'] },
 		{ key: 'foreground', label: 'Foreground', match: ['foreground'] }
@@ -16,7 +18,8 @@
 		{ v: 'background', l: 'Background' },
 		{ v: 'midground', l: 'Midground' },
 		{ v: 'foreground', l: 'Foreground' },
-		{ v: 'epiphyte', l: 'Epiphyte' }
+		{ v: 'epiphyte', l: 'Epiphyte' },
+		{ v: 'floating', l: 'Floating' }
 	];
 	const STATUS: Record<string, { text: string; label: string; level: string }> = {
 		thriving: { text: '✓ Thriving', label: 'Thriving', level: 'ok' },

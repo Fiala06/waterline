@@ -22,7 +22,7 @@ export function handleLinkedLivestock(user: User, tank: Tank, form: FormData, at
 			const p = addPlant(user.id, tank.id, {
 				name,
 				scientificName: optStr(form, 'scientificName', 120),
-				position: (['background', 'midground', 'foreground', 'epiphyte'].includes(position) ? position : 'midground') as 'midground',
+				position: (['background', 'midground', 'foreground', 'epiphyte', 'floating'].includes(position) ? position : 'midground') as 'midground',
 				status: 'thriving'
 			}, meta);
 			return { eventId: p.event.id, message: `✓ ${p.name} added to Plants` };
