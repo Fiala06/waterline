@@ -9,6 +9,10 @@ How to write a line:
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
+## Unreleased
+
+- **Which version you have:** [What's new](/settings/changelog) starts with the version installed on this server and when it came out, and marks its release ✓ Installed.
+
 ## 1.8.3 · 2026-09-28
 
 - **Species photos now come in:** In 1.8.2 no plant or animal got its species photo, because of a change in how Wikipedia links its photos. Open the [Plants tab](/tanks/current/plants) or the [Livestock tab](/tanks/current/livestock) and they arrive within a minute.

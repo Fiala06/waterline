@@ -16,6 +16,8 @@
 	};
 	// a newer release on GitHub, for admins (the layout checks)
 	const update = $derived(data.app.update);
+	// the version this server runs, first and plain, and its release marked below
+	const installed = RELEASES.find((r) => r.version === VERSION);
 </script>
 
 <!-- links: off for a release that isn't installed yet, whose pages aren't here -->
@@ -41,7 +43,15 @@
 	<div class="head">
 		<a class="back sub-back" href="/settings">‹ Settings</a>
 		<h1>What's new</h1>
-		<p class="muted">You're on Waterline {displayVersion(VERSION)}. The newest changes come first.</p>
+		<div class="installed" role="group" aria-label="Installed version">
+			<span class="ik">Installed</span>
+			<span class="iv"><span class="mono">Waterline {displayVersion(VERSION)}</span>{#if installed}<span class="date"
+						>Released {fmtDateLong(installed.date)}</span
+					>{/if}</span
+			>
+			{#if update}<a class="inew" href="#update">▲ {update.version} is out</a>{/if}
+		</div>
+		<p class="muted">The newest changes come first.</p>
 		<a class="repo" href={data.app.repo} target="_blank" rel="noopener noreferrer">Waterline on GitHub<span aria-hidden="true"> ↗</span></a>
 	</div>
 
@@ -67,7 +77,11 @@
 
 	{#each RELEASES.slice(0, OPEN) as r (r.version)}
 		<section class="release" aria-labelledby={id(r.version)}>
-			<h2 id={id(r.version)}>{displayVersion(r.version)} <span class="date">{fmtDateLong(r.date)}</span></h2>
+			<h2 id={id(r.version)}>
+				{displayVersion(r.version)} <span class="date">{fmtDateLong(r.date)}</span>{#if r.version === VERSION}<span class="status-tag sm tag-ok here"
+						>✓ Installed</span
+					>{/if}
+			</h2>
 			{@render lines(r)}
 		</section>
 	{/each}
@@ -126,6 +140,45 @@
 		margin: 0;
 		font-size: 14px;
 		line-height: 1.5;
+	}
+	/* the version this server runs: its own card, above everything */
+	.installed {
+		margin: 8px 0 10px;
+		padding: 12px 16px;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 4px 14px;
+		border-radius: 14px;
+		background: var(--surface);
+		border: 1px solid var(--border);
+	}
+	.ik {
+		font-size: 12px;
+		font-weight: 600;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--text-muted);
+	}
+	.iv {
+		display: flex;
+		align-items: baseline;
+		flex-wrap: wrap;
+		gap: 4px 10px;
+		font-size: 18px;
+		font-weight: 600;
+	}
+	.inew {
+		margin-left: auto;
+		min-height: 44px;
+		display: flex;
+		align-items: center;
+		font-size: 14px;
+		font-weight: 600;
+		color: var(--accent);
+	}
+	.here {
+		align-self: center;
 	}
 	/* the project's page, always */
 	.repo {
@@ -258,7 +311,8 @@
 		color: var(--text);
 	}
 	@media (min-width: 1024px) {
-		.lines {
+		.lines,
+		.installed {
 			max-width: 720px;
 		}
 	}
