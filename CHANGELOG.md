@@ -9,7 +9,7 @@ How to write a line:
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
-## Unreleased
+## 1.8.2 · 2026-09-28
 
 - **Photos of your plants and livestock:** Each plant on the [Plants tab](/tanks/current/plants) and each species on the [Livestock tab](/tanks/current/livestock) now shows a photo: a photo of its species from Wikimedia Commons, with its credit, until you add your own. Add yours from the plant's card, or open one in [Photos](/photos) and choose Use as the photo for. An admin can turn species photos off in [Server settings](/settings/server).
 - **In range, easier to see:** On the [dashboard](/), the readings that are fine sit in a card like Needs attention, each with its ✓ and its unit, instead of fading into the page.
