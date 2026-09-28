@@ -4,11 +4,12 @@ import { readFileSync } from 'node:fs';
 import { newKeeperWithTank, open } from './helpers';
 
 const version = JSON.parse(readFileSync('package.json', 'utf8')).version.replace(/^(\d+\.\d+)\.0$/, '$1');
+const releases = readFileSync('CHANGELOG.md', 'utf8').split(/^## (?=\d)/m).slice(1);
 /** How many lines the newest release has in CHANGELOG.md (the card shows the first 3). */
-const lines = readFileSync('CHANGELOG.md', 'utf8')
-	.split(/^## \d/m)[1]
-	.split('\n')
-	.filter((l) => l.startsWith('- ')).length;
+const lines = releases[0].split('\n').filter((l) => l.startsWith('- ')).length;
+/** The release before this one, and how many lines every release after 1.0.0 has. */
+const previous = releases[1].split(' ')[0];
+const since10 = releases.slice(0, -1).join('').split('\n').filter((l) => l.startsWith('- ')).length;
 
 /** Change an account in the test database. */
 function setUser(email: string, set: string) {
@@ -16,8 +17,8 @@ function setUser(email: string, set: string) {
 	db.prepare(`update users set ${set} where email = ?`).run(email);
 	db.close();
 }
-/** An account from before this version: it last saw 1.0.0's What's new. */
-const fromBefore = (email: string) => setUser(email, "seen_version = '1.0.0'");
+/** An account from before this version: it last saw the previous release's What's new. */
+const fromBefore = (email: string, seen = previous) => setUser(email, `seen_version = '${seen}'`);
 
 test("What's new: once after an update, then in Settings", async ({ page }, info) => {
 	const email = await newKeeperWithTank(page, `whats-new-${info.project.name}`);
@@ -41,10 +42,23 @@ test("What's new: once after an update, then in Settings", async ({ page }, info
 	await expect(page.getByText(`You're on Waterline ${version}.`)).toBeVisible();
 	await expect(page.getByRole('link', { name: 'Waterline on GitHub' })).toHaveAttribute('href', 'https://github.com/Fiala06/waterline');
 	await expect(page.getByRole('heading', { name: new RegExp(`^${version.replace('.', '\\.')} `) })).toBeVisible();
+	// older releases fold away by version, and open on tap
+	await expect(page.getByRole('heading', { name: 'Earlier releases' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: /^1\.0 / })).toBeHidden();
+	await page.locator('summary', { hasText: /^1\.0/ }).click();
 	await expect(page.getByRole('heading', { name: /^1\.0 / })).toBeVisible();
 	await open(page, '/');
 	await expect(page.getByText('Latest readings').or(page.getByText('No readings yet')).first()).toBeVisible();
 	await expect(card).toHaveCount(0);
+
+	// several updates at once: everything since the one last seen
+	fromBefore(email, '1.0.0');
+	await open(page, '/');
+	const since = page.getByRole('region', { name: "What's new since 1.0" });
+	await expect(since.getByRole('listitem')).toHaveCount(3);
+	await expect(since.getByText(`and ${since10 - 3} more`, { exact: true })).toBeVisible();
+	await since.getByRole('button', { name: 'Got it' }).click();
+	await expect(since).toHaveCount(0);
 
 	// Settings shows the running version, and it leads here
 	await open(page, '/settings');

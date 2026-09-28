@@ -1,5 +1,5 @@
 import { eq, lte, sql } from 'drizzle-orm';
-import { displayVersion, whatsNewSince } from '$lib/changelog';
+import { whatsNewCard } from '$lib/changelog';
 import { bySpecies, livestockLabel } from '$lib/livestock';
 import { eventIcon, eventKindLabel, eventTitle } from '$lib/events';
 import { dateInZone, daysBetween, fmtDate, fmtDay, fmtWhen, todayInZone } from '$lib/time';
@@ -105,14 +105,9 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		equipment: listEquipment(user.id, tank.id).map(equipmentName)
 	};
 
-	// once after an update: the new version's first lines, by name
-	const release = whatsNewSince(user.seenVersion);
-	const whatsNew = release && {
-		version: displayVersion(release.version),
-		// each with its feature's page, when the line links one
-		leads: release.lines.slice(0, 3).map((l) => ({ text: l.lead ?? l.parts.map((x) => x.text).join(''), href: l.href ?? null })),
-		more: Math.max(0, release.lines.length - 3)
-	};
+	// once after an update: what's new since the version last seen, by name,
+	// each with its feature's page when the line links one
+	const whatsNew = whatsNewCard(user.seenVersion);
 
 	return {
 		whatsNew,

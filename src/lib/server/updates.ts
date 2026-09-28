@@ -11,6 +11,8 @@ const SOURCE = 'https://raw.githubusercontent.com/Fiala06/waterline/main/CHANGEL
 const EVERY_MS = 12 * 3_600_000;
 /** after a failed check (offline, GitHub down), try again sooner */
 const RETRY_MS = 3_600_000;
+/** releases shown in the update note; the rest are on GitHub */
+const SHOWN = 3;
 
 let last: { at: number; ok: boolean; releases: Release[] } | null = null;
 let checking: Promise<void> | null = null;
@@ -39,8 +41,10 @@ export async function checkForUpdate(fetcher: typeof fetch = fetch, now = Date.n
 export interface Update {
 	/** "1.2" */
 	version: string;
-	/** every release since the running one, newest first */
+	/** the newest releases since the running one (at most 3), newest first */
 	releases: Release[];
+	/** how many more there are, to read on GitHub */
+	more: number;
 	/** the changelog on GitHub, to read in full */
 	link: string;
 }
@@ -63,5 +67,7 @@ export function availableUpdate(now = Date.now()): Update | null {
 	const due = !last || now - last.at > (last.ok ? EVERY_MS : RETRY_MS);
 	if (due && !checking) checking = checkForUpdate().finally(() => (checking = null));
 	const releases = last?.releases ?? [];
-	return releases.length ? { version: displayVersion(releases[0].version), releases, link: pageOf(env.UPDATE_CHECK_URL || SOURCE) } : null;
+	if (!releases.length) return null;
+	// it's in every page's data for admins, so only the newest few
+	return { version: displayVersion(releases[0].version), releases: releases.slice(0, SHOWN), more: Math.max(0, releases.length - SHOWN), link: pageOf(env.UPDATE_CHECK_URL || SOURCE) };
 }

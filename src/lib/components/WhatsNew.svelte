@@ -1,11 +1,22 @@
 <script lang="ts">
-	// Once after an update, on the dashboard: what's new in this version, until
-	// Got it or See what's new (both remember it, and work without scripts).
-	// Each item links to its feature when its changelog line has a link.
+	// Once after an update, on the dashboard: what's new since the version last
+	// seen, until Got it or See what's new (both remember it, and work without
+	// scripts). Each item links to its feature when its changelog line has a link.
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import Logo from './Logo.svelte';
-	let { version, leads, more }: { version: string; leads: { text: string; href: string | null }[]; more: number } = $props();
+	let {
+		version,
+		since,
+		leads,
+		more
+	}: {
+		version: string;
+		/** the version last seen, when more than one release is new */
+		since: string | null;
+		leads: { text: string; href: string | null }[];
+		more: number;
+	} = $props();
 	let gone = $state(false);
 </script>
 
@@ -14,9 +25,9 @@
 		<div class="top">
 			<span class="icon" aria-hidden="true"><Logo size={30} /></span>
 			<div class="text">
-				<h2 id="whats-new-h">What's new in {version}</h2>
+				<h2 id="whats-new-h">{since ? `What's new since ${since}` : `What's new in ${version}`}</h2>
 				<ul>
-					{#each leads as l (l.text)}<li>{#if l.href && !l.href.startsWith('https://')}<a href={l.href}>{l.text}</a>{:else}{l.text}{/if}</li>{/each}
+					{#each leads as l, i (i)}<li>{#if l.href && !l.href.startsWith('https://')}<a href={l.href}>{l.text}</a>{:else}{l.text}{/if}</li>{/each}
 				</ul>
 				{#if more}<p class="more">and {more} more</p>{/if}
 			</div>

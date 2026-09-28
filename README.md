@@ -131,7 +131,7 @@ Servers set up before these settings moved into the app keep working: `AUTH_GOOG
 
 3. With HTTPS, point your reverse proxy (Nginx Proxy Manager, SWAG, Cloudflare Tunnel…) at `http://<unraid-ip>:<host port>`. Either way, open the `ORIGIN` URL and always use that one: any other address loads, but saving fails the cross-site check.
 
-**Updates:** each release publishes a new `:latest` image, and Unraid's Docker tab shows *update ready* for the container. Applying it keeps everything in `/data`; database migrations run on start. When a new version is released, admins also see *Update to 1.7 available* under Settings in the app's menu; after updating, everyone gets the release's highlights once on the dashboard, and the full list is in **Settings › What's new**.
+**Updates:** each release publishes a new `:latest` image, and Unraid's Docker tab shows *update ready* for the container. Applying it keeps everything in `/data`; database migrations run on start. When a new version is released, admins also see *Update to 1.7 available* under Settings in the app's menu; after updating, everyone gets the highlights of what's new since they last looked once on the dashboard, and the full list is in **Settings › What's new**.
 
 To run two versions side by side (say `:latest` and a pinned `:1.5`), create two containers with different names, host ports, data folders and `ORIGIN` values. Never point two containers at the same data folder.
 
@@ -173,7 +173,7 @@ The first time, install the Playwright browser with `npx playwright install chro
 
 ## Releases
 
-Each release is a section of [`CHANGELOG.md`](CHANGELOG.md), written for the people who use the app: the app shows it under **Settings › What's new**, and its first lines once on the dashboard after an update. To release, bump `version` in `package.json` and add a `## <version> · <date>` section with a few lines, each starting with its name in bold; a unit test fails if the two don't match. The *update available* note admins see comes from the changelog on `main`.
+Each release is a section of [`CHANGELOG.md`](CHANGELOG.md), written for the people who use the app: the app shows it under **Settings › What's new** (the newest three releases open, older ones folded by version), and the first names once on the dashboard after an update. To release, bump `version` in `package.json` and add a `## <version> · <date>` section with a few lines, each starting with its name in bold and linking the page it's on (see the top of the changelog); a unit test fails if the two don't match. The *update available* note admins see comes from the changelog on `main`.
 
 There's one branch, `main`. Every push (and pull request) runs the checks and tests, and builds the Docker image to make sure it still builds; changes wait under `## Unreleased` in the changelog. When `main` reaches a version that hasn't been released yet, the workflow ([`ci.yml`](.github/workflows/ci.yml)) publishes that build as `:latest`, `:<version>` and `:<major>.<minor>`, tags it `v<version>`, and makes a [GitHub release](https://github.com/Fiala06/waterline/releases) with the version's changelog section as its notes. Ideas and planned work are [issues](https://github.com/Fiala06/waterline/issues), grouped into a milestone for the next release; a commit that finishes one says `Closes #N`, and the issue closes when it reaches `main`.
 

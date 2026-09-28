@@ -15,11 +15,21 @@ describe('availableUpdate', () => {
 	it('tells what the last check found, and keeps it through a failed check', async () => {
 		const now = Date.now();
 		await checkForUpdate(reply(md('99.1.0', '99.0.0')), now);
-		expect(availableUpdate(now)).toMatchObject({ version: '99.1', releases: [{ version: '99.1.0' }, { version: '99.0.0' }] });
+		expect(availableUpdate(now)).toMatchObject({ version: '99.1', releases: [{ version: '99.1.0' }, { version: '99.0.0' }], more: 0 });
 		await checkForUpdate(reply('Not found', 404), now);
 		expect(availableUpdate(now)?.version).toBe('99.1');
 		await checkForUpdate(reply(md('0.9.0')), now);
 		expect(availableUpdate(now)).toBeNull();
+	});
+});
+
+describe('availableUpdate, far behind', () => {
+	it('shows the newest three releases and counts the rest', async () => {
+		const now = Date.now();
+		await checkForUpdate(reply(md('99.4.0', '99.3.0', '99.2.0', '99.1.0', '99.0.0')), now);
+		const update = availableUpdate(now)!;
+		expect(update.releases.map((r) => r.version)).toEqual(['99.4.0', '99.3.0', '99.2.0']);
+		expect(update.more).toBe(2);
 	});
 });
 

@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { compareVersions, displayVersion, parseChangelog, RELEASES, VERSION, whatsNewSince } from './changelog';
+import { byLine, compareVersions, displayVersion, parseChangelog, RELEASES, VERSION, whatsNewCard } from './changelog';
 import { isDate } from './time';
 
 describe('parseChangelog', () => {
@@ -98,8 +98,58 @@ describe('CHANGELOG.md', () => {
 	});
 
 	it("shows What's new to someone who last saw an earlier version, once", () => {
-		expect(whatsNewSince('1.0.0')?.version).toBe(VERSION);
-		expect(whatsNewSince(VERSION)).toBeNull();
+		expect(whatsNewCard('1.0.0')?.version).toBe(displayVersion(VERSION));
+		expect(whatsNewCard(VERSION)).toBeNull();
+	});
+});
+
+describe("the dashboard's What's new card", () => {
+	const releases = parseChangelog(`
+## 1.5.1 · 2026-10-03
+- **A fix:** in 1.5.1.
+## 1.5.0 · 2026-10-02
+- **Calendar:** in 1.5.0.
+- **Also in 1.5:** more.
+## 1.4.1 · 2026-10-01
+- **Another fix:** in 1.4.1.
+## 1.4.0 · 2026-09-30
+- **Spending:** in [1.4.0](/tanks/current/spending).
+## 1.3.0 · 2026-09-29
+- **Old:** already seen.
+`);
+
+	it('is the one release when only that one is new', () => {
+		expect(whatsNewCard('1.5.0', releases, '1.5.1')).toEqual({ version: '1.5.1', since: null, leads: [{ text: 'A fix', href: null }], more: 0 });
+	});
+
+	it('covers every release since the one last seen, feature releases first', () => {
+		expect(whatsNewCard('1.3.0', releases, '1.5.1')).toEqual({
+			version: '1.5.1',
+			since: '1.3',
+			leads: [
+				{ text: 'Calendar', href: null },
+				{ text: 'Also in 1.5', href: null },
+				{ text: 'Spending', href: '/tanks/current/spending' }
+			],
+			// A fix, Another fix
+			more: 2
+		});
+	});
+
+	it('is nothing when all is seen, or after going back a version', () => {
+		expect(whatsNewCard('1.5.1', releases, '1.5.1')).toBeNull();
+		expect(whatsNewCard('2.0.0', releases, '1.5.1')).toBeNull();
+	});
+});
+
+describe('byLine', () => {
+	it('groups releases by their first two numbers, in order', () => {
+		const rs = parseChangelog('## 1.4.1 · 2026-10-01\n- a\n## 1.4.0 · 2026-09-30\n- b\n## 1.3.0 · 2026-09-29\n- c\n## 1.10.0 · 2026-09-28\n- d');
+		expect(byLine(rs).map((g) => [g.line, g.releases.map((r) => r.version)])).toEqual([
+			['1.4', ['1.4.1', '1.4.0']],
+			['1.3', ['1.3.0']],
+			['1.10', ['1.10.0']]
+		]);
 	});
 });
 

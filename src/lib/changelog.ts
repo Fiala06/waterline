@@ -88,8 +88,38 @@ export const RELEASES: Release[] = parseChangelog(changelog)
 	.filter((r) => compareVersions(r.version, VERSION) <= 0)
 	.sort((a, b) => compareVersions(b.version, a.version));
 
-/** The running version's release, when someone last saw an earlier one's: the dashboard's What's new card. */
-export function whatsNewSince(seen: string): Release | null {
-	if (compareVersions(VERSION, seen) <= 0) return null;
-	return RELEASES.find((r) => r.version === VERSION) ?? null;
+/** Every release someone hasn't seen yet (after `seen`, up to the running one), newest first. */
+export const releasesSince = (seen: string, releases = RELEASES) => releases.filter((r) => compareVersions(r.version, seen) > 0);
+
+/** A line by its name, for a short list: "Spending", else the whole line. */
+const leadOf = (l: ChangeLine) => ({ text: l.lead ?? l.parts.map((p) => p.text).join(''), href: l.href ?? null });
+
+/**
+ * The dashboard's What's new card, once after an update: up to three names
+ * from every release since the one last seen, so a skipped release isn't
+ * missed. Feature releases (x.y.0) come first, newest first, then fixes.
+ */
+export function whatsNewCard(seen: string, releases = RELEASES, running = VERSION) {
+	const since = releasesSince(seen, releases);
+	if (!since.length) return null;
+	const isFeature = (r: Release) => /\.0$/.test(r.version);
+	const lines = [...since.filter(isFeature), ...since.filter((r) => !isFeature(r))].flatMap((r) => r.lines);
+	return {
+		version: displayVersion(running),
+		/** "1.4" when more than one release is new, for "What's new since 1.4" */
+		since: since.length > 1 ? displayVersion(seen) : null,
+		leads: lines.slice(0, 3).map(leadOf),
+		more: Math.max(0, lines.length - 3)
+	};
+}
+
+/** Releases grouped by their first two numbers (1.4.0 to 1.4.4 are "1.4"), in order: What's new folds away older ones. */
+export function byLine(releases: Release[]): { line: string; releases: Release[] }[] {
+	const groups: { line: string; releases: Release[] }[] = [];
+	for (const r of releases) {
+		const line = r.version.split('.').slice(0, 2).join('.');
+		if (groups.at(-1)?.line === line) groups.at(-1)!.releases.push(r);
+		else groups.push({ line, releases: [r] });
+	}
+	return groups;
 }

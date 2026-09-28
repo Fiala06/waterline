@@ -25,7 +25,8 @@ test("What's new links to each feature, and a tank's page opens for the tank you
 	await open(page, '/settings/changelog');
 	const link = page.getByRole('link', { name: 'Settings › Calendar' }).first();
 	await expect(link).toHaveAttribute('href', '/settings#calendar');
-	// /tanks/current/… is that page of the current tank
+	// /tanks/current/… is that page of the current tank (1.4, in Earlier releases)
+	await page.locator('summary', { hasText: /^1\.4/ }).click();
 	await page.getByRole('link', { name: 'Spending tab' }).first().click();
 	await expect(page).toHaveURL(`/tanks/${tankId}/spending`);
 	await expect(page.getByText('No spending logged yet')).toBeVisible();

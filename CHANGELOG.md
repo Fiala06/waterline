@@ -9,9 +9,11 @@ How to write a line:
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
-## Unreleased
+## 1.6.1 · 2026-09-28
 
 - **What's new links to each feature:** Each line in [Settings › What's new](/settings/changelog), and on the dashboard after an update, now says where the feature lives and links straight to it. A link to a tank's page opens it for the tank you're on.
+- **Nothing missed after skipping updates:** If you update past a few versions at once, the dashboard's What's new card covers everything since you last looked, not just the newest release.
+- **What's new, easier to scan:** [Settings › What's new](/settings/changelog) shows the newest releases in full and folds older ones away by version; tap one to read it. An admin several versions behind sees the newest three in the update note, with the rest on GitHub.
 
 ## 1.6.0 · 2026-09-28
 

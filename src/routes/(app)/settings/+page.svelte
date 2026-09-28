@@ -39,7 +39,6 @@
 	import { CURRENCIES, currencyName } from '$lib/money';
 	import { LEAD_OPTIONS, SEND_TIMES } from '$lib/notify-options';
 	import { install, promptInstall } from '$lib/install.svelte';
-	import { displayVersion, VERSION } from '$lib/changelog';
 	import { toast, ui } from '$lib/ui.svelte';
 	import { fmtWhen } from '$lib/time';
 	let installHelp = $state(false);
@@ -376,7 +375,7 @@
 			{#if unsynced}<p class="unsynced status-warn">{unsynced}</p>{/if}
 		</form>
 		<a class="version mono" href="/settings/changelog"
-			>Waterline v{displayVersion(VERSION)} · self-hosted · What's new{#if data.app.update}<span class="update-note"
+			>Waterline v{data.app.version} · self-hosted · What's new{#if data.app.update}<span class="update-note"
 					>{` · Update to ${data.app.update.version} available`}</span
 				>{/if}</a
 		>
