@@ -9,6 +9,10 @@ How to write a line:
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
+## Unreleased
+
+- **Push notifications:** Get task reminders, overdue alerts and out-of-range alerts on your phone or computer, even with Waterline closed, with Mark done and Snooze right on the notification. Turn it on for each device in [Settings › Notifications](/settings#push), or use the [ntfy](https://ntfy.sh) app instead. Each kind of notice has its own Email and Push switches, so you can have alerts pushed and the digest by email. On iPhone, add Waterline to your Home Screen first.
+
 ## 1.6.1 · 2026-09-28
 
 - **What's new links to each feature:** Each line in [Settings › What's new](/settings/changelog), and on the dashboard after an update, now says where the feature lives and links straight to it. A link to a tank's page opens it for the tank you're on.

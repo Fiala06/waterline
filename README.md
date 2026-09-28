@@ -41,7 +41,7 @@ Each server is yours: people sign in with Google (or the local admin login) and 
 
 - **Log at the tank:** water tests with each reading's status as you type (`✓ OK`, `▲ Near`, `✕ High`), water changes, dosing, maintenance, livestock and equipment changes, observations, notes and photos. Every field is optional, times can be backdated, *Use last readings* fills in the previous test, and entries made offline sync later.
 - **See how it's going:** a dashboard per tank with its photo, what needs attention first (readings out of range or near a limit, and an overdue water change), the rest at a glance, and what's due; charts with water changes and doses marked, and the same parameter in your other tanks; notes when a reading keeps rising, is heading past its target, drifts between water changes or changes after a dose; History and Photos.
-- **Tasks and email:** recurring or one-off tasks, from completion or on a fixed schedule, with snooze. Reminders, overdue and out-of-range alerts by email, one at a time or as a daily or weekly digest, with *Mark done* and *Snooze* right in the email. A private calendar link puts them in Google Calendar, Apple Calendar or Outlook.
+- **Tasks, email and push:** recurring or one-off tasks, from completion or on a fixed schedule, with snooze. Reminders, overdue and out-of-range alerts by email (one at a time or as a daily or weekly digest) and as push notifications to your phone or computer, or through [ntfy](https://ntfy.sh), each with its own switches, and *Mark done* and *Snooze* right in the email or notification. A private calendar link puts them in Google Calendar, Apple Calendar or Outlook.
 - **What's in the tank:** livestock (with a built-in species list, and names and photos for pets), plants and equipment, and what each tank costs, with receipts.
 - **Parameters your way:** presets for freshwater, planted, brackish and reef tanks, your own targets and custom parameters, imperial or metric, and hardness in dGH or ppm.
 - **Share it, if you like:** an opt-in public page per tank, with share images and search settings, and share links for single photos. Private notes, tasks and exact times are never public.
@@ -94,7 +94,7 @@ GitHub Actions also publishes ready-built images (linux/amd64), so you don't hav
 | `ghcr.io/fiala06/waterline:1.6.0` | one release, for staying on a version; `:1.6` is the newest 1.6.x |
 | `ghcr.io/fiala06/waterline:sha-xxxxxxx` | the same images by commit, for pinning or rolling back |
 
-**HTTPS or plain HTTP.** With an HTTPS name (`ORIGIN=https://tanks.example.com` behind a reverse proxy) everything works, including Google sign-in, offline logging and the install prompt. The name can be LAN-only (local DNS plus a DNS-challenge certificate); email links and public pages then only work on your network.
+**HTTPS or plain HTTP.** With an HTTPS name (`ORIGIN=https://tanks.example.com` behind a reverse proxy) everything works, including Google sign-in, offline logging and the install prompt. The name can be LAN-only (local DNS plus a DNS-challenge certificate); email links and public pages then only work on your network. Push notifications to a device need HTTPS (and on iPhone, the app added to the Home Screen); ntfy works over plain HTTP too.
 
 To keep it on your network without a domain, set `ORIGIN` to the plain address, e.g. `http://192.168.1.50:3000`, and sign in with the local admin login you create on first start. Google won't accept a plain-HTTP address, and browsers turn off offline logging and the install prompt; everything else works.
 
@@ -153,7 +153,8 @@ Each person can let an AI assistant, like Claude or ChatGPT, read their tanks, a
 
 - A new server can only be set up with the setup code from its log, and sign-in is closed by default: only the admin, the people or domains the admin lists, or everyone with a Google account if the admin chooses that.
 - The local admin login and the setup code allow 5 failed tries per address every 15 minutes.
-- The Google client secret and email passwords are stored encrypted, never sent back to the browser.
+- The Google client secret, email passwords, ntfy access tokens and the Web Push key are stored encrypted, never sent back to the browser.
+- Push notifications go only to the browsers' own push services (Google, Mozilla, Apple, Microsoft), encrypted for each device, and to the ntfy topic each person chose.
 - The profile photo in the account menu is copied from Google at each Google sign-in into `/data/avatars` and shown only to its owner, so browsers never load it from Google. A photo someone uploads in Settings › Profile is kept there too, resized to 192px without its metadata (location included), and Google sign-ins don't replace it.
 - `AUTH_DEV_LOGIN=true` is for tests only. The server refuses to start with it when `NODE_ENV=production` (as in the Docker image).
 - Every response sends `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff` and `Referrer-Policy: same-origin`, plus HSTS when `ORIGIN` is https. Only this site may post forms to it.
@@ -179,7 +180,7 @@ There's one branch, `main`. Every push (and pull request) runs the checks and te
 
 ## Stack
 
-SvelteKit 2 (Svelte 5, adapter-node) · TypeScript · Drizzle ORM + better-sqlite3 · Auth.js · Nodemailer and the Mailgun HTTP API · sharp (photos) · satori + resvg (share images) · a hand-written service worker (offline) · Vitest + Playwright. Values are stored metric (L, °C, cm, dGH) and converted for display in `src/lib/units.ts`; parameter status rules are in `src/lib/status.ts`. Database migrations are in `drizzle/` (`npm run db:generate` after changing `src/lib/server/db/schema.ts`) and run on start.
+SvelteKit 2 (Svelte 5, adapter-node) · TypeScript · Drizzle ORM + better-sqlite3 · Auth.js · Nodemailer and the Mailgun HTTP API · web-push (Web Push) and ntfy · sharp (photos) · satori + resvg (share images) · a hand-written service worker (offline) · Vitest + Playwright. Values are stored metric (L, °C, cm, dGH) and converted for display in `src/lib/units.ts`; parameter status rules are in `src/lib/status.ts`. Database migrations are in `drizzle/` (`npm run db:generate` after changing `src/lib/server/db/schema.ts`) and run on start.
 
 ## Documentation
 

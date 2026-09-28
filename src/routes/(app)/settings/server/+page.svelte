@@ -391,7 +391,7 @@
 						><span class="tt">Send reminders and digests</span><span class="td"
 							>{data.server.schedulerOff
 								? 'Off: EMAIL_SCHEDULER=off is set.'
-								: 'Checked every 5 minutes, for everyone on this server. Alerts for readings out of range go out either way.'}</span
+								: 'Checked every 5 minutes, for everyone on this server, by email and push. Alerts for readings out of range go out either way.'}</span
 						></label
 					>
 					<span class="switch"><input id="sv-emails" type="checkbox" name="scheduledEmails" defaultChecked={data.server.scheduledEmails && !data.server.schedulerOff} disabled={data.server.schedulerOff} /><span></span></span>

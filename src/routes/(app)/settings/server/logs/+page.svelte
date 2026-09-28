@@ -25,11 +25,12 @@
 		export: 'Export',
 		settings: 'Settings',
 		update: 'Updates',
-		assistant: 'AI assistant'
+		assistant: 'AI assistant',
+		push: 'Push'
 	};
 	const DETAILS = [
 		{ value: 'warn', label: 'Errors and warnings', d: 'What went wrong' },
-		{ value: 'info', label: 'What the server does too', d: 'Sign-ins, emails sent, imports and changes to settings' },
+		{ value: 'info', label: 'What the server does too', d: 'Sign-ins, emails and pushes sent, imports and changes to settings' },
 		{ value: 'debug', label: 'Everything, for 24 hours', d: 'Every detail, while you track something down' }
 	] as const;
 	const all = $derived(data.counts.error + data.counts.warn + data.counts.info + data.counts.debug);

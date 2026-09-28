@@ -101,6 +101,81 @@ async function networkFirst(req: Request) {
 	}
 }
 
+// Push notifications (#16): reminders and alerts from the server, with Mark
+// done and Snooze. Those post the notice's one-time link, like the buttons on
+// the email's page; if that doesn't work (done already, offline), the page
+// opens to say why.
+interface Pushed {
+	title: string;
+	body: string;
+	url: string;
+	tag: string;
+	actions?: { action: string; title: string; url: string; result: string }[];
+}
+
+sw.addEventListener('push', (event) => {
+	let n: Pushed;
+	try {
+		n = event.data!.json() as Pushed;
+	} catch {
+		return;
+	}
+	event.waitUntil(
+		sw.registration.showNotification(n.title, {
+			body: n.body,
+			tag: n.tag,
+			icon: '/icons/icon-192.png',
+			data: n,
+			// @ts-expect-error: not in TypeScript's lib yet
+			actions: (n.actions ?? []).map((a) => ({ action: a.action, title: a.title }))
+		})
+	);
+});
+
+sw.addEventListener('notificationclick', (event) => {
+	const n = event.notification.data as Pushed | undefined;
+	event.notification.close();
+	if (!n) return;
+	const act = n.actions?.find((a) => a.action === event.action);
+	event.waitUntil(act ? runAction(n, act) : openPage(n.url));
+});
+
+async function runAction(n: Pushed, act: NonNullable<Pushed['actions']>[number]) {
+	try {
+		const res = await fetch(act.url, { method: 'POST', body: new URLSearchParams(), headers: { accept: 'text/html' } });
+		if (!res.ok) throw new Error(String(res.status));
+		await sw.registration.showNotification(act.result, { tag: n.tag, icon: '/icons/icon-192.png', data: { ...n, actions: [] } });
+	} catch {
+		await openPage(act.url);
+	}
+}
+
+async function openPage(url: string) {
+	const open = (await sw.clients.matchAll({ type: 'window', includeUncontrolled: true })) as WindowClient[];
+	const same = open.find((c) => new URL(c.url).origin === sw.location.origin);
+	if (same) {
+		await same.focus();
+		await same.navigate(url).catch(() => sw.clients.openWindow(url));
+	} else await sw.clients.openWindow(url);
+}
+
+// The browser renewed this device's subscription: tell the server the new one.
+sw.addEventListener('pushsubscriptionchange', (event: Event) => {
+	const e = event as Event & { oldSubscription?: PushSubscription | null; newSubscription?: PushSubscription | null; waitUntil(p: Promise<unknown>): void };
+	e.waitUntil(
+		(async () => {
+			const next =
+				e.newSubscription ??
+				(await sw.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: e.oldSubscription?.options.applicationServerKey }));
+			await fetch('/push', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ ...next.toJSON(), replaces: e.oldSubscription?.endpoint ?? null })
+			});
+		})().catch(() => {})
+	);
+});
+
 // Standalone (no app.css here), so it carries the bg/text/muted/accent tokens for both themes.
 const offlinePage = `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark light"><title>Offline · Waterline</title>
 <style>

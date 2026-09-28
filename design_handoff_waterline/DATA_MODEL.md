@@ -13,7 +13,11 @@ users            id, google_sub?, email, display_name, is_admin,
                  avatar_choice(google|own|none), avatar_at?, own_avatar_at?, created_at
 notification_prefs user_id, task_reminders, overdue_alerts, out_of_range_alerts,
                  delivery(individual|daily|weekly), lead_days, send_time,
-                 notify_email?, unsubscribed_at?
+                 notify_email?, unsubscribed_at? (those three switches are email's);
+                 push_task_reminders, push_overdue_alerts, push_out_of_range_alerts,
+                 ntfy_url? (an ntfy topic's address), ntfy_token_enc?
+push_subscriptions id, user_id, endpoint (unique), p256dh, auth, label ("Chrome on Android"),
+                 created_at, last_sent_at? (a device that gets Web Push)
 
 ── Tanks and what's logged ────────────────────────────────────────────────────
 tanks            id, user_id, name, type(freshwater|planted|brackish|reef),
@@ -100,9 +104,11 @@ server_settings  singleton: email_provider?(mailgun|smtp), mailgun_api_key_enc?,
                  local_admin_username?, local_admin_password_hash?,
                  allow_public_pages, public_home_enabled, public_base_url?, ga4_id?,
                  consent_banner, search_console_tag?, scheduled_emails, update_check,
-                 log_level(warn|info), log_debug_until?
+                 log_level(warn|info), log_debug_until?, vapid_public_key?,
+                 vapid_private_key_enc? (Web Push keys, made on first use)
 action_tokens    token_hash, task_id, action(done|snooze), due, expires_at, used_at?
-email_log        id, user_id, key, created_at, error? (so nothing is sent twice)
+email_log        id, user_id, key, created_at, error? (so nothing is sent twice; pushes
+                 are "push:<key>")
 logs             id, created_at, level(error|warn|info|debug), area, message, details?,
                  user_id?, ref?
 ```

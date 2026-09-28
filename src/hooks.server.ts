@@ -25,7 +25,9 @@ const OAUTH_PATHS = ['/oauth/register', '/oauth/token'];
  * without an Origin, the test-only /dev endpoints (404 unless AUTH_DEV_LOGIN),
  * an AI assistant's calls without an Origin: they carry an access token, not
  * cookies (a web page elsewhere sends an Origin, and is still refused), and
- * the OAuth registration and token endpoints, which don't use cookies at all.
+ * the OAuth registration and token endpoints, which don't use cookies at all,
+ * and Mark done / Snooze from a notification in the ntfy app (/e/<one-time
+ * link>, which needs no cookies either) without an Origin.
  */
 const csrf: Handle = ({ event, resolve }) => {
 	const { request, url } = event;
@@ -35,6 +37,7 @@ const csrf: Handle = ({ event, resolve }) => {
 		!url.pathname.startsWith('/unsubscribe/') &&
 		!url.pathname.startsWith('/dev/') &&
 		!(request.headers.get('origin') === null && TOKEN_PATHS.some((p) => url.pathname === p || url.pathname.startsWith(p + '/'))) &&
+		!(request.headers.get('origin') === null && url.pathname.startsWith('/e/')) &&
 		!OAUTH_PATHS.includes(url.pathname)
 	) {
 		return new Response(`Cross-site ${request.method} requests are forbidden`, { status: 403 });

@@ -36,6 +36,7 @@
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import { untrack } from 'svelte';
 	import ProfilePhoto from '$lib/components/ProfilePhoto.svelte';
+	import PushSettings from '$lib/components/PushSettings.svelte';
 	import { CURRENCIES, currencyName } from '$lib/money';
 	import { LEAD_OPTIONS, SEND_TIMES } from '$lib/notify-options';
 	import { install, promptInstall } from '$lib/install.svelte';
@@ -74,10 +75,11 @@
 	let sendTime = $state(untrack(() => p.sendTime));
 	let delivery = $state(untrack(() => p.delivery));
 	const zones = $derived(zoneGroups(data.timeZones, u.timeZone));
+	// each kind by email and by push (#16), on its own switches
 	const toggles = [
-		{ k: 'taskReminders', t: 'Task reminders', d: 'Before a task is due' },
-		{ k: 'overdueAlerts', t: 'Overdue alerts', d: 'When a task passes its due date' },
-		{ k: 'outOfRangeAlerts', t: 'Out-of-range alerts', d: 'When a logged reading is outside its target' }
+		{ k: 'taskReminders', pk: 'pushTaskReminders', t: 'Task reminders', d: 'Before a task is due' },
+		{ k: 'overdueAlerts', pk: 'pushOverdueAlerts', t: 'Overdue alerts', d: 'When a task passes its due date' },
+		{ k: 'outOfRangeAlerts', pk: 'pushOutOfRangeAlerts', t: 'Out-of-range alerts', d: 'When a logged reading is outside its target' }
 	] as const;
 
 	// Changes save right away, one request per form at a time; the server's flash
@@ -237,11 +239,24 @@
 				<p class="banner banner-warn">▲ You unsubscribed from all emails on {unsubscribedOn}. Turn any of these on to start again.</p>
 			{/if}
 			<div class="group">
+				<div class="row cols" aria-hidden="true"><span class="col">Email</span><span class="col">Push</span></div>
 				{#each toggles as row (row.k)}
 					<div class="row toggle">
-						<label for="n-{row.k}" class="ttext"><span class="tt">{row.t}</span><span class="td">{row.d}</span></label>
+						<span class="ttext"><span class="tt">{row.t}</span><span class="td" id="n-{row.k}-d">{row.d}</span></span>
 						<span class="switch">
-							<input id="n-{row.k}" type="checkbox" name={row.k} form="notify-form" defaultChecked={!p.unsubscribedAt && p[row.k]} />
+							<input
+								id="n-{row.k}"
+								type="checkbox"
+								name={row.k}
+								form="notify-form"
+								aria-label="{row.t} by email"
+								aria-describedby="n-{row.k}-d"
+								defaultChecked={!p.unsubscribedAt && p[row.k]}
+							/>
+							<span></span>
+						</span>
+						<span class="switch">
+							<input id="n-{row.pk}" type="checkbox" name={row.pk} form="notify-form" aria-label="{row.t} by push" aria-describedby="n-{row.k}-d" defaultChecked={p[row.pk]} />
 							<span></span>
 						</span>
 					</div>
@@ -253,7 +268,9 @@
 						<label><input type="radio" name="delivery" value="daily" form="notify-form" bind:group={delivery} />Daily digest</label>
 						<label><input type="radio" name="delivery" value="weekly" form="notify-form" bind:group={delivery} />Weekly</label>
 					</div>
-					{#if delivery === 'weekly'}<span class="hint">Weekly digests go out on Mondays.</span>{/if}
+					{#if delivery !== 'individual'}<span class="hint"
+							>{delivery === 'weekly' ? 'Weekly digests go out on Mondays. ' : ''}Digests are by email; push still sends each one on its own.</span
+						>{/if}
 				</div>
 				<div class="row pick">
 					<label class="k" for="leadDays">Remind me</label>
@@ -274,6 +291,7 @@
 			</div>
 			<p class="hint">Every email includes a link back to these settings and a one-click unsubscribe.</p>
 			<noscript><button class="btn btn-lg" form="notify-form">Save notifications</button></noscript>
+			<PushSettings push={data.push} timeZone={u.timeZone} {form} />
 		</section>
 
 		<section id="calendar" class="sec" aria-labelledby="calendar-h">
@@ -564,6 +582,21 @@
 	.td {
 		font-size: 13px;
 		color: var(--text-muted);
+	}
+	/* Email and Push, over each kind's two switches */
+	.cols {
+		min-height: 36px;
+		justify-content: flex-end;
+		gap: 12px;
+		font-size: 12px;
+		font-weight: 700;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: var(--text-muted);
+	}
+	.col {
+		width: 52px;
+		text-align: center;
 	}
 	/* the tasks calendar */
 	.cal-head {

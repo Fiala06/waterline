@@ -51,8 +51,35 @@ export const notificationPrefs = sqliteTable('notification_prefs', {
 	leadDays: integer('lead_days').notNull().default(1),
 	sendTime: text('send_time').notNull().default('08:00'),
 	notifyEmail: text('notify_email'),
-	unsubscribedAt: text('unsubscribed_at')
+	unsubscribedAt: text('unsubscribed_at'),
+	// push (#16): each kind on its own switch, beside email's three above.
+	// Nothing is pushed until a device or an ntfy topic is added.
+	pushTaskReminders: integer('push_task_reminders', { mode: 'boolean' }).notNull().default(true),
+	pushOverdueAlerts: integer('push_overdue_alerts', { mode: 'boolean' }).notNull().default(true),
+	pushOutOfRangeAlerts: integer('push_out_of_range_alerts', { mode: 'boolean' }).notNull().default(true),
+	// an ntfy topic's address (https://ntfy.sh/<topic>, or a self-hosted server's), and its access token
+	ntfyUrl: text('ntfy_url'),
+	ntfyTokenEnc: text('ntfy_token_enc')
 });
+
+/** A browser or phone that gets Web Push notifications (#16), one per device. */
+export const pushSubscriptions = sqliteTable(
+	'push_subscriptions',
+	{
+		id: id(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		endpoint: text('endpoint').notNull().unique(),
+		p256dh: text('p256dh').notNull(),
+		auth: text('auth').notNull(),
+		/** "Chrome on Android", from the browser that added it */
+		label: text('label').notNull(),
+		createdAt: createdAt(),
+		lastSentAt: text('last_sent_at')
+	},
+	(t) => [index('push_subscriptions_user_idx').on(t.userId)]
+);
 
 
 export const tanks = sqliteTable(
@@ -257,7 +284,10 @@ export const serverSettings = sqliteTable('server_settings', {
 	// what the log keeps: errors and warnings, or also what the server did;
 	// everything (debug) only until log_debug_until, while troubleshooting
 	logLevel: text('log_level', { enum: ['warn', 'info'] }).notNull().default('warn'),
-	logDebugUntil: text('log_debug_until')
+	logDebugUntil: text('log_debug_until'),
+	// Web Push (VAPID) keys, made on first use: devices subscribe with the public one
+	vapidPublicKey: text('vapid_public_key'),
+	vapidPrivateKeyEnc: text('vapid_private_key_enc')
 });
 
 /** The server's log, for troubleshooting (Server settings › Logs). Kept for 30 days. */

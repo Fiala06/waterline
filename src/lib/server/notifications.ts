@@ -1,6 +1,8 @@
-// Decides what to email and when. Runs every few minutes (see scheduler.ts);
-// each user's emails go out at their send time in their time zone, and the
-// email log makes every send happen at most once.
+// Decides what to email and push, and when. Runs every few minutes (see
+// scheduler.ts); each user's notices go out at their send time in their time
+// zone, and the email log makes every send happen at most once. Email and push
+// have their own switches per kind; push is one notice at a time, whatever the
+// email delivery (digests are email only), and doesn't need email set up.
 import { and, desc, eq, isNull } from 'drizzle-orm';
 import { env } from '$env/dynamic/private';
 import { fmtRange, fmtValue, paramUnit, shortName, statusOf } from '$lib/params';
@@ -14,6 +16,7 @@ import { emailLog, notificationPrefs, taskCompletions, tests, testReadings, user
 import { lastEventOf, latestReadings } from './logs';
 import { emailConfigured, sendMail } from './mail';
 import { digestEmail, outOfRangeEmail, taskEmail, type DigestTank, type Footer, type Rendered } from './mail/templates';
+import { hasPushTarget, pushOnce, type Notice } from './push';
 import { tankNotes } from './trends';
 import { sign } from './secrets';
 import { listParams, listTanks } from './tanks';
@@ -127,13 +130,30 @@ function badReadings(tankId: string, user: User) {
 		}));
 }
 
-/** One user's scheduled emails. `force` ignores the send time (for tests and "send now"). */
+/** A task's push notification, with Mark done and Snooze (one-time links, made only when it's sent). */
+function taskNotice(t: { id: string; name: string; tankId: string; tankName: string; nextDue: string | null }, days: number, lastDoneText: string | null, base: string): Notice {
+	const overdue = days < 0;
+	return {
+		kind: overdue ? 'overdue' : 'reminder',
+		title: `${whenText(days)}: ${t.name}`,
+		body: [t.tankName, lastDoneText && `Last done ${lastDoneText}`].filter(Boolean).join(' · '),
+		url: `${base}/?tank=${t.tankId}`,
+		tag: `task-${t.id}`,
+		actions: [
+			{ action: 'done', title: 'Mark done', url: `${base}/e/${createActionToken(t.id, 'done', t.nextDue!)}`, result: `✓ ${t.name} done` },
+			{ action: 'snooze', title: 'Snooze', url: `${base}/e/${createActionToken(t.id, 'snooze', t.nextDue!)}`, result: `Snoozed ${t.name} for a day` }
+		]
+	};
+}
+
+/** One user's scheduled emails and pushes. `force` ignores the send time (for tests and "send now"). */
 export async function notifyUser(user: User, now = new Date(), force = false) {
 	const base = baseUrl();
-	if (!base || !emailConfigured()) return { sent: 0 };
+	if (!base) return { sent: 0 };
 	const prefs = prefsFor(user.id);
-	const to = recipient(user, prefs);
-	if (!to) return { sent: 0 };
+	const to = emailConfigured() ? recipient(user, prefs) : null;
+	const push = (prefs.pushTaskReminders || prefs.pushOverdueAlerts) && hasPushTarget(user.id, prefs);
+	if (!to && !push) return { sent: 0 };
 
 	const tz = user.timeZone;
 	const local = utcToZoned(now, tz);
@@ -142,6 +162,19 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 	let sent = 0;
 
 	const tasks = listTasks(user.id).map((r) => ({ ...r.task, tankName: r.tankName }));
+
+	// push: each task on its own, the same days as the emails
+	if (push) {
+		for (const t of tasks) {
+			const d = dueInfo(t.due, today);
+			const overdue = d.days < 0;
+			if (overdue ? !prefs.pushOverdueAlerts : !prefs.pushTaskReminders || d.days > prefs.leadDays) continue;
+			const key = `${overdue ? 'overdue' : 'reminder'}:${t.id}:${t.due}`;
+			const ok = await pushOnce(user, prefs, key, () => taskNotice(t, d.days, overdue ? lastDone(t.id, today, tz) : null, base), base);
+			if (ok) sent++;
+		}
+	}
+	if (!to) return { sent };
 
 	if (prefs.delivery === 'individual') {
 		for (const t of tasks) {
@@ -234,7 +267,7 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 }
 
 export async function runNotifications(now = new Date()) {
-	if (!baseUrl() || !emailConfigured()) return { sent: 0 };
+	if (!baseUrl()) return { sent: 0 };
 	let sent = 0;
 	for (const user of db.select().from(users).all()) {
 		try {
@@ -253,10 +286,12 @@ export async function runNotifications(now = new Date()) {
  */
 export async function alertOutOfRange(user: User, tankId: string, testId: string) {
 	const base = baseUrl();
-	if (!base || !emailConfigured()) return;
+	if (!base) return;
 	const prefs = prefsFor(user.id);
-	const to = recipient(user, prefs);
-	if (!to || !prefs.outOfRangeAlerts || prefs.delivery !== 'individual') return;
+	const to = emailConfigured() && prefs.outOfRangeAlerts && prefs.delivery === 'individual' ? recipient(user, prefs) : null;
+	// pushed as it happens, whatever the email delivery
+	const push = prefs.pushOutOfRangeAlerts && hasPushTarget(user.id, prefs);
+	if (!to && !push) return;
 	const test = db.select().from(tests).where(eq(tests.id, testId)).get();
 	if (!test || Date.now() - Date.parse(test.takenAt) > 86_400_000) return;
 
@@ -285,6 +320,24 @@ export async function alertOutOfRange(user: User, tankId: string, testId: string
 	const wcDays = wc ? daysBetween(dateInZone(wc.occurredAt, user.timeZone), today) : null;
 	const loggedDay = dateInZone(test.takenAt, user.timeZone);
 	const unit = paramUnit(p, user);
+
+	if (push) {
+		const more = rest.map(({ p: q, r: x }) => `${shortName(q)} ${fmtValue(q, x.value, user)}`);
+		await pushOnce(
+			user,
+			prefs,
+			`oor:${testId}`,
+			() => ({
+				kind: 'oor',
+				title: `${p.name} is ${st.direction === 'low' ? 'low' : 'high'} in ${tank.name}: ${fmtValue(p, r.value, user)}${unit ? ` ${unit}` : ''}`,
+				body: [`Target ${fmtRange(p, user)}`, more.length ? `Also out of range: ${more.join(', ')}` : null].filter(Boolean).join(' · '),
+				url: `${base}/?tank=${tankId}`,
+				tag: `oor-${tankId}`
+			}),
+			base
+		);
+	}
+	if (!to) return;
 
 	await sendOnce(
 		user,

@@ -27,6 +27,7 @@
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"@types/better-sqlite3": "^9.6.0",
 		"@types/nodemailer": "^8.0.2",
+		"@types/web-push": "^3.6.4",
 		"@types/yazl": "^3.3.1",
 		"drizzle-kit": "^0.31.11",
 		"svelte": "^5.56.1",
@@ -45,6 +46,7 @@
 		"nodemailer": "^10.0.10",
 		"satori": "^0.33.5",
 		"sharp": "^0.35.4",
+		"web-push": "^3.6.7",
 		"yazl": "^3.3.1"
 	},
 	"overrides": {
