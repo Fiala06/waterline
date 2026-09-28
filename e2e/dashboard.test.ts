@@ -23,10 +23,11 @@ test("What's new links to each feature, and a tank's page opens for the tank you
 	await newKeeperWithTank(page, `links-${info.project.name}`);
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
 	await open(page, '/settings/changelog');
+	// older releases are folded away: open them all
+	for (const fold of await page.locator('summary').all()) await fold.click();
 	const link = page.getByRole('link', { name: 'Settings › Calendar' }).first();
 	await expect(link).toHaveAttribute('href', '/settings#calendar');
-	// /tanks/current/… is that page of the current tank (1.4, in Earlier releases)
-	await page.locator('summary', { hasText: /^1\.4/ }).click();
+	// /tanks/current/… is that page of the current tank
 	await page.getByRole('link', { name: 'Spending tab' }).first().click();
 	await expect(page).toHaveURL(`/tanks/${tankId}/spending`);
 	await expect(page.getByText('No spending logged yet')).toBeVisible();
