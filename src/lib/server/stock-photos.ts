@@ -8,7 +8,7 @@
 import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { eq, inArray } from 'drizzle-orm';
+import { count, desc, eq, inArray, ne } from 'drizzle-orm';
 import sharp from 'sharp';
 import { env } from '$env/dynamic/private';
 import { db } from './db';
@@ -76,34 +76,61 @@ export function commonsFile(src: string): string | null {
 	return m ? decodeURIComponent(m[1]) : null;
 }
 
-type Found = { status: 'ok'; file: string; width: number; height: number; author: string; license: string; licenseUrl: string | null; pageUrl: string } | { status: 'none' | 'failed' };
+type Found =
+	| { status: 'ok'; file: string; width: number; height: number; author: string; license: string; licenseUrl: string | null; pageUrl: string }
+	| { status: 'none' | 'failed'; reason: string };
+
+/** Why a request went wrong, in a few words: "ENOTFOUND en.wikipedia.org", "timed out", "Wikipedia answered 403". */
+export function failureReason(e: unknown): string {
+	if (!(e instanceof Error)) return String(e).slice(0, 200);
+	if (e.name === 'TimeoutError' || e.name === 'AbortError') return 'timed out after 10 seconds';
+	// fetch says "fetch failed"; what went wrong is its cause (DNS, a refused connection, a certificate)
+	const cause = e.cause as { code?: string; message?: string; hostname?: string } | undefined;
+	if (cause?.code) return `${cause.code}${cause.hostname ? ` ${cause.hostname}` : ''}`.slice(0, 200);
+	if (cause?.message) return cause.message.slice(0, 200);
+	return e.message.slice(0, 200);
+}
+
+/** What a site answered, with the start of its text when it isn't a success (Wikimedia says why it refused). */
+async function answered(site: string, res: Response): Promise<Error> {
+	let text = '';
+	try {
+		text = plainText((await res.text()).replace(/<(style|script)[^>]*>[\s\S]*?<\/\1>/gi, ' '), 140);
+	} catch {
+		/* just the status */
+	}
+	return new Error(`${site} answered ${res.status}${text ? `: ${text}` : ''}`);
+}
 
 /** Look one name up and keep its photo. Never throws: a failure is `failed`, to try again later. */
 export async function fetchStockPhoto(name: string, fetcher: typeof fetch = fetch): Promise<Found> {
 	const get = (url: string) => fetcher(url, { headers: { 'user-agent': UA, 'api-user-agent': UA }, signal: AbortSignal.timeout(10_000) });
 	try {
 		const page = await get(`${WIKI()}/api/rest_v1/page/summary/${encodeURIComponent(name.replace(/ /g, '_'))}`);
-		if (page.status === 404) return { status: 'none' };
-		if (!page.ok) throw new Error(`Wikipedia answered ${page.status}`);
+		if (page.status === 404) return { status: 'none', reason: 'No Wikipedia page' };
+		if (!page.ok) throw await answered('Wikipedia', page);
 		const summary = (await page.json()) as { type?: string; originalimage?: { source?: string }; thumbnail?: { source?: string } };
 		const src = summary.type === 'disambiguation' ? null : (summary.originalimage?.source ?? summary.thumbnail?.source ?? null);
-		const file = src ? commonsFile(src) : null;
-		if (!file) return { status: 'none' };
+		if (!src) return { status: 'none', reason: summary.type === 'disambiguation' ? 'Wikipedia has several pages by this name' : 'No photo on its Wikipedia page' };
+		const file = commonsFile(src);
+		if (!file) return { status: 'none', reason: 'Its photo isn’t on Commons' };
 
-		const q = new URLSearchParams({ action: 'query', format: 'json', formatversion: '2', prop: 'imageinfo', iiprop: 'url|extmetadata', iiurlwidth: '480', titles: `File:${file}` });
+		// 500: one of the widths Commons keeps thumbnails at (it may refuse others)
+		const q = new URLSearchParams({ action: 'query', format: 'json', formatversion: '2', prop: 'imageinfo', iiprop: 'url|extmetadata', iiurlwidth: '500', titles: `File:${file}` });
 		const info = await get(`${COMMONS()}/w/api.php?${q}`);
-		if (!info.ok) throw new Error(`Commons answered ${info.status}`);
+		if (!info.ok) throw await answered('Commons', info);
 		type Meta = Record<string, { value?: string } | undefined>;
 		const ii = ((await info.json()) as { query?: { pages?: { imageinfo?: { thumburl?: string; url?: string; descriptionurl?: string; extmetadata?: Meta }[] }[] } }).query?.pages?.[0]?.imageinfo?.[0];
 		const license = plainText(ii?.extmetadata?.LicenseShortName?.value, 60);
-		if (!ii || !freeLicense(license)) return { status: 'none' };
+		if (!ii) return { status: 'none', reason: 'Not found on Commons' };
+		if (!freeLicense(license)) return { status: 'none', reason: `Its photo isn’t free to use (${license || 'no license'})` };
 		const imageUrl = ii.thumburl ?? ii.url ?? '';
 		// only Commons' own image servers (or the stand-in in tests)
 		const host = new URL(imageUrl).origin;
-		if (host !== 'https://upload.wikimedia.org' && host !== new URL(COMMONS()).origin) return { status: 'none' };
+		if (host !== 'https://upload.wikimedia.org' && host !== new URL(COMMONS()).origin) return { status: 'none', reason: `Not on Commons' image server (${host})` };
 
 		const img = await get(imageUrl);
-		if (!img.ok) throw new Error(`The image answered ${img.status}`);
+		if (!img.ok) throw await answered('Commons’ image server', img);
 		const out = await sharp(Buffer.from(await img.arrayBuffer()))
 			.rotate()
 			.resize(480, 480, { fit: 'inside', withoutEnlargement: true })
@@ -123,8 +150,7 @@ export async function fetchStockPhoto(name: string, fetcher: typeof fetch = fetc
 			pageUrl: ii.descriptionurl ?? `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(file)}`
 		};
 	} catch (e) {
-		logger.debug('photos', `Couldn't get a species photo for ${name}`, { error: e });
-		return { status: 'failed' };
+		return { status: 'failed', reason: failureReason(e) };
 	}
 }
 
@@ -132,17 +158,35 @@ export async function fetchStockPhoto(name: string, fetcher: typeof fetch = fetc
 const queued = new Set<string>();
 let running: Promise<void> | null = null;
 
+/** Keep what a lookup found, or why it found nothing. */
+function keep(name: string, found: Found) {
+	const row = { file: null, width: null, height: null, author: null, license: null, licenseUrl: null, pageUrl: null, reason: null, ...found, name, fetchedAt: new Date().toISOString() };
+	db.insert(stockPhotos).values(row).onConflictDoUpdate({ target: stockPhotos.name, set: row }).run();
+}
+
 function enqueue(names: string[]) {
 	for (const n of names) queued.add(n);
 	running ??= (async () => {
+		// one warning for a batch that couldn't reach Wikipedia, not one per species
+		const failed: { name: string; reason: string }[] = [];
 		while (queued.size) {
 			const name = queued.values().next().value!;
-			const found = await fetchStockPhoto(name);
-			const row = { name, fetchedAt: new Date().toISOString(), ...found };
-			db.insert(stockPhotos).values(row).onConflictDoUpdate({ target: stockPhotos.name, set: row }).run();
-			if (found.status === 'ok') logger.info('photos', `Species photo for ${name}, ${found.license}`);
+			try {
+				const found = await fetchStockPhoto(name);
+				keep(name, found);
+				if (found.status === 'ok') logger.info('photos', `Species photo for ${name}, ${found.license}`);
+				else if (found.status === 'failed') failed.push({ name, reason: found.reason });
+				else logger.debug('photos', `No species photo for ${name}: ${found.reason}`);
+			} catch (e) {
+				logger.error('photos', `Couldn't keep the species photo for ${name}`, { error: e });
+			}
 			queued.delete(name);
 		}
+		if (failed.length)
+			logger.warn('photos', `Couldn't get species photos from Wikipedia for ${failed.length === 1 ? failed[0].name : `${failed.length} species`}: ${failed[0].reason}. Trying again tomorrow.`, {
+				species: failed.map((f) => f.name).slice(0, 20),
+				reasons: [...new Set(failed.map((f) => f.reason))].slice(0, 5)
+			});
 	})().finally(() => (running = null));
 }
 
@@ -177,6 +221,30 @@ export function stockPhotosFor(names: (string | null)[]): { photos: Map<string, 
 	const fresh = due.filter((n) => !queued.has(n));
 	if (fresh.length) enqueue(fresh);
 	return { photos, pending: due.length > 0 };
+}
+
+/** For Server settings: how many were found, and the latest reason one couldn't be. */
+export function stockPhotoStatus() {
+	const by = new Map(db.select({ status: stockPhotos.status, n: count() }).from(stockPhotos).groupBy(stockPhotos.status).all().map((r) => [r.status, r.n]));
+	const last = db.select({ reason: stockPhotos.reason }).from(stockPhotos).where(eq(stockPhotos.status, 'failed')).orderBy(desc(stockPhotos.fetchedAt)).limit(1).get();
+	return { found: by.get('ok') ?? 0, none: by.get('none') ?? 0, failed: by.get('failed') ?? 0, pending: queued.size, reason: last?.reason ?? null };
+}
+
+/** A species every lookup should find, to see that Wikipedia can be reached. */
+export const TEST_SPECIES = { name: 'Microsorum pteropus', common: 'Java fern' };
+
+/**
+ * Server settings' Look again now: forget every species without a photo, so
+ * they're asked again as they're shown, and look one up now to say whether
+ * Wikipedia can be reached from this server.
+ */
+export async function lookAgain(fetcher: typeof fetch = fetch): Promise<Found> {
+	db.delete(stockPhotos).where(ne(stockPhotos.status, 'ok')).run();
+	const found = await fetchStockPhoto(TEST_SPECIES.name, fetcher);
+	keep(TEST_SPECIES.name, found);
+	if (found.status === 'failed') logger.warn('photos', `Couldn't reach Wikipedia for species photos: ${found.reason}`);
+	else logger.info('photos', found.status === 'ok' ? `Species photos: Wikipedia works (${TEST_SPECIES.name}, ${found.license})` : `Species photos: ${TEST_SPECIES.name}: ${found.reason}`);
+	return found;
 }
 
 /** A kept photo's row, for the image route. */

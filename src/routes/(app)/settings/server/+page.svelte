@@ -27,6 +27,9 @@
 	let showKey = $state(false);
 	let busy = $state<string | null>(null);
 	const errors = $derived((form?.errors ?? {}) as Record<string, string>);
+	const stockResult = $derived(form && 'stock' in form ? (form.stock as { ok: boolean; message: string }) : null);
+	const stock = $derived(data.server.stock);
+	const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 	const test = $derived(form && 'test' in form ? form.test : null);
 	// 18: the first sentence in bold, a trailing "(401 Unauthorized)" in mono
 	const result = $derived.by(() => {
@@ -419,6 +422,43 @@
 			</div>
 			<div class="actions"><button class="btn btn-primary">Save</button></div>
 		</form>
+		{#if stock}
+			<form
+				method="POST"
+				action="?/stockLookAgain"
+				class="block stock"
+				use:enhance={() => {
+					busy = 'stock';
+					return async ({ update }) => {
+						await update({ reset: false });
+						busy = null;
+					};
+				}}
+			>
+				<div class="group">
+					<div class="row">
+						<span class="ttext"
+							><span class="tt">Species photos</span><span class="td"
+								>{stock.found || stock.none || stock.failed
+									? [
+											stock.found && `${stock.found} found`,
+											stock.none && `${plural(stock.none, 'species')} with no photo to use`,
+											stock.failed && `${plural(stock.failed, 'species', 'species')} couldn't be fetched`,
+											stock.pending && `${stock.pending} on the way`
+										]
+											.filter(Boolean)
+											.join(' · ')
+									: 'None looked up yet. They come in as you open Plants and Livestock.'}</span
+							>{#if stock.failed && stock.reason}<span class="td">Last problem: <span class="mono">{stock.reason}</span></span>{/if}</span
+						>
+						<button class="btn look" disabled={busy === 'stock'}>{busy === 'stock' ? 'Looking…' : 'Look again now'}</button>
+					</div>
+				</div>
+				{#if stockResult}
+					<p class="result {stockResult.ok ? 'ok' : 'bad'}" role="status">{stockResult.message}</p>
+				{/if}
+			</form>
+		{/if}
 		<div class="group">
 			<a class="row logs" href="/settings/server/logs">
 				<span class="ttext"
@@ -707,6 +747,11 @@ users    {data.server.users}</pre>
 	}
 	.logs {
 		color: var(--text);
+	}
+	.look {
+		flex-shrink: 0;
+		height: 44px;
+		padding: 0 14px;
 	}
 	.logs .chev {
 		font-size: 18px;

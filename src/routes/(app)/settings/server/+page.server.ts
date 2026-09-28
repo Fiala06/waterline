@@ -17,6 +17,7 @@ import { outboxTransport } from '$lib/server/mail/outbox';
 import type { Actions, PageServerLoad } from './$types';
 import pkg from '../../../../../package.json';
 import { logCounts, logger } from '$lib/server/log';
+import { lookAgain, stockPhotosOn, stockPhotoStatus, TEST_SPECIES } from '$lib/server/stock-photos';
 
 function requireAdmin(locals: App.Locals) {
 	if (!locals.user?.isAdmin) error(404, 'Not found');
@@ -100,7 +101,9 @@ export const load: PageServerLoad = ({ locals, url }) => {
 			updateCheck: s.updateCheck,
 			updateCheckOff: env.UPDATE_CHECK === 'off',
 			stockPhotos: s.stockPhotos,
-			stockPhotosOff: env.STOCK_PHOTOS === 'off'
+			stockPhotosOff: env.STOCK_PHOTOS === 'off',
+			// how the species photos are coming along, and why they aren't
+			stock: stockPhotosOn() ? stockPhotoStatus() : null
 		},
 		// what went wrong in the last day
 		logs: logCounts(new Date(Date.now() - 86_400_000).toISOString())
@@ -219,6 +222,16 @@ export const actions: Actions = {
 		});
 		logger.info('settings', 'Server switches saved', { userId: locals.user!.id, scheduledEmails: form.get('scheduledEmails') === 'on', updateCheck: form.get('updateCheck') === 'on' });
 		return { serverSaved: true };
+	},
+	/** Species photos: forget the ones not found, and see whether Wikipedia can be reached. */
+	stockLookAgain: async ({ locals }) => {
+		requireAdmin(locals);
+		if (!stockPhotosOn()) return fail(400, { stock: { ok: false, message: 'Species photos are off.' } });
+		const found = await lookAgain();
+		const who = TEST_SPECIES.common;
+		if (found.status === 'ok') return { stock: { ok: true, message: `✓ Wikipedia works: found a photo of ${who}. The rest come in as you open Plants and Livestock.` } };
+		if (found.status === 'none') return { stock: { ok: true, message: `Wikipedia answered, but has no photo of ${who} to use (${found.reason}). The rest are looked up again as you open Plants and Livestock.` } };
+		return fail(502, { stock: { ok: false, message: `✕ This server couldn't reach Wikipedia. (${found.reason})` } });
 	},
 	save: async ({ request, locals }) => {
 		requireAdmin(locals);

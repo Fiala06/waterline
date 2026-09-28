@@ -110,8 +110,8 @@ server_settings  singleton: email_provider?(mailgun|smtp), mailgun_api_key_enc?,
                  log_level(warn|info), log_debug_until?, stock_photos, vapid_public_key?,
                  vapid_private_key_enc? (Web Push keys, made on first use)
 stock_photos     name (the scientific name looked up), status(ok|none|failed), file?,
-                 width?, height?, author?, license?, license_url?, page_url?, fetched_at
-                 (species photos from Wikimedia Commons, kept in DATA_DIR/stock)
+                 width?, height?, author?, license?, license_url?, page_url?, reason?,
+                 fetched_at (species photos from Wikimedia Commons, kept in DATA_DIR/stock)
 action_tokens    token_hash, task_id, action(done|snooze), due, expires_at, used_at?
 email_log        id, user_id, key, created_at, error? (so nothing is sent twice; pushes
                  are "push:<key>")

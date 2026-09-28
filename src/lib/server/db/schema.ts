@@ -535,7 +535,7 @@ export const plants = sqliteTable(
  * Species photos from Wikimedia Commons, downloaded once and kept in
  * DATA_DIR/stock, keyed by the scientific name looked up. `none`: Wikipedia
  * has no free photo for it (asked again after a month); `failed`: couldn't
- * reach it (asked again after a day).
+ * reach it (asked again after a day). `reason` says why, for Server settings.
  */
 export const stockPhotos = sqliteTable('stock_photos', {
 	name: text('name').primaryKey(),
@@ -549,6 +549,8 @@ export const stockPhotos = sqliteTable('stock_photos', {
 	license: text('license'),
 	licenseUrl: text('license_url'),
 	pageUrl: text('page_url'),
+	/** why there's no photo: "No free photo", "Wikipedia answered 403", "ENOTFOUND en.wikipedia.org" */
+	reason: text('reason'),
 	fetchedAt: text('fetched_at').notNull()
 });
 

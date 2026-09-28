@@ -1,11 +1,12 @@
 import { expect, test } from '@playwright/test';
+import Database from 'better-sqlite3';
 import { jpeg, newKeeperWithTank, open } from './helpers';
 
 // Species photos from Wikimedia Commons (a stand-in here: src/routes/dev/wiki),
 // and the keeper's own photos of a plant or an animal.
 
 test('plants and livestock get a species photo with its credit, and can have your own instead', async ({ page }, info) => {
-	await newKeeperWithTank(page, `species-photos-${info.project.name}`);
+	const email = await newKeeperWithTank(page, `species-photos-${info.project.name}`);
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
 
 	// a plant with a free photo, one whose photo isn't free, and one with no page
@@ -63,4 +64,14 @@ test('plants and livestock get a species photo with its credit, and can have you
 	await expect(page.getByRole('complementary', { name: 'Photo details' }).getByText('✓ The photo for Neon tetra')).toBeVisible();
 	await open(page, `/tanks/${tankId}/livestock`);
 	await expect(page.locator('.lthumb').first()).toHaveAttribute('src', /^\/media\//);
+
+	// the admin sees how they're coming along, and can check that Wikipedia can be reached
+	const db = new Database('.e2e-data/waterline.db');
+	db.prepare('update users set is_admin = 1 where email = ?').run(email);
+	db.close();
+	await open(page, '/settings/server');
+	const status = page.locator('form.stock');
+	await expect(status).toContainText(/\d+ found/);
+	await status.getByRole('button', { name: 'Look again now' }).click();
+	await expect(status.getByRole('status')).toHaveText('✓ Wikipedia works: found a photo of Java fern. The rest come in as you open Plants and Livestock.');
 });

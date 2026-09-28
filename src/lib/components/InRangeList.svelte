@@ -2,7 +2,8 @@
 	// Dashboard refresh (1c): the readings that are fine, as a compact grid of
 	// name and value (tap one for its chart), and a line for those never tested.
 	// In a card like Needs attention's, each with its ✓, so it doesn't fade into
-	// the page; quieter than the attention list, but easy to read.
+	// the page; quieter than the attention list, but easy to read. Columns are
+	// narrow whatever the width, so a value stays beside its name.
 	interface Item {
 		id: string;
 		label: string;
@@ -21,9 +22,8 @@
 	</div>
 	{#if items.length}
 		<ul class="card grid">
-			{#each items as c, i (c.id)}
-				<!-- the last row of each column has no line: 2 across on phones, 3 on desktop -->
-				<li class:last2={i + 2 >= items.length} class:last3={i + 3 >= items.length}>
+			{#each items as c (c.id)}
+				<li>
 					<a href="/charts?p={c.id}" title="{c.fullName} · ✓ OK">
 						<span class="k"><span class="ok status-ok" aria-hidden="true">✓</span>{c.label}</span>
 						<span class="data v">{c.value}{#if c.unit}<span class="u">{c.unit.startsWith('°') ? c.unit : ` ${c.unit}`}</span>{/if}</span>
@@ -61,12 +61,13 @@
 		margin: 0;
 		padding: 0;
 		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+		/* as many narrow columns as fit (2 on a phone), filled from the left */
+		grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
 		column-gap: 24px;
 		padding: 2px 16px;
 	}
 	li {
-		border-bottom: 1px solid var(--divider-soft);
+		min-width: 0;
 	}
 	a {
 		display: flex;
@@ -110,18 +111,10 @@
 		font-size: 13px;
 		color: var(--text-muted);
 	}
-	@media (max-width: 1023px) {
-		li.last2 {
-			border-bottom: none;
-		}
-	}
 	@media (min-width: 1024px) {
 		.grid {
-			grid-template-columns: repeat(3, minmax(0, 1fr));
-			column-gap: 28px;
-		}
-		li.last3 {
-			border-bottom: none;
+			grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+			column-gap: 32px;
 		}
 	}
 </style>
