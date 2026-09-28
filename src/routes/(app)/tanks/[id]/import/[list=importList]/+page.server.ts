@@ -5,7 +5,7 @@ import { setFlash } from '$lib/server/flash';
 import { str } from '$lib/server/forms';
 import { applyHistory, applyImport, historyContext, listImports, previewHistory, previewImport, undoImport, undoneText } from '$lib/server/import';
 import { historyColumns, readHistory, trackedOnly } from '$lib/server/import-history';
-import { columnMapOf, importColumns, validValue, type FileColumn, type ImportValue, type LivestockValue } from '$lib/server/import-rows';
+import { columnMapOf, importColumns, validValue, wordMapOf, type FileColumn, type ImportValue, type LivestockValue } from '$lib/server/import-rows';
 import { safeReturn } from '$lib/server/redirect';
 import { getTank } from '$lib/server/tanks';
 import type { Tank, User } from '$lib/server/db/schema';
@@ -81,7 +81,8 @@ export const actions: Actions = {
 			name = file.name;
 		}
 		const map = columnMapOf(form);
-		const preview = isHistoryKind(kind) ? previewHistory(kind, text, user, tank, map) : previewImport(kind, text, user, tank, map);
+		// words a list's file uses that aren't known, as the keeper said to read them
+		const preview = isHistoryKind(kind) ? previewHistory(kind, text, user, tank, map) : previewImport(kind, text, user, tank, map, wordMapOf(kind, form));
 		const columns = columnChoices(kind, user, tank);
 		if ('error' in preview) {
 			logger.warn('import', `Couldn't read ${name}: ${preview.error}`, { userId: user.id, kind });

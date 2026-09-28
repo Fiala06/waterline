@@ -27,6 +27,7 @@ import {
 	readImport,
 	type CheckedRow,
 	type ColumnMap,
+	type WordMap,
 	type EquipmentValue,
 	type ExpenseValue,
 	type ImportList,
@@ -51,8 +52,8 @@ const water = (t: Tank) => (t.type === 'reef' ? 'marine' : t.type === 'brackish'
 const lower = (s: string | null | undefined) => (s ?? '').trim().toLowerCase();
 
 /** A file's rows, checked and compared with what the tank has. */
-export function previewImport(list: ImportList, text: string, user: User, tank: Tank, map?: ColumnMap) {
-	const read = readImport(list, text, { prefs: user, water: water(tank), today: todayInZone(user.timeZone), currency: user.currency }, map);
+export function previewImport(list: ImportList, text: string, user: User, tank: Tank, map?: ColumnMap, words?: WordMap) {
+	const read = readImport(list, text, { prefs: user, water: water(tank), today: todayInZone(user.timeZone), currency: user.currency, words }, map);
 	if ('error' in read) return read;
 	const has = existingIn(list, user, tank.id);
 	const rows: PreviewRow[] = read.rows.map((r) => ({
@@ -60,7 +61,7 @@ export function previewImport(list: ImportList, text: string, user: User, tank: 
 		existing: r.value && !r.example ? has(r.value) : null,
 		reminder: list === 'equipment' && r.value ? reminderFor(r.value as EquipmentValue) : null
 	}));
-	return { rows, ignored: read.ignored, fileColumns: read.fileColumns };
+	return { rows, ignored: read.ignored, fileColumns: read.fileColumns, words: read.words };
 }
 
 function existingIn(list: ImportList, user: User, tankId: string): (v: ImportValue) => string | null {

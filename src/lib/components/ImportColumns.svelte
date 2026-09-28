@@ -10,7 +10,8 @@
 		csv,
 		fileColumns,
 		columns,
-		open = false
+		open = false,
+		words = []
 	}: {
 		file: string;
 		csv: string;
@@ -18,6 +19,8 @@
 		columns: { key: string; header: string }[];
 		/** open when something wasn't matched */
 		open?: boolean;
+		/** words chosen on the preview, kept when the columns change */
+		words?: { key: string; norm: string; chosen: string | null }[];
 	} = $props();
 
 	let busy = $state(false);
@@ -42,6 +45,7 @@
 	>
 		<input type="hidden" name="csv" value={csv} />
 		<input type="hidden" name="fileName" value={file} />
+		{#each words.filter((w) => w.chosen) as w (w.key + w.norm)}<input type="hidden" name="word.{w.key}.{w.norm}" value={w.chosen} />{/each}
 		<p class="hint">Waterline matched these by name. Pick what any other column is, or leave it out.</p>
 		<ul>
 			{#each fileColumns as c (c.index)}

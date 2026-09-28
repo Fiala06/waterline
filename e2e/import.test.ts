@@ -333,3 +333,29 @@ test('import spending from a spreadsheet, and undo it', async ({ page }, info) =
 	await page.getByRole('status').getByRole('button', { name: 'Undo' }).click();
 	await expect(page.getByText('No spending logged yet')).toBeVisible();
 });
+
+test('words a file uses that Waterline does not know are chosen once, for every row', async ({ page }, info) => {
+	await newKeeperWithTank(page, `import-words-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, `/tanks/${tankId}/import/plants`);
+	await page.locator('input[type=file][name=file]').setInputFiles('e2e/files/plants-with-words.csv');
+	await expect(page.getByText('✓ 7 to add')).toBeVisible();
+	await expect(page.getByText('✕ 7 to fix')).toBeVisible();
+
+	const words = page.getByRole('region', { name: 'Words to check' });
+	await expect(words).toContainText('3 to choose');
+	await words.getByLabel('Status: “New” 5 rows').selectOption('thriving');
+	await expect(page.getByText('✓ 12 to add')).toBeVisible();
+	await words.getByLabel('Status: “Struggling” 1 row').selectOption('melting');
+	await words.getByLabel('Position: “Floating” 1 row').selectOption('foreground');
+	await expect(page.getByText('✓ 14 to add')).toBeVisible();
+	await expect(words).toContainText('✓ All chosen');
+	// a column picked again keeps the words chosen
+	await page.getByText('Columns').click();
+	await page.getByLabel('Added', { exact: true }).selectOption('');
+	await expect(page.getByText('✓ 14 to add')).toBeVisible();
+
+	await page.getByRole('button', { name: 'Add 14 plants' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Imported 14 plants');
+	await expect(page.getByRole('button', { name: /^Water lettuce/ })).toBeVisible();
+});

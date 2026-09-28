@@ -83,6 +83,26 @@ export interface ImportContext {
 	today: string;
 	/** for amounts spent: "$24.99" */
 	currency?: string;
+	/** what the keeper said a word means, by column: { status: { new: 'thriving' } } */
+	words?: WordMap;
+}
+
+/** Words chosen on the preview, by column key, then by the word as compared ("new"). */
+export type WordMap = Record<string, Record<string, string>>;
+
+/** A word a file uses that Waterline doesn't know, with how many rows have it and what it can mean. */
+export interface UnknownWord {
+	key: string;
+	/** "Status" */
+	label: string;
+	/** as the file has it: "New" */
+	word: string;
+	/** as compared: "new" */
+	norm: string;
+	rows: number;
+	options: { value: string; label: string }[];
+	/** what the keeper chose it means, if they have */
+	chosen: string | null;
 }
 
 /** One row as the preview shows it. `value` is null when the row has a problem. */
@@ -212,9 +232,12 @@ export function parseAmount(v: string): number | null {
 	return Number.isFinite(n) ? n : null;
 }
 
+/** A word as compared: "In-tank " is "in tank". */
+export const normWord = (v: string) => v.trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
 /** A word from a list, or one of its synonyms; `undefined` when empty, null when unknown. */
 export function pick<T extends string>(v: string, words: Record<string, T>): T | null | undefined {
-	const k = v.trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+	const k = normWord(v);
 	if (!k) return undefined;
 	return words[k] ?? null;
 }
@@ -330,6 +353,59 @@ const EXPENSE_WORDS: Record<string, ExpenseCategory> = {
 };
 
 const KIND_LABEL: Record<Kind, string> = { fish: 'Fish', invert: 'Invert', coral: 'Coral' };
+
+/** The columns that take one of a few words, each list's, and what those words can be. */
+const PICKS: Partial<Record<ImportList, { key: string; label: string; words: Record<string, string>; options: { value: string; label: string }[] }[]>> = {
+	livestock: [
+		{ key: 'type', label: 'Type', words: KIND_WORDS, options: LIVESTOCK_KINDS.map((k) => ({ value: k, label: KIND_LABEL[k] })) },
+		{ key: 'status', label: 'Status', words: LIVESTOCK_STATUS_WORDS, options: [{ value: 'in_tank', label: 'In tank' }, { value: 'quarantine', label: 'Quarantine' }] }
+	],
+	plants: [
+		{ key: 'position', label: 'Position', words: POSITION_WORDS, options: POSITIONS.map((p) => ({ value: p, label: p.charAt(0).toUpperCase() + p.slice(1) })) },
+		{ key: 'status', label: 'Status', words: PLANT_STATUS_WORDS, options: PLANT_STATUSES.map((p) => ({ value: p, label: p.charAt(0).toUpperCase() + p.slice(1) })) }
+	],
+	expenses: [{ key: 'category', label: 'Category', words: EXPENSE_WORDS, options: EXPENSE_CATEGORIES.map((c) => ({ value: c, label: EXPENSE_LABEL[c] })) }]
+};
+
+/** A column's words, with what the keeper chose on the preview. */
+function wordsFor<T extends string>(list: ImportList, key: string, ctx: ImportContext): Record<string, T> {
+	const p = PICKS[list]!.find((x) => x.key === key)!;
+	return { ...p.words, ...(ctx.words?.[key] ?? {}) } as Record<string, T>;
+}
+
+/** The words a file uses that aren't known, one each however many rows have it. */
+function unknownWords(list: ImportList, cells: Cells[], ctx: ImportContext): UnknownWord[] {
+	const out: UnknownWord[] = [];
+	for (const p of PICKS[list] ?? []) {
+		const seen = new Map<string, UnknownWord>();
+		for (const c of cells) {
+			const raw = (c[p.key] ?? '').trim();
+			if (!raw || pick(raw, p.words) !== null) continue;
+			// livestock marked as a plant is its own problem, not a word to choose
+			if (list === 'livestock' && p.key === 'type' && /^(plant|plants|moss|stem|stems)$/i.test(raw)) continue;
+			const norm = normWord(raw);
+			const w = seen.get(norm);
+			if (w) w.rows++;
+			else seen.set(norm, { key: p.key, label: p.label, word: raw, norm, rows: 1, options: p.options, chosen: ctx.words?.[p.key]?.[norm] ?? null });
+		}
+		out.push(...seen.values());
+	}
+	return out;
+}
+
+/** The words chosen on the preview's form: word.status.new=thriving. Only real choices are kept. */
+export function wordMapOf(list: ImportList, form: FormData): WordMap | undefined {
+	const map: WordMap = {};
+	let any = false;
+	for (const [k, v] of form) {
+		const m = /^word\.([a-z]+)\.(.{1,60})$/.exec(k);
+		const p = m && PICKS[list]?.find((x) => x.key === m[1]);
+		if (!m || !p || typeof v !== 'string' || !p.options.some((o) => o.value === v)) continue;
+		(map[m[1]] ??= {})[normWord(m[2])] = v;
+		any = true;
+	}
+	return any ? map : undefined;
+}
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 export const quoted = (v: string) => `“${v.length > 40 ? v.slice(0, 40) + '…' : v}”`;
 
@@ -352,7 +428,7 @@ export type Cells = Record<string, string>;
 
 function checkLivestock(c: Cells, ctx: ImportContext): Omit<CheckedRow, 'line' | 'example' | 'other'> {
 	const problems: string[] = [];
-	const typed = pick(c.type ?? '', KIND_WORDS);
+	const typed = pick(c.type ?? '', wordsFor<Kind>('livestock', 'type', ctx));
 	const plantWord = /^(plant|plants|moss|stem|stems)$/i.test((c.type ?? '').trim());
 	const sp = species((c.name ?? '').slice(0, 80), (c.scientific ?? '').slice(0, 120), ctx.water);
 	if (!sp.name) problems.push('No name');
@@ -366,7 +442,7 @@ function checkLivestock(c: Cells, ctx: ImportContext): Omit<CheckedRow, 'line' |
 	else if (count < 1) problems.push('Count is 0');
 	else if (count > 10_000) problems.push('Count is over 10,000');
 	const added = dateCell(c.added ?? '', 'Added', ctx, problems);
-	const status = pick(c.status ?? '', LIVESTOCK_STATUS_WORDS);
+	const status = pick(c.status ?? '', wordsFor<LivestockValue['status']>('livestock', 'status', ctx));
 	if (status === null) problems.push(`Status ${quoted(c.status)} isn't In tank or Quarantine`);
 	const source = (c.source ?? '').slice(0, 120) || null;
 	const value: LivestockValue = { kind, name: sp.name, scientific: sp.scientific, count, added, status: status ?? 'in_tank', source };
@@ -391,9 +467,9 @@ function checkPlant(c: Cells, ctx: ImportContext): Omit<CheckedRow, 'line' | 'ex
 	const sp = species((c.name ?? '').slice(0, 80), (c.scientific ?? '').slice(0, 120), ctx.water);
 	if (!sp.name) problems.push('No name');
 	else if (sp.kind && sp.kind !== 'plant') problems.push(`${sp.name} is an animal: import it on the Livestock tab`);
-	const position = pick(c.position ?? '', POSITION_WORDS);
+	const position = pick(c.position ?? '', wordsFor<Position>('plants', 'position', ctx));
 	if (position === null) problems.push(`Position ${quoted(c.position)} isn't Background, Midground, Foreground or Epiphyte`);
-	const status = pick(c.status ?? '', PLANT_STATUS_WORDS);
+	const status = pick(c.status ?? '', wordsFor<PlantStatus>('plants', 'status', ctx));
 	if (status === null) problems.push(`Status ${quoted(c.status)} isn't Thriving, Melting, Algae or Other`);
 	const added = dateCell(c.added ?? '', 'Added', ctx, problems);
 	const value: PlantValue = { name: sp.name, scientific: sp.scientific, position: position ?? 'midground', status: status ?? 'thriving', added };
@@ -414,7 +490,7 @@ function checkExpense(c: Cells, ctx: ImportContext): Omit<CheckedRow, 'line' | '
 	const amountCents = rawAmount ? parseMoney(rawAmount) : null;
 	if (!rawAmount) problems.push('No amount');
 	else if (amountCents == null) problems.push(`Amount ${quoted(rawAmount)} isn't an amount`);
-	const category = pick(c.category ?? '', EXPENSE_WORDS);
+	const category = pick(c.category ?? '', wordsFor<ExpenseCategory>('expenses', 'category', ctx));
 	if (category === null) problems.push(`Category ${quoted(c.category)} isn't Livestock, Plants, Equipment, Consumables or Other`);
 	const date = dateCell(c.date ?? '', 'Date', ctx, problems) ?? ctx.today;
 	const note = (c.note ?? '').trim().slice(0, 500) || null;
@@ -612,16 +688,17 @@ export function readImport(
 	text: string,
 	ctx: ImportContext,
 	map?: ColumnMap
-): { rows: CheckedRow[]; ignored: string[]; fileColumns: FileColumn[] } | { error: string; fileColumns?: FileColumn[] } {
+): { rows: CheckedRow[]; ignored: string[]; fileColumns: FileColumn[]; words: UnknownWord[] } | { error: string; fileColumns?: FileColumn[] } {
 	const need = list === 'equipment' ? { key: 'type', label: 'Type' } : list === 'expenses' ? { key: 'amount', label: 'Amount' } : { key: 'name', label: 'Name' };
 	const t = readColumns(text, importColumns(list, ctx.prefs), need, MAX_ROWS, map);
 	if ('error' in t) return { error: t.error!, fileColumns: t.fileColumns };
 	const same = new Set(examples(list, ctx.prefs).map((e) => JSON.stringify(check(list, e, ctx, t.headers).value)));
-	const rows = t.lines.map(({ line, cells }) => {
-		const r = check(list, t.cellsOf(cells), ctx, t.headers);
+	const all = t.lines.map(({ line, cells }) => ({ line, cells: t.cellsOf(cells) }));
+	const rows = all.map(({ line, cells }) => {
+		const r = check(list, cells, ctx, t.headers);
 		return { line, ...r, example: !!r.value && same.has(JSON.stringify(r.value)), other: null };
 	});
-	return { rows, ignored: t.ignored, fileColumns: t.fileColumns };
+	return { rows, ignored: t.ignored, fileColumns: t.fileColumns, words: unknownWords(list, all.map((r) => r.cells), ctx) };
 }
 
 // ── What the import form posts back ─────────────────────────────────────────

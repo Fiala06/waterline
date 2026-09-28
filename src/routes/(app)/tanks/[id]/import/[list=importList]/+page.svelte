@@ -5,6 +5,7 @@
 	import { enhance } from '$app/forms';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import ImportColumns from '$lib/components/ImportColumns.svelte';
+	import ImportWords from '$lib/components/ImportWords.svelte';
 	import ImportPreview from '$lib/components/ImportPreview.svelte';
 	import { HISTORY_FILES, IMPORTS, isHistoryKind } from '$lib/imports';
 	let { data, form } = $props();
@@ -38,7 +39,9 @@
 	<div class="body">
 		{#if preview}
 			{#key preview}
-				<ImportColumns file={preview.file} csv={preview.csv} fileColumns={preview.fileColumns} columns={preview.columns} open={preview.ignored.length > 0} />
+				{@const words = 'words' in preview ? (preview.words ?? []) : []}
+				<ImportColumns file={preview.file} csv={preview.csv} fileColumns={preview.fileColumns} columns={preview.columns} open={preview.ignored.length > 0} {words} />
+				{#if words.length}<ImportWords file={preview.file} csv={preview.csv} fileColumns={preview.fileColumns} {words} />{/if}
 				<ImportPreview kind={data.kind} file={preview.file} rows={preview.rows} ignored={preview.ignored} csv={preview.csv} fileColumns={preview.fileColumns} />
 			{/key}
 		{:else if mapping}
