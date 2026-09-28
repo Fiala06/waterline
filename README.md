@@ -131,7 +131,7 @@ Servers set up before these settings moved into the app keep working: `AUTH_GOOG
 
 3. With HTTPS, point your reverse proxy (Nginx Proxy Manager, SWAG, Cloudflare Tunnel…) at `http://<unraid-ip>:<host port>`. Either way, open the `ORIGIN` URL and always use that one: any other address loads, but saving fails the cross-site check.
 
-**Updates:** each release publishes a new `:latest` image, and Unraid's Docker tab shows *update ready* for the container. Applying it keeps everything in `/data`; database migrations run on start. When a new version is released, admins also see *Update to 1.8 available* under Settings in the app's menu; after updating, everyone gets the highlights of what's new since they last looked once on the dashboard, and the full list is in **Settings › What's new**.
+**Updates:** each release publishes a new `:latest` image, and Unraid's Docker tab shows *update ready* for the container. Applying it keeps everything in `/data`; database migrations run on start. When a new version is released, admins also see *Update to 1.9 available* under Settings in the app's menu; after updating, everyone gets the highlights of what's new since they last looked once on the dashboard, and the full list is in **Settings › What's new**.
 
 To run two versions side by side (say `:latest` and a pinned `:1.5`), create two containers with different names, host ports, data folders and `ORIGIN` values. Never point two containers at the same data folder.
 
