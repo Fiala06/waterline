@@ -60,7 +60,7 @@
 	const hasReadings = $derived(cards.some((c) => c.value != null));
 	// Refresh (1c): what needs attention (out of range, then near a limit), what's fine, what's never been tested
 	const attention = $derived([...cards.filter((c) => c.level === 'bad'), ...cards.filter((c) => c.level === 'warn')]);
-	const inRange = $derived(cards.filter((c) => c.level === 'ok').map((c) => ({ ...c, unit: c.key === 'temp' ? c.unit : '' })));
+	const inRange = $derived(cards.filter((c) => c.level === 'ok'));
 	const untested = $derived(cards.filter((c) => c.level === 'none').map((c) => c.fullName));
 
 	// Trends: parameters with at least one reading in the window; pick one.
