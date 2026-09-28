@@ -91,7 +91,7 @@ GitHub Actions also publishes ready-built images (linux/amd64), so you don't hav
 | Image | Built from |
 |---|---|
 | `ghcr.io/fiala06/waterline:latest` | every push to `main` (also tagged `:main`) |
-| `ghcr.io/fiala06/waterline:1.5.0` | each release, for staying on a version; `:1.5` is the newest 1.5.x |
+| `ghcr.io/fiala06/waterline:1.6.0` | each release, for staying on a version; `:1.6` is the newest 1.6.x |
 | `ghcr.io/fiala06/waterline:dev` | every push to `dev` |
 | `ghcr.io/fiala06/waterline:sha-xxxxxxx` | every build, for pinning or rolling back |
 
@@ -132,7 +132,7 @@ Servers set up before these settings moved into the app keep working: `AUTH_GOOG
 
 3. With HTTPS, point your reverse proxy (Nginx Proxy Manager, SWAG, Cloudflare Tunnel…) at `http://<unraid-ip>:<host port>`. Either way, open the `ORIGIN` URL and always use that one: any other address loads, but saving fails the cross-site check.
 
-**Updates:** each push to `main` (or `dev`) publishes a new image, and Unraid's Docker tab shows *update ready* for the container. Applying it keeps everything in `/data`; database migrations run on start. When a new version is on `main`, admins also see *Update to 1.6 available* under Settings in the app's menu; after updating, everyone gets the release's highlights once on the dashboard, and the full list is in **Settings › What's new**.
+**Updates:** each push to `main` (or `dev`) publishes a new image, and Unraid's Docker tab shows *update ready* for the container. Applying it keeps everything in `/data`; database migrations run on start. When a new version is on `main`, admins also see *Update to 1.7 available* under Settings in the app's menu; after updating, everyone gets the release's highlights once on the dashboard, and the full list is in **Settings › What's new**.
 
 To run `latest` and `dev` side by side, create two containers with different names, host ports, data folders and `ORIGIN` values. Never point two containers at the same data folder.
 
