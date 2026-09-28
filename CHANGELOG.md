@@ -1,79 +1,88 @@
 # Changelog
 
-What's new in Waterline, newest first. The app shows this list under Settings › What's new, and the first lines of a release once on the dashboard after an update, so write for the people who use it: a few plain-language lines, each starting with its name in bold.
+What's new in Waterline, newest first. The app shows this list under Settings › What's new, and the first lines of a release once on the dashboard after an update, so write for the people who use it.
+
+How to write a line:
+- Start with the feature's name in bold, then say in a sentence or two what it does for the keeper and where to find it.
+- Link the place it lives: `[Settings › Calendar](/settings#calendar)`, `[Charts](/charts)`. A tank's page is `/tanks/current/…` (such as `/tanks/current/spending`), which opens it for the tank you're on. The line's first link is also where its name leads from the dashboard's What's new. Links to other sites are `https://…`; any other kind is shown as plain text. GitHub's release notes show the words without the in-app links.
+- Plain words, no internals: what someone sees and can do, not how it's built.
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
+## Unreleased
+
+- **What's new links to each feature:** Each line in [Settings › What's new](/settings/changelog), and on the dashboard after an update, now says where the feature lives and links straight to it. A link to a tank's page opens it for the tank you're on.
+
 ## 1.6.0 · 2026-09-28
 
-- **A fresh dashboard:** your tank's photo across the top with its name, and what needs attention first: readings out of range or near a limit, each with its recent line against the target, and the water change once it's due. Everything in range sits below in a compact list, and values are in an easier-to-read typeface.
+- **A fresh dashboard:** Your tank's photo now runs across the top of the [dashboard](/), with its name on it, and the first thing you see is what needs attention: readings out of range or near a limit, each with a small line of recent readings against its target, and the water change once it's due. Everything that's fine sits below in a compact list; tap any reading for its chart. To change the photo, open one in [Photos](/photos) and choose Set as cover.
 
 ## 1.5.0 · 2026-09-28
 
-- **Tasks in your calendar:** a private link in Settings › Calendar puts your tasks in Google Calendar, Apple Calendar or Outlook, each on the day it's due and kept up to date. Overdue ones show on today. One link for all your tanks, or one for a single tank.
+- **Tasks in your calendar:** See your tasks in Google Calendar, Apple Calendar or Outlook, each on the day it's due, with overdue ones on today. Make a private link in [Settings › Calendar](/settings#calendar), for all your tanks or just one, and add it to your calendar app; it keeps itself up to date.
 
 ## 1.4.4 · 2026-09-28
 
-- **Quick add, tidier:** the other kinds of entry and importing are one grid of matching tiles, each with its icon, instead of a row of buttons that wrapped unevenly. The time shows as well as the tank.
+- **Quick add, tidier:** In Quick add (the + button), the other kinds of entry and importing are one grid of matching tiles, each with its icon, and the time shows beside the tank, so you can see when an entry will be logged.
 
 ## 1.4.3 · 2026-09-27
 
-- **Steps for each assistant:** Settings › AI assistant shows how to connect claude.ai (and Claude Desktop and mobile), ChatGPT, Claude Code and other apps by signing in, with the address to copy. Access tokens are further down, for scripts and apps that can't sign in.
+- **Steps for each assistant:** [Settings › AI assistant](/settings/assistant) has step-by-step instructions for claude.ai (and Claude Desktop and mobile), ChatGPT, Claude Code and other apps, with the address to copy.
 
 ## 1.4.2 · 2026-09-27
 
-- **Connect claude.ai or ChatGPT by signing in:** add Waterline as a custom connector with its address, then sign in here and pick the tanks it can read. Nothing to copy, and it shows under Settings › AI assistant, where you can disconnect it.
+- **Connect claude.ai or ChatGPT by signing in:** Add Waterline as a custom connector with your server's address; you'll sign in to Waterline and pick the tanks it can read, with nothing to copy. It then shows in [Settings › AI assistant](/settings/assistant), where you can disconnect it at any time.
 
 ## 1.4.1 · 2026-09-27
 
-- **Charts, easier to use by keyboard and screen reader:** the water change and dose markers are controls of their own rather than inside the chart, with bigger tap areas that never cover a neighbour's, so tapping a marker always opens that one.
+- **Chart markers, easier to tap:** On [Charts](/charts) and the dashboard, the water change and dose markers are easier to tap, always open the one you meant, and work with the keyboard and screen readers.
 
 ## 1.4.0 · 2026-09-27
 
-- **Connect an AI assistant:** let Claude, ChatGPT or another assistant read the tanks you pick, to answer questions about your readings, History, livestock and photos. Make an access token in Settings › AI assistant and paste it into the assistant; it can't change anything, and you can revoke it any time. Waterline stores no AI keys.
-- **Spending:** each tank has a Spending tab for what it costs (livestock, plants, equipment and consumables): this month, this year and all time, the year by category, and month by month. Buying a saved product again logs in one step from Settings › Products, and the currency is in Settings › Units.
-- **Receipts:** attach a photo or PDF receipt to an expense. They're in your backup too.
-- **More trends:** the dashboard also points out what keeps happening, like "KH drifts down about 1 dKH a week between water changes" or "pH dips about 0.2 after dosing Excel", only when it happens most times and more than it changes anyway. The daily or weekly digest has these under Worth a look.
-- **Compare tanks:** Charts shows the same parameter in your other tanks, on the same dates, under the chart.
-- **Notes on the tank's page:** its pinned note, then the latest dated notes, with Add note right there.
-- **Remind me:** a one-off reminder about a tank in two taps, from its page or the dashboard: tomorrow, in 3 days, next week, in 2 weeks, or on a date.
-- **Custom parameters, again:** adding one offers those from your other tanks, added in one tap with their unit and targets.
-- **Where it came from, editable:** an animal's page now has its Source (the store or breeder), to fix or fill in later.
+- **Connect an AI assistant:** Ask Claude, ChatGPT or another assistant about your tanks. It can read the readings, History, livestock and photos of the tanks you choose, and can't change anything. Set it up in [Settings › AI assistant](/settings/assistant); Waterline stores no AI keys.
+- **Spending:** See what each tank costs: this month, this year and all time, by category, and month by month. Open the tank's [Spending tab](/tanks/current/spending) and choose Add expense. Buying a saved product again? Log it in one step from [Settings › Products](/settings/products). Your currency is in [Settings › Units](/settings#units).
+- **Receipts:** Attach a photo or PDF receipt when you [add an expense](/tanks/current/spending/new). Receipts are part of your [backup](/settings/export).
+- **More trends:** The [dashboard](/) points out what keeps happening, like "KH drifts down about 1 dKH a week between water changes" or "pH dips about 0.2 after dosing Excel", and only when it happens most times. The daily or weekly digest email lists them under Worth a look ([Settings › Notifications](/settings#notifications)).
+- **Compare tanks:** Under the chart in [Charts](/charts), see the same parameter in your other tanks over the same dates.
+- **Notes on the tank's page:** The tank's [Overview](/tanks/current) shows its pinned note and the latest notes, with Add note right there.
+- **Remind me:** A one-off reminder about a tank in two taps (tomorrow, in 3 days, next week, in 2 weeks, or a date), from the dashboard's Due list or [the tank's page](/tanks/current/remind).
+- **Custom parameters, again:** Adding a custom parameter in the tank's [Targets](/tanks/current/targets) offers the ones you made for your other tanks, with their unit and targets.
+- **Where it came from, editable:** An animal's page on the [Livestock tab](/tanks/current/livestock) has its Source (the store or breeder), to fix or fill in later.
 
 ## 1.3.0 · 2026-09-27
 
-- **Pet names and photos:** give a fish or any animal a name. Name one of a group and it gets its own entry ("Pepper · Corydoras"), shown by name on the Livestock tab, the dashboard and in History, with its own page for a profile photo, notes, its history and every photo it's in. Tag pets from any photo under In this photo. Public pages show the species only, and hide photos with pets in them, unless you turn on Pet names and photos.
-- **Importing, easier:** when a spreadsheet's columns have other names, pick which is which on the preview instead of renaming them. And one file can hold several kinds of entry (water tests, water changes, doses and more), with a Type column saying what each row is. It's undone in one step, like any import.
-- **Your own profile photo:** add one in Settings › Profile, from your camera or photos, with a preview before it's saved. Signing in with Google doesn't replace it; Use my Google photo switches back, and Remove photo shows your initials.
+- **Pet names and photos:** Give any animal a name on the [Livestock tab](/tanks/current/livestock). Naming one of a group gives it its own entry ("Pepper · Corydoras") and a page for its profile photo, notes, history and every photo it's in. Tag pets in any photo in [Photos](/photos) under In this photo. Public pages show the species only, and hide photos with pets in them, unless you turn on Pet names and photos in the tank's [Public page](/tanks/current/public) settings.
+- **Importing, easier:** When a spreadsheet's columns have other names, pick which is which on the preview instead of renaming them. One file can also hold several kinds of entry, with a Type column saying what each row is. Start from [History](/history) or [Settings › Import & export](/settings/export); every import can be undone in one step.
+- **Your own profile photo:** Add one from your camera or photos in [Settings › Profile](/settings#profile), with a preview before it's saved. Signing in with Google doesn't replace it; Use my Google photo switches back, and Remove photo shows your initials.
 
 ## 1.2.0 · 2026-09-27
 
-- **Works behind more proxies:** signing in no longer ends in *502 Bad Gateway* when Waterline runs behind nginx, such as Nginx Proxy Manager, with its default settings.
-- **Account menu:** your profile photo from Google, or your initials, in the upper left: tap it for your settings, What's new and signing out.
-- **Logs for troubleshooting:** Settings › Server settings › Logs shows what went wrong, like emails that didn't send, imports that couldn't be read and sign-in problems, and a page that fails shows a reference to look up there. More detail when you need it, and a download to share.
-- **Easier-to-read charts:** the parameter and its unit up the side, dates along the bottom, and a reading's value, status, date and time when you hover or tap the line, or step through them with the arrow keys.
+- **Works behind more proxies:** Signing in no longer ends in *502 Bad Gateway* when Waterline runs behind nginx, such as Nginx Proxy Manager, with its default settings.
+- **Account menu:** Tap your profile photo or initials in the top corner for [Settings](/settings), What's new and signing out.
+- **Logs for troubleshooting:** [Settings › Server settings › Logs](/settings/server/logs) shows what went wrong, like emails that didn't send, imports that couldn't be read and sign-in problems. A page that fails shows a reference to look up there, and you can download the log to share.
+- **Easier-to-read charts:** [Charts](/charts) show the parameter and its unit up the side and dates along the bottom. Hover or tap the line, or use the arrow keys, to see a reading's value, status, date and time.
 
 ## 1.1.0 · 2026-09-27
 
-- **Import History from a spreadsheet:** past water tests, water changes, doses, maintenance, observations and notes, with a template for each and a preview before anything is added. Start one from History, Quick add or Settings › Import & export; any import can be undone in one step.
-- **Import livestock, plants and equipment** from a spreadsheet, from each list.
-- **Latest readings in one row** on a computer, each with a small line of its recent readings. Hover a short name like NH₃ to see the full name.
-- **Spotting trends:** a note under the dashboard's chart when a reading has risen or fallen in each of your last tests, or is on course to pass its target.
-- **Faster water tests:** Use last readings fills in your previous test, Also log a water change saves both at once, and you can add a parameter without leaving the test.
-- **Quicker backdating:** 1 hour ago, This morning and Yesterday evening in the date and time picker.
-- **Saved product links** in Settings › Products: one tap to reorder, and a Reorder link when you dose one.
-- **Tips:** an ⓘ beside each parameter, and beside a few less obvious fields, explains what it is.
-- **Summary for an AI assistant:** a tank's readings, care log and stocking as text to paste into a chat, from its Overview or Settings › Import & export.
-- **Easier to set up:** a new server needs only its address. The first page asks for a setup code from the server's log, then Google sign-in, who can sign in, the admin's login and a few switches are all in Settings › Server settings.
-- **What's new:** this list, in Settings, and a note on the dashboard after each update.
-- **Smaller things:** a log entry you leave unsaved is kept for when you come back; species search finds the names people use; saving works with ad blockers turned on; new category icons, with one for plants; and now and then a small fish swims through the logo.
+- **Import History from a spreadsheet:** Bring in past water tests, water changes, doses, maintenance, observations and notes, with a template for each and a preview before anything is added. Start from [History](/history), Quick add or [Settings › Import & export](/settings/export); any import can be undone in one step.
+- **Import livestock, plants and equipment:** From a spreadsheet, on the tank's [Livestock](/tanks/current/livestock), Plants and Equipment tabs.
+- **Latest readings in one row:** On a computer, the [dashboard](/) shows every reading in one row, each with a small line of its recent readings. Hover a short name like NH₃ to see the full name.
+- **Spotting trends:** A note under the [dashboard](/)'s chart when a reading has risen or fallen in each of your last tests, or is on course to pass its target.
+- **Faster water tests:** On a [water test](/entries/test/new), Use last readings fills in your previous test, Also log a water change saves both at once, and you can add a parameter without leaving the test.
+- **Quicker backdating:** The date and time picker offers 1 hour ago, This morning and Yesterday evening.
+- **Saved product links:** Keep links to what you buy again in [Settings › Products](/settings/products): one tap to reorder, and a Reorder link when you dose one.
+- **Tips:** An ⓘ beside each parameter, and beside a few less obvious fields, explains what it is.
+- **Summary for an AI assistant:** A tank's readings, care log and stocking as text to paste into a chat, from the tank's [summary](/tanks/current/summary) or [Settings › Import & export](/settings/export).
+- **Easier to set up:** A new server needs only its address. The first page asks for a setup code from the server's log; Google sign-in, who can sign in, the admin's login and a few switches are in [Settings › Server settings](/settings/server).
+- **What's new:** This list, in [Settings › What's new](/settings/changelog), and a note on the dashboard after each update.
+- **Smaller things:** A log entry you leave unsaved is kept for when you come back; species search finds the names people use; saving works with ad blockers turned on; new category icons, with one for plants; and now and then a small fish swims through the logo.
 
 ## 1.0.0 · 2026-09-26
 
-- **First release:** log water tests at the tank and see each parameter against its target at a glance.
-- **Tanks** with their own parameters and targets, set up for freshwater, planted, brackish or reef.
-- **History, charts and photos** of everything logged: tests, water changes, dosing, maintenance, livestock, equipment, observations and notes.
-- **Tasks and reminders** for water changes and upkeep, by email one at a time or in a daily or weekly digest, with alerts when a reading is out of range.
-- **Livestock, plants and equipment** for each tank, with a built-in species list.
-- **A public page** to share a tank, and share links for photos.
-- **Your data and the app:** a full backup or a CSV of water tests, and an app for your home screen that logs offline and syncs later.
+- **First release:** Log water tests at the tank and see each parameter against its target at a glance on the [dashboard](/).
+- **Tanks:** Each with its own parameters and targets, set up for freshwater, planted, brackish or reef, in [Tanks](/tanks).
+- **History, charts and photos:** Everything logged, in [History](/history), [Charts](/charts) and [Photos](/photos): tests, water changes, dosing, maintenance, livestock, equipment, observations and notes.
+- **Tasks and reminders:** Water changes and upkeep in [Tasks](/tasks), with email one at a time or in a daily or weekly digest, and alerts when a reading is out of range ([Settings › Notifications](/settings#notifications)).
+- **Livestock, plants and equipment:** For each tank, on its [Livestock](/tanks/current/livestock), Plants and Equipment tabs, with a built-in species list.
+- **A public page:** Share a tank from its [Public page](/tanks/current/public) settings, and share single photos from [Photos](/photos).
+- **Your data and the app:** A full backup or a CSV of water tests in [Settings › Import & export](/settings/export), and an app for your home screen that logs offline and syncs later.

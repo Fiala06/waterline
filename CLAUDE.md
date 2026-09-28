@@ -26,7 +26,7 @@ Only `ORIGIN` is required. Google sign-in, the admin, who can sign in, the local
 - Server problems go to the log (`logger` in `src/lib/server/log.ts`), which admins read in Settings › Server settings › Logs.
 
 ## Workflow
-- Work one GitHub issue at a time, on `main` (the only branch). A push is checked, tested and built but not published; a release (a new `version` in `package.json` with its `## <version> · <date>` changelog section) publishes `:latest`. After each change: run `npm run check`, `npm test` and the Playwright tests (`npm run test:e2e`), add a line for people who use the app under `## Unreleased` in `CHANGELOG.md`, then commit with `Closes #N`.
+- Work one GitHub issue at a time, on `main` (the only branch). A push is checked, tested and built but not published; a release (a new `version` in `package.json` with its `## <version> · <date>` changelog section) publishes `:latest`. After each change: run `npm run check`, `npm test` and the Playwright tests (`npm run test:e2e`), add a line for people who use the app under `## Unreleased` in `CHANGELOG.md` (its bold name, what it does for them and where to find it, with a link to the page: see the top of `CHANGELOG.md`), then commit with `Closes #N`.
 - Keep `design_handoff_waterline/DATA_MODEL.md` in step with the schema, and the README with what the app does.
 - Compare each finished screen against its design label (e.g. `03 Dashboard`, `D5 Tasks`) at 390px and 1280px widths, in both themes.
 - Ask the product owner before inventing features not in the designs. Decided: reef and other tank-type presets live in `defaultParameters()` in `src/lib/params.ts`; the bundled species list is built from Wikipedia + Wikidata (`npm run build:species`, see `src/lib/server/data/SPECIES_SOURCES.md`).

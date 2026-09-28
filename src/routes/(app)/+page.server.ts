@@ -109,7 +109,8 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 	const release = whatsNewSince(user.seenVersion);
 	const whatsNew = release && {
 		version: displayVersion(release.version),
-		leads: release.lines.slice(0, 3).map((l) => l.lead ?? l.parts.map((x) => x.text).join('')),
+		// each with its feature's page, when the line links one
+		leads: release.lines.slice(0, 3).map((l) => ({ text: l.lead ?? l.parts.map((x) => x.text).join(''), href: l.href ?? null })),
 		more: Math.max(0, release.lines.length - 3)
 	};
 

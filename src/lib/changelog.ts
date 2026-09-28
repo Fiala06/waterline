@@ -3,10 +3,15 @@
 import changelog from '../../CHANGELOG.md?raw';
 import { version } from '../../package.json';
 
-/** One line of a release. `parts` keeps its **bold** name; `lead` is that name, for the dashboard's short list. */
+/**
+ * One line of a release. `parts` keeps its **bold** name and its [links](/path);
+ * `lead` is that name, and `href` the line's first link, for the dashboard's
+ * short list.
+ */
 export interface ChangeLine {
-	parts: { text: string; strong: boolean }[];
+	parts: { text: string; strong: boolean; href?: string }[];
 	lead: string | null;
+	href?: string;
 }
 export interface Release {
 	version: string;
@@ -32,12 +37,27 @@ export function compareVersions(a: string, b: string): number {
 /** "1.1" for 1.1.0, "1.1.2" for 1.1.2. */
 export const displayVersion = (v: string) => v.replace(/^(\d+\.\d+)\.0$/, '$1');
 
+/** A page in the app ("/settings#calendar", not "//elsewhere"), or a page on the web over https. */
+export const safeHref = (href: string) => (/^\/(?!\/)/.test(href) || /^https:\/\//.test(href) ? href : null);
+
+const LINK = /\[([^\]]+)\]\(([^)\s]+)\)/;
+
 function lineOf(md: string): ChangeLine {
-	const parts = md
-		.split(/\*\*(.+?)\*\*/)
-		.map((text, i) => ({ text, strong: i % 2 === 1 }))
-		.filter((p) => p.text);
-	return { parts, lead: parts[0]?.strong ? parts[0].text.replace(/:$/, '') : null };
+	const parts: ChangeLine['parts'] = [];
+	md.split(/\*\*(.+?)\*\*/).forEach((chunk, i) => {
+		const strong = i % 2 === 1;
+		// links within: [Settings › Calendar](/settings#calendar)
+		let rest = chunk;
+		for (let m = LINK.exec(rest); m; m = LINK.exec(rest)) {
+			if (m.index) parts.push({ text: rest.slice(0, m.index), strong });
+			const href = safeHref(m[2]);
+			parts.push(href ? { text: m[1], strong, href } : { text: m[1], strong });
+			rest = rest.slice(m.index + m[0].length);
+		}
+		if (rest) parts.push({ text: rest, strong });
+	});
+	const href = parts.find((p) => p.href)?.href;
+	return { parts, lead: parts[0]?.strong ? parts[0].text.replace(/:$/, '') : null, ...(href ? { href } : {}) };
 }
 
 /**

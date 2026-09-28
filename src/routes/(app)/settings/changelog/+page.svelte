@@ -13,7 +13,15 @@
 {#snippet lines(r: Release)}
 	<ul class="lines">
 		{#each r.lines as l, i (i)}
-			<li>{#each l.parts as p, j (j)}{#if p.strong}<strong>{p.text}</strong>{:else}{p.text}{/if}{/each}</li>
+			<li>
+				{#each l.parts as p, j (j)}{#if p.href}{@const external = p.href.startsWith('https://')}<a
+							href={p.href}
+							class:strong={p.strong}
+							target={external ? '_blank' : undefined}
+							rel={external ? 'noopener noreferrer' : undefined}
+							>{p.text}{#if external}<span aria-hidden="true"> ↗</span>{/if}</a
+						>{:else if p.strong}<strong>{p.text}</strong>{:else}{p.text}{/if}{/each}
+			</li>
 		{/each}
 	</ul>
 {/snippet}
@@ -51,6 +59,12 @@
 </div>
 
 <style>
+	.lines a {
+		font-weight: 600;
+	}
+	.lines a.strong {
+		font-weight: 700;
+	}
 	.page {
 		padding: 8px 20px calc(24px + env(safe-area-inset-bottom));
 		display: flex;

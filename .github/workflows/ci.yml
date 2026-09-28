@@ -134,7 +134,9 @@ jobs:
         env:
           VERSION: ${{ needs.docker.outputs.version }}
         run: |
-          awk -v h="## $VERSION " 'index($0, h) == 1 { f = 1; next } /^## / { f = 0 } f' CHANGELOG.md > notes.md
+          # the section, with in-app links ([Charts](/charts)) as their words: on GitHub they'd point at github.com
+          awk -v h="## $VERSION " 'index($0, h) == 1 { f = 1; next } /^## / { f = 0 } f' CHANGELOG.md \
+            | sed -E 's/\[([^]]+)\]\(\/[^)]*\)/\1/g' > notes.md
           if ! grep -q '[^[:space:]]' notes.md; then
             echo "::error::CHANGELOG.md has no section for $VERSION"
             exit 1

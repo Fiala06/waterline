@@ -18,3 +18,15 @@ test('dashboard (refresh 1c): the hero, and nothing needing attention when all i
 	await expect(inRange).toContainText('✓ All 1 in range');
 	await expect(inRange.getByRole('link', { name: /pH\s*7/ })).toBeVisible();
 });
+
+test("What's new links to each feature, and a tank's page opens for the tank you're on", async ({ page }, info) => {
+	await newKeeperWithTank(page, `links-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, '/settings/changelog');
+	const link = page.getByRole('link', { name: 'Settings › Calendar' }).first();
+	await expect(link).toHaveAttribute('href', '/settings#calendar');
+	// /tanks/current/… is that page of the current tank
+	await page.getByRole('link', { name: 'Spending tab' }).first().click();
+	await expect(page).toHaveURL(`/tanks/${tankId}/spending`);
+	await expect(page.getByText('No spending logged yet')).toBeVisible();
+});
