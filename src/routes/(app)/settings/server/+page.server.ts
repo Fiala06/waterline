@@ -87,6 +87,8 @@ export const load: PageServerLoad = ({ locals, url }) => {
 			plainHttp: /^http:\/\/(?!(localhost|127\.0\.0\.1|\[::1\])(:|\/|$))/.test(origin),
 			adminEmail: s.adminEmail ?? '',
 			adminEmailEnv: env.ADMIN_EMAIL?.trim() || null,
+			// Google is on, but nobody is let in as the admin with it yet
+			needsAdmin: !!google && !googleAdminPossible(),
 			mode: rules.mode,
 			list: rules.list.join('\n'),
 			accessFromEnv: rules.from === 'env',
@@ -165,7 +167,8 @@ export const actions: Actions = {
 				: { googleClientId: null, googleClientSecretEnc: null }
 		);
 		logger.info('settings', clientId ? 'Google sign-in client saved' : 'Google sign-in turned off in the app', { userId: locals.user!.id });
-		return { googleSaved: true };
+		// the next step, when nobody could be let in as the admin with it yet
+		return { googleSaved: true, needsAdmin: !!clientId && !googleAdminPossible() };
 	},
 	/** Who may sign in with Google, and the admin's own account. */
 	saveAccess: async ({ request, locals }) => {

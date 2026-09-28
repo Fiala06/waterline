@@ -1,7 +1,8 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { VERSION } from '$lib/changelog';
 import { db } from './db';
-import { notificationPrefs, users, type User } from './db/schema';
+import { assistantTokens, calendarFeeds, exports, imports, notificationPrefs, products, pushSubscriptions, tanks, users, type User } from './db/schema';
+import { logger } from './log';
 import { getServerSettings } from './mail';
 import { adminEmail, listAllows, signupRules } from './sign-in';
 
@@ -33,9 +34,45 @@ export function googleAccountConflict(email: string, googleSub: string): boolean
 }
 
 /**
+ * One account from two: the admin's Google account was used before 1.8.3
+ * and made a new one, away from the local admin's tanks. The local admin's
+ * account stays (its tanks, settings and History); what the new one has
+ * (tanks, saved products, devices, assistant tokens) moves into it, and the
+ * new one's Google sign-in and address with them.
+ */
+function joinAccounts(keep: User, from: User): User {
+	const joined = db.transaction((tx) => {
+		for (const t of [tanks, products, imports, exports, assistantTokens, pushSubscriptions]) {
+			tx.update(t).set({ userId: keep.id }).where(eq(t.userId, from.id)).run();
+		}
+		// one calendar feed each: the kept account's, or the other's when it has none
+		if (!tx.select({ t: calendarFeeds.token }).from(calendarFeeds).where(eq(calendarFeeds.userId, keep.id)).get()) {
+			tx.update(calendarFeeds).set({ userId: keep.id }).where(eq(calendarFeeds.userId, from.id)).run();
+		}
+		tx.delete(users).where(eq(users.id, from.id)).run();
+		return tx
+			.update(users)
+			.set({
+				email: from.email,
+				googleSub: from.googleSub,
+				isAdmin: true,
+				// the local admin login's "Admin" gives way to their name on Google
+				...(keep.displayName === 'Admin' && from.displayName ? { displayName: from.displayName } : {})
+			})
+			.where(eq(users.id, keep.id))
+			.returning()
+			.get();
+	});
+	logger.info('sign-in', `The admin's Google account ${from.email} joined to the local admin's account`, { userId: keep.id });
+	return joined;
+}
+
+/**
  * Find or create the user for a sign-in. Google users are matched by their
  * stable `sub` first, then by email (so the local admin login and Google share
- * one account when ADMIN_EMAIL matches).
+ * one account when ADMIN_EMAIL matches). The admin's Google account, the first
+ * time it's used, takes over the local admin's account from before it was set
+ * (admin@localhost), so the admin's tanks come with them.
  */
 export function upsertUser(input: { email: string; name?: string | null; googleSub?: string | null }): User {
 	const email = input.email.trim().toLowerCase();
@@ -45,6 +82,18 @@ export function upsertUser(input: { email: string; name?: string | null; googleS
 		(input.googleSub
 			? db.select().from(users).where(eq(users.googleSub, input.googleSub)).get()
 			: undefined) ?? db.select().from(users).where(eq(users.email, email)).get();
+
+	// the local admin's account from before the admin's Google account was set:
+	// nobody can sign in to it any more, so it becomes the admin's
+	if (isAdmin && email !== LOCAL_ADMIN_FALLBACK_EMAIL) {
+		const local = db
+			.select()
+			.from(users)
+			.where(and(eq(users.email, LOCAL_ADMIN_FALLBACK_EMAIL), isNull(users.googleSub)))
+			.get();
+		if (local && !user) user = db.update(users).set({ email }).where(eq(users.id, local.id)).returning().get();
+		else if (local && user && user.id !== local.id) user = joinAccounts(local, user);
+	}
 
 	if (!user) {
 		user = db

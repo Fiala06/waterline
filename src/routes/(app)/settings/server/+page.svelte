@@ -248,7 +248,7 @@
 			<p class="sub">How people sign in to this server, and who can.</p>
 		</div>
 
-		<form method="POST" action="?/saveGoogle" class="block" use:enhance={saved('✓ Google sign-in saved')}>
+		<form method="POST" action="?/saveGoogle" class="block" use:enhance={saved((d) => (d?.needsAdmin ? "✓ Google sign-in saved. Now enter your Google account as the admin's, under Who can sign in." : '✓ Google sign-in saved'))}>
 			<div class="line">
 				<h3>Google sign-in</h3>
 				<span class="state {data.signIn.google.on ? 'status-ok' : 'status-none'}">{data.signIn.google.on ? '✓ On' : '– Off'}</span>
@@ -297,6 +297,9 @@
 
 		<form method="POST" action="?/saveAccess" class="block access" use:enhance={saved('✓ Sign-in settings saved')}>
 			<h3>Who can sign in</h3>
+			{#if data.signIn.needsAdmin}
+				<p class="banner banner-warn">▲ Enter your own Google account as the admin's, then save, to sign in with Google. Until then it turns you away too.</p>
+			{/if}
 			{#if data.signIn.accessFromEnv}
 				<p class="hint">Set by environment variables now (ALLOWED_EMAILS, OPEN_SIGNUP). Saving here takes over.</p>
 			{/if}

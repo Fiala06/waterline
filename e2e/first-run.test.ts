@@ -107,11 +107,17 @@ test('the admin sets up sign-in and the server in the app', async ({ page }) => 
 	await expect(page.getByText('✕ Paste the client secret too.')).toBeVisible();
 	await page.getByLabel('Client secret').fill('a-client-secret');
 	await google.getByRole('button', { name: 'Save' }).click();
-	await expect(status).toContainText('✓ Google sign-in saved');
+	// and the next step: the admin's own Google account, or Google turns them away too
+	await expect(status).toContainText("✓ Google sign-in saved. Now enter your Google account as the admin's, under Who can sign in.");
 	await expect(page.getByLabel('Client secret')).toHaveAttribute('placeholder', 'Saved · leave empty to keep it');
+	const access = page.locator('form.access');
+	await expect(access.getByText("▲ Enter your own Google account as the admin's")).toBeVisible();
+	await access.getByLabel("Admin's Google account").fill('owner@example.com');
+	await access.getByRole('button', { name: 'Save' }).click();
+	await expect(status).toContainText('✓ Sign-in settings saved');
+	await expect(access.getByText("▲ Enter your own Google account as the admin's")).toHaveCount(0);
 
 	// who can sign in: a list, checked
-	const access = page.locator('form.access');
 	await access.getByLabel('The admin and these people').check();
 	await access.getByLabel('Emails and domains').fill('friend@example.com\n@family.example\nnot an email');
 	await access.getByRole('button', { name: 'Save' }).click();
@@ -148,4 +154,6 @@ test('the admin sets up sign-in and the server in the app', async ({ page }) => 
 	await page.getByPlaceholder('Password').fill('a-newer-password');
 	await page.getByRole('button', { name: 'Local admin login' }).click();
 	await expect(page).toHaveURL(at('/'));
+	// the same account as before the admin's Google account was set, tank and all
+	await expect(page.getByRole('button', { name: 'Riverbed 40, switch tank' })).toBeVisible();
 });

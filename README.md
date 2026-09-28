@@ -84,7 +84,7 @@ Set `ORIGIN` in [`docker-compose.yml`](docker-compose.yml) first; it's the only 
 
 1. Open your `ORIGIN` address. A new server asks for a **setup code** first: it's in the container's log (`docker compose logs waterline`, or on Unraid **Docker › Waterline › Logs**) and in `setup-code.txt` in the data folder. Only someone who can see the server has it, so a new server can't be claimed by whoever reaches it first.
 2. Choose the admin's username and password. That's the local admin login, and you're signed in with it.
-3. In **Settings › Server settings**, set up the rest: Google sign-in (paste the OAuth client's ID and secret; the page shows the redirect URI to give Google), the admin's Google account, who else can sign in, and email delivery.
+3. In **Settings › Server settings**, set up the rest: Google sign-in (paste the OAuth client's ID and secret; the page shows the redirect URI to give Google), the admin's Google account (it signs in to the same account as the local admin login, tanks and all), who else can sign in, and email delivery.
 
 GitHub Actions also publishes ready-built images (linux/amd64), so you don't have to build on the server. Images are published for releases only, once the checks and tests pass, so the version a server shows is always the release it runs:
 

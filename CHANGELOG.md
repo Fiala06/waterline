@@ -13,6 +13,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 - **Species photos now come in:** In 1.8.2 no plant or animal got its species photo, because of a change in how Wikipedia links its photos. Open the [Plants tab](/tanks/current/plants) or the [Livestock tab](/tanks/current/livestock) and they arrive within a minute.
 - **When species photos don't come:** [Server settings](/settings/server) now says how many species photos were found and, when this server couldn't reach Wikipedia, why. Look again now tries straight away, and the reason goes in the Logs too.
+- **Google sign-in keeps your tanks:** When the admin first signs in with their Google account, it opens the same account as the local admin login, with all its tanks, instead of a new empty one. If 1.8.2 already made a second account, the next sign-in joins the two. After you save Google sign-in in [Server settings](/settings/server), it tells you to enter your own Google account as the admin's, so Google doesn't turn you away.
 - **In range, closer together:** On the [dashboard](/), each reading's value sits right beside its name, instead of across a wide gap next to the next reading.
 
 ## 1.8.2 · 2026-09-28
