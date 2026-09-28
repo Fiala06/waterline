@@ -13,7 +13,7 @@ import { logger } from '$lib/server/log';
 import { VERSION } from '$lib/changelog';
 import { preloadsInHead } from '$lib/server/preloads';
 
-const PUBLIC_PATHS = ['/signin', '/first-run', '/auth', '/e', '/unsubscribe', '/t', '/s', '/p', '/public', '/sitemap.xml', '/robots.txt', '/mcp', '/api/v1', '/.well-known', '/oauth/register', '/oauth/token'];
+const PUBLIC_PATHS = ['/signin', '/first-run', '/auth', '/e', '/unsubscribe', '/t', '/s', '/p', '/public', '/sitemap.xml', '/robots.txt', '/mcp', '/api/v1', '/.well-known', '/oauth/register', '/oauth/token', '/cal'];
 /** For AI assistants (#9): signed in by an access token, never the session cookie. */
 const TOKEN_PATHS = ['/mcp', '/api/v1'];
 /** Where apps register and get tokens (OAuth): no cookies, so any site may call them. */

@@ -611,3 +611,18 @@ export const oauthCodes = sqliteTable('oauth_codes', {
 	expiresAt: text('expires_at').notNull(),
 	usedAt: text('used_at')
 });
+
+/**
+ * A person's private calendar link for their tasks (#23): the secret in
+ * /cal/<token>.ics. One per person; a new one replaces it.
+ */
+export const calendarFeeds = sqliteTable('calendar_feeds', {
+	token: text('token').primaryKey(),
+	userId: text('user_id')
+		.notNull()
+		.unique()
+		.references(() => users.id, { onDelete: 'cascade' }),
+	createdAt: createdAt(),
+	// when a calendar app last fetched it, to show it's working
+	lastFetchedAt: text('last_fetched_at')
+});

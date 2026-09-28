@@ -134,6 +134,13 @@
       "when": 1790549728926,
       "tag": "0018_oauth",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1790556136392,
+      "tag": "0019_calendar_feeds",
+      "breakpoints": true
     }
   ]
 }

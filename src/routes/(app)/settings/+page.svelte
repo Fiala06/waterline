@@ -41,10 +41,24 @@
 	import { install, promptInstall } from '$lib/install.svelte';
 	import { displayVersion, VERSION } from '$lib/changelog';
 	import { toast, ui } from '$lib/ui.svelte';
+	import { fmtWhen } from '$lib/time';
 	let installHelp = $state(false);
 	let { data, form } = $props();
 	const u = $derived(data.user);
 	const p = $derived(data.prefs);
+	// the tasks calendar (#23): all tanks, or one
+	let calTank = $state('');
+	const calUrl = $derived(data.calendar ? data.calendar.url + (calTank ? `?tank=${calTank}` : '') : '');
+	let calCopied = $state(false);
+	async function copyCal() {
+		try {
+			await navigator.clipboard.writeText(calUrl);
+			calCopied = true;
+			setTimeout(() => (calCopied = false), 2000);
+		} catch {
+			/* clipboard blocked: the field can still be selected */
+		}
+	}
 
 	const unsubscribedOn = $derived(
 		p.unsubscribedAt
@@ -261,6 +275,43 @@
 			</div>
 			<p class="hint">Every email includes a link back to these settings and a one-click unsubscribe.</p>
 			<noscript><button class="btn btn-lg" form="notify-form">Save notifications</button></noscript>
+		</section>
+
+		<section id="calendar" class="sec" aria-labelledby="calendar-h">
+			<h2 id="calendar-h">Calendar</h2>
+			{#if data.calendar}
+				<div class="group">
+					<div class="row stack">
+						<div class="cal-head">
+							<label class="k" for="cal-url">Your tasks calendar</label>
+							<button type="button" class="btn-text cal-copy" onclick={copyCal}>{calCopied ? '✓ Copied' : 'Copy'}<span class="sr-only"> the calendar link</span></button>
+						</div>
+						<input id="cal-url" class="input mono cal-url" readonly value={calUrl} onfocus={(e) => e.currentTarget.select()} />
+						{#if data.calendarTanks.length > 1}
+							<label class="cal-for"
+								><span>For</span>
+								<select class="input" bind:value={calTank}>
+									<option value="">All tanks</option>
+									{#each data.calendarTanks as t (t.id)}<option value={t.id}>{t.name}</option>{/each}
+								</select></label
+							>
+						{/if}
+					</div>
+					<a class="row link" href={calUrl.replace(/^https?:/, 'webcal:')}><span class="k">Open in my calendar app</span><span class="chev" aria-hidden="true"></span></a>
+				</div>
+				<p class="hint">
+					In Google Calendar, choose Other calendars › From URL and paste the link. Apple Calendar and Outlook open it from Open in my calendar app. Calendars check for
+					changes every few hours{data.calendar.lastFetchedAt ? `; yours last checked ${fmtWhen(data.calendar.lastFetchedAt, u.timeZone)}` : ''}. Anyone with the link can
+					see your tasks, so keep it private.
+				</p>
+				<div class="cal-acts">
+					<form method="POST" action="?/calendarNew" use:enhance><button class="btn">Make a new link</button></form>
+					<form method="POST" action="?/calendarOff" use:enhance><button class="btn-text cal-off">Turn off</button></form>
+				</div>
+			{:else}
+				<p class="sub">See your tasks in Google Calendar, Apple Calendar or Outlook, each on the day it's due, and kept up to date.</p>
+				<form method="POST" action="?/calendarOn" use:enhance><button class="btn cal-on">Make a calendar link</button></form>
+			{/if}
 		</section>
 
 		<section id="theme" class="sec" aria-labelledby="theme-h">
@@ -514,6 +565,39 @@
 	.td {
 		font-size: 13px;
 		color: var(--text-muted);
+	}
+	/* the tasks calendar */
+	.cal-head {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+	.cal-copy {
+		font-weight: 600;
+	}
+	.cal-url {
+		font-size: 13px;
+	}
+	.cal-for {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		font-size: 15px;
+	}
+	.cal-for select {
+		flex: 1;
+	}
+	.cal-acts {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+	}
+	.cal-off {
+		color: var(--text-muted);
+	}
+	.cal-on {
+		align-self: flex-start;
 	}
 	.stack {
 		flex-direction: column;

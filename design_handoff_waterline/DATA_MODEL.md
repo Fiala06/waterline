@@ -86,6 +86,8 @@ assistant_tokens id, user_id, name, token_hash (SHA-256), hint (last 4), tank_id
                  refresh_expires_at?
 oauth_clients    id (client_id), name, redirect_uris JSON, secret_hash?, created_at
                  (apps that registered to connect by signing in)
+calendar_feeds   token (the secret in /cal/<token>.ics), user_id (one each), created_at,
+                 last_fetched_at?
 oauth_codes      code_hash, client_id, user_id, redirect_uri, code_challenge (PKCE S256),
                  tank_ids JSON, expires_at, used_at? (one-time, 10 minutes)
 

@@ -157,6 +157,7 @@
 				</section>
 			{/if}
 		{/each}
+		<a class="cal-link" href="/settings#calendar">See your tasks in your calendar ›</a>
 	</div>
 
 	{#if data.pane}
@@ -183,6 +184,14 @@
 <SnoozeSheet bind:open={snoozeOpen} task={snoozing} tankName={snoozing ? tankNames[snoozing.tankId] : ''} today={data.today} />
 
 <style>
+	.cal-link {
+		align-self: flex-start;
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
+		font-size: 14px;
+		font-weight: 600;
+	}
 	.page {
 		padding: 8px 20px 24px;
 	}

@@ -12,7 +12,7 @@
 	let section = $state('profile');
 	$effect(() => {
 		if (path !== '/settings') return;
-		const ids = ['profile', 'units', 'notifications', 'theme'];
+		const ids = ['profile', 'units', 'notifications', 'calendar', 'theme'];
 		const onScroll = () => {
 			let current = ids[0];
 			for (const id of ids) {
@@ -32,6 +32,7 @@
 		{ href: '/settings#profile', label: 'Profile', active: on('profile') },
 		{ href: '/settings#units', label: 'Units', active: on('units') },
 		{ href: '/settings#notifications', label: 'Notifications', active: on('notifications') },
+		{ href: '/settings#calendar', label: 'Calendar', active: on('calendar') },
 		{ href: '/settings#theme', label: 'Theme', active: on('theme') },
 		{ href: '/settings/products', label: 'Products', active: path.startsWith('/settings/products') },
 		{ href: '/settings/export', label: 'Import & export', active: path.startsWith('/settings/export') },

@@ -23,6 +23,7 @@ const NO_CACHE = [
 	/^\/settings\/export\//,
 	/^\/dev\//,
 	/^\/(mcp|api\/v1)(\/|$)/, // an AI assistant's reads (#9)
+	/^\/cal\//, // calendar feeds, for calendar apps
 	// public pages are for visitors; always fresh
 	/^\/t\//,
 	/^\/s\//,

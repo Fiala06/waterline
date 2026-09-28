@@ -10,13 +10,16 @@ import { emailConfigured } from '$lib/server/mail';
 import { prefsFor } from '$lib/server/notifications';
 import { listProducts } from '$lib/server/products';
 import { listAssistantTokens } from '$lib/server/assistant/tokens';
+import { getFeed, makeFeed, removeFeed } from '$lib/server/calendar';
+import { listTanks } from '$lib/server/tanks';
 import { updateUser } from '$lib/server/users';
 import { isCurrency } from '$lib/money';
 import { LEAD_OPTIONS } from '$lib/notify-options';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = ({ locals }) => {
+export const load: PageServerLoad = ({ locals, url }) => {
 	const prefs = prefsFor(locals.user!.id);
+	const feed = getFeed(locals.user!.id);
 	return {
 		timeZones: Intl.supportedValuesOf('timeZone'),
 		prefs: {
@@ -31,7 +34,10 @@ export const load: PageServerLoad = ({ locals }) => {
 		},
 		emailReady: emailConfigured(),
 		products: listProducts(locals.user!.id).length,
-		assistants: listAssistantTokens(locals.user!.id).length
+		assistants: listAssistantTokens(locals.user!.id).length,
+		// the tasks calendar link (#23), and each tank for a link of its own
+		calendar: feed ? { url: `${url.origin}/cal/${feed.token}.ics`, lastFetchedAt: feed.lastFetchedAt } : null,
+		calendarTanks: listTanks(locals.user!.id).map((t) => ({ id: t.id, name: t.name }))
 	};
 };
 
@@ -102,6 +108,21 @@ export const actions: Actions = {
 			.run();
 		setFlash(cookies, '✓ Notification settings saved');
 		redirect(303, '/settings#notifications');
+	},
+	calendarOn: ({ locals, cookies }) => {
+		makeFeed(locals.user!.id);
+		setFlash(cookies, '✓ Calendar link made');
+		redirect(303, '/settings#calendar');
+	},
+	calendarNew: ({ locals, cookies }) => {
+		makeFeed(locals.user!.id);
+		setFlash(cookies, '✓ New calendar link: the old one no longer works');
+		redirect(303, '/settings#calendar');
+	},
+	calendarOff: ({ locals, cookies }) => {
+		removeFeed(locals.user!.id);
+		setFlash(cookies, 'Calendar link turned off');
+		redirect(303, '/settings#calendar');
 	},
 	signout: (event) => signOut(event)
 };
