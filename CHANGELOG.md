@@ -9,6 +9,10 @@ How to write a line:
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
+## Unreleased
+
+- **Add several at once:** Stocking a tank? On the tank's [Livestock](/tanks/current/livestock/several) or [Plants](/tanks/current/plants/several) tab, choose Add several, search the species list and tick everything that's going in, with a count for each fish and invert, or where each plant goes, then add them all in one go. Undo takes the whole lot back.
+
 ## 1.8.0 · 2026-09-28
 
 - **Dosing and feeding routines:** Save what you dose and feed, how much and when, like "Thrive S, 1 pump, Mon, Wed, Fri" or "Micro pellets, 2 pinches, every day". They're on the tank's [Overview](/tanks/current) under Routines, and in [Tasks](/tasks) and the dashboard's Due list; tap Done and the dose or feeding is logged in [History](/history), with Undo if you tapped too soon. Routines remind you on the day, not days ahead.

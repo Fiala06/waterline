@@ -74,6 +74,8 @@
 				'/(app)/tanks/[id]/equipment/new': 'Add equipment',
 				'/(app)/tanks/[id]/equipment/[eid]': 'Edit equipment',
 				'/(app)/tanks/[id]/livestock/new': 'Add livestock',
+				'/(app)/tanks/[id]/livestock/several': 'Add several',
+				'/(app)/tanks/[id]/plants/several': 'Add several plants',
 				'/(app)/tanks/[id]/remind': 'Remind me',
 				'/(app)/tanks/[id]/spending/new': 'Add expense',
 				'/(app)/tanks/[id]/spending/[eid]': 'Edit expense',

@@ -9,8 +9,8 @@ export const GET: RequestHandler = ({ locals, url }) => {
 	const kind = url.searchParams.get('kind');
 	const results = searchSpecies(url.searchParams.get('q') ?? '', {
 		water: water === 'fresh' || water === 'marine' ? water : undefined,
-		kind: kind === 'fish' || kind === 'invert' || kind === 'coral' || kind === 'plant' ? kind : undefined,
-		limit: 8
+		kind: kind === 'fish' || kind === 'invert' || kind === 'coral' || kind === 'plant' || kind === 'animal' ? kind : undefined,
+		limit: url.searchParams.get('many') ? 12 : 8
 	});
 	return json(results, { headers: { 'cache-control': 'private, max-age=3600' } });
 };

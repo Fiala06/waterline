@@ -49,6 +49,7 @@
 				</div>
 			{:else if path === `${base}/livestock`}
 				<div class="acts">
+					<a class="btn" href="{base}/livestock/several">Add several</a>
 					<a class="btn" href="{base}/livestock/new"><span class="hide-desk">+ Add</span><span class="hide-phone">+ Add livestock</span></a>
 				</div>
 			{:else if path === `${base}/spending`}
@@ -58,6 +59,7 @@
 			{:else if path === `${base}/plants`}
 				<div class="acts">
 					{#if plantCount}<button type="button" class="btn" onclick={() => (plantSheets.trim = true)}>Log trim</button>{/if}
+					<a class="btn" href="{base}/plants/several">Add several</a>
 					<button type="button" class="btn" onclick={() => (plantSheets.add = true)}
 						><span class="hide-desk">+ Add</span><span class="hide-phone">+ Add plant</span></button
 					>

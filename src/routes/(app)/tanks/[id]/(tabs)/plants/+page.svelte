@@ -46,6 +46,7 @@
 	{#if !data.plants.length}
 		<EmptyState icon="plant" title="No plants yet" text="Add stems, carpets, epiphytes and mosses to track how they're doing.">
 			<button type="button" class="btn btn-primary" onclick={() => (sheets.add = true)}>Add plant</button>
+			<a class="btn" href="/tanks/{data.tankHead.id}/plants/several">Add several at once</a>
 			<ImportButton href="/tanks/{data.tankHead.id}/import/plants" label="Import a list from a spreadsheet" />
 		</EmptyState>
 	{/if}

@@ -69,19 +69,20 @@ function score(k: Key, q: string, words: string[], compact: string) {
 
 /**
  * Best matches first, optionally limited to fresh or marine; `kind` 'invert'
- * includes corals, and filtering happens before the limit. The name that
+ * includes corals, 'animal' is everything but plants, and filtering happens before the limit. The name that
  * matched comes first in `c`, so it's the one shown and saved ("Blue velvet
  * shrimp" rather than "Cherry shrimp").
  */
 export function searchSpecies(
 	query: string,
-	opts: { water?: 'fresh' | 'marine'; kind?: Species['kind']; limit?: number } = {}
+	opts: { water?: 'fresh' | 'marine'; kind?: Species['kind'] | 'animal'; limit?: number } = {}
 ): Species[] {
 	const q = norm(query);
 	if (q.length < 2) return [];
 	const words = q.split(' ');
 	const compact = q.replace(/ /g, '');
-	const kindOk = (k: Species['kind']) => !opts.kind || k === opts.kind || (opts.kind === 'invert' && k === 'coral');
+	const kindOk = (k: Species['kind']) =>
+		!opts.kind || k === opts.kind || (opts.kind === 'invert' && k === 'coral') || (opts.kind === 'animal' && k !== 'plant');
 	const scored: { sp: Species; score: number; name: string | null }[] = [];
 	for (const { sp, keys } of index) {
 		if ((opts.water && sp.water !== opts.water) || !kindOk(sp.kind)) continue;

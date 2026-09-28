@@ -45,6 +45,7 @@
 				label="Add livestock"
 				primary
 			>
+				<a class="btn" href="{base}/livestock/several">Add several at once</a>
 				<ImportButton href="{base}/import/livestock" label="Import a list from a spreadsheet" />
 			</EmptyState>
 			{#if data.past.length}{@render past()}{/if}
