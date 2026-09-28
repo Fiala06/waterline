@@ -114,7 +114,7 @@ function lastDone(taskId: string, today: string, tz: string) {
 }
 
 function tankSub(t: { type: string; nominalVolumeL: number | null }, user: User) {
-	return `${tankTypeLabel(t.type)}${t.nominalVolumeL != null ? ` · ${formatNumber(toDisplay(t.nominalVolumeL, 'volume', user), 0)} ${unitLabel('volume', user)}` : ''}`;
+	return `${tankTypeLabel(t.type)}${t.nominalVolumeL != null ? ` · ${formatNumber(toDisplay(t.nominalVolumeL, 'volume', user), 1)} ${unitLabel('volume', user)}` : ''}`;
 }
 
 /** Out-of-range readings in each tank's latest results. */

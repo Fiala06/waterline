@@ -57,7 +57,7 @@ export function tankSummary(user: User, tankId: string, days: number, now = new 
 		return `${z.date} ${z.time}`;
 	};
 	const day = (instant: string) => utcToZoned(instant, tz).date;
-	const vol = (l: number) => `${formatNumber(toDisplay(l, 'volume', user), 0)} ${unitLabel('volume', user)}`;
+	const vol = (l: number) => `${formatNumber(toDisplay(l, 'volume', user), 1)} ${unitLabel('volume', user)}`;
 	const len = (cm: number) => formatNumber(toDisplay(cm, 'length', user), 0);
 
 	const out: string[] = [];

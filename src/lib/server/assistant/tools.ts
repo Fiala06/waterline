@@ -65,7 +65,7 @@ const local = (instant: string, user: User) => {
 const sinceDays = (n: number, now = Date.now()) => new Date(now - n * 86_400_000).toISOString();
 
 function tankFacts(t: Tank, user: User) {
-	const vol = (l: number | null) => (l == null ? null : `${formatNumber(toDisplay(l, 'volume', user), 0)} ${unitLabel('volume', user)}`);
+	const vol = (l: number | null) => (l == null ? null : `${formatNumber(toDisplay(l, 'volume', user), 1)} ${unitLabel('volume', user)}`);
 	return {
 		id: t.id,
 		name: t.name,

@@ -32,3 +32,15 @@ test("What's new links to each feature, and a tank's page opens for the tank you
 	await expect(page).toHaveURL(`/tanks/${tankId}/spending`);
 	await expect(page.getByText('No spending logged yet')).toBeVisible();
 });
+
+test('the dashboard opens the tank settings, and a 2.5 gal tank says 2.5 gal', async ({ page }, info) => {
+	await newKeeperWithTank(page, `dash-settings-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await page.getByRole('link', { name: 'Tank settings for Riverbed 40' }).click();
+	await expect(page).toHaveURL(`/tanks/${tankId}/settings`);
+	await page.getByRole('textbox', { name: 'Nominal volume' }).fill('2.5');
+	await page.getByRole('button', { name: 'Save changes' }).first().click();
+	await expect(page.getByRole('status')).toContainText('saved');
+	await open(page, `/?tank=${tankId}`);
+	await expect(page.getByRole('main').getByText('Planted · 2.5 gal', { exact: true })).toBeVisible();
+});

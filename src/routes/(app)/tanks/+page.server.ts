@@ -20,7 +20,7 @@ export const load: PageServerLoad = ({ locals }) => {
 	const today = todayInZone(tz);
 	const tasks = listTasks(user.id).map((r) => r.task);
 	const vol = (l: number | null) =>
-		l == null ? null : `${formatNumber(toDisplay(l, 'volume', user), 0)} ${unitLabel('volume', user)}`;
+		l == null ? null : `${formatNumber(toDisplay(l, 'volume', user), 1)} ${unitLabel('volume', user)}`;
 
 	const tanks = listTanks(user.id).map((t) => {
 		const latest = latestReadings(t.id);

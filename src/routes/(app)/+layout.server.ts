@@ -46,7 +46,7 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 			type: t.type,
 			volume:
 				t.nominalVolumeL != null
-					? `${formatNumber(toDisplay(t.nominalVolumeL, 'volume', user), 0)} ${unitLabel('volume', user)}`
+					? `${formatNumber(toDisplay(t.nominalVolumeL, 'volume', user), 1)} ${unitLabel('volume', user)}`
 					: null,
 			startDate: t.startDate,
 			cover: t.coverPhotoId,

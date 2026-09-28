@@ -14,7 +14,7 @@ export const load: PageServerLoad = ({ url }) => {
 			slug: page.slug,
 			name: tank.name,
 			type: tank.type.charAt(0).toUpperCase() + tank.type.slice(1),
-			volume: tank.nominalVolumeL != null ? `${formatNumber(toDisplay(tank.nominalVolumeL, 'volume', user), 0)} ${unitLabel('volume', user)}` : null,
+			volume: tank.nominalVolumeL != null ? `${formatNumber(toDisplay(tank.nominalVolumeL, 'volume', user), 1)} ${unitLabel('volume', user)}` : null,
 			keeper: displayNameFor(user, page.displayName),
 			cover: tank.coverPhotoId
 		})),

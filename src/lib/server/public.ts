@@ -158,7 +158,7 @@ export function publicView(page: PublicPage, tank: Tank, owner: User) {
 	const today = todayInZone(tz);
 	const params = listParams(tank.id);
 	const latest = latestReadings(tank.id);
-	const vol = tank.nominalVolumeL != null ? `${formatNumber(toDisplay(tank.nominalVolumeL, 'volume', prefs), 0)} ${unitLabel('volume', prefs)}` : null;
+	const vol = tank.nominalVolumeL != null ? `${formatNumber(toDisplay(tank.nominalVolumeL, 'volume', prefs), 1)} ${unitLabel('volume', prefs)}` : null;
 
 	const cards = params
 		.filter((p) => latest.has(p.id))

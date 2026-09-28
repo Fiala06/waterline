@@ -65,6 +65,14 @@
 	</div>
 
 	<div class="top">
+		<!-- this tank's settings, always in reach: name, volume, photo, targets, sharing -->
+		<a class="btn gear" href="/tanks/{tank.id}/settings" aria-label="Tank settings for {tank.name}">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+				><path
+					d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+				/><circle cx="12" cy="12" r="3" /></svg
+			><span class="hide-phone">Tank settings</span>
+		</a>
 		<!-- phones: your account over the photo; desktop has it in the sidebar -->
 		<span class="acct hide-desk"><AccountMenu {user} id="account-menu-dash" /></span>
 		<button type="button" class="btn btn-primary qa hide-phone" onclick={() => (ui.quickAdd = true)}><span aria-hidden="true">+</span> Quick add</button>
@@ -141,6 +149,28 @@
 		display: flex;
 		justify-content: flex-end;
 		align-items: flex-start;
+		gap: 10px;
+	}
+	/* over the photo: a solid backing so it reads on any picture */
+	.gear {
+		min-width: 44px;
+		height: 44px;
+		padding: 0 11px;
+		gap: 8px;
+		border-radius: 22px;
+		background: var(--overlay-bg);
+		border: 1px solid var(--border-strong);
+		color: var(--text);
+	}
+	.gear svg {
+		width: 20px;
+		height: 20px;
+		flex-shrink: 0;
+	}
+	@media (hover: hover) {
+		.gear:hover {
+			background: var(--surface-hi);
+		}
 	}
 	.acct :global(.avatar) {
 		width: 44px;
@@ -204,6 +234,12 @@
 		.qa {
 			height: 44px;
 			padding: 0 18px;
+		}
+		.gear {
+			padding: 0 16px 0 13px;
+			border-radius: 12px;
+			font-size: 15px;
+			font-weight: 600;
 		}
 	}
 </style>

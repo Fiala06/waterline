@@ -6,7 +6,7 @@ import { tankTypeLabel } from '$lib/types';
 export const load: LayoutServerLoad = ({ locals, params }) => {
 	const user = locals.user!;
 	const t = getTank(user.id, params.id);
-	const vol = (l: number | null) => (l == null ? null : formatNumber(toDisplay(l, 'volume', user), 0));
+	const vol = (l: number | null) => (l == null ? null : formatNumber(toDisplay(l, 'volume', user), 1));
 	const volUnit = unitLabel('volume', user);
 	const nominal = vol(t.nominalVolumeL);
 	const actual = vol(t.actualVolumeL);
