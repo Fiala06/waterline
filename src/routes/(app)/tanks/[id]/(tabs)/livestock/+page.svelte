@@ -1,8 +1,19 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ImportButton from '$lib/components/ImportButton.svelte';
 	let { data, form } = $props();
+	// species photos still on their way from Wikimedia: look again in a moment, a few times
+	let tries = 0;
+	$effect(() => {
+		if (!data.photosPending || tries >= 4) return;
+		const t = setTimeout(() => {
+			tries++;
+			invalidateAll();
+		}, 2500);
+		return () => clearTimeout(t);
+	});
 	const base = $derived(`/tanks/${data.tankHead.id}`);
 	// pending count per row, confirmed by choosing a reason
 	let pending = $state<Record<string, number>>({});
@@ -59,8 +70,11 @@
 					{@const next = pending[l.id]}
 					<div class="tr" class:pending={next != null} role="row">
 						<div class="sp" role="cell">
-							<a class="name" href="{base}/livestock/{l.id}">{l.nickname ?? l.name}{#if l.nickname}<span class="of">{' · ' + l.name}</span>{/if}</a>
-							{#if l.scientific}<span class="sci">{l.scientific}</span>{/if}
+							{#if l.photo}<img class="lthumb" src={l.photo} alt="" loading="lazy" />{:else}<span class="lthumb photo-placeholder"></span>{/if}
+							<div class="sp-text">
+								<a class="name" href="{base}/livestock/{l.id}">{l.nickname ?? l.name}{#if l.nickname}<span class="of">{' · ' + l.name}</span>{/if}</a>
+								{#if l.scientific}<span class="sci">{l.scientific}</span>{/if}
+							</div>
 						</div>
 						<span class="d" role="cell">{KIND[l.kind]}</span>
 						<span class="d" role="cell">{l.added}</span>
@@ -202,9 +216,25 @@
 	.sp {
 		grid-area: sp;
 		display: flex;
+		align-items: center;
+		gap: 10px;
+		min-width: 0;
+	}
+	.sp-text {
+		display: flex;
 		flex-direction: column;
 		gap: 2px;
 		min-width: 0;
+	}
+	/* its photo: a pet's own, else the species photo */
+	.lthumb {
+		width: 40px;
+		height: 40px;
+		flex-shrink: 0;
+		border-radius: 10px;
+		border: none;
+		object-fit: cover;
+		background: var(--surface-2);
 	}
 	.name {
 		font-size: 16px;

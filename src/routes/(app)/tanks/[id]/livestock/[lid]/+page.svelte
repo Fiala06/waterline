@@ -57,6 +57,8 @@
 	<div class="hero">
 		{#if a.photoId}
 			<a class="pic" href="/photos/{a.photoId}" aria-label="Profile photo of {title}"><img src={photoUrl(a.photoId)} alt="" /></a>
+		{:else if data.stock}
+			<span class="pic"><img src={data.stock.large} alt="" /></span>
 		{:else}
 			<span class="pic none" aria-hidden="true"><CategoryIcon kind="livestock" size={40} /></span>
 		{/if}
@@ -74,6 +76,14 @@
 			</p>
 		</div>
 	</div>
+
+	{#if data.stock?.credit}
+		{@const c = data.stock.credit}
+		<p class="credit">
+			Species photo: {c.author} · {#if c.licenseUrl}<a href={c.licenseUrl} target="_blank" rel="noopener noreferrer">{c.license}</a>{:else}{c.license}{/if} ·
+			<a href={c.pageUrl} target="_blank" rel="noopener noreferrer">Wikimedia Commons<span aria-hidden="true"> ↗</span></a>
+		</p>
+	{/if}
 
 	{#if !gone}
 		<div class="photo-acts">
@@ -193,6 +203,17 @@
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
+	}
+	/* the credit a species photo needs */
+	.credit {
+		margin: -8px 0 0;
+		font-size: 12px;
+		line-height: 1.45;
+		color: var(--text-muted);
+	}
+	.credit a {
+		color: var(--text-2);
+		text-decoration: underline;
 	}
 	.who {
 		min-width: 0;

@@ -9,6 +9,10 @@ How to write a line:
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
+## Unreleased
+
+- **Photos of your plants and livestock:** Each plant on the [Plants tab](/tanks/current/plants) and each species on the [Livestock tab](/tanks/current/livestock) now shows a photo: a photo of its species from Wikimedia Commons, with its credit, until you add your own. Add yours from the plant's card, or open one in [Photos](/photos) and choose Use as the photo for. An admin can turn species photos off in [Server settings](/settings/server).
+
 ## 1.8.1 · 2026-09-28
 
 - **Add several at once:** Stocking a tank? On the tank's [Livestock](/tanks/current/livestock/several) or [Plants](/tanks/current/plants/several) tab, choose Add several, search the species list and tick everything that's going in, with a count for each fish and invert, or where each plant goes, then add them all in one go. Undo takes the whole lot back.

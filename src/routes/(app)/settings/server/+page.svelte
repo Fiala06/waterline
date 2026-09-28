@@ -406,6 +406,16 @@
 					>
 					<span class="switch"><input id="sv-update" type="checkbox" name="updateCheck" defaultChecked={data.server.updateCheck && !data.server.updateCheckOff} disabled={data.server.updateCheckOff} /><span></span></span>
 				</div>
+				<div class="row">
+					<label for="sv-stock" class="ttext"
+						><span class="tt">Species photos</span><span class="td"
+							>{data.server.stockPhotosOff
+								? 'Off: STOCK_PHOTOS=off is set.'
+								: 'Photos of plants and livestock from Wikimedia Commons, where there isn’t one of your own. Downloaded once, kept on this server, and shown with their credit.'}</span
+						></label
+					>
+					<span class="switch"><input id="sv-stock" type="checkbox" name="stockPhotos" defaultChecked={data.server.stockPhotos && !data.server.stockPhotosOff} disabled={data.server.stockPhotosOff} /><span></span></span>
+				</div>
 			</div>
 			<div class="actions"><button class="btn btn-primary">Save</button></div>
 		</form>

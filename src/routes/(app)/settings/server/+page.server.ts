@@ -98,7 +98,9 @@ export const load: PageServerLoad = ({ locals, url }) => {
 			scheduledEmails: s.scheduledEmails,
 			schedulerOff: env.EMAIL_SCHEDULER === 'off',
 			updateCheck: s.updateCheck,
-			updateCheckOff: env.UPDATE_CHECK === 'off'
+			updateCheckOff: env.UPDATE_CHECK === 'off',
+			stockPhotos: s.stockPhotos,
+			stockPhotosOff: env.STOCK_PHOTOS === 'off'
 		},
 		// what went wrong in the last day
 		logs: logCounts(new Date(Date.now() - 86_400_000).toISOString())
@@ -212,7 +214,8 @@ export const actions: Actions = {
 		const form = await request.formData();
 		setSettings({
 			...(env.EMAIL_SCHEDULER === 'off' ? {} : { scheduledEmails: form.get('scheduledEmails') === 'on' }),
-			...(env.UPDATE_CHECK === 'off' ? {} : { updateCheck: form.get('updateCheck') === 'on' })
+			...(env.UPDATE_CHECK === 'off' ? {} : { updateCheck: form.get('updateCheck') === 'on' }),
+			...(env.STOCK_PHOTOS === 'off' ? {} : { stockPhotos: form.get('stockPhotos') === 'on' })
 		});
 		logger.info('settings', 'Server switches saved', { userId: locals.user!.id, scheduledEmails: form.get('scheduledEmails') === 'on', updateCheck: form.get('updateCheck') === 'on' });
 		return { serverSaved: true };

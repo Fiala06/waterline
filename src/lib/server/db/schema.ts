@@ -288,6 +288,8 @@ export const serverSettings = sqliteTable('server_settings', {
 	localAdminPasswordHash: text('local_admin_password_hash'), // scrypt, like LOCAL_ADMIN_PASSWORD_HASH
 	scheduledEmails: integer('scheduled_emails', { mode: 'boolean' }).notNull().default(true),
 	updateCheck: integer('update_check', { mode: 'boolean' }).notNull().default(true),
+	// species photos from Wikimedia Commons for plants and livestock
+	stockPhotos: integer('stock_photos', { mode: 'boolean' }).notNull().default(true),
 	// what the log keeps: errors and warnings, or also what the server did;
 	// everything (debug) only until log_debug_until, while troubleshooting
 	logLevel: text('log_level', { enum: ['warn', 'info'] }).notNull().default('warn'),
@@ -522,10 +524,33 @@ export const plants = sqliteTable(
 		lastTrimmedAt: text('last_trimmed_at'),
 		removedAt: text('removed_at'),
 		importId: text('import_id'),
+		// the keeper's own photo of it, one of the tank's photos; else a species photo
+		photoId: text('photo_id').references(() => photos.id, { onDelete: 'set null' }),
 		createdAt: createdAt()
 	},
 	(t) => [index('plants_tank').on(t.tankId)]
 );
+
+/**
+ * Species photos from Wikimedia Commons, downloaded once and kept in
+ * DATA_DIR/stock, keyed by the scientific name looked up. `none`: Wikipedia
+ * has no free photo for it (asked again after a month); `failed`: couldn't
+ * reach it (asked again after a day).
+ */
+export const stockPhotos = sqliteTable('stock_photos', {
+	name: text('name').primaryKey(),
+	status: text('status', { enum: ['ok', 'none', 'failed'] }).notNull(),
+	/** under DATA_DIR/stock */
+	file: text('file'),
+	width: integer('width'),
+	height: integer('height'),
+	/** the credit Commons asks for: who took it, the license, and the file's page */
+	author: text('author'),
+	license: text('license'),
+	licenseUrl: text('license_url'),
+	pageUrl: text('page_url'),
+	fetchedAt: text('fetched_at').notNull()
+});
 
 export type Equipment = typeof equipment.$inferSelect;
 export type Livestock = typeof livestock.$inferSelect;

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 	import { getContext, onDestroy } from 'svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ImportButton from '$lib/components/ImportButton.svelte';
@@ -34,6 +35,21 @@
 		sheets.add = sheets.trim = false;
 	});
 	let editing = $state<(typeof data.plants)[number] | null>(null);
+	// species photos still on their way from Wikimedia: look again in a moment, a few times
+	let tries = 0;
+	$effect(() => {
+		if (!data.photosPending || tries >= 4) return;
+		const t = setTimeout(() => {
+			tries++;
+			invalidateAll();
+		}, 2500);
+		return () => clearTimeout(t);
+	});
+	// keep the open sheet in step when the list comes back
+	$effect(() => {
+		const now = editing && data.plants.find((p) => p.id === editing!.id);
+		if (now && now !== editing) editing = now;
+	});
 	let editOpen = $state(false);
 	const close = () => async ({ update }: { update: () => Promise<void> }) => {
 		sheets.add = sheets.trim = editOpen = false;
@@ -68,7 +84,7 @@
 								editOpen = true;
 							}}
 						>
-							<span class="thumb photo-placeholder"></span>
+							{#if p.photo}<img class="thumb" src={p.photo.src} alt="" loading="lazy" />{:else}<span class="thumb photo-placeholder"></span>{/if}
 							<span class="text">
 								<span class="name">{p.name}</span>
 								{#if p.scientific && p.scientific !== p.name}<span class="sci">{p.scientific}</span>{/if}
@@ -104,6 +120,34 @@
 <Sheet bind:open={editOpen} title={editing?.name ?? 'Plant'} width={480}>
 	{#if editing}
 		{#key editing.id}
+			<div class="photo-part">
+				{#if editing.photo}
+					<figure class="big">
+						<img src={editing.photo.large} alt={editing.name} />
+						{#if editing.photo.credit}
+							{@const c = editing.photo.credit}
+							<figcaption>
+								Photo: {c.author} · {#if c.licenseUrl}<a href={c.licenseUrl} target="_blank" rel="noopener noreferrer">{c.license}</a>{:else}{c.license}{/if} ·
+								<a href={c.pageUrl} target="_blank" rel="noopener noreferrer">Wikimedia Commons<span aria-hidden="true"> ↗</span></a>
+							</figcaption>
+						{/if}
+					</figure>
+				{/if}
+				<form method="POST" action="?/photo" enctype="multipart/form-data" class="photo-acts" use:enhance={close}>
+					<input type="hidden" name="id" value={editing.id} />
+					<label class="btn file"
+						>{editing.ownPhoto ? 'Change photo' : 'Add your photo'}<input
+							type="file"
+							name="photo"
+							accept="image/*"
+							onchange={(e) => e.currentTarget.form?.requestSubmit()}
+						/></label
+					>
+					{#if editing.ownPhoto}<button class="btn-text remove-photo" formaction="?/removePhoto">Remove photo</button>{/if}
+					<noscript><button class="btn">Upload</button></noscript>
+				</form>
+				<p class="hint">Or open one in Photos and choose Use as the photo for {editing.name}.</p>
+			</div>
 			<form method="POST" action="?/update" class="sheet-form" use:enhance={close}>
 				<input type="hidden" name="id" value={editing.id} />
 				<fieldset class="field">
@@ -187,6 +231,56 @@
 		border-radius: 10px;
 		flex-shrink: 0;
 		border: none;
+		object-fit: cover;
+		background: var(--surface-2);
+	}
+	/* the plant's sheet: its photo, the credit a species photo needs, and the keeper's own */
+	.photo-part {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		margin-bottom: 16px;
+	}
+	.big {
+		margin: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+	.big img {
+		width: 100%;
+		max-height: 260px;
+		object-fit: cover;
+		border-radius: 14px;
+		background: var(--surface-2);
+	}
+	figcaption {
+		font-size: 12px;
+		line-height: 1.45;
+		color: var(--text-muted);
+	}
+	figcaption a {
+		color: var(--text-2);
+		text-decoration: underline;
+	}
+	.photo-acts {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+	}
+	.file {
+		position: relative;
+		overflow: hidden;
+	}
+	.file input {
+		position: absolute;
+		inset: 0;
+		opacity: 0;
+		cursor: pointer;
+	}
+	.remove-photo {
+		min-height: 44px;
+		color: var(--text-muted);
 	}
 	.text {
 		flex: 1;

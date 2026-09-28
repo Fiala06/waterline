@@ -7,6 +7,7 @@ import { events } from '$lib/server/db/schema';
 import { setFlash } from '$lib/server/flash';
 import { optStr } from '$lib/server/forms';
 import { checkPhotoFiles, photoFiles, preparePhotos, storePhotos } from '$lib/server/photos';
+import { speciesPhotos } from '$lib/server/stock-photos';
 import { getLivestock, nameLivestock, petPhotos, updateLivestockDetails } from '$lib/server/specs';
 import { getTank } from '$lib/server/tanks';
 import type { Actions, PageServerLoad } from './$types';
@@ -54,6 +55,8 @@ export const load: PageServerLoad = ({ locals, params }) => {
 			notes: l.notes ?? '',
 			photoId: l.photoId
 		},
+		// no photo of its own: the species photo from Wikimedia Commons, with its credit
+		stock: l.photoId ? null : speciesPhotos([{ photoId: null, scientific: l.scientificName, common: l.commonName }]).list[0],
 		history,
 		// photos it's tagged in (the profile photo too), newest first
 		photos: petPhotos(user.id, l.id).map((p) => p.id)

@@ -26,7 +26,8 @@
 		settings: 'Settings',
 		update: 'Updates',
 		assistant: 'AI assistant',
-		push: 'Push'
+		push: 'Push',
+		photos: 'Species photos'
 	};
 	const DETAILS = [
 		{ value: 'warn', label: 'Errors and warnings', d: 'What went wrong' },

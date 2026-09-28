@@ -2,7 +2,9 @@ import { fail, redirect } from '@sveltejs/kit';
 import { dateInZone, fmtDate } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
 import { optStr, str } from '$lib/server/forms';
+import { checkPhotoFiles, photoFiles, preparePhotos, storePhotos } from '$lib/server/photos';
 import { addPlant, getPlant, listPlants, logTrim, removePlant, updatePlant } from '$lib/server/specs';
+import { speciesPhotos, stockPhotosOn } from '$lib/server/stock-photos';
 import type { Actions, PageServerLoad } from './$types';
 
 const POSITIONS = ['background', 'midground', 'foreground', 'epiphyte', 'floating'] as const;
@@ -11,15 +13,22 @@ const pick = <T extends string>(v: string, list: readonly T[], d: T): T => (list
 
 export const load: PageServerLoad = ({ locals, params }) => {
 	const user = locals.user!;
+	const list = listPlants(user.id, params.id);
+	// the keeper's own photo, else a species photo from Wikimedia Commons (some come in the background)
+	const photos = speciesPhotos(list.map((p) => ({ photoId: p.photoId, scientific: p.scientificName, common: p.name })));
 	return {
-		plants: listPlants(user.id, params.id).map((p) => ({
+		plants: list.map((p, i) => ({
 			id: p.id,
 			name: p.name,
 			scientific: p.scientificName,
 			position: p.position,
 			status: p.status,
-			trimmed: p.lastTrimmedAt ? fmtDate(dateInZone(p.lastTrimmedAt, user.timeZone)) : null
-		}))
+			trimmed: p.lastTrimmedAt ? fmtDate(dateInZone(p.lastTrimmedAt, user.timeZone)) : null,
+			photo: photos.list[i],
+			ownPhoto: !!p.photoId
+		})),
+		photosPending: photos.pending,
+		stockPhotos: stockPhotosOn()
 	};
 };
 
@@ -46,6 +55,30 @@ export const actions: Actions = {
 			status: pick(str(form, 'status'), STATUSES, 'thriving')
 		});
 		setFlash(cookies, '✓ Plant saved');
+		redirect(303, `/tanks/${params.id}/plants`);
+	},
+	/** The keeper's own photo of a plant: one of the tank's photos, so it's in Photos and the backup too. */
+	photo: async ({ request, locals, params, cookies }) => {
+		const form = await request.formData();
+		const id = str(form, 'id');
+		if (getPlant(locals.user!.id, id).tankId !== params.id) return fail(404);
+		const files = photoFiles(form, 'photo').slice(0, 1);
+		if (!files.length) return fail(400, { error: 'Choose a photo.' });
+		const tooBig = checkPhotoFiles(files);
+		if (tooBig) return fail(400, { error: tooBig });
+		const prepared = await preparePhotos(files);
+		if ('error' in prepared) return fail(400, { error: prepared.error });
+		const [photo] = storePhotos(params.id, prepared, { takenAt: new Date().toISOString() });
+		updatePlant(locals.user!.id, id, { photoId: photo.id });
+		setFlash(cookies, '✓ Photo saved');
+		redirect(303, `/tanks/${params.id}/plants`);
+	},
+	/** Back to the species photo; the keeper's photo stays in Photos. */
+	removePhoto: async ({ request, locals, params, cookies }) => {
+		const id = str(await request.formData(), 'id');
+		if (getPlant(locals.user!.id, id).tankId !== params.id) return fail(404);
+		updatePlant(locals.user!.id, id, { photoId: null });
+		setFlash(cookies, 'Photo removed · it stays in Photos');
 		redirect(303, `/tanks/${params.id}/plants`);
 	},
 	remove: async ({ request, locals, params, cookies }) => {

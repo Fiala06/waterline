@@ -66,7 +66,7 @@ livestock        id, tank_id, kind(fish|invert|coral), common_name, scientific_n
                  import_id?, created_at
 plants           id, tank_id, name, scientific_name?, position(background|midground|
                  foreground|epiphyte|floating), status(thriving|melting|algae|other),
-                 last_trimmed_at?, removed_at?, import_id?, created_at
+                 last_trimmed_at?, removed_at?, import_id?, photo_id? (the keeper's own), created_at
 products         id, user_id, name, url, note?, created_at (saved reorder links)
 expenses         id, tank_id, date, amount_cents, category(livestock|plants|equipment|
                  consumables|other), what, note?, product_id?, receipt_path?,
@@ -107,8 +107,11 @@ server_settings  singleton: email_provider?(mailgun|smtp), mailgun_api_key_enc?,
                  local_admin_username?, local_admin_password_hash?,
                  allow_public_pages, public_home_enabled, public_base_url?, ga4_id?,
                  consent_banner, search_console_tag?, scheduled_emails, update_check,
-                 log_level(warn|info), log_debug_until?, vapid_public_key?,
+                 log_level(warn|info), log_debug_until?, stock_photos, vapid_public_key?,
                  vapid_private_key_enc? (Web Push keys, made on first use)
+stock_photos     name (the scientific name looked up), status(ok|none|failed), file?,
+                 width?, height?, author?, license?, license_url?, page_url?, fetched_at
+                 (species photos from Wikimedia Commons, kept in DATA_DIR/stock)
 action_tokens    token_hash, task_id, action(done|snooze), due, expires_at, used_at?
 email_log        id, user_id, key, created_at, error? (so nothing is sent twice; pushes
                  are "push:<key>")

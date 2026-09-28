@@ -142,6 +142,22 @@
 				</div>
 			{/if}
 		</div>
+		{#if data.subjects.length}
+			<form method="POST" action="?/useFor" class="use-for" use:enhance>
+				<label class="pets-h" for="use-for">Use as the photo for</label>
+				{#if data.usedFor.length}<p class="used">✓ The photo for {data.usedFor.join(', ')}</p>{/if}
+				<div class="use-row">
+					<select class="input" id="use-for" name="for" required>
+						<option value="">Choose…</option>
+						{#each ['Plants', 'Livestock'] as g (g)}
+							{@const list = data.subjects.filter((s) => s.group === g)}
+							{#if list.length}<optgroup label={g}>{#each list as s (s.value)}<option value={s.value}>{s.label}</option>{/each}</optgroup>{/if}
+						{/each}
+					</select>
+					<button class="btn">Use</button>
+				</div>
+			</form>
+		{/if}
 		<div class="tools" id="photo-tools">
 			{@render shareCard('panel')}
 			<div class="buttons">
@@ -325,6 +341,30 @@
 	}
 	.pets .chips form {
 		display: contents;
+	}
+	/* this photo as a plant's or an animal's own */
+	.use-for {
+		margin-top: 14px;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+	.used {
+		margin: 0;
+		font-size: 13px;
+		color: var(--ok);
+	}
+	.use-row {
+		display: flex;
+		gap: 8px;
+	}
+	.use-row select {
+		flex: 1;
+		min-width: 0;
+		height: 44px;
+	}
+	.use-row .btn {
+		height: 44px;
 	}
 	/* Actions live in the ••• sheet; without JavaScript the ••• link shows them here. */
 	.tools {

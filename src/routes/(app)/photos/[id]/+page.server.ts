@@ -3,7 +3,8 @@ import { eventKindLabel, eventTitle } from '$lib/events';
 import { setFlash } from '$lib/server/flash';
 import { deletePhoto, getPhoto, setCover, tankPhotos } from '$lib/server/photos';
 import { getTank } from '$lib/server/tanks';
-import { listLivestock, photoPets, tagPhoto } from '$lib/server/specs';
+import { getLivestock, getPlant, listLivestock, listPlants, photoPets, tagPhoto, updateLivestockDetails, updatePlant } from '$lib/server/specs';
+import { livestockLabel } from '$lib/livestock';
 import { createShare, getShareForPhoto, publicSettings, revokeShare, updateShare } from '$lib/server/public';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -40,6 +41,13 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 	const pets = [...listLivestock(user.id, tank.id), ...listLivestock(user.id, tank.id, { removed: true })]
 		.filter((l) => (l.nickname && !l.removedAt) || tagged.has(l.id))
 		.map((l) => ({ id: l.id, name: l.nickname ?? l.commonName, species: l.commonName, tagged: tagged.has(l.id) }));
+	// "Use as the photo for": the tank's plants and animals, and which already use this one
+	const inTank = listLivestock(user.id, tank.id);
+	const plantList = listPlants(user.id, tank.id);
+	const subjects = [
+		...plantList.map((p) => ({ value: `plant:${p.id}`, label: p.name, group: 'Plants', uses: p.photoId === photo.id })),
+		...inTank.map((l) => ({ value: `animal:${l.id}`, label: livestockLabel(l), group: 'Livestock', uses: l.photoId === photo.id }))
+	];
 	const pub = publicSettings();
 	const share = pub.allowPublicPages ? getShareForPhoto(user.id, photo.id) : null;
 	return {
@@ -53,7 +61,9 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 		next: i < all.length - 1 ? all[i + 1].photo.id : null,
 		when: entry ? `${when} · ${entry.kind}` : when,
 		entry,
-		pets
+		pets,
+		subjects: subjects.map(({ uses, ...s }) => s),
+		usedFor: subjects.filter((s) => s.uses).map((s) => s.label)
 	};
 };
 
@@ -77,6 +87,24 @@ export const actions: Actions = {
 		const form = await request.formData();
 		tagPhoto(locals.user!.id, params.id, String(form.get('livestockId') ?? ''), form.get('on') === '1');
 		return { tagged: true };
+	},
+	/** This photo as a plant's or an animal's own photo, in place of the species photo. */
+	useFor: async ({ locals, params, request, cookies }) => {
+		const user = locals.user!;
+		const photo = getPhoto(user.id, params.id);
+		const [kind, id] = String((await request.formData()).get('for') ?? '').split(':');
+		if (kind === 'plant') {
+			const p = getPlant(user.id, id);
+			if (p.tankId !== photo.tankId) return { error: 'That plant is in another tank.' };
+			updatePlant(user.id, p.id, { photoId: photo.id });
+			setFlash(cookies, `✓ The photo for ${p.name}`);
+		} else if (kind === 'animal') {
+			const l = getLivestock(user.id, id);
+			if (l.tankId !== photo.tankId) return { error: 'That animal is in another tank.' };
+			updateLivestockDetails(user.id, l.id, { photoId: photo.id });
+			setFlash(cookies, `✓ The photo for ${livestockLabel(l)}`);
+		} else return { error: 'Choose a plant or an animal.' };
+		redirect(303, `/photos/${params.id}`);
 	},
 	unshare: ({ locals, params, cookies }) => {
 		revokeShare(locals.user!.id, params.id);

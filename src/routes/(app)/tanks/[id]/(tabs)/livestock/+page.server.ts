@@ -9,6 +9,7 @@ import { events } from '$lib/server/db/schema';
 import { setFlash } from '$lib/server/flash';
 import { num, str } from '$lib/server/forms';
 import { changeCount, getLivestock, listEquipment, listLivestock, setLivestockStatus, type CountReason } from '$lib/server/specs';
+import { speciesPhotos } from '$lib/server/stock-photos';
 import type { Actions, PageServerLoad } from './$types';
 
 const month = (d: string | null) =>
@@ -36,9 +37,12 @@ export const load: PageServerLoad = ({ locals, params }) => {
 		.all()
 		.map((e) => ({ id: e.id, title: eventTitle(e, user), day: fmtDate(dateInZone(e.occurredAt, user.timeZone)) }));
 	const rows = bySpecies(listLivestock(user.id, params.id));
-	const items = rows.map(view);
+	// a pet's own photo, else the species photo from Wikimedia Commons (some come in the background)
+	const photos = speciesPhotos(rows.map((l) => ({ photoId: l.photoId, scientific: l.scientificName, common: l.commonName })));
+	const items = rows.map((l, i) => ({ ...view(l), photo: photos.list[i]?.src ?? null }));
 	return {
 		items,
+		photosPending: photos.pending,
 		past: bySpecies(listLivestock(user.id, params.id, { removed: true })).map(view),
 		animals: items.reduce((n, l) => n + l.count, 0),
 		species: speciesCount(rows),

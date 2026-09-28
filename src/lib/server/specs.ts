@@ -333,7 +333,7 @@ export function addPlant(userId: string, tankId: string, input: Pick<Plant, 'nam
 	return Object.assign(p, { event });
 }
 
-export function updatePlant(userId: string, id: string, patch: Partial<Pick<Plant, 'position' | 'status'>>) {
+export function updatePlant(userId: string, id: string, patch: Partial<Pick<Plant, 'position' | 'status' | 'photoId'>>) {
 	getPlant(userId, id);
 	return db.update(plants).set(patch).where(eq(plants.id, id)).returning().get();
 }

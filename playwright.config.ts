@@ -36,6 +36,9 @@ export default defineConfig({
 			EMAIL_SCHEDULER: 'off',
 			// the update check reads a test changelog with a newer release
 			UPDATE_CHECK_URL: `http://localhost:${PORT}/dev/next-release`,
+			// species photos from a stand-in for Wikipedia and Commons (src/routes/dev/wiki)
+			STOCK_PHOTO_WIKI: `http://localhost:${PORT}/dev/wiki`,
+			STOCK_PHOTO_COMMONS: `http://localhost:${PORT}/dev/wiki`,
 			LOCAL_ADMIN_PASSWORD_HASH: hash
 		}
 	}
