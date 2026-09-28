@@ -231,7 +231,7 @@ test('imports are found from History, Quick add, Import & export and an empty da
 
 	// Quick add
 	await page.getByRole('button', { name: 'Quick add' }).first().click();
-	await page.getByRole('dialog').getByRole('link', { name: 'Import from a spreadsheet' }).click();
+	await page.getByRole('dialog').getByRole('link', { name: 'Import a spreadsheet' }).click();
 	await expect(page).toHaveURL(`/tanks/${tankId}/import/tests`);
 
 	// Settings › Import & export: the kind, for the tank

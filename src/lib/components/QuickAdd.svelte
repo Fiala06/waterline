@@ -1,9 +1,10 @@
 <script lang="ts">
 	// 04 / D12 · Quick add. Defaults to the current tank and now; both changeable.
+	// The three main kinds big (rows on phones, tiles on desktop), then the rest
+	// and importing as one grid of the same smaller tiles.
 	// Desktop keys: T water test, W water change, N note.
 	import { goto } from '$app/navigation';
 	import CategoryIcon from './CategoryIcon.svelte';
-	import ImportButton from './ImportButton.svelte';
 	import DateTimePicker from './DateTimePicker.svelte';
 	import Sheet from './Sheet.svelte';
 	import TankSwitcher from './TankSwitcher.svelte';
@@ -42,6 +43,7 @@
 		if (open) {
 			tankId = currentTankId;
 			when = null;
+			openedAt = new Date();
 		}
 	});
 
@@ -57,13 +59,20 @@
 		return `${path}?${q}`;
 	}
 
+	// the other kinds, and importing: one grid of the same tiles, 3 across
 	const more = [
 		{ category: 'dosing', label: 'Dosing' },
 		{ category: 'maintenance', label: 'Maintenance' },
 		{ category: 'livestock', label: 'Livestock / plants' },
 		{ category: 'equipment', label: 'Equipment' },
 		{ category: 'observation', label: 'Observation' }
-	];
+	] as const;
+
+	// "Now · Sep 28, 8:14 AM": when the sheet opened, in the keeper's time zone
+	let openedAt = $state(new Date());
+	const nowLabel = $derived(
+		`Now · ${openedAt.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone })}`
+	);
 
 	function onkeydown(e: KeyboardEvent) {
 		if (!open || pickingTank || pickingWhen || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -103,7 +112,7 @@
 				{tank.name} <span class="caret">▾</span>
 			</button>
 			<button type="button" class="chip chip-pill when" onclick={() => (pickingWhen = true)}>
-				{whenLabel(when)} <span class="caret">▾</span>
+				{when ? whenLabel(when) : nowLabel} <span class="caret">▾</span>
 			</button>
 		</div>
 
@@ -146,17 +155,21 @@
 			</a>
 		</div>
 
-		<div class="more">
-			<div class="more-label">More</div>
-			<div class="more-list">
+		<section class="more" aria-labelledby="qa-more">
+			<h3 class="more-label" id="qa-more">More</h3>
+			<div class="tiles">
 				{#each more as m (m.category)}
-					<a class="btn" href={href('/entries/event/new', { category: m.category })} onclick={() => (open = false)}
-						>{m.label}</a
-					>
+					<a class="tile" href={href('/entries/event/new', { category: m.category })} onclick={() => (open = false)}>
+						<CategoryIcon kind={m.category} size={32} />
+						<span>{m.label}</span>
+					</a>
 				{/each}
+				<a class="tile" href="/tanks/{tankId}/import/tests" onclick={() => (open = false)}>
+					<CategoryIcon kind="import" size={32} />
+					<span>Import a spreadsheet</span>
+				</a>
 			</div>
-		</div>
-		<ImportButton href="/tanks/{tankId}/import/tests" onclick={() => (open = false)} />
+		</section>
 		<p class="hint">Press + anywhere to open, then T, W or N.</p>
 	{/if}
 </Sheet>
@@ -258,18 +271,45 @@
 		gap: 10px;
 	}
 	.more-label {
+		margin: 0;
 		font-size: 13px;
+		font-weight: 400;
 		color: var(--text-muted);
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
 	}
-	.more-list {
-		display: flex;
-		flex-wrap: wrap;
+	/* the same tile for each: icon at the top, name below, as the big desktop tiles */
+	.tiles {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		grid-auto-rows: 1fr;
 		gap: 8px;
 	}
-	.more-list .btn {
-		font-weight: 400;
+	.tile {
+		min-height: 88px;
+		padding: 12px;
+		border-radius: 14px;
+		background: var(--surface-hi);
+		border: 1px solid var(--border-strong);
+		display: flex;
+		flex-direction: column;
+		justify-content: space-between;
+		gap: 8px;
+		color: var(--text);
+		font-size: 14px;
+		font-weight: 600;
+		line-height: 1.25;
+		overflow-wrap: break-word;
+	}
+	/* small phones: two across, so no name breaks mid-word */
+	@media (max-width: 379px) {
+		.tiles {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+	.tile:hover {
+		color: var(--text);
+		border-color: var(--accent);
 	}
 	.hint {
 		display: none;
@@ -312,14 +352,8 @@
 			display: block;
 			grid-area: key;
 		}
-		.more-label {
-			display: none;
-		}
-		.more-list .btn {
-			min-height: 38px;
-			padding: 0 14px;
-			border-radius: 10px;
-			font-size: 14px;
+		.tile {
+			min-height: 80px;
 		}
 		.hint {
 			display: block;
