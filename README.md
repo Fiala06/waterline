@@ -86,14 +86,13 @@ Set `ORIGIN` in [`docker-compose.yml`](docker-compose.yml) first; it's the only 
 2. Choose the admin's username and password. That's the local admin login, and you're signed in with it.
 3. In **Settings › Server settings**, set up the rest: Google sign-in (paste the OAuth client's ID and secret; the page shows the redirect URI to give Google), the admin's Google account, who else can sign in, and email delivery.
 
-GitHub Actions also publishes ready-built images (linux/amd64), so you don't have to build on the server. An image is only published once the checks and tests pass:
+GitHub Actions also publishes ready-built images (linux/amd64), so you don't have to build on the server. Images are published for releases only, once the checks and tests pass, so the version a server shows is always the release it runs:
 
-| Image | Built from |
+| Image | What it is |
 |---|---|
-| `ghcr.io/fiala06/waterline:latest` | every push to `main` (also tagged `:main`) |
-| `ghcr.io/fiala06/waterline:1.6.0` | each release, for staying on a version; `:1.6` is the newest 1.6.x |
-| `ghcr.io/fiala06/waterline:dev` | every push to `dev` |
-| `ghcr.io/fiala06/waterline:sha-xxxxxxx` | every build, for pinning or rolling back |
+| `ghcr.io/fiala06/waterline:latest` | the newest release |
+| `ghcr.io/fiala06/waterline:1.6.0` | one release, for staying on a version; `:1.6` is the newest 1.6.x |
+| `ghcr.io/fiala06/waterline:sha-xxxxxxx` | the same images by commit, for pinning or rolling back |
 
 **HTTPS or plain HTTP.** With an HTTPS name (`ORIGIN=https://tanks.example.com` behind a reverse proxy) everything works, including Google sign-in, offline logging and the install prompt. The name can be LAN-only (local DNS plus a DNS-challenge certificate); email links and public pages then only work on your network.
 
@@ -124,7 +123,7 @@ Servers set up before these settings moved into the app keep working: `AUTH_GOOG
    Use your pool's path (`/mnt/cache/...`) rather than `/mnt/user/...`: SQLite's WAL mode doesn't get along with Unraid's FUSE share layer.
 
 2. **Docker › Add Container**:
-   - Repository: `ghcr.io/fiala06/waterline:latest` (or `:dev`)
+   - Repository: `ghcr.io/fiala06/waterline:latest`
    - Port: container `3000` → any free host port
    - Path: container `/data` → `/mnt/cache/appdata/waterline/data`
    - Variable: `ORIGIN`. Behind a reverse proxy, also `ADDRESS_HEADER=X-Forwarded-For` and `XFF_DEPTH=1`. Everything else is set in the app on first start.
@@ -132,9 +131,9 @@ Servers set up before these settings moved into the app keep working: `AUTH_GOOG
 
 3. With HTTPS, point your reverse proxy (Nginx Proxy Manager, SWAG, Cloudflare Tunnel…) at `http://<unraid-ip>:<host port>`. Either way, open the `ORIGIN` URL and always use that one: any other address loads, but saving fails the cross-site check.
 
-**Updates:** each push to `main` (or `dev`) publishes a new image, and Unraid's Docker tab shows *update ready* for the container. Applying it keeps everything in `/data`; database migrations run on start. When a new version is on `main`, admins also see *Update to 1.7 available* under Settings in the app's menu; after updating, everyone gets the release's highlights once on the dashboard, and the full list is in **Settings › What's new**.
+**Updates:** each release publishes a new `:latest` image, and Unraid's Docker tab shows *update ready* for the container. Applying it keeps everything in `/data`; database migrations run on start. When a new version is released, admins also see *Update to 1.7 available* under Settings in the app's menu; after updating, everyone gets the release's highlights once on the dashboard, and the full list is in **Settings › What's new**.
 
-To run `latest` and `dev` side by side, create two containers with different names, host ports, data folders and `ORIGIN` values. Never point two containers at the same data folder.
+To run two versions side by side (say `:latest` and a pinned `:1.5`), create two containers with different names, host ports, data folders and `ORIGIN` values. Never point two containers at the same data folder.
 
 ### Troubleshooting
 
@@ -176,7 +175,7 @@ The first time, install the Playwright browser with `npx playwright install chro
 
 Each release is a section of [`CHANGELOG.md`](CHANGELOG.md), written for the people who use the app: the app shows it under **Settings › What's new**, and its first lines once on the dashboard after an update. To release, bump `version` in `package.json` and add a `## <version> · <date>` section with a few lines, each starting with its name in bold; a unit test fails if the two don't match. The *update available* note admins see comes from the changelog on `main`.
 
-Changes go to `dev` first, then to `main` through a pull request (`gh pr create --base main --head dev`), which runs the checks and tests before the merge. When `main` reaches a version that hasn't been released yet, the workflow ([`ci.yml`](.github/workflows/ci.yml)) tags that build `v<version>`, publishes `:<version>` and `:<major>.<minor>` images, and makes a [GitHub release](https://github.com/Fiala06/waterline/releases) with the version's changelog section as its notes. Ideas and planned work are [issues](https://github.com/Fiala06/waterline/issues), grouped into a milestone for the next release; a commit that finishes one says `Closes #N`, and the issue closes when it reaches `main`.
+There's one branch, `main`. Every push (and pull request) runs the checks and tests, and builds the Docker image to make sure it still builds; changes wait under `## Unreleased` in the changelog. When `main` reaches a version that hasn't been released yet, the workflow ([`ci.yml`](.github/workflows/ci.yml)) publishes that build as `:latest`, `:<version>` and `:<major>.<minor>`, tags it `v<version>`, and makes a [GitHub release](https://github.com/Fiala06/waterline/releases) with the version's changelog section as its notes. Ideas and planned work are [issues](https://github.com/Fiala06/waterline/issues), grouped into a milestone for the next release; a commit that finishes one says `Closes #N`, and the issue closes when it reaches `main`.
 
 ## Stack
 

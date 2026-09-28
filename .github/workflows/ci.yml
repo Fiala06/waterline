@@ -1,17 +1,15 @@
-# Checks and tests every push and pull request, then builds the Docker image
-# and publishes it to ghcr.io/fiala06/waterline, only once the tests pass.
-# Push to main → :latest and :main. Push to dev → :dev. Every build also gets
-# :sha-xxxxxxx. Tag v1.2.3 → :1.2.3 and :1.2.
-#
-# Releases: when main reaches a version in package.json that has no v<version>
-# tag yet, that build is also tagged :<version> and :<major>.<minor>, and a
-# GitHub release is made with that version's section of CHANGELOG.md.
+# One branch, main. Every push and pull request is checked and tested, and
+# every push to main builds the Docker image. It's published to
+# ghcr.io/fiala06/waterline only for a release: when main reaches a version in
+# package.json that has no v<version> tag yet, the image is pushed as :latest,
+# :<version>, :<major>.<minor> and :sha-xxxxxxx, and a GitHub release is made
+# with that version's section of CHANGELOG.md. So :latest is always a release,
+# and the version a server shows is the one it runs.
 name: CI
 
 on:
   push:
-    branches: [main, dev]
-    tags: ['v*']
+    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -77,9 +75,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # On main: is package.json's version a new release (no v<version> tag yet)?
+      # Is package.json's version a new release (no v<version> tag yet)?
       - id: version
-        if: github.ref == 'refs/heads/main'
         run: |
           v=$(node -p "require('./package.json').version")
           echo "version=$v" >> "$GITHUB_OUTPUT"
@@ -108,18 +105,16 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository_owner }}/waterline
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=ref,event=branch
+            type=raw,value=latest
             type=sha
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
             ${{ steps.version.outputs.tags }}
 
       - uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64
-          push: true
+          # built on every push, so a broken image shows before a release; pushed only for one
+          push: ${{ steps.version.outputs.new == 'true' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
