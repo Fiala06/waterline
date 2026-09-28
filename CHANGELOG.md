@@ -4,7 +4,7 @@ What's new in Waterline, newest first. The app shows this list under Settings �
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
-## Unreleased
+## 1.5.0 · 2026-09-28
 
 - **Tasks in your calendar:** a private link in Settings › Calendar puts your tasks in Google Calendar, Apple Calendar or Outlook, each on the day it's due and kept up to date. Overdue ones show on today. One link for all your tanks, or one for a single tank.
 
