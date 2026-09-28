@@ -9,14 +9,15 @@ const dir = mkdtempSync(join(tmpdir(), 'wl-stock-'));
 vi.mock('$env/dynamic/private', () => ({ env: { DATA_DIR: dir } }));
 vi.mock('./db', () => ({ db: {} }));
 vi.mock('./mail', () => ({ getServerSettings: () => ({ stockPhotos: true }) }));
-const { commonsFile, failureReason, fetchStockPhoto, freeLicense, lookupName, plainText } = await import('./stock-photos');
+const { commonsFile, cultivarFile, failureReason, fetchStockPhoto, freeLicense, lookupName, plainText } = await import('./stock-photos');
 
 describe('lookupName', () => {
-	it('looks up the species without a cultivar, "sp." or a note', () => {
-		expect(lookupName("Microsorum pteropus 'Trident'", "Java fern 'Trident'")).toBe('Microsorum pteropus');
+	it('looks up the species without "sp." or a note, and a cultivar as itself', () => {
+		expect(lookupName("Microsorum pteropus 'Trident'", "Java fern 'Trident'")).toBe("Microsorum pteropus 'Trident'");
+		expect(lookupName('Microsorum pteropus', 'Java fern')).toBe('Microsorum pteropus');
 		expect(lookupName('Anubias sp.', 'Anubias')).toBe('Anubias');
-		expect(lookupName("Rotala sp. 'Blood Red'", null)).toBe('Rotala');
-		expect(lookupName('Bolbitis heteroclita "Difformis"', null)).toBe('Bolbitis heteroclita');
+		expect(lookupName("Rotala sp. 'Blood Red'", null)).toBe("Rotala 'Blood Red'");
+		expect(lookupName('Bolbitis heteroclita “Difformis”', null)).toBe("Bolbitis heteroclita 'Difformis'");
 		expect(lookupName(null, 'Crypt (brown)')).toBe('Crypt');
 		expect(lookupName(null, 'Christmas moss')).toBe('Christmas moss');
 		expect(lookupName('', '')).toBeNull();
@@ -106,6 +107,29 @@ describe('fetchStockPhoto', () => {
 		const { fetcher, calls } = wiki('CC0');
 		await fetchStockPhoto('Microsorum pteropus', fetcher);
 		expect(calls[1]).toContain('iiurlwidth=500');
+	});
+});
+
+describe('a cultivar', () => {
+	it("is a Commons file named for it, never the species' photo", () => {
+		const titles = ['File:Microsorum pteropus.jpg', 'File:Microsorum pteropus Windelov.jpg', 'File:Trident missile.jpg', 'File:Microsorum_pteropus_\'Trident\'.JPG'];
+		expect(cultivarFile(titles, 'Microsorum pteropus', 'Trident')).toBe("Microsorum_pteropus_'Trident'.JPG");
+		expect(cultivarFile(titles, 'Microsorum pteropus', 'Windeløv')).toBeNull();
+		expect(cultivarFile(['File:Rotala Blood Red.pdf', 'File:Rotala sp Blood Red.jpg'], 'Rotala', 'Blood Red')).toBe('Rotala sp Blood Red.jpg');
+		expect(cultivarFile(['File:Microsorum pteropus.jpg'], 'Microsorum pteropus', 'Trident')).toBeNull();
+	});
+
+	it('is looked for on Commons, and has no photo when there is none', async () => {
+		const calls: string[] = [];
+		const fetcher = (async (url: string) => {
+			calls.push(url);
+			if (url.includes('list=search')) return Response.json({ query: { search: [{ title: 'File:Microsorum pteropus.jpg' }] } });
+			return new Response('', { status: 500 });
+		}) as unknown as typeof fetch;
+		expect(await fetchStockPhoto("Microsorum pteropus 'Trident'", fetcher)).toEqual({ status: 'none', reason: 'No photo of ‘Trident’ on Commons' });
+		expect(calls).toHaveLength(1);
+		expect(calls[0]).toContain('srsearch=Microsorum+pteropus+Trident');
+		expect(calls[0]).not.toContain('/page/summary/');
 	});
 });
 

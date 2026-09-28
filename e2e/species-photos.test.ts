@@ -9,6 +9,16 @@ test('plants and livestock get a species photo with its credit, and can have you
 	const email = await newKeeperWithTank(page, `species-photos-${info.project.name}`);
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
 
+	// a cultivar, from a spreadsheet: the species list doesn't have it
+	await open(page, `/tanks/${tankId}/import/plants`);
+	await page.locator('input[type=file][name=file]').setInputFiles({
+		name: 'plants.csv',
+		mimeType: 'text/csv',
+		buffer: Buffer.from("Name,Scientific name,Position\nJava fern 'Trident',Microsorum pteropus 'Trident',Epiphyte\n")
+	});
+	await page.getByRole('button', { name: 'Add 1 plant' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Imported 1 plant');
+
 	// a plant with a free photo, one whose photo isn't free, and one with no page
 	await open(page, `/tanks/${tankId}/plants/several`);
 	const search = page.getByLabel('Search plants');
@@ -22,11 +32,15 @@ test('plants and livestock get a species photo with its credit, and can have you
 	await expect(page.getByRole('status')).toContainText('✓ Added 3 plants');
 
 	// the photo comes in the background; the page looks again by itself
-	const fern = page.getByRole('button', { name: /^Java fern/ }).first();
+	const fern = page.getByRole('button', { name: /^Java fern Microsorum/ });
 	await expect(fern.locator('img')).toHaveAttribute('src', /^\/stock\/[0-9a-f]{40}\.jpg$/, { timeout: 15_000 });
 	await expect(page.getByRole('button', { name: /^Anubias/ }).first().locator('img')).toHaveCount(0);
 	await expect(page.getByRole('button', { name: /^Mystery weed/ }).locator('img')).toHaveCount(0);
 	const src = await fern.locator('img').getAttribute('src');
+	// a cultivar: its own photo, not the species'
+	const trident = page.getByRole('button', { name: /^Java fern 'Trident'/ });
+	await expect(trident.locator('img')).toHaveAttribute('src', /^\/stock\/[0-9a-f]{40}\.jpg$/, { timeout: 15_000 });
+	expect(await trident.locator('img').getAttribute('src')).not.toBe(src);
 	expect((await page.request.get(src!)).headers()['content-type']).toBe('image/jpeg');
 
 	// its sheet: the photo, and its credit

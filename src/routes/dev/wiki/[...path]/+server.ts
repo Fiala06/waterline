@@ -12,6 +12,9 @@ const PAGES: Record<string, { file: string; license: string; color: string }> = 
 	Paracheirodon_innesi: { file: 'Neon_tetra.jpg', license: 'CC BY 2.0', color: '#2a5fa8' },
 	Anubias: { file: 'Anubias_nonfree.jpg', license: 'CC BY-NC 2.0', color: '#556b2f' }
 };
+// files found by searching Commons: a cultivar's (no Wikipedia page)
+const FILES: { file: string; license: string; color: string }[] = [{ file: 'Microsorum_pteropus_Trident.jpg', license: 'CC BY 4.0', color: '#7a4ab0' }];
+const ALL = [...Object.values(PAGES), ...FILES];
 
 export const GET: RequestHandler = async ({ params, url }) => {
 	if (env.AUTH_DEV_LOGIN !== 'true') error(404);
@@ -23,9 +26,14 @@ export const GET: RequestHandler = async ({ params, url }) => {
 		if (!p) error(404, 'Not found');
 		return json({ type: 'standard', originalimage: { source: `${base}/wikipedia/commons/a/ab/${p.file}?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled` } });
 	}
+	if (path === 'w/api.php' && url.searchParams.get('list') === 'search') {
+		const q = (url.searchParams.get('srsearch') ?? '').toLowerCase();
+		const hits = q.includes('trident') ? ['File:Microsorum pteropus.jpg', ...FILES.map((f) => `File:${f.file}`)] : [];
+		return json({ query: { search: hits.map((title) => ({ title })) } });
+	}
 	if (path === 'w/api.php') {
 		const file = (url.searchParams.get('titles') ?? '').replace(/^File:/, '');
-		const p = Object.values(PAGES).find((x) => x.file === file);
+		const p = ALL.find((x) => x.file === file);
 		if (!p) return json({ query: { pages: [{ missing: true }] } });
 		return json({
 			query: {
@@ -48,7 +56,7 @@ export const GET: RequestHandler = async ({ params, url }) => {
 		});
 	}
 	const thumb = /^thumb\/(.+)$/.exec(path);
-	const p = thumb && Object.values(PAGES).find((x) => x.file === thumb[1]);
+	const p = thumb && ALL.find((x) => x.file === thumb[1]);
 	if (p) {
 		const img = await sharp({ create: { width: 640, height: 480, channels: 3, background: p.color } }).jpeg().toBuffer();
 		return new Response(new Uint8Array(img), { headers: { 'content-type': 'image/jpeg' } });

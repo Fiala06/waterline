@@ -2,8 +2,9 @@
 // looks a species up on Wikipedia the first time it's shown (the page's own
 // photo, which is on Commons), checks on Commons that its license is free,
 // and keeps a small copy in DATA_DIR/stock with the credit Commons asks for:
-// who took it and the license. Nothing is fetched by the browser. The admin
-// turns it off in Server settings. STOCK_PHOTO_WIKI / STOCK_PHOTO_COMMONS
+// who took it and the license. A cultivar (Java fern 'Trident') is looked for
+// among Commons' files by its name, never shown as its species. Nothing is
+// fetched by the browser. The admin turns it off in Server settings. STOCK_PHOTO_WIKI / STOCK_PHOTO_COMMONS
 // point it at a stand-in in tests.
 import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -30,22 +31,53 @@ export const stockDir = () => join(dataDir(), 'stock');
 export const stockFile = (name: string) => `${createHash('sha1').update(name).digest('hex')}.jpg`;
 
 /**
- * The name to look up: the scientific name without a cultivar or "sp.", so
- * "Microsorum pteropus 'Trident'" is the Java fern's page and "Anubias sp." is
- * the genus's. The common name when there's no scientific one.
+ * The name to look up: the scientific name without "sp." or a note, so
+ * "Anubias sp." is the genus's page. A cultivar stays, in straight quotes:
+ * "Microsorum pteropus 'Trident'" is looked for as itself, never shown as the
+ * plain Java fern. The common name when there's no scientific one.
  */
 export function lookupName(scientific: string | null | undefined, common: string | null | undefined): string | null {
-	const clean = (s: string) =>
-		s
+	const clean = (s: string) => {
+		const cultivar = /['"‘’“”]([^'"‘’“”]+)['"‘’“”]/.exec(s)?.[1]?.trim();
+		const base = s
 			.replace(/['"‘’“”][^'"‘’“”]*['"‘’“”]/g, ' ')
 			.replace(/\([^)]*\)/g, ' ')
 			.replace(/\bspp?\.?(?=\s|$)/gi, ' ')
 			.replace(/\s+/g, ' ')
 			.trim();
-	const s = clean(scientific ?? '');
-	if (s.length >= 3) return s;
-	const c = clean(common ?? '');
-	return c.length >= 3 ? c : null;
+		return base.length < 3 ? null : cultivar ? `${base} '${cultivar}'` : base;
+	};
+	return clean(scientific ?? '') ?? clean(common ?? '');
+}
+
+/** "Microsorum pteropus 'Trident'" is the species and its cultivar; null for a plain name. */
+export function cultivarOf(name: string): { base: string; cultivar: string } | null {
+	const m = /^(.+?) '([^']+)'$/.exec(name);
+	return m ? { base: m[1], cultivar: m[2] } : null;
+}
+
+const words = (s: string) =>
+	s
+		.toLowerCase()
+		.normalize('NFKD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.split(/[^a-z0-9]+/)
+		.filter(Boolean);
+
+/**
+ * A photo of a cultivar, from the files on Commons: one whose name has the
+ * genus and every word of the cultivar ("Microsorum_pteropus_Trident.jpg").
+ * Wikipedia has no pages for cultivars, and the species' photo would be wrong.
+ */
+export function cultivarFile(titles: string[], base: string, cultivar: string): string | null {
+	const need = [words(base)[0], ...words(cultivar)].filter((w): w is string => !!w);
+	for (const t of titles) {
+		const file = t.replace(/^File:/, '');
+		if (!/\.(jpe?g|png|webp)$/i.test(file)) continue;
+		const have = new Set(words(file.replace(/\.[a-z]+$/i, '')));
+		if (need.every((w) => have.has(w))) return file;
+	}
+	return null;
 }
 
 /** Commons' licenses that are free to show with credit; not NonCommercial, NoDerivatives or fair use. */
@@ -110,14 +142,26 @@ async function answered(site: string, res: Response): Promise<Error> {
 export async function fetchStockPhoto(name: string, fetcher: typeof fetch = fetch): Promise<Found> {
 	const get = (url: string) => fetcher(url, { headers: { 'user-agent': UA, 'api-user-agent': UA }, signal: AbortSignal.timeout(10_000) });
 	try {
-		const page = await get(`${WIKI()}/api/rest_v1/page/summary/${encodeURIComponent(name.replace(/ /g, '_'))}`);
-		if (page.status === 404) return { status: 'none', reason: 'No Wikipedia page' };
-		if (!page.ok) throw await answered('Wikipedia', page);
-		const summary = (await page.json()) as { type?: string; originalimage?: { source?: string }; thumbnail?: { source?: string } };
-		const src = summary.type === 'disambiguation' ? null : (summary.originalimage?.source ?? summary.thumbnail?.source ?? null);
-		if (!src) return { status: 'none', reason: summary.type === 'disambiguation' ? 'Wikipedia has several pages by this name' : 'No photo on its Wikipedia page' };
-		const file = commonsFile(src);
-		if (!file) return { status: 'none', reason: 'Its photo isn’t on Commons' };
+		let file: string | null;
+		const cv = cultivarOf(name);
+		if (cv) {
+			// a cultivar: a file on Commons named for it, or none
+			const sq = new URLSearchParams({ action: 'query', format: 'json', formatversion: '2', list: 'search', srnamespace: '6', srlimit: '20', srsearch: `${cv.base} ${cv.cultivar}` });
+			const found = await get(`${COMMONS()}/w/api.php?${sq}`);
+			if (!found.ok) throw await answered('Commons', found);
+			const titles = ((await found.json()) as { query?: { search?: { title?: string }[] } }).query?.search?.map((r) => r.title ?? '') ?? [];
+			file = cultivarFile(titles, cv.base, cv.cultivar);
+			if (!file) return { status: 'none', reason: `No photo of ‘${cv.cultivar}’ on Commons` };
+		} else {
+			const page = await get(`${WIKI()}/api/rest_v1/page/summary/${encodeURIComponent(name.replace(/ /g, '_'))}`);
+			if (page.status === 404) return { status: 'none', reason: 'No Wikipedia page' };
+			if (!page.ok) throw await answered('Wikipedia', page);
+			const summary = (await page.json()) as { type?: string; originalimage?: { source?: string }; thumbnail?: { source?: string } };
+			const src = summary.type === 'disambiguation' ? null : (summary.originalimage?.source ?? summary.thumbnail?.source ?? null);
+			if (!src) return { status: 'none', reason: summary.type === 'disambiguation' ? 'Wikipedia has several pages by this name' : 'No photo on its Wikipedia page' };
+			file = commonsFile(src);
+			if (!file) return { status: 'none', reason: 'Its photo isn’t on Commons' };
+		}
 
 		// 500: one of the widths Commons keeps thumbnails at (it may refuse others)
 		const q = new URLSearchParams({ action: 'query', format: 'json', formatversion: '2', prop: 'imageinfo', iiprop: 'url|extmetadata', iiurlwidth: '500', titles: `File:${file}` });
