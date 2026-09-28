@@ -35,9 +35,7 @@
 			href="{base}/equipment/new"
 			label="Add equipment"
 			primary
-		>
-			<ImportButton href="{base}/import/equipment" label="Import a list from a spreadsheet" />
-		</EmptyState>
+		/>
 	{/if}
 	{#if data.past.length}
 		<details class="past">
@@ -47,7 +45,8 @@
 			</ul>
 		</details>
 	{/if}
-	{#if data.items.length}<ImportButton href="{base}/import/equipment" />{/if}
+	<!-- below the list, or below the empty box: in the same place on every tab -->
+	<ImportButton href="{base}/import/equipment" />
 </div>
 
 <style>

@@ -46,7 +46,6 @@
 				primary
 			>
 				<a class="btn" href="{base}/livestock/several">Add several at once</a>
-				<ImportButton href="{base}/import/livestock" label="Import a list from a spreadsheet" />
 			</EmptyState>
 			{#if data.past.length}{@render past()}{/if}
 		{:else}
@@ -118,8 +117,9 @@
 					<div class="tfoot" role="row"><div role="cell">{@render past()}</div></div>
 				{/if}
 			</div>
-			<ImportButton href="{base}/import/livestock" />
 		{/if}
+		<!-- below the list, or below the empty box: in the same place on every tab -->
+		<ImportButton href="{base}/import/livestock" />
 	</div>
 
 	<aside class="side">

@@ -10,7 +10,7 @@ test('import livestock from a spreadsheet', async ({ page }, info) => {
 	const file = page.locator('input[type=file][name=file]');
 
 	await open(page, `/tanks/${tankId}/livestock`);
-	await page.getByRole('link', { name: 'Import a list from a spreadsheet' }).click();
+	await page.getByRole('link', { name: 'Import from a spreadsheet' }).click();
 	await expect(page).toHaveURL(`/tanks/${tankId}/import/livestock`);
 
 	// The template: the columns Waterline reads, and two examples
