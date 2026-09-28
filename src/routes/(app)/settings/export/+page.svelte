@@ -163,7 +163,7 @@
 					</div>
 					<span class="k-head">The tank's lists</span>
 					<div class="k-list">
-						{#each ['livestock', 'plants', 'equipment'] as const as k (k)}<button class="chip" name="kind" value={IMPORTS[k].slug}>{IMPORTS[k].label}</button>{/each}
+						{#each ['livestock', 'plants', 'equipment', 'expenses'] as const as k (k)}<button class="chip" name="kind" value={IMPORTS[k].slug}>{IMPORTS[k].label}</button>{/each}
 					</div>
 				</div>
 			</form>

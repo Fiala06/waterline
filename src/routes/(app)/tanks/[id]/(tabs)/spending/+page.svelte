@@ -2,6 +2,7 @@
 	// Spending (#7): this month, this year and all time, this year by category,
 	// the last 12 months, and each expense (with its receipt, #8).
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import ImportButton from '$lib/components/ImportButton.svelte';
 	let { data } = $props();
 	const base = $derived(`/tanks/${data.tankHead.id}`);
 </script>
@@ -75,6 +76,8 @@
 			</ul>
 		</section>
 	{/if}
+	<!-- below the list, or below the empty box: in the same place on every tab -->
+	<ImportButton href="{base}/import/spending" />
 </div>
 
 <style>

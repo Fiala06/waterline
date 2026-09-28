@@ -13,11 +13,12 @@ import {
 	type EquipmentType,
 	type SpecField
 } from '$lib/equipment';
+import { fmtMoney, parseMoney } from '$lib/money';
 import { fmtDateLong, isDate } from '$lib/time';
 import type { UnitPrefs, UnitSystem } from '$lib/units';
 import { exactSpecies } from './species';
 
-export const IMPORT_LISTS = ['livestock', 'plants', 'equipment'] as const;
+export const IMPORT_LISTS = ['livestock', 'plants', 'equipment', 'expenses'] as const;
 export type ImportList = (typeof IMPORT_LISTS)[number];
 export const MAX_ROWS = 500;
 
@@ -62,13 +63,26 @@ export interface EquipmentValue {
 	installed: string | null;
 	notes: string | null;
 }
-export type ImportValue = LivestockValue | PlantValue | EquipmentValue;
+/** A purchase for the tank's Spending tab. */
+export interface ExpenseValue {
+	date: string;
+	what: string;
+	amountCents: number;
+	category: ExpenseCategory;
+	note: string | null;
+}
+export type ImportValue = LivestockValue | PlantValue | EquipmentValue | ExpenseValue;
+const EXPENSE_CATEGORIES = ['livestock', 'plants', 'equipment', 'consumables', 'other'] as const;
+type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
+const EXPENSE_LABEL: Record<ExpenseCategory, string> = { livestock: 'Livestock', plants: 'Plants', equipment: 'Equipment', consumables: 'Consumables', other: 'Other' };
 
 export interface ImportContext {
 	prefs: UnitPrefs;
 	/** the tank's water, to pick between species that share a name */
 	water: 'fresh' | 'marine' | null;
 	today: string;
+	/** for amounts spent: "$24.99" */
+	currency?: string;
 }
 
 /** One row as the preview shows it. `value` is null when the row has a problem. */
@@ -136,6 +150,15 @@ export function importColumns(list: ImportList, prefs: UnitPrefs): Column[] {
 			{ key: 'position', header: 'Position', help: 'Background, Midground, Foreground or Epiphyte. Midground when empty', aliases: ['placement', 'zone', 'where'] },
 			{ key: 'status', header: 'Status', help: 'Thriving, Melting, Algae or Other. Thriving when empty', aliases: ['health', 'condition'] },
 			{ key: 'added', header: 'Added', help: 'The date it went in, for History. Today when empty', aliases: ['date added', 'added on', 'date'] }
+		];
+	}
+	if (list === 'expenses') {
+		return [
+			{ key: 'date', header: 'Date', help: 'The day you bought it. Today when empty', aliases: ['purchased', 'bought', 'bought on', 'day', 'purchase date'] },
+			{ key: 'what', header: 'What', help: 'Required. What you bought, e.g. 12 Neon tetras', aliases: ['item', 'description', 'name', 'product', 'purchase'] },
+			{ key: 'amount', header: 'Amount', help: 'Required. What it cost, e.g. 24.99', aliases: ['price', 'cost', 'total', 'paid', 'spent'] },
+			{ key: 'category', header: 'Category', help: 'Livestock, Plants, Equipment, Consumables or Other. Other when empty', aliases: ['type', 'kind', 'group'] },
+			{ key: 'note', header: 'Note', help: 'Where from, or anything else', aliases: ['notes', 'comment', 'comments', 'store', 'where'] }
 		];
 	}
 	return [
@@ -279,6 +302,33 @@ const FILTER_WORDS: Record<string, string> = {
 	ugf: 'Undergravel'
 };
 
+const EXPENSE_WORDS: Record<string, ExpenseCategory> = {
+	livestock: 'livestock',
+	fish: 'livestock',
+	animals: 'livestock',
+	shrimp: 'livestock',
+	inverts: 'livestock',
+	corals: 'livestock',
+	plants: 'plants',
+	plant: 'plants',
+	equipment: 'equipment',
+	gear: 'equipment',
+	hardware: 'equipment',
+	consumables: 'consumables',
+	consumable: 'consumables',
+	supplies: 'consumables',
+	food: 'consumables',
+	fertilizer: 'consumables',
+	fertiliser: 'consumables',
+	medication: 'consumables',
+	medicine: 'consumables',
+	salt: 'consumables',
+	'test kit': 'consumables',
+	'test kits': 'consumables',
+	other: 'other',
+	misc: 'other'
+};
+
 const KIND_LABEL: Record<Kind, string> = { fish: 'Fish', invert: 'Invert', coral: 'Coral' };
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 export const quoted = (v: string) => `“${v.length > 40 ? v.slice(0, 40) + '…' : v}”`;
@@ -356,6 +406,28 @@ function checkPlant(c: Cells, ctx: ImportContext): Omit<CheckedRow, 'line' | 'ex
 	};
 }
 
+function checkExpense(c: Cells, ctx: ImportContext): Omit<CheckedRow, 'line' | 'example' | 'other'> {
+	const problems: string[] = [];
+	const what = (c.what ?? '').trim().slice(0, 80);
+	if (!what) problems.push('No What');
+	const rawAmount = (c.amount ?? '').trim();
+	const amountCents = rawAmount ? parseMoney(rawAmount) : null;
+	if (!rawAmount) problems.push('No amount');
+	else if (amountCents == null) problems.push(`Amount ${quoted(rawAmount)} isn't an amount`);
+	const category = pick(c.category ?? '', EXPENSE_WORDS);
+	if (category === null) problems.push(`Category ${quoted(c.category)} isn't Livestock, Plants, Equipment, Consumables or Other`);
+	const date = dateCell(c.date ?? '', 'Date', ctx, problems) ?? ctx.today;
+	const note = (c.note ?? '').trim().slice(0, 500) || null;
+	const value: ExpenseValue = { date, what, amountCents: amountCents ?? 0, category: category ?? 'other', note };
+	return {
+		title: what || 'No What',
+		sub: note,
+		detail: [amountCents != null ? fmtMoney(amountCents, ctx.currency) : '?', EXPENSE_LABEL[value.category], fmtDateLong(date)].join(' · '),
+		problems,
+		value: problems.length ? null : value
+	};
+}
+
 /** The unit a header names, "(L/h)", "(°C)", "(gal)", when it differs from the keeper's. */
 export function headerSystem(q: SpecField['quantity'], header: string): UnitSystem | null {
 	const u = /\(([^)]*)\)/.exec(header)?.[1].toLowerCase() ?? '';
@@ -422,6 +494,12 @@ function examples(list: ImportList, prefs: UnitPrefs): Cells[] {
 		return [
 			{ name: 'Java fern', scientific: 'Microsorum pteropus', position: 'Epiphyte', status: 'Thriving', added: '2026-01-15' },
 			{ name: 'Amazon sword', position: 'Background' }
+		];
+	}
+	if (list === 'expenses') {
+		return [
+			{ date: '2026-09-01', what: '12 Neon tetras', amount: '23.88', category: 'Livestock', note: 'Local fish store' },
+			{ what: 'Fertilizer refill', amount: '19.99', category: 'Consumables' }
 		];
 	}
 	return [
@@ -520,6 +598,7 @@ export function readColumns(text: string, columns: Column[], need: { key: string
 }
 
 function check(list: ImportList, c: Cells, ctx: ImportContext, headers: Record<string, string>) {
+	if (list === 'expenses') return checkExpense(c, ctx);
 	return list === 'livestock' ? checkLivestock(c, ctx) : list === 'plants' ? checkPlant(c, ctx) : checkEquipment(c, ctx, headers);
 }
 
@@ -534,7 +613,7 @@ export function readImport(
 	ctx: ImportContext,
 	map?: ColumnMap
 ): { rows: CheckedRow[]; ignored: string[]; fileColumns: FileColumn[] } | { error: string; fileColumns?: FileColumn[] } {
-	const need = list === 'equipment' ? { key: 'type', label: 'Type' } : { key: 'name', label: 'Name' };
+	const need = list === 'equipment' ? { key: 'type', label: 'Type' } : list === 'expenses' ? { key: 'amount', label: 'Amount' } : { key: 'name', label: 'Name' };
 	const t = readColumns(text, importColumns(list, ctx.prefs), need, MAX_ROWS, map);
 	if ('error' in t) return { error: t.error!, fileColumns: t.fileColumns };
 	const same = new Set(examples(list, ctx.prefs).map((e) => JSON.stringify(check(list, e, ctx, t.headers).value)));
@@ -576,6 +655,19 @@ export function validValue(list: ImportList, v: unknown, today: string): ImportV
 			PLANT_STATUSES.includes(o.status as PlantStatus) &&
 			date(o.added, today);
 		return ok ? (o as unknown as PlantValue) : null;
+	}
+	if (list === 'expenses') {
+		const ok =
+			typeof o.date === 'string' &&
+			isDate(o.date) &&
+			o.date <= today &&
+			text(o.what, 80) &&
+			Number.isInteger(o.amountCents) &&
+			(o.amountCents as number) >= 0 &&
+			(o.amountCents as number) <= 100_000_000 &&
+			EXPENSE_CATEGORIES.includes(o.category as ExpenseCategory) &&
+			optText(o.note, 500);
+		return ok ? (o as unknown as ExpenseValue) : null;
 	}
 	const type = o.type as EquipmentType;
 	if (!EQUIPMENT_TYPES.includes(type) || !optText(o.brand, 60) || !optText(o.model, 60) || (!o.brand && !o.model)) return null;

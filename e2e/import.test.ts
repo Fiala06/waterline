@@ -314,3 +314,22 @@ test('columns can be picked without scripts', async ({ page, browser }, info) =>
 	await expect(plain.getByText('Moved the tank').first()).toBeVisible();
 	await ctx.close();
 });
+
+test('import spending from a spreadsheet, and undo it', async ({ page }, info) => {
+	await newKeeperWithTank(page, `import-spend-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, `/tanks/${tankId}/spending`);
+	await page.getByRole('link', { name: 'Import from a spreadsheet' }).click();
+	await expect(page).toHaveURL(`/tanks/${tankId}/import/spending`);
+	await page
+		.locator('input[type=file][name=file]')
+		.setInputFiles(csv('receipts.csv', 'Date,Item,Price,Category\n9/1/2026,12 Neon tetras,$23.88,Fish\n9/5/2026,Fertilizer,19.99,consumables\n9/6/2026,Mystery,lots,Other\n'));
+	await expect(page.getByText('✓ 2 to add')).toBeVisible();
+	await expect(page.getByText("Amount “lots” isn't an amount")).toBeVisible();
+	await page.getByRole('button', { name: 'Add 2 expenses' }).click();
+	await expect(page).toHaveURL(`/tanks/${tankId}/spending`);
+	await expect(page.getByRole('status')).toContainText('✓ Imported 2 expenses');
+	await expect(page.getByText('12 Neon tetras')).toBeVisible();
+	await page.getByRole('status').getByRole('button', { name: 'Undo' }).click();
+	await expect(page.getByText('No spending logged yet')).toBeVisible();
+});

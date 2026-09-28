@@ -29,6 +29,8 @@ export const IMPORTS: Record<ImportKind, ImportInfo> = {
 	maintenance: { slug: 'maintenance', title: 'Import maintenance', label: 'Maintenance', per: 'maintenance entry', one: 'maintenance entry', many: 'maintenance entries', cat: 'maintenance' },
 	observations: { slug: 'observations', title: 'Import observations', label: 'Observations', per: 'observation', one: 'observation', many: 'observations', cat: 'observation' },
 	notes: { slug: 'notes', title: 'Import notes', label: 'Notes', per: 'note', one: 'note', many: 'notes', cat: 'note' },
+	// a tank's spending: one row per purchase
+	expenses: { slug: 'spending', title: 'Import spending', label: 'Spending', per: 'purchase', one: 'expense', many: 'expenses', cat: null },
 	// one file with several kinds of entry, each row's kind in its Type column
 	history: { slug: 'history', title: 'Import several kinds', label: 'Several kinds', per: 'entry', one: 'entry', many: 'entries', cat: null }
 };

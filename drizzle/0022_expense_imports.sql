@@ -1,0 +1,1 @@
+ALTER TABLE `expenses` ADD `import_id` text;

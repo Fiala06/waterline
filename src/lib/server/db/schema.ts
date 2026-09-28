@@ -412,6 +412,7 @@ export const expenses = sqliteTable(
 		/** DATA_DIR/receipts/<tank>/<file>; a JPEG or a PDF */
 		receiptPath: text('receipt_path'),
 		receiptType: text('receipt_type', { enum: ['image/jpeg', 'application/pdf'] }),
+		importId: text('import_id'), // the import that added it (undone together)
 		createdAt: createdAt()
 	},
 	(t) => [index('expenses_tank_date').on(t.tankId, t.date)]

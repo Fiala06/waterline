@@ -46,9 +46,9 @@ export function getExpense(userId: string, id: string): Expense {
 	return row.e;
 }
 
-export function addExpense(userId: string, tankId: string, input: ExpenseInput) {
+export function addExpense(userId: string, tankId: string, input: ExpenseInput, importId: string | null = null) {
 	getTank(userId, tankId);
-	return db.insert(expenses).values({ ...input, tankId }).returning().get();
+	return db.insert(expenses).values({ ...input, tankId, importId }).returning().get();
 }
 
 /** An expense's details; moving it to another of the keeper's tanks keeps its receipt. */
@@ -169,3 +169,6 @@ export function removeReceipt(userId: string, id: string) {
 
 /** For the backup: where a receipt's file is. */
 export const receiptFilePath = (p: string) => fullPath(p);
+
+/** Remove a receipt's file (an expense's import undone). */
+export const deleteExpenseReceipt = (path: string) => rmSync(fullPath(path), { force: true });

@@ -141,9 +141,12 @@ export const actions: Actions = {
 				? `✓ Imported ${animals} animal${animals === 1 ? '' : 's'} · ${n} species`
 				: kind === 'plants'
 					? `✓ Imported ${n} plant${n === 1 ? '' : 's'}`
+					: kind === 'expenses'
+						? `✓ Imported ${n} expense${n === 1 ? '' : 's'}`
 					: `✓ Imported ${n} item${n === 1 ? '' : 's'}${reminders ? ` · ${reminders} reminder${reminders === 1 ? '' : 's'} added` : ''}`;
 		setFlash(cookies, message, { undo: { ...undo, value: importId } });
-		redirect(303, `/tanks/${tank.id}/${kind}`);
+		// back to the tab it's on: Livestock, Plants, Equipment or Spending
+		redirect(303, `/tanks/${tank.id}/${IMPORTS[kind].slug}`);
 	},
 
 	/** Take back a whole import: from the toast right after, or from Recent imports. */

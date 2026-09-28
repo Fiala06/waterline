@@ -9,7 +9,8 @@ import { countOf, type HistoryFile, type HistoryKind } from '$lib/imports';
 import { addDays, todayInZone, utcToZoned, zonedToUtc } from '$lib/time';
 import type { EventCategory, ImportKind } from '$lib/types';
 import { db } from './db';
-import { equipment, events, imports, livestock, photos, plants, tasks, tests, type Tank, type User } from './db/schema';
+import { equipment, events, expenses, imports, livestock, photos, plants, tasks, tests, type Tank, type User } from './db/schema';
+import { addExpense, deleteExpenseReceipt, listExpenses } from './expenses';
 import {
 	readHistory,
 	type DosingValue,
@@ -27,6 +28,7 @@ import {
 	type CheckedRow,
 	type ColumnMap,
 	type EquipmentValue,
+	type ExpenseValue,
 	type ImportList,
 	type ImportValue,
 	type LivestockValue,
@@ -50,7 +52,7 @@ const lower = (s: string | null | undefined) => (s ?? '').trim().toLowerCase();
 
 /** A file's rows, checked and compared with what the tank has. */
 export function previewImport(list: ImportList, text: string, user: User, tank: Tank, map?: ColumnMap) {
-	const read = readImport(list, text, { prefs: user, water: water(tank), today: todayInZone(user.timeZone) }, map);
+	const read = readImport(list, text, { prefs: user, water: water(tank), today: todayInZone(user.timeZone), currency: user.currency }, map);
 	if ('error' in read) return read;
 	const has = existingIn(list, user, tank.id);
 	const rows: PreviewRow[] = read.rows.map((r) => ({
@@ -80,6 +82,14 @@ function existingIn(list: ImportList, user: User, tankId: string): (v: ImportVal
 			const p = v as PlantValue;
 			const same = rows.some((r) => lower(r.name) === lower(p.name) || (!!p.scientific && r.scientificName === p.scientific));
 			return same ? 'Already in the tank; tick it to add another' : null;
+		};
+	}
+	if (list === 'expenses') {
+		const rows = listExpenses(user.id, tankId);
+		return (v) => {
+			const x = v as ExpenseValue;
+			const same = rows.some((r) => r.date === x.date && r.amountCents === x.amountCents && lower(r.what) === lower(x.what));
+			return same ? 'Already in Spending; tick it to add it again' : null;
 		};
 	}
 	const rows = listEquipment(user.id, tankId);
@@ -125,6 +135,9 @@ export function applyImport(
 					{ kind: l.kind, commonName: l.name, scientificName: l.scientific, count: l.count, status: l.status, addedAt: l.added ?? today, source: l.source },
 					{ at: noon(l.added, user.timeZone), importId: imp.id }
 				);
+			} else if (list === 'expenses') {
+				const x = v as ExpenseValue;
+				addExpense(user.id, tankId, { date: x.date, what: x.what, amountCents: x.amountCents, category: x.category, note: x.note }, imp.id);
 			} else if (list === 'plants') {
 				const p = v as PlantValue;
 				addPlant(
@@ -368,6 +381,10 @@ export function undoImport(userId: string, importId: string) {
 			removed = added.length;
 		} else if (imp.kind === 'plants') {
 			removed = db.delete(plants).where(eq(plants.importId, imp.id)).run().changes;
+		} else if (imp.kind === 'expenses') {
+			// imported expenses have no receipt yet; one added since goes with it
+			for (const x of db.select().from(expenses).where(eq(expenses.importId, imp.id)).all()) if (x.receiptPath) deleteExpenseReceipt(x.receiptPath);
+			removed = db.delete(expenses).where(eq(expenses.importId, imp.id)).run().changes;
 		} else if (imp.kind === 'equipment') {
 			const ids = db.select({ id: equipment.id }).from(equipment).where(eq(equipment.importId, imp.id)).all().map((r) => r.id);
 			if (ids.length) db.delete(tasks).where(inArray(tasks.equipmentId, ids)).run();

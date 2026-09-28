@@ -70,7 +70,7 @@ plants           id, tank_id, name, scientific_name?, position(background|midgro
 products         id, user_id, name, url, note?, created_at (saved reorder links)
 expenses         id, tank_id, date, amount_cents, category(livestock|plants|equipment|
                  consumables|other), what, note?, product_id?, receipt_path?,
-                 receipt_type?(image/jpeg|application/pdf), created_at
+                 receipt_type?(image/jpeg|application/pdf), import_id?, created_at
 
 ── Sharing ────────────────────────────────────────────────────────────────────
 public_pages     tank_id, enabled, slug, show_readings, show_charts, show_photos,
@@ -82,7 +82,7 @@ photo_shares     id (slug), photo_id, include_note, include_tank, created_at, re
 
 ── Data in and out ────────────────────────────────────────────────────────────
 imports          id, user_id, tank_id, kind(livestock|plants|equipment|tests|
-                 water_changes|dosing|maintenance|observations|notes|history),
+                 water_changes|dosing|maintenance|observations|notes|history|expenses),
                  file_name?, summary, created_at, undone_at?
 exports          id, user_id, scope(tank|account), tank_id?, format(zip|csv), status,
                  progress, progress_text?, file_path?, file_name?, size?, summary?,
