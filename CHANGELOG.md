@@ -9,6 +9,10 @@ How to write a line:
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
+## Unreleased
+
+- **Google's own logo:** The Sign in with Google button on the sign-in page shows Google's four-color G instead of a plain letter in a circle.
+
 ## 1.8.5 · 2026-09-28
 
 - **Server settings, easier to find your way:** [Server settings](/settings/server) now goes in the order you set a server up: sign-in, email, public pages, features, then logs and the version. On a computer its parts are listed in the Settings menu, and on a phone at the top of the page.
