@@ -9,7 +9,7 @@ How to write a line:
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
-## Unreleased
+## 1.8.7 · 2026-09-30
 
 - **Hardness from drop kits:** With hardness in degrees ([Settings › Units](/settings#units)), GH and KH on the water test say "1 drop = 1° on API/JBL/Tetra kits", and readings show to a tenth (8.4 dGH from a ppm reading). With hardness in ppm, a round 80 or 90 gets a gentle "Entering drops?" hint, since a degree is about 17.9 ppm, not 10.
 
