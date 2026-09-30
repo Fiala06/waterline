@@ -34,10 +34,13 @@ export function paramUnit(p: ParamLike, prefs: UnitPrefs): string {
 	return unitLabel(q, prefs, p.key === 'kh' ? 'kh' : 'gh');
 }
 
-/** Decimals for display: hardness in ppm and °F are whole numbers, °C has one. */
+/**
+ * Decimals for display: hardness in ppm and °F are whole numbers, °C has
+ * one, and degrees of hardness up to one (8 dGH, or 8.4 from a ppm reading).
+ */
 export function paramDecimals(p: ParamLike, prefs: UnitPrefs): number {
 	const q = quantityOf(p.key);
-	if (q === 'hardness' && prefs.hardnessUnit === 'ppm') return 0;
+	if (q === 'hardness') return prefs.hardnessUnit === 'ppm' ? 0 : Math.max(1, p.decimals);
 	if (q === 'temp') return prefs.unitSystem === 'imperial' ? 0 : 1;
 	return p.decimals;
 }

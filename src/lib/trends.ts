@@ -2,7 +2,7 @@
 // from its recent readings. Deliberately cautious, so a note means something:
 // a run of tests that each rose (or fell), and, when the readings since the
 // last water change line up well, when that pace would cross a target limit.
-import { displayValue, fmtTarget, fmtValue, paramDecimals, paramUnit, type ParamLike } from './params';
+import { displayValue, fmtTarget, fmtValue, paramDecimals, paramUnit, quantityOf, type ParamLike } from './params';
 import { formatNumber, type UnitPrefs } from './units';
 
 export interface TrendNote {
@@ -55,7 +55,7 @@ export function trendNote(
 	const { prefs } = opts;
 	const unit = paramUnit(p, prefs) ? ` ${paramUnit(p, prefs)}` : '';
 	// compared as shown, so a change too small to display isn't a rise
-	const dec = paramDecimals(p, prefs);
+	const dec = trendDecimals(p, prefs);
 	const shown = points.map((x) => Math.round(displayValue(p, x.value, prefs) * 10 ** dec));
 	let run = 0;
 	let dir = 0;
@@ -123,10 +123,18 @@ function agree(xs: number[]): { sign: number; k: number } | null {
 	return null;
 }
 
+/**
+ * How finely a trend is judged: as shown, except degrees of hardness, which
+ * are shown to a tenth but read in whole drops, so a tenth isn't a change.
+ */
+function trendDecimals(p: ParamLike, prefs: UnitPrefs) {
+	return quantityOf(p.key) === 'hardness' && prefs.hardnessUnit === 'dgh' ? p.decimals : paramDecimals(p, prefs);
+}
+
 /** A change in stored units as the keeper reads it ("1 dKH", "0.2"), or null when it'd show as 0. */
 function shownChange(p: ParamLike, base: number, change: number, prefs: UnitPrefs) {
 	const d = Math.abs(displayValue(p, base + change, prefs) - displayValue(p, base, prefs));
-	const dec = paramDecimals(p, prefs);
+	const dec = trendDecimals(p, prefs);
 	const s = formatNumber(d, dec);
 	return Number(s) === 0 ? null : s;
 }

@@ -195,10 +195,10 @@
 				</div>
 				<div class="row pick">
 					<label class="k" for="hardnessUnit">Hardness</label>
-					<span class="v" aria-hidden="true">{hardnessUnit === 'ppm' ? 'ppm' : 'dGH / dKH'}</span>
+					<span class="v" aria-hidden="true">{hardnessUnit === 'ppm' ? 'ppm' : 'Degrees (dGH / dKH)'}</span>
 					<span class="chev" aria-hidden="true"></span>
 					<select id="hardnessUnit" name="hardnessUnit" form="settings-form" bind:value={hardnessUnit}>
-						<option value="dgh">dGH / dKH</option>
+						<option value="dgh">Degrees (dGH / dKH)</option>
 						<option value="ppm">ppm</option>
 					</select>
 				</div>

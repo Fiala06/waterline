@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compactName, defaultParameters, fmtRange } from './params';
+import { compactName, defaultParameters, fmtRange, fmtValue, statusOf, storedValue } from './params';
 import { TANK_TYPES } from './types';
 import type { UnitPrefs } from './units';
 
@@ -60,5 +60,35 @@ describe('compactName', () => {
 
 	it("keeps a custom parameter's own name", () => {
 		expect(compactName({ key: 'custom', name: 'Silicate', unit: 'ppm', decimals: 1, min: null, max: null })).toBe('Silicate');
+	});
+});
+
+describe('hardness in degrees or ppm', () => {
+	const gh = { key: 'gh', name: 'GH', unit: 'dGH', decimals: 0, min: 4, max: 10 };
+	const deg: UnitPrefs = { unitSystem: 'metric', hardnessUnit: 'dgh' };
+	const ppm: UnitPrefs = { unitSystem: 'metric', hardnessUnit: 'ppm' };
+
+	it('8 drops is 8 dGH, about 143 ppm, whichever way it was typed', () => {
+		const typedDeg = storedValue(gh, 8, deg);
+		const typedPpm = storedValue(gh, 143, ppm);
+		expect(fmtValue(gh, typedDeg, deg)).toBe('8');
+		expect(fmtValue(gh, typedDeg, ppm)).toBe('143');
+		expect(fmtValue(gh, typedPpm, deg)).toBe('8');
+	});
+
+	it('shows degrees to a tenth and ppm whole', () => {
+		const s = storedValue(gh, 150, ppm);
+		expect(fmtValue(gh, s, deg)).toBe('8.4');
+		expect(fmtValue(gh, s, ppm)).toBe('150');
+		expect(fmtRange(gh, deg)).toBe('4–10 dGH');
+		expect(fmtRange(gh, ppm)).toBe('71.4–178.5 ppm');
+	});
+
+	it('a status is the same in either unit: it is worked out on the stored value', () => {
+		for (const v of [3, 4, 4.3, 8, 10, 10.2, 11]) {
+			const fromDeg = storedValue(gh, v, deg);
+			const fromPpm = storedValue(gh, Number(fmtValue(gh, fromDeg, ppm)), ppm);
+			expect(statusOf(gh, fromPpm).level, `${v} dGH`).toBe(statusOf(gh, fromDeg).level);
+		}
 	});
 });

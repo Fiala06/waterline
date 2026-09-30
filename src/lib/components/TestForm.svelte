@@ -22,6 +22,8 @@
 
 	interface Param {
 		id: string;
+		/** gh, kh… (the hardness hints need it) */
+		key?: string;
 		name: string;
 		unit: string;
 		min: number | null;
@@ -119,7 +121,12 @@
 			const was = mode !== 'edit' ? null : (saved[p.id] ?? '') !== raw && saved[p.id] ? saved[p.id] : (previous[p.id] ?? null);
 			// "Last 7.0 · Sep 18": the date only fits on phones (05 vs 08)
 			const [lastValue, lastDate = ''] = (p.last ?? '').split(' · ');
-			return { ...p, raw, v, st, was, lastValue, lastDate };
+			// GH and KH: drop kits count degrees, 1 drop = 1°
+			const hard = p.key === 'gh' || p.key === 'kh';
+			const degrees = hard && /^d[GK]H$/.test(p.unit);
+			// in ppm, a round 20, 30… reads like drops × 10 (a degree is ~17.9 ppm)
+			const dropsHint = hard && !degrees && v != null && v >= 20 && v % 10 === 0;
+			return { ...p, raw, v, st, was, lastValue, lastDate, degrees, dropsHint };
 		})
 	);
 	const filled = $derived(rows.filter((r) => r.v != null).length);
@@ -349,6 +356,13 @@
 							<div class="msg st-msg status-{r.st.level}" class:quiet={r.st.level === 'ok'} id="s_{r.id}">{statusLong(r.st, r.rangeText)}</div>
 						{/if}
 						{#if fieldErrors[r.id]}<div class="msg status-bad">✕ {fieldErrors[r.id]}</div>{/if}
+						{#if r.dropsHint}
+							<div class="msg hard-hint" aria-live="polite">
+								Entering drops? Switch hardness to degrees in <a href="/settings#units">Settings</a>, or multiply by 17.9.
+							</div>
+						{:else if r.degrees && r.v == null}
+							<div class="msg hard-hint">1 drop = 1° on API/JBL/Tetra kits.</div>
+						{/if}
 					</div>
 				{/each}
 				{#if mode === 'new' && targetsHref}
@@ -676,6 +690,12 @@
 		font-size: 13px;
 		font-weight: 600;
 		text-align: right;
+	}
+	.msg.hard-hint {
+		color: var(--text-muted);
+	}
+	.msg.hard-hint a {
+		font-weight: 600;
 	}
 	.msg.quiet {
 		position: absolute;
