@@ -198,6 +198,7 @@ export function tankPhotos(userId: string, tankId: string) {
 
 export function setCover(userId: string, photoId: string) {
 	const p = getPhoto(userId, photoId);
-	db.update(tanks).set({ coverPhotoId: p.id }).where(eq(tanks.id, p.tankId)).run();
+	// a new cover starts in the middle; Settings moves it
+	db.update(tanks).set({ coverPhotoId: p.id, coverX: 50, coverY: 50 }).where(eq(tanks.id, p.tankId)).run();
 	return p;
 }

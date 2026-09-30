@@ -1,3 +1,4 @@
+import { clampPct } from '$lib/media';
 import { fail, redirect } from '@sveltejs/kit';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { setFlash } from '$lib/server/flash';
@@ -24,6 +25,8 @@ export const load: PageServerLoad = ({ locals, params }) => {
 			type: tank.type,
 			archived: !!tank.archivedAt,
 			cover: tank.coverPhotoId,
+			coverX: tank.coverX,
+			coverY: tank.coverY,
 			nominalVolume: v(tank.nominalVolumeL, 'volume', 1),
 			actualVolume: v(tank.actualVolumeL, 'volume', 1),
 			length: v(tank.lengthCm, 'length', 1),
@@ -62,6 +65,10 @@ export const actions: Actions = {
 		updateTank(user.id, params.id, values);
 		const [photo] = storePhotos(params.id, prepared, { takenAt: new Date().toISOString() });
 		if (photo) setCover(user.id, photo.id);
+		// where the cover sits in its frame, as dragged (a new photo's too)
+		if (form.has('coverX') || form.has('coverY')) {
+			updateTank(user.id, params.id, { coverX: clampPct(form.get('coverX')), coverY: clampPct(form.get('coverY')) });
+		}
 		setFlash(cookies, '✓ Tank saved');
 		redirect(303, `/tanks/${params.id}/settings`); // stay on the tab, like the other tank tabs
 	},

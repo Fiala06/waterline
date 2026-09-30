@@ -15,7 +15,7 @@
 	<div class="col">
 		<!-- phones show the cover full-bleed above the name (layout) -->
 		<div class="banner hide-phone" class:photo-placeholder={!cover}>
-			{#if cover}<img src={photoUrl(cover, 'full')} alt="" />{:else}<span class="mono">cover photo</span>{/if}
+			{#if cover}<img src={photoUrl(cover, 'full')} alt="" style:object-position={data.tankHead.coverPos} />{:else}<span class="mono">cover photo</span>{/if}
 		</div>
 		<section>
 			<div class="sh"><h2>Specs</h2>{#if data.specs.length}<a href="{base}/settings">Edit ›</a>{/if}</div>

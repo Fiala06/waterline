@@ -57,6 +57,9 @@ export interface TankInput {
 	substrate?: string | null;
 	waterSource?: string | null;
 	photoperiodH?: number | null;
+	/** the cover photo's focus, 0–100 */
+	coverX?: number;
+	coverY?: number;
 }
 
 /**

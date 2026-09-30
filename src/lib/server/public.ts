@@ -1,3 +1,4 @@
+import { coverPosition } from '$lib/media';
 // Public, read-only tank pages (/t/<slug>) and photo share links (/s/<id>).
 // Only what the owner switched on is included. Never public: tasks, notes on
 // entries, exact times, email addresses, livestock sources, equipment notes.
@@ -292,6 +293,7 @@ export function publicView(page: PublicPage, tank: Tank, owner: User) {
 		keeper: displayNameFor(owner, page.displayName),
 		description: page.showDescription ? page.description : null,
 		cover: tank.coverPhotoId,
+		coverPos: coverPosition(tank.coverX, tank.coverY),
 		// status and test date are readings too: hidden with them
 		summary:
 			page.showReadings && cards.length
@@ -328,7 +330,7 @@ export function recordView(tankId: string, userAgent: string | null) {
 export function ogVersion(page: PublicPage, tank: Tank) {
 	const last = db.select({ id: tests.id, at: tests.takenAt }).from(tests).where(eq(tests.tankId, tank.id)).orderBy(desc(tests.takenAt)).get();
 	return createHash('sha1')
-		.update([tank.name, tank.type, tank.nominalVolumeL, tank.coverPhotoId, page.ogPhotoId, page.ogPlain, page.showReadings, last?.id, last?.at].join('|'))
+		.update([tank.name, tank.type, tank.nominalVolumeL, tank.coverPhotoId, tank.coverX, tank.coverY, page.ogPhotoId, page.ogPlain, page.showReadings, last?.id, last?.at].join('|'))
 		.digest('hex')
 		.slice(0, 10);
 }

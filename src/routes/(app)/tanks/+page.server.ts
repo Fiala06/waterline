@@ -1,3 +1,4 @@
+import { coverPosition } from '$lib/media';
 import { redirect } from '@sveltejs/kit';
 import { shortName, statusOf } from '$lib/params';
 import { dueInfo } from '$lib/tasks';
@@ -57,7 +58,7 @@ export const load: PageServerLoad = ({ locals }) => {
 			.filter(Boolean)
 			.join(' · ');
 
-		return { id: t.id, name: t.name, type: t.type, cover: t.coverPhotoId, volume: vol(t.nominalVolumeL), status, task, meta };
+		return { id: t.id, name: t.name, type: t.type, cover: t.coverPhotoId, coverPos: coverPosition(t.coverX, t.coverY), volume: vol(t.nominalVolumeL), status, task, meta };
 	});
 
 	const archived = listTanks(user.id, { archived: true }).map((t) => ({
@@ -65,6 +66,7 @@ export const load: PageServerLoad = ({ locals }) => {
 		name: t.name,
 		type: t.type,
 		cover: t.coverPhotoId,
+		coverPos: coverPosition(t.coverX, t.coverY),
 		volume: vol(t.nominalVolumeL),
 		archivedOn: t.archivedAt ? monthYear(dateInZone(t.archivedAt, tz)) : ''
 	}));

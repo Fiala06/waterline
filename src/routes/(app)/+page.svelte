@@ -104,6 +104,7 @@
 			tank={data.tank}
 			tanks={data.tanks}
 			cover={current?.cover}
+			coverPos={current?.coverPos}
 			volume={current?.volume}
 			today={data.today}
 			lastTest={data.latestWhen ? `Last test ${data.latestWhen}` : 'No tests yet'}

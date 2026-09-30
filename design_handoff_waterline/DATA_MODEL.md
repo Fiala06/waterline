@@ -22,7 +22,8 @@ push_subscriptions id, user_id, endpoint (unique), p256dh, auth, label ("Chrome 
 ── Tanks and what's logged ────────────────────────────────────────────────────
 tanks            id, user_id, name, type(freshwater|planted|brackish|reef),
                  nominal_volume_l?, actual_volume_l?, length_cm?, width_cm?, height_cm?,
-                 start_date?, notes?, cover_photo_id?, spec_brand?, spec_model?, glass?,
+                 start_date?, notes?, cover_photo_id?, cover_x, cover_y (the cover's focus, 0–100,
+                 50 50 the middle), spec_brand?, spec_model?, glass?,
                  substrate?, water_source?, photoperiod_h?, archived_at?, created_at
 tank_parameters  id, tank_id, key (ph|nh3|no2|no3|gh|kh|temp|… or custom), name, unit,
                  decimals, min?, max?, tracked, sort, is_custom

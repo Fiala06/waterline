@@ -99,6 +99,9 @@ export const tanks = sqliteTable(
 		startDate: text('start_date'),
 		notes: text('notes'),
 		coverPhotoId: text('cover_photo_id'),
+		/** the cover's focus, dragged into place in Settings: 0–100 across and down (50 50 is the middle) */
+		coverX: integer('cover_x').notNull().default(50),
+		coverY: integer('cover_y').notNull().default(50),
 		specBrand: text('spec_brand'),
 		specModel: text('spec_model'),
 		glass: text('glass'),

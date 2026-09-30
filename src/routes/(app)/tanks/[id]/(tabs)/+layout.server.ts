@@ -1,3 +1,4 @@
+import { coverPosition } from '$lib/media';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { getTank } from '$lib/server/tanks';
 import type { LayoutServerLoad } from './$types';
@@ -19,6 +20,7 @@ export const load: LayoutServerLoad = ({ locals, params }) => {
 			name: t.name,
 			type: t.type,
 			cover: t.coverPhotoId,
+			coverPos: coverPosition(t.coverX, t.coverY),
 			archived: !!t.archivedAt,
 			// T1: "Planted · 40 gal (34 actual) · since Mar 2025"; model and size are in Specs
 			sub: [

@@ -4,7 +4,7 @@
 	import { TIPS } from '$lib/tips';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import DateField from '$lib/components/DateField.svelte';
-	import { photoUrl } from '$lib/media';
+	import { dragFocus, photoUrl } from '$lib/media';
 	import { untrack } from 'svelte';
 	let { data, form } = $props();
 	let coverPreview = $state<string | null>(null);
@@ -14,6 +14,55 @@
 		const f = (e.currentTarget as HTMLInputElement).files?.[0];
 		if (coverPreview) URL.revokeObjectURL(coverPreview);
 		coverPreview = f ? URL.createObjectURL(f) : null;
+		// a new photo starts in the middle
+		focus = { x: 50, y: 50 };
+		moved = !!f;
+	}
+
+	// Drag the cover to choose which part shows, as on Facebook; it's saved
+	// with the rest (Save changes). Arrow keys move it too.
+	let focus = $state(untrack(() => ({ x: data.tank.coverX, y: data.tank.coverY })));
+	let moved = $state(false);
+	// once saved: where it is now, nothing left to save
+	$effect(() => {
+		const saved = { x: data.tank.coverX, y: data.tank.coverY, cover: data.tank.cover };
+		untrack(() => {
+			focus = { x: saved.x, y: saved.y };
+			moved = false;
+			if (coverPreview) URL.revokeObjectURL(coverPreview);
+			coverPreview = null;
+		});
+	});
+	let frame = $state<HTMLElement>();
+	let img = $state<HTMLImageElement>();
+	let drag: { id: number; x: number; y: number; start: { x: number; y: number } } | null = null;
+	const sizes = () =>
+		frame && img?.naturalWidth
+			? { frame: { w: frame.clientWidth, h: frame.clientHeight }, natural: { w: img.naturalWidth, h: img.naturalHeight } }
+			: null;
+	function down(e: PointerEvent) {
+		if (!img || (e.target as HTMLElement).closest('.change')) return;
+		drag = { id: e.pointerId, x: e.clientX, y: e.clientY, start: { ...focus } };
+		// the photo keeps the pointer while it moves, even off its edge
+		(e.currentTarget as Element).setPointerCapture(e.pointerId);
+		e.preventDefault();
+	}
+	function move(e: PointerEvent) {
+		const z = sizes();
+		if (!drag || drag.id !== e.pointerId || !z) return;
+		focus = dragFocus(drag.start, { dx: e.clientX - drag.x, dy: e.clientY - drag.y }, z.frame, z.natural);
+		moved = true;
+	}
+	function up(e: PointerEvent) {
+		if (drag?.id === e.pointerId) drag = null;
+	}
+	function key(e: KeyboardEvent) {
+		const step = e.shiftKey ? 10 : 2;
+		const d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
+		if (!d) return;
+		e.preventDefault();
+		focus = { x: Math.min(100, Math.max(0, focus.x + d[0])), y: Math.min(100, Math.max(0, focus.y + d[1])) };
+		moved = true;
 	}
 	const errors = $derived((form?.errors ?? {}) as Record<string, string>);
 	const types = [
@@ -29,9 +78,26 @@
 <form method="POST" action="?/save" enctype="multipart/form-data" class="wrap" use:enhance>
 	<div class="cols">
 		<div class="body">
-			<div class="cover" class:photo-placeholder={!coverPreview && !data.tank.cover}>
+			<div class="cover" class:photo-placeholder={!coverPreview && !data.tank.cover} class:movable={coverPreview || data.tank.cover} bind:this={frame}>
 				{#if coverPreview || data.tank.cover}
-					<img src={coverPreview ?? photoUrl(data.tank.cover!, 'full')} alt="Tank cover" />
+					<!-- dragged, or moved with the arrow keys; its label says so -->
+					<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
+					<img
+						bind:this={img}
+						src={coverPreview ?? photoUrl(data.tank.cover!, 'full')}
+						alt="Tank cover. Drag, or use the arrow keys, to choose which part shows."
+						style:object-position="{focus.x}% {focus.y}%"
+						draggable="false"
+						tabindex="0"
+						onpointerdown={down}
+						onpointermove={move}
+						onpointerup={up}
+						onpointercancel={up}
+						onkeydown={key}
+					/>
+					<span class="drag-hint" aria-hidden="true">✥ Drag to reposition</span>
+					<input type="hidden" name="coverX" value={focus.x} />
+					<input type="hidden" name="coverY" value={focus.y} />
 				{:else}
 					<span class="mono">cover photo</span>
 				{/if}
@@ -40,6 +106,7 @@
 					<input type="file" name="cover" accept="image/*" onchange={pickCover} />
 				</label>
 			</div>
+			{#if moved}<span class="moved" aria-live="polite">Save changes to keep it there.</span>{/if}
 			{#if errors.cover}<span class="error-text">✕ {errors.cover}</span>{/if}
 
 			<div class="field">
@@ -218,6 +285,40 @@
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
+	}
+	/* drag the photo to move it in its frame */
+	.movable img {
+		cursor: grab;
+		touch-action: none;
+		user-select: none;
+		-webkit-user-drag: none;
+	}
+	.movable img:active {
+		cursor: grabbing;
+	}
+	.movable img:focus-visible {
+		outline: 2px solid var(--accent);
+		outline-offset: -2px;
+	}
+	.drag-hint {
+		position: absolute;
+		left: 10px;
+		bottom: 10px;
+		height: 36px;
+		padding: 0 12px;
+		border-radius: 10px;
+		background: var(--overlay-bg);
+		color: var(--overlay-text);
+		font-size: 13px;
+		font-weight: 600;
+		display: flex;
+		align-items: center;
+		pointer-events: none;
+	}
+	.moved {
+		margin-top: -12px;
+		font-size: 13px;
+		color: var(--text-muted);
 	}
 	.change {
 		position: absolute;

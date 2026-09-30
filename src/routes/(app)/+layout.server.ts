@@ -1,3 +1,4 @@
+import { coverPosition } from '$lib/media';
 import { dueInfo } from '$lib/tasks';
 import { fmtWhen, todayInZone } from '$lib/time';
 import { statusOf } from '$lib/params';
@@ -50,6 +51,7 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 					: null,
 			startDate: t.startDate,
 			cover: t.coverPhotoId,
+			coverPos: coverPosition(t.coverX, t.coverY),
 			alerts: outOfRange + (overdueByTank.get(t.id) ?? 0),
 			// never tested: "No data", not "All good"
 			tested: latest.size > 0

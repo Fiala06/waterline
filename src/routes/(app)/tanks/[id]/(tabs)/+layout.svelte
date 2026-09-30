@@ -26,7 +26,7 @@
 <div class="tank-page">
 	{#if overview}
 		<div class="cover hide-desk" class:photo-placeholder={!h.cover}>
-			{#if h.cover}<img src={photoUrl(h.cover, 'full')} alt="" />{:else}<span class="mono">cover photo</span>{/if}
+			{#if h.cover}<img src={photoUrl(h.cover, 'full')} alt="" style:object-position={h.coverPos} />{:else}<span class="mono">cover photo</span>{/if}
 			<a class="back over" href="/tanks">‹ Tanks</a>
 		</div>
 	{/if}

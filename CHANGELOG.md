@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Move your cover photo into place:** In a tank's [Settings](/tanks/current/settings), drag the cover photo to choose which part of it shows, then Save changes. The dashboard, the Tanks list and the public page show it the same way. Arrow keys move it too.
+- **Snooze works on Wednesdays:** On a Wednesday, the Snooze sheet on [Tasks](/tasks) didn't open, because In 3 days and Next weekend were the same Saturday. Next weekend is now the one after it on those days.
 - **Google's own logo:** The Sign in with Google button on the sign-in page shows Google's four-color G instead of a plain letter in a circle.
 
 ## 1.8.5 · 2026-09-28

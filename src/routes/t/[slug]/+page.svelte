@@ -46,7 +46,7 @@
 	<main class="wrap">
 		<div class="col">
 			<div class="hero" class:photo-placeholder={!v.cover}>
-				{#if v.cover}<img src={photo(v.cover, 'full')} alt="{v.name} aquarium" />{/if}
+				{#if v.cover}<img src={photo(v.cover, 'full')} alt="{v.name} aquarium" style:object-position={v.coverPos} />{/if}
 			</div>
 
 			<div class="intro">

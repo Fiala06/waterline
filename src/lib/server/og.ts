@@ -43,8 +43,18 @@ const cacheDir = () => join(env.DATA_DIR ?? './data', 'og');
 // Bump when the card layout changes so cached images are rebuilt.
 const TEMPLATE = 2;
 
-async function photoData(p: Photo, width: number, height: number) {
-	const buf = await sharp(photoFilePath(p, 'full')).resize(width, height, { fit: 'cover' }).jpeg({ quality: 80 }).toBuffer();
+/** The photo cut to width × height around its focus (0–100 across and down; the middle by default). */
+async function photoData(p: Photo, width: number, height: number, focus = { x: 50, y: 50 }) {
+	const src = sharp(photoFilePath(p, 'full'));
+	const { width: iw = width, height: ih = height } = await src.metadata();
+	const s = Math.max(width / iw, height / ih);
+	const rw = Math.max(width, Math.round(iw * s));
+	const rh = Math.max(height, Math.round(ih * s));
+	const buf = await src
+		.resize(rw, rh)
+		.extract({ left: Math.round(((rw - width) * focus.x) / 100), top: Math.round(((rh - height) * focus.y) / 100), width, height })
+		.jpeg({ quality: 80 })
+		.toBuffer();
 	return `data:image/jpeg;base64,${buf.toString('base64')}`;
 }
 
@@ -88,10 +98,10 @@ const ORDER = ['ph', 'no3', 'temp', 'nh3', 'no2', 'kh', 'gh'];
 const order = (key: string) => (ORDER.includes(key) ? ORDER.indexOf(key) : ORDER.length);
 
 /** S1 (with cover photo and readings) or S3 (fallback, no photo). */
-export async function tankCard(view: PublicView, opts: { cover: Photo | null; plain: boolean; host: string; version: string }) {
+export async function tankCard(view: PublicView, opts: { cover: Photo | null; focus?: { x: number; y: number }; plain: boolean; host: string; version: string }) {
 	return cached(`t-${view.slug}-${opts.version}`, async () => {
 		if (opts.cover && opts.plain) {
-			return render(h('div', { width: W, height: H }, img(await photoData(opts.cover, W, H), { width: W, height: H })));
+			return render(h('div', { width: W, height: H }, img(await photoData(opts.cover, W, H, opts.focus), { width: W, height: H })));
 		}
 		const sub = [view.type, view.volume, view.since ? `since ${view.since}` : null].filter(Boolean).join(' · ');
 		// Problems first, then the usual headline numbers.
@@ -132,7 +142,7 @@ export async function tankCard(view: PublicView, opts: { cover: Photo | null; pl
 		);
 		if (!opts.cover) return render(h('div', { width: W, height: H, background: C.bg }, body));
 		return render(
-			h('div', { width: W, height: H, background: C.bg }, body, img(await photoData(opts.cover, 500, H), { width: 500, height: H }))
+			h('div', { width: W, height: H, background: C.bg }, body, img(await photoData(opts.cover, 500, H, opts.focus), { width: 500, height: H }))
 		);
 	});
 }

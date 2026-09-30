@@ -16,6 +16,7 @@
 		tank,
 		tanks,
 		cover,
+		coverPos = '50% 50%',
 		volume,
 		today,
 		lastTest,
@@ -25,6 +26,8 @@
 		/** every tank, for swiping and the desktop dropdown */
 		tanks: ComponentProps<typeof TankMenu>['tanks'];
 		cover: string | null | undefined;
+		/** where the cover sits in the frame (object-position) */
+		coverPos?: string;
 		volume: string | null | undefined;
 		today: string;
 		/** "Last test today, 8:12 AM" (desktop, bottom right) */
@@ -57,7 +60,7 @@
 <div class="hero">
 	<div class="cover" aria-hidden="true">
 		{#if cover}
-			<img src={photoUrl(cover, 'full')} alt="" />
+			<img src={photoUrl(cover, 'full')} alt="" style:object-position={coverPos} />
 		{:else}
 			<div class="photo-placeholder ph"></div>
 		{/if}
