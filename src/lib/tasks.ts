@@ -128,7 +128,8 @@ export function snoozeOptions(today: string, due: string) {
 	}
 	const dow = new Date(today + 'T12:00:00Z').getUTCDay(); // 0 Sun … 6 Sat
 	const toSat = ((6 - dow + 7) % 7) || 7;
-	const weekend = addDays(today, toSat < 3 ? toSat + 7 : toSat);
+	// never the same day as "In 3 days" (a Wednesday's Saturday): the one after
+	const weekend = addDays(today, toSat <= 3 ? toSat + 7 : toSat);
 	return [
 		{ label: 'Tomorrow', date: addDays(today, 1) },
 		{ label: 'In 3 days', date: addDays(today, 3) },

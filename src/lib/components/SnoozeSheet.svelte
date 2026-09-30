@@ -46,7 +46,7 @@
 			<p class="ctx">{task.name} · {tankName} · due {fmtDate(task.due)}</p>
 		</div>
 		<div class="opts">
-			{#each options as o (o.date)}
+			{#each options as o (o.label)}
 				<form method="POST" action="/tasks?/snooze" use:enhance={() => async ({ update }) => { open = false; await update(); }}>
 					<input type="hidden" name="taskId" value={task.id} />
 					<input type="hidden" name="until" value={o.date} />

@@ -49,6 +49,20 @@ describe('snoozeOptions', () => {
 		]);
 	});
 
+	it('never offers the same day twice: on a Wednesday, next weekend is the one after this Saturday', () => {
+		// Wed Sep 30 2026: in 3 days is Saturday Oct 3
+		expect(snoozeOptions('2026-09-30', '2026-09-28')).toEqual([
+			{ label: 'Tomorrow', date: '2026-10-01' },
+			{ label: 'In 3 days', date: '2026-10-03' },
+			{ label: 'Next weekend', date: '2026-10-10' }
+		]);
+		for (let d = 0; d < 7; d++) {
+			const today = `2026-10-0${d + 1}`;
+			const dates = snoozeOptions(today, '2026-09-01').map((o) => o.date);
+			expect(new Set(dates).size, today).toBe(3);
+		}
+	});
+
 	it('pushes back from the due date when it is not due yet', () => {
 		expect(snoozeOptions('2026-09-25', '2026-10-07').map((o) => o.date)).toEqual(['2026-10-08', '2026-10-10', '2026-10-14']);
 	});
