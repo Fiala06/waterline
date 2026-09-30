@@ -9,7 +9,7 @@ How to write a line:
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
-## Unreleased
+## 1.8.6 · 2026-09-30
 
 - **Move your cover photo into place:** In a tank's [Settings](/tanks/current/settings), drag the cover photo to choose which part of it shows, then Save changes. The dashboard, the Tanks list and the public page show it the same way. Arrow keys move it too.
 - **Snooze works on Wednesdays:** On a Wednesday, the Snooze sheet on [Tasks](/tasks) didn't open, because In 3 days and Next weekend were the same Saturday. Next weekend is now the one after it on those days.
