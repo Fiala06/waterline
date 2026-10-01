@@ -2,8 +2,8 @@
 	// Dashboard refresh (1c): the readings that are fine, as a compact grid of
 	// name and value (tap one for its chart), and a line for those never tested.
 	// In a card like Needs attention's, each with its ✓, so it doesn't fade into
-	// the page; quieter than the attention list, but easy to read. Columns are
-	// narrow whatever the width, so a value stays beside its name.
+	// the page; quieter than the attention list, but easy to read. A small tile
+	// each, the name over its value, so readings never run together.
 	interface Item {
 		id: string;
 		label: string;
@@ -32,7 +32,7 @@
 		<span class="count status-ok">{items.length === total ? `✓ All ${total} in range` : `✓ ${items.length} of ${total}`}</span>
 	</div>
 	{#if items.length}
-		<ul class="card grid">
+		<ul class="grid">
 			{#each items as c (c.id)}
 				<li>
 					<a href="/charts?p={c.id}" title="{c.fullName} · ✓ OK">
@@ -68,54 +68,55 @@
 		font-size: 13px;
 		font-weight: 700;
 	}
+	/* a tile each, its name above its value, so they don't run together */
 	.grid {
 		list-style: none;
 		margin: 0;
 		padding: 0;
 		display: grid;
-		/* as many narrow columns as fit (2 on a phone), filled from the left */
-		grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-		column-gap: 24px;
-		padding: 2px 16px;
+		grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+		gap: 8px;
 	}
 	li {
 		min-width: 0;
 	}
 	a {
 		display: flex;
-		justify-content: space-between;
-		align-items: baseline;
-		gap: 10px;
+		flex-direction: column;
+		gap: 2px;
 		min-height: 44px;
-		padding: 10px 0;
-		font-size: 15px;
+		padding: 10px 12px 11px;
+		border-radius: 12px;
+		background: var(--surface);
+		border: 1px solid var(--border);
 		color: var(--text);
 	}
 	.k {
-		color: var(--text);
+		font-size: 13px;
+		color: var(--text-muted);
 		min-width: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 	.ok {
-		margin-right: 7px;
-		font-size: 13px;
+		margin-right: 5px;
 		font-weight: 700;
 	}
 	.v {
+		font-size: 20px;
 		font-weight: 600;
 		white-space: nowrap;
 	}
 	.u {
-		margin-left: 1px;
+		margin-left: 2px;
 		font-size: 12px;
 		font-weight: 400;
 		color: var(--text-muted);
 	}
 	@media (hover: hover) {
-		a:hover .k {
-			color: var(--accent);
+		a:hover {
+			border-color: var(--accent);
 		}
 	}
 	.bug {
@@ -133,8 +134,7 @@
 	}
 	@media (min-width: 1024px) {
 		.grid {
-			grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-			column-gap: 32px;
+			grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
 		}
 	}
 </style>

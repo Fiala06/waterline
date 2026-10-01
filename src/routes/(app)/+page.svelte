@@ -211,9 +211,9 @@
 			</div>
 
 			<div class="col-side">
-				<section class="stack">
+				<section class="stack" aria-labelledby="due-h">
 					<div class="section-head">
-						<h2>Due</h2>
+						<h2 id="due-h">Due</h2>
 						<span class="links"
 							><RemindMe tankId={data.tank.id} tankName={data.tank.name} today={data.today} cls="remind-link" /><a href="/tasks">All tasks</a></span
 						>

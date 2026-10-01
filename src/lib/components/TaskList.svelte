@@ -28,8 +28,14 @@
 	<div class="card list">
 		{#each tasks as t, i (t.id)}
 			{@const d = dueInfo(t.due, today)}
-			<!-- refresh 1c: "✕ 1 day over", "▲ Today", or the date; the primary button only on the most urgent -->
-			{@const when = d.days < 0 ? `✕ ${-d.days} day${d.days === -1 ? '' : 's'} over` : d.days === 0 ? '▲ Today' : `${fmtDate(t.due)} · ${intervalText(t)}`}
+			<!-- refresh 1c: "✕ 1 day over", "▲ Today", how soon ("In 2 days"), or a date further off;
+			     the primary button only on the most urgent, and "Done early" for one that isn't due -->
+			{@const when =
+				d.days < 0
+					? `✕ ${-d.days} day${d.days === -1 ? '' : 's'} over`
+					: d.days === 0
+						? '▲ Today'
+						: `${d.days === 1 ? 'Tomorrow' : d.days <= 7 ? `In ${d.days} days` : fmtDate(t.due)} · ${intervalText(t)}`}
 			{@const dose = amountText(t.amount, t.amountUnit)}
 			<div class="row">
 				<div class="text">
@@ -39,7 +45,11 @@
 				<form method="POST" action="/tasks?/done" use:enhance={markDone}>
 					<input type="hidden" name="taskId" value={t.id} />
 					<input type="hidden" name="from" value={from} />
-					<button class="btn" class:btn-primary={i === 0 && d.days <= 0}>Mark done</button>
+					{#if d.days > 0}
+						<button class="btn early" title="Due {fmtDate(t.due)}" aria-label="Mark {t.name} done early">Done early</button>
+					{:else}
+						<button class="btn" class:btn-primary={i === 0}>Mark done</button>
+					{/if}
 				</form>
 			</div>
 		{/each}
@@ -82,6 +92,17 @@
 	.due.plain {
 		color: var(--text-muted);
 		font-weight: 400;
+	}
+	/* not due yet: there if it's needed, but not asking to be pressed */
+	.early {
+		background: transparent;
+		border-color: transparent;
+		color: var(--text-muted);
+		font-weight: 500;
+	}
+	.early:hover {
+		border-color: var(--border);
+		color: var(--text);
 	}
 	@media (min-width: 1024px) {
 		.row .name {
