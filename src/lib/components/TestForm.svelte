@@ -361,7 +361,7 @@
 							<div class="msg hard-hint drops" aria-live="polite">
 								<span
 									>{d.times10 ? `${r.raw} looks like ${d.drops} drops × 10. ` : 'Counted drops? '}{d.drops}
-									{d.drops === 1 ? 'drop is' : 'drops are'} about {d.ppm} ppm (× 17.9).</span
+									{d.drops === 1 ? 'drop is' : 'drops are'} about {d.ppm} ppm (×&nbsp;17.9).</span
 								>
 								<button type="button" class="btn use-ppm" onclick={() => (draft[r.id] = String(d.ppm))}>Use {d.ppm} ppm</button>
 								<span class="or">Or switch hardness to degrees in <a href="/settings#units">Settings</a>.</span>
@@ -924,7 +924,8 @@
 		}
 		.rows {
 			display: grid;
-			grid-template-columns: 1fr 1fr;
+			/* two equal halves, whatever is in them: a field never pushes its half past the card */
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 			gap: 14px 20px;
 			padding: 0;
 		}
@@ -934,6 +935,7 @@
 			border: none;
 			padding: 0;
 			gap: 4px;
+			min-width: 0;
 		}
 		.line {
 			flex-direction: column;

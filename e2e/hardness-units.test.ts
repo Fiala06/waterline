@@ -28,8 +28,17 @@ test('hardness in degrees or ppm, with a nudge for drops typed as ppm', async ({
 
 	// 80 ppm reads like 8 drops × 10: one tap makes it ppm
 	await gh.fill('80');
-	const nudge = page.getByText('80 looks like 8 drops × 10. 8 drops are about 143 ppm (× 17.9).');
+	const nudge = page.getByText('80 looks like 8 drops × 10. 8 drops are about 143 ppm (×\u00a017.9).');
 	await expect(nudge).toBeVisible();
+	// on a computer, everything stays inside the form's card, statuses and hints included
+	if (info.project.name === 'desktop') {
+		await page.getByLabel('Ammonia', { exact: true }).fill('2');
+		const spill = await page.evaluate(() => {
+			const card = document.querySelector('.panel')!.getBoundingClientRect();
+			return [...document.querySelectorAll('.panel .row')].filter((r) => r.getBoundingClientRect().right > card.right + 1).length;
+		});
+		expect(spill).toBe(0);
+	}
 	await expect(page.getByRole('link', { name: 'Settings' }).last()).toHaveAttribute('href', '/settings#units');
 	await page.getByRole('button', { name: 'Use 143 ppm' }).click();
 	await expect(gh).toHaveValue('143');
@@ -37,7 +46,7 @@ test('hardness in degrees or ppm, with a nudge for drops typed as ppm', async ({
 
 	// a small 7 is 7 drops
 	await gh.fill('7');
-	await expect(page.getByText('Counted drops? 7 drops are about 125 ppm (× 17.9).')).toBeVisible();
+	await expect(page.getByText('Counted drops? 7 drops are about 125 ppm (×\u00a017.9).')).toBeVisible();
 	await page.getByRole('button', { name: 'Use 125 ppm' }).click();
 	await expect(gh).toHaveValue('125');
 	await expect(page.getByRole('button', { name: /^Use \d+ ppm$/ })).toHaveCount(0);

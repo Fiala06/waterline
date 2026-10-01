@@ -9,8 +9,9 @@ How to write a line:
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
-## Unreleased
+## 1.8.8 · 2026-10-01
 
+- **The water test fits its window:** On a computer, the second column of the water test (Ammonia, Nitrate, KH…) no longer runs past the window's edge when a reading shows its status.
 - **Drops to ppm in one tap:** With hardness in ppm, a GH or KH on the water test that looks like a drop count, such as 7, or 80 for 8 drops × 10, offers the ppm it comes to (× 17.9) as a Use 125 ppm button. What you typed stays until you tap it. Change hardness in [Settings › Units](/settings#units).
 
 ## 1.8.7 · 2026-09-30

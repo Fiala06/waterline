@@ -33,8 +33,10 @@ test('a pushed reminder shows as a notification with Mark done and Snooze', asyn
 	};
 	await cdp.send('ServiceWorker.deliverPushMessage', { origin: new URL(page.url()).origin, registrationId: await registration, data: JSON.stringify(notice) });
 
+	// the push comes through the browser's own service; with every other test running, give it a while
 	await expect
-		.poll(() =>
+		.poll(
+			() =>
 			page.evaluate(async () =>
 				(await (await navigator.serviceWorker.ready).getNotifications()).map((n) => ({
 					title: n.title,
@@ -42,7 +44,8 @@ test('a pushed reminder shows as a notification with Mark done and Snooze', asyn
 					tag: n.tag,
 					actions: (n as Notification & { actions: { title: string }[] }).actions.map((a) => a.title)
 				}))
-			)
+			),
+			{ timeout: 15_000 }
 		)
 		.toEqual([{ title: 'Due today: Water change', body: 'Riverbed 40', tag: 'task-1', actions: ['Mark done', 'Snooze'] }]);
 });
