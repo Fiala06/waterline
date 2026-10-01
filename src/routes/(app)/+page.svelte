@@ -60,6 +60,8 @@
 	const hasReadings = $derived(cards.some((c) => c.value != null));
 	// Refresh (1c): what needs attention (out of range, then near a limit), what's fine, what's never been tested
 	const attention = $derived([...cards.filter((c) => c.level === 'bad'), ...cards.filter((c) => c.level === 'warn')]);
+	// the fun bits only when nothing's out of range or overdue
+	const calm = $derived(!cards.some((c) => c.level === 'bad') && !(data.tasks ?? []).some((t) => t.due < (data.today ?? '')));
 	const inRange = $derived(cards.filter((c) => c.level === 'ok'));
 	const untested = $derived(cards.filter((c) => c.level === 'none').map((c) => c.fullName));
 
@@ -130,7 +132,12 @@
 					{#if attention.length || wcDue}
 						<AttentionList items={attention} wc={wcDue} when={data.latestWhen} />
 					{/if}
-					<InRangeList items={inRange} {untested} total={cards.length - untested.length} />
+					{#if calm && data.cheers.milestones.length}
+						<ul class="card milestones" aria-label="Milestones">
+							{#each data.cheers.milestones as m (m.key)}<li>{m.text}</li>{/each}
+						</ul>
+					{/if}
+					<InRangeList items={inRange} {untested} total={cards.length - untested.length} streak={calm ? data.cheers.streak : null} />
 
 					<section class="stack trends">
 						<div class="section-head">
@@ -218,7 +225,7 @@
 							compact
 							icon="maintenance"
 							title="Nothing due"
-							text="Set up reminders for water changes and upkeep."
+							text="The fish approve. Set up reminders for water changes and upkeep."
 							href="/tasks/new?tank={data.tank.id}"
 							label="New task"
 						/>
@@ -546,5 +553,18 @@
 			height: auto;
 			min-height: 240px;
 		}
+	}
+	/* a milestone: the tank's birthday, a pet's anniversary, a round number of tests */
+	.milestones {
+		list-style: none;
+		margin: 0;
+		padding: 12px 16px;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		font-size: 15px;
+		font-weight: 600;
+		border-color: var(--accent);
+		background: var(--selected);
 	}
 </style>

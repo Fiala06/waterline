@@ -15,7 +15,7 @@
 		<EmptyState
 			icon="maintenance"
 			title="No spending logged yet"
-			text="Log what you spend on this tank: livestock, plants, equipment and consumables, with a receipt if you like."
+			text="Your wallet says thanks… for now. Log what you spend on this tank: livestock, plants, equipment and consumables, with a receipt if you like."
 			href="{base}/spending/new"
 			label="Add expense"
 			primary

@@ -12,7 +12,18 @@
 		/** "ppm", "°F"; empty for pH */
 		unit: string;
 	}
-	let { items, untested, total }: { items: Item[]; untested: string[]; total: number } = $props();
+	let {
+		items,
+		untested,
+		total,
+		streak = null
+	}: {
+		items: Item[];
+		untested: string[];
+		total: number;
+		/** "Ammonia and nitrite at 0 for 6 tests. The bacteria are clocking in." */
+		streak?: string | null;
+	} = $props();
 </script>
 
 <section class="in-range" aria-labelledby="in-range-h">
@@ -32,6 +43,7 @@
 			{/each}
 		</ul>
 	{/if}
+	{#if streak}<p class="streak"><span class="bug" aria-hidden="true">🦠</span>{streak}</p>{/if}
 	{#if untested.length}<p class="untested">Not tested: {untested.join(', ')}</p>{/if}
 </section>
 
@@ -105,6 +117,14 @@
 		a:hover .k {
 			color: var(--accent);
 		}
+	}
+	.bug {
+		margin-right: 6px;
+	}
+	.streak {
+		margin: 6px 0 0;
+		font-size: 14px;
+		color: var(--text-2);
 	}
 	.untested {
 		margin: 6px 0 0;

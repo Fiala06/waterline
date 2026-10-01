@@ -2,6 +2,7 @@
 	// Dashboard task rows with Mark done. Mark done on a water-change or test
 	// task opens the matching log form instead.
 	import { enhance } from '$app/forms';
+	import { markDone } from '$lib/splash';
 	import { page } from '$app/state';
 	import { amountText, dueInfo, intervalText } from '$lib/tasks';
 	import { fmtDate } from '$lib/time';
@@ -35,7 +36,7 @@
 					<div class="name">{t.name}</div>
 					<div class="due data-meta {d.days > 0 ? 'plain' : `status-${d.level}`}">{when}{#if dose}<span class="plain">{` · ${dose}`}</span>{/if}</div>
 				</div>
-				<form method="POST" action="/tasks?/done" use:enhance>
+				<form method="POST" action="/tasks?/done" use:enhance={markDone}>
 					<input type="hidden" name="taskId" value={t.id} />
 					<input type="hidden" name="from" value={from} />
 					<button class="btn" class:btn-primary={i === 0 && d.days <= 0}>Mark done</button>

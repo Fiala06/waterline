@@ -1047,3 +1047,89 @@ select.input:disabled {
 		transition: none !important;
 	}
 }
+
+/* Mark done: a check pops where the button was and a few drops splash out ($lib/splash.ts) */
+.splash {
+	position: fixed;
+	z-index: 1000;
+	width: 0;
+	height: 0;
+	pointer-events: none;
+}
+.splash-ring {
+	position: absolute;
+	left: -22px;
+	top: -22px;
+	width: 44px;
+	height: 44px;
+	border-radius: 50%;
+	border: 2px solid var(--accent);
+	animation: splash-ring 0.7s ease-out forwards;
+}
+.splash-check {
+	position: absolute;
+	left: -16px;
+	top: -16px;
+	width: 32px;
+	height: 32px;
+	padding: 4px;
+	border-radius: 50%;
+	background: var(--accent);
+	fill: none;
+	stroke: var(--on-accent, #fff);
+	stroke-width: 3;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	animation: splash-check 0.8s ease-out forwards;
+}
+.splash-drop {
+	position: absolute;
+	left: -3px;
+	top: -4px;
+	width: 6px;
+	height: 8px;
+	border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+	background: var(--accent);
+	transform: rotate(var(--a)) translateY(0);
+	animation: splash-drop 0.75s cubic-bezier(0.2, 0.7, 0.4, 1) forwards;
+}
+@keyframes splash-ring {
+	from {
+		transform: scale(0.5);
+		opacity: 0.9;
+	}
+	to {
+		transform: scale(1.9);
+		opacity: 0;
+	}
+}
+@keyframes splash-check {
+	0% {
+		transform: scale(0.2);
+		opacity: 0;
+	}
+	30% {
+		transform: scale(1.15);
+		opacity: 1;
+	}
+	45% {
+		transform: scale(1);
+	}
+	75% {
+		opacity: 1;
+	}
+	100% {
+		transform: translateY(-10px) scale(0.9);
+		opacity: 0;
+	}
+}
+@keyframes splash-drop {
+	from {
+		opacity: 1;
+		transform: rotate(var(--a)) translateY(-8px) scale(1);
+	}
+	to {
+		opacity: 0;
+		transform: rotate(var(--a)) translateY(-40px) scale(0.6);
+	}
+}

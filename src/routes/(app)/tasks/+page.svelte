@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { markDone } from '$lib/splash';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { hscroll } from '$lib/actions';
@@ -90,7 +91,7 @@
 
 		{#if !data.tasks.length}
 			<div class="empty">
-				<EmptyState icon="maintenance" title="Nothing due" text="Set up reminders for water changes and upkeep.">
+				<EmptyState icon="maintenance" title="Nothing due" text="The fish approve. Set up reminders for water changes and upkeep.">
 					<a class="btn" href={data.filter ? `/tasks/new?tank=${data.filter}` : '/tasks/new'} onclick={(e) => openEdit(e, null)}>New task</a>
 				</EmptyState>
 			</div>
@@ -109,7 +110,7 @@
 							<span class="d-int hide-phone">{cap(every(t))}</span>
 						</a>
 						<div class="oactions">
-							<form method="POST" action="/tasks?/done" use:enhance class="grow">
+							<form method="POST" action="/tasks?/done" use:enhance={markDone} class="grow">
 								<input type="hidden" name="taskId" value={t.id} />
 								<input type="hidden" name="from" value={from} />
 								<button class="btn btn-primary mark">Mark done</button>
@@ -148,7 +149,7 @@
 									<span class="d-tank hide-phone">{tankNames[t.tankId]}</span>
 									<span class="d-int hide-phone">{cap(every(t))}</span>
 								</a>
-								<form method="POST" action="/tasks?/done" use:enhance>
+								<form method="POST" action="/tasks?/done" use:enhance={markDone}>
 									<input type="hidden" name="taskId" value={t.id} />
 									<input type="hidden" name="from" value={from} />
 									<button class="check" class:primary={d.days <= 0} aria-label="Mark {t.name} done"><span class="d-label">Mark done</span></button>

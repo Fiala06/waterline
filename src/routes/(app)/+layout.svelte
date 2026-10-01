@@ -307,7 +307,7 @@
 		{#if !ui.online || waiting}
 			<div class="offline" role="status">
 				<strong>{ui.online ? '' : 'Offline'}{!ui.online && waiting ? ' · ' : ''}{waiting ? `${waiting} entr${waiting === 1 ? 'y' : 'ies'} waiting` : ''}</strong>
-				<span>{ui.online ? 'Syncing…' : waiting ? "Saved on this phone. They'll sync when you're back online." : "New entries are saved on this phone until you're back online."}</span>
+				<span>{ui.online ? 'Syncing…' : waiting ? "Saved on this phone. They'll sync when you're back on dry land." : "New entries are saved on this phone until you're back on dry land."}</span>
 			</div>
 		{/if}
 		<main class:with-tabs={showTabs} class:with-fab={showFab} aria-busy={slow}>

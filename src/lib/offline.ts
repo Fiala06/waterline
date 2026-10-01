@@ -117,7 +117,7 @@ export function queueable(o: {
 			}
 			o.onsaved?.();
 			try {
-				sessionStorage.setItem('wl_toast', "Saved on this phone. It'll sync when you're back online.");
+				sessionStorage.setItem('wl_toast', "You're offline. Saved, and it'll sync when you're back on dry land.");
 			} catch {
 				/* storage blocked */
 			}

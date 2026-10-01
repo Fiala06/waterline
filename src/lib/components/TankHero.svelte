@@ -221,9 +221,25 @@
 		flex-shrink: 0;
 		padding-bottom: 2px;
 	}
+	/* the waterline: a slow ripple across the accent's fade (still for reduced motion) */
 	.waterline {
-		height: 2px;
+		height: 8px;
+		margin: -3px 0;
 		background: var(--waterline);
+		-webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='8' viewBox='0 0 48 8'%3E%3Cpath d='M0 4 Q12 1 24 4 T48 4' fill='none' stroke='%23000' stroke-width='2'/%3E%3C/svg%3E") 0 50% / 48px 8px repeat-x;
+		mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='8' viewBox='0 0 48 8'%3E%3Cpath d='M0 4 Q12 1 24 4 T48 4' fill='none' stroke='%23000' stroke-width='2'/%3E%3C/svg%3E") 0 50% / 48px 8px repeat-x;
+		animation: ripple 7s linear infinite;
+	}
+	@keyframes ripple {
+		to {
+			-webkit-mask-position: 48px 50%;
+			mask-position: 48px 50%;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.waterline {
+			animation: none;
+		}
 	}
 	@media (min-width: 1024px) {
 		.hero {

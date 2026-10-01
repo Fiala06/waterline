@@ -1,4 +1,5 @@
-import { eq, lte, sql } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, lte, sql } from 'drizzle-orm';
+import { MIN_STREAK, petAnniversaries, streakText, tankMilestone, testMilestone, zeroStreak } from '$lib/cheers';
 import { whatsNewCard } from '$lib/changelog';
 import { bySpecies, livestockLabel } from '$lib/livestock';
 import { eventIcon, eventKindLabel, eventTitle } from '$lib/events';
@@ -105,12 +106,43 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		equipment: listEquipment(user.id, tank.id).map(equipmentName)
 	};
 
+	// a bit of fun when things are going well (the page shows it only while nothing needs attention)
+	const zeroIds = params.filter((p) => p.key === 'nh3' || p.key === 'no2');
+	let streak: string | null = null;
+	if (zeroIds.length === 2) {
+		const rows = db
+			.select({ testId: tests.id, parameterId: testReadings.parameterId, value: testReadings.value })
+			.from(testReadings)
+			.innerJoin(tests, eq(tests.id, testReadings.testId))
+			.where(and(eq(tests.tankId, tank.id), inArray(testReadings.parameterId, zeroIds.map((p) => p.id))))
+			.orderBy(desc(tests.takenAt))
+			.limit(400)
+			.all();
+		const byTest = new Map<string, { nh3?: number; no2?: number }>();
+		for (const r of rows) {
+			const key = zeroIds.find((p) => p.id === r.parameterId)!.key as 'nh3' | 'no2';
+			byTest.set(r.testId, { ...byTest.get(r.testId), [key]: r.value });
+		}
+		const n = zeroStreak([...byTest.values()]);
+		if (n >= MIN_STREAK) streak = streakText(n);
+	}
+	const testCount = db.select({ n: count() }).from(tests).where(eq(tests.tankId, tank.id)).get()?.n ?? 0;
+	const milestones = [
+		tankMilestone(tank.name, tank.startDate, today),
+		...petAnniversaries(
+			inTank.filter((l) => l.nickname).map((l) => ({ name: l.nickname!, added: l.addedAt })),
+			today
+		),
+		testMilestone(testCount, latestAt ? dateInZone(latestAt, tz) : null, today)
+	].filter((m) => m != null);
+
 	// once after an update: what's new since the version last seen, by name,
 	// each with its feature's page when the line links one
 	const whatsNew = whatsNewCard(user.seenVersion);
 
 	return {
 		whatsNew,
+		cheers: { streak, milestones },
 		contents,
 		tank: {
 			id: tank.id,

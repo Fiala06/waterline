@@ -9,6 +9,14 @@ How to write a line:
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
+## Unreleased
+
+- **A living waterline:** The line under the tank's photo on the [dashboard](/) ripples, slowly.
+- **Charts that draw themselves:** Trend lines on the [dashboard](/) and in [Charts](/charts) draw in the first time you see them, and water changes on the timeline are little drops.
+- **A splash for Mark done:** Finishing a task on [Tasks](/tasks) or the dashboard gets a quick check and a splash.
+- **Good news, out loud:** When nothing needs attention, the [dashboard](/) celebrates: ammonia and nitrite at 0 for a run of tests, the tank's 100th day and birthdays, a pet's anniversary with you, and round numbers of water tests.
+- **A little humour:** Empty pages wink at you, a missing page has a fish that swam off, and being offline means waiting to be back on dry land. The animations stay still when your device is set to reduce motion.
+
 ## 1.8.8 · 2026-10-01
 
 - **The water test fits its window:** On a computer, the second column of the water test (Ammonia, Nitrate, KH…) no longer runs past the window's edge when a reading shows its status.

@@ -204,6 +204,23 @@
 		window.addEventListener('pointerdown', away);
 		return () => window.removeEventListener('pointerdown', away);
 	});
+	// the line draws itself the first time the chart is in view; one below the
+	// fold waits for it (without scripts, or with reduced motion, it's simply there)
+	let waiting = $state(false);
+	$effect(() => {
+		if (!el || typeof IntersectionObserver === 'undefined') return;
+		const box = el.getBoundingClientRect();
+		if (box.top < innerHeight && box.bottom > 0) return;
+		waiting = true;
+		const io = new IntersectionObserver((seen) => {
+			if (seen.some((e) => e.isIntersecting)) {
+				waiting = false;
+				io.disconnect();
+			}
+		});
+		io.observe(el);
+		return () => io.disconnect();
+	});
 	// another series (a different parameter or range): start over
 	$effect(() => {
 		void points;
@@ -212,7 +229,7 @@
 </script>
 
 <!-- the slider is the plot; the markers are beside it, not inside, so each is its own control -->
-<div class="chart" class:fit bind:this={el} bind:clientWidth={width} bind:clientHeight={measured}>
+<div class="chart" class:fit class:waiting bind:this={el} bind:clientWidth={width} bind:clientHeight={measured}>
 	<div
 		class="plot"
 		role="slider"
@@ -252,12 +269,13 @@
 				></line>
 			{/each}
 			{#if hot}<line x1={x(hot.t)} x2={x(hot.t)} y1={TOP} y2={h - BOTTOM} class="guide"></line>{/if}
-			<polyline points={line} fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"></polyline>
+			<polyline class="trace" pathLength="1" points={line} fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"></polyline>
 			{#if full}
 				{#each points as p, i (i)}<circle cx={x(p.t)} cy={y(p.v)} r="2.5" fill="var(--accent)"></circle>{/each}
 			{/if}
 			{#if last}
 				<circle
+					class="last-dot"
 					cx={x(last.t)}
 					cy={y(last.v)}
 					r="4.5"
@@ -294,6 +312,7 @@
 				type="button"
 				class="marker"
 				class:dosing={m.kind === 'dosing'}
+				class:drop={m.kind === 'water_change'}
 				class:chosen={m.href === selected}
 				style:left="{x(m.t)}px"
 				style:top="{TOP - 10}px"
@@ -303,7 +322,7 @@
 				onclick={() => onselect(m)}
 			></button>
 		{:else}
-			<a class="marker" class:dosing={m.kind === 'dosing'} href={m.href} style:left="{x(m.t)}px" style:top="{TOP - 10}px" style:--tap="{tapWidth[i]}px" title={m.label} aria-label="{m.label}, {fmt(m.t)}"></a>
+			<a class="marker" class:dosing={m.kind === 'dosing'} class:drop={m.kind === 'water_change'} href={m.href} style:left="{x(m.t)}px" style:top="{TOP - 10}px" style:--tap="{tapWidth[i]}px" title={m.label} aria-label="{m.label}, {fmt(m.t)}"></a>
 		{/if}
 	{/each}
 	{#if chosen && popover}
@@ -432,6 +451,50 @@
 	.marker.dosing::before {
 		border-radius: 3px;
 		transform: rotate(45deg) scale(0.85);
+	}
+	/* a water change is a drop of water, point up */
+	.marker.drop::before {
+		border-radius: 50% 0 50% 50%;
+		transform: translateY(1px) rotate(-45deg);
+	}
+	/* the reading line draws itself in, then the latest reading pops up */
+	.trace {
+		stroke-dasharray: 1;
+		animation: draw 1.1s cubic-bezier(0.3, 0.6, 0.3, 1) both;
+	}
+	.last-dot {
+		transform-box: fill-box;
+		transform-origin: center;
+		animation: pop 0.35s ease-out 1s both;
+	}
+	.waiting .trace,
+	.waiting .last-dot {
+		animation-play-state: paused;
+	}
+	@keyframes draw {
+		from {
+			stroke-dashoffset: 1;
+		}
+		to {
+			stroke-dashoffset: 0;
+		}
+	}
+	@keyframes pop {
+		from {
+			transform: scale(0);
+		}
+		70% {
+			transform: scale(1.3);
+		}
+		to {
+			transform: scale(1);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.trace,
+		.last-dot {
+			animation: none;
+		}
 	}
 	.marker:hover::before,
 	.marker:focus-visible::before,

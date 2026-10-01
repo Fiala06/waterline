@@ -9,7 +9,7 @@
 		status === 404
 			? isPublic
 				? "This page isn't available"
-				: 'Page not found'
+				: 'This page swam off.'
 			: status === 403
 				? "You can't do that here"
 				: status === 410
@@ -25,6 +25,8 @@
 				? 'Please try again. If it keeps happening, the server log has the details.'
 				: (page.error?.message ?? '')
 	);
+	// a page of the app that isn't there: its fish has left the tank
+	const swamOff = $derived(status === 404 && !isPublic);
 	// what went wrong is in the log under this reference
 	const ref = $derived(status >= 500 ? page.error?.ref : undefined);
 </script>
@@ -32,7 +34,19 @@
 <svelte:head><title>{title} · Waterline</title></svelte:head>
 
 <main class="err">
-	<Logo size={56} />
+	{#if swamOff}
+		<div class="tank" aria-hidden="true">
+			<span class="water"></span>
+			<span class="bubble b1"></span><span class="bubble b2"></span>
+			<svg class="fish" viewBox="0 0 64 36">
+				<path d="M44 18c0 7-10 14-22 14S2 25 2 18 10 4 22 4s22 7 22 14z" />
+				<path d="M42 18 62 5v26z" />
+				<circle cx="13" cy="15" r="2.6" class="eye" />
+			</svg>
+		</div>
+	{:else}
+		<Logo size={56} />
+	{/if}
 	<p class="code mono">{status}</p>
 	<h1>{title}</h1>
 	{#if detail}<p class="muted">{detail}</p>{/if}
@@ -57,6 +71,82 @@
 	.ref .mono {
 		color: var(--text-muted);
 		user-select: all;
+	}
+	/* 404: a tank whose fish is on its way out of the frame */
+	.tank {
+		position: relative;
+		width: 168px;
+		height: 104px;
+		border-radius: 20px;
+		border: 3px solid var(--text);
+		overflow: hidden;
+	}
+	.water {
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		height: 62%;
+		background: var(--accent);
+		opacity: 0.35;
+	}
+	.fish {
+		position: absolute;
+		left: 64px;
+		top: 40px;
+		width: 56px;
+		fill: var(--accent);
+		animation: swim-off 2.8s ease-in 0.4s forwards;
+	}
+	.fish .eye {
+		fill: var(--bg);
+	}
+	.bubble {
+		position: absolute;
+		width: 7px;
+		height: 7px;
+		border-radius: 50%;
+		border: 1.5px solid var(--text-muted);
+		opacity: 0;
+		animation: rise 2.4s ease-out infinite;
+	}
+	.b1 {
+		left: 120px;
+		top: 60px;
+	}
+	.b2 {
+		left: 104px;
+		top: 70px;
+		animation-delay: 1.1s;
+	}
+	@keyframes swim-off {
+		30% {
+			transform: translate(10px, -3px);
+		}
+		100% {
+			transform: translate(-150px, 6px);
+		}
+	}
+	@keyframes rise {
+		15% {
+			opacity: 0.9;
+		}
+		100% {
+			opacity: 0;
+			transform: translateY(-46px);
+		}
+	}
+	/* no motion: the fish half out of the frame, mid-escape */
+	@media (prefers-reduced-motion: reduce) {
+		.fish {
+			animation: none;
+			transform: translateX(-84px);
+		}
+		.bubble {
+			animation: none;
+			opacity: 0.7;
+			transform: translateY(-20px);
+		}
 	}
 	.err {
 		min-height: 100dvh;

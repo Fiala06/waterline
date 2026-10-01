@@ -51,7 +51,7 @@
 			<EmptyState
 				icon="livestock"
 				title="No livestock yet"
-				text="Add fish, shrimp, snails and corals. The species list works offline; custom names are fine."
+				text="Just you and the bacteria. Add fish, shrimp, snails and corals. The species list works offline; custom names are fine."
 				href="{base}/livestock/new"
 				label="Add livestock"
 				primary
