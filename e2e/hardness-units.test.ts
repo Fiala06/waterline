@@ -26,13 +26,23 @@ test('hardness in degrees or ppm, with a nudge for drops typed as ppm', async ({
 	await expect(page.getByText('Last 107 ·').first()).toBeVisible();
 	await expect(page.getByText('1 drop = 1°')).toHaveCount(0);
 
-	// 80 ppm reads like 8 drops × 10
+	// 80 ppm reads like 8 drops × 10: one tap makes it ppm
 	await gh.fill('80');
-	const nudge = page.getByText('Entering drops? Switch hardness to degrees in Settings, or multiply by 17.9.');
+	const nudge = page.getByText('80 looks like 8 drops × 10. 8 drops are about 143 ppm (× 17.9).');
 	await expect(nudge).toBeVisible();
-	await expect(nudge.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings#units');
-	await gh.fill('143');
+	await expect(page.getByRole('link', { name: 'Settings' }).last()).toHaveAttribute('href', '/settings#units');
+	await page.getByRole('button', { name: 'Use 143 ppm' }).click();
+	await expect(gh).toHaveValue('143');
 	await expect(nudge).toHaveCount(0);
-	await gh.fill('10');
-	await expect(nudge).toHaveCount(0);
+
+	// a small 7 is 7 drops
+	await gh.fill('7');
+	await expect(page.getByText('Counted drops? 7 drops are about 125 ppm (× 17.9).')).toBeVisible();
+	await page.getByRole('button', { name: 'Use 125 ppm' }).click();
+	await expect(gh).toHaveValue('125');
+	await expect(page.getByRole('button', { name: /^Use \d+ ppm$/ })).toHaveCount(0);
+
+	// what looks like ppm is left alone, and can be saved as typed
+	await gh.fill('54');
+	await expect(page.getByRole('button', { name: /^Use \d+ ppm$/ })).toHaveCount(0);
 });

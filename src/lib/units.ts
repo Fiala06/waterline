@@ -24,6 +24,18 @@ export const inToCm = (inch: number) => inch * CM_PER_IN;
 export const dghToPpm = (dgh: number) => dgh * PPM_PER_DGH;
 export const ppmToDgh = (ppm: number) => ppm / PPM_PER_DGH;
 
+/**
+ * A GH or KH typed in ppm that looks like a drop count instead: a small number
+ * (7 is 7 drops, not 7 ppm) or a round one (80 is 8 drops × 10). The ppm those
+ * drops are, whole, for the form to offer; null when it looks like ppm.
+ */
+export function dropsAsPpm(v: number | null): { drops: number; ppm: number; times10: boolean } | null {
+	if (v == null || !Number.isFinite(v)) return null;
+	if (v >= 1 && v < 20 && Number.isInteger(v * 2)) return { drops: v, ppm: Math.round(dghToPpm(v)), times10: false };
+	if (v >= 20 && v <= 300 && v % 10 === 0) return { drops: v / 10, ppm: Math.round(dghToPpm(v / 10)), times10: true };
+	return null;
+}
+
 /** Stored (metric/dGH) value → the user's display unit. */
 export function toDisplay(value: number, q: Quantity, prefs: UnitPrefs): number {
 	const imperial = prefs.unitSystem === 'imperial';

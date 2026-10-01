@@ -17,7 +17,7 @@
 	import WaterChangeFields from './WaterChangeFields.svelte';
 	import { WATER_SOURCES } from '$lib/events';
 	import { paramStatus, statusIcon, statusLong, statusMedium } from '$lib/status';
-	import { parseNumber } from '$lib/units';
+	import { dropsAsPpm, parseNumber } from '$lib/units';
 	import { whenLabel, type When } from '$lib/time';
 
 	interface Param {
@@ -124,9 +124,9 @@
 			// GH and KH: drop kits count degrees, 1 drop = 1°
 			const hard = p.key === 'gh' || p.key === 'kh';
 			const degrees = hard && /^d[GK]H$/.test(p.unit);
-			// in ppm, a round 20, 30… reads like drops × 10 (a degree is ~17.9 ppm)
-			const dropsHint = hard && !degrees && v != null && v >= 20 && v % 10 === 0;
-			return { ...p, raw, v, st, was, lastValue, lastDate, degrees, dropsHint };
+			// in ppm, a small 7 or a round 80 reads like drops (a degree is ~17.9 ppm): offer the ppm
+			const drops = hard && !degrees ? dropsAsPpm(v) : null;
+			return { ...p, raw, v, st, was, lastValue, lastDate, degrees, drops };
 		})
 	);
 	const filled = $derived(rows.filter((r) => r.v != null).length);
@@ -356,9 +356,15 @@
 							<div class="msg st-msg status-{r.st.level}" class:quiet={r.st.level === 'ok'} id="s_{r.id}">{statusLong(r.st, r.rangeText)}</div>
 						{/if}
 						{#if fieldErrors[r.id]}<div class="msg status-bad">✕ {fieldErrors[r.id]}</div>{/if}
-						{#if r.dropsHint}
-							<div class="msg hard-hint" aria-live="polite">
-								Entering drops? Switch hardness to degrees in <a href="/settings#units">Settings</a>, or multiply by 17.9.
+						{#if r.drops}
+							{@const d = r.drops}
+							<div class="msg hard-hint drops" aria-live="polite">
+								<span
+									>{d.times10 ? `${r.raw} looks like ${d.drops} drops × 10. ` : 'Counted drops? '}{d.drops}
+									{d.drops === 1 ? 'drop is' : 'drops are'} about {d.ppm} ppm (× 17.9).</span
+								>
+								<button type="button" class="btn use-ppm" onclick={() => (draft[r.id] = String(d.ppm))}>Use {d.ppm} ppm</button>
+								<span class="or">Or switch hardness to degrees in <a href="/settings#units">Settings</a>.</span>
 							</div>
 						{:else if r.degrees && r.v == null}
 							<div class="msg hard-hint">1 drop = 1° on API/JBL/Tetra kits.</div>
@@ -696,6 +702,25 @@
 	}
 	.msg.hard-hint a {
 		font-weight: 600;
+	}
+	/* "8 drops are about 143 ppm" and its one-tap fix */
+	.msg.drops {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 6px 10px;
+		margin-top: 4px;
+		text-align: left;
+		font-weight: 500;
+	}
+	.use-ppm {
+		min-height: 44px;
+		padding: 0 14px;
+		font-size: 14px;
+	}
+	.drops .or {
+		flex-basis: 100%;
+		font-size: 12px;
 	}
 	.msg.quiet {
 		position: absolute;

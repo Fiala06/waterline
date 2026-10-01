@@ -9,6 +9,10 @@ How to write a line:
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
+## Unreleased
+
+- **Drops to ppm in one tap:** With hardness in ppm, a GH or KH on the water test that looks like a drop count, such as 7, or 80 for 8 drops × 10, offers the ppm it comes to (× 17.9) as a Use 125 ppm button. What you typed stays until you tap it. Change hardness in [Settings › Units](/settings#units).
+
 ## 1.8.7 · 2026-09-30
 
 - **Hardness from drop kits:** With hardness in degrees ([Settings › Units](/settings#units)), GH and KH on the water test say "1 drop = 1° on API/JBL/Tetra kits", and readings show to a tenth (8.4 dGH from a ppm reading). With hardness in ppm, a round 80 or 90 gets a gentle "Entering drops?" hint, since a degree is about 17.9 ppm, not 10.

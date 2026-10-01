@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	cToF,
 	dghToPpm,
+	dropsAsPpm,
 	formatNumber,
 	fToC,
 	galToL,
@@ -111,5 +112,20 @@ describe('parseNumber', () => {
 		expect(parseNumber('abc')).toBeNull();
 		expect(parseNumber(null)).toBeNull();
 		expect(parseNumber(undefined)).toBeNull();
+	});
+});
+
+describe('dropsAsPpm (hardness typed in ppm that looks like drops)', () => {
+	it('reads a small number as drops', () => {
+		expect(dropsAsPpm(7)).toEqual({ drops: 7, ppm: 125, times10: false });
+		expect(dropsAsPpm(1)).toEqual({ drops: 1, ppm: 18, times10: false });
+		expect(dropsAsPpm(4.5)).toEqual({ drops: 4.5, ppm: 80, times10: false });
+	});
+	it('reads a round number as drops × 10', () => {
+		expect(dropsAsPpm(80)).toEqual({ drops: 8, ppm: 143, times10: true });
+		expect(dropsAsPpm(20)).toEqual({ drops: 2, ppm: 36, times10: true });
+	});
+	it('leaves what looks like ppm alone', () => {
+		for (const v of [null, 0, 0.5, 7.3, 54, 143, 161, 400]) expect(dropsAsPpm(v), String(v)).toBeNull();
 	});
 });
