@@ -9,7 +9,7 @@ How to write a line:
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
-## Unreleased
+## 1.9.1 · 2026-10-01
 
 - **Due, without the nudge:** On the [dashboard](/), a task that isn't due yet says how soon ("In 3 days", "Tomorrow") and its button is a quiet Done early, so only what's due today or overdue asks to be marked done.
 - **In range, one tile each:** On the [dashboard](/), each reading that's fine has its own tile, its name above its value, so they no longer run together.
