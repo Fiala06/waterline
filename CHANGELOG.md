@@ -9,7 +9,7 @@ How to write a line:
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
-## Unreleased
+## 1.9.0 · 2026-10-01
 
 - **A living waterline:** The line under the tank's photo on the [dashboard](/) ripples, slowly.
 - **Charts that draw themselves:** Trend lines on the [dashboard](/) and in [Charts](/charts) draw in the first time you see them, and water changes on the timeline are little drops.
