@@ -1,5 +1,6 @@
 // Task scheduling and due-state logic (shared by server and UI).
 import { addDays, daysBetween, fmtDate, isDate } from './time';
+import { reviewEvery } from './review';
 
 interface Schedulable {
 	recurring: boolean;
@@ -101,7 +102,7 @@ export function dueInfo(nextDue: string, today: string): DueInfo {
 }
 
 /** "every 7 days", "every 2 weeks", "Mon, Wed, Fri", "every day but Sun", "one-off" */
-export function intervalText(task: { recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null }): string {
+export function intervalText(task: { recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null; kind?: string }): string {
 	if (task.recurring && task.scheduleMode === 'weekdays') {
 		const days = parseWeekdays(task.weekdays);
 		if (days.length === 7) return 'every day';
@@ -112,6 +113,8 @@ export function intervalText(task: { recurring: boolean; intervalDays: number | 
 	}
 	if (!task.recurring || !task.intervalDays) return 'one-off';
 	const d = task.intervalDays;
+	// the setup review (#30) is set in months
+	if (task.kind === 'review' && reviewEvery(d)) return reviewEvery(d)!;
 	if (d % 7 === 0 && d >= 14) return `every ${d / 7} weeks`;
 	return d === 1 ? 'every day' : `every ${d} days`;
 }

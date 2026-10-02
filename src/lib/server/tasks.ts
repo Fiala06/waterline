@@ -3,7 +3,7 @@ import { and, desc, eq, isNotNull, isNull } from 'drizzle-orm';
 import { addDays, dateInZone, todayInZone } from '$lib/time';
 import { effectiveDue, isRoutine, nextDueAfterCompletion } from '$lib/tasks';
 import { db } from './db';
-import { events, taskCompletions, tanks, tasks, type Task } from './db/schema';
+import { events, taskCompletions, tanks, tasks, type Tank, type Task } from './db/schema';
 import { getTank } from './tanks';
 
 /** Open tasks (with a due date) across the user's active tanks, soonest first. */
@@ -100,6 +100,14 @@ export function undoCompletion(userId: string, completionId: string) {
 		tx.delete(taskCompletions).where(eq(taskCompletions.id, completionId)).run();
 		// a routine's dose or feeding was logged by Done: undoing takes it back out of History
 		if (isRoutine(row.task.kind) && row.c.eventId) tx.delete(events).where(eq(events.id, row.c.eventId)).run();
+		// a setup review (#30): its History entry goes, and the parts it checked are as they were
+		if (row.task.kind === 'review' && row.c.eventId) {
+			const entry = tx.select().from(events).where(eq(events.id, row.c.eventId)).get();
+			if (entry?.data.system === 'setup_reviewed') {
+				tx.update(tanks).set({ reviewChecks: (entry.data.prev_checks ?? {}) as Tank['reviewChecks'] }).where(eq(tanks.id, entry.tankId)).run();
+				tx.delete(events).where(eq(events.id, entry.id)).run();
+			}
+		}
 	});
 	return row.task;
 }

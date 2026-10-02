@@ -1,4 +1,4 @@
-import { fail } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import { effectiveDue, intervalText } from '$lib/tasks';
 import { addDays, fmtDate, todayInZone } from '$lib/time';
 import { consumeActionToken, readActionToken } from '$lib/server/action-tokens';
@@ -27,6 +27,8 @@ export const actions: Actions = {
 	default: ({ params }) => {
 		const { state, row } = readActionToken(params.token);
 		if (!row || state !== 'ok') return fail(410, { error: state });
+		// the setup review (#30) is done on its page, after checking: a Mark done link for one opens it
+		if (row.t.action === 'done' && row.task.kind === 'review') redirect(303, `/tanks/${row.task.tankId}/review`);
 		if (!consumeActionToken(params.token)) return fail(410, { error: 'used' });
 		const tz = row.user.timeZone;
 		if (row.t.action === 'done') {

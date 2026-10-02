@@ -8,12 +8,15 @@ import { db } from '$lib/server/db';
 import { publicPages } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { getTank, listParams, setArchived, updateTank } from '$lib/server/tanks';
+import { parseReviewEvery, REVIEW_INTERVALS } from '$lib/review';
+import { checkSection, reviewTask, setReviewEvery } from '$lib/server/review';
 import { todayInZone } from '$lib/time';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = ({ locals, params }) => {
+export const load: PageServerLoad = ({ locals, params, url }) => {
 	const user = locals.user!;
 	const tank = getTank(user.id, params.id);
+	const review = reviewTask(tank.id);
 	const all = listParams(tank.id, { all: true });
 	const tracked = all.filter((p) => p.tracked);
 	const v = (x: number | null, q: 'volume' | 'length', d: number) =>
@@ -46,6 +49,13 @@ export const load: PageServerLoad = ({ locals, params }) => {
 			custom: all.filter((p) => p.isCustom).length,
 			names: tracked.map((p) => p.name).join(', ')
 		},
+		// the setup review (#30): how often, or off; and whether Save goes back to it
+		review: {
+			every: review ? String(review.intervalDays) : 'off',
+			custom: review && !REVIEW_INTERVALS.some((r) => r.days === review.intervalDays) ? review.intervalDays : null,
+			due: review?.nextDue ?? null
+		},
+		fromReview: url.searchParams.get('from') === 'review',
 		publicLive: !!db.select().from(publicPages).where(eq(publicPages.tankId, tank.id)).get()?.enabled,
 		today: todayInZone(user.timeZone),
 		volUnit: unitLabel('volume', user),
@@ -69,7 +79,14 @@ export const actions: Actions = {
 		if (form.has('coverX') || form.has('coverY')) {
 			updateTank(user.id, params.id, { coverX: clampPct(form.get('coverX')), coverY: clampPct(form.get('coverY')) });
 		}
+		const every = parseReviewEvery(form.get('reviewEvery'));
+		if (every != null) setReviewEvery(user, params.id, every);
 		setFlash(cookies, '✓ Tank saved');
+		// from the setup review: saved means the details are right now, and back to it
+		if (form.get('from') === 'review') {
+			checkSection(user.id, params.id, 'details');
+			redirect(303, `/tanks/${params.id}/review#details`);
+		}
 		redirect(303, `/tanks/${params.id}/settings`); // stay on the tab, like the other tank tabs
 	},
 	archive: async ({ locals, params, cookies }) => {

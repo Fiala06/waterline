@@ -24,7 +24,9 @@ tanks            id, user_id, name, type(freshwater|planted|brackish|reef),
                  nominal_volume_l?, actual_volume_l?, length_cm?, width_cm?, height_cm?,
                  start_date?, notes?, cover_photo_id?, cover_x, cover_y (the cover's focus, 0–100,
                  50 50 the middle), spec_brand?, spec_model?, glass?,
-                 substrate?, water_source?, photoperiod_h?, archived_at?, created_at
+                 substrate?, water_source?, photoperiod_h?, review_checks JSON (the setup
+                 review: when each part was last checked, {details, equipment, targets,
+                 livestock}), archived_at?, created_at
 tank_parameters  id, tank_id, key (ph|nh3|no2|no3|gh|kh|temp|… or custom), name, unit,
                  decimals, min?, max?, tracked, sort, is_custom
 
@@ -45,11 +47,16 @@ events           id, tank_id, category(water_change|dosing|maintenance|livestock
                  -- equipment {action: installed|replaced|adjusted|removed, equipment_id,
                  --            changes:{field:[old,new]}}
                  -- observation {tags:[...], recheck_at?}
+                 -- note {system: tank_created|tank_archived|tank_restored} (the tank's own)
+                 -- note {system: setup_reviewed, changed:[parts], prev_checks} (All still
+                 --       right on the setup review; prev_checks lets Undo put the checks back)
 photos           id, tank_id, event_id?, test_id?, path, thumb_path, width, height, taken_at
 photo_livestock  photo_id, livestock_id (pets tagged in a photo)
 
 ── Tasks ──────────────────────────────────────────────────────────────────────
-tasks            id, tank_id, name, kind(water_change|test|maintenance|other|dosing|feeding),
+tasks            id, tank_id, name, kind(water_change|test|maintenance|other|dosing|feeding|
+                 review: the setup review, one per tank, every 30/91/182 days or none when off;
+                 done on its page, not by Mark done),
                  recurring, interval_days?, schedule_mode(completion|fixed|weekdays),
                  weekdays? ("1,3,5", 0 = Sunday), next_due?, snoozed_until?, equipment_id?,
                  open_form_on_done, product?, amount?, amount_unit? (a dosing or feeding

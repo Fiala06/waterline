@@ -30,6 +30,27 @@ describe('email templates', () => {
 		expect(r.text).toContain('Snooze 1 day: https://x/e/snooze');
 	});
 
+	it('E1 for the setup review: Review opens its page instead of Mark done', () => {
+		const r = taskEmail({
+			taskName: 'Review tank setup',
+			tankName: 'Riverbed 40',
+			when: 'Due today',
+			overdue: false,
+			dueDate: 'Fri, Jan 1',
+			repeats: 'Every 3 months',
+			doneUrl: 'https://x/tanks/t1/review',
+			review: true,
+			snoozeUrl: 'https://x/e/snooze',
+			dashboardUrl: 'https://x/',
+			footer
+		});
+		expect(r.preheader).toBe('Check the tank’s settings are still right, or snooze it.');
+		expect(r.html).toContain('href="https://x/tanks/t1/review"');
+		expect(r.html).toContain('>Review<');
+		expect(r.html).not.toContain('Mark done');
+		expect(r.text).toContain('Review: https://x/tanks/t1/review');
+	});
+
 	it('E2 overdue alert', () => {
 		const r = taskEmail({
 			taskName: 'Water change 25%',

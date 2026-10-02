@@ -77,6 +77,7 @@
 				'/(app)/tanks/[id]/livestock/several': 'Add several',
 				'/(app)/tanks/[id]/plants/several': 'Add several plants',
 				'/(app)/tanks/[id]/remind': 'Remind me',
+				'/(app)/tanks/[id]/review': 'Review tank setup',
 				'/(app)/tanks/[id]/spending/new': 'Add expense',
 				'/(app)/tanks/[id]/spending/[eid]': 'Edit expense',
 				'/(app)/tanks/[id]/targets': 'Parameters & targets',

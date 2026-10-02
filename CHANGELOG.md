@@ -9,6 +9,10 @@ How to write a line:
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
+## Unreleased
+
+- **Review tank setup:** Every 3 months, a Review tank setup task comes up in [Tasks](/tasks) and on the dashboard, in case something changed and wasn't updated: a new light timer, a heater swapped, fish rehomed. It shows the tank's details, equipment, target ranges, and livestock and plants, each with Still right or Edit. A filter or pump not serviced in 6 months gets a Serviced today button. All still right finishes it, with an entry in History. Change how often, or turn it off, in [the tank's settings](/tanks/current/settings#review).
+
 ## 1.9.1 · 2026-10-01
 
 - **Due, without the nudge:** On the [dashboard](/), a task that isn't due yet says how soon ("In 3 days", "Tomorrow") and its button is a quiet Done early, so only what's due today or overdue asks to be marked done.

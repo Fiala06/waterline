@@ -2,6 +2,7 @@
 import type { EventCategory } from './types';
 import { amountText } from './tasks';
 import { formatNumber, toDisplay, unitLabel, type UnitPrefs } from './units';
+import { reviewTitle } from './review';
 
 export const CATEGORY_LABEL: Record<EventCategory, string> = {
 	water_change: 'Water change',
@@ -148,6 +149,7 @@ export function eventTitle(e: EventLike, prefs: UnitPrefs): string {
 			if (d.system === 'tank_created') return `Tank created${d.type ? ` · ${cap(str(d.type))}` : ''}`;
 			if (d.system === 'tank_archived') return 'Tank archived';
 			if (d.system === 'tank_restored') return 'Tank restored';
+			if (d.system === 'setup_reviewed') return reviewTitle(d);
 			return firstLine(e.note) || 'Note';
 		}
 	}

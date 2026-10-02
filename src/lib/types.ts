@@ -19,7 +19,8 @@ export const EVENT_CATEGORIES = [
 export type EventCategory = (typeof EVENT_CATEGORIES)[number];
 
 // dosing and feeding are routines (#17): marking one done logs the dose or the feeding
-export const TASK_KINDS = ['water_change', 'test', 'maintenance', 'other', 'dosing', 'feeding'] as const;
+// review: the setup review every few months (#30), done on its own page
+export const TASK_KINDS = ['water_change', 'test', 'maintenance', 'other', 'dosing', 'feeding', 'review'] as const;
 export type TaskKind = (typeof TASK_KINDS)[number];
 
 /** What a spreadsheet can be imported as: a tank's lists, or kinds of History entry. */

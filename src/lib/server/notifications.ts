@@ -130,19 +130,24 @@ function badReadings(tankId: string, user: User) {
 		}));
 }
 
+/** The setup review (#30) is done on its page, so its Mark done is a link there. */
+const reviewUrl = (t: { tankId: string }, base: string) => `${base}/tanks/${t.tankId}/review`;
+
 /** A task's push notification, with Mark done and Snooze (one-time links, made only when it's sent). */
-function taskNotice(t: { id: string; name: string; tankId: string; tankName: string; nextDue: string | null }, days: number, lastDoneText: string | null, base: string): Notice {
+function taskNotice(t: { id: string; name: string; kind: string; tankId: string; tankName: string; nextDue: string | null }, days: number, lastDoneText: string | null, base: string): Notice {
 	const overdue = days < 0;
+	const review = t.kind === 'review';
+	const snooze = { action: 'snooze' as const, title: 'Snooze', url: `${base}/e/${createActionToken(t.id, 'snooze', t.nextDue!)}`, result: `Snoozed ${t.name} for a day` };
 	return {
 		kind: overdue ? 'overdue' : 'reminder',
 		title: `${whenText(days)}: ${t.name}`,
 		body: [t.tankName, lastDoneText && `Last done ${lastDoneText}`].filter(Boolean).join(' · '),
-		url: `${base}/?tank=${t.tankId}`,
+		// a review opens its page; there's nothing to mark done from the notification
+		url: review ? reviewUrl(t, base) : `${base}/?tank=${t.tankId}`,
 		tag: `task-${t.id}`,
-		actions: [
-			{ action: 'done', title: 'Mark done', url: `${base}/e/${createActionToken(t.id, 'done', t.nextDue!)}`, result: `✓ ${t.name} done` },
-			{ action: 'snooze', title: 'Snooze', url: `${base}/e/${createActionToken(t.id, 'snooze', t.nextDue!)}`, result: `Snoozed ${t.name} for a day` }
-		]
+		actions: review
+			? [snooze]
+			: [{ action: 'done', title: 'Mark done', url: `${base}/e/${createActionToken(t.id, 'done', t.nextDue!)}`, result: `✓ ${t.name} done` }, snooze]
 	};
 }
 
@@ -200,7 +205,8 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 						dueDate: longDate(t.due),
 						repeats: cap(intervalText(t)),
 						lastDone: overdue ? lastDone(t.id, today, tz) : null,
-						doneUrl: `${base}/e/${createActionToken(t.id, 'done', t.nextDue!)}`,
+						doneUrl: t.kind === 'review' ? reviewUrl(t, base) : `${base}/e/${createActionToken(t.id, 'done', t.nextDue!)}`,
+						review: t.kind === 'review',
 						snoozeUrl: `${base}/e/${createActionToken(t.id, 'snooze', t.nextDue!)}`,
 						dashboardUrl: `${base}/?tank=${t.tankId}`,
 						footer: footer(user, `You're getting this because ${overdue ? 'overdue alerts' : 'task reminders'} are on.`, base)
@@ -239,7 +245,8 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 				due: d.days < 0 ? `✕ ${whenText(d.days).replace('Overdue by', 'Overdue')}` : d.days === 0 ? '▲ Due today' : `▲ Due ${longDate(t.due)}`,
 				level: d.days < 0 ? ('bad' as const) : ('warn' as const),
 				// a function, so tokens are only made when the digest is really sent
-				doneUrl: () => `${base}/e/${createActionToken(t.id, 'done', t.nextDue!)}`
+				doneUrl: () => (t.kind === 'review' ? reviewUrl(t, base) : `${base}/e/${createActionToken(t.id, 'done', t.nextDue!)}`),
+				review: t.kind === 'review'
 			})),
 			readings,
 			noticed

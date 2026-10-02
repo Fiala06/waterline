@@ -18,12 +18,12 @@ export function splash(at: { x: number; y: number }) {
 	setTimeout(() => el.remove(), 1000);
 }
 
-/** use:enhance for a Mark done form: the splash when it's done (not when it opens the water change or test form). */
+/** use:enhance for a Mark done form: the splash when it's done (not when it opens the water change or test form, or the setup review). */
 export const markDone: SubmitFunction = ({ submitter }) => {
 	const r = submitter?.getBoundingClientRect();
 	const at = r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
 	return async ({ result, update }) => {
-		if (at && result.type === 'redirect' && !result.location.startsWith('/entries/')) splash(at);
+		if (at && result.type === 'redirect' && !result.location.startsWith('/entries/') && !result.location.endsWith('/review')) splash(at);
 		await update();
 	};
 };

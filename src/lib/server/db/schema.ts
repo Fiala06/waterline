@@ -108,6 +108,8 @@ export const tanks = sqliteTable(
 		substrate: text('substrate'),
 		waterSource: text('water_source'),
 		photoperiodH: real('photoperiod_h'),
+		/** the setup review (#30): when each part was last checked, e.g. {"details": "2026-10-02T…Z"} */
+		reviewChecks: text('review_checks', { mode: 'json' }).$type<Partial<Record<'details' | 'equipment' | 'targets' | 'livestock', string>>>().notNull().default({}),
 		archivedAt: text('archived_at'),
 		createdAt: createdAt()
 	},

@@ -34,6 +34,7 @@
 	</div>
 
 	<form method="POST" action="?/save" use:enhance={() => ({ update }) => update({ reset: false })}>
+		{#if data.fromReview}<input type="hidden" name="from" value="review" />{/if}
 		<div class="rows">
 			<!-- desktop: one table like D4 -->
 			<div class="thead" aria-hidden="true"><span>Parameter</span><span>Min</span><span>Max</span><span>Unit</span><span>Track</span></div>

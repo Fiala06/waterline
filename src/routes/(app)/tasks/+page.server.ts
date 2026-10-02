@@ -43,6 +43,9 @@ export const actions: Actions = {
 		if (!taskId) error(400, 'Missing task');
 		const task = getTask(user.id, taskId);
 
+		// The setup review (#30) is done on its own page, where the parts are checked.
+		if (task.kind === 'review') redirect(303, `/tanks/${task.tankId}/review`);
+
 		// Completing a water change or test opens the matching log form.
 		if (task.openFormOnDone && (task.kind === 'water_change' || task.kind === 'test')) {
 			const q = new URLSearchParams({ tank: task.tankId, task: task.id });

@@ -183,6 +183,13 @@
       "when": 1790775551804,
       "tag": "0025_cover_position",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1790976977206,
+      "tag": "0026_setup_review",
+      "breakpoints": true
     }
   ]
 }

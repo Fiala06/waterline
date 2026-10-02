@@ -109,14 +109,21 @@ export interface TaskEmail {
 	repeats: string; // "Every 7 days" | "One-off"
 	lastDone?: string | null; // "Sep 16 · 9 days ago"
 	doneUrl: string;
+	/** the setup review (#30) isn't marked done from an email: its button opens the review page */
+	review?: boolean;
 	snoozeUrl: string;
 	dashboardUrl: string;
 	footer: Footer;
 }
 
 export function taskEmail(e: TaskEmail): Rendered {
+	const done = e.review ? 'Review' : 'Mark done';
 	const subject = `${e.overdue ? e.when.replace(/^Overdue by /, 'Overdue ') : e.when}: ${e.taskName} · ${e.tankName}`;
-	const preheader = e.overdue ? `It was due ${e.dueDate}. Mark it done or snooze it.` : 'Mark it done or snooze it right from this email.';
+	const preheader = e.review
+		? 'Check the tank’s settings are still right, or snooze it.'
+		: e.overdue
+			? `It was due ${e.dueDate}. Mark it done or snooze it.`
+			: 'Mark it done or snooze it right from this email.';
 	const details: [string, string][] = [
 		['Tank', e.tankName],
 		[e.overdue ? 'Was due' : 'Due', e.dueDate]
@@ -127,15 +134,15 @@ export function taskEmail(e: TaskEmail): Rendered {
 		status(`${e.overdue ? '✕' : '▲'} ${e.when}`, e.overdue ? 'bad' : 'warn') +
 		title(e.taskName) +
 		rows(details) +
-		buttons(button('Mark done', e.doneUrl), button('Snooze 1 day', e.snoozeUrl, false)) +
-		note(`No sign-in needed. ${link('Open dashboard', e.dashboardUrl)}`);
+		buttons(button(done, e.doneUrl), button('Snooze 1 day', e.snoozeUrl, false)) +
+		note(`${e.review ? 'Snoozing needs no sign-in.' : 'No sign-in needed.'} ${link('Open dashboard', e.dashboardUrl)}`);
 	return {
 		subject,
 		preheader,
 		html: layout({ preheader, body, footer: e.footer }),
 		text:
 			`${e.overdue ? '✕' : '▲'} ${e.when}\n${e.taskName}\n\n${details.map(([k, v]) => `${k}: ${v}`).join('\n')}\n\n` +
-			`Mark done: ${e.doneUrl}\nSnooze 1 day: ${e.snoozeUrl}\nOpen dashboard: ${e.dashboardUrl}` +
+			`${done}: ${e.doneUrl}\nSnooze 1 day: ${e.snoozeUrl}\nOpen dashboard: ${e.dashboardUrl}` +
 			textFooter(e.footer)
 	};
 }
@@ -145,7 +152,8 @@ export function taskEmail(e: TaskEmail): Rendered {
 export interface DigestTank {
 	name: string;
 	sub: string; // "Planted · 40 gal"
-	tasks: { name: string; due: string; level: Level; doneUrl: string }[];
+	/** review: the setup review (#30), whose button opens its page */
+	tasks: { name: string; due: string; level: Level; doneUrl: string; review?: boolean }[];
 	readings: { text: string; target: string; date: string }[]; // out of range
 	/** what stands out in its readings (Spotting trends), ▲ when heading for a limit */
 	noticed?: { text: string; warn: boolean }[];
@@ -179,7 +187,7 @@ export function digestEmail(e: DigestEmail): Rendered {
 					(k) => `<tr><td style="padding:10px 0;border-top:1px solid ${C.divider}">
 <div style="font:600 15px ${FONT};color:${C.text}">${esc(k.name)}</div>
 <div style="font:600 13px ${FONT};color:${levelColor(k.level)}">${esc(k.due)}</div></td>
-<td align="right" style="padding:10px 0;border-top:1px solid ${C.divider}"><a href="${esc(k.doneUrl)}" style="display:inline-block;padding:8px 14px;border-radius:8px;border:1px solid ${C.secondaryBorder};font:600 14px ${FONT};color:${C.text};text-decoration:none">Mark done</a></td></tr>`
+<td align="right" style="padding:10px 0;border-top:1px solid ${C.divider}"><a href="${esc(k.doneUrl)}" style="display:inline-block;padding:8px 14px;border-radius:8px;border:1px solid ${C.secondaryBorder};font:600 14px ${FONT};color:${C.text};text-decoration:none">${k.review ? 'Review' : 'Mark done'}</a></td></tr>`
 				)
 				.join('');
 			const readingRows = t.readings.length
@@ -219,7 +227,7 @@ export function digestEmail(e: DigestEmail): Rendered {
 			.map(
 				(t) =>
 					`${t.name} (${t.sub})\n` +
-					t.tasks.map((k) => `- ${k.name}: ${k.due} — mark done: ${k.doneUrl}`).join('\n') +
+					t.tasks.map((k) => `- ${k.name}: ${k.due} — ${k.review ? 'review' : 'mark done'}: ${k.doneUrl}`).join('\n') +
 					(t.tasks.length ? '\n' : '') +
 					(t.readings.length ? t.readings.map((r) => `- ${r.text} (target ${r.target}, ${r.date})`).join('\n') : '- ✓ All readings in range') +
 					(t.noticed?.length ? `\nWorth a look:\n${t.noticed.map((n) => `- ${n.warn ? '▲ ' : ''}${n.text}`).join('\n')}` : '')

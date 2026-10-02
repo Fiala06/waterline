@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { and, asc, count, eq, isNotNull, isNull, max, or, sql } from 'drizzle-orm';
 import { defaultParameters } from '$lib/params';
+import { newReviewTask } from '$lib/review';
 import { addDays, todayInZone } from '$lib/time';
 import { db } from './db';
 import {
@@ -90,6 +91,8 @@ export function createTank(user: User, input: TankInput): Tank {
 				openFormOnDone: true
 			})
 			.run();
+		// the setup review (#30): every 3 months, in case something wasn't updated
+		tx.insert(tasks).values(newReviewTask(tank.id, today)).run();
 		tx.insert(events)
 			.values({
 				tankId: tank.id,

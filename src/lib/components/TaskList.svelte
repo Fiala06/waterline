@@ -1,6 +1,7 @@
 <script lang="ts">
 	// Dashboard task rows with Mark done. Mark done on a water-change or test
-	// task opens the matching log form instead.
+	// task opens the matching log form instead, and the setup review (#30) is
+	// a Review that opens its page.
 	import { enhance } from '$app/forms';
 	import { markDone } from '$lib/splash';
 	import { page } from '$app/state';
@@ -16,6 +17,7 @@
 		scheduleMode?: string;
 		weekdays?: string | null;
 		tankId?: string;
+		kind?: string;
 		/** a routine's amount (#17): "1 pump" */
 		amount?: number | null;
 		amountUnit?: string | null;
@@ -45,7 +47,9 @@
 				<form method="POST" action="/tasks?/done" use:enhance={markDone}>
 					<input type="hidden" name="taskId" value={t.id} />
 					<input type="hidden" name="from" value={from} />
-					{#if d.days > 0}
+					{#if t.kind === 'review'}
+						<button class="btn" class:early={d.days > 0} class:btn-primary={d.days <= 0 && i === 0}>Review</button>
+					{:else if d.days > 0}
 						<button class="btn early" title="Due {fmtDate(t.due)}" aria-label="Mark {t.name} done early">Done early</button>
 					{:else}
 						<button class="btn" class:btn-primary={i === 0}>Mark done</button>

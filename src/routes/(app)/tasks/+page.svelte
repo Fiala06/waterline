@@ -113,7 +113,7 @@
 							<form method="POST" action="/tasks?/done" use:enhance={markDone} class="grow">
 								<input type="hidden" name="taskId" value={t.id} />
 								<input type="hidden" name="from" value={from} />
-								<button class="btn btn-primary mark">Mark done</button>
+								<button class="btn btn-primary mark">{t.kind === 'review' ? 'Review' : 'Mark done'}</button>
 							</form>
 							<form method="POST" action="/tasks?/snooze" use:enhance>
 								<input type="hidden" name="taskId" value={t.id} />
@@ -152,7 +152,9 @@
 								<form method="POST" action="/tasks?/done" use:enhance={markDone}>
 									<input type="hidden" name="taskId" value={t.id} />
 									<input type="hidden" name="from" value={from} />
-									<button class="check" class:primary={d.days <= 0} aria-label="Mark {t.name} done"><span class="d-label">Mark done</span></button>
+									<button class="check" class:primary={d.days <= 0} aria-label={t.kind === 'review' ? t.name : `Mark ${t.name} done`}
+										><span class="d-label">{t.kind === 'review' ? 'Review' : 'Mark done'}</span></button
+									>
 								</form>
 							</div>
 						{/each}

@@ -6,6 +6,8 @@
 	import DateField from '$lib/components/DateField.svelte';
 	import { dragFocus, photoUrl } from '$lib/media';
 	import { untrack } from 'svelte';
+	import { REVIEW_INTERVALS } from '$lib/review';
+	import { fmtDate } from '$lib/time';
 	let { data, form } = $props();
 	let coverPreview = $state<string | null>(null);
 	let notes = $state(untrack(() => data.tank.notes));
@@ -76,6 +78,7 @@
 <svelte:head><title>Edit {data.tank.name} · Waterline</title></svelte:head>
 
 <form method="POST" action="?/save" enctype="multipart/form-data" class="wrap" use:enhance>
+	{#if data.fromReview}<input type="hidden" name="from" value="review" />{/if}
 	<div class="cols">
 		<div class="body">
 			<div class="cover" class:photo-placeholder={!coverPreview && !data.tank.cover} class:movable={coverPreview || data.tank.cover} bind:this={frame}>
@@ -230,6 +233,22 @@
 				</div>
 				<span class="link">Targets ›</span>
 			</a>
+
+			<!-- the setup review (#30): a task every few months to check all this is still right -->
+			<div class="card params review" id="review">
+				<div class="rv-text">
+					<label class="p-title" for="reviewEvery">Setup review</label>
+					<div class="muted sm">
+						A reminder to check these settings, equipment, targets and livestock are still right{data.review.due ? `. Next ${fmtDate(data.review.due)}` : ''}.
+					</div>
+					<a class="link sm" href="/tanks/{data.tank.id}/review">Review now ›</a>
+				</div>
+				<select class="input rv-every" id="reviewEvery" name="reviewEvery" value={data.review.every}>
+					{#each REVIEW_INTERVALS as r (r.days)}<option value={String(r.days)}>{r.label}</option>{/each}
+					{#if data.review.custom}<option value={String(data.review.custom)}>Every {data.review.custom} days</option>{/if}
+					<option value="off">Off</option>
+				</select>
+			</div>
 
 			<button class="btn btn-primary btn-lg save">Save changes</button>
 			{#if !data.tank.archived}
@@ -391,6 +410,25 @@
 		color: var(--accent);
 		font-weight: 600;
 		white-space: nowrap;
+	}
+	.review {
+		flex-direction: column;
+		align-items: stretch;
+	}
+	.rv-text {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+	.rv-text .p-title {
+		margin: 0;
+	}
+	.rv-text .link {
+		align-self: flex-start;
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		margin: -6px 0 -10px;
 	}
 	.live {
 		color: var(--ok);

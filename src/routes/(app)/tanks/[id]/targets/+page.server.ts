@@ -13,9 +13,10 @@ import {
 	resetParamDefaults,
 	updateParams
 } from '$lib/server/tanks';
+import { checkSection } from '$lib/server/review';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = ({ locals, params }) => {
+export const load: PageServerLoad = ({ locals, params, url }) => {
 	const user = locals.user!;
 	const tank = getTank(user.id, params.id);
 	const defaults = new Map(defaultParameters(user, tank.type).map((d) => [d.key, d]));
@@ -23,6 +24,7 @@ export const load: PageServerLoad = ({ locals, params }) => {
 	return {
 		tank: { id: tank.id, name: tank.name, type: tank.type },
 		reusable: reusableCustomParams(user.id, tank.id),
+		fromReview: url.searchParams.get('from') === 'review',
 		rows: listParams(tank.id, { all: true }).map((p) => {
 			const d = defaults.get(p.key);
 			return {
@@ -70,6 +72,11 @@ export const actions: Actions = {
 		if (Object.keys(errors).length) return fail(400, { errors });
 		updateParams(user.id, params.id, rows);
 		setFlash(cookies, '✓ Targets saved');
+		// from the setup review (#30): the ranges are right now, and back to it
+		if (form.get('from') === 'review') {
+			checkSection(user.id, params.id, 'targets');
+			redirect(303, `/tanks/${params.id}/review#targets`);
+		}
 		redirect(303, `/tanks/${params.id}/targets`);
 	},
 	reset: async ({ locals, params, cookies }) => {
