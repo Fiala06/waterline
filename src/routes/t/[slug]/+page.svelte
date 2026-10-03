@@ -137,6 +137,7 @@
 									points={chart.points}
 									band={chart.band}
 									markers={chart.markers}
+									sensor={chart.sensor}
 									from={v.ranges.chartSince ?? Math.min(now - 30 * 86_400_000, ...chart.points.map((p) => p.t))}
 									to={now}
 									lastLevel={chart.lastLevel}
@@ -158,10 +159,11 @@
 								</TrendChart>
 							</div>
 						</div>
-						{#if chart.target || chart.markers.length}
+						{#if chart.target || chart.markers.length || chart.sensor.length > 1}
 							<p class="legend">
 								{#if chart.target}<span><i class="swatch" aria-hidden="true"></i>Target band {chart.target}</span>{/if}
 								{#if chart.markers.length}<span><i class="swatch marker" aria-hidden="true"></i>Water change</span>{/if}
+								{#if chart.sensor.length > 1}<span><i class="swatch sensor" aria-hidden="true"></i>Sensor</span>{/if}
 							</p>
 						{/if}
 					</div>
@@ -718,6 +720,12 @@
 		width: 8px;
 		height: 8px;
 		background: var(--ink);
+	}
+	.swatch.sensor {
+		width: 14px;
+		height: 0;
+		border-top: 1.5px solid var(--neutral-600);
+		background: none;
 	}
 	/* a tapped water change's popover, as on the keeper's Charts */
 	:global(.pub .pop-day) {

@@ -93,6 +93,8 @@ test('tank timeline: moments, what changed, compare, public', async ({ page, bro
 	await expect(tl.locator('li.tl-entry').first()).toContainText('Mar 8, 2025');
 	await expect(tl.locator('li.tl-entry').first()).toContainText('✕ High');
 	await expect(tl.locator('li.tl-gap')).toContainText('12 days · +6 Ember tetra · nitrate 40 → 10 ppm');
+	// both photos are in the timeline, so the Photos grid has nothing left to show
+	await expect(v.locator('section.photos')).toHaveCount(0);
 	// readings off: the dates stay, the values go
 	await open(page, `/tanks/${tankId}/public`);
 	await page.getByLabel('Latest readings').uncheck({ force: true });

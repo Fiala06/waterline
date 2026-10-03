@@ -11,6 +11,10 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **The public page shows no photo twice:** With the Timeline on, the [public page](/tanks/current/public)'s Photos keep only the photos the timeline doesn't carry (close-ups taken out of it); the section goes when there are none, so a visitor scrolls past each photo once.
+- **Sensor readings on the public chart:** When Latest readings are public, the public page's chart draws a tank's sensor readings as the thin line under the tests, as [Charts](/charts) does, with Sensor in the legend.
+- **The same count ceiling when a count changes:** Changing an animal's count on [Livestock](/tanks/current/livestock) or in a livestock log entry now stops at 10,000 too ("Enter a whole number from 0 to 10,000."), as adding one does; 0 still records a loss.
+
 ## 1.12.5 · 2026-10-03
 
 - **The public page's lightbox closes on a tap beside the photo:** On a tank's [public page](/tanks/current/public), tapping the dark area around an opened photo closes it, as Esc and ✕ do; it only closed from the ✕ before.

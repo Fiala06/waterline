@@ -34,6 +34,7 @@ import {
 } from './db/schema';
 import { getServerSettings } from './mail';
 import { eventsSince, latestReadings, series } from './logs';
+import { sampleSeries } from './sensors';
 import { getPhoto } from './photos';
 import { requireRoleOn } from './members';
 import { getTank, listParams } from './tanks';
@@ -245,6 +246,8 @@ export function publicView(page: PublicPage, tank: Tank, owner: User, ranges: Pu
 							max: p.max == null ? null : displayValue(p, p.max, prefs)
 						},
 						points,
+						// readings from a sensor (#19), the thin line under the tests, when readings are public
+						sensor: page.showReadings ? sampleSeries(tank.id, p.id, since || '0000').map((s) => ({ t: s.t, v: displayValue(p, s.v, prefs) })) : [],
 						// each water change with the reading before and after it: "Nitrate 40 → 10 ppm"
 						markers: changes.map((e) => {
 							const t = dayT(e.occurredAt);
@@ -266,12 +269,13 @@ export function publicView(page: PublicPage, tank: Tank, owner: User, ranges: Pu
 		: [];
 
 	const names = page.showPetNames;
-	// the latest photos, each with the day it was taken (dates are fine, times never)
+	// the latest photos, each with the day it was taken (dates are fine, times never); with the
+	// timeline on, the photos it carries aren't shown twice: the grid keeps the others (close-ups)
 	const photoIds = page.showPhotos
 		? db
 				.select({ id: photos.id, takenAt: photos.takenAt })
 				.from(photos)
-				.where(and(eq(photos.tankId, tank.id), names ? undefined : untagged))
+				.where(and(eq(photos.tankId, tank.id), names ? undefined : untagged, page.showTimeline ? eq(photos.inTimeline, false) : undefined))
 				.orderBy(desc(photos.takenAt))
 				.limit(12)
 				.all()
