@@ -135,7 +135,8 @@
 
 	// ── Sidebar: pinned or an auto-hiding rail (stored on this device, per user) ──
 	let hover = $state(false);
-	const pinned = $derived(ui.navPinned ?? false);
+	// pinned until the device's choice is read on mount, so most desktops don't see the rail flash
+	const pinned = $derived(ui.navPinned ?? true);
 	const wide = $derived(pinned || hover);
 	function loadNav() {
 		try {
