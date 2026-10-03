@@ -12,6 +12,8 @@
 		unit: string;
 		/** days since the reading, when it's older than its Test every cadence */
 		due?: number | null;
+		/** a sensor's latest reading (#19) */
+		live?: string | null;
 	}
 	let {
 		items,
@@ -52,6 +54,7 @@
 						<span class="k"><span class="ok status-ok" aria-hidden="true">✓</span>{c.label}</span>
 						<span class="v">{c.value}{#if c.unit}<span class="u">{c.unit}</span>{/if}</span>
 						{#if c.due != null}<span class="due"><span class="status-warn" aria-hidden="true">▲</span> – {c.due} days ago · due</span>{/if}
+						{#if c.live}<span class="due live">● {c.live}</span>{/if}
 					</a>
 				</li>
 			{/each}

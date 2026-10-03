@@ -2,6 +2,7 @@ import { and, count, desc, eq, inArray, lte, sql } from "drizzle-orm";
 import { redirect } from "@sveltejs/kit";
 import { cyclingStage, staleAfter, type CycleTest } from "$lib/status";
 import { lightingText } from "$lib/equipment";
+import { latestSamples } from "$lib/server/sensors";
 import { fmtValue, paramUnit } from "$lib/params";
 import { setFlash } from "$lib/server/flash";
 import {
@@ -266,6 +267,18 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
     },
     params,
     latest: Object.fromEntries(latest),
+    // the latest reading from a sensor per parameter (#19): "Live 25.4 °C · 2 min ago"
+    live: Object.fromEntries(
+      [...latestSamples(tank.id)].map(([id, s]) => {
+        const p = params.find((x) => x.id === id);
+        return [
+          id,
+          p
+            ? `Live ${fmtValue(p, s.value, user)}${paramUnit(p, user) ? ` ${paramUnit(p, user)}` : ""} · ${fmtWhen(s.at, tz).replace(/^Today, /, "")}`
+            : "",
+        ];
+      }),
+    ),
     sparks,
     latestWhen: latestAt ? fmtWhen(latestAt, tz) : null,
     trends,

@@ -2,7 +2,9 @@
 // for scripts and assistants that call HTTP APIs. Signed in by an access token
 // from Settings › AI assistant.
 import { json } from '@sveltejs/kit';
-import { authenticateAssistant } from '$lib/server/assistant/tokens';
+import { authenticateAssistant, authenticateSensor } from '$lib/server/assistant/tokens';
+import { logger } from '$lib/server/log';
+import { parseSamples, recordSamples } from '$lib/server/sensors';
 import { bearerChallenge } from '$lib/server/assistant/discovery';
 import { photoFor, photoImage, runTool, ToolError } from '$lib/server/assistant/tools';
 import type { RequestHandler } from './$types';
@@ -49,4 +51,38 @@ export const GET: RequestHandler = async ({ request, params, url }) => {
 		throw e;
 	}
 	return json({ error: 'Not found' }, { status: 404, headers });
+};
+
+/**
+ * Readings from a sensor or controller (#19): POST /api/v1/tanks/<id>/readings
+ * with a sensor token (Settings › Sensors), one reading or { readings: [...] },
+ * each { parameter, value, unit?, at? }. Samples go to their own table, at
+ * most one a minute per parameter, and never raise an alert by themselves.
+ */
+export const POST: RequestHandler = async ({ request, params, url }) => {
+	const headers = { 'cache-control': 'no-store' };
+	const parts = params.path.split('/').filter(Boolean);
+	if (!(parts.length === 3 && parts[0] === 'tanks' && parts[2] === 'readings')) return json({ error: 'Not found' }, { status: 404, headers });
+	const auth = request.headers.get('authorization');
+	const access = authenticateSensor(auth);
+	if (!access) {
+		return json(
+			{ error: 'A sensor token is needed: make one in Settings › Sensors and send it as "Authorization: Bearer <token>".' },
+			{ status: 401, headers: { ...headers, 'www-authenticate': bearerChallenge(url.origin, '/api/v1', !!auth) } }
+		);
+	}
+	if (!access.tankIds.has(parts[1])) return json({ error: 'This token adds readings to other tanks, not this one.' }, { status: 404, headers });
+	let body: unknown;
+	try {
+		body = await request.json();
+	} catch {
+		return json({ error: 'Send JSON: { "parameter": "temp", "value": 25.4, "unit": "°C", "at": "2026-10-03T14:05:00Z" }.' }, { status: 400, headers });
+	}
+	const samples = parseSamples(body);
+	if (typeof samples === 'string') return json({ error: samples }, { status: 400, headers });
+	const results = recordSamples(parts[1], samples, access.token.name, access.token.id);
+	const refused = results.filter((r) => !r.ok);
+	if (refused.length === results.length) return json({ error: refused[0].ok ? '' : refused[0].error, results }, { status: 400, headers });
+	logger.debug('assistant', `${access.token.name} sent ${results.length} reading${results.length === 1 ? '' : 's'}`, { userId: access.user.id, tankId: parts[1] });
+	return json({ results }, { status: refused.length ? 207 : 200, headers });
 };

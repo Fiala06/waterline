@@ -106,6 +106,7 @@
 									full
 									height={260}
 									points={c.points}
+									sensor={c.sensor}
 									band={c.band}
 									{markers}
 									from={c.from}
@@ -171,6 +172,9 @@
 							<span class="sv num status-{s.latestLevel}">{s.latest}{c.unit ? ` ${c.unit}` : ''}</span>
 							<span class="st status-{s.latestLevel}">{s.latestStatus}</span>
 						</div>
+						{#if c.live}
+							<div class="stat live"><span class="sl">● Live</span><span class="sv num status-{c.live.level}">{c.live.value}{c.unit ? ` ${c.unit}` : ''}</span><span class="st">{c.live.at} · {c.live.source}</span></div>
+						{/if}
 						<div class="stat"><span class="sl">Average</span><span class="sv num">{s.average}</span></div>
 						<div class="stat"><span class="sl">Range</span><span class="sv num">{s.range}</span></div>
 						<div class="stat"><span class="sl">In target</span><span class="sv num">{s.inTarget}</span><span class="st">{s.inRangePct} in range</span></div>

@@ -765,6 +765,8 @@ export const assistantTokens = sqliteTable(
 		tokenHash: text('token_hash').notNull(),
 		// the token's last 4 characters, to tell tokens apart
 		hint: text('hint').notNull(),
+		// assistant: reads its tanks; sensor (#19): may only add readings to them
+		kind: text('kind', { enum: ['assistant', 'sensor'] }).notNull().default('assistant'),
 		tankIds: text('tank_ids', { mode: 'json' }).$type<string[]>().notNull().default([]),
 		createdAt: createdAt(),
 		lastUsedAt: text('last_used_at'),
@@ -783,6 +785,30 @@ export const assistantTokens = sqliteTable(
 );
 
 export type AssistantToken = typeof assistantTokens.$inferSelect;
+
+/**
+ * Readings from sensors and controllers (#19): a probe's samples, kept apart
+ * from hand-logged tests. Stored metric, at most one a minute per parameter,
+ * and thinned for charts. `source` is the token's name ("Apex", "ESPHome").
+ */
+export const sensorReadings = sqliteTable(
+	'sensor_readings',
+	{
+		id: id(),
+		tankId: text('tank_id')
+			.notNull()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		parameterId: text('parameter_id')
+			.notNull()
+			.references(() => tankParameters.id, { onDelete: 'cascade' }),
+		value: real('value').notNull(),
+		at: text('at').notNull(),
+		source: text('source').notNull(),
+		tokenId: text('token_id').references(() => assistantTokens.id, { onDelete: 'set null' })
+	},
+	(t) => [index('sensor_readings_tank_param_at').on(t.tankId, t.parameterId, t.at)]
+);
+export type SensorReading = typeof sensorReadings.$inferSelect;
 
 /** Apps that registered themselves to connect by signing in (OAuth dynamic client registration). */
 export const oauthClients = sqliteTable('oauth_clients', {

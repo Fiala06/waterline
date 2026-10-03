@@ -53,6 +53,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
 		emailReady: emailConfigured(),
 		products: listProducts(locals.user!.id).length,
 		kits: listKits(locals.user!.id).length,
+		sensors: listAssistantTokens(locals.user!.id, 'sensor').length,
 		assistants: listAssistantTokens(locals.user!.id).length,
 		// the tasks calendar link (#23), and each tank for a link of its own
 		calendar: feed ? { url: `${url.origin}/cal/${feed.token}.ics`, lastFetchedAt: feed.lastFetchedAt } : null,

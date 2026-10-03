@@ -14,6 +14,7 @@ import { utcToZoned } from '$lib/time';
 import { db } from '../db';
 import { EVENT_CATEGORIES, events, livestock, photoLivestock, photos, testReadings, tests, type EventCategory, type Tank, type User } from '../db/schema';
 import { latestReadings, series } from '../logs';
+import { latestSamples } from '../sensors';
 import { photoFilePath } from '../photos';
 import { listLivestock, listPlants } from '../specs';
 import { SUMMARY_DAYS, tankSummary } from '../summary';
@@ -126,7 +127,7 @@ const readingsTool: Tool = {
 	name: 'get_readings',
 	title: 'Water test readings',
 	description:
-		"Water test readings for a tank, per parameter, oldest first, in the keeper's units: each parameter's target range, latest reading and its status (✓ OK, ▲ Near, ✕ High or Low, – No data).",
+		"Water test readings for a tank, per parameter, oldest first, in the keeper's units: each parameter's target range, latest reading and its status (✓ OK, ▲ Near, ✕ High or Low, – No data), and the newest reading from a sensor or controller when the tank has one.",
 	inputSchema: {
 		type: 'object',
 		properties: {
@@ -145,6 +146,7 @@ const readingsTool: Tool = {
 		const params = want ? all.filter((p) => p.name.toLowerCase() === want || p.key === want) : all;
 		if (want && !params.length) throw new ToolError(`${t.name} doesn't track "${args.parameter}". It tracks: ${all.map((p) => p.name).join(', ')}.`);
 		const latest = latestReadings(t.id);
+		const live = latestSamples(t.id);
 		const since = sinceDays(n);
 		const shown = (p: (typeof all)[number], v: number) => Number(displayValue(p, v, user).toFixed(Math.max(paramDecimals(p, user), 2)));
 		return {
@@ -160,6 +162,8 @@ const readingsTool: Tool = {
 						unit: paramUnit(p, user),
 						target: fmtRange(p, user) || null,
 						latest: l ? { at: local(l.takenAt, user), value: shown(p, l.value), status: statusShort(statusOf(p, l.value)) } : null,
+						// the newest reading from a sensor or controller (#19), apart from the hand-logged tests
+						sensor: live.has(p.id) ? { at: local(live.get(p.id)!.at, user), value: shown(p, live.get(p.id)!.value), source: live.get(p.id)!.source } : null,
 						readings: series(t.id, p.id, since).map((r) => ({ at: local(r.takenAt, user), value: shown(p, r.value) }))
 					};
 				})

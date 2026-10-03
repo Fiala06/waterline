@@ -33,7 +33,7 @@
 	const on = (id: string) => path === '/settings' && section === id;
 	const themeWord = $derived(data.user.theme === 'dark' ? 'Dark' : data.user.theme === 'light' ? 'Light' : 'System');
 	// counts the settings page already loads; blank elsewhere
-	const count = (k: 'products' | 'assistants' | 'kits') => {
+	const count = (k: 'products' | 'assistants' | 'kits' | 'sensors') => {
 		const n = page.data[k];
 		return typeof n === 'number' && n > 0 ? String(n) : '';
 	};
@@ -49,6 +49,7 @@
 		{ href: '/settings/test-kits', label: 'Test kits', active: path.startsWith('/settings/test-kits'), badge: count('kits') },
 		{ href: '/settings/export', label: 'Import & export', active: path.startsWith('/settings/export') },
 		{ href: '/settings/assistant', label: 'AI assistant', active: path.startsWith('/settings/assistant'), badge: count('assistants') },
+		{ href: '/settings/sensors', label: 'Sensors', active: path.startsWith('/settings/sensors'), badge: count('sensors') },
 		...(data.user.isAdmin ? [{ href: '/settings/server', label: 'Server', admin: true, badge: 'ADMIN', active: path.startsWith('/settings/server') }] : []),
 		{ href: '/settings/changelog', label: "What's new", active: path.startsWith('/settings/changelog'), badge: data.app.update?.version ?? '', accent: !!data.app.update },
 		{ href: '/settings#account', label: 'Account', active: on('account') }

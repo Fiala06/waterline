@@ -367,6 +367,10 @@
 					<span class="ttext"><span class="tt">Import & export</span><span class="td">A full backup, CSV, a summary to share, or a spreadsheet in</span></span>
 					<span class="chev" aria-hidden="true">›</span>
 				</a>
+				<a class="row link" href="/settings/sensors">
+					<span class="ttext"><span class="tt">Sensors & controllers</span><span class="td">A token for probes and controllers to log readings on their own</span></span>
+					<span class="v">{data.sensors ? `${data.sensors} connected` : 'Off'}</span><span class="chev" aria-hidden="true">›</span>
+				</a>
 				<a class="row link" href="/settings/assistant">
 					<!-- the name reads "AI assistant Off": the state follows the title -->
 					<span class="ttext"><span class="tt">AI assistant</span></span>

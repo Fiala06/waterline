@@ -128,7 +128,8 @@ imports          id, user_id, tank_id, kind(livestock|plants|equipment|tests|
 exports          id, user_id, scope(tank|account), tank_id?, format(zip|csv), status,
                  progress, progress_text?, file_path?, file_name?, size?, summary?,
                  error?, created_at, expires_at?
-assistant_tokens id, user_id, name, token_hash (SHA-256), hint (last 4), tank_ids JSON,
+assistant_tokens id, user_id, name, token_hash (SHA-256), hint (last 4), kind(assistant|sensor:
+                 may only add readings), tank_ids JSON,
                  created_at, last_used_at? (read-only access for an AI assistant);
                  connected by signing in: client_id?, expires_at?, refresh_hash?,
                  refresh_expires_at?
@@ -153,6 +154,9 @@ server_settings  singleton: email_provider?(mailgun|smtp), mailgun_api_key_enc?,
 stock_photos     name (the scientific name looked up), status(ok|none|failed), file?,
                  width?, height?, author?, license?, license_url?, page_url?, reason?,
                  fetched_at (species photos from Wikimedia Commons, kept in DATA_DIR/stock)
+sensor_readings  id, tank_id, parameter_id, value (stored units), at, source (the token's name),
+                 token_id? (readings from probes and controllers, apart from tests: one a minute
+                 per parameter, kept a year, averaged for charts, never an alert by themselves)
 action_tokens    token_hash, task_id, action(done|snooze), due, expires_at, used_at?
 email_log        id, user_id, key, created_at, error? (so nothing is sent twice; pushes
                  are "push:<key>")

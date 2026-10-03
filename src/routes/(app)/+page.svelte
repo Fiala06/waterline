@@ -56,6 +56,8 @@
 				// days since the reading when it's older than its Test every cadence
 				due: data.stale?.[p.id] ?? null,
 				sub: r ? (range ? `Target ${range}` : 'No target') : 'Not tested',
+				// a sensor's latest reading (#19)
+				live: data.live?.[p.id] || null,
 				range: r ? range : '',
 				spark: data.sparks?.[p.id] ?? [],
 				// the target band behind its line (stored units, as the readings)

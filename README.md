@@ -151,6 +151,7 @@ Each person can let an AI assistant, like Claude or ChatGPT, read their tanks, a
 - **Claude Code** signs in the same way: `claude mcp add --transport http waterline <ORIGIN>/mcp`, then `/mcp` › Authenticate in Claude Code. Settings › AI assistant has the steps for claude.ai (also Claude Desktop and mobile), ChatGPT, Claude Code and other apps, with the address filled in.
 - **With a token:** for scripts and apps that can't sign in, make an access token in Settings › AI assistant and send it as `Authorization: Bearer <token>`.
 - **JSON API:** the same data as JSON: `GET <ORIGIN>/api/v1/tanks`, then `/api/v1/tanks/<id>/summary` (Markdown), `readings`, `history`, `livestock`, `trends`, `photos`, and `/api/v1/photos/<id>?size=small|large`.
+- **Sensors and controllers:** a sensor token from **Settings › Sensors** may only add readings: `POST <ORIGIN>/api/v1/tanks/<id>/readings` with `{ "parameter": "temp", "value": 25.4, "unit": "°C", "at": "…" }` (or `{ "readings": [...] }`), for temperature probes, ESPHome, Node-RED, Home Assistant or a controller. Sensor readings are kept apart from water tests, one a minute per parameter, for a year: a thin line on Charts and a Live value on the tank, never an alert by themselves.
 - The assistant has to reach your server, so one running in the cloud (claude.ai, ChatGPT) needs Waterline on a public HTTPS address.
 
 ### Security notes
