@@ -266,6 +266,17 @@
 		return () => clearTimeout(t);
 	});
 
+	// ── Phone bar: out of the way while reading down a page, back on the way up ──
+	let barHidden = $state(false);
+	let lastY = 0;
+	function onscroll() {
+		const y = window.scrollY;
+		if (y < 80 || y + innerHeight >= document.documentElement.scrollHeight - 8) barHidden = false;
+		else if (Math.abs(y - lastY) > 6) barHidden = y > lastY;
+		lastY = y;
+	}
+	afterNavigate(() => (barHidden = false));
+
 	// ── Keyboard (README → Global overlays): ignored while typing in a field ──
 	let goPending = $state(false);
 	let goTimer: ReturnType<typeof setTimeout> | undefined;
@@ -331,7 +342,7 @@
 	const footerLine = $derived(data.app.update ? `↑ Update to ${data.app.update.version}` : `Waterline v${data.app.version}`);
 </script>
 
-<svelte:window {onkeydown} />
+<svelte:window {onkeydown} {onscroll} />
 
 <div class="shell" class:fullscreen>
 	<!-- ── Desktop sidebar ─────────────────────────────────────────────── -->
@@ -481,7 +492,7 @@
 
 <!-- ── Phone bottom bar: Overview, Charts, Log, History, More ──────────── -->
 {#if showBar}
-	<nav class="tabbar" aria-label="Main">
+	<nav class="tabbar" class:tucked={barHidden} aria-label="Main">
 		<a href="/" class:active={path === '/'} aria-current={path === '/' ? 'page' : undefined}><Icon name="grid" size={22} />Overview</a>
 		<a href="/charts" class:active={path === '/charts'} aria-current={path === '/charts' ? 'page' : undefined}><Icon name="chart" size={22} />Charts</a>
 		<button type="button" class="log" aria-label="Log" onclick={() => (ui.quickAdd = true)}><span class="sq"><Icon name="plus" size={26} /></span><span>Log</span></button>
@@ -598,6 +609,10 @@
 		display: grid;
 		grid-template-columns: repeat(5, 1fr);
 		z-index: 20;
+		transition: transform 0.2s ease;
+	}
+	.tabbar.tucked {
+		transform: translateY(100%);
 	}
 	.tabbar a,
 	.tabbar .log {
@@ -627,13 +642,15 @@
 		background: var(--accent);
 	}
 	/* Log: a 60px accent square, raised 18px over the bar */
+	/* Log: the accent square raised over the bar, its label under it */
 	.tabbar .log {
-		margin-top: -18px;
-		gap: 0;
+		margin-top: -22px;
+		gap: 3px;
+		justify-content: flex-start;
 	}
 	.tabbar .log .sq {
-		width: 60px;
-		height: 60px;
+		width: 56px;
+		height: 56px;
 		background: var(--accent);
 		color: var(--on-accent);
 		display: flex;
@@ -643,11 +660,8 @@
 		box-shadow: var(--shadow-md);
 	}
 	.tabbar .log .sq + span {
-		position: absolute;
-		bottom: 6px;
 		font-size: 11px;
 		font-weight: 800;
-		color: var(--on-accent);
 	}
 
 	/* ── Desktop ─────────────────────────────────────────────────────── */
