@@ -131,7 +131,7 @@
 			<section class="cycling" aria-labelledby="cycling-h">
 				<div class="section-head">
 					<h2 id="cycling-h">Cycling</h2>
-					<a href="/tanks/{data.tank.id}/settings">Tank details ›</a>
+					<a href="/tanks/{data.tank.id}/settings">Setup ›</a>
 				</div>
 				<div class="cycle-charts">
 					{#each data.cycling.charts as c (c.key)}
