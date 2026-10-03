@@ -194,7 +194,7 @@
 		flex-shrink: 0;
 		font-size: 14px;
 		font-weight: 800;
-		color: var(--accent);
+		color: var(--accent-text);
 	}
 	.or {
 		margin: 8px 0 0;

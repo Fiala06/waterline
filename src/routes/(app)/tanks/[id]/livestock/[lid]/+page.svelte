@@ -195,7 +195,7 @@
 		align-items: center;
 		font-size: 14px;
 		font-weight: 800;
-		color: var(--accent);
+		color: var(--accent-text);
 	}
 	/* kicker · name 32/800 · scientific, over a 2px rule, the status on the right */
 	.hero {
@@ -412,7 +412,7 @@
 	}
 	@media (hover: hover) {
 		.history a:hover b {
-			color: var(--accent);
+			color: var(--accent-text);
 		}
 	}
 	/* Desktop: `minmax(0,1fr) 300px` under the shell's title */

@@ -206,7 +206,7 @@
 	}
 	.custom {
 		font-size: 14px;
-		color: var(--accent);
+		color: var(--accent-text);
 		font-weight: 800;
 	}
 </style>

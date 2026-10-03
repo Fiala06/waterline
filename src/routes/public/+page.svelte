@@ -101,7 +101,7 @@
 			color: var(--text);
 		}
 		.tank:hover strong {
-			color: var(--accent);
+			color: var(--accent-text);
 		}
 	}
 	.cover {

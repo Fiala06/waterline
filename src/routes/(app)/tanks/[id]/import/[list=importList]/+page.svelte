@@ -291,7 +291,7 @@
 		display: grid;
 		place-items: center;
 		background: var(--surface-hi);
-		color: var(--accent);
+		color: var(--accent-text);
 		font-size: 14px;
 		font-weight: 700;
 	}
@@ -394,7 +394,7 @@
 	.drop-t {
 		font-size: 15px;
 		font-weight: 600;
-		color: var(--accent);
+		color: var(--accent-text);
 	}
 	.busy .drop-t {
 		color: var(--text-muted);

@@ -194,7 +194,7 @@
 	}
 	.save-top {
 		justify-self: end;
-		color: var(--accent);
+		color: var(--accent-text);
 		font-weight: 800;
 		font-size: 16px;
 		min-height: 44px;

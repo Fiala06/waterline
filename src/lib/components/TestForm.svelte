@@ -528,7 +528,7 @@
 	}
 	.close {
 		margin-right: -12px;
-		color: var(--accent);
+		color: var(--accent-text);
 		font-size: 16px;
 	}
 	/* the types: one bordered row, this one filled accent */

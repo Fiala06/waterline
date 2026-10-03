@@ -99,12 +99,12 @@
 	}
 	.tip:has(+ :popover-open) {
 		border-color: var(--accent);
-		color: var(--accent);
+		color: var(--accent-text);
 	}
 	@media (hover: hover) {
 		.tip:hover {
 			border-color: var(--accent);
-			color: var(--accent);
+			color: var(--accent-text);
 		}
 	}
 	.tip-pop {

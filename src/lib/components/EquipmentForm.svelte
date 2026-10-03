@@ -232,7 +232,7 @@
 	}
 	.save-top {
 		justify-self: end;
-		color: var(--accent);
+		color: var(--accent-text);
 		font-weight: 800;
 		font-size: 16px;
 		min-height: 44px;
@@ -310,7 +310,7 @@
 		padding: 0 4px;
 		font-size: 14px;
 		font-weight: 800;
-		color: var(--accent);
+		color: var(--accent-text);
 	}
 	/* the detail page's column: linked task, service history */
 	.side {
@@ -393,7 +393,7 @@
 			background: color-mix(in srgb, var(--accent) 10%, transparent);
 		}
 		.log-row:hover b {
-			color: var(--accent);
+			color: var(--accent-text);
 		}
 	}
 	/* Desktop: a flat form under the shell's title; the detail page gets a 300px column */

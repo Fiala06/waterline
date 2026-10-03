@@ -357,7 +357,7 @@
 	}
 	.save-top {
 		justify-self: end;
-		color: var(--accent);
+		color: var(--accent-text);
 		font-weight: 800;
 		font-size: 16px;
 		min-height: 44px;
@@ -394,7 +394,7 @@
 		padding: 0 8px;
 		font-size: 14px;
 		font-weight: 800;
-		color: var(--accent);
+		color: var(--accent-text);
 		white-space: nowrap;
 	}
 	.lines {
@@ -433,7 +433,7 @@
 		justify-content: center;
 		border: 1px solid var(--divider);
 		font-weight: 800;
-		color: var(--accent);
+		color: var(--accent-text);
 	}
 	.res[aria-pressed='true'] .tick {
 		background: var(--accent);

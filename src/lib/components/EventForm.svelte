@@ -685,7 +685,7 @@
 	}
 	.close {
 		margin-right: -12px;
-		color: var(--accent);
+		color: var(--accent-text);
 		font-size: 16px;
 	}
 	.types,
@@ -890,7 +890,7 @@
 		position: relative;
 		display: flex;
 		align-items: center;
-		color: var(--accent);
+		color: var(--accent-text);
 	}
 	.remind select {
 		appearance: none;
@@ -899,7 +899,7 @@
 		padding: 0 26px 0 8px;
 		border: none;
 		background: transparent;
-		color: var(--accent);
+		color: var(--accent-text);
 		font-size: 14px;
 		font-weight: 800;
 		cursor: pointer;

@@ -72,15 +72,15 @@
 		</EmptyState>
 	{:else}
 		<div class="table" role="table" aria-label="Plants">
-			<div class="thead" role="row">
+			<div class="thead" role="row" aria-rowindex="1">
 				<span role="columnheader">Plant</span><span role="columnheader">Placement</span><span role="columnheader">Added</span
 				><span role="columnheader">Last trimmed</span><span role="columnheader">Status</span>
 			</div>
 			{#each GROUPS as g (g.key)}
 				{@const list = data.plants.filter((p) => g.match.includes(p.position))}
 				{#if list.length}
-					<section class="group">
-						<h2 class="kicker">{g.label}</h2>
+					<div class="group" role="rowgroup">
+						<div class="group-head" role="row"><span class="kicker" role="cell" aria-colspan={5}><h2>{g.label}</h2></span></div>
 						{#each list as p (p.id)}
 							<div class="tr" role="row">
 								<div class="pl" role="cell">
@@ -116,7 +116,7 @@
 								<span class="st status-{STATUS[p.status].level}" role="cell">{STATUS[p.status].text}</span>
 							</div>
 						{/each}
-					</section>
+					</div>
 				{/if}
 			{/each}
 		</div>
@@ -225,7 +225,7 @@
 		padding: 0 4px;
 		font-size: 13px;
 		font-weight: 800;
-		color: var(--accent);
+		color: var(--accent-text);
 		white-space: nowrap;
 	}
 	/* the table: a header over a 2px ink rule, rows with 1px dividers, grouped by placement */
@@ -240,10 +240,19 @@
 		display: flex;
 		flex-direction: column;
 	}
-	.group h2 {
-		margin: 0;
+	.group-head {
+		display: block;
+	}
+	.group-head .kicker {
+		display: block;
 		padding: 14px 0 6px;
 		border-bottom: 2px solid var(--ink);
+	}
+	.group h2 {
+		margin: 0;
+		font: inherit;
+		letter-spacing: inherit;
+		text-transform: inherit;
 		color: var(--text);
 	}
 	.tr {
@@ -273,7 +282,7 @@
 		color: var(--text);
 	}
 	.plant:hover .name {
-		color: var(--accent);
+		color: var(--accent-text);
 	}
 	.thumb {
 		width: 40px;

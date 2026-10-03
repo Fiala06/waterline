@@ -192,7 +192,7 @@
 		gap: 2px;
 		font-size: 13px;
 		font-weight: 800;
-		color: var(--accent);
+		color: var(--accent-text);
 		cursor: pointer;
 	}
 	.add:focus-within {

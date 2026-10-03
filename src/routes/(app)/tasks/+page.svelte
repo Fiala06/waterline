@@ -396,7 +396,7 @@
 			background: var(--surface);
 		}
 		.t-link:hover .name {
-			color: var(--accent);
+			color: var(--accent-text);
 		}
 	}
 

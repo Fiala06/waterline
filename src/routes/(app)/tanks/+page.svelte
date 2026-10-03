@@ -217,7 +217,7 @@
 	.plus {
 		font-size: 32px;
 		line-height: 1;
-		color: var(--accent);
+		color: var(--accent-text);
 	}
 	.add-title {
 		font-size: 16px;

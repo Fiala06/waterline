@@ -11,6 +11,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Easier to read:** Red text (links, the active tab, ✕ states) is a deeper red in the light theme and a lighter one in the dark theme, and buttons' red is a shade darker, so every word meets the contrast guideline; faint hints are a little darker too. Keyboard users get a Skip to content link, the Plants table reads correctly to a screen reader, and the Copy buttons on the AI assistant page are easier to tap.
 - **The bottom bar gets out of the way:** On a phone, the bar with Overview, Charts, Log, History and More slides away while you scroll down a page and comes back as soon as you scroll up or reach the top. Log's label sits under its button instead of behind it.
 - **Sheets stay put on a phone:** With Log, Snooze or any other sheet open, scrolling no longer moves the page behind it; only the sheet scrolls.
 - **More of the tank on its public page:** Visitors to a [public page](/tanks/current/public) now choose how much to see: the trend chart over 30 days, 90 days, 1 year or all time, for every tested parameter rather than three, and the log for the last week, the last month or everything. The owner's switches still decide what's shown at all.

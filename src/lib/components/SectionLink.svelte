@@ -36,7 +36,7 @@
 	}
 	.sec-link:focus-visible,
 	.sec-link:hover {
-		color: var(--accent);
+		color: var(--accent-text);
 		background: var(--surface);
 	}
 	/* where there's a pointer, only beside the heading it's over */
