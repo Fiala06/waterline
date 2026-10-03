@@ -40,10 +40,12 @@ export function serviceTask(equipmentId: string) {
 /**
  * Keep the item's service reminder in step with the form: create it, change
  * its cadence (due again that long after the last service, or from today), or
- * remove it when switched off. A task whose cadence is unchanged is left as is.
+ * remove it when switched off. Renaming the item also renames its task without
+ * moving its due date or clearing a snooze.
  */
 export function syncServiceTask(user: User, e: Equipment, days: number | null) {
   const task = serviceTask(e.id);
+  const name = `${serviceVerb(e.type)} ${equipmentName(e)}`;
   const today = todayInZone(user.timeZone);
   const from = e.lastServicedAt
     ? dateInZone(e.lastServicedAt, user.timeZone)
@@ -58,7 +60,7 @@ export function syncServiceTask(user: User, e: Equipment, days: number | null) {
   }
   if (!task) {
     createTask(user.id, e.tankId, {
-      name: `${serviceVerb(e.type)} ${equipmentName(e)}`,
+      name,
       kind: "maintenance",
       recurring: true,
       intervalDays: days,
@@ -67,14 +69,20 @@ export function syncServiceTask(user: User, e: Equipment, days: number | null) {
       openFormOnDone: false,
       equipmentId: e.id,
     });
-  } else if (task.intervalDays !== days || !task.recurring) {
+  } else if (task.name !== name || task.intervalDays !== days || !task.recurring) {
+    const cadenceChanged = task.intervalDays !== days || !task.recurring;
     db.update(tasks)
       .set({
-        recurring: true,
-        intervalDays: days,
-        scheduleMode: "completion",
-        nextDue,
-        snoozedUntil: null,
+        name,
+        ...(cadenceChanged
+          ? {
+              recurring: true,
+              intervalDays: days,
+              scheduleMode: "completion" as const,
+              nextDue,
+              snoozedUntil: null,
+            }
+          : {}),
       })
       .where(eq(tasks.id, task.id))
       .run();
