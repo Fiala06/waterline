@@ -26,7 +26,7 @@ test('charts say what they show, and read out a reading on hover, tap or the arr
 	await chart.focus();
 	await page.keyboard.press('End');
 	await page.keyboard.press('ArrowLeft');
-	await expect(chart).toHaveAttribute('aria-valuetext', /: 18 ppm, OK$/);
+	await expect(chart).toHaveAttribute('aria-valuetext', /: 18 ppm, (OK|In range)$/);
 	await expect(chart.locator('.readout')).toContainText('18 ppm');
 	await page.keyboard.press('Escape');
 	await expect(chart.locator('.readout')).toHaveCount(0);

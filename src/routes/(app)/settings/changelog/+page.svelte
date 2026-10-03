@@ -39,9 +39,10 @@
 {#snippet release(r: Release, current: boolean, links = true, tag: 'h2' | 'h3' = 'h2')}
 	<section class="release" class:current aria-labelledby={id(r.version)}>
 		<div class="rv">
-			<svelte:element this={tag} id={id(r.version)} class="ver">{displayVersion(r.version)}</svelte:element>
+			<svelte:element this={tag} id={id(r.version)} class="ver"
+				>{displayVersion(r.version)}{#if current}<span class="tag tag-accent here"> ✓ Installed</span>{/if}</svelte:element
+			>
 			<span class="date">{fmtDateLong(r.date)}</span>
-			{#if current}<span class="tag tag-accent here">You're on this</span>{/if}
 		</div>
 		{@render lines(r, links)}
 	</section>
@@ -64,10 +65,14 @@
 	</div>
 
 	{#if update}
-		<div class="update" id="update">
-			<span class="upd-text"><b>{update.version} is available.</b> You're on {displayVersion(VERSION)}. Update the Docker image to get it (on Unraid, the Docker tab shows update ready); everything in /data is kept.</span>
+		<section class="update" id="update" aria-labelledby="update-h">
+			<h2 id="update-h">Waterline {update.version} is out</h2>
+			<span class="upd-text"
+				>You're on {displayVersion(VERSION)}. Update the Docker image to get it (on Unraid, the Docker tab shows update ready); everything in /data is kept.
+				<a href={update.link} target="_blank" rel="noopener noreferrer">Changelog on GitHub<span aria-hidden="true"> ↗</span></a></span
+			>
 			<a class="btn btn-primary" href={update.link} target="_blank" rel="noopener noreferrer">Update now<span aria-hidden="true"> ↗</span></a>
-		</div>
+		</section>
 		{#each update.releases as r (r.version)}
 			{@render release(r, false, false)}
 		{/each}
@@ -281,5 +286,15 @@
 	}
 	.installed .date {
 		color: var(--text-muted);
+	}
+	.update h2 {
+		margin: 0;
+		font-size: 20px;
+		flex-basis: 100%;
+	}
+	.ver .here {
+		margin-left: 10px;
+		vertical-align: middle;
+		font-size: 11px;
 	}
 </style>

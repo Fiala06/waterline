@@ -290,10 +290,10 @@
 			{#if mode === 'new' && categoryHref}
 				<!-- the type: this one, and the others as links (README § 11) -->
 				<nav class="types" aria-label="Log type">
-					<a class="ty" href={testHref}>Test<kbd>T</kbd></a>
-					<a class="ty" class:on={category === 'water_change'} aria-current={category === 'water_change' ? 'page' : undefined} href={categoryHref('water_change')}>Water change<kbd>W</kbd></a>
-					<a class="ty" class:on={category === 'dosing'} aria-current={category === 'dosing' ? 'page' : undefined} href={categoryHref('dosing')}>Dose<kbd>D</kbd></a>
-					<a class="ty" class:on={category === 'note'} aria-current={category === 'note' ? 'page' : undefined} href={categoryHref('note')}>Note<kbd>N</kbd></a>
+					<a class="ty" href={testHref}>Test<kbd aria-hidden="true">T</kbd></a>
+					<a class="ty" class:on={category === 'water_change'} aria-current={category === 'water_change' ? 'page' : undefined} href={categoryHref('water_change')}>Water change<kbd aria-hidden="true">W</kbd></a>
+					<a class="ty" class:on={category === 'dosing'} aria-current={category === 'dosing' ? 'page' : undefined} href={categoryHref('dosing')}>Dose<kbd aria-hidden="true">D</kbd></a>
+					<a class="ty" class:on={category === 'note'} aria-current={category === 'note' ? 'page' : undefined} href={categoryHref('note')}>Note<kbd aria-hidden="true">N</kbd></a>
 					<a class="ty" class:on={inMore} aria-current={inMore ? 'page' : undefined} href={categoryHref(inMore ? category : more[0])}>More</a>
 				</nav>
 				{#if inMore}
@@ -306,7 +306,7 @@
 			{/if}
 			<div class="trow">
 				<h1>{title}</h1>
-				<button type="button" class="when" onclick={() => (picking = true)}><span class="when-k">When</span><b>{whenLabel(when)}</b><span aria-hidden="true"> ▾</span></button>
+				<button type="button" class="when" onclick={() => (picking = true)}><span class="when-k">When </span><b>{whenLabel(when)}</b><span class="when-c"> ▾</span></button>
 			</div>
 		</header>
 

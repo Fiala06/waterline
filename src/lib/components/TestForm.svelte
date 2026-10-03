@@ -274,10 +274,10 @@
 			{#if mode === 'new'}
 				<!-- the type: this one, and the others as links (README § 11) -->
 				<nav class="types" aria-label="Log type">
-					<span class="ty on" aria-current="page">Test<kbd>T</kbd></span>
-					<a class="ty" href={typeHref('water_change')}>Water change<kbd>W</kbd></a>
-					<a class="ty" href={typeHref('dosing')}>Dose<kbd>D</kbd></a>
-					<a class="ty" href={typeHref('note')}>Note<kbd>N</kbd></a>
+					<span class="ty on" aria-current="page">Test<kbd aria-hidden="true">T</kbd></span>
+					<a class="ty" href={typeHref('water_change')}>Water change<kbd aria-hidden="true">W</kbd></a>
+					<a class="ty" href={typeHref('dosing')}>Dose<kbd aria-hidden="true">D</kbd></a>
+					<a class="ty" href={typeHref('note')}>Note<kbd aria-hidden="true">N</kbd></a>
 					<a class="ty" href={typeHref('maintenance')}>More</a>
 				</nav>
 			{/if}
