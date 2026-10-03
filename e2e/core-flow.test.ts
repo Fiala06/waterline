@@ -27,7 +27,7 @@ test('core flow', async ({ page }, info) => {
 	await page.getByRole('button', { name: 'Create tank' }).click();
 
 	await expect(page.getByRole('status')).toContainText('✓ Tank created');
-	await expect(page.getByText('No readings yet')).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'No readings yet' })).toBeVisible();
 
 	// Log a water test with inline status
 	await page.getByRole('link', { name: 'Log first water test' }).click();

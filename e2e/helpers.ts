@@ -20,7 +20,7 @@ export async function newKeeperWithTank(page: Page, tag: string, type: 'Freshwat
 	await page.locator('label', { hasText: type }).click();
 	await page.getByLabel('Volume').fill('40');
 	await page.getByRole('button', { name: 'Create tank' }).click();
-	await expect(page.getByText('No readings yet')).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'No readings yet' })).toBeVisible();
 	return email;
 }
 
