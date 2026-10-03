@@ -1,7 +1,10 @@
 // "Summary for an AI assistant": one tank as Markdown to paste into a chat
 // assistant with a question. Written to be read, in the keeper's units and
 // time zone, and without account details. Waterline sends it nowhere.
-import { EQUIPMENT_TYPE_LABEL, equipmentName, specSummary } from '$lib/equipment';
+import { EQUIPMENT_TYPE_LABEL, equipmentName, isWithoutType, scheduleLabel, specSummary } from '$lib/equipment';
+import { fmtMoney } from '$lib/money';
+import { latestSamples } from './sensors';
+import { listWishes } from './wishes';
 import { bySpecies, speciesCount } from '$lib/livestock';
 import { eventKindLabel, eventTitle } from '$lib/events';
 import { fmtRange, fmtValue, paramUnit, statusOf } from '$lib/params';
@@ -12,7 +15,7 @@ import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { EVENT_CATEGORIES, type User } from './db/schema';
 import { tankNotes } from './trends';
 import { eventsSince, latestReadings, testsSince } from './logs';
-import { listEquipment, listLivestock, listPlants } from './specs';
+import { listEquipment, listLivestock, listPar, listPlants } from './specs';
 import { careLine, tankTargets, tankWarnings } from '$lib/care';
 import { CARE_SOURCE, careFor, speciesCareOn } from './species-care';
 import { getTank, listParams } from './tanks';
@@ -84,6 +87,7 @@ export function tankSummary(user: User, tankId: string, days: number, now = new 
 		['Substrate', t.substrate],
 		['Water source', t.waterSource ? (SOURCES[t.waterSource] ?? t.waterSource) : null],
 		['Light', t.photoperiodH != null ? `${formatNumber(t.photoperiodH, 1)} h a day` : null],
+		['Goes without', t.withoutEquipment.filter(isWithoutType).map((w) => EQUIPMENT_TYPE_LABEL[w]).join(', ') || null],
 		['Archived', t.archivedAt ? fmtDateLong(day(t.archivedAt)) : null],
 		['Notes', t.notes]
 	];
@@ -128,6 +132,13 @@ export function tankSummary(user: User, tankId: string, days: number, now = new 
 				)
 			: ['No parameters are tracked.']
 	);
+
+	// ── Sensors: the latest reading from a probe or controller per parameter (#19) ──
+	const live = [...latestSamples(t.id)].flatMap(([id, smp]) => {
+		const p = params.find((x) => x.id === id);
+		return p ? [`- ${p.name}: ${shown(p, smp.value)} at ${at(smp.at)} (from ${cell(smp.source)})`] : [];
+	});
+	if (live.length) section('Sensor readings, the latest from each', live);
 
 	// ── Trends: runs, paces and patterns, as on the dashboard ──────────────
 	const noticed = tankNotes(t.id, user).map((n) => `- ${n.text}`);
@@ -220,6 +231,7 @@ export function tankSummary(user: User, tankId: string, days: number, now = new 
 					[
 						`- ${EQUIPMENT_TYPE_LABEL[e.type]}: ${equipmentName(e)}`,
 						...specSummary(e.type, e.specs, user),
+						e.schedule ? `runs ${scheduleLabel(e.schedule)}` : null,
 						e.installedAt ? `since ${e.installedAt}` : null,
 						e.lastServicedAt ? `last serviced ${day(e.lastServicedAt)}` : null,
 						e.notes ? `note: "${cell(e.notes)}"` : null
@@ -229,6 +241,29 @@ export function tankSummary(user: User, tankId: string, days: number, now = new 
 				)
 			: ['None recorded.']
 	);
+	// PAR readings on a reef (#25): the latest at each spot
+	const par = listPar(user.id, t.id);
+	if (par.length) {
+		const seen = new Set<string>();
+		const latestPar = par.filter((r) => !seen.has(r.spot) && seen.add(r.spot));
+		section(
+			'PAR readings, the latest at each spot',
+			latestPar.map((r) => `- ${cell(r.spot)}: ${r.value} µmol/m²/s on ${day(r.measuredAt)}${r.note ? ` · ${cell(r.note)}` : ''}`)
+		);
+	}
+
+	// ── Planned: the wish list (#24) ────────────────────────────────────────
+	const wishes = listWishes(user.id, t.id);
+	if (wishes.length) {
+		section(
+			`Planned to add (wish list, ${wishes.length})`,
+			wishes.map(
+				(w) =>
+					`- ${w.kind === 'plant' || w.kind === 'equipment' ? '' : `${w.count} × `}${w.name}${w.scientificName ? ` (${w.scientificName})` : ''}, ${w.kind === 'equipment' ? EQUIPMENT_TYPE_LABEL[w.equipmentType ?? 'other'].toLowerCase() : w.kind}` +
+					`${w.priceCents != null ? `, about ${fmtMoney(w.priceCents, user.currency)}` : ''}${w.note ? `, note: "${cell(w.note)}"` : ''}`
+			)
+		);
+	}
 
 	// ── Schedule ────────────────────────────────────────────────────────────
 	const tasks = listTasks(user.id, t.id);

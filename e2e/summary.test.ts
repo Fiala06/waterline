@@ -23,6 +23,14 @@ test('summary for an AI assistant', async ({ page, context }, info) => {
 	await page.getByRole('button', { name: 'Add' }).last().click();
 	await expect(page.getByRole('status')).toContainText('✓ Added 8 Harlequin rasbora');
 
+	// and something planned
+	await open(page, `/tanks/${tankId}/wishlist`);
+	await page.locator('#wish-name').fill('Otocinclus');
+	await page.locator('.count-stepper').getByRole('button', { name: 'More' }).click();
+	await page.getByLabel('Price · optional').fill('18');
+	await page.getByRole('button', { name: 'Add to wish list' }).click();
+	await expect(page.getByRole('status')).toContainText('on the wish list');
+
 	// From the tank's Overview
 	await open(page, `/tanks/${tankId}`);
 	await page.getByRole('link', { name: /Copy a summary of this tank/ }).click();
@@ -36,6 +44,8 @@ test('summary for an AI assistant', async ({ page, context }, info) => {
 	expect(text).toMatch(/· Water change · 25% · Tap/);
 	expect(text).toContain('- 8 × Harlequin rasbora (Trigonostigma heteromorpha), fish');
 	expect(text).toMatch(/- Water change 25%: every 7 days, next due \d{4}-\d{2}-\d{2}/);
+	expect(text).toContain('## Planned to add (wish list, 1)');
+	expect(text).toContain('- 2 × Otocinclus, fish, about $18.00');
 	expect(text).not.toContain(email); // no account details
 
 	// Copy puts exactly that text on the clipboard
