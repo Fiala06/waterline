@@ -7,6 +7,7 @@
 	import { hscroll } from '$lib/actions';
 	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
+	import CopyReadings from '$lib/components/CopyReadings.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import ImportButton from '$lib/components/ImportButton.svelte';
@@ -191,6 +192,7 @@
 						{/if}
 						<div class="spacer"></div>
 						<div class="actions">
+							{#if d.copy}<CopyReadings text={d.copy} />{/if}
 							{#if d.editable}<a class="btn" href="{d.href}/edit">Edit</a>{/if}
 							<ConfirmDelete
 								id="confirm-history-delete"

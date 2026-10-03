@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
+	import CopyReadings from '$lib/components/CopyReadings.svelte';
 	import EntryDetail from '$lib/components/EntryDetail.svelte';
 	import { ui } from '$lib/ui.svelte';
 	let { data } = $props();
@@ -19,6 +20,7 @@
 	editHref="/entries/test/{e.id}/edit"
 >
 	{#snippet actions()}
+		{#if e.copy}<CopyReadings text={e.copy} />{/if}
 		<ConfirmDelete
 			fields={{ from: ui.prev ?? '' }}
 			id="confirm-delete"

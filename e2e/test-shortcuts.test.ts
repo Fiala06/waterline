@@ -123,3 +123,26 @@ test('water test: Edit targets and parameters, then back to the test', async ({ 
 	await open(page, `/tanks/${tankId}/targets`);
 	await expect(page.getByLabel('pH maximum')).toHaveValue('7.8');
 });
+
+test('water test: Copy puts the readings on the clipboard as plain text', async ({ page, context }, info) => {
+	await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+	await newKeeperWithTank(page, `copy-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, `/entries/test/new?tank=${tankId}`);
+	await page.getByLabel('pH', { exact: true }).fill('7.8');
+	await page.getByLabel('Nitrate', { exact: true }).fill('40');
+	await page.getByRole('button', { name: 'Save 2 readings' }).click();
+	await expect(page.getByRole('status')).toContainText('Saved 2 readings');
+
+	// the test's own page
+	await open(page, '/history');
+	const href = await page.locator('a.row', { hasText: 'Water test · 2 readings' }).first().getAttribute('href');
+	await open(page, href!);
+	await page.getByRole('button', { name: 'Copy readings as text' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Readings copied');
+	const text = await page.evaluate(() => navigator.clipboard.readText());
+	const lines = text.split('\n');
+	expect(lines[0]).toMatch(/^Riverbed 40 · water test · \w{3} \d+, \d{4}, \d+:\d{2} [AP]M$/);
+	expect(lines.slice(1)).toEqual(['pH 7.8', 'Nitrate 40 ppm']);
+	expect(text).not.toMatch(/High|range|✕|✓/);
+});

@@ -12,6 +12,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 ## Unreleased
 
 - **Bigger charts on a computer:** In [Charts](/charts), up to a 1440px-wide window the latest reading, averages and events move under the chart, so the chart gets the full width. The charts of the same reading in your other tanks are now wide and tall enough to read.
+- **Copy a water test:** Open a water test in [History](/history) and Copy puts its readings on the clipboard as plain text, one a line ("pH 7.8", "Nitrate 40 ppm") under the tank and the time, without the statuses, ready to paste into a message.
 - **No heater, on purpose:** On a tank's [Equipment](/tanks/current/equipment), Goes without marks a tank as having no filter, heater, light or CO₂, so it reads as a choice, not something missing. It shows with the equipment on the tank's page, its public page and the setup review, and goes by itself when you add one.
 - **Water tests open on the public page:** On a tank's [public page](/tanks/current/public), tapping a water test in the Log shows its readings, each with its status. Its note stays private, and nothing opens when the page hides readings.
 - **Targets from the water test:** On [Log water test](/entries/test/new), Edit targets and parameters opens the tank's targets, where you change a parameter's range or which ones you test. Save there brings you straight back to your test, with what you'd typed still in it.

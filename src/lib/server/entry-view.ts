@@ -13,12 +13,12 @@ import {
 import { fmtValue, paramUnit, statusOf } from '$lib/params';
 import { statusMedium } from '$lib/status';
 import { amountText } from '$lib/tasks';
-import { dateInZone, fmtDate, fmtTime, fmtWhen } from '$lib/time';
+import { dateInZone, fmtDate, fmtDateLong, fmtTime, fmtWhen } from '$lib/time';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import type { User } from './db/schema';
 import { getEvent, getTest } from './logs';
 import { entryPhotos } from './photos';
-import { listParams } from './tanks';
+import { getTank, listParams } from './tanks';
 
 /**
  * Whether the event form can edit this entry. System notes and automatic
@@ -42,6 +42,8 @@ export interface EntryView {
 	note: string | null;
 	rows: { label: string; value: string; statusText?: string; level?: string }[];
 	photos: { id: string }[];
+	/** a water test as plain text to paste into a message: the tank and when, then "pH 7.8" a line, no statuses */
+	copy?: string;
 	editable: boolean;
 	href: string;
 }
@@ -73,6 +75,10 @@ export function testView(user: User, id: string): EntryView {
 		edited: test.editedAt ? fmtTime(test.editedAt, user.timeZone) : null,
 		note: test.note,
 		rows,
+		copy: [
+			`${getTank(user.id, test.tankId).name} · water test · ${fmtDateLong(dateInZone(test.takenAt, user.timeZone))}, ${fmtTime(test.takenAt, user.timeZone)}`,
+			...rows.map((r) => `${r.label} ${r.value}`)
+		].join('\n'),
 		photos: entryPhotos({ testId: test.id }).map((p) => ({ id: p.id })),
 		editable: true,
 		href: `/entries/test/${test.id}`

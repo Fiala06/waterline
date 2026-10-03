@@ -173,6 +173,7 @@
 	}
 	/* Only the row's own buttons: the confirm dialog inside keeps its 44px buttons (7.10). */
 	.actions > .edit,
+	.actions > :global(.copy),
 	.actions > :global(.btn-danger) {
 		flex: 1;
 		height: 50px;
