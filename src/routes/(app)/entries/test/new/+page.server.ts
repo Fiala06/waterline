@@ -8,6 +8,7 @@ import { photoFiles, preparePhotos, storePhotos } from '$lib/server/photos';
 import { alertOutOfRange } from '$lib/server/notifications';
 import { getTank, listParams, reusableCustomParams } from '$lib/server/tanks';
 import { getTask } from '$lib/server/tasks';
+import { kitsByParam } from '$lib/server/kits';
 import type { Actions, PageServerLoad } from './$types';
 import { logger } from '$lib/server/log';
 
@@ -37,7 +38,9 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 		waterChange: testWaterChange(tank, user),
 		today: todayInZone(user.timeZone),
 		// "+ Add parameter": custom ones from other tanks, in one tap
-		reusable: reusableCustomParams(user.id, tank.id)
+		reusable: reusableCustomParams(user.id, tank.id),
+		// test kits (#21): the steps to run beside each parameter that has one
+		kits: kitsByParam(user.id)
 	};
 };
 

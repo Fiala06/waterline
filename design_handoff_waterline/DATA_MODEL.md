@@ -100,6 +100,9 @@ livestock        id, tank_id, kind(fish|invert|coral), common_name, scientific_n
 plants           id, tank_id, name, scientific_name?, position(background|midground|
                  foreground|epiphyte|floating), status(thriving|melting|algae|other),
                  last_trimmed_at?, removed_at?, import_id?, photo_id? (the keeper's own), created_at
+test_kits        id, user_id, name, param_key (ph|nh3|no2|no3|gh|kh|temp or custom:<name>),
+                 steps JSON [{text, seconds?}] (a test's steps, timed ones run on the form),
+                 created_at
 products         id, user_id, name, url, note?, strength_mg_per_ml?, strength_of? (its strength for
                  the Dose → ppm calculator: mg per mL of what it adds), created_at (saved reorder links)
 expenses         id, tank_id, date, amount_cents, category(livestock|plants|equipment|

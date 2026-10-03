@@ -480,6 +480,27 @@ export const products = sqliteTable(
 
 export type Product = typeof products.$inferSelect;
 
+/**
+ * Test kits (#21): the steps of a test and its waits, per parameter, so the
+ * water test form can run them with a timer. Account-wide, like products.
+ */
+export const testKits = sqliteTable(
+	'test_kits',
+	{
+		id: id(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		name: text('name').notNull(),
+		/** ph | nh3 | no2 | no3 | gh | kh | temp, or custom:<name> */
+		paramKey: text('param_key').notNull(),
+		steps: text('steps', { mode: 'json' }).$type<{ text: string; seconds?: number }[]>().notNull().default([]),
+		createdAt: createdAt()
+	},
+	(t) => [index('test_kits_user').on(t.userId)]
+);
+export type TestKit = typeof testKits.$inferSelect;
+
 // ── Spending ─────────────────────────────────────────────────────────────────
 
 export const EXPENSE_CATEGORIES = ['livestock', 'plants', 'equipment', 'consumables', 'other'] as const;

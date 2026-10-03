@@ -12,6 +12,7 @@
 	import CustomParamSheet from './CustomParamSheet.svelte';
 	import { ui } from '$lib/ui.svelte';
 	import DateTimePicker from './DateTimePicker.svelte';
+	import KitRun from './KitRun.svelte';
 	import PhotoPicker from './PhotoPicker.svelte';
 	import Tip from './Tip.svelte';
 	import WaterChangeFields from './WaterChangeFields.svelte';
@@ -20,6 +21,7 @@
 	import { dropsAsPpm, parseNumber } from '$lib/units';
 	import { exifToWhen, fmtWhenShort, type ExifDate } from '$lib/exif';
 	import { todayInZone, whenLabel, type When } from '$lib/time';
+	import { kitKeyFor, type KitStep } from '$lib/kits';
 
 	interface Param {
 		id: string;
@@ -55,7 +57,8 @@
 		targetsHref = null,
 		reusable = [],
 		draftKey = null,
-		waterChange = null
+		waterChange = null,
+		kits = {}
 	}: {
 		mode?: 'new' | 'edit';
 		tankName: string;
@@ -81,6 +84,8 @@
 		reusable?: { name: string; unit: string; min: number | null; max: number | null; decimals: number; tank: string }[];
 		/** New tests: keep what was typed on this device until it's saved */
 		draftKey?: string | null;
+		/** test kits (#21): the steps to run beside a parameter, by its kit key */
+		kits?: Record<string, { id: string; name: string; steps: KitStep[] }>;
 		/** New tests: "Also log a water change", on when the last test had one */
 		waterChange?: {
 			on: boolean;
@@ -95,6 +100,9 @@
 	} = $props();
 
 	let draft = $state<Record<string, string>>(untrack(() => ({ ...values })));
+	// a kit's countdown or "time's up" shows in the row's flag while it runs (#21)
+	let kitState = $state<Record<string, { running: boolean; clock: string | null; done: boolean }>>({});
+	const kitFor = (p: { id: string; key?: string; name: string }) => (mode === 'new' && p.key ? kits[kitKeyFor({ key: p.key, name: p.name })] : undefined);
 	let saved = $state<Record<string, string>>(untrack(() => ({ ...values })));
 	let note = $state(untrack(() => initialNote));
 	let when = $state<When | null>(untrack(() => initialWhen));
@@ -380,7 +388,11 @@
 							</div>
 							<div class="flag">
 								{#if r.unit}<span class="unit">{r.unit}</span>{/if}
-								{#if mode === 'new' && r.st}
+								{#if kitState[r.id]?.clock}
+									<span class="clock" role="timer">{kitState[r.id].clock}</span>
+								{:else if kitState[r.id]?.done && r.v == null}
+									<span class="st status-ok" aria-hidden="true">⏱</span>
+								{:else if mode === 'new' && r.st}
 									<span class="st status-{r.st.level}" aria-hidden="true">{r.st.level === 'ok' ? '✓' : statusShort(r.st)}</span>
 								{:else if mode === 'new' && r.last}
 									<span class="lastv">{r.lastValue}</span>
@@ -392,6 +404,10 @@
 							<div class="msg st-msg status-{r.st.level}" id="s_{r.id}">{statusLong(r.st, r.rangeText)}</div>
 						{/if}
 						{#if fieldErrors[r.id]}<div class="msg status-bad">✕ {fieldErrors[r.id]}</div>{/if}
+						{#if kitFor(r)}
+							{@const kit = kitFor(r)!}
+							<KitRun {kit} paramName={r.name} onstate={(s) => (kitState[r.id] = s)} />
+						{/if}
 						{#if r.drops}
 							{@const d = r.drops}
 							<div class="msg hard-hint drops" aria-live="polite">
@@ -727,6 +743,13 @@
 		font-weight: 400;
 	}
 	/* the unit, then the flag ("✕ High") or the last reading */
+	/* a kit's countdown in the flag (#21) */
+	.flag .clock {
+		font-size: 14px;
+		font-weight: 800;
+		font-variant-numeric: tabular-nums;
+		color: var(--accent-text);
+	}
 	.flag {
 		display: flex;
 		flex-direction: column;

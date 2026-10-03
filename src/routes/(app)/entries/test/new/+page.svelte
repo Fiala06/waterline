@@ -10,6 +10,7 @@
 	<TestForm
 		tankName={data.tank.name}
 		params={data.params}
+		kits={data.kits}
 		values={form?.values ?? data.filled ?? {}}
 		initialWhen={data.when}
 		timeZone={data.user.timeZone}
