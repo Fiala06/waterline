@@ -119,7 +119,7 @@
 		color: var(--text-muted);
 	}
 	.rows {
-		border-radius: 16px;
+		border-radius: 0;
 		background: var(--surface-2);
 		border: 1px solid var(--border);
 	}
@@ -168,7 +168,7 @@
 		width: 100%;
 		aspect-ratio: 1;
 		object-fit: cover;
-		border-radius: 10px;
+		border-radius: 0;
 		display: block;
 	}
 	.actions {

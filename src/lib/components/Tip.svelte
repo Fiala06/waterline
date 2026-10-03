@@ -110,7 +110,7 @@
 	.tip-pop {
 		max-width: min(290px, calc(100vw - 24px));
 		padding: 10px 12px;
-		border-radius: 12px;
+		border-radius: 0;
 		background: var(--surface-hi);
 		border: 1px solid var(--border-strong);
 		box-shadow: var(--shadow-modal);

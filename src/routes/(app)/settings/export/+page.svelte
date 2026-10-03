@@ -286,7 +286,7 @@
 		gap: 12px;
 		align-items: flex-start;
 		padding: 14px;
-		border-radius: 16px;
+		border-radius: 0;
 		border: 1px solid var(--border);
 		background: var(--surface);
 		cursor: pointer;
@@ -347,14 +347,14 @@
 	}
 	.bar {
 		height: 8px;
-		border-radius: 4px;
+		border-radius: 0;
 		background: var(--border);
 		overflow: hidden;
 	}
 	.bar i {
 		display: block;
 		height: 100%;
-		border-radius: 4px;
+		border-radius: 0;
 		background: var(--accent);
 		transition: width 0.3s;
 	}
@@ -362,7 +362,7 @@
 	/* ready (G10 on phones, D10 on desktop) */
 	.ready {
 		padding: 20px;
-		border-radius: 18px;
+		border-radius: 0;
 		background: var(--ok-bg);
 		border: 1px solid color-mix(in srgb, var(--ok) 22%, var(--ok-bg));
 		color: var(--ok-text);
@@ -392,7 +392,7 @@
 	.check {
 		width: 52px;
 		height: 52px;
-		border-radius: 26px;
+		border-radius: 0;
 		background: var(--ok);
 		color: var(--on-accent);
 		display: flex;
@@ -487,7 +487,7 @@
 			width: auto;
 			height: 48px;
 			padding: 0 22px;
-			border-radius: 12px;
+			border-radius: 0;
 			font-size: 16px;
 		}
 		.done {
@@ -525,7 +525,7 @@
 			width: auto;
 			height: 48px;
 			padding: 0 22px;
-			border-radius: 12px;
+			border-radius: 0;
 			font-size: 16px;
 		}
 		.list li {

@@ -57,7 +57,7 @@
 			padding: 24px 28px;
 			background: var(--surface);
 			border: 1px solid var(--border);
-			border-radius: 20px;
+			border-radius: 0;
 		}
 		.body {
 			padding: 0;

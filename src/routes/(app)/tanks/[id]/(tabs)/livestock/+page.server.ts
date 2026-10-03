@@ -40,12 +40,16 @@ export const load: PageServerLoad = ({ locals, params }) => {
 	// a pet's own photo, else the species photo from Wikimedia Commons (some come in the background)
 	const photos = speciesPhotos(rows.map((l) => ({ photoId: l.photoId, scientific: l.scientificName, common: l.commonName })));
 	const items = rows.map((l, i) => ({ ...view(l), photo: photos.list[i]?.src ?? null }));
+	const animals = items.reduce((n, l) => n + l.count, 0);
+	const species = speciesCount(rows);
 	return {
+		// the tab's toolbar: "23 animals · 4 species"
+		toolbarText: items.length ? `${animals} animal${animals === 1 ? '' : 's'} · ${species} species` : '',
 		items,
 		photosPending: photos.pending,
 		past: bySpecies(listLivestock(user.id, params.id, { removed: true })).map(view),
-		animals: items.reduce((n, l) => n + l.count, 0),
-		species: speciesCount(rows),
+		animals,
+		species,
 		equipment: listEquipment(user.id, params.id).map((e) => {
 			const name = equipmentName(e);
 			// T6: "Tidewell 200 W · 77 °F", not the wattage twice

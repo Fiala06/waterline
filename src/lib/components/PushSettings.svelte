@@ -210,7 +210,7 @@
 	.group {
 		display: flex;
 		flex-direction: column;
-		border-radius: 16px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 	}
@@ -257,7 +257,7 @@
 	.badge {
 		margin-left: 8px;
 		padding: 1px 6px;
-		border-radius: 5px;
+		border-radius: 0;
 		border: 1px solid var(--border-strong);
 		color: var(--text-muted);
 		font-size: 12px;

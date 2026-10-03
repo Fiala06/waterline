@@ -317,18 +317,18 @@
 		border-top: 1px solid var(--border);
 	}
 	.row:first-child {
-		border-top-left-radius: 15px;
-		border-top-right-radius: 15px;
+		border-top-left-radius: 0;
+		border-top-right-radius: 0;
 	}
 	.row:last-child {
-		border-bottom-left-radius: 15px;
-		border-bottom-right-radius: 15px;
+		border-bottom-left-radius: 0;
+		border-bottom-right-radius: 0;
 	}
 	.check {
 		width: 44px;
 		height: 44px;
 		flex-shrink: 0;
-		border-radius: 22px;
+		border-radius: 0;
 		border: 2px solid var(--border-strong);
 	}
 	.d-label {
@@ -384,18 +384,18 @@
 			min-height: 64px;
 		}
 		.ocard {
-			border-radius: 14px;
+			border-radius: 0;
 		}
 		.rows {
-			border-radius: 14px;
+			border-radius: 0;
 		}
 		.row:first-child {
-			border-top-left-radius: 13px;
-			border-top-right-radius: 13px;
+			border-top-left-radius: 0;
+			border-top-right-radius: 0;
 		}
 		.row:last-child {
-			border-bottom-left-radius: 13px;
-			border-bottom-right-radius: 13px;
+			border-bottom-left-radius: 0;
+			border-bottom-right-radius: 0;
 		}
 		/* narrow list: name, due date, then tank · interval */
 		.t-link {
@@ -436,7 +436,7 @@
 			min-height: 38px;
 			height: 38px;
 			padding: 0 14px;
-			border-radius: 10px;
+			border-radius: 0;
 			font-size: 14px;
 		}
 		.oactions .snooze {
@@ -446,7 +446,7 @@
 			width: auto;
 			height: 38px;
 			padding: 0 14px;
-			border-radius: 10px;
+			border-radius: 0;
 			border-width: 1px;
 			font-size: 14px;
 			font-weight: 600;
@@ -479,12 +479,12 @@
 			pointer-events: none;
 		}
 		.row.selected:first-child::after {
-			border-top-left-radius: 14px;
-			border-top-right-radius: 14px;
+			border-top-left-radius: 0;
+			border-top-right-radius: 0;
 		}
 		.row.selected:last-child::after {
-			border-bottom-left-radius: 14px;
-			border-bottom-right-radius: 14px;
+			border-bottom-left-radius: 0;
+			border-bottom-right-radius: 0;
 		}
 		.pane {
 			display: block;

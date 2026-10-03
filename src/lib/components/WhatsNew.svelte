@@ -48,14 +48,13 @@
 {/if}
 
 <style>
+	/* a 2px ink border, as the design's notice boxes */
 	.whats-new {
 		padding: 16px;
 		display: flex;
 		flex-direction: column;
 		gap: 14px;
-		border-radius: 16px;
-		background: var(--surface);
-		border: 1px solid var(--border-strong);
+		border: 2px solid var(--ink);
 	}
 	.top {
 		display: flex;
@@ -66,9 +65,7 @@
 		width: 48px;
 		height: 48px;
 		flex-shrink: 0;
-		border-radius: 12px;
-		background: var(--bg);
-		border: 1px solid var(--border);
+		background: var(--surface);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -82,7 +79,7 @@
 	h2 {
 		margin: 0;
 		font-size: 17px;
-		font-weight: 600;
+		font-weight: 800;
 	}
 	ul {
 		margin: 0;
@@ -102,11 +99,6 @@
 	}
 	.actions .btn {
 		flex: 1;
-		height: 46px;
-		font-size: 15px;
-	}
-	.actions .btn:not(.btn-primary) {
-		font-weight: 400;
 	}
 
 	/* desktop: one row, the buttons at the end */
@@ -123,7 +115,6 @@
 		}
 		.actions .btn {
 			flex: none;
-			height: 44px;
 			padding: 0 18px;
 		}
 	}

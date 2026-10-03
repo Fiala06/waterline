@@ -77,7 +77,7 @@
 		position: relative;
 		width: 168px;
 		height: 104px;
-		border-radius: 20px;
+		border-radius: 0;
 		border: 3px solid var(--text);
 		overflow: hidden;
 	}

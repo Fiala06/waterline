@@ -730,7 +730,7 @@
 	.meta {
 		margin: 0 0 16px;
 		padding: 10px 14px;
-		border-radius: 12px;
+		border-radius: 0;
 		background: var(--surface-2);
 		border: 1px solid var(--border);
 		font-size: 13px;
@@ -745,7 +745,7 @@
 	}
 	.cats .chip {
 		height: 40px;
-		border-radius: 20px;
+		border-radius: 0;
 		color: var(--text);
 	}
 	.cats .chip.selected {
@@ -805,7 +805,7 @@
 	/* ── Pick-any chips (G2, G4, G5) ── */
 	.pick {
 		height: 40px;
-		border-radius: 12px;
+		border-radius: 0;
 	}
 
 	/* ── Segmented choices (G3, G4) ── */
@@ -845,7 +845,7 @@
 	.preview {
 		margin: 0;
 		padding: 12px 14px;
-		border-radius: 12px;
+		border-radius: 0;
 		background: var(--surface-2);
 		border: 1px solid var(--border);
 		font-size: 13px;
@@ -885,7 +885,7 @@
 		gap: 12px;
 		min-height: 48px;
 		padding: 2px 6px 2px 14px;
-		border-radius: 14px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 		font-size: 14px;
@@ -902,7 +902,7 @@
 		min-height: 44px;
 		padding: 0 26px 0 8px;
 		border: none;
-		border-radius: 10px;
+		border-radius: 0;
 		background: transparent;
 		color: var(--accent);
 		font-size: 14px;
@@ -924,7 +924,7 @@
 	/* ── Task ── */
 	.task {
 		padding: 12px 14px;
-		border-radius: 14px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 		font-size: 14px;
@@ -954,7 +954,7 @@
 	.save {
 		flex: 1;
 		height: 56px;
-		border-radius: 14px;
+		border-radius: 0;
 		font-size: 17px;
 	}
 	.edit .foot {
@@ -987,7 +987,7 @@
 			max-width: 100%;
 			flex: none;
 			padding: 0;
-			border-radius: 20px;
+			border-radius: 0;
 			background: var(--surface);
 			border: 1px solid var(--border-strong);
 			box-shadow: var(--shadow-modal);
@@ -1030,7 +1030,7 @@
 		}
 		.cats .chip {
 			height: 36px;
-			border-radius: 18px;
+			border-radius: 0;
 		}
 		/* D13: 13px labels, 48px fields on the card (the species field included) */
 		.fields :global(.field) {
@@ -1108,7 +1108,7 @@
 		.edit .save {
 			flex: none;
 			height: 44px;
-			border-radius: 12px;
+			border-radius: 0;
 			font-size: 15px;
 			padding: 0 22px;
 		}
@@ -1116,7 +1116,7 @@
 			order: -1;
 			height: 44px;
 			padding: 0 16px;
-			border-radius: 12px;
+			border-radius: 0;
 			border: 1px solid var(--bad-border);
 		}
 	}

@@ -112,7 +112,7 @@
 		max-height: 70vh;
 		overflow: auto;
 		padding: 14px 16px;
-		border-radius: 14px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 		font-family: ui-monospace, Menlo, monospace;

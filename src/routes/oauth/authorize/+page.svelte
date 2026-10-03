@@ -114,7 +114,7 @@
 	@media (min-width: 1024px) {
 		.consent {
 			padding: 28px 32px;
-			border-radius: 20px;
+			border-radius: 0;
 			background: var(--surface);
 			border: 1px solid var(--border);
 		}

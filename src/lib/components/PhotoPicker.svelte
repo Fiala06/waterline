@@ -104,7 +104,7 @@
 		position: relative;
 		width: 84px;
 		height: 84px;
-		border-radius: 12px;
+		border-radius: 0;
 		flex-shrink: 0;
 	}
 	.tile img {
@@ -112,7 +112,7 @@
 		height: 100%;
 		object-fit: cover;
 		display: block;
-		border-radius: 12px;
+		border-radius: 0;
 		border: 1px solid var(--border);
 		background: var(--surface-hi);
 	}
@@ -174,7 +174,7 @@
 	.bar {
 		width: 100%;
 		height: 4px;
-		border-radius: 2px;
+		border-radius: 0;
 		background: var(--border);
 		overflow: hidden;
 	}
@@ -244,10 +244,10 @@
 	.compact .tile {
 		width: 48px;
 		height: 48px;
-		border-radius: 10px;
+		border-radius: 0;
 	}
 	.compact .tile img {
-		border-radius: 10px;
+		border-radius: 0;
 	}
 	.compact .uploading {
 		padding: 0 8px;

@@ -306,7 +306,7 @@
 			height: 48px;
 			padding: 0 28px;
 			font-size: 16px;
-			border-radius: 12px;
+			border-radius: 0;
 		}
 		.finish p {
 			text-align: left;

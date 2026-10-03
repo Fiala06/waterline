@@ -210,7 +210,7 @@
 	.day {
 		position: relative;
 		height: 40px;
-		border-radius: 20px;
+		border-radius: 0;
 		font-size: 15px;
 		font-variant-numeric: tabular-nums;
 	}
@@ -250,7 +250,7 @@
 	.time-box {
 		height: 46px;
 		padding: 0 16px;
-		border-radius: 12px;
+		border-radius: 0;
 		background: var(--surface-2);
 		border: 1px solid var(--border-strong);
 		color: var(--text);

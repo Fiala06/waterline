@@ -171,15 +171,14 @@
 		margin: 6px 0 0;
 		padding: 0;
 		list-style: none;
-		border-radius: 12px;
-		background: var(--surface);
-		border: 1px solid var(--border-strong);
-		box-shadow: var(--shadow-modal);
+		background: var(--bg);
+		border: 2px solid var(--ink);
+		box-shadow: var(--shadow-lg);
 		max-height: 320px;
 		overflow-y: auto;
 	}
 	.list li + li {
-		border-top: 1px solid var(--border);
+		border-top: 1px solid var(--divider);
 	}
 	.list button {
 		width: 100%;
@@ -192,7 +191,7 @@
 	}
 	.list button:hover,
 	.list button.active {
-		background: var(--surface-hi);
+		background: var(--surface);
 	}
 	.c {
 		font-size: 15px;
@@ -208,6 +207,6 @@
 	.custom {
 		font-size: 14px;
 		color: var(--accent);
-		font-weight: 600;
+		font-weight: 800;
 	}
 </style>

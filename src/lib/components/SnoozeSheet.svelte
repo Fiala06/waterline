@@ -110,7 +110,7 @@
 	.opts {
 		display: flex;
 		flex-direction: column;
-		border-radius: 16px;
+		border-radius: 0;
 		background: var(--surface-hi);
 		border: 1px solid var(--border-strong);
 		overflow: hidden;

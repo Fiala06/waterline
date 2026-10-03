@@ -175,7 +175,7 @@
 	.group {
 		display: flex;
 		flex-direction: column;
-		border-radius: 16px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 	}
@@ -240,7 +240,7 @@
 		list-style: none;
 		margin: 0;
 		padding: 0 16px;
-		border-radius: 16px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 	}
@@ -297,7 +297,7 @@
 	pre {
 		margin: 4px 0 0;
 		padding: 10px 12px;
-		border-radius: 10px;
+		border-radius: 0;
 		background: var(--bg);
 		border: 1px solid var(--border);
 		font-size: 12px;

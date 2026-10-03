@@ -272,7 +272,7 @@
 	.save {
 		flex: 1;
 		height: 56px;
-		border-radius: 14px;
+		border-radius: 0;
 		font-size: 17px;
 	}
 	@media (min-width: 1024px) {
@@ -283,7 +283,7 @@
 			padding: 24px 28px;
 			background: var(--surface);
 			border: 1px solid var(--border);
-			border-radius: 20px;
+			border-radius: 0;
 		}
 		.body {
 			padding: 0;
@@ -305,7 +305,7 @@
 			flex: 0 0 auto;
 			min-width: 140px;
 			font-size: 15px;
-			border-radius: 12px;
+			border-radius: 0;
 		}
 		.remove {
 			margin-right: auto;

@@ -61,7 +61,7 @@
 		position: relative;
 		min-height: 36px;
 		padding: 0 14px;
-		border-radius: 10px;
+		border-radius: 0;
 		font-size: 14px;
 	}
 	.signin::after {

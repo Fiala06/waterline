@@ -468,7 +468,7 @@
 	.group {
 		display: flex;
 		flex-direction: column;
-		border-radius: 16px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 	}
@@ -497,7 +497,7 @@
 		border-radius: 0 0 15px 15px;
 	}
 	.row:only-child {
-		border-radius: 15px;
+		border-radius: 0;
 	}
 	.k {
 		flex-shrink: 0;
@@ -639,12 +639,12 @@
 		padding: 14px 16px;
 	}
 	.segmented.sm {
-		border-radius: 12px;
+		border-radius: 0;
 		background: var(--surface-2);
 	}
 	.segmented.sm label {
 		min-height: 36px;
-		border-radius: 8px;
+		border-radius: 0;
 		font-size: 14px;
 	}
 	/* 36px segments as drawn, 44px to tap */
@@ -660,7 +660,7 @@
 	.badge {
 		margin-left: 8px;
 		padding: 1px 6px;
-		border-radius: 5px;
+		border-radius: 0;
 		border: 1px solid var(--border-strong);
 		color: var(--text-muted);
 		font-size: 12px;
@@ -673,7 +673,7 @@
 	.signout {
 		width: 100%;
 		height: 52px;
-		border-radius: 14px;
+		border-radius: 0;
 		font-size: 16px;
 		color: var(--bad);
 	}

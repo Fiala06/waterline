@@ -115,7 +115,7 @@
 	.progress i {
 		height: 4px;
 		flex: 1;
-		border-radius: 2px;
+		border-radius: 0;
 		background: var(--border);
 	}
 	.progress i.on {
@@ -191,7 +191,7 @@
 			margin: 0;
 			padding: 36px;
 			gap: 22px;
-			border-radius: 20px;
+			border-radius: 0;
 			background: var(--surface);
 			border: 1px solid var(--border);
 		}
@@ -226,12 +226,12 @@
 			gap: 14px;
 		}
 		.segmented {
-			border-radius: 12px;
+			border-radius: 0;
 			background: var(--surface-2);
 		}
 		.segmented label {
 			min-height: 40px;
-			border-radius: 8px;
+			border-radius: 0;
 			font-size: 15px;
 		}
 		/* the unit hint moves below the row */
@@ -248,7 +248,7 @@
 			width: auto;
 			height: 48px;
 			padding: 0 22px;
-			border-radius: 12px;
+			border-radius: 0;
 			font-size: 16px;
 		}
 	}

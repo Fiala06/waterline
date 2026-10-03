@@ -102,7 +102,7 @@
 	.spec {
 		min-height: 26px;
 		padding: 0 8px;
-		border-radius: 6px;
+		border-radius: 0;
 		background: var(--surface-hi);
 		display: inline-flex;
 		align-items: center;

@@ -141,7 +141,7 @@
 		flex-shrink: 0;
 		border: 2px solid var(--text-muted);
 		border-top-width: 4px;
-		border-radius: 3px;
+		border-radius: 0;
 	}
 	.head {
 		display: flex;
@@ -196,7 +196,7 @@
 		max-width: 100%;
 		height: 36px;
 		margin: 4px 0;
-		border-radius: 18px;
+		border-radius: 0;
 		font-size: 16px;
 		font-variant-numeric: tabular-nums;
 	}

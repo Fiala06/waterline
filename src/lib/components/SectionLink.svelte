@@ -27,7 +27,7 @@
 		width: 44px;
 		height: 44px;
 		margin: -10px -8px -10px -4px;
-		border-radius: 8px;
+		border-radius: 0;
 		font-size: 0.85em;
 		font-weight: 600;
 		color: var(--text-faint);

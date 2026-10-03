@@ -39,7 +39,7 @@
 	.progress i {
 		height: 4px;
 		flex: 1;
-		border-radius: 2px;
+		border-radius: 0;
 		background: var(--accent);
 	}
 	.step {
@@ -75,7 +75,7 @@
 			max-width: 100%;
 			margin: 0;
 			padding: 12px 12px 20px;
-			border-radius: 20px;
+			border-radius: 0;
 			background: var(--surface);
 			border: 1px solid var(--border);
 		}

@@ -330,7 +330,7 @@
 		flex: 1;
 		min-width: 0;
 		height: 52px;
-		border-radius: 12px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 		padding: 0 16px;
@@ -410,7 +410,7 @@
 	.lg-marker {
 		width: 10px;
 		height: 10px;
-		border-radius: 5px;
+		border-radius: 0;
 		background: var(--border);
 		border: 1px solid var(--text-muted);
 	}
@@ -424,7 +424,7 @@
 		min-height: 44px;
 	}
 	.lg-marker.dosing {
-		border-radius: 2px;
+		border-radius: 0;
 		transform: rotate(45deg) scale(0.85);
 	}
 	.pop-day {
@@ -451,7 +451,7 @@
 		gap: 8px;
 	}
 	.stat {
-		border-radius: 12px;
+		border-radius: 0;
 		padding: 10px 12px;
 		display: flex;
 		flex-direction: column;
@@ -524,7 +524,7 @@
 		.pitem {
 			min-height: 44px;
 			padding: 0 12px;
-			border-radius: 10px;
+			border-radius: 0;
 			display: flex;
 			justify-content: space-between;
 			align-items: center;
@@ -570,12 +570,12 @@
 		}
 		/* 19: the compact segmented control */
 		.ranges {
-			border-radius: 12px;
+			border-radius: 0;
 		}
 		.ranges label {
 			min-height: 36px;
 			padding: 0 14px;
-			border-radius: 8px;
+			border-radius: 0;
 			font-size: 14px;
 		}
 		.chart-card,
@@ -641,7 +641,7 @@
 			width: 100%;
 			text-align: left;
 			padding: 10px 12px;
-			border-radius: 10px;
+			border-radius: 0;
 			display: flex;
 			flex-direction: column;
 			gap: 2px;

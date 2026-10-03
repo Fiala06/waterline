@@ -126,7 +126,7 @@
 	.tile {
 		position: relative;
 		aspect-ratio: 1;
-		border-radius: 6px;
+		border-radius: 0;
 		overflow: hidden;
 		background: var(--surface-hi);
 	}
@@ -144,7 +144,7 @@
 		font-weight: 700;
 		line-height: 1.4;
 		padding: 1px 6px;
-		border-radius: 6px;
+		border-radius: 0;
 		background: var(--overlay-bg);
 		color: var(--overlay-text);
 		white-space: nowrap;
@@ -179,7 +179,7 @@
 			gap: 8px;
 		}
 		.tile {
-			border-radius: 10px;
+			border-radius: 0;
 		}
 		.day {
 			left: 8px;

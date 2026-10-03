@@ -218,7 +218,7 @@
 		gap: 16px;
 		height: 76px;
 		padding: 0 18px;
-		border-radius: 18px;
+		border-radius: 0;
 		background: var(--surface-hi);
 		border: 1px solid var(--border-strong);
 		color: var(--text);
@@ -288,7 +288,7 @@
 	.tile {
 		min-height: 88px;
 		padding: 12px;
-		border-radius: 14px;
+		border-radius: 0;
 		background: var(--surface-hi);
 		border: 1px solid var(--border-strong);
 		display: flex;
@@ -332,7 +332,7 @@
 		.choice {
 			height: 120px;
 			padding: 16px;
-			border-radius: 16px;
+			border-radius: 0;
 			display: grid;
 			grid-template: 'icon icon' 1fr 'title key' auto / 1fr auto;
 			align-items: baseline;

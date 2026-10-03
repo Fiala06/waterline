@@ -399,7 +399,7 @@
 	.stock li {
 		min-height: 36px;
 		padding: 0 12px;
-		border-radius: 10px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 		display: inline-flex;
@@ -420,7 +420,7 @@
 	.banner {
 		position: relative;
 		height: 200px;
-		border-radius: 16px;
+		border-radius: 0;
 		overflow: hidden;
 		display: flex;
 		align-items: center;

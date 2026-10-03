@@ -68,7 +68,7 @@
 			{#each shown as t (t.id)}
 				<li>
 					<button type="button" class="row" class:current={t.id === currentId} aria-current={t.id === currentId} onclick={() => pick(t.id)}>
-						<TankThumb cover={t.cover} size={32} radius={8} />
+						<TankThumb cover={t.cover} size={32} radius={0} />
 						<span class="text">
 							<span class="name">{t.name}</span>
 							<span class="sub">{tankTypeLabel(t.type)}{t.volume ? ` · ${t.volume}` : ''}</span>
@@ -108,7 +108,7 @@
 		z-index: 31;
 		width: 360px;
 		padding: 10px;
-		border-radius: 16px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border-strong);
 		box-shadow: var(--shadow-modal);
@@ -122,7 +122,7 @@
 		gap: 8px;
 		height: 42px;
 		padding: 0 12px;
-		border-radius: 10px;
+		border-radius: 0;
 		background: var(--bg);
 		border: 1px solid var(--border-strong);
 	}
@@ -160,7 +160,7 @@
 		align-items: center;
 		gap: 10px;
 		padding: 8px 10px;
-		border-radius: 10px;
+		border-radius: 0;
 		text-align: left;
 	}
 	.row:hover,
@@ -193,7 +193,7 @@
 		background: var(--bad-bg);
 		color: var(--bad-text);
 		padding: 2px 7px;
-		border-radius: 9px;
+		border-radius: 0;
 		white-space: nowrap;
 	}
 	.good,

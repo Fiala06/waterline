@@ -149,7 +149,7 @@
 		flex-wrap: wrap;
 		align-items: center;
 		gap: 4px 14px;
-		border-radius: 14px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 	}
@@ -209,7 +209,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 10px;
-		border-radius: 16px;
+		border-radius: 0;
 		background: var(--selected);
 		border: 1px solid var(--accent);
 	}
@@ -293,7 +293,7 @@
 		list-style: none;
 		margin: 0;
 		padding: 0 14px;
-		border-radius: 14px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 	}

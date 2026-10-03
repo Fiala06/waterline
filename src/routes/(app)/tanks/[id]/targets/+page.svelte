@@ -174,7 +174,7 @@
 		flex: 1;
 		min-width: 0;
 		height: 48px;
-		border-radius: 12px;
+		border-radius: 0;
 		background: var(--surface-2);
 		border: 1px solid var(--border-strong);
 		display: flex;
@@ -227,7 +227,7 @@
 	}
 	.add {
 		height: 52px;
-		border-radius: 14px;
+		border-radius: 0;
 		border: 1px dashed var(--border-strong);
 		font-size: 15px;
 		font-weight: 600;
@@ -258,7 +258,7 @@
 			margin-top: 16px;
 			padding: 0;
 			gap: 0;
-			border-radius: 16px;
+			border-radius: 0;
 			background: var(--surface);
 			border: 1px solid var(--border);
 			overflow: hidden;
@@ -320,7 +320,7 @@
 		}
 		.minmax {
 			height: 40px;
-			border-radius: 10px;
+			border-radius: 0;
 		}
 		.minmax input {
 			font-size: 15px;
@@ -349,7 +349,7 @@
 			order: 2;
 			width: auto;
 			height: 44px;
-			border-radius: 12px;
+			border-radius: 0;
 			font-size: 15px;
 			padding: 0 22px;
 		}

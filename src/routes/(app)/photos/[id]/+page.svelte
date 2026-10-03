@@ -206,7 +206,7 @@
 	.round {
 		width: 44px;
 		height: 44px;
-		border-radius: 22px;
+		border-radius: 0;
 		flex-shrink: 0;
 		background: var(--surface);
 		color: var(--text-muted);
@@ -225,7 +225,7 @@
 		font-size: 15px;
 		font-weight: 600;
 		padding: 5px 12px;
-		border-radius: 999px;
+		border-radius: 0;
 		background: var(--overlay-bg);
 		color: var(--overlay-text);
 		font-variant-numeric: tabular-nums;
@@ -282,7 +282,7 @@
 		align-self: center;
 		width: calc(100% - 32px);
 		max-width: 560px;
-		border-radius: 18px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 		color: var(--text);
@@ -404,7 +404,7 @@
 
 	/* Public link card */
 	.share {
-		border-radius: 14px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 		padding: 14px;
@@ -427,7 +427,7 @@
 		font-weight: 600;
 	}
 	.switch {
-		border-radius: 16px;
+		border-radius: 0;
 	}
 	.switch::before {
 		content: '';
@@ -448,7 +448,7 @@
 		flex: 1;
 		min-width: 0;
 		height: 44px;
-		border-radius: 10px;
+		border-radius: 0;
 		background: var(--bg);
 		border: 1px solid var(--border-strong);
 		padding: 0 10px;
@@ -463,7 +463,7 @@
 	.s-copy {
 		padding: 0 14px;
 		font-size: 14px;
-		border-radius: 10px;
+		border-radius: 0;
 	}
 	.s-opts {
 		display: flex;
@@ -483,7 +483,7 @@
 	/* ── Sheet (phone ••• menu) ──────────────────────────────── */
 	.menu {
 		border: 1px solid var(--border);
-		border-radius: 16px;
+		border-radius: 0;
 		overflow: hidden;
 		display: flex;
 		flex-direction: column;
@@ -606,13 +606,13 @@
 		.s-url {
 			height: 38px;
 			font-size: 12px;
-			border-radius: 8px;
+			border-radius: 0;
 		}
 		.s-copy {
 			min-height: 38px;
 			padding: 0 12px;
 			font-size: 13px;
-			border-radius: 8px;
+			border-radius: 0;
 		}
 		.s-opts {
 			gap: 6px;
@@ -625,7 +625,7 @@
 		.s-opts .check-row input {
 			width: 18px;
 			height: 18px;
-			border-radius: 5px;
+			border-radius: 0;
 			border-width: 1.5px;
 		}
 		.s-opts .check-row input:checked::after {
@@ -636,7 +636,7 @@
 		}
 		.buttons .btn {
 			min-height: 42px;
-			border-radius: 10px;
+			border-radius: 0;
 			font-size: 14px;
 		}
 		.delete {

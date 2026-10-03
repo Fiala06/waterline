@@ -554,7 +554,7 @@
 	.meta {
 		margin: 0 0 8px;
 		padding: 10px 14px;
-		border-radius: 12px;
+		border-radius: 0;
 		background: var(--surface-2);
 		border: 1px solid var(--border);
 		font-size: 13px;
@@ -623,7 +623,7 @@
 		align-items: center;
 		gap: 4px;
 		padding: 0 12px;
-		border-radius: 12px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border-strong);
 		cursor: text;
@@ -760,7 +760,7 @@
 	.task {
 		margin-top: 12px;
 		padding: 12px 14px;
-		border-radius: 14px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 		font-size: 14px;
@@ -786,7 +786,7 @@
 	/* ── Also log a water change: a card like the task's that opens up ── */
 	.wc {
 		margin-top: 12px;
-		border-radius: 14px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 	}
@@ -847,7 +847,7 @@
 	.save {
 		flex: 1;
 		height: 56px;
-		border-radius: 14px;
+		border-radius: 0;
 		font-size: 17px;
 	}
 	.edit .foot {
@@ -880,7 +880,7 @@
 			max-width: 100%;
 			flex: none;
 			padding: 0;
-			border-radius: 20px;
+			border-radius: 0;
 			background: var(--surface);
 			border: 1px solid var(--border-strong);
 			box-shadow: var(--shadow-modal);
@@ -1000,7 +1000,7 @@
 		}
 		.ap-box {
 			height: 48px;
-			border-radius: 12px;
+			border-radius: 0;
 			border: 1px dashed var(--border);
 		}
 		.add-param:hover {
@@ -1061,7 +1061,7 @@
 		.edit .save {
 			flex: none;
 			height: 44px;
-			border-radius: 12px;
+			border-radius: 0;
 			font-size: 15px;
 			padding: 0 22px;
 		}
@@ -1069,7 +1069,7 @@
 			order: -1;
 			height: 44px;
 			padding: 0 16px;
-			border-radius: 12px;
+			border-radius: 0;
 			border: 1px solid var(--bad-border);
 		}
 	}

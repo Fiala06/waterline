@@ -1,4 +1,6 @@
 <script lang="ts">
+	// Livestock (README → Screens §6): a table of species with inline − / + counts,
+	// past livestock with Restore, and a 240px column of equipment and recent changes.
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import EmptyState from '$lib/components/EmptyState.svelte';
@@ -36,13 +38,24 @@
 {#snippet past()}
 	<details class="past">
 		<summary><span class="show">Show past livestock ({data.past.length})</span><span class="hide">Hide past livestock</span></summary>
-		<ul>
-			{#each data.past as l (l.id)}<li><a href="{base}/livestock/{l.id}">{label(l)}</a><span class="muted">{KIND[l.kind]}</span></li>{/each}
-		</ul>
+		<div class="past-rows">
+			{#each data.past as l (l.id)}
+				<div class="past-row">
+					<a class="past-name" href="{base}/livestock/{l.id}">{label(l)}</a>
+					<span class="past-note">{KIND[l.kind]} · {l.added}</span>
+					<!-- back into the tank: a count of 1, logged as added (the detail page keeps its history) -->
+					<form method="POST" action="?/count" use:enhance>
+						<input type="hidden" name="id" value={l.id} />
+						<input type="hidden" name="count" value="1" />
+						<button class="ghost" name="reason" value="added">Restore</button>
+					</form>
+				</div>
+			{/each}
+		</div>
 	</details>
 {/snippet}
 
-<!-- "+ Add" is in the tank header (layout) -->
+<!-- "+ Add livestock" and the "23 animals · 4 species" line are in the tab's toolbar (layout) -->
 <div class="body">
 	<div class="main">
 		{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
@@ -60,7 +73,6 @@
 			</EmptyState>
 			{#if data.past.length}{@render past()}{/if}
 		{:else}
-			<p class="total">{data.animals} animal{data.animals === 1 ? '' : 's'} · {data.species} species</p>
 			<div class="table" role="table" aria-label="Livestock">
 				<div class="thead" role="row">
 					<span role="columnheader">Species</span><span role="columnheader">Type</span><span role="columnheader">Added</span
@@ -69,33 +81,35 @@
 				{#each data.items as l (l.id)}
 					{@const next = pending[l.id]}
 					<div class="tr" class:pending={next != null} role="row">
-						<div class="sp" role="cell">
-							{#if l.photo}<img class="lthumb" src={l.photo} alt="" loading="lazy" />{:else}<span class="lthumb photo-placeholder"></span>{/if}
-							<div class="sp-text">
-								<a class="name" href="{base}/livestock/{l.id}">{l.nickname ?? l.name}{#if l.nickname}<span class="of">{' · ' + l.name}</span>{/if}</a>
-								{#if l.scientific}<span class="sci">{l.scientific}</span>{/if}
+						<div class="cells">
+							<div class="sp" role="cell">
+								{#if l.photo}<img class="lthumb" src={l.photo} alt="" loading="lazy" />{:else}<span class="lthumb photo-placeholder"></span>{/if}
+								<div class="sp-text">
+									<a class="name" href="{base}/livestock/{l.id}">{l.nickname ?? l.name}{#if l.nickname}<span class="of">{' · ' + l.name}</span>{/if}</a>
+									{#if l.scientific}<span class="sci">{l.scientific}</span>{/if}
+								</div>
 							</div>
-						</div>
-						<span class="d" role="cell">{KIND[l.kind]}</span>
-						<span class="d" role="cell">{l.added}</span>
-						<div class="st" class:in={l.status !== 'quarantine'} role="cell">
-							{#if l.status === 'quarantine'}
-								<span class="status-tag tag-warn sm">▲ Quarantine</span>
-								<form method="POST" action="?/status" use:enhance>
-									<input type="hidden" name="id" value={l.id} />
-									<input type="hidden" name="status" value="in_tank" />
-									<button class="move">Move in</button>
-								</form>
-							{:else}
-								<span class="in-tank">✓ In tank</span>
-							{/if}
-						</div>
-						<div class="cnt" role="cell">
-							<div class="count-stepper">
-								<button type="button" aria-label="One fewer {label(l)}" onclick={() => step(l.id, l.count, -1)}>−</button>
-								<span class="value" class:changed={next != null}>{next ?? l.count}</span>
-								<!-- a named pet is one animal -->
-								<button type="button" aria-label="One more {label(l)}" disabled={!!l.nickname && (next ?? l.count) >= 1} onclick={() => step(l.id, l.count, 1)}>+</button>
+							<span class="d" role="cell">{KIND[l.kind]}</span>
+							<span class="d" role="cell">{l.added}</span>
+							<div class="st" class:in={l.status !== 'quarantine'} role="cell">
+								{#if l.status === 'quarantine'}
+									<span class="tag tag-neutral q">▲ Quarantine</span>
+									<form method="POST" action="?/status" use:enhance>
+										<input type="hidden" name="id" value={l.id} />
+										<input type="hidden" name="status" value="in_tank" />
+										<button class="ghost move">Move in</button>
+									</form>
+								{:else}
+									<span class="in-tank">✓ In tank</span>
+								{/if}
+							</div>
+							<div class="cnt" role="cell">
+								<div class="stepper">
+									<button type="button" aria-label="One fewer {label(l)}" onclick={() => step(l.id, l.count, -1)}>−</button>
+									<span class="value" class:changed={next != null}>{next ?? l.count}</span>
+									<!-- a named pet is one animal -->
+									<button type="button" aria-label="One more {label(l)}" disabled={!!l.nickname && (next ?? l.count) >= 1} onclick={() => step(l.id, l.count, 1)}>+</button>
+								</div>
 							</div>
 						</div>
 						{#if next != null}
@@ -111,26 +125,26 @@
 								>
 									<input type="hidden" name="id" value={l.id} />
 									<input type="hidden" name="count" value={next} />
-									<p class="ask">{l.count} → {next}. Log it as:</p>
+									<p class="ask"><span class="tag tag-accent unsaved">Not saved yet</span><span><b>{l.count} → {next}</b>. Log it as:</span></p>
 									<div class="reasons">
-										{#if next < l.count}
-											<button class="rsn lead" name="reason" value="loss">Loss</button>
-											<button class="rsn" name="reason" value="rehomed">Rehomed</button>
-										{:else}
-											<button class="rsn lead" name="reason" value="added">Added</button>
-										{/if}
-										<button class="rsn" name="reason" value="recount">Recount</button>
-										<button type="button" class="cancel" onclick={() => delete pending[l.id]}>Cancel</button>
+										<div class="seg">
+											{#if next < l.count}
+												<button class="rsn lead" name="reason" value="loss">Loss</button>
+												<button class="rsn" name="reason" value="rehomed">Rehomed</button>
+											{:else}
+												<button class="rsn lead" name="reason" value="added">Added</button>
+											{/if}
+											<button class="rsn" name="reason" value="recount">Recount</button>
+										</div>
+										<button type="button" class="ghost cancel" onclick={() => delete pending[l.id]}>Cancel</button>
 									</div>
 								</form>
 							</div>
 						{/if}
 					</div>
 				{/each}
-				{#if data.past.length}
-					<div class="tfoot" role="row"><div role="cell">{@render past()}</div></div>
-				{/if}
 			</div>
+			{#if data.past.length}{@render past()}{/if}
 		{/if}
 		<!-- below the list, or below the empty box: in the same place on every tab -->
 		<ImportButton href="{base}/import/livestock" />
@@ -138,11 +152,11 @@
 
 	<aside class="side">
 		<section>
-			<div class="sh"><h2>Equipment</h2><a href="{base}/equipment">Manage</a></div>
+			<div class="sh"><span class="kicker">Equipment</span><a class="ghost" href="{base}/equipment">Manage</a></div>
 			{#if data.equipment.length}
-				<div class="card eqs">
+				<div class="eqs">
 					{#each data.equipment as e (e.id)}
-						<a class="eq" href="{base}/equipment/{e.id}"><span class="caps">{e.type}</span><span class="line">{e.line}</span></a>
+						<a class="eq" href="{base}/equipment/{e.id}"><span class="eq-text"><span class="kicker">{e.type}</span><span class="line">{e.line}</span></span><span class="chev" aria-hidden="true">›</span></a>
 					{/each}
 				</div>
 			{:else}
@@ -150,14 +164,14 @@
 			{/if}
 		</section>
 		<section>
-			<div class="sh"><h2>Recent changes</h2></div>
+			<div class="sh"><span class="kicker">Recent changes</span></div>
 			{#if data.recent.length}
 				<ul class="recent">
 					{#each data.recent as r (r.id)}
 						{@const [what, detail] = split(r.title)}
 						<li>
 							<a href="/entries/event/{r.id}">
-								<span class="rc-t">{what}{#if detail}<span class="muted">{' · ' + detail}</span>{/if}</span>
+								<span class="rc-t"><b>{what}</b>{#if detail}<span class="muted">{' · ' + detail}</span>{/if}</span>
 								<span class="rc-d">{r.day}</span>
 							</a>
 						</li>
@@ -172,58 +186,68 @@
 
 <style>
 	.body {
-		padding: 12px 20px 16px;
+		padding: 16px 20px 24px;
 		display: flex;
 		flex-direction: column;
-		gap: 16px;
+		gap: 24px;
 	}
 	.main {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
+		gap: 14px;
 		min-width: 0;
 	}
-	.total {
-		margin: 0 0 -2px;
-		font-size: 13px;
-		color: var(--text-muted);
+	/* a text button in the accent (the design's ghost), 44px to tap without making rows taller */
+	.ghost {
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		margin: -10px 0;
+		padding: 0 4px;
+		font-size: 14px;
+		font-weight: 800;
+		color: var(--accent);
+		white-space: nowrap;
 	}
 
-	/* Phones (T4): one card per species */
+	/* The table: an uppercase header row over a 2px ink rule, rows with 1px dividers. */
 	.table {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
 	}
-	.thead,
-	.d {
+	.thead {
 		display: none;
 	}
 	.tr {
-		padding: 12px 12px 12px 14px;
-		border-radius: 16px;
-		background: var(--surface);
-		border: 1px solid var(--border);
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) auto;
-		grid-template-areas: 'sp cnt' 'st st' 'rs rs';
-		align-items: center;
-		column-gap: 12px;
+		display: flex;
+		flex-direction: column;
+		border-bottom: 1px solid var(--divider);
 	}
 	.tr.pending {
-		border-color: var(--accent);
+		background: var(--surface);
+		box-shadow: -8px 0 0 var(--surface), 8px 0 0 var(--surface);
+	}
+	.cells {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		grid-template-areas: 'sp cnt' 'st st';
+		align-items: center;
+		column-gap: 12px;
+		padding: 10px 0;
+	}
+	.d {
+		display: none;
 	}
 	.sp {
 		grid-area: sp;
 		display: flex;
 		align-items: center;
-		gap: 10px;
+		gap: 12px;
 		min-width: 0;
 	}
 	.sp-text {
 		display: flex;
 		flex-direction: column;
-		gap: 2px;
 		min-width: 0;
 	}
 	/* its photo: a pet's own, else the species photo */
@@ -231,13 +255,12 @@
 		width: 40px;
 		height: 40px;
 		flex-shrink: 0;
-		border-radius: 10px;
 		border: none;
 		object-fit: cover;
-		background: var(--surface-2);
+		background: var(--surface);
 	}
 	.name {
-		font-size: 16px;
+		font-size: 15px;
 		font-weight: 600;
 		color: var(--text);
 		overflow-wrap: anywhere;
@@ -250,7 +273,7 @@
 		color: var(--text-muted);
 	}
 	.sci {
-		font-size: 13px;
+		font-size: 12px;
 		font-style: italic;
 		color: var(--text-muted);
 	}
@@ -259,7 +282,7 @@
 		display: flex;
 		align-items: center;
 		gap: 10px;
-		padding-top: 6px;
+		padding-top: 8px;
 		white-space: nowrap;
 	}
 	.st.in {
@@ -267,93 +290,117 @@
 	}
 	.in-tank {
 		font-size: 13px;
-		font-weight: 600;
-		color: var(--ok);
+		font-weight: 800;
+		color: var(--text-muted);
+	}
+	.q {
+		font-weight: 800;
 	}
 	.st form {
 		display: flex;
 	}
-	/* a text link, 44px to tap without making the row taller */
-	.move {
-		position: relative;
-		min-height: 36px;
-		margin: -8px 0;
-		display: inline-flex;
-		align-items: center;
-		font-size: 14px;
-		font-weight: 600;
-		color: var(--accent);
-		white-space: nowrap;
-	}
-	.move::after {
-		content: '';
-		position: absolute;
-		inset: -4px -6px;
-	}
 	.cnt {
 		grid-area: cnt;
 	}
-	.value.changed {
-		color: var(--accent);
+	/* − 12 + : a bordered control with rules between its parts */
+	.stepper {
+		display: flex;
+		align-items: stretch;
+		height: 44px;
+		border: 1px solid var(--divider);
 	}
-	/* T4: "14 → 13. Log it as:" over one row of reasons */
+	.stepper button {
+		width: 40px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 18px;
+		color: var(--text);
+	}
+	.stepper button:disabled {
+		color: var(--placeholder);
+		cursor: default;
+	}
+	.stepper .value {
+		width: 44px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 16px;
+		font-weight: 800;
+		border-left: 1px solid var(--divider);
+		border-right: 1px solid var(--divider);
+	}
+	.value.changed {
+		color: var(--bad);
+	}
+	/* "Not saved yet · 14 → 13. Log it as:" over the reasons, then Save by choosing one */
 	.reason {
-		grid-area: rs;
-		margin-top: 12px;
-		padding-top: 10px;
-		border-top: 1px solid var(--border);
+		padding: 0 0 14px;
 	}
 	.reason form {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
+		gap: 10px;
 	}
 	.ask {
 		margin: 0;
-		font-size: 13px;
-		color: var(--text-2);
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 6px 10px;
+		font-size: 14px;
+	}
+	.unsaved {
+		font-weight: 800;
 	}
 	.reasons {
 		display: flex;
 		align-items: center;
-		gap: 6px;
+		flex-wrap: wrap;
+		gap: 12px;
+	}
+	.seg {
+		display: flex;
+		border: 1px solid var(--divider);
 	}
 	.rsn {
 		position: relative;
-		height: 36px;
-		padding: 0 12px;
-		border-radius: 10px;
-		border: 1px solid var(--border-strong);
-		font-size: 13px;
+		min-width: 84px;
+		height: 42px;
+		padding: 0 14px;
+		font-size: 14px;
+		font-weight: 600;
 		color: var(--text);
 		white-space: nowrap;
 	}
-	.rsn::after {
-		content: '';
-		position: absolute;
-		inset: -4px 0;
+	.rsn + .rsn {
+		border-left: 1px solid var(--divider);
 	}
 	.rsn.lead {
 		background: var(--accent);
-		border-color: var(--accent);
 		color: var(--on-accent);
-		font-weight: 700;
+		font-weight: 800;
 	}
 	.cancel {
-		margin-left: auto;
-		min-height: 44px;
-		padding: 0 4px;
-		font-size: 14px;
 		color: var(--text-muted);
+		margin: 0;
 	}
 
+	/* Past livestock: a ghost button, then rows with Restore */
+	.past {
+		display: flex;
+		flex-direction: column;
+	}
 	.past summary {
 		list-style: none;
+		align-self: flex-end;
 		display: inline-flex;
 		align-items: center;
 		min-height: 44px;
+		padding: 0 4px;
 		font-size: 14px;
-		font-weight: 600;
+		font-weight: 800;
 		color: var(--accent);
 		cursor: pointer;
 	}
@@ -364,101 +411,172 @@
 	.past:not([open]) .hide {
 		display: none;
 	}
-	.past ul {
+	.past-rows {
+		display: flex;
+		flex-direction: column;
+	}
+	.past-row {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 4px 12px;
+		padding: 10px 0;
+		border-bottom: 1px solid var(--divider);
+		font-size: 14px;
+		color: var(--text-2);
+	}
+	.past-name {
+		flex: 1;
+		min-width: 0;
+		color: var(--text);
+		font-weight: 600;
+	}
+	.past-note {
+		color: var(--text-muted);
+		white-space: nowrap;
+	}
+	.past-row form {
+		display: flex;
+	}
+
+	/* The right column: equipment and recent changes under kicker + 2px rule */
+	.side {
+		display: grid;
+		gap: 24px;
+		border-top: 2px solid var(--divider);
+		padding-top: 24px;
+	}
+	.side section {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+	}
+	.sh {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		gap: 12px;
+		padding-bottom: 6px;
+		border-bottom: 2px solid var(--ink);
+	}
+	.sh .kicker {
+		color: var(--text);
+	}
+	.sh .ghost {
+		font-size: 13px;
+		margin: -12px 0;
+	}
+	.eqs {
+		display: flex;
+		flex-direction: column;
+	}
+	.eq {
+		padding: 10px 6px 10px 0;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		border-bottom: 1px solid var(--divider);
+		color: var(--text);
+	}
+	.eq-text {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+	.line {
+		font-size: 14px;
+		font-weight: 600;
+	}
+	.chev {
+		font-size: 16px;
+		color: var(--neutral-600);
+	}
+	.recent {
 		list-style: none;
 		margin: 0;
 		padding: 0;
-		border-radius: 16px;
-		background: var(--surface);
-		border: 1px solid var(--border);
 	}
-	.past li {
-		padding: 12px 14px;
+	.recent a {
+		padding: 9px 0;
 		display: flex;
 		justify-content: space-between;
 		gap: 12px;
-		font-size: 15px;
+		border-bottom: 1px solid var(--divider);
+		font-size: 14px;
+		color: var(--text);
 	}
-	.past li + li {
-		border-top: 1px solid var(--border);
+	.rc-t b {
+		font-weight: 600;
 	}
-	.past .muted {
-		font-size: 13px;
+	.rc-d {
+		flex-shrink: 0;
+		white-space: nowrap;
+		color: var(--text-muted);
 	}
-	.side {
-		display: none;
+	.none {
+		margin: 0;
+		padding: 10px 0;
+		font-size: 14px;
+		color: var(--text-muted);
 	}
 	@media (hover: hover) {
-		.rsn:not(.lead):hover {
-			background: var(--surface-hi);
+		.rsn:not(.lead):hover,
+		.stepper button:not(:disabled):hover {
+			background: color-mix(in srgb, var(--text) 7%, transparent);
 		}
 		.rsn.lead:hover {
-			background: color-mix(in srgb, var(--accent) 86%, var(--text));
+			background: var(--accent-600);
+		}
+		.ghost:hover,
+		.past summary:hover {
+			background: color-mix(in srgb, var(--accent) 10%, transparent);
+			color: var(--accent);
 		}
 		.cancel:hover {
 			color: var(--text);
 		}
-		.past summary:hover,
-		.move:hover {
-			color: var(--accent-hover);
+		.eq:hover .line,
+		.recent a:hover .rc-t b {
+			color: var(--accent);
 		}
 	}
 
-	/* Desktop (T6): one table, columns sized to their content */
+	/* Desktop: the table `minmax(0,1fr) 60px 72px 160px 120px`, then a 240px column past a 2px rule */
 	@media (min-width: 1024px) {
 		.body {
-			padding: 22px 32px;
+			padding: 0 32px;
 			display: grid;
-			grid-template-columns: minmax(0, 1fr) 280px;
-			gap: 24px;
+			grid-template-columns: minmax(0, 1fr) 240px;
+			gap: 0;
 			align-items: start;
 		}
 		.main {
-			gap: 10px;
-		}
-		.total {
-			margin: 0;
-		}
-		.table {
-			display: grid;
-			grid-template-columns: minmax(0, 1fr) repeat(4, max-content);
-			column-gap: 20px;
-			border-radius: 16px;
-			background: var(--surface);
-			border: 1px solid var(--border);
-			overflow: hidden;
+			padding: 24px 24px 32px 0;
+			border-right: 2px solid var(--divider);
 		}
 		.thead,
-		.tr {
-			grid-column: 1 / -1;
+		.cells {
 			display: grid;
-			grid-template-columns: minmax(0, 1fr) 64px 110px 170px 140px;
-			grid-template-columns: subgrid;
+			grid-template-columns: minmax(0, 1fr) 60px 72px 160px 120px;
+			grid-template-areas: none;
+			column-gap: 16px;
 			align-items: center;
 		}
 		.thead {
-			padding: 12px 16px;
-			font-size: 12px;
-			letter-spacing: 0.06em;
+			padding: 8px 0;
+			border-bottom: 2px solid var(--ink);
+			font-size: 11px;
+			letter-spacing: 0.08em;
 			text-transform: uppercase;
-			color: var(--text-faint);
-			border-bottom: 1px solid var(--border);
+			color: var(--text-muted);
 		}
 		.r {
 			text-align: right;
 		}
-		.tr {
-			grid-template-areas: none;
-			padding: 10px 16px;
-			border: none;
-			border-radius: 0;
-			background: none;
-		}
-		.tr + .tr {
-			border-top: 1px solid var(--divider-soft);
-		}
 		.tr.pending {
-			box-shadow: inset 0 0 0 1px var(--accent);
+			box-shadow: none;
 		}
 		.sp,
 		.st,
@@ -471,16 +589,9 @@
 			overflow: hidden;
 			text-overflow: ellipsis;
 		}
-		.name {
-			font-size: 15px;
-		}
-		.sci {
-			font-size: 12px;
-		}
 		.d {
 			display: block;
 			font-size: 14px;
-			color: var(--text-2);
 			white-space: nowrap;
 		}
 		.st,
@@ -491,144 +602,46 @@
 		.cnt {
 			justify-self: end;
 		}
-		.count-stepper {
-			height: 38px;
-			border-radius: 10px;
+		.stepper {
+			height: 36px;
 		}
-		.count-stepper button {
-			width: 36px;
-			font-size: 18px;
+		.stepper button {
+			width: 34px;
 		}
-		.count-stepper .value {
-			width: 36px;
-			font-size: 16px;
-			font-weight: 700;
+		.stepper .value {
+			width: 38px;
 		}
 		.reason {
-			grid-column: 1 / -1;
-			margin-top: 10px;
+			padding: 2px 0 14px 52px;
 		}
-		.reason form {
-			flex-direction: row;
-			align-items: center;
-			gap: 12px;
-		}
-		.reasons {
-			flex: 1;
-		}
-		.tfoot {
-			grid-column: 1 / -1;
-			padding: 0 16px;
-			border-top: 1px solid var(--border);
-			display: flex;
-			flex-direction: column;
-		}
-		.tfoot .past summary {
-			display: flex;
-			width: fit-content;
-			margin-left: auto;
-			font-size: 13px;
-		}
-		.tfoot .past ul {
-			margin: 0 -16px;
-			border: none;
-			border-top: 1px solid var(--divider-soft);
-			border-radius: 0;
-			background: none;
-		}
-		.tfoot .past li {
-			padding: 10px 16px;
-			font-size: 14px;
-		}
-		.tfoot .past li + li {
-			border-top-color: var(--divider-soft);
+		.rsn {
+			height: 36px;
 		}
 		.side {
 			display: flex;
 			flex-direction: column;
-			gap: 18px;
+			gap: 24px;
+			padding: 24px 0 32px 24px;
+			border-top: none;
 		}
-		.side section {
-			display: flex;
-			flex-direction: column;
-			gap: 10px;
+		.sh .ghost {
+			margin: -12px 0;
 		}
-		.sh {
-			display: flex;
-			justify-content: space-between;
-			align-items: baseline;
-			gap: 12px;
+	}
+	/* a narrower main area: tighter columns */
+	@media (min-width: 1024px) and (max-width: 1199px) {
+		.thead,
+		.cells {
+			grid-template-columns: minmax(0, 1fr) 52px 64px 110px 112px;
+			column-gap: 10px;
 		}
-		.sh h2 {
-			margin: 0;
-			font-size: 16px;
-			font-weight: 600;
-		}
-		.sh a {
-			font-size: 14px;
-			font-weight: 600;
-			padding: 12px 0 12px 12px;
-			margin: -12px 0 -12px -12px;
-		}
-		.eqs {
-			display: flex;
-			flex-direction: column;
-			overflow: hidden;
-			border-radius: 14px;
-		}
-		.eq {
-			padding: 11px 14px;
-			display: flex;
-			flex-direction: column;
-			gap: 2px;
-			color: var(--text);
-		}
-		.eq + .eq {
-			border-top: 1px solid var(--border);
-		}
-		.eq:hover {
-			color: var(--text);
-			background: var(--surface-hi);
-		}
-		.caps {
-			font-size: 12px;
-			letter-spacing: 0.06em;
-			text-transform: uppercase;
-			color: var(--text-muted);
-		}
-		.line {
-			font-size: 14px;
-			font-weight: 600;
-		}
-		.recent {
-			list-style: none;
-			margin: 0;
-			padding: 0;
-		}
-		.recent li + li {
-			border-top: 1px solid var(--divider-soft);
-		}
-		.recent a {
-			padding: 8px 0;
-			display: flex;
-			justify-content: space-between;
-			align-items: baseline;
-			gap: 12px;
-			font-size: 14px;
-			color: var(--text);
-		}
-		.recent a:hover .rc-t {
-			color: var(--accent-hover);
-		}
-		.rc-d {
-			flex-shrink: 0;
+		.thead .r {
 			white-space: nowrap;
-			color: var(--text-muted);
 		}
-		.none {
-			margin: 0;
-			font-size: 14px;
-			color: var(--text-muted);
+	}
+	@media (max-width: 1023px) and (min-width: 600px) {
+		.side {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
 	}
 </style>

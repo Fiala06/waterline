@@ -1,7 +1,7 @@
 <script lang="ts">
 	// Tank cover photo, or the striped placeholder when there isn't one.
 	import { photoUrl } from '$lib/media';
-	let { cover = null, size = 44, radius = 12 }: { cover?: string | null; size?: number; radius?: number } = $props();
+	let { cover = null, size = 44, radius = 0 }: { cover?: string | null; size?: number; radius?: number } = $props();
 </script>
 
 <span class="thumb" class:photo-placeholder={!cover} style:width="{size}px" style:height="{size}px" style:border-radius="{radius}px">

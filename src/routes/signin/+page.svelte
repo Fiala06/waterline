@@ -118,7 +118,7 @@
 	.google {
 		width: 100%;
 		height: 56px;
-		border-radius: 14px;
+		border-radius: 0;
 		background: var(--google-bg);
 		color: var(--google-text);
 		display: flex;
@@ -235,7 +235,7 @@
 		}
 		.local .btn-lg {
 			height: 48px;
-			border-radius: 12px;
+			border-radius: 0;
 			font-size: 15px;
 		}
 		.admin:not(.open) {

@@ -93,12 +93,12 @@
 	h1 {
 		margin: 0;
 		font-size: 17px;
-		font-weight: 600;
+		font-weight: 800;
 	}
 	.save-top {
 		justify-self: end;
 		color: var(--accent);
-		font-weight: 700;
+		font-weight: 800;
 		font-size: 16px;
 		min-height: 44px;
 	}
@@ -142,7 +142,7 @@
 	.count-stepper button {
 		font-size: 22px;
 		color: var(--text-2);
-		border-radius: 10px;
+		border-radius: 0;
 	}
 	.count-stepper button:disabled {
 		color: var(--placeholder);
@@ -161,49 +161,40 @@
 	.add {
 		flex: 1;
 		height: 56px;
-		border-radius: 14px;
+		border-radius: 0;
 		font-size: 17px;
 	}
-	/* Desktop: the form as a centered card (header has the title) */
+	/* Desktop: a flat form under the shell's title, 2px rule above the footer */
 	@media (min-width: 1024px) {
 		.lform {
 			min-height: 0;
 			max-width: 640px;
-			margin: 28px auto;
-			padding: 24px 28px;
-			background: var(--surface);
-			border: 1px solid var(--border);
-			border-radius: 20px;
+			padding: 24px 32px 40px;
 		}
 		.body {
 			padding: 0;
 		}
-		/* recessed fields on the card (D13); background-color keeps the select's ▾ */
-		.lform :global(.input),
 		.count-stepper {
-			background-color: var(--surface-2);
-			border-color: var(--border-strong);
-		}
-		.lform :global(.input:focus) {
-			border-color: var(--accent);
-		}
-		.segmented {
-			background: var(--surface-2);
+			height: 44px;
 		}
 		.foot {
-			margin-top: 24px;
-			padding: 20px 0 0;
-			border-top: 1px solid var(--border);
-			justify-content: flex-end;
+			margin-top: 20px;
+			padding: 16px 0 0;
+			border-top: 2px solid var(--divider);
+			justify-content: flex-start;
+			flex-direction: row-reverse;
 		}
 		.foot .btn {
 			height: 44px;
-			border-radius: 12px;
-			font-size: 15px;
+			font-size: 14px;
 		}
 		.add {
 			flex: none;
 			padding: 0 22px;
+		}
+		.foot .hide-phone {
+			border: none;
+			color: var(--text-muted);
 		}
 	}
 </style>

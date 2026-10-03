@@ -158,7 +158,7 @@
 		list-style: none;
 		margin: 0;
 		padding: 0;
-		border-radius: 16px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 	}
@@ -204,7 +204,7 @@
 	.reorder {
 		min-height: 40px;
 		padding: 0 14px;
-		border-radius: 10px;
+		border-radius: 0;
 		font-size: 14px;
 	}
 	.edit {
@@ -232,7 +232,7 @@
 		flex-direction: column;
 		gap: 14px;
 		padding: 16px;
-		border-radius: 16px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 	}

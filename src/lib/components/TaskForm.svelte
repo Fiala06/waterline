@@ -373,7 +373,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		border-radius: 12px;
+		border-radius: 0;
 		border: 1px solid var(--border);
 		background: var(--surface);
 		font-size: 14px;
@@ -420,7 +420,7 @@
 	.choices {
 		display: flex;
 		flex-direction: column;
-		border-radius: 14px;
+		border-radius: 0;
 		border: 1px solid var(--border);
 		background: var(--surface);
 	}
@@ -437,7 +437,7 @@
 	.choice:has(.radio:focus-visible) {
 		outline: 2px solid var(--accent);
 		outline-offset: -2px;
-		border-radius: 13px;
+		border-radius: 0;
 	}
 	.radio:focus-visible {
 		outline: none;
@@ -466,14 +466,14 @@
 	}
 	.save {
 		height: 56px;
-		border-radius: 14px;
+		border-radius: 0;
 		font-size: 17px;
 	}
 	.delete {
 		align-self: center;
 		min-height: 44px;
 		padding: 0 16px;
-		border-radius: 12px;
+		border-radius: 0;
 		font-size: 16px;
 		font-weight: 600;
 		color: var(--bad);
@@ -507,7 +507,7 @@
 		width: 36px;
 		height: 36px;
 		margin: -6px -8px -6px 0;
-		border-radius: 10px;
+		border-radius: 0;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -534,7 +534,7 @@
 	}
 	.compact .field :global(.input) {
 		height: 44px;
-		border-radius: 10px;
+		border-radius: 0;
 		padding: 0 12px;
 		font-size: 15px;
 	}
@@ -545,11 +545,11 @@
 			calc(100% - 14px) 52%;
 	}
 	.compact .segmented {
-		border-radius: 12px;
+		border-radius: 0;
 	}
 	.compact .segmented label {
 		min-height: 36px;
-		border-radius: 8px;
+		border-radius: 0;
 		font-size: 14px;
 	}
 	.pair {
@@ -560,7 +560,7 @@
 	}
 	.every-box {
 		height: 44px;
-		border-radius: 10px;
+		border-radius: 0;
 		padding: 0 4px 0 12px;
 		gap: 4px;
 	}
@@ -576,7 +576,7 @@
 		-webkit-appearance: none;
 		background-color: transparent;
 		border: none;
-		border-radius: 8px;
+		border-radius: 0;
 		align-self: stretch;
 		padding: 0 22px 0 6px;
 		font-size: 13px;
@@ -610,7 +610,7 @@
 	}
 	.compact .choice:has(.radio:focus-visible) {
 		outline-offset: 2px;
-		border-radius: 6px;
+		border-radius: 0;
 	}
 	.compact .c-text {
 		gap: 2px;
@@ -635,13 +635,13 @@
 		margin-right: auto;
 		margin-left: -14px;
 		padding: 0 14px;
-		border-radius: 10px;
+		border-radius: 0;
 		font-size: 14px;
 	}
 	.compact .save {
 		height: 44px;
 		padding: 0 18px;
-		border-radius: 10px;
+		border-radius: 0;
 		font-size: 15px;
 	}
 
@@ -654,7 +654,7 @@
 			padding: 24px 28px;
 			background: var(--surface);
 			border: 1px solid var(--border);
-			border-radius: 20px;
+			border-radius: 0;
 		}
 		.tform:not(.compact) .body {
 			padding: 0;
@@ -682,7 +682,7 @@
 		.tform:not(.compact) .save {
 			height: 44px;
 			padding: 0 22px;
-			border-radius: 12px;
+			border-radius: 0;
 			font-size: 15px;
 		}
 		.cancel-btn {

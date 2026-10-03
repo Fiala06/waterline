@@ -228,7 +228,7 @@
 	.thumb {
 		width: 52px;
 		height: 52px;
-		border-radius: 10px;
+		border-radius: 0;
 		flex-shrink: 0;
 		border: none;
 		object-fit: cover;
@@ -251,7 +251,7 @@
 		width: 100%;
 		max-height: 260px;
 		object-fit: cover;
-		border-radius: 14px;
+		border-radius: 0;
 		background: var(--surface-2);
 	}
 	figcaption {

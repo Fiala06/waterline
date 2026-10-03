@@ -1,6 +1,7 @@
 <script lang="ts">
-	// 7.8 · Empty state: dashed card, category icon, title, one line of help and
-	// an optional action. `compact` for side columns and narrow panes.
+	// Empty state (redesign: no boxes): a category icon tile, a title, one line
+	// of help and an optional action, sitting under the section's rule.
+	// `compact` for side columns and narrow panes.
 	import type { Snippet } from 'svelte';
 	import CategoryIcon, { type Kind as IconKind } from './CategoryIcon.svelte';
 
@@ -45,33 +46,33 @@
 
 <style>
 	.empty {
-		border-radius: 18px;
-		background: var(--surface);
-		border: 1px dashed var(--border-strong);
-		padding: 22px;
+		padding: 20px 0;
 		display: flex;
 		flex-direction: column;
 		align-items: flex-start;
 		gap: 14px;
 	}
+	.empty :global(.icon) {
+		border-radius: 0 !important;
+	}
 	.text {
 		display: flex;
 		flex-direction: column;
-		gap: 6px;
+		gap: 4px;
 	}
 	h2 {
 		margin: 0;
-		font-size: 18px;
-		font-weight: 600;
+		font-size: 17px;
+		font-weight: 800;
 	}
 	p {
 		margin: 0;
 		font-size: 14px;
 		line-height: 1.5;
-		color: var(--text-muted);
+		color: var(--text-2);
 	}
 	.compact {
-		padding: 18px;
+		padding: 16px 0;
 		gap: 12px;
 	}
 	.compact h2 {
@@ -81,8 +82,7 @@
 	.tank-icon {
 		width: 44px;
 		height: 44px;
-		border-radius: 13px;
-		background: var(--selected);
+		background: var(--surface);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -90,7 +90,6 @@
 	.tank-icon i {
 		width: 18px;
 		height: 14px;
-		border: 2.5px solid var(--accent);
-		border-radius: 3px;
+		border: 2.5px solid var(--ink);
 	}
 </style>

@@ -250,7 +250,7 @@
 	}
 	.card {
 		padding: 16px;
-		border-radius: 16px;
+		border-radius: 0;
 		display: flex;
 		flex-direction: column;
 		gap: 14px;
@@ -277,7 +277,7 @@
 		list-style: none;
 		margin: 0;
 		padding: 0;
-		border-radius: 16px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 	}
@@ -325,7 +325,7 @@
 	.revoke {
 		min-height: 44px;
 		padding: 0 14px;
-		border-radius: 10px;
+		border-radius: 0;
 		font-size: 14px;
 		color: var(--bad);
 		border-color: var(--bad-border);
@@ -422,7 +422,7 @@
 	.code {
 		display: block;
 		padding: 12px 14px;
-		border-radius: 12px;
+		border-radius: 0;
 		background: var(--surface-2);
 		border: 1px solid var(--border-strong);
 		font-size: 13px;

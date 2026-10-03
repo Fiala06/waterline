@@ -172,7 +172,7 @@
 		list-style: none;
 		margin: 0;
 		padding: 0;
-		border-radius: 14px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 	}
@@ -257,7 +257,7 @@
 	.go {
 		flex: 1;
 		min-height: 52px;
-		border-radius: 14px;
+		border-radius: 0;
 		font-size: 16px;
 	}
 
@@ -275,7 +275,7 @@
 		}
 		.foot .btn {
 			min-height: 44px;
-			border-radius: 12px;
+			border-radius: 0;
 			font-size: 15px;
 		}
 		.again {

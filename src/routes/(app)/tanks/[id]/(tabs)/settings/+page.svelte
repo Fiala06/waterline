@@ -290,7 +290,7 @@
 	.cover {
 		position: relative;
 		height: 160px;
-		border-radius: 16px;
+		border-radius: 0;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -325,7 +325,7 @@
 		bottom: 10px;
 		height: 36px;
 		padding: 0 12px;
-		border-radius: 10px;
+		border-radius: 0;
 		background: var(--overlay-bg);
 		color: var(--overlay-text);
 		font-size: 13px;
@@ -345,7 +345,7 @@
 		bottom: 10px;
 		height: 36px;
 		padding: 0 12px;
-		border-radius: 10px;
+		border-radius: 0;
 		background: var(--overlay-bg);
 		color: var(--overlay-text);
 		border: 1px solid var(--border-strong);
@@ -442,7 +442,7 @@
 	}
 	.archive .btn {
 		height: 52px;
-		border-radius: 14px;
+		border-radius: 0;
 		font-size: 16px;
 	}
 	.archive p {
@@ -459,12 +459,12 @@
 		}
 		.save {
 			height: 48px;
-			border-radius: 12px;
+			border-radius: 0;
 			font-size: 16px;
 		}
 		.archive .btn {
 			height: 48px;
-			border-radius: 12px;
+			border-radius: 0;
 		}
 	}
 </style>

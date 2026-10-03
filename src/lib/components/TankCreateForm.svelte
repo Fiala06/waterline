@@ -128,7 +128,7 @@
 			padding: 24px 28px;
 			background: var(--surface);
 			border: 1px solid var(--border);
-			border-radius: 20px;
+			border-radius: 0;
 		}
 		.paged .body {
 			padding: 0;
@@ -160,7 +160,7 @@
 		.paged .foot .btn {
 			width: auto;
 			height: 44px;
-			border-radius: 12px;
+			border-radius: 0;
 			font-size: 15px;
 		}
 		.paged .btn-primary {

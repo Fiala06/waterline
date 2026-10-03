@@ -228,7 +228,7 @@
 	}
 	/* T3: brands used in other tanks, under both fields */
 	.suggest {
-		border-radius: 12px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border-strong);
 		display: flex;
@@ -249,7 +249,7 @@
 	}
 	.task {
 		padding: 12px 14px;
-		border-radius: 14px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 		font-size: 14px;
@@ -268,7 +268,7 @@
 	}
 	.foot .btn {
 		height: 56px;
-		border-radius: 14px;
+		border-radius: 0;
 		font-size: 17px;
 	}
 	.save {
@@ -283,7 +283,7 @@
 			padding: 24px 28px;
 			background: var(--surface);
 			border: 1px solid var(--border);
-			border-radius: 20px;
+			border-radius: 0;
 		}
 		.body {
 			padding: 0;
@@ -314,7 +314,7 @@
 		}
 		.foot .btn {
 			height: 44px;
-			border-radius: 12px;
+			border-radius: 0;
 			font-size: 15px;
 		}
 		.remove {

@@ -88,7 +88,7 @@
 	.handle {
 		width: 40px;
 		height: 5px;
-		border-radius: 3px;
+		border-radius: 0;
 		background: var(--handle);
 		align-self: center;
 		flex-shrink: 0;
@@ -119,7 +119,7 @@
 		}
 		.panel {
 			width: min(var(--w), calc(100vw - 48px));
-			border-radius: 20px;
+			border-radius: 0;
 			border: 1px solid var(--border-strong);
 			box-shadow: var(--shadow-modal);
 			padding: 22px 24px 24px;

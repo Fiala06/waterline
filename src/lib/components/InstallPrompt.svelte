@@ -89,7 +89,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 14px;
-		border-radius: 20px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border-strong);
 		box-shadow: var(--shadow-modal);
@@ -104,7 +104,7 @@
 		width: 56px;
 		height: 56px;
 		flex-shrink: 0;
-		border-radius: 14px;
+		border-radius: 0;
 		background: var(--bg);
 		border: 1px solid var(--border);
 		display: flex;

@@ -157,14 +157,14 @@
 	}
 	.bar {
 		height: 8px;
-		border-radius: 4px;
+		border-radius: 0;
 		background: var(--divider-soft);
 		overflow: hidden;
 	}
 	.bar i {
 		display: block;
 		height: 100%;
-		border-radius: 4px;
+		border-radius: 0;
 		background: var(--accent);
 	}
 	.bv {

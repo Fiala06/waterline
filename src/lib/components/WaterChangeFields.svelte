@@ -122,7 +122,7 @@
 		display: flex;
 		gap: 2px;
 		padding: 2px;
-		border-radius: 8px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 	}
@@ -130,7 +130,7 @@
 		position: relative;
 		min-width: 44px;
 		padding: 4px 10px;
-		border-radius: 6px;
+		border-radius: 0;
 		text-align: center;
 		font-size: 13px;
 		color: var(--text-muted);
@@ -161,7 +161,7 @@
 		gap: 8px;
 		height: 64px;
 		padding: 0 16px;
-		border-radius: 14px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 	}
@@ -216,7 +216,7 @@
 	.compact .amount-box {
 		height: 48px;
 		padding: 0 12px;
-		border-radius: 12px;
+		border-radius: 0;
 		background: var(--bg);
 		border-color: var(--border-strong);
 	}

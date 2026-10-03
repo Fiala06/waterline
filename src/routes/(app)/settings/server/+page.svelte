@@ -529,7 +529,7 @@ users    {data.server.users}</pre>
 	}
 	.badge {
 		padding: 2px 7px;
-		border-radius: 5px;
+		border-radius: 0;
 		border: 1px solid var(--border-strong);
 		color: var(--text-muted);
 		font-size: 12px;
@@ -629,11 +629,11 @@ users    {data.server.users}</pre>
 	}
 	.segmented.region {
 		height: 48px;
-		border-radius: 12px;
+		border-radius: 0;
 	}
 	.segmented.region label {
 		min-height: 0;
-		border-radius: 8px;
+		border-radius: 0;
 		font-size: 14px;
 	}
 
@@ -648,7 +648,7 @@ users    {data.server.users}</pre>
 	.result {
 		margin: 0;
 		padding: 12px 14px;
-		border-radius: 12px;
+		border-radius: 0;
 		font-size: 14px;
 		line-height: 1.4;
 	}
@@ -668,7 +668,7 @@ users    {data.server.users}</pre>
 	.group {
 		display: flex;
 		flex-direction: column;
-		border-radius: 16px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 	}
@@ -736,7 +736,7 @@ users    {data.server.users}</pre>
 	.uri {
 		display: block;
 		padding: 10px 12px;
-		border-radius: 10px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 		font-size: 13px;
@@ -787,7 +787,7 @@ users    {data.server.users}</pre>
 		padding: 0 14px;
 		display: flex;
 		align-items: center;
-		border-radius: 22px;
+		border-radius: 0;
 		border: 1px solid var(--border);
 		background: var(--surface);
 		color: var(--text);
@@ -806,7 +806,7 @@ users    {data.server.users}</pre>
 	.info {
 		margin: 0;
 		padding: 14px;
-		border-radius: 14px;
+		border-radius: 0;
 		font-size: 13px;
 		line-height: 1.8;
 		color: var(--text-2);
@@ -833,7 +833,7 @@ users    {data.server.users}</pre>
 		.input,
 		.unit-input {
 			height: 44px;
-			border-radius: 10px;
+			border-radius: 0;
 			font-size: 15px;
 		}
 		.unit-input input {
@@ -844,11 +844,11 @@ users    {data.server.users}</pre>
 		}
 		.segmented.provider {
 			max-width: 360px;
-			border-radius: 12px;
+			border-radius: 0;
 		}
 		.segmented.provider label {
 			min-height: 36px;
-			border-radius: 8px;
+			border-radius: 0;
 			font-size: 14px;
 		}
 		.pair.domain {
@@ -856,16 +856,16 @@ users    {data.server.users}</pre>
 		}
 		.segmented.region {
 			height: 44px;
-			border-radius: 10px;
+			border-radius: 0;
 		}
 		.segmented.region label {
-			border-radius: 7px;
+			border-radius: 0;
 		}
 		.actions .btn {
 			flex: none;
 			height: 44px;
 			padding: 0 18px;
-			border-radius: 10px;
+			border-radius: 0;
 		}
 		.row {
 			padding: 14px 16px;

@@ -1,5 +1,7 @@
 <script lang="ts">
-	// Success toast, e.g. "✓ Saved 7 readings · 1 out of range". Auto-hides after 2.8s.
+	// The toast (redesign README → Global overlays): bottom-centre, ink
+	// background. "✓ Saved 7 readings · 1 out of range" hides after 2.8s; one
+	// with Undo or View ("… · Undo") stays about 6s, and Esc dismisses it.
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import type { ToastUndo } from '$lib/ui.svelte';
@@ -25,17 +27,25 @@
 	});
 </script>
 
+<svelte:window
+	onkeydown={(e) => {
+		if (e.key === 'Escape' && visible && (undo || view)) visible = null;
+	}}
+/>
+
 <div class="toast-region {lift}" role="status" aria-live="polite">
 	{#if visible}
 		<div class="toast">
-			<span>{visible}</span>
+			<span class="msg">{visible}</span>
 			{#if undo}
+				<span class="sep" aria-hidden="true">·</span>
 				<form method="POST" action={undo.action} use:enhance>
 					<input type="hidden" name={undo.name} value={undo.value} />
 					<input type="hidden" name="from" value={page.url.pathname + page.url.search} />
 					<button class="undo">Undo</button>
 				</form>
 			{:else if view}
+				<span class="sep" aria-hidden="true">·</span>
 				<a class="undo" href={view} onclick={() => (visible = null)}>View</a>
 			{/if}
 		</div>
@@ -60,39 +70,41 @@
 		bottom: calc(184px + env(safe-area-inset-bottom));
 	}
 	.toast {
-		width: 100%;
-		max-width: 480px;
+		max-width: 560px;
+		min-height: 48px;
 		background: var(--toast-bg);
 		color: var(--toast-text);
-		border-radius: 14px;
-		padding: 14px 16px;
-		font-size: 15px;
-		font-weight: 600;
-		box-shadow: var(--shadow-toast);
+		padding: 8px 16px;
+		font-size: 14px;
+		font-weight: 700;
+		box-shadow: var(--shadow-lg);
 		animation: wl-fade 0.2s ease-out;
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
-		gap: 12px;
+		gap: 8px;
 		pointer-events: auto;
+	}
+	.msg {
+		min-width: 0;
+	}
+	.sep {
+		opacity: 0.6;
 	}
 	.undo {
 		color: var(--toast-action);
-		font-weight: 700;
+		font-weight: 800;
 		min-height: 44px;
 		display: flex;
 		align-items: center;
 		padding: 0 4px;
+		white-space: nowrap;
 	}
 	/* the shell's breakpoint: below it the tab bar is still showing */
 	@media (min-width: 1024px) {
 		.toast-region,
 		.toast-region.tabs,
 		.toast-region.fab {
-			left: auto;
-			right: 28px;
 			bottom: 28px;
-			width: 400px;
 		}
 	}
 </style>

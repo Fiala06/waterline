@@ -98,7 +98,7 @@
 		align-items: center;
 		gap: 12px;
 		padding: 12px;
-		border-radius: 16px;
+		border-radius: 0;
 		border: 1px solid var(--border);
 		text-align: left;
 	}
@@ -133,7 +133,7 @@
 		background: var(--bad-bg);
 		color: var(--bad-text);
 		padding: 2px 8px;
-		border-radius: 10px;
+		border-radius: 0;
 	}
 	.good,
 	.nodata {

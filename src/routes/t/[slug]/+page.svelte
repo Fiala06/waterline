@@ -215,7 +215,7 @@
 		position: relative;
 		min-height: 36px;
 		padding: 0 14px;
-		border-radius: 10px;
+		border-radius: 0;
 		font-size: 14px;
 	}
 	.edit::after {
@@ -342,7 +342,7 @@
 		align-items: center;
 		height: 30px;
 		padding: 0 10px;
-		border-radius: 8px;
+		border-radius: 0;
 		font-size: 13px;
 		font-weight: 600;
 		white-space: nowrap;
@@ -393,7 +393,7 @@
 		gap: 8px;
 	}
 	.rd {
-		border-radius: 12px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 		padding: 10px;
@@ -463,7 +463,7 @@
 		font-weight: 700;
 	}
 	.chart-card {
-		border-radius: 14px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 		padding: 12px;
@@ -503,7 +503,7 @@
 	.grid a {
 		display: block;
 		aspect-ratio: 1;
-		border-radius: 6px;
+		border-radius: 0;
 		overflow: hidden;
 		background: var(--surface-hi);
 	}
@@ -542,7 +542,7 @@
 		gap: 6px;
 		min-height: 32px;
 		padding: 0 10px;
-		border-radius: 8px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 		font-size: 13px;
@@ -615,7 +615,7 @@
 		.hero {
 			height: 320px;
 			margin: 0;
-			border-radius: 18px;
+			border-radius: 0;
 		}
 		.hero::after {
 			display: none;
@@ -650,7 +650,7 @@
 		}
 		/* the chart header moves into the card */
 		.chart {
-			border-radius: 16px;
+			border-radius: 0;
 			background: var(--surface);
 			border: 1px solid var(--border);
 			padding: 18px;
@@ -668,7 +668,7 @@
 		.ch .chip {
 			height: 30px;
 			padding: 0 12px;
-			border-radius: 15px;
+			border-radius: 0;
 			font-size: 13px;
 		}
 		.ch .chip::after {
@@ -697,7 +697,7 @@
 			gap: 6px;
 		}
 		.grid a {
-			border-radius: 8px;
+			border-radius: 0;
 		}
 		.rows li {
 			padding: 9px 0;

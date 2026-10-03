@@ -162,7 +162,7 @@
 		margin: 0;
 		padding: 0;
 		list-style: none;
-		border-radius: 12px;
+		border-radius: 0;
 		background: var(--surface-2);
 		border: 1px solid var(--border);
 	}
@@ -259,7 +259,7 @@
 	}
 	.preview {
 		padding: 12px 14px;
-		border-radius: 12px;
+		border-radius: 0;
 		background: var(--surface-2);
 		border: 1px solid var(--border);
 		display: flex;

@@ -72,7 +72,7 @@
 		height: auto;
 		max-height: max(var(--photo-h), 240px);
 		object-fit: contain;
-		border-radius: 14px;
+		border-radius: 0;
 		/* letterboxing, if the photo is taller than the screen allows */
 		background: var(--viewer-bg);
 	}

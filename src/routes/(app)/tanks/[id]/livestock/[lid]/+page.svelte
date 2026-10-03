@@ -330,7 +330,7 @@
 	.gallery a {
 		display: block;
 		aspect-ratio: 1;
-		border-radius: 10px;
+		border-radius: 0;
 		overflow: hidden;
 		background: var(--surface);
 	}
@@ -344,7 +344,7 @@
 		margin: 0;
 		padding: 0;
 		list-style: none;
-		border-radius: 16px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 	}
@@ -380,7 +380,7 @@
 			padding: 24px 28px;
 			background: var(--surface);
 			border: 1px solid var(--border);
-			border-radius: 20px;
+			border-radius: 0;
 		}
 		.pet :global(.input) {
 			background-color: var(--surface-2);

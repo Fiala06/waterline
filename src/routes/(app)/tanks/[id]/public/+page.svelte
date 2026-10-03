@@ -320,7 +320,7 @@
 		position: relative;
 		width: 72px;
 		height: 72px;
-		border-radius: 10px;
+		border-radius: 0;
 		overflow: hidden;
 		flex-shrink: 0;
 		border: 2px solid transparent;
@@ -408,7 +408,7 @@
 		.save-end {
 			width: auto;
 			height: 44px;
-			border-radius: 12px;
+			border-radius: 0;
 			font-size: 15px;
 			padding: 0 22px;
 			align-self: flex-start;

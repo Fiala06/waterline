@@ -90,7 +90,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 16px;
-		border-radius: 20px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 	}
@@ -101,7 +101,7 @@
 	}
 	.go {
 		height: 52px;
-		border-radius: 14px;
+		border-radius: 0;
 		font-size: 16px;
 	}
 	.after {
