@@ -104,3 +104,22 @@ test('water test extras work without scripts', async ({ page, browser }, info) =
 	await expect(plain.getByLabel('Nitrate', { exact: true })).toHaveValue('10');
 	await ctx.close();
 });
+
+test('water test: Edit targets and parameters, then back to the test', async ({ page }, info) => {
+	await newKeeperWithTank(page, `targets-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	const form = `/entries/test/new?tank=${tankId}`;
+	await open(page, form);
+	await page.getByLabel('pH', { exact: true }).fill('7.2');
+
+	await page.getByRole('link', { name: 'Edit targets and parameters ›' }).click();
+	await expect(page).toHaveURL(new RegExp(`/tanks/${tankId}/targets\\?from=`));
+	await page.getByLabel('pH maximum').fill('7.8');
+	await page.getByRole('button', { name: 'Save targets' }).click();
+
+	// back on the water test, with what was typed
+	await expect(page).toHaveURL(form);
+	await expect(page.getByLabel('pH', { exact: true })).toHaveValue('7.2');
+	await open(page, `/tanks/${tankId}/targets`);
+	await expect(page.getByLabel('pH maximum')).toHaveValue('7.8');
+});

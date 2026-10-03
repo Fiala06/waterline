@@ -24,7 +24,7 @@
 <div class="wrap">
 	<div class="top">
 		<!-- on desktop the header has "Tanks › {tank} › Parameters & targets" -->
-		<a class="back hide-desk" href="/tanks/{data.tank.id}">‹ {data.tank.name}</a>
+		<a class="back hide-desk" href={data.returnTo ?? `/tanks/${data.tank.id}`}>‹ {data.returnTo ? 'Back to the water test' : data.tank.name}</a>
 		<h1 class="hide-desk">Parameters &amp; targets</h1>
 		<div class="muted hide-desk">{data.tank.name} · {tankTypeLabel(data.tank.type)}</div>
 		<p class="intro">
@@ -35,7 +35,7 @@
 	</div>
 
 	<form method="POST" action="?/save" use:enhance={() => ({ update }) => update({ reset: false })}>
-		{#if data.fromReview}<input type="hidden" name="from" value="review" />{/if}
+		{#if data.fromReview}<input type="hidden" name="from" value="review" />{:else if data.returnTo}<input type="hidden" name="from" value={data.returnTo} />{/if}
 		<div class="rows">
 			<!-- desktop: one table like D4 -->
 			<div class="thead" aria-hidden="true"><span>Parameter</span><span>Min</span><span>Max</span><span>Unit</span><span>Test every</span><span>Track</span></div>

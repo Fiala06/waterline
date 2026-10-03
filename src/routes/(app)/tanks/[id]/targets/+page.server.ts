@@ -21,6 +21,7 @@ import {
   updateParams,
 } from "$lib/server/tanks";
 import { checkSection } from "$lib/server/review";
+import { safeReturn } from "$lib/server/redirect";
 import type { Actions, PageServerLoad } from "./$types";
 
 export const load: PageServerLoad = ({ locals, params, url }) => {
@@ -34,6 +35,8 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
     tank: { id: tank.id, name: tank.name, type: tank.type },
     reusable: reusableCustomParams(user.id, tank.id),
     fromReview: url.searchParams.get("from") === "review",
+    // from the water test form: Save (and the back link) go back to it
+    returnTo: safeReturn(url.searchParams.get("from"), "") || null,
     rows: listParams(tank.id, { all: true }).map((p) => {
       const d = defaults.get(p.key);
       return {
@@ -99,6 +102,9 @@ export const actions: Actions = {
       checkSection(user.id, params.id, "targets");
       redirect(303, `/tanks/${params.id}/review#targets`);
     }
+    // from the water test: back to the readings, which the form kept as a draft
+    const back = safeReturn(form.get("from"), "");
+    if (back) redirect(303, back);
     redirect(303, `/tanks/${params.id}/targets`);
   },
   reset: async ({ locals, params, cookies }) => {

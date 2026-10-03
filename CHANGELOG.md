@@ -12,6 +12,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 ## Unreleased
 
 - **Bigger charts on a computer:** In [Charts](/charts), up to a 1440px-wide window the latest reading, averages and events move under the chart, so the chart gets the full width. The charts of the same reading in your other tanks are now wide and tall enough to read.
+- **Targets from the water test:** On [Log water test](/entries/test/new), Edit targets and parameters opens the tank's targets, where you change a parameter's range or which ones you test. Save there brings you straight back to your test, with what you'd typed still in it.
 - **Older History is never out of sight:** [History](/history) still opens on the last 30 days, but it now says how many older entries there are ("70 entries · 183 older") and ends with Show all time. A range with nothing in it says so and offers the same. The range you pick is remembered, so choosing All time once keeps it.
 
 ## 1.11.0 · 2026-10-03

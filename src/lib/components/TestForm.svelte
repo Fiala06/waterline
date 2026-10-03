@@ -404,6 +404,10 @@
 							addOpen = true;
 						}}>+ Add parameter</a
 					>
+					<!-- the ranges and which parameters are tested live on the targets page; Save there comes back here -->
+					<a class="add-param edit-targets" href="{targetsHref}?from={encodeURIComponent(page.url.pathname + page.url.search)}"
+						>Edit targets and parameters ›</a
+					>
 				{/if}
 			</div>
 
@@ -763,6 +767,10 @@
 		overflow: hidden;
 		clip: rect(0, 0, 0, 0);
 		white-space: nowrap;
+	}
+	.edit-targets {
+		font-weight: 600;
+		color: var(--text-muted);
 	}
 	.add-param {
 		display: flex;
