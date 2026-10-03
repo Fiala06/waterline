@@ -308,7 +308,7 @@
 	}
 	@media (min-width: 1024px) {
 		.page {
-			padding: 0 0 32px;
+			padding: 24px 32px 48px;
 		}
 	}
 </style>

@@ -15,11 +15,11 @@ test('every part of Settings has its own address, and Server settings lists its 
 	// in the order it's set up
 	await open(page, '/settings/server');
 	const order = await page.locator('main section.sec, main form.sec').evaluateAll((els) => els.map((e) => e.id));
-	expect(order).toEqual(['sign-in', 'email', 'public-pages', 'features', 'about']);
+	expect(order).toEqual(['sign-in', 'people', 'email', 'public-pages', 'features', 'about']);
 
 	// the parts: beside the page on desktop, at its top on a phone
 	const parts = desktop ? page.getByRole('navigation', { name: 'Settings sections' }) : page.getByRole('navigation', { name: 'On this page' });
-	for (const name of ['Sign-in', 'Email', 'Public pages', 'Features', 'Logs & version']) await expect(parts.getByRole('link', { name, exact: true })).toBeVisible();
+	for (const name of ['Sign-in', 'People', 'Email', 'Public pages', 'Features', 'Logs & version']) await expect(parts.getByRole('link', { name, exact: true })).toBeVisible();
 	await parts.getByRole('link', { name: 'Features', exact: true }).click();
 	await expect(page).toHaveURL('/settings/server#features');
 	await expect(page.getByRole('heading', { name: /^Features/ })).toBeInViewport();

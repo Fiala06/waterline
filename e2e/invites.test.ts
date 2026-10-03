@@ -60,8 +60,8 @@ test('invitations and People', async ({ page, browser }, info) => {
 
 	// Remove the person: confirmation names what goes
 	await row.getByRole('button', { name: 'Remove…' }).click();
-	await expect(page.getByText(/Their account goes, with 0 tanks/)).toBeVisible();
-	await page.getByRole('button', { name: 'Remove person' }).click();
+	await expect(row.getByText(/Their account goes, with 0 tanks/)).toBeVisible();
+	await row.getByRole('button', { name: 'Remove person' }).click();
 	await expect(page.getByRole('status')).toContainText('removed with 0 tanks and 0 photos');
 	await expect(page.locator('section[aria-labelledby="people-h"] li.person', { hasText: invitee })).toHaveCount(0);
 	await expect(page.getByText('○ Revoked')).toBeVisible();
