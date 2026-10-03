@@ -103,5 +103,23 @@ test('tank timeline: moments, what changed, compare, public', async ({ page, bro
 	await expect(tl).not.toContainText('40 ppm');
 	await expect(tl.locator('li.tl-gap')).toContainText('12 days · +6 Ember tetra');
 	await expect(tl.locator('li.tl-gap')).not.toContainText('nitrate');
+
+	// a photo opens in the lightbox, with next/previous and Esc, instead of leaving the page
+	await tl.locator('a.tl-shot').first().click();
+	const box = v.getByRole('dialog', { name: 'Photo' });
+	await expect(box).toBeVisible();
+	await expect(box.locator('.lb-cap')).toHaveText('Mar 8, 2025 · 1 of 2');
+	await expect(box.locator('img')).toHaveAttribute('src', /\/p\//);
+	await v.keyboard.press('ArrowRight');
+	await expect(box.locator('.lb-cap')).toHaveText('Mar 20, 2025 · 2 of 2');
+	await v.keyboard.press('Escape');
+	await expect(box).toBeHidden();
+	await expect(v).toHaveURL(new RegExp(`/t/${slug}$`));
+
+	// the chart is the full one, as on Charts: points, limit labels and the Date axis
+	await v.goto(`/t/${slug}?chart=all`);
+	const chart = v.locator('section.chart');
+	await expect(chart.locator('svg text', { hasText: 'Date' })).toBeVisible();
+	await expect(chart.locator('svg .last-dot')).toBeVisible();
 	await visitor.close();
 });

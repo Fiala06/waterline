@@ -11,6 +11,9 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Photos on the public page open in a lightbox:** On a tank's [public page](/tanks/current/public), a photo from Photos or the Timeline now opens on the spot, on a dark stage with its date, ‹ › (or the arrow keys) through the rest, Esc or a tap outside to close, and a Full size link; before, it left the page for the bare image file.
+- **The public chart is the same chart as yours:** The public page's chart now draws every reading as a point (red when out of range), the min and max of the target band, the Date axis, and the tank's water changes as markers to tap for what changed ("Nitrate 19 → 15 ppm"), as [Charts](/charts) does; it still shows dates only, never times. Water changes appear when the Log is on.
+- **A shorter public timeline:** The public page's Timeline takes a third of the room it did: a small photo with the date and the day's facts on one line and the readings under it, the gaps between photos as one slim line, only the latest six shown with "Show N earlier" for the rest, and a second photo from the same day doesn't repeat its readings.
 - **Sensible livestock counts everywhere:** Adding livestock from the [Log form](/entries/event/new?category=livestock) now applies the same 1–10,000 limit as the Livestock page, imports and the wish list, so an accidentally enormous count cannot be saved.
 
 ## 1.12.3 · 2026-10-03

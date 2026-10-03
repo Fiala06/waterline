@@ -12,7 +12,38 @@
 	const photo = (id: string, size: 'thumb' | 'full' = 'thumb') => `/p/${v.slug}/${id}${size === 'thumb' ? '?size=thumb' : ''}`;
 	let chartIdx = $state(0);
 	const chart = $derived(v.charts[chartIdx] ?? v.charts[0]);
+	// the water change a visitor tapped on the chart, for its popover
+	let selected = $state<string | null>(null);
 	const now = Date.now();
+	// The lightbox: a tapped photo opens here, with prev/next through the photos
+	// beside it; without scripts the link opens the full-size image instead.
+	type Shot = { id: string; date: string };
+	let box = $state<HTMLDialogElement>();
+	let shots = $state<Shot[]>([]);
+	let shot = $state<number | null>(null);
+	const current = $derived(shot == null ? null : (shots[shot] ?? null));
+	function openShot(e: MouseEvent, list: Shot[], i: number) {
+		if (!box?.showModal || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+		e.preventDefault();
+		shots = list;
+		shot = i;
+		box.showModal();
+	}
+	const step = (d: number) => {
+		if (shot != null && shots.length) shot = (shot + d + shots.length) % shots.length;
+	};
+	function onboxkey(e: KeyboardEvent) {
+		if (e.key === 'ArrowRight') step(1);
+		else if (e.key === 'ArrowLeft') step(-1);
+		else return;
+		e.preventDefault();
+	}
+	const gridShots = $derived(v.photos.slice(0, 6));
+	const timelineShots = $derived(v.timeline.map((e) => ({ id: e.id, date: e.date })));
+	// The timeline stays short: the latest few, the rest behind "Show earlier".
+	const TL_SHOW = 6;
+	const tlRecent = $derived(v.timeline.slice(-TL_SHOW));
+	const tlEarlier = $derived(v.timeline.slice(0, -TL_SHOW));
 	// the visitor's ranges are links, so they work without scripts; each keeps the other
 	const rangeHref = (patch: Partial<typeof data.ranges>) => {
 		const r = { ...data.ranges, ...patch };
@@ -87,17 +118,20 @@
 					{#if v.charts.length > 1}
 						<div class="chips params" role="group" aria-label="Parameter">
 							{#each v.charts as c, i (c.id)}
-								<button type="button" class="chip" aria-pressed={chartIdx === i} onclick={() => (chartIdx = i)}>{c.name}</button>
+								<button type="button" class="chip" aria-pressed={chartIdx === i} onclick={() => ((chartIdx = i), (selected = null))}>{c.name}</button>
 							{/each}
 						</div>
 					{/if}
 					<div class="chart-card">
 						<div class="chart-box">
 							<div class="fill">
+								<!-- the same chart as the keeper's Charts: points, limits, water changes to tap; dates only -->
 								<TrendChart
 									fit
+									full
 									points={chart.points}
 									band={chart.band}
+									markers={chart.markers}
 									from={v.ranges.chartSince ?? Math.min(now - 30 * 86_400_000, ...chart.points.map((p) => p.t))}
 									to={now}
 									lastLevel={chart.lastLevel}
@@ -107,10 +141,24 @@
 									decimals={chart.decimals}
 									timeZone="UTC"
 									times={false}
-								/>
+									{selected}
+									onselect={(m) => (selected = selected === m.href ? null : m.href)}
+								>
+									{#snippet popover(m)}
+										{@const full = chart.markers.find((x) => x.href === m.href)}
+										<div class="pop-day">{full?.day} · Water change</div>
+										<div class="pop-title">{m.label.replace(/^Water change · /, '')}</div>
+										{#if full?.change}<div class="pop-change">{full.change}</div>{/if}
+									{/snippet}
+								</TrendChart>
 							</div>
 						</div>
-						{#if chart.target}<p class="legend"><span class="swatch" aria-hidden="true"></span>Target band {chart.target}</p>{/if}
+						{#if chart.target || chart.markers.length}
+							<p class="legend">
+								{#if chart.target}<span><i class="swatch" aria-hidden="true"></i>Target band {chart.target}</span>{/if}
+								{#if chart.markers.length}<span><i class="swatch marker" aria-hidden="true"></i>Water change</span>{/if}
+							</p>
+						{/if}
 					</div>
 				</section>
 			{/if}
@@ -173,8 +221,8 @@
 				<section class="photos">
 					<div class="sh"><h2>Photos</h2></div>
 					<div class="grid">
-						{#each v.photos.slice(0, 6) as p, i (p)}
-							<a href={photo(p, 'full')}><img src={photo(p)} alt="{v.name} photo {i + 1}" loading="lazy" /></a>
+						{#each gridShots as p, i (p.id)}
+							<a href={photo(p.id, 'full')} onclick={(e) => openShot(e, gridShots, i)}><img src={photo(p.id)} alt="{v.name} on {p.date}" loading="lazy" /></a>
 						{/each}
 					</div>
 				</section>
@@ -183,21 +231,28 @@
 			{#if v.timeline.length}
 				<section class="timeline">
 					<div class="sh"><h2>Timeline</h2></div>
-					<ol class="tl">
-						{#each v.timeline as e (e.id)}
+					<!-- compact rows: a small shot, the date and the day's facts on one line, the readings under it -->
+					{#snippet entries(list: typeof v.timeline, offset: number)}
+						{#each list as e, i (e.id)}
 							{#if e.gap}
 								<li class="tl-gap"><b>{e.gap.label}</b>{e.gap.summary ? ` · ${e.gap.summary}` : ''}</li>
 							{/if}
 							<li class="tl-entry">
-								<a class="tl-shot" href={photo(e.id, 'full')}><img src={photo(e.id)} alt="{v.name} on {e.date}" loading="lazy" /></a>
+								<a class="tl-shot" href={photo(e.id, 'full')} onclick={(ev) => openShot(ev, timelineShots, offset + i)}><img src={photo(e.id)} alt="{v.name} on {e.date}" loading="lazy" /></a>
 								<div class="tl-info">
-									<span class="tl-date">{e.date}</span>
-									<span class="muted tl-stats">
-										{[e.dayNumber ? `Day ${e.dayNumber}` : null, e.animals ? `${e.animals} animal${e.animals === 1 ? '' : 's'}` : null, e.plants ? `${e.plants} plant${e.plants === 1 ? '' : 's'}` : null]
-											.filter(Boolean)
-											.join(' · ')}
+									<span class="tl-line">
+										<span class="tl-date">{e.date}</span>
+										{#if e.dayNumber || e.animals || e.plants}
+											<span class="muted tl-stats">
+												{' · ' +
+													[e.dayNumber ? `Day ${e.dayNumber}` : null, e.animals ? `${e.animals} animal${e.animals === 1 ? '' : 's'}` : null, e.plants ? `${e.plants} plant${e.plants === 1 ? '' : 's'}` : null]
+														.filter(Boolean)
+														.join(' · ')}
+											</span>
+										{/if}
 									</span>
-									{#if e.readings?.length}
+									<!-- a second photo on the same day shares the entry above's readings: once is enough -->
+									{#if e.readings?.length && e.gap?.days !== 0}
 										<ul class="tl-readings">
 											{#each e.readings as r (r.name)}
 												<li><span class="muted">{r.name}</span> <span class="num">{r.value}{r.unit ? ` ${r.unit}` : ''}</span> <span class="rs status-{r.level}">{r.status}</span></li>
@@ -207,6 +262,17 @@
 								</div>
 							</li>
 						{/each}
+					{/snippet}
+					<ol class="tl">
+						{#if tlEarlier.length}
+							<li class="tl-more">
+								<details>
+									<summary>Show {tlEarlier.length} earlier<span class="chev" aria-hidden="true">▾</span></summary>
+									<ol class="tl">{@render entries(tlEarlier, 0)}</ol>
+								</details>
+							</li>
+						{/if}
+						{@render entries(tlRecent, tlEarlier.length)}
 					</ol>
 				</section>
 			{/if}
@@ -251,6 +317,24 @@
 		<footer class="foot"><Logo size={18} />Logged with Waterline · read-only</footer>
 	</main>
 </div>
+
+<!-- The lightbox: the photo on a dark stage, its date, prev/next, Esc or a tap outside to close -->
+<dialog class="lightbox" bind:this={box} aria-label="Photo" onclose={() => (shot = null)} onclick={(e) => e.target === box && box.close()} onkeydown={onboxkey}>
+	{#if current}
+		<div class="lb">
+			<div class="lb-stage"><img src={photo(current.id, 'full')} alt="{v.name} on {current.date}" /></div>
+			{#if shots.length > 1}
+				<button type="button" class="lb-nav lb-prev" onclick={() => step(-1)} aria-label="Previous photo">‹</button>
+				<button type="button" class="lb-nav lb-next" onclick={() => step(1)} aria-label="Next photo">›</button>
+			{/if}
+			<div class="lb-bar">
+				<span class="lb-cap">{current.date}{shots.length > 1 ? ` · ${(shot ?? 0) + 1} of ${shots.length}` : ''}</span>
+				<a class="lb-full" href={photo(current.id, 'full')} target="_blank" rel="noopener">Full size ↗</a>
+				<button type="button" class="lb-close" onclick={() => box?.close()} aria-label="Close">✕</button>
+			</div>
+		</div>
+	{/if}
+</dialog>
 
 <PublicAnalytics ga4Id={data.analytics.ga4Id} consent={data.analytics.consent} />
 
@@ -372,53 +456,85 @@
 	}
 	.tl-entry {
 		display: grid;
-		grid-template-columns: 96px minmax(0, 1fr);
-		gap: 12px;
-		padding: 10px 0;
+		grid-template-columns: 56px minmax(0, 1fr);
+		gap: 10px;
+		align-items: start;
+		padding: 6px 0;
 		border-bottom: 1px solid var(--divider);
+	}
+	.tl-shot {
+		display: block;
+		width: 56px;
+		height: 56px;
 	}
 	.tl-shot img {
 		display: block;
-		width: 96px;
-		height: 96px;
+		width: 56px;
+		height: 56px;
 		object-fit: cover;
 		background: var(--surface);
 	}
 	.tl-info {
 		display: flex;
 		flex-direction: column;
-		gap: 3px;
+		gap: 2px;
 		min-width: 0;
+		padding-top: 2px;
+	}
+	.tl-line {
+		font-size: 14px;
+		line-height: 1.3;
 	}
 	.tl-date {
 		font-weight: 800;
-		font-size: 15px;
 	}
 	.tl-stats {
 		font-size: 13px;
 	}
 	.tl-readings {
 		list-style: none;
-		margin: 2px 0 0;
+		margin: 0;
 		padding: 0;
 		display: flex;
 		flex-wrap: wrap;
-		gap: 2px 14px;
-		font-size: 13px;
+		gap: 0 12px;
+		font-size: 12px;
+		line-height: 1.5;
 	}
 	.tl-readings .num {
 		font-weight: 700;
 	}
 	.tl-readings .rs {
-		font-size: 12px;
+		font-size: 11px;
 		font-weight: 700;
 	}
 	.tl-gap {
-		padding: 6px 0 6px 12px;
+		padding: 3px 0 3px 10px;
 		border-left: 2px solid var(--ink);
-		margin: 6px 0;
-		font-size: 13px;
+		margin: 4px 0;
+		font-size: 12px;
+		line-height: 1.4;
 		color: var(--text-2);
+	}
+	/* the earlier entries fold away behind one row */
+	.tl-more summary {
+		display: flex;
+		align-items: center;
+		min-height: 44px;
+		cursor: pointer;
+		list-style: none;
+		font-size: 14px;
+		font-weight: 700;
+		border-bottom: 1px solid var(--divider);
+	}
+	.tl-more summary::-webkit-details-marker {
+		display: none;
+	}
+	.tl-more details[open] > summary {
+		margin-bottom: 4px;
+	}
+	.tl-more details[open] .chev {
+		transform: rotate(180deg);
 	}
 
 	/* ── Cover + title ────────────────────────────────────────── */
@@ -564,9 +680,10 @@
 		flex-direction: column;
 		gap: 10px;
 	}
+	/* room for the points, the limit labels and the Date title under the axis */
 	.chart-box {
 		position: relative;
-		height: 160px;
+		height: 200px;
 	}
 	.fill {
 		position: absolute;
@@ -575,15 +692,42 @@
 	.legend {
 		margin: 0;
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
-		gap: 6px;
+		column-gap: 16px;
+		row-gap: 4px;
 		font-size: 12px;
 		color: var(--text-muted);
+	}
+	.legend > span {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
 	}
 	.swatch {
 		width: 14px;
 		height: 8px;
 		background: var(--band);
+	}
+	.swatch.marker {
+		width: 8px;
+		height: 8px;
+		background: var(--ink);
+	}
+	/* a tapped water change's popover, as on the keeper's Charts */
+	:global(.pub .pop-day) {
+		font-size: 11px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--text-muted);
+	}
+	:global(.pub .pop-title) {
+		font-size: 14px;
+		font-weight: 800;
+	}
+	:global(.pub .pop-change) {
+		font-size: 12px;
+		color: var(--text-2);
 	}
 
 	/* ── Photos ───────────────────────────────────────────────── */
@@ -728,6 +872,109 @@
 		grid-area: auto;
 		text-align: right;
 	}
+	/* ── Lightbox ─────────────────────────────────────────────── */
+	.lightbox {
+		width: 100vw;
+		max-width: 100vw;
+		height: 100dvh;
+		max-height: 100dvh;
+		margin: 0;
+		padding: 0;
+		border: none;
+		background: var(--viewer-bg);
+		color: var(--overlay-text);
+	}
+	.lightbox::backdrop {
+		background: rgba(0, 0, 0, 0.6);
+	}
+	.lb {
+		position: relative;
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+	}
+	.lb-stage {
+		flex: 1 1 0;
+		min-height: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: calc(12px + env(safe-area-inset-top)) 12px 12px;
+	}
+	.lb-stage img {
+		display: block;
+		max-width: 100%;
+		max-height: 100%;
+		width: auto;
+		height: auto;
+		object-fit: contain;
+	}
+	.lb-nav {
+		position: absolute;
+		top: 50%;
+		transform: translateY(-50%);
+		width: 44px;
+		height: 44px;
+		border: 1px solid var(--divider);
+		border-radius: 0;
+		background: var(--surface);
+		color: var(--text-2);
+		font-size: 22px;
+		line-height: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+	}
+	.lb-prev {
+		left: 12px;
+	}
+	.lb-next {
+		right: 12px;
+	}
+	.lb-bar {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		min-height: 56px;
+		padding: 0 12px calc(env(safe-area-inset-bottom));
+		background: var(--surface);
+		color: var(--text);
+		border-top: 2px solid var(--ink);
+	}
+	.lb-cap {
+		flex: 1;
+		min-width: 0;
+		font-size: 14px;
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+	}
+	.lb-full {
+		font-size: 13px;
+		font-weight: 700;
+		color: var(--text);
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
+	}
+	.lb-close {
+		width: 44px;
+		height: 44px;
+		border: 1px solid var(--divider);
+		border-radius: 0;
+		background: var(--bg);
+		color: var(--text);
+		font-size: 16px;
+		cursor: pointer;
+	}
+	@media (hover: hover) {
+		.lb-nav:hover,
+		.lb-close:hover {
+			background: var(--surface-hi);
+			color: var(--text);
+		}
+	}
+
 	/* ── Footer ───────────────────────────────────────────────── */
 	.foot {
 		display: flex;
@@ -783,7 +1030,7 @@
 			font-size: 16px;
 		}
 		.chart-box {
-			height: 220px;
+			height: 250px;
 		}
 		.tiles {
 			grid-template-columns: repeat(2, minmax(0, 1fr));
