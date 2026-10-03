@@ -104,10 +104,8 @@
 			} as Record<string, string | undefined>
 		)[id];
 		if (tankPage) return { title: tankPage };
-		if (id === '/(app)/tanks/[id]/livestock/[lid]') {
-			const a = page.data.animal as { nickname: string | null; commonName: string } | undefined;
-			return { title: a?.nickname ?? a?.commonName ?? 'Livestock' };
-		}
+		// a pet's page has its own name hero
+		if (id === '/(app)/tanks/[id]/livestock/[lid]') return null;
 		if (id === '/(app)/tanks/[id]/import/[list=importList]') {
 			const kind = importKindOf(page.params.list ?? '');
 			return { title: kind ? IMPORTS[kind].title : 'Import' };

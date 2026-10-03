@@ -63,14 +63,19 @@
 	}
 	.toolbar {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		justify-content: space-between;
 		gap: 12px;
 		padding: 16px 20px 0;
 	}
 	.count {
+		flex: 1 1 100%;
 		font-size: 13px;
 		color: var(--text-muted);
+	}
+	.count:empty {
+		display: none;
 	}
 	.acts {
 		display: flex;
@@ -84,6 +89,10 @@
 		}
 		.toolbar {
 			padding: 20px 32px 0;
+			flex-wrap: nowrap;
+		}
+		.count {
+			flex: 1 1 auto;
 		}
 	}
 </style>

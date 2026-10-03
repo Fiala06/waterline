@@ -62,6 +62,7 @@
 		if (e.target === dialog) open = false;
 	}}
 >
+	{#if open}
 	<div class="panel">
 		<div class="head">
 			<h2>Keyboard shortcuts</h2>
@@ -81,6 +82,7 @@
 		</div>
 		<p class="note">Shortcuts are ignored while you're typing in a field.</p>
 	</div>
+	{/if}
 </dialog>
 
 <style>

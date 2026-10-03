@@ -154,6 +154,7 @@
 	}}
 	{onkeydown}
 >
+	{#if open}
 	<div class="panel">
 		<label class="search">
 			<Icon name="search" size={18} />
@@ -193,6 +194,7 @@
 			<span class="right"><kbd>[</kbd> toggle menu</span>
 		</div>
 	</div>
+	{/if}
 </dialog>
 
 <style>

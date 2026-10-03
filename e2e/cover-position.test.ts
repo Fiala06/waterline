@@ -40,7 +40,7 @@ test('drag the cover to choose which part of it shows', async ({ page }, info) =
 	await open(page, `/tanks/${tankId}/settings`);
 	await expect(page.getByRole('img', { name: /^Tank cover/ })).toHaveCSS('object-position', '50% 22%');
 	await open(page, '/');
-	await expect(page.locator('.hero .cover img')).toHaveCSS('object-position', '50% 22%');
+	await expect(page.locator('.cover img').first()).toHaveCSS('object-position', '50% 22%');
 	await open(page, '/tanks');
 	await expect(page.locator('.cover img').first()).toHaveCSS('object-position', '50% 22%');
 });

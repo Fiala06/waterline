@@ -48,6 +48,7 @@
 		if (e.target === dialog) open = false;
 	}}
 >
+	{#if open}
 	<div class="panel">
 		<div class="head">
 			<h2>Alerts{#if alerts.length}<span class="count">{alerts.length}</span>{/if}</h2>
@@ -89,6 +90,7 @@
 			<p class="none">Nothing needs attention. Readings out of range and overdue tasks show up here.</p>
 		{/if}
 	</div>
+	{/if}
 </dialog>
 
 <style>
