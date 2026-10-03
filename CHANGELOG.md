@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.12.5 · 2026-10-03
+
 - **The public page's lightbox closes on a tap beside the photo:** On a tank's [public page](/tanks/current/public), tapping the dark area around an opened photo closes it, as Esc and ✕ do; it only closed from the ✕ before.
 
 ## 1.12.4 · 2026-10-03
