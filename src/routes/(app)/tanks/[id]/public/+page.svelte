@@ -21,12 +21,12 @@
 
 	const toggles = [
 		{ k: 'showReadings', t: 'Latest readings', d: 'Values and in-range status' },
-		{ k: 'showCharts', t: 'Trend charts', d: 'Last 3 months' },
+		{ k: 'showCharts', t: 'Trend charts', d: 'Every tested parameter; visitors pick 30 days to all time' },
 		{ k: 'showPhotos', t: 'Photos', d: 'Newest 12' },
 		{ k: 'showLivestock', t: 'Livestock & plants', d: 'Species and counts; no sources or prices' },
 		{ k: 'showPetNames', t: 'Pet names and photos', d: 'Names you gave your pets, and photos tagged with them' },
 		{ k: 'showEquipment', t: 'Equipment', d: 'Brands and models; no notes' },
-		{ k: 'showActivity', t: 'Activity log', d: 'Water changes, dosing, plants; no notes' },
+		{ k: 'showActivity', t: 'Activity log', d: 'Water changes, dosing, plants; no notes. Visitors pick last week, last month or everything' },
 		{ k: 'showDescription', t: 'Tank description', d: 'A separate public blurb' }
 	] as const;
 
@@ -92,7 +92,13 @@
 					{#if form?.slugError}<span class="error-text">✕ {form.slugError}</span>{/if}
 					<div class="links">
 						<button type="button" class="btn" onclick={copy}>{copied ? '✓ Copied' : 'Copy link'}</button>
+						<button class="btn" formaction="?/check" formnovalidate>Check the link works</button>
 					</div>
+					{#if form?.check}
+						<p class="check" class:status-bad={!form.check.ok} role="status">
+							<strong>{form.check.text}</strong><br /><span class="hint">{form.check.hint}</span>
+						</p>
+					{/if}
 				</div>
 			</section>
 
@@ -432,5 +438,14 @@
 		.previews {
 			position: static;
 		}
+	}
+	.check {
+		margin: 8px 0 0;
+		font-size: 14px;
+	}
+	.check .hint {
+		font-weight: 400;
+		color: var(--text-muted);
+		overflow-wrap: anywhere;
 	}
 </style>

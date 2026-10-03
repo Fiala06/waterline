@@ -9,6 +9,11 @@ How to write a line:
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
+## Unreleased
+
+- **More of the tank on its public page:** Visitors to a [public page](/tanks/current/public) now choose how much to see: the trend chart over 30 days, 90 days, 1 year or all time, for every tested parameter rather than three, and the log for the last week, the last month or everything. The owner's switches still decide what's shown at all.
+- **Check the link works:** On a tank's [Public page settings](/tanks/current/public), Check the link works fetches your public address from the server and says whether it answered with the page, or why not: a wrong Public site URL, a proxy sending visitors elsewhere, a 404, no DNS, a refused connection or a certificate problem. It can't see a firewall between the internet and your server, so it also suggests opening the link on a phone with Wi-Fi off.
+
 ## 1.10.0 · 2026-10-03
 
 - **A new look, and a tank workspace:** Waterline has a fresh design: one typeface throughout, square corners, and red kept for what matters. On a computer, your tanks sit in a menu on the left (press `[` to keep it open or let it tuck away), and each tank is a workspace with tabs for [Overview](/), [Charts](/charts), [History](/history), [Photos](/photos), [Livestock](/tanks/current/livestock), [Plants](/tanks/current/plants), [Equipment](/tanks/current/equipment), [Spending](/tanks/current/spending) and [Setup](/tanks/current/settings). Log water test is one click or the `T` key away from anywhere, with the other log types under its ▾; `W`, `D` and `N` log a water change, a dose or a note. Press `⌘K` (or `/`) to jump to any tank, tab or action, `?` for every shortcut, `G` then a letter to switch tabs. The bell lists readings out of range and overdue tasks across your tanks. On a phone, the bottom bar has Overview, Charts, a big Log button, History and More.

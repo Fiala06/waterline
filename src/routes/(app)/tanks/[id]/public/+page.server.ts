@@ -5,6 +5,7 @@ import { photos } from '$lib/server/db/schema';
 import { optStr, str } from '$lib/server/forms';
 import { displayNameFor, getPublicPage, ogVersion, publicSettings, slugify, updatePublicPage, viewsThisWeek } from '$lib/server/public';
 import { getTank } from '$lib/server/tanks';
+import { logger } from '$lib/server/log';
 import type { Actions, PageServerLoad } from './$types';
 
 // P1 (what shows) + P4 (search & sharing) for one tank.
@@ -62,5 +63,42 @@ export const actions: Actions = {
 		});
 		if ('error' in result) return fail(400, { slugError: result.error });
 		return { saved: true };
+	},
+	// Is the public link reachable? Fetched from this server through the public address, so it
+	// catches a wrong Public site URL, a proxy that isn't passing /t/, or pages turned off; a
+	// firewall between the internet and the server it can't see (open the link with Wi-Fi off for that).
+	check: async ({ locals, params, url }) => {
+		const user = locals.user!;
+		const tank = getTank(user.id, params.id);
+		const page = getPublicPage(user.id, tank.id);
+		const s = publicSettings();
+		const base = s.baseUrl ?? url.origin;
+		const link = `${base}/t/${page.slug}`;
+		const fail = (text: string, hint: string) => ({ check: { ok: false, link, text, hint } });
+		if (!s.allowPublicPages) return fail('✕ Public pages are off for this server', 'Turn them on in Server settings › Public pages.');
+		if (!page.enabled) return fail('✕ This page is off', 'Turn it on above and save, then check again.');
+		const ctrl = new AbortController();
+		const timer = setTimeout(() => ctrl.abort(), 8000);
+		try {
+			const res = await fetch(link, { redirect: 'manual', signal: ctrl.signal, headers: { 'user-agent': 'Waterline self-check' } });
+			if (res.status === 200) {
+				const html = await res.text();
+				if (html.includes(`/t/${page.slug}`)) return { check: { ok: true, link, text: '✓ Reachable from this server', hint: `${link} answered with the page. To be sure it works from outside your network, open it on a phone with Wi-Fi off.` } };
+				return fail('▲ Something else answered', `${link} returned a page that isn't this tank's. Check the Public site URL in Server settings and your proxy's rules for /t/.`);
+			}
+			if (res.status >= 300 && res.status < 400) return fail(`▲ Redirected (${res.status})`, `${link} sends visitors to ${res.headers.get('location') ?? 'somewhere else'}. A proxy or sign-in rule may be in the way of /t/.`);
+			if (res.status === 404) return fail('✕ Not found (404)', `${link} isn't served. Check the Public site URL in Server settings; the page is on at ${url.origin}/t/${page.slug}.`);
+			return fail(`✕ ${res.status} from the server`, `${link} answered with an error. The Logs in Server settings may say why.`);
+		} catch (e) {
+			const code = (e as { cause?: { code?: string } }).cause?.code ?? (e as Error).name;
+			logger.warn('settings', `Self-check of ${link} failed: ${code}`);
+			if (code === 'AbortError') return fail('✕ No answer in 8 seconds', `${link} didn't respond. The address may point somewhere this server can't reach, or a firewall is dropping it.`);
+			if (code === 'ENOTFOUND') return fail("✕ The address doesn't resolve", `${new URL(link).host} has no DNS record this server can see. Check the Public site URL in Server settings.`);
+			if (code === 'ECONNREFUSED') return fail('✕ Connection refused', `Nothing is listening at ${new URL(link).host}. Check the port and your proxy.`);
+			if (/CERT|TLS|SSL/i.test(String(code))) return fail('✕ Certificate problem', `${new URL(link).host}'s HTTPS certificate isn't trusted. Visitors' browsers will refuse it too.`);
+			return fail('✕ Could not connect', `${link}: ${code}. Check the Public site URL in Server settings and your proxy.`);
+		} finally {
+			clearTimeout(timer);
+		}
 	}
 };
