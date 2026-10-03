@@ -17,4 +17,8 @@ npm run build:species
 
 Because of the Wikipedia part, `species.json` itself is shared under CC BY-SA 4.0 with the attribution above. That applies to this data file only, not to the app's code.
 
-FishBase was considered and not used: its data is licensed for non-commercial use only (CC BY-NC).
+FishBase was considered and not used for the list: its data is licensed for non-commercial use only (CC BY-NC).
+
+## Care ranges (#20)
+
+Temperature, pH and hardness ranges, adult size and schooling come from [FishBase](https://www.fishbase.org) (CC BY-NC 4.0), and are **not in the repository**: each server downloads the snapshot [rfishbase](https://github.com/ropensci/rfishbase) publishes on Source Cooperative (`species`, `synonyms`, `stocks` and `ecology` as Parquet), keeps the rows that match the fish in `species.json` by scientific name (accepted or a synonym: the hobby's *Corydoras paleatus* is FishBase's *Hoplisoma paleatum*) in `DATA_DIR/species-care.json`, and credits FishBase wherever the data is shown (`src/lib/server/species-care.ts`). `SPECIES_CARE=off` or the switch in Server settings turns it off; `SPECIES_CARE_URL` reads another snapshot folder. Group sizes and the compatibility list (`src/lib/compatibility.json`) are Waterline's own, short and cautious.

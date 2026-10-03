@@ -13,6 +13,8 @@ import { EVENT_CATEGORIES, type User } from './db/schema';
 import { tankNotes } from './trends';
 import { eventsSince, latestReadings, testsSince } from './logs';
 import { listEquipment, listLivestock, listPlants } from './specs';
+import { careLine, tankTargets, tankWarnings } from '$lib/care';
+import { CARE_SOURCE, careFor, speciesCareOn } from './species-care';
 import { getTank, listParams } from './tanks';
 import { listTasks } from './tasks';
 
@@ -177,6 +179,28 @@ export function tankSummary(user: User, tankId: string, days: number, now = new 
 				)
 			: ['None recorded.']
 	);
+	// care (#20): each species' ranges from FishBase, and what's worth checking
+	if (speciesCareOn() && animals.length) {
+		const lines = animals
+			.map((l) => {
+				const c = careFor(l.scientificName);
+				return c ? `- ${l.commonName}: ${careLine(c, user)}` : null;
+			})
+			.filter((x): x is string => !!x);
+		const warnings = tankWarnings(
+			animals.map((l) => ({ s: l.scientificName, name: l.commonName, count: l.count })),
+			careFor,
+			tankTargets(listParams(t.id)),
+			user
+		);
+		if (lines.length || warnings.length) {
+			section('Species care', [
+				...lines,
+				...(warnings.length ? ['', 'Worth checking:', ...warnings.map((w) => `- ${w.replace(/^▲ /, '')}`)] : []),
+				...(lines.length ? ['', `Care ranges from ${CARE_SOURCE.name} (${CARE_SOURCE.url}), ${CARE_SOURCE.license}.`] : [])
+			]);
+		}
+	}
 	const plants = listPlants(user.id, t.id);
 	section(
 		plants.length ? `Plants (${plants.length})` : 'Plants',

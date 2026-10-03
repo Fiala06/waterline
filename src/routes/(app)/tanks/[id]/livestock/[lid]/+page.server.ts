@@ -12,7 +12,19 @@ import { checkPhotoFiles, photoFiles, datePhotos, preparePhotos, storePhotos } f
 import { speciesPhotos } from '$lib/server/stock-photos';
 import { getLivestock, nameLivestock, petPhotos, updateLivestockDetails } from '$lib/server/specs';
 import { getTank } from '$lib/server/tanks';
+import { careLine, groupWarning, tankTargets, targetWarnings } from '$lib/care';
+import { CARE_SOURCE, careFor, speciesCareOn } from '$lib/server/species-care';
+import { listParams } from '$lib/server/tanks';
 import type { Actions, PageServerLoad } from './$types';
+
+/** The species' ranges in the keeper's units and the warnings for this tank, or null without data. */
+function careBlock(l: { scientificName: string | null; commonName: string; count: number; removedAt: string | null }, tankId: string, user: { unitSystem: 'metric' | 'imperial'; hardnessUnit: 'dgh' | 'ppm' }) {
+	if (!speciesCareOn() || !l.scientificName) return null;
+	const care = careFor(l.scientificName);
+	const warnings = l.removedAt ? [] : [...(care ? targetWarnings(l.commonName, care, tankTargets(listParams(tankId)), user) : []), groupWarning({ s: l.scientificName, name: l.commonName, count: l.count }, care) ?? []].flat();
+	if (!care && !warnings.length) return null;
+	return { line: care ? careLine(care, user) : null, fb: care?.fb ?? null, warnings, source: care ? CARE_SOURCE : null };
+}
 
 // A page per livestock entry: a pet ("Captain · Betta") or a species' group.
 // Its photo, notes and its own History; naming one of a group gives it a page of its own.
@@ -69,6 +81,8 @@ export const load: PageServerLoad = ({ locals, params }) => {
 			notes: l.notes ?? '',
 			photoId: l.photoId
 		},
+		// care (#20): its ranges from FishBase, and what to check against this tank
+		care: careBlock(l, tank.id, user),
 		// no photo of its own: the species photo from Wikimedia Commons, with its credit
 		stock: l.photoId ? null : speciesPhotos([{ photoId: null, scientific: l.scientificName, common: l.commonName }]).list[0],
 		history,

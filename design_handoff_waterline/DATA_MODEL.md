@@ -152,7 +152,8 @@ server_settings  singleton: email_provider?(mailgun|smtp), mailgun_api_key_enc?,
                  local_admin_username?, local_admin_password_hash?,
                  allow_public_pages, public_home_enabled, public_base_url?, ga4_id?,
                  consent_banner, search_console_tag?, scheduled_emails, update_check,
-                 log_level(warn|info), log_debug_until?, stock_photos, vapid_public_key?,
+                 log_level(warn|info), log_debug_until?, stock_photos, species_care (care ranges
+                 from FishBase, downloaded by the server into DATA_DIR/species-care.json), vapid_public_key?,
                  vapid_private_key_enc? (Web Push keys, made on first use)
 stock_photos     name (the scientific name looked up), status(ok|none|failed), file?,
                  width?, height?, author?, license?, license_url?, page_url?, reason?,

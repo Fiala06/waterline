@@ -1,0 +1,1 @@
+ALTER TABLE `server_settings` ADD `species_care` integer DEFAULT true NOT NULL;

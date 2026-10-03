@@ -8,6 +8,7 @@ import { cleanupExports } from './export';
 import { getServerSettings } from './mail';
 import { logger, pruneLogs } from './log';
 import { runNotifications } from './notifications';
+import { ensureCare } from './species-care';
 
 const EVERY_MS = 5 * 60_000;
 const g = globalThis as { __waterlineScheduler?: ReturnType<typeof setInterval> };
@@ -25,6 +26,8 @@ export function startScheduler() {
 			pruneSamples();
 			pruneOAuth();
 			cleanupExports();
+			// species care data from FishBase (#20), once, when the server hasn't got it
+			await ensureCare();
 		} catch (e) {
 			logger.error('server', 'The scheduled run failed', { error: e });
 		} finally {

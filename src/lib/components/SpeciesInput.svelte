@@ -16,7 +16,8 @@
 		initialName = '',
 		initialScientific = '',
 		invalid = false,
-		label = 'Species'
+		label = 'Species',
+		onpick
 	}: {
 		id?: string;
 		kind?: string | null;
@@ -25,6 +26,8 @@
 		initialScientific?: string;
 		invalid?: boolean;
 		label?: string;
+		/** what was picked (a species from the list, or null for a custom name or a change), for care hints (#20) */
+		onpick?: (picked: { s: string; name: string } | null) => void;
 	} = $props();
 
 	let text = $state(untrack(() => initialName));
@@ -70,6 +73,7 @@
 	}
 
 	function oninput() {
+		if (scientific) onpick?.(null);
 		scientific = '';
 		open = true;
 		active = -1;
@@ -90,6 +94,7 @@
 		}
 		open = false;
 		results = [];
+		onpick?.(s ? { s: s.s, name: text } : null);
 	}
 
 	function onkeydown(e: KeyboardEvent) {

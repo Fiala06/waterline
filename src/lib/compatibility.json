@@ -1,0 +1,25 @@
+{
+	"_about": "Well-known conflicts between aquarium species, kept short and cautious (#20). Names are scientific: a genus alone matches every species in it. `a` and `b` are the two sides; `text` says why, with {a} and {b} replaced by the common names kept in the tank. Rules with `min` warn when that many or more of one species share a tank.",
+	"pairs": [
+		{ "a": ["Betta splendens"], "b": ["Poecilia reticulata", "Poecilia wingei"], "text": "Bettas and guppies often don't get along: a betta takes a guppy's flowing fins for a rival's, and guppies nip in return." },
+		{ "a": ["Betta splendens"], "b": ["Puntigrus tetrazona", "Puntius tetrazona", "Hyphessobrycon eques", "Gymnocorymbus ternetzi"], "text": "{b} nip long fins; a betta's are the first to go." },
+		{ "a": ["Pterophyllum", "Carassius auratus", "Poecilia reticulata"], "b": ["Puntigrus tetrazona", "Puntius tetrazona", "Hyphessobrycon eques", "Gymnocorymbus ternetzi"], "text": "{b} are fin nippers: slow fish with long fins like {a} get harried." },
+		{ "a": ["Pterophyllum"], "b": ["Paracheirodon innesi", "Paracheirodon axelrodi", "Hyphessobrycon amandae", "Boraras"], "text": "Grown angelfish eat fish the size of {b}." },
+		{ "a": ["Pterophyllum"], "b": ["Betta splendens"], "text": "Angelfish and bettas both defend their space, and the one with longer fins loses." },
+		{ "a": ["Astronotus ocellatus", "Channa", "Parachromis"], "b": ["*small"], "text": "{a} eat whatever fits in their mouth; most community fish do." },
+		{ "a": ["Neocaridina", "Caridina"], "b": ["Betta splendens", "Pterophyllum", "Botia", "Chromobotia macracanthus", "Yasuhikotakia", "Macropodus", "Trichopodus", "Astronotus ocellatus", "Mikrogeophagus", "Apistogramma", "Pelvicachromis"], "text": "{b} hunt shrimp, shrimplets above all; a thickly planted tank saves some." },
+		{ "a": ["Carassius auratus"], "b": ["*tropical"], "text": "Goldfish like it cool (18–22 °C) and tropical fish warm; one of them is always out of its range." },
+		{ "a": ["Pseudotropheus", "Maylandia", "Metriaclima", "Melanochromis", "Labidochromis", "Labeotropheus", "Cynotilapia"], "b": ["*community"], "text": "Mbuna cichlids are territorial and want hard, alkaline water; soft-water community fish get bullied and stressed." },
+		{ "a": ["Chromobotia macracanthus", "Botia", "Yasuhikotakia"], "b": ["Pomacea", "Neritina", "Vittina", "Clithon", "Planorbella", "Physella acuta", "Melanoides tuberculata"], "text": "Loaches eat snails, {b} included; good if that's the plan, not if they're pets." },
+		{ "a": ["Puntigrus tetrazona", "Puntius tetrazona"], "b": ["Trichogaster", "Trichopodus", "Colisa"], "text": "Tiger barbs nip the long feelers of gouramis." },
+		{ "a": ["Amphiprion", "Premnas biaculeatus"], "b": ["Amphiprion", "Premnas biaculeatus"], "text": "Two kinds of clownfish in one tank fight over the anemone and the territory; one pair is the rule.", "different": true }
+	],
+	"groups": [
+		{ "a": ["Betta splendens"], "min": 2, "text": "Two bettas in one tank fight, male or female alike, unless it's a large, planted sorority of several females watched closely." },
+		{ "a": ["Macropodus opercularis"], "min": 2, "text": "Paradise fish males fight like bettas; keep one male." }
+	],
+	"small": ["Paracheirodon", "Hyphessobrycon", "Hemigrammus", "Boraras", "Trigonostigma", "Rasbora", "Danio", "Brachydanio", "Microdevario", "Nannostomus", "Corydoras", "Otocinclus", "Poecilia", "Xiphophorus", "Neocaridina", "Caridina", "Aplocheilichthys", "Pseudomugil", "Iriatherina werneri", "Tanichthys albonubes", "Heterandria formosa", "Dario dario", "Celestichthys"],
+	"tropical": ["Paracheirodon", "Hyphessobrycon", "Hemigrammus", "Boraras", "Trigonostigma", "Rasbora", "Betta", "Corydoras", "Otocinclus", "Poecilia", "Xiphophorus", "Pterophyllum", "Trichogaster", "Trichopodus", "Puntigrus", "Apistogramma", "Mikrogeophagus", "Symphysodon", "Nannostomus", "Pangio"],
+	"community": ["Paracheirodon", "Hyphessobrycon", "Hemigrammus", "Boraras", "Trigonostigma", "Rasbora", "Danio", "Corydoras", "Otocinclus", "Poecilia", "Xiphophorus", "Pterophyllum", "Trichogaster", "Trichopodus", "Apistogramma", "Mikrogeophagus", "Nannostomus", "Pangio", "Betta splendens", "Tanichthys albonubes"],
+	"schooling": ["Paracheirodon", "Hyphessobrycon", "Hemigrammus", "Boraras", "Trigonostigma", "Rasbora", "Danio", "Brachydanio", "Celestichthys", "Microdevario", "Nannostomus", "Corydoras", "Otocinclus", "Puntigrus", "Puntius", "Pethia", "Barbodes", "Pangio", "Chromobotia macracanthus", "Botia", "Tanichthys albonubes", "Pseudomugil", "Melanotaenia", "Iriatherina werneri", "Chromis viridis", "Pterapogon kauderni"]
+}

@@ -378,6 +378,8 @@ export const serverSettings = sqliteTable('server_settings', {
 	updateCheck: integer('update_check', { mode: 'boolean' }).notNull().default(true),
 	// species photos from Wikimedia Commons for plants and livestock
 	stockPhotos: integer('stock_photos', { mode: 'boolean' }).notNull().default(true),
+	// species care ranges from FishBase (#20), downloaded by this server into DATA_DIR, never bundled (CC BY-NC)
+	speciesCare: integer('species_care', { mode: 'boolean' }).notNull().default(true),
 	// what the log keeps: errors and warnings, or also what the server did;
 	// everything (debug) only until log_debug_until, while troubleshooting
 	logLevel: text('log_level', { enum: ['warn', 'info'] }).notNull().default('warn'),

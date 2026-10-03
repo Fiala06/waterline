@@ -125,3 +125,6 @@ export function exactSpecies(name: string, water?: 'fresh' | 'marine' | null) {
 }
 
 export const speciesCount = species.length;
+
+/** The whole curated list, for building the care data (#20). */
+export const allSpecies = (): Species[] => species;

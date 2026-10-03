@@ -20,6 +20,8 @@ import { listLivestock, listPlants } from '../specs';
 import { SUMMARY_DAYS, tankSummary } from '../summary';
 import { getTank, listParams } from '../tanks';
 import { tankNotes } from '../trends';
+import { tankTargets, tankWarnings } from '$lib/care';
+import { CARE_SOURCE, careFor, speciesCareOn } from '../species-care';
 import type { AssistantAccess } from './tokens';
 
 /** A problem the assistant can fix (a wrong id, a tank it can't see): shown to it as the tool's result. */
@@ -278,8 +280,13 @@ const livestockTool: Tool = {
 	run: (access, args) => {
 		const { user } = access;
 		const t = tankFor(access, args);
+		const care = (l: ReturnType<typeof listLivestock>[number]) => {
+			const c = careFor(l.scientificName);
+			return c ? { care: { ...c, units: 'temperature °C, hardness dGH, length cm', source: `${CARE_SOURCE.name}, ${CARE_SOURCE.license}` } } : {};
+		};
 		const animal = (l: ReturnType<typeof listLivestock>[number]) => ({
 			name: livestockLabel(l),
+			...care(l),
 			common_name: l.commonName,
 			scientific_name: l.scientificName,
 			pet_name: l.nickname,
@@ -296,6 +303,15 @@ const livestockTool: Tool = {
 			data: {
 				tank: t.name,
 				livestock: listLivestock(user.id, t.id).map(animal),
+				// care (#20): targets against ranges, group sizes and well-known conflicts
+				worth_checking: speciesCareOn()
+					? tankWarnings(
+							listLivestock(user.id, t.id).map((l) => ({ s: l.scientificName, name: l.commonName, count: l.count })),
+							careFor,
+							tankTargets(listParams(t.id)),
+							user
+						).map((w) => w.replace(/^▲ /, ''))
+					: [],
 				...(args.include_removed === true ? { removed_livestock: listLivestock(user.id, t.id, { removed: true }).map(animal) } : {}),
 				plants: listPlants(user.id, t.id).map((p) => ({
 					name: p.name,

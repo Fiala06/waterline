@@ -18,6 +18,7 @@ import type { Actions, PageServerLoad } from './$types';
 import pkg from '../../../../../package.json';
 import { logCounts, logger } from '$lib/server/log';
 import { lookAgain, stockPhotosOn, stockPhotoStatus, TEST_SPECIES } from '$lib/server/stock-photos';
+import { careStatus, downloadCare } from '$lib/server/species-care';
 import { listInvites } from '$lib/server/invites';
 
 function requireAdmin(locals: App.Locals) {
@@ -111,7 +112,9 @@ export const load: PageServerLoad = ({ locals, url }) => {
 			stockPhotos: s.stockPhotos,
 			stockPhotosOff: env.STOCK_PHOTOS === 'off',
 			// how the species photos are coming along, and why they aren't
-			stock: stockPhotosOn() ? stockPhotoStatus() : null
+			stock: stockPhotosOn() ? stockPhotoStatus() : null,
+			// species care data from FishBase (#20): what this server has
+			care: careStatus()
 		},
 		// what went wrong in the last day
 		logs: logCounts(new Date(Date.now() - 86_400_000).toISOString())
@@ -227,10 +230,23 @@ export const actions: Actions = {
 		setSettings({
 			...(env.EMAIL_SCHEDULER === 'off' ? {} : { scheduledEmails: form.get('scheduledEmails') === 'on' }),
 			...(env.UPDATE_CHECK === 'off' ? {} : { updateCheck: form.get('updateCheck') === 'on' }),
-			...(env.STOCK_PHOTOS === 'off' ? {} : { stockPhotos: form.get('stockPhotos') === 'on' })
+			...(env.STOCK_PHOTOS === 'off' ? {} : { stockPhotos: form.get('stockPhotos') === 'on' }),
+			...(env.SPECIES_CARE === 'off' ? {} : { speciesCare: form.get('speciesCare') === 'on' })
 		});
 		logger.info('settings', 'Server switches saved', { userId: locals.user!.id, scheduledEmails: form.get('scheduledEmails') === 'on', updateCheck: form.get('updateCheck') === 'on' });
 		return { serverSaved: true };
+	},
+	/** Species care data (#20): download FishBase's snapshot now, or again for a newer release. */
+	careDownload: async ({ locals }) => {
+		requireAdmin(locals);
+		if (!careStatus().on) return fail(400, { care: { ok: false, message: 'Species care data is off.' } });
+		try {
+			const f = await downloadCare();
+			logger.info('settings', `Species care data downloaded: FishBase ${f.version}, ${f.count} species`, { userId: locals.user!.id });
+			return { care: { ok: true, message: `✓ FishBase ${f.version}: care ranges for ${f.count} of the bundled fish` } };
+		} catch (e) {
+			return fail(502, { care: { ok: false, message: `✕ Couldn't download: ${e instanceof Error ? e.message : String(e)}` } });
+		}
 	},
 	/** Species photos: forget the ones not found, and see whether Wikipedia can be reached. */
 	stockLookAgain: async ({ locals }) => {
