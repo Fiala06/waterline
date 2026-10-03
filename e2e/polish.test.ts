@@ -120,8 +120,11 @@ test('phones reach Charts and Photos from the dashboard', async ({ page }, info)
 	await open(page, `/entries/test/new?tank=${tankId}`);
 	await page.getByLabel('pH', { exact: true }).fill('6.8');
 	await page.getByRole('button', { name: 'Save 1 reading' }).click();
-	await expect(page.getByRole('link', { name: 'Charts' })).toBeVisible();
-	await page.getByRole('link', { name: 'Photos' }).click();
+	const bar = page.getByRole('navigation', { name: 'Main' });
+	await expect(bar.getByRole('link', { name: 'Charts' })).toBeVisible();
+	// Photos is under More
+	await bar.getByRole('link', { name: 'More' }).click();
+	await page.getByRole('link', { name: /^Photos/ }).click();
 	await expect(page).toHaveURL(/\/photos/);
 });
 

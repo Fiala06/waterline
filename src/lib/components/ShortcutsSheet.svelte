@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { dropFocus } from '$lib/ui.svelte';
 	// "?": every keyboard shortcut, in groups. Shortcuts are ignored while typing in a field.
 	let { open = $bindable(false) }: { open?: boolean } = $props();
 	let dialog: HTMLDialogElement | undefined = $state();
@@ -53,7 +54,10 @@
 	bind:this={dialog}
 	class="keys"
 	aria-label="Keyboard shortcuts"
-	onclose={() => (open = false)}
+	onclose={() => {
+		open = false;
+		dropFocus(dialog);
+	}}
 	onclick={(e) => {
 		if (e.target === dialog) open = false;
 	}}

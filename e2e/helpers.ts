@@ -69,7 +69,7 @@ export async function openQuickAdd(page: Page) {
 
 /** The tank's name in the shell: a heading on desktop, the switch-tank button on phones. */
 export function tankTitle(page: Page, name: string) {
-	return page.getByRole('heading', { name, level: 1 }).or(page.getByRole('button', { name: `${name}, switch tank` }));
+	return page.getByRole('heading', { name, level: 1, exact: true }).or(page.getByRole('button', { name: `${name}, switch tank` })).first();
 }
 
 /** The value of a DateField (a hidden input named `name`). */

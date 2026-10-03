@@ -38,7 +38,17 @@ export function toast(text: string) {
 /** Keyboard shortcuts are ignored while typing in a field or inside a dialog. */
 export function typing(e: KeyboardEvent) {
 	const t = e.target as HTMLElement | null;
-	return !!t?.closest('input, textarea, select, [contenteditable="true"], dialog');
+	if (!t) return false;
+	// focus left behind in a closed dialog isn't typing
+	const dialog = t.closest('dialog');
+	if (dialog && !dialog.open) return false;
+	return !!t.closest('input, textarea, select, [contenteditable="true"], dialog');
+}
+
+/** When a dialog closes, don't leave the focus inside it (keys would land in its fields). */
+export function dropFocus(dialog: HTMLDialogElement | undefined) {
+	const a = document.activeElement as HTMLElement | null;
+	if (dialog && a && dialog.contains(a)) a.blur();
 }
 
 /** The page's main log forms for a tank: T test, W water change, D dose, N note. */

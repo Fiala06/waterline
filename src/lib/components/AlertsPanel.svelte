@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { dropFocus } from '$lib/ui.svelte';
 	// The alerts panel, from the bell: out-of-range readings, overdue tasks and an
 	// update notice, each opening its page. What's been seen is kept on this device.
 	import { goto } from '$app/navigation';
@@ -39,7 +40,10 @@
 	bind:this={dialog}
 	class="alerts"
 	aria-label="Alerts"
-	onclose={() => (open = false)}
+	onclose={() => {
+		open = false;
+		dropFocus(dialog);
+	}}
 	onclick={(e) => {
 		if (e.target === dialog) open = false;
 	}}

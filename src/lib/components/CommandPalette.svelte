@@ -4,7 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { tick } from 'svelte';
 	import { tankTypeLabel } from '$lib/types';
-	import { logHref, ui } from '$lib/ui.svelte';
+	import { dropFocus, logHref, ui } from '$lib/ui.svelte';
 	import Icon from './Icon.svelte';
 	import TankThumb from './TankThumb.svelte';
 
@@ -145,7 +145,10 @@
 	bind:this={dialog}
 	class="pal"
 	aria-label="Search"
-	onclose={() => (open = false)}
+	onclose={() => {
+		open = false;
+		dropFocus(dialog);
+	}}
 	onclick={(e) => {
 		if (e.target === dialog) open = false;
 	}}
