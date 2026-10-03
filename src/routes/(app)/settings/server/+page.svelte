@@ -596,7 +596,7 @@
 			<form
 				method="POST"
 				action="?/careDownload"
-				class="block plain stock"
+				class="block plain care-data"
 				use:enhance={() => {
 					busy = 'care';
 					return async ({ update }) => {
