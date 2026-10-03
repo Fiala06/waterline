@@ -35,6 +35,7 @@ import {
 import { getServerSettings } from './mail';
 import { latestReadings, series } from './logs';
 import { getPhoto } from './photos';
+import { requireRoleOn } from './members';
 import { getTank, listParams } from './tanks';
 import { tankTypeLabel } from '$lib/types';
 
@@ -75,7 +76,7 @@ function slugTaken(slug: string, tankId: string) {
 
 /** The tank's public page settings, creating defaults (off) the first time. */
 export function getPublicPage(userId: string, tankId: string): PublicPage {
-	const tank = getTank(userId, tankId);
+	const tank = getTank(userId, tankId, 'owner');
 	const existing = db.select().from(publicPages).where(eq(publicPages.tankId, tankId)).get();
 	if (existing) return existing;
 	let base = slugify(tank.name) || 'tank'; // e.g. a name in another script
@@ -426,6 +427,7 @@ export function getShareForPhoto(userId: string, photoId: string) {
 }
 
 export function createShare(userId: string, photoId: string) {
+	requireRoleOn(userId, getPhoto(userId, photoId).tankId, 'owner');
 	const existing = getShareForPhoto(userId, photoId);
 	if (existing) return existing;
 	const id = randomBytes(12).toString('base64url'); // 96 bits: not guessable
@@ -433,12 +435,14 @@ export function createShare(userId: string, photoId: string) {
 }
 
 export function updateShare(userId: string, photoId: string, patch: { includeNote: boolean; includeTank: boolean }) {
+	requireRoleOn(userId, getPhoto(userId, photoId).tankId, 'owner');
 	const s = getShareForPhoto(userId, photoId);
 	if (!s) error(404, 'No share link');
 	return db.update(photoShares).set(patch).where(eq(photoShares.id, s.id)).returning().get();
 }
 
 export function revokeShare(userId: string, photoId: string) {
+	requireRoleOn(userId, getPhoto(userId, photoId).tankId, 'owner');
 	const s = getShareForPhoto(userId, photoId);
 	if (s) db.update(photoShares).set({ revokedAt: new Date().toISOString() }).where(eq(photoShares.id, s.id)).run();
 }

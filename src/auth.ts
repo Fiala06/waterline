@@ -10,6 +10,8 @@ import { authSecret } from '$lib/server/instance';
 import { logger } from '$lib/server/log';
 import { isValidPasswordHash, verifyPassword } from '$lib/server/password';
 import { adminEmail, googleClient, localAdminLogin } from '$lib/server/sign-in';
+import { acceptInvite } from '$lib/server/invites';
+import { acceptMemberInvites } from '$lib/server/members';
 import { googleAccountConflict, isEmailAllowed, LOCAL_ADMIN_FALLBACK_EMAIL, upsertUser } from '$lib/server/users';
 
 /** Google sign-in is on once its client is set, in Server settings (or the environment). */
@@ -70,6 +72,9 @@ function providers(): Provider[] {
 					const email = String(c.email ?? '').trim();
 					if (!email.includes('@')) return null;
 					const user = upsertUser({ email, name: String(c.name ?? '') || null });
+					// as Google sign-in does: signing in as an invited address accepts the invitation (#27)
+					if (acceptInvite(user.email, user.id)) logger.info('sign-in', `${user.email} accepted their invitation`, { userId: user.id });
+					for (const m of acceptMemberInvites(user.email, user.id)) logger.info('sign-in', `${user.email} joined a shared tank`, { userId: user.id, tankId: m.tankId });
 					return { id: user.id, email: user.email, name: user.displayName };
 				}
 			})
@@ -125,6 +130,10 @@ export const { handle, signIn, signOut } = SvelteKitAuth(async () => ({
 					googleSub: account.providerAccountId
 				});
 				logger.info('sign-in', 'Signed in with Google', { userId: u.id });
+				// an invited address (#27): signing in accepts the invitation
+				if (acceptInvite(u.email, u.id)) logger.info('sign-in', `${u.email} accepted their invitation`, { userId: u.id });
+				// and any tank shared with that address (#22)
+				for (const m of acceptMemberInvites(u.email, u.id)) logger.info('sign-in', `${u.email} joined a shared tank`, { userId: u.id, tankId: m.tankId });
 				// the account's photo, copied in the background (initials until then)
 				if (typeof profile.picture === 'string') void copyGoogleAvatar(u.id, profile.picture);
 				token.uid = u.id;
@@ -135,6 +144,8 @@ export const { handle, signIn, signOut } = SvelteKitAuth(async () => ({
 		},
 		session({ session, token }) {
 			if (token.uid) session.user.id = token.uid as string;
+			// when this session began, for Sign out everywhere (#27)
+			if (typeof token.iat === 'number') (session.user as { signedInAt?: number }).signedInAt = token.iat;
 			return session;
 		}
 	}

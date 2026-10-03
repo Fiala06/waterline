@@ -26,7 +26,7 @@ import type { Actions, PageServerLoad } from "./$types";
 
 export const load: PageServerLoad = ({ locals, params, url }) => {
   const user = locals.user!;
-  const tank = getTank(user.id, params.id);
+  const tank = getTank(user.id, params.id, 'owner');
   const defaults = new Map(
     defaultParameters(user, tank.type).map((d) => [d.key, d]),
   );
@@ -65,7 +65,7 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 export const actions: Actions = {
   save: async ({ request, locals, params, cookies }) => {
     const user = locals.user!;
-    getTank(user.id, params.id);
+    getTank(user.id, params.id, 'owner');
     const form = await request.formData();
     const existing = listParams(params.id, { all: true });
     const errors: Record<string, string> = {};

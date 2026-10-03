@@ -28,18 +28,18 @@
 	{#if h.archived}
 		<p class="archived"><span class="tag tag-neutral">Archived</span> This tank is archived. Restore it from <a href="/tanks">Tanks</a>.</p>
 	{/if}
-	{#if sub}
+	{#if sub && h.role !== 'view'}
 		<div class="toolbar">
 			<span class="count">{page.data.toolbarText ?? ''}</span>
 			<div class="acts">
 				{#if sub === 'equipment'}
-					<a class="btn btn-primary" href="{base}/equipment/new">+ Add equipment</a>
+					{#if h.role === 'owner'}<a class="btn btn-primary" href="{base}/equipment/new">+ Add equipment</a>{/if}
 				{:else if sub === 'livestock'}
 					<a class="btn" href="{base}/health">Health</a>
 					<a class="btn" href="{base}/livestock/several">Add several</a>
 					<a class="btn btn-primary" href="{base}/livestock/new">+ Add livestock</a>
 				{:else if sub === 'spending'}
-					<a class="btn btn-primary" href="{base}/spending/new">+ Add expense</a>
+					{#if h.role === 'owner'}<a class="btn btn-primary" href="{base}/spending/new">+ Add expense</a>{/if}
 				{:else if sub === 'plants'}
 					{#if plantCount}<button type="button" class="btn" onclick={() => (plantSheets.trim = true)}>Log trim</button>{/if}
 					<a class="btn" href="{base}/plants/several">Add several</a>

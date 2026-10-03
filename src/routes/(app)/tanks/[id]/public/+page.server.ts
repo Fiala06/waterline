@@ -11,7 +11,7 @@ import type { Actions, PageServerLoad } from './$types';
 // P1 (what shows) + P4 (search & sharing) for one tank.
 export const load: PageServerLoad = ({ locals, params, url }) => {
 	const user = locals.user!;
-	const tank = getTank(user.id, params.id);
+	const tank = getTank(user.id, params.id, 'owner');
 	const page = getPublicPage(user.id, tank.id);
 	const s = publicSettings();
 	const base = s.baseUrl ?? url.origin;
@@ -81,7 +81,7 @@ export const actions: Actions = {
 	// firewall between the internet and the server it can't see (open the link with Wi-Fi off for that).
 	check: async ({ locals, params, url }) => {
 		const user = locals.user!;
-		const tank = getTank(user.id, params.id);
+		const tank = getTank(user.id, params.id, 'owner');
 		const page = getPublicPage(user.id, tank.id);
 		const s = publicSettings();
 		const base = s.baseUrl ?? url.origin;

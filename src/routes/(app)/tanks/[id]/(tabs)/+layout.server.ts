@@ -1,7 +1,7 @@
 import { coverPosition } from '$lib/media';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { tankAge, todayInZone } from '$lib/time';
-import { getTank } from '$lib/server/tanks';
+import { getTank, roleOn } from '$lib/server/tanks';
 import type { LayoutServerLoad } from './$types';
 import { tankTypeLabel } from '$lib/types';
 
@@ -18,6 +18,8 @@ export const load: LayoutServerLoad = ({ locals, params }) => {
 			id: t.id,
 			name: t.name,
 			type: t.type,
+			// what this person may do here (#22)
+			role: roleOn(user.id, t),
 			cover: t.coverPhotoId,
 			coverPos: coverPosition(t.coverX, t.coverY),
 			archived: !!t.archivedAt,

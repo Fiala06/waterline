@@ -6,7 +6,8 @@ import { db } from '$lib/server/db';
 import { events, testReadings, tests } from '$lib/server/db/schema';
 import { eventView, testView, type EntryView } from '$lib/server/entry-view';
 import { thumbsFor } from '$lib/server/photos';
-import { getTank, listParams } from '$lib/server/tanks';
+import { isShared, tankPeople } from '$lib/server/members';
+import { getTank, listParams, roleOn } from '$lib/server/tanks';
 import type { EventCategory } from '$lib/types';
 import { FILTERS, RANGES } from '$lib/history';
 import type { PageServerLoad } from './$types';
@@ -19,6 +20,7 @@ export const load: PageServerLoad = async ({ locals, parent, url, cookies }) => 
 	const { currentTankId } = await parent();
 	if (!currentTankId) return { tank: null };
 	const tank = getTank(user.id, currentTankId);
+	const role = roleOn(user.id, tank);
 	const tz = user.timeZone;
 
 	const cat = FILTERS.some((f) => f.key === url.searchParams.get('cat')) ? url.searchParams.get('cat')! : 'all';
@@ -89,6 +91,9 @@ export const load: PageServerLoad = async ({ locals, parent, url, cookies }) => 
 		}
 	}
 
+	// a shared tank (#22): each entry says who logged it
+	const people = isShared(tank.id) ? tankPeople(tank) : null;
+	const by = (userId: string | null) => (people && userId && people.has(userId) ? ` · by ${people.get(userId)}` : '');
 	type Item = { key: string; href: string; at: string; icon: string; title: string; sub: string; bad: string | null; thumb: string | null };
 	const items: Item[] = [
 		...shownTests.map((t) => {
@@ -100,7 +105,7 @@ export const load: PageServerLoad = async ({ locals, parent, url, cookies }) => 
 				at: t.takenAt,
 				icon: 'test',
 				title: `Water test · ${n} reading${n === 1 ? '' : 's'}`,
-				sub: `${fmtTime(t.takenAt, tz)}${!bad && t.note ? ` · ${t.note}` : ''}`,
+				sub: `${fmtTime(t.takenAt, tz)}${!bad && t.note ? ` · ${t.note}` : ''}${by(t.loggedBy)}`,
 				bad: bad ? bad.join(', ') : null,
 				thumb: thumbs.get(t.id) ?? null
 			};
@@ -111,7 +116,7 @@ export const load: PageServerLoad = async ({ locals, parent, url, cookies }) => 
 			at: e.occurredAt,
 			icon: eventIcon(e),
 			title: eventTitle(e, user),
-			sub: `${fmtTime(e.occurredAt, tz)}${e.category === 'water_change' ? '' : ` · ${eventKindLabel(e)}`}`,
+			sub: `${fmtTime(e.occurredAt, tz)}${e.category === 'water_change' ? '' : ` · ${eventKindLabel(e)}`}${by(e.loggedBy)}`,
 			bad: null,
 			thumb: thumbs.get(e.id) ?? null
 		}))

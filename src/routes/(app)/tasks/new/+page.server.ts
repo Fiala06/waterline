@@ -1,12 +1,13 @@
 import { redirect } from '@sveltejs/kit';
-import { listTanks } from '$lib/server/tanks';
+import { listTanks, roleOn } from '$lib/server/tanks';
 import { routineProducts, saveTaskAction, taskFormValues, taskPreset, taskType } from '$lib/server/task-form';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, parent, url }) => {
 	const user = locals.user!;
 	const { currentTankId } = await parent();
-	const tanks = listTanks(user.id).map((t) => ({ id: t.id, name: t.name }));
+	// a shared tank's reminders are its owner's to set (#22)
+	const tanks = listTanks(user.id).filter((t) => roleOn(user.id, t) === 'owner').map((t) => ({ id: t.id, name: t.name }));
 	if (!tanks.length) redirect(303, '/tanks/new');
 	const tankId = tanks.find((t) => t.id === url.searchParams.get('tank'))?.id ?? currentTankId;
 	// ?type=dosing or feeding: a routine (#17); ?from: where it was started, to go back to

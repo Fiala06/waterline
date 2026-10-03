@@ -6,7 +6,8 @@ import { dateInZone, daysBetween, fmtDay, todayInZone } from '$lib/time';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { setFlash } from '$lib/server/flash';
 import { lastEventOf, latestReadings, latestTest } from '$lib/server/logs';
-import { getTank, listParams, listTanks, setArchived } from '$lib/server/tanks';
+import { getTank, listParams, listTanks, roleOn, setArchived } from '$lib/server/tanks';
+import { tankPeople } from '$lib/server/members';
 import { listTasks } from '$lib/server/tasks';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -58,7 +59,10 @@ export const load: PageServerLoad = ({ locals }) => {
 			.filter(Boolean)
 			.join(' · ');
 
-		return { id: t.id, name: t.name, type: t.type, cover: t.coverPhotoId, coverPos: coverPosition(t.coverX, t.coverY), volume: vol(t.nominalVolumeL), status, task, meta };
+		// shared with this person (#22): "Shared by Cory · can log"
+		const role = roleOn(user.id, t);
+		const shared = role === 'owner' ? null : `Shared by ${tankPeople(t).get(t.userId) ?? 'someone'} · ${role === 'log' ? 'can log' : 'can view'}`;
+		return { id: t.id, name: t.name, type: t.type, cover: t.coverPhotoId, coverPos: coverPosition(t.coverX, t.coverY), volume: vol(t.nominalVolumeL), status, task, meta: shared ? `${shared} · ${meta}` : meta };
 	});
 
 	const archived = listTanks(user.id, { archived: true }).map((t) => ({

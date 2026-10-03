@@ -293,3 +293,147 @@ export function scheduleText(t: {
     .filter(Boolean)
     .join(" · ");
 }
+
+// ── Schedules on equipment (#25) ────────────────────────────────────────────
+// A light, CO₂, pump or anything that doesn't run all day has periods it runs
+// in ("08:00"–"12:00" and "14:00"–"18:00" for a siesta), and lights can ramp
+// up and down. A tank's lighting is the schedule on its light, else the
+// lights on / off times on the tank itself.
+
+export interface Period {
+  on: string; // HH:MM
+  off: string; // HH:MM; earlier than `on` runs across midnight
+}
+export interface Schedule {
+  periods: Period[];
+  /** lights: minutes to ramp up at the start and down at the end of each period */
+  rampMin: number | null;
+}
+
+export const MAX_PERIODS = 6;
+export const RAMP_OPTIONS = [0, 15, 30, 45, 60, 90, 120];
+
+const mins = (s: string) => {
+  const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(s ?? "");
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+};
+
+/** A schedule read back from storage; null for anything that isn't one or has no periods. */
+export function parseSchedule(v: unknown): Schedule | null {
+  if (!v || typeof v !== "object") return null;
+  const o = v as { periods?: unknown; rampMin?: unknown };
+  const periods = Array.isArray(o.periods)
+    ? o.periods
+        .filter(
+          (p): p is Period =>
+            !!p &&
+            typeof p === "object" &&
+            mins((p as Period).on) != null &&
+            mins((p as Period).off) != null,
+        )
+        .slice(0, MAX_PERIODS)
+    : [];
+  if (!periods.length) return null;
+  const ramp =
+    typeof o.rampMin === "number" && o.rampMin > 0
+      ? Math.min(240, Math.round(o.rampMin))
+      : null;
+  return { periods, rampMin: ramp };
+}
+
+/** Hours a schedule runs in a day, over all its periods. */
+export function scheduleTotalHours(s: Schedule | null | undefined): number | null {
+  if (!s) return null;
+  const total = s.periods.reduce((n, p) => n + (scheduleHours(p.on, p.off) ?? 0), 0);
+  return Math.round(total * 100) / 100;
+}
+
+/** "08:00–12:00, 14:00–18:00" */
+export const periodsText = (s: Schedule) =>
+  s.periods.map((p) => `${p.on}–${p.off}`).join(", ");
+
+/** "08:00–12:00, 14:00–18:00 · 8 h · ramps 30 min" */
+export function scheduleLabel(s: Schedule | null | undefined): string {
+  if (!s) return "All day";
+  const h = scheduleTotalHours(s);
+  return [periodsText(s), h != null && hoursText(h), s.rampMin && `ramps ${s.rampMin} min`]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/** Whether a schedule has it on at "HH:MM". Always on without one. */
+export function isOnAt(s: Schedule | null | undefined, time: string): boolean {
+  if (!s) return true;
+  const t = mins(time);
+  if (t == null) return true;
+  return s.periods.some((p) => {
+    const a = mins(p.on)!;
+    const b = mins(p.off)!;
+    return a <= b ? t >= a && t < b : t >= a || t < b;
+  });
+}
+
+/** "● On now · off at 18:00" / "○ Off · on at 08:00", never color alone. */
+export function onNowText(s: Schedule | null | undefined, time: string): { on: boolean; text: string } {
+  if (!s) return { on: true, text: "● On" };
+  const t = mins(time) ?? 0;
+  const on = isOnAt(s, time);
+  // the next change after now, across midnight
+  const edges = s.periods
+    .flatMap((p) => [
+      { at: mins(p.on)!, to: true },
+      { at: mins(p.off)!, to: false },
+    ])
+    .filter((e) => e.to !== on)
+    .map((e) => ({ ...e, wait: (e.at - t + 1440) % 1440 }))
+    .sort((a, b) => a.wait - b.wait);
+  const next = edges[0];
+  const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  return {
+    on,
+    text: on
+      ? `● On now${next ? ` · off at ${hhmm(next.at)}` : ""}`
+      : `○ Off${next ? ` · on at ${hhmm(next.at)}` : ""}`,
+  };
+}
+
+/** An item with a schedule, as the tank's lighting or CO₂ reads it. */
+export interface ScheduledItem {
+  id: string;
+  type: EquipmentType;
+  name: string;
+  schedule: Schedule;
+}
+
+/**
+ * A tank's lighting and CO₂ times: the schedule on its light (or CO₂ item)
+ * when it has one, else the on / off pair on the tank itself.
+ */
+export function tankLighting(
+  tank: { lightsOn: string | null; lightsOff: string | null; co2On: string | null; co2Off: string | null; photoperiodH: number | null },
+  items: ScheduledItem[],
+): {
+  lights: { schedule: Schedule; hours: number | null; item: ScheduledItem | null } | null;
+  co2: { schedule: Schedule; hours: number | null; item: ScheduledItem | null } | null;
+  photoperiodH: number | null;
+} {
+  const pick = (type: EquipmentType, on: string | null, off: string | null) => {
+    const item = items.find((i) => i.type === type) ?? null;
+    const schedule = item?.schedule ?? (on && off ? { periods: [{ on, off }], rampMin: null } : null);
+    return schedule ? { schedule, hours: scheduleTotalHours(schedule), item } : null;
+  };
+  const lights = pick("light", tank.lightsOn, tank.lightsOff);
+  const co2 = pick("co2", tank.co2On, tank.co2Off);
+  return { lights, co2, photoperiodH: lights?.hours ?? tank.photoperiodH };
+}
+
+/** "Lights 08:00–12:00, 14:00–18:00 · CO₂ 07:00–15:00", from the items' schedules first; "" when neither is set. */
+export function lightingText(
+  tank: { lightsOn: string | null; lightsOff: string | null; co2On: string | null; co2Off: string | null; photoperiodH: number | null },
+  items: ScheduledItem[],
+): string {
+  const l = tankLighting(tank, items);
+  return [l.lights && `Lights ${periodsText(l.lights.schedule)}`, l.co2 && `CO₂ ${periodsText(l.co2.schedule)}`]
+    .filter(Boolean)
+    .join(" · ");
+}

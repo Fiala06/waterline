@@ -30,7 +30,7 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 		url.searchParams.set('tank', currentTankId);
 		redirect(303, `${url.pathname}?${url.searchParams}`);
 	}
-	const tank = getTank(user.id, tankId);
+	const tank = getTank(user.id, tankId, 'log');
 	// Health has its own page
 	if (url.searchParams.get('category') === 'health') redirect(303, `/tanks/${tank.id}/health`);
 	const category = parseCategory(url.searchParams.get('category'));
@@ -79,7 +79,7 @@ export const actions: Actions = {
 		const user = locals.user!;
 		const tankId = url.searchParams.get('tank');
 		if (!tankId) error(400, 'No tank');
-		const tank = getTank(user.id, tankId);
+		const tank = getTank(user.id, tankId, 'log');
 		const category = parseCategory(url.searchParams.get('category'));
 		const form = await request.formData();
 		const values: Record<string, string | string[]> = {};

@@ -25,6 +25,7 @@ export const SETTINGS_MENU = SETTINGS_SECTIONS.slice(0, 5);
 /** Server settings, in the order a new server is set up. Inside them: #google, #who-can-sign-in, #local-admin, #analytics, #species-photos. */
 export const SERVER_SECTIONS: Section[] = [
 	{ id: 'sign-in', label: 'Sign-in' },
+	{ id: 'people', label: 'People' },
 	{ id: 'email', label: 'Email' },
 	{ id: 'public-pages', label: 'Public pages' },
 	{ id: 'features', label: 'Features' },

@@ -8,7 +8,7 @@ import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals, params, url }) => {
 	const user = locals.user!;
-	const tank = getTank(user.id, params.id);
+	const tank = getTank(user.id, params.id, 'owner');
 	// "Log a purchase" of a saved product
 	const productId = url.searchParams.get('product');
 	const product = productId ? getProduct(user.id, productId) : null;
@@ -22,7 +22,7 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 export const actions: Actions = {
 	save: async ({ request, locals, params, cookies }) => {
 		const user = locals.user!;
-		getTank(user.id, params.id);
+		getTank(user.id, params.id, 'owner');
 		const form = await request.formData();
 		const read = readExpenseForm(form, user, params.id);
 		if (!read.input) return fail(400, { errors: read.errors, values: read.values });

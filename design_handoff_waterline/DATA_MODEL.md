@@ -11,7 +11,12 @@ users            id, google_sub?, email, display_name, is_admin,
                  theme(system|dark|light), currency (ISO 4217), setup_done,
                  seen_version (last What's new dismissed), alerts_seen JSON (alert keys marked
                  read, the same on every device),
-                 avatar_choice(google|own|none), avatar_at?, own_avatar_at?, created_at
+                 avatar_choice(google|own|none), avatar_at?, own_avatar_at?,
+                 last_seen_at? (to the quarter hour), sessions_revoked_at? (Sign out everywhere:
+                 sessions from before are no longer good), created_at
+invites          id, email, token_hash, invited_by?, created_at, expires_at (7 days),
+                 accepted_at?, accepted_user_id?, revoked_at? (an invitation to the server;
+                 accepted by signing in with Google as that address; revoking locks it out)
 notification_prefs user_id, task_reminders, overdue_alerts, out_of_range_alerts,
                  delivery(individual|daily|weekly), lead_days, send_time,
                  notify_email?, unsubscribed_at? (those three switches are email's);
@@ -32,6 +37,8 @@ tanks            id, user_id, name, type(freshwater|planted|brackish|reef),
                  Mark as running clears it with a "Cycle complete" note), without_equipment JSON
                  (what it goes without on purpose, of filter|heater|light|co2: ["heater"]; adding
                  one takes it off), review_checks JSON
+                 remind_to(all|owner), alert_to(all|owner) (a shared tank: whom its reminders and
+                 out-of-range alerts go to),
                  (the setup review: when each part was last checked, {details, equipment,
                  targets, livestock}), archived_at?, created_at
 tank_parameters  id, tank_id, key (ph|nh3|no2|no3|gh|kh|temp|… or custom), name, unit,
@@ -39,12 +46,12 @@ tank_parameters  id, tank_id, key (ph|nh3|no2|no3|gh|kh|temp|… or custom), nam
                  is due on the dashboard), tracked, sort, is_custom
 
 tests            id, tank_id, taken_at, note?, edited_at?, client_id? (offline dedupe),
-                 import_id?
+                 import_id?, logged_by? (who logged it on a shared tank)
 test_readings    test_id, parameter_id, value, prev_value? (before the last edit: "was 40")
 
 events           id, tank_id, category(water_change|dosing|maintenance|livestock|
                  equipment|observation|note|feeding), occurred_at, note?, data JSON, edited_at?,
-                 client_id?, import_id?
+                 client_id?, import_id?, logged_by? (who logged it on a shared tank)
                  -- data examples:
                  -- water_change {percent, volume_l, source: tap|rodi|mix}
                  -- dosing {product, amount, unit, task_id? (logged by a routine's Done)}
@@ -55,11 +62,15 @@ events           id, tank_id, category(water_change|dosing|maintenance|livestock
                  -- equipment {action: installed|replaced|adjusted|removed, equipment_id,
                  --            changes:{field:[old,new]}}
                  -- equipment {action: without|without_off, type, item} ("No heater in this tank")
+                 -- equipment {action: schedule, equipment_id, item, schedule, was} (its periods changed)
+                 -- equipment {action: par, par_id, item: "PAR", spot, value} (a PAR reading)
                  -- observation {tags:[...], recheck_at?}
                  -- note {system: tank_created|tank_archived|tank_restored} (the tank's own)
                  -- note {system: setup_reviewed, changed:[parts], prev_checks} (All still
                  --       right on the setup review; prev_checks lets Undo put the checks back)
 photos           id, tank_id, event_id?, test_id?, path, thumb_path, width, height, taken_at
+                 (from the photo's details, the day picked on upload, or its entry's date),
+                 taken_at_set (the keeper changed it in the viewer: it no longer follows the entry)
 photo_livestock  photo_id, livestock_id (pets tagged in a photo)
 
 ── Tasks ──────────────────────────────────────────────────────────────────────
@@ -77,8 +88,11 @@ task_completions id, task_id, completed_at, event_id?,
 
 ── What's in the tank, and what it costs ──────────────────────────────────────
 equipment        id, tank_id, type(filter|heater|light|co2|pump|skimmer|other), brand?,
-                 model?, specs JSON, installed_at?, last_serviced_at?, notes?,
-                 removed_at?, import_id?, created_at
+                 model?, specs JSON, schedule? JSON ({periods:[{on,off}], rampMin?}: when it
+                 runs; null runs all day; a light's sets the tank's lights times and photoperiod),
+                 installed_at?, last_serviced_at?, notes?, removed_at?, import_id?, created_at
+par_readings     id, tank_id, spot, x, y (0–100 across and front to back), value (µmol/m²/s),
+                 note?, measured_at, created_at
 livestock        id, tank_id, kind(fish|invert|coral), common_name, scientific_name?,
                  count, status(in_tank|quarantine), added_at?, source?, removed_at?,
                  nickname? (a pet: one animal, its own entry), notes?, photo_id?,
@@ -86,7 +100,8 @@ livestock        id, tank_id, kind(fish|invert|coral), common_name, scientific_n
 plants           id, tank_id, name, scientific_name?, position(background|midground|
                  foreground|epiphyte|floating), status(thriving|melting|algae|other),
                  last_trimmed_at?, removed_at?, import_id?, photo_id? (the keeper's own), created_at
-products         id, user_id, name, url, note?, created_at (saved reorder links)
+products         id, user_id, name, url, note?, strength_mg_per_ml?, strength_of? (its strength for
+                 the Dose → ppm calculator: mg per mL of what it adds), created_at (saved reorder links)
 expenses         id, tank_id, date, amount_cents, category(livestock|plants|equipment|
                  consumables|other), what, note?, product_id?, receipt_path?,
                  receipt_type?(image/jpeg|application/pdf), import_id?, created_at
@@ -97,6 +112,10 @@ public_pages     tank_id, enabled, slug, show_readings, show_charts, show_photos
                  show_pet_names, description?, display_name, indexable, seo_title?,
                  seo_description?, og_photo_id?, og_plain, view_count
 public_page_views tank_id, day, views
+tank_members     id, tank_id, email, user_id? (once accepted), role(log|view), token_hash,
+                 invited_by?, created_at, expires_at (7 days), accepted_at?, revoked_at?
+                 (people a tank is shared with: "log" logs tests, water changes, dosing, notes,
+                 photos and tasks done; "view" is read-only; only the owner changes setup)
 photo_shares     id (slug), photo_id, include_note, include_tank, created_at, revoked_at?
 
 ── Data in and out ────────────────────────────────────────────────────────────
@@ -122,7 +141,7 @@ server_settings  singleton: email_provider?(mailgun|smtp), mailgun_api_key_enc?,
                  mailgun_domain?, mailgun_region(us|eu), smtp_host?, smtp_port?,
                  smtp_secure, smtp_user?, smtp_password_enc?, sender?,
                  google_client_id?, google_client_secret_enc?, admin_email?,
-                 signup_mode?(admin|list|open), allowed_emails?,
+                 signup_mode?(admin|list|invited|open), allowed_emails?,
                  local_admin_username?, local_admin_password_hash?,
                  allow_public_pages, public_home_enabled, public_base_url?, ga4_id?,
                  consent_banner, search_console_tag?, scheduled_emails, update_check,

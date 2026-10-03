@@ -2,6 +2,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { VERSION } from '$lib/changelog';
 import { db } from './db';
 import { assistantTokens, calendarFeeds, exports, imports, notificationPrefs, products, pushSubscriptions, tanks, users, type User } from './db/schema';
+import { inviteAllows } from './invites';
 import { logger } from './log';
 import { getServerSettings } from './mail';
 import { adminEmail, listAllows, signupRules } from './sign-in';
@@ -11,14 +12,17 @@ export const LOCAL_ADMIN_FALLBACK_EMAIL = 'admin@localhost';
 
 /**
  * Who may sign in (Server settings › Sign-in): the admin, and the people or
- * @domains on the list, or anyone with a Google account. Checked at sign-in and
- * on every request, so removing someone locks them out.
+ * @domains on the list, people with an invitation (#27), or anyone with a
+ * Google account. Checked at sign-in and on every request, so removing
+ * someone, or revoking their invitation, locks them out.
  */
 export function isEmailAllowed(email: string): boolean {
 	const e = email.trim().toLowerCase();
 	if (e === adminEmail() || e === LOCAL_ADMIN_FALLBACK_EMAIL) return true;
 	const rules = signupRules(getServerSettings());
 	if (rules.mode === 'open' || listAllows(rules.list, e)) return true;
+	// an invitation counts whenever people besides the admin may sign in at all
+	if (rules.mode !== 'admin' && inviteAllows(e)) return true;
 	// an admin always can, so changing the admin's address never locks them out
 	return !!db.select({ id: users.id }).from(users).where(and(eq(users.email, e), eq(users.isAdmin, true))).get();
 }

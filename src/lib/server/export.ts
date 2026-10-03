@@ -52,8 +52,8 @@ export function getExport(userId: string, id: string): ExportRow {
 }
 
 function tanksFor(user: User, scope: 'tank' | 'account', tankId: string | null): Tank[] {
-	if (scope === 'tank') return [getTank(user.id, tankId ?? '')];
-	return [...listTanks(user.id), ...listTanks(user.id, { archived: true })];
+	if (scope === 'tank') return [getTank(user.id, tankId ?? '', 'owner')];
+	return [...listTanks(user.id, { own: true }), ...listTanks(user.id, { archived: true, own: true })];
 }
 
 /** Rough size of a full backup, for "about 48 MB". */

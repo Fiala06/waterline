@@ -204,6 +204,41 @@
       "when": 1791042408287,
       "tag": "0028_without_equipment",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "6",
+      "when": 1791044984946,
+      "tag": "0029_photo_taken_at_set",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "6",
+      "when": 1791045557013,
+      "tag": "0030_product_strength",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "6",
+      "when": 1791046230950,
+      "tag": "0031_equipment_schedules",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "6",
+      "when": 1791046792359,
+      "tag": "0032_invites",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "6",
+      "when": 1791047516309,
+      "tag": "0033_tank_members",
+      "breakpoints": true
     }
   ]
 }

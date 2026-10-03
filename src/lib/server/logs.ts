@@ -4,6 +4,7 @@ import { and, desc, eq, gte, inArray } from 'drizzle-orm';
 import { additivesOf } from '$lib/events';
 import { statusOf } from '$lib/params';
 import { db } from './db';
+import { requireRoleOn, visibleTo } from './members';
 import {
 	events,
 	tankParameters,
@@ -17,7 +18,7 @@ import {
 } from './db/schema';
 import { getTank } from './tanks';
 import { completeTask } from './tasks';
-import { removeEntryPhotoFiles } from './photos';
+import { followEntryDate, removeEntryPhotoFiles } from './photos';
 
 // ── Tests ───────────────────────────────────────────────────────────────────
 
@@ -37,7 +38,7 @@ export function createTest(
 	input: TestInput,
 	opts: { completeTaskId?: string | null; timeZone: string }
 ): { test: Test; count: number; outOfRange: number; duplicate: boolean } {
-	getTank(userId, tankId);
+	getTank(userId, tankId, 'log');
 	const params = paramsById(tankId);
 	for (const id of input.readings.keys()) {
 		if (!params.has(id)) error(400, 'Unknown parameter');
@@ -55,7 +56,7 @@ export function createTest(
 	const test = db.transaction((tx) => {
 		const t = tx
 			.insert(tests)
-			.values({ tankId, takenAt: input.takenAt, note: input.note, clientId: input.clientId ?? null, importId: input.importId ?? null })
+			.values({ tankId, takenAt: input.takenAt, note: input.note, clientId: input.clientId ?? null, importId: input.importId ?? null, loggedBy: userId })
 			.returning()
 			.get();
 		if (input.readings.size) {
@@ -91,7 +92,7 @@ export function getTest(userId: string, testId: string) {
 		.select({ test: tests })
 		.from(tests)
 		.innerJoin(tanks, eq(tanks.id, tests.tankId))
-		.where(and(eq(tests.id, testId), eq(tanks.userId, userId)))
+		.where(and(eq(tests.id, testId), visibleTo(userId)))
 		.get();
 	if (!row) error(404, 'Entry not found');
 	const readings = db.select().from(testReadings).where(eq(testReadings.testId, testId)).all();
@@ -105,6 +106,7 @@ export function getTest(userId: string, testId: string) {
 
 export function updateTest(userId: string, testId: string, input: Omit<TestInput, 'clientId'>) {
 	const { test, readings: before, previous } = getTest(userId, testId);
+	requireRoleOn(userId, test.tankId, 'log');
 	const params = paramsById(test.tankId);
 	for (const id of input.readings.keys()) {
 		if (!params.has(id)) error(400, 'Unknown parameter');
@@ -114,6 +116,7 @@ export function updateTest(userId: string, testId: string, input: Omit<TestInput
 			.set({ takenAt: input.takenAt, note: input.note, editedAt: new Date().toISOString() })
 			.where(eq(tests.id, testId))
 			.run();
+		if (input.takenAt !== test.takenAt) followEntryDate({ testId }, input.takenAt);
 		tx.delete(testReadings).where(eq(testReadings.testId, testId)).run();
 		if (input.readings.size) {
 			tx.insert(testReadings)
@@ -133,6 +136,7 @@ export function updateTest(userId: string, testId: string, input: Omit<TestInput
 
 export function deleteTest(userId: string, testId: string) {
 	const { test } = getTest(userId, testId);
+	requireRoleOn(userId, test.tankId, 'log');
 	removeEntryPhotoFiles({ testId });
 	db.delete(tests).where(eq(tests.id, testId)).run();
 	return test;
@@ -212,12 +216,12 @@ export function createEvent(
 	input: EventInput,
 	opts: { completeTaskId?: string | null; timeZone: string }
 ): { event: Event; duplicate: boolean } {
-	getTank(userId, tankId);
+	getTank(userId, tankId, 'log');
 	const existing = input.clientId ? eventByClientId(tankId, input.clientId) : undefined;
 	if (existing) return { event: existing, duplicate: true };
 	const event = db
 		.insert(events)
-		.values({ ...input, tankId, clientId: input.clientId ?? null, importId: input.importId ?? null })
+		.values({ ...input, tankId, clientId: input.clientId ?? null, importId: input.importId ?? null, loggedBy: userId })
 		.returning()
 		.get();
 	if (opts.completeTaskId) {
@@ -235,7 +239,7 @@ export function getEvent(userId: string, eventId: string): Event {
 		.select({ event: events })
 		.from(events)
 		.innerJoin(tanks, eq(tanks.id, events.tankId))
-		.where(and(eq(events.id, eventId), eq(tanks.userId, userId)))
+		.where(and(eq(events.id, eventId), visibleTo(userId)))
 		.get();
 	if (!row) error(404, 'Entry not found');
 	return row.event;
@@ -246,17 +250,21 @@ export function updateEvent(
 	eventId: string,
 	patch: Pick<EventInput, 'occurredAt' | 'note' | 'data'>
 ) {
-	getEvent(userId, eventId);
-	return db
+	const before = getEvent(userId, eventId);
+	requireRoleOn(userId, before.tankId, 'log');
+	const updated = db
 		.update(events)
 		.set({ ...patch, editedAt: new Date().toISOString() })
 		.where(eq(events.id, eventId))
 		.returning()
 		.get();
+	if (patch.occurredAt !== before.occurredAt) followEntryDate({ eventId }, patch.occurredAt);
+	return updated;
 }
 
 export function deleteEvent(userId: string, eventId: string) {
 	const e = getEvent(userId, eventId);
+	requireRoleOn(userId, e.tankId, 'log');
 	removeEntryPhotoFiles({ eventId });
 	db.delete(events).where(eq(events.id, eventId)).run();
 	return e;

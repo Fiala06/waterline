@@ -19,7 +19,7 @@ export function reviewTask(tankId: string): Task | undefined {
 
 /** Tank settings › Setup review: how often, or off (the task is removed; picking a time again brings it back). */
 export function setReviewEvery(user: User, tankId: string, every: number | 'off') {
-	getTank(user.id, tankId);
+	getTank(user.id, tankId, 'owner');
 	const task = reviewTask(tankId);
 	if (every === 'off') {
 		if (task) db.delete(tasks).where(eq(tasks.id, task.id)).run();
@@ -70,7 +70,7 @@ export function changedSince(tankId: string, since: string | null): ReviewSectio
 
 /** ✓ Still right on one part: it counts as checked now. */
 export function checkSection(userId: string, tankId: string, section: ReviewSection, at = new Date().toISOString()) {
-	const tank = getTank(userId, tankId);
+	const tank = getTank(userId, tankId, 'owner');
 	const checks: ReviewChecks = { ...tank.reviewChecks, [section]: at };
 	db.update(tanks).set({ reviewChecks: checks }).where(eq(tanks.id, tankId)).run();
 	return checks;
@@ -83,7 +83,7 @@ export function checkSection(userId: string, tankId: string, section: ReviewSect
  * them back.
  */
 export function finishReview(user: User, tankId: string) {
-	const tank = getTank(user.id, tankId);
+	const tank = getTank(user.id, tankId, 'owner');
 	const at = new Date().toISOString();
 	const since = lastReviewAt(tankId) ?? tank.createdAt;
 	const changed = changedSince(tankId, since);

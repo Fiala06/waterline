@@ -15,7 +15,7 @@ import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals, params, url }) => {
 	const user = locals.user!;
-	const tank = getTank(user.id, params.id);
+	const tank = getTank(user.id, params.id, 'log');
 	const now = utcToZoned(new Date(), user.timeZone);
 	return {
 		tank: { id: tank.id, name: tank.name },
@@ -33,7 +33,7 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 export const actions: Actions = {
 	save: async ({ request, locals, params, cookies }) => {
 		const user = locals.user!;
-		const tank = getTank(user.id, params.id);
+		const tank = getTank(user.id, params.id, 'log');
 		const form = await request.formData();
 		const values = { ...healthValues(form), date: str(form, 'date'), time: str(form, 'time') };
 		const when = parseWhen(form, user.timeZone);

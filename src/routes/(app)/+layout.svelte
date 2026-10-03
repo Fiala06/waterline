@@ -52,13 +52,18 @@
 			{ key: 'plants', label: 'Plants', href: `${base}/plants`, count: data.counts.plants, active: under('plants') },
 			{ key: 'equipment', label: 'Equipment', href: `${base}/equipment`, count: data.counts.equipment, active: under('equipment') },
 			{ key: 'spending', label: 'Spending', href: `${base}/spending`, active: under('spending') },
-			{
-				key: 'setup',
-				label: 'Setup',
-				href: `${base}/settings`,
-				// Notes & routines (/tanks/[id]) is a Setup page too
-				active: under('settings') || under('targets') || under('public') || under('review') || under('remind') || under('import') || routeId === '/(app)/tanks/[id]/(tabs)'
-			}
+			// Setup is the owner's (#22): a tank shared with you has no Setup tab
+			...(current.role === 'owner'
+				? [
+						{
+							key: 'setup',
+							label: 'Setup',
+							href: `${base}/settings`,
+							// Notes & routines (/tanks/[id]) is a Setup page too
+							active: under('settings') || under('targets') || under('public') || under('review') || under('remind') || under('import') || under('sharing') || routeId === '/(app)/tanks/[id]/(tabs)'
+						}
+					]
+				: [])
 		];
 	});
 	const setupTab = $derived(tabs.find((t) => t.key === 'setup')?.active ?? false);
@@ -66,7 +71,7 @@
 	const topLevel = $derived(
 		path === '/' || /^\/(charts|history|photos|more)$/.test(path) || /^\/\(app\)\/tanks\/\[id\]\/\(tabs\)\/?[a-z]*$/.test(routeId)
 	);
-	const barRoutes = ['/tanks', '/tasks', '/settings'];
+	const barRoutes = ['/tanks', '/tasks', '/settings', '/calculators'];
 	const showBar = $derived(topLevel || barRoutes.includes(path));
 	const fullscreen = $derived(path.startsWith('/photos/'));
 
@@ -102,6 +107,7 @@
 				'/(app)/tanks/[id]/spending/[eid]': 'Edit expense',
 				'/(app)/tanks/[id]/targets': 'Parameters & targets',
 				'/(app)/tanks/[id]/public': 'Public page',
+				'/(app)/tanks/[id]/sharing': 'Sharing',
 				'/(app)/tanks/[id]/summary': 'Share summary'
 			} as Record<string, string | undefined>
 		)[id];
@@ -112,6 +118,7 @@
 			const kind = importKindOf(page.params.list ?? '');
 			return { title: kind ? IMPORTS[kind].title : 'Import' };
 		}
+		if (id === '/(app)/calculators') return { title: 'Calculators', kicker: current ? `For ${current.name}` : 'Volume, water change, dosing, heater, substrate, CO₂' };
 		if (id === '/(app)/tasks') return { title: 'Tasks', kicker: data.overdueCount ? `${data.overdueCount} overdue` : 'Every tank', actions: [{ label: '+ New task', href: newTaskHref }] };
 		const taskType = (page.data.values as { type?: string } | undefined)?.type;
 		if (id === '/(app)/tasks/new')
@@ -452,6 +459,7 @@
 			<div class:hide-phone={!topLevel}>
 				<TankHeader
 					tank={{ id: current.id, name: current.name, type: current.type, volume: current.volume, startDate: current.startDate, cover: current.cover, coverPos: current.coverPos }}
+					role={current.role}
 					lastTest={data.quick.lastTest}
 					{today}
 					{tabs}
@@ -487,6 +495,7 @@
 							{ href: `/tanks/${current.id}/settings`, label: 'Details', on: routeId.endsWith('/(tabs)/settings') },
 							{ href: `/tanks/${current.id}/targets`, label: 'Parameters & targets', on: routeId.endsWith('/targets') },
 							{ href: `/tanks/${current.id}/public`, label: 'Public page', on: routeId.endsWith('/public') },
+							{ href: `/tanks/${current.id}/sharing`, label: `Sharing${data.counts.members ? ` · ${data.counts.members}` : ''}`, on: routeId.endsWith('/sharing') },
 							{ href: `/tanks/${current.id}/remind`, label: 'Remind me', on: routeId.endsWith('/remind') },
 							{ href: `/tanks/${current.id}`, label: 'Notes & routines', on: routeId === '/(app)/tanks/[id]/(tabs)' },
 							{ href: `/tanks/${current.id}/review`, label: 'Setup review', on: routeId.endsWith('/review') }
@@ -512,7 +521,11 @@
 	<nav class="tabbar" class:tucked={barHidden} aria-label="Main">
 		<a href="/" class:active={path === '/'} aria-current={path === '/' ? 'page' : undefined}><Icon name="grid" size={22} />Overview</a>
 		<a href="/charts" class:active={path === '/charts'} aria-current={path === '/charts' ? 'page' : undefined}><Icon name="chart" size={22} />Charts</a>
-		<button type="button" class="log" aria-label="Log" onclick={() => (ui.quickAdd = true)}><span class="sq"><Icon name="plus" size={26} /></span><span>Log</span></button>
+		{#if current?.role === 'view'}
+			<span class="log viewer" aria-hidden="true"><span class="sq"><Icon name="grid" size={26} /></span><span>Viewing</span></span>
+		{:else}
+			<button type="button" class="log" aria-label="Log" onclick={() => (ui.quickAdd = true)}><span class="sq"><Icon name="plus" size={26} /></span><span>Log</span></button>
+		{/if}
 		<a href="/history" class:active={path === '/history'} aria-current={path === '/history' ? 'page' : undefined}><Icon name="clock" size={22} />History</a>
 		<a href="/more" class:active={!['/', '/charts', '/history'].includes(path)} aria-current={path === '/more' ? 'page' : undefined}><Icon name="more" size={22} />More</a>
 	</nav>

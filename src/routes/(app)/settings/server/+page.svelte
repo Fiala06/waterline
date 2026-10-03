@@ -14,7 +14,8 @@
 	// who else may sign in with Google
 	const MODES = [
 		{ value: 'admin', label: 'Only the admin', d: 'Nobody else can sign in' },
-		{ value: 'list', label: 'The admin and these people', d: 'The emails and whole domains you list' },
+		{ value: 'list', label: 'The admin and these people', d: 'The emails and whole domains you list, and anyone you invite' },
+		{ value: 'invited', label: 'Invited people only', d: 'People you send an invitation to, under People' },
 		{ value: 'open', label: 'Anyone with a Google account', d: 'Anyone who finds this server can make an account' }
 	] as const;
 	const googleErrors = $derived((form?.googleErrors ?? {}) as Record<string, string>);
@@ -51,6 +52,16 @@
 	});
 
 	// "Self-hosted at waterline.example.com · v1.9.1"
+	// "3 people · 1 admin · 1 invitation pending"
+	const peopleLine = $derived(
+		[
+			plural(data.server.users, 'person', 'people'),
+			plural(data.people.admins, 'admin'),
+			data.people.pending ? `${plural(data.people.pending, 'invitation')} pending` : ''
+		]
+			.filter(Boolean)
+			.join(' · ')
+	);
 	const host = $derived.by(() => {
 		try {
 			return new URL(data.publicPages.effectiveBase || page.url.origin).host;
@@ -76,7 +87,13 @@
 		return () => removeEventListener('scroll', onScroll);
 	});
 	const badge = (id: string) =>
-		id === 'features' && data.app.update ? `↑ ${data.app.update.version}` : id === 'about' && data.logs.error ? `✕ ${data.logs.error}` : '';
+		id === 'features' && data.app.update
+			? `↑ ${data.app.update.version}`
+			: id === 'about' && data.logs.error
+				? `✕ ${data.logs.error}`
+				: id === 'people'
+					? String(data.server.users)
+					: '';
 	// the redirect URI, copied for Google Cloud Console
 	let uriCopied = $state(false);
 	async function copyUri() {
@@ -274,6 +291,20 @@
 				{#if data.signIn.local.fromApp}<button class="btn" name="off" value="1">Turn off</button>{/if}
 			</div>
 		</form>
+	</section>
+
+	<section class="sec" id="people" aria-labelledby="people-h">
+		<div class="sec-head">
+			<h2 id="people-h">People<SectionLink id="people" label="People" /></h2>
+			<p class="sub">Everyone on this server, and invitations.</p>
+		</div>
+		<div class="rows">
+			<a class="row logs" href="/settings/server/people">
+				<span class="ttext"><span class="tt">People</span><span class="td">{peopleLine}</span></span>
+				{#if data.people.pending}<span class="state status-warn">▲ {data.people.pending} pending</span>{/if}
+				<span class="chev" aria-hidden="true">›</span>
+			</a>
+		</div>
 	</section>
 
 	<form

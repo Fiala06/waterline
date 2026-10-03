@@ -48,7 +48,10 @@ test('the account menu opens without scripts', async ({ page, browser }, info) =
 	const ctx = await browser.newContext({ storageState: await page.context().storageState(), javaScriptEnabled: false });
 	const plain = await ctx.newPage();
 	await plain.goto(info.project.name === 'phone' ? '/more' : '/');
-	await plain.getByRole('button', { name: `Account: ${email.split('@')[0]}` }).click();
+	// on a phone the row sits under the bottom bar until the page is scrolled, as any last row does
+	const account = plain.getByRole('button', { name: `Account: ${email.split('@')[0]}` });
+	await account.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+	await account.click();
 	await expect(plain.getByRole('link', { name: 'Account settings' })).toBeVisible();
 	await ctx.close();
 });

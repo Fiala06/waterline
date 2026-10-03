@@ -7,7 +7,7 @@ import { getTank } from '$lib/server/tanks';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals, params }) => {
-	const t = getTank(locals.user!.id, params.id);
+	const t = getTank(locals.user!.id, params.id, 'log');
 	return {
 		tank: { id: t.id, name: t.name },
 		// reef tanks search marine species, brackish both, everything else freshwater

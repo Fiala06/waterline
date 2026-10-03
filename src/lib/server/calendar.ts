@@ -9,6 +9,8 @@ import { daysBetween, fmtDate, todayInZone } from '$lib/time';
 import { db } from './db';
 import { calendarFeeds, users, type User } from './db/schema';
 import { listTasks } from './tasks';
+import { notifiesUser } from './members';
+import { listTanks, roleOn } from './tanks';
 
 /** How often "last checked" is written. */
 const TOUCH_MS = 60 * 60_000;
@@ -45,7 +47,14 @@ export function feedCalendar(user: User, origin: string, opts: { tankId?: string
 	const now = opts.now ?? new Date();
 	const today = todayInZone(user.timeZone, now);
 	const host = new URL(origin).host;
-	const events: CalendarEvent[] = listTasks(user.id, opts.tankId).map(({ task, tankName }) => {
+	// a shared tank's tasks (#22) only when its reminders go to everyone who can log
+	const tankRows = new Map(listTanks(user.id).map((t) => [t.id, t]));
+	const events: CalendarEvent[] = listTasks(user.id, opts.tankId)
+		.filter(({ task }) => {
+			const t = tankRows.get(task.tankId);
+			return !!t && notifiesUser(t, user.id, 'remind', roleOn(user.id, t));
+		})
+		.map(({ task, tankName }) => {
 		const late = daysBetween(task.due, today);
 		return {
 			uid: `task-${task.id}@${host}`,

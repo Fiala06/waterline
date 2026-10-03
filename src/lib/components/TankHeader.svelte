@@ -24,9 +24,12 @@
 		today,
 		tabs,
 		unread = 0,
-		tabsOnPhone = false
+		tabsOnPhone = false,
+		role = 'owner'
 	}: {
 		tank: { id: string; name: string; type: string; volume: string | null; startDate: string | null; cover: string | null; coverPos?: string };
+		/** what this person may do on the tank (#22): the owner's menu has setup, export and archive */
+		role?: 'owner' | 'log' | 'view';
 		/** "Last test today, 8:12 AM" or "No tests yet" */
 		lastTest: string;
 		today: string;
@@ -43,13 +46,22 @@
 	let logMenu = $state(false);
 	let moreMenu = $state(false);
 	const base = $derived(`/tanks/${tank.id}`);
-	const more = $derived([
-		{ title: 'Get help: copy a summary', sub: 'For a forum, a friend, your fish store or an AI chat', href: `${base}/summary` },
-		{ title: 'Export this tank', sub: 'A backup or CSV in Settings › Import & export', href: `/settings/export?tank=${tank.id}` },
-		{ title: 'Public page', sub: 'Share a read-only page', href: `${base}/public` },
-		{ title: 'Review tank setup', sub: 'Walk through details, equipment, targets and livestock', href: `${base}/review`, sep: true },
-		{ title: 'Archive tank', sub: 'Hide it from the list; you can restore it', href: `${base}/settings#archive`, sep: true, danger: true }
-	]);
+	const more = $derived(
+		role === 'owner'
+			? [
+					{ title: 'Get help: copy a summary', sub: 'For a forum, a friend, your fish store or an AI chat', href: `${base}/summary` },
+					{ title: 'Share with someone', sub: 'Let someone log care or view this tank', href: `${base}/sharing` },
+					{ title: 'Export this tank', sub: 'A backup or CSV in Settings › Import & export', href: `/settings/export?tank=${tank.id}` },
+					{ title: 'Public page', sub: 'Share a read-only page', href: `${base}/public` },
+					{ title: 'Review tank setup', sub: 'Walk through details, equipment, targets and livestock', href: `${base}/review`, sep: true },
+					{ title: 'Calculators', sub: 'Volume, water change, dosing, heater, substrate, CO₂', href: `/calculators?tank=${tank.id}` },
+					{ title: 'Archive tank', sub: 'Hide it from the list; you can restore it', href: `${base}/settings#archive`, sep: true, danger: true }
+				]
+			: [
+					{ title: 'Get help: copy a summary', sub: 'For a forum, a friend, your fish store or an AI chat', href: `${base}/summary` },
+					{ title: 'Calculators', sub: 'Volume, water change, dosing, heater, substrate, CO₂', href: `/calculators?tank=${tank.id}` }
+				]
+	);
 	const logKinds = [
 		{ kind: 'water_change', label: 'Water change', key: 'W' },
 		{ kind: 'dosing', label: 'Dose', key: 'D' },
@@ -92,6 +104,7 @@
 		</button>
 		<div class="actions hide-phone">
 			<a class="btn-text" href="{base}/summary">Share summary</a>
+			{#if role !== 'view'}
 			<div class="split">
 				<a class="btn btn-primary main" href={logHref('test', tank.id)}>Log water test <kbd>T</kbd></a>
 				<button
@@ -122,6 +135,7 @@
 					</div>
 				{/if}
 			</div>
+			{/if}
 			<div class="morewrap">
 				<button
 					type="button"

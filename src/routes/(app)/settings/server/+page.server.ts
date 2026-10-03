@@ -18,6 +18,7 @@ import type { Actions, PageServerLoad } from './$types';
 import pkg from '../../../../../package.json';
 import { logCounts, logger } from '$lib/server/log';
 import { lookAgain, stockPhotosOn, stockPhotoStatus, TEST_SPECIES } from '$lib/server/stock-photos';
+import { listInvites } from '$lib/server/invites';
 
 function requireAdmin(locals: App.Locals) {
 	if (!locals.user?.isAdmin) error(404, 'Not found');
@@ -93,6 +94,11 @@ export const load: PageServerLoad = ({ locals, url }) => {
 			list: rules.list.join('\n'),
 			accessFromEnv: rules.from === 'env',
 			local: { on: !!local, username: local?.username ?? s.localAdminUsername ?? 'admin', fromApp: !!local?.fromApp, fromEnv: !!local?.fromEnv }
+		},
+		// People (#27): the counts the section shows
+		people: {
+			admins: db.select({ n: count() }).from(users).where(eq(users.isAdmin, true)).get()?.n ?? 0,
+			pending: listInvites().filter((i) => i.state === 'pending').length
 		},
 		server: {
 			version: pkg.version,
@@ -176,7 +182,7 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const adminEmail = str(form, 'adminEmail').toLowerCase();
 		const raw = str(form, 'signupMode');
-		const mode: SignupMode = raw === 'list' || raw === 'open' ? raw : 'admin';
+		const mode: SignupMode = raw === 'list' || raw === 'open' || raw === 'invited' ? raw : 'admin';
 		const entries = parseAllowed(String(form.get('allowedEmails') ?? ''));
 		const errors: Record<string, string> = {};
 		if (adminEmail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(adminEmail)) errors.adminEmail = "Enter the Google account's email address.";

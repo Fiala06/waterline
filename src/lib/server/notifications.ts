@@ -19,7 +19,8 @@ import { digestEmail, outOfRangeEmail, taskEmail, type DigestTank, type Footer, 
 import { hasPushTarget, pushOnce, type Notice } from './push';
 import { tankNotes } from './trends';
 import { sign } from './secrets';
-import { listParams, listTanks } from './tanks';
+import { notifiesUser } from './members';
+import { listParams, listTanks, roleOn } from './tanks';
 import { listTasks } from './tasks';
 import { tankTypeLabel } from '$lib/types';
 
@@ -166,7 +167,15 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 	const today = local.date;
 	let sent = 0;
 
-	const tasks = listTasks(user.id).map((r) => ({ ...r.task, tankName: r.tankName }));
+	// a shared tank (#22): its reminders go to everyone who can log, or the owner only, as its owner set
+	const tankRows = new Map(listTanks(user.id).map((t) => [t.id, t]));
+	const notified = (tankId: string, kind: 'remind' | 'alert') => {
+		const t = tankRows.get(tankId);
+		return !!t && notifiesUser(t, user.id, kind, roleOn(user.id, t));
+	};
+	const tasks = listTasks(user.id)
+		.filter((r) => notified(r.task.tankId, 'remind'))
+		.map((r) => ({ ...r.task, tankName: r.tankName }));
 	// a routine (daily feeding, a dose on set days) is reminded on the day, not days ahead,
 	// and a missed one isn't an alert: it shows as overdue in the app, and the next one comes
 	const leadFor = (t: { kind: string }) => (isRoutine(t.kind) ? 0 : prefs.leadDays);
@@ -230,7 +239,7 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 			.filter((t) => t.tankId === tank.id)
 			.map((t) => ({ t, d: dueInfo(t.due, today) }))
 			.filter(({ t, d }) => (d.days < 0 ? prefs.overdueAlerts : prefs.taskReminders && d.days <= (isRoutine(t.kind) ? 0 : horizon)));
-		const readings = prefs.outOfRangeAlerts ? badReadings(tank.id, user) : [];
+		const readings = prefs.outOfRangeAlerts && notified(tank.id, 'alert') ? badReadings(tank.id, user) : [];
 		// what stands out: with the rest of a tank's news, or on its own in the weekly digest
 		const noticed = tankNotes(tank.id, user, { limit: 3, now: now.getTime() }).map((n) => ({ text: n.text, warn: n.warn }));
 		if (!mine.length && !readings.length && !(weekly && noticed.length)) continue;
@@ -316,7 +325,7 @@ export async function alertOutOfRange(user: User, tankId: string, testId: string
 	const [{ p, r }, ...rest] = bad;
 	const st = statusOf(p, r.value);
 	const tank = listTanks(user.id).find((t) => t.id === tankId);
-	if (!tank) return;
+	if (!tank || !notifiesUser(tank, user.id, 'alert', roleOn(user.id, tank))) return;
 
 	// previous reading of the same parameter
 	const prev = db

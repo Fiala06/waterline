@@ -3,7 +3,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { setFlash } from '$lib/server/flash';
 import { parseTankForm } from '$lib/server/forms';
-import { preparePhotos, setCover, storePhotos } from '$lib/server/photos';
+import { datePhotos, preparePhotos, setCover, storePhotos } from '$lib/server/photos';
 import { db } from '$lib/server/db';
 import { publicPages } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
@@ -12,11 +12,13 @@ import { parseReviewEvery, REVIEW_INTERVALS } from '$lib/review';
 import { checkSection, reviewTask, setReviewEvery } from '$lib/server/review';
 import { todayInZone } from '$lib/time';
 import { tankDetails } from '$lib/server/tank-details';
+import { scheduledItems } from '$lib/server/specs';
+import { periodsText, tankLighting } from '$lib/equipment';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals, params, url }) => {
 	const user = locals.user!;
-	const tank = getTank(user.id, params.id);
+	const tank = getTank(user.id, params.id, 'owner');
 	const review = reviewTask(tank.id);
 	const all = listParams(tank.id, { all: true });
 	const tracked = all.filter((p) => p.tracked);
@@ -50,6 +52,12 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 			co2Off: tank.co2Off ?? '',
 			cycling: tank.cycling
 		},
+		// the lights' and CO₂'s times set on an equipment item's schedule (#25): shown here, changed there
+		lighting: (() => {
+			const l = tankLighting(tank, scheduledItems(tank.id));
+			const from = (x: typeof l.lights) => (x?.item ? { text: periodsText(x.schedule), hours: x.hours, item: { id: x.item.id, name: x.item.name } } : null);
+			return { lights: from(l.lights), co2: from(l.co2) };
+		})(),
 		paramSummary: {
 			tracked: tracked.length,
 			custom: all.filter((p) => p.isCustom).length,
@@ -81,7 +89,7 @@ export const actions: Actions = {
 		const prepared = cover instanceof File && cover.size ? await preparePhotos([cover]) : [];
 		if ('error' in prepared) return fail(400, { errors: { cover: prepared.error } });
 		updateTank(user.id, params.id, values);
-		const [photo] = storePhotos(params.id, prepared, { takenAt: new Date().toISOString() });
+		const [photo] = storePhotos(params.id, datePhotos(prepared, user.timeZone), { takenAt: new Date().toISOString() });
 		if (photo) setCover(user.id, photo.id);
 		// where the cover sits in its frame, as dragged (a new photo's too)
 		if (form.has('coverX') || form.has('coverY')) {
@@ -98,7 +106,7 @@ export const actions: Actions = {
 		redirect(303, `/tanks/${params.id}/settings`); // stay on the tab, like the other tank tabs
 	},
 	archive: async ({ locals, params, cookies }) => {
-		const tank = getTank(locals.user!.id, params.id);
+		const tank = getTank(locals.user!.id, params.id, 'owner');
 		setArchived(locals.user!.id, params.id, true);
 		cookies.delete('wl_tank', { path: '/' });
 		setFlash(cookies, `${tank.name} archived`);

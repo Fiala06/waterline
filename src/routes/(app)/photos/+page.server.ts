@@ -1,15 +1,17 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { dateInZone, fmtDate } from '$lib/time';
+import { dateInZone, fmtDate, isDate, todayInZone, zonedToUtc } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
+import { str } from '$lib/server/forms';
 import { createEvent } from '$lib/server/logs';
-import { photoFiles, preparePhotos, storePhotos, tankPhotos } from '$lib/server/photos';
+import { datePhotos, photoFiles, photoHints, preparePhotos, storePhotos, tankPhotos } from '$lib/server/photos';
 import { getTank } from '$lib/server/tanks';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, parent }) => {
 	const user = locals.user!;
 	const { currentTankId } = await parent();
-	if (!currentTankId) return { tank: null, months: [] };
+	const today = todayInZone(user.timeZone);
+	if (!currentTankId) return { tank: null, months: [], today };
 	const tank = getTank(user.id, currentTankId);
 	const months: { key: string; label: string; photos: { id: string; day: string }[] }[] = [];
 	for (const { photo } of tankPhotos(user.id, tank.id)) {
@@ -26,23 +28,38 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		}
 		m.photos.push({ id: photo.id, day: fmtDate(date) });
 	}
-	return { tank: { id: tank.id, name: tank.name }, months };
+	return { tank: { id: tank.id, name: tank.name }, months, today };
 };
 
 export const actions: Actions = {
-	// Photos uploaded straight to the gallery become a note entry.
+	// Photos uploaded straight to the gallery become a note entry, one per day they were
+	// taken (#42): each photo keeps the date in its details; the rest take the Taken date.
 	upload: async ({ request, locals, cookies }) => {
 		const user = locals.user!;
 		const form = await request.formData();
-		const tank = getTank(user.id, String(form.get('tankId') ?? ''));
+		const tank = getTank(user.id, String(form.get('tankId') ?? ''), 'log');
 		const files = photoFiles(form);
 		if (!files.length) return fail(400, { error: 'Choose at least one photo.' });
-		const prepared = await preparePhotos(files);
+		const today = todayInZone(user.timeZone);
+		const taken = str(form, 'taken') || today;
+		if (!isDate(taken) || taken > today) return fail(400, { error: 'Pick a day up to today for Taken.' });
+		// today: this moment; an earlier day: midday, since the photo doesn't say
+		const fallback = taken === today ? new Date().toISOString() : zonedToUtc(taken, '12:00', user.timeZone).toISOString();
+		const prepared = await preparePhotos(files, photoHints(form));
 		if ('error' in prepared) return fail(400, { error: prepared.error });
-		const at = new Date().toISOString();
-		const { event } = createEvent(user.id, tank.id, { category: 'note', occurredAt: at, note: null, data: {} }, { timeZone: user.timeZone });
-		storePhotos(tank.id, prepared, { eventId: event.id, takenAt: at });
-		setFlash(cookies, `✓ ${files.length} photo${files.length === 1 ? '' : 's'} added`);
+		datePhotos(prepared, user.timeZone, fallback);
+		const days = new Map<string, typeof prepared>();
+		for (const p of prepared) {
+			const day = dateInZone(p.takenAt!, user.timeZone);
+			days.set(day, [...(days.get(day) ?? []), p]);
+		}
+		for (const group of days.values()) {
+			const at = group.map((p) => p.takenAt!).sort()[0];
+			const { event } = createEvent(user.id, tank.id, { category: 'note', occurredAt: at, note: null, data: {} }, { timeZone: user.timeZone });
+			storePhotos(tank.id, group, { eventId: event.id, takenAt: at });
+		}
+		const n = files.length;
+		setFlash(cookies, `✓ ${n} photo${n === 1 ? '' : 's'} added${days.size > 1 ? ` on ${days.size} days` : ''}`);
 		redirect(303, '/photos');
 	}
 };

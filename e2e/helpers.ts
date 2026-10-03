@@ -90,8 +90,10 @@ export async function pickDate(page: Page, name: string, ymd: string) {
 	await expect(page.locator(`input[type=hidden][name="${name}"]`)).toHaveValue(ymd);
 }
 
-/** A small JPEG to upload. */
-export async function jpeg(color = '#2a8c84', name = 'tank.jpg') {
-	const buffer = await sharp({ create: { width: 640, height: 480, channels: 3, background: color } }).jpeg().toBuffer();
+/** A small JPEG to upload; with `taken` ("2026:09:14 15:20:00", and an offset like "+02:00"), one whose details say when it was taken. */
+export async function jpeg(color = '#2a8c84', name = 'tank.jpg', taken?: { at: string; offset?: string }) {
+	let img = sharp({ create: { width: 640, height: 480, channels: 3, background: color } }).jpeg();
+	if (taken) img = img.withExif({ IFD2: { DateTimeOriginal: taken.at, ...(taken.offset ? { OffsetTimeOriginal: taken.offset } : {}) } });
+	const buffer = await img.toBuffer();
 	return { name, mimeType: 'image/jpeg', buffer };
 }

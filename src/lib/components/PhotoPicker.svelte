@@ -1,13 +1,25 @@
 <script lang="ts">
 	// Photo upload: square tiles with a remove button over the corner. On phones the file input offers camera or library.
-	// With JS, images are shrunk in the browser (max 2560px) before upload.
+	// With JS, images are shrunk in the browser (max 2560px) before upload. The date each was
+	// taken is read first (#42), since shrinking drops the photo's details, and goes along as a hint.
+	import { exifHint, readFileExifDate, type ExifDate } from '$lib/exif';
 	import { photoUrl, shrinkImage } from '$lib/media';
 
-	let { existing = [], compact = false }: { existing?: { id: string }[]; compact?: boolean } = $props();
+	let {
+		existing = [],
+		compact = false,
+		ontaken
+	}: {
+		existing?: { id: string }[];
+		compact?: boolean;
+		/** the dates the chosen photos were taken, one per photo (null: none in it), whenever they change */
+		ontaken?: (dates: (ExifDate | null)[]) => void;
+	} = $props();
 	const max = 10; // per entry
 
 	let input: HTMLInputElement | undefined = $state();
 	let previews = $state<{ url: string; name: string }[]>([]);
+	let taken = $state<(ExifDate | null)[]>([]);
 	let removed = $state<string[]>([]);
 	let pending = $state(0); // photos being prepared
 	let error = $state<string | null>(null);
@@ -26,11 +38,13 @@
 		previews.forEach((p) => URL.revokeObjectURL(p.url));
 		previews = [];
 		pending = files.length;
-		const shrunk = await Promise.all(files.map((f) => shrinkImage(f, MAX_EDGE)));
+		const [shrunk, dates] = await Promise.all([Promise.all(files.map((f) => shrinkImage(f, MAX_EDGE))), Promise.all(files.map(readFileExifDate))]);
 		const dt = new DataTransfer();
 		shrunk.forEach((f) => dt.items.add(f));
 		input.files = dt.files;
 		previews = shrunk.map((f) => ({ url: URL.createObjectURL(f), name: f.name }));
+		taken = dates;
+		ontaken?.(dates);
 		pending = 0;
 	}
 
@@ -41,6 +55,8 @@
 		input.files = dt.files;
 		URL.revokeObjectURL(previews[i].url);
 		previews = previews.filter((_, j) => j !== i);
+		taken = taken.filter((_, j) => j !== i);
+		ontaken?.(taken);
 	}
 
 	function toggleExisting(id: string) {
@@ -60,6 +76,8 @@
 			</div>
 		{/each}
 		{#each removed as id (id)}<input type="hidden" name="removePhoto" value={id} />{/each}
+		<!-- one per chosen photo, in order: the date it was taken, for the server, which can't read it from a shrunk photo -->
+		{#each taken as d, i (i)}<input type="hidden" name="photoTaken" value={d ? exifHint(d) : ''} />{/each}
 		{#each previews as p, i (p.url)}
 			<div class="tile">
 				<img src={p.url} alt={p.name} />

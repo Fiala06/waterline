@@ -39,8 +39,34 @@ export const users = sqliteTable('users', {
 	avatarChoice: text('avatar_choice', { enum: ['google', 'own', 'none'] }).notNull().default('google'),
 	// when they uploaded their own photo (null: none)
 	ownAvatarAt: text('own_avatar_at'),
+	// People (#27): when they last opened the app (kept to the quarter hour), and
+	// Sign out everywhere: sessions from before this moment are no longer good
+	lastSeenAt: text('last_seen_at'),
+	sessionsRevokedAt: text('sessions_revoked_at'),
 	createdAt: createdAt()
 });
+
+/**
+ * Invitations to the server (#27): the admin invites an address, and an email
+ * (or a copied link) carries the Accept link. Only the token's hash is kept.
+ * An accepted invite lets that address sign in until it's revoked.
+ */
+export const invites = sqliteTable(
+	'invites',
+	{
+		id: id(),
+		email: text('email').notNull(),
+		tokenHash: text('token_hash').notNull(),
+		invitedBy: text('invited_by').references(() => users.id, { onDelete: 'set null' }),
+		createdAt: createdAt(),
+		expiresAt: text('expires_at').notNull(),
+		acceptedAt: text('accepted_at'),
+		acceptedUserId: text('accepted_user_id').references(() => users.id, { onDelete: 'set null' }),
+		revokedAt: text('revoked_at')
+	},
+	(t) => [uniqueIndex('invites_token').on(t.tokenHash), index('invites_email').on(t.email)]
+);
+export type Invite = typeof invites.$inferSelect;
 
 export const notificationPrefs = sqliteTable('notification_prefs', {
 	userId: text('user_id')
@@ -121,11 +147,43 @@ export const tanks = sqliteTable(
 		/** equipment the tank goes without on purpose ("No heater"): filter | heater | light | co2 */
 		withoutEquipment: text('without_equipment', { mode: 'json' }).$type<string[]>().notNull().default([]),
 		reviewChecks: text('review_checks', { mode: 'json' }).$type<Partial<Record<'details' | 'equipment' | 'targets' | 'livestock', string>>>().notNull().default({}),
+		/** a shared tank (#22): whom its task reminders and out-of-range alerts go to */
+		remindTo: text('remind_to', { enum: ['all', 'owner'] }).notNull().default('all'),
+		alertTo: text('alert_to', { enum: ['all', 'owner'] }).notNull().default('all'),
 		archivedAt: text('archived_at'),
 		createdAt: createdAt()
 	},
 	(t) => [index('tanks_user').on(t.userId)]
 );
+
+/**
+ * People a tank is shared with (#22): invited by email, they can log care
+ * (tests, water changes, dosing, notes, photos, tasks done) or only view.
+ * Only the owner changes setup, targets and sharing. The invite link's token
+ * is kept hashed; accepting (signing in as that address) fills in user_id.
+ */
+export const TANK_ROLES = ['log', 'view'] as const;
+export type TankRole = (typeof TANK_ROLES)[number];
+export const tankMembers = sqliteTable(
+	'tank_members',
+	{
+		id: id(),
+		tankId: text('tank_id')
+			.notNull()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		email: text('email').notNull(),
+		userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
+		role: text('role', { enum: TANK_ROLES }).notNull().default('log'),
+		tokenHash: text('token_hash').notNull(),
+		invitedBy: text('invited_by').references(() => users.id, { onDelete: 'set null' }),
+		createdAt: createdAt(),
+		expiresAt: text('expires_at').notNull(),
+		acceptedAt: text('accepted_at'),
+		revokedAt: text('revoked_at')
+	},
+	(t) => [index('tank_members_tank').on(t.tankId), index('tank_members_user').on(t.userId), uniqueIndex('tank_members_token').on(t.tokenHash)]
+);
+export type TankMember = typeof tankMembers.$inferSelect;
 
 export const tankParameters = sqliteTable(
 	'tank_parameters',
@@ -160,7 +218,9 @@ export const tests = sqliteTable(
 		note: text('note'),
 		editedAt: text('edited_at'),
 		clientId: text('client_id'),
-		importId: text('import_id') // the import that added it (undone together)
+		importId: text('import_id'), // the import that added it (undone together)
+		/** who logged it, on a shared tank (#22); null from before sharing or for the owner's own tank */
+		loggedBy: text('logged_by')
 	},
 	(t) => [
 		index('tests_tank_taken').on(t.tankId, t.takenAt),
@@ -198,7 +258,9 @@ export const events = sqliteTable(
 		data: text('data', { mode: 'json' }).$type<Record<string, unknown>>().notNull().default({}),
 		editedAt: text('edited_at'),
 		clientId: text('client_id'),
-		importId: text('import_id') // the import that added it (undone together)
+		importId: text('import_id'), // the import that added it (undone together)
+		/** who logged it, on a shared tank (#22) */
+		loggedBy: text('logged_by')
 	},
 	(t) => [
 		index('events_tank_occurred').on(t.tankId, t.occurredAt),
@@ -217,7 +279,10 @@ export const photos = sqliteTable('photos', {
 	thumbPath: text('thumb_path').notNull(),
 	width: integer('width').notNull(),
 	height: integer('height').notNull(),
-	takenAt: text('taken_at').notNull()
+	/** when it was taken: from the photo's details, the date picked on upload, or its entry's date (#42) */
+	takenAt: text('taken_at').notNull(),
+	/** the keeper set the date in the viewer, so it no longer follows the entry's */
+	takenAtSet: integer('taken_at_set', { mode: 'boolean' }).notNull().default(false)
 });
 
 
@@ -302,7 +367,8 @@ export const serverSettings = sqliteTable('server_settings', {
 	googleClientSecretEnc: text('google_client_secret_enc'),
 	adminEmail: text('admin_email'),
 	// who may sign in with Google besides the admin; null: the environment decides
-	signupMode: text('signup_mode', { enum: ['admin', 'list', 'open'] }),
+	// invited (#27): only people with an accepted invitation
+	signupMode: text('signup_mode', { enum: ['admin', 'list', 'invited', 'open'] }),
 	allowedEmails: text('allowed_emails'), // one email or @domain per line
 	localAdminUsername: text('local_admin_username'),
 	localAdminPasswordHash: text('local_admin_password_hash'), // scrypt, like LOCAL_ADMIN_PASSWORD_HASH
@@ -404,6 +470,9 @@ export const products = sqliteTable(
 		name: text('name').notNull(),
 		url: text('url').notNull(),
 		note: text('note'), // "500 mL · about $19"
+		// its strength for the Dose → ppm calculator (#18): mg per mL of what it adds ("nitrate"); null when not given
+		strengthMgPerMl: real('strength_mg_per_ml'),
+		strengthOf: text('strength_of'),
 		createdAt: createdAt()
 	},
 	(t) => [index('products_user').on(t.userId)]
@@ -480,6 +549,8 @@ export const equipment = sqliteTable(
 		brand: text('brand'),
 		model: text('model'),
 		specs: text('specs', { mode: 'json' }).$type<Record<string, unknown>>().notNull().default({}),
+		/** when it runs (#25): periods in the day, and a ramp for lights; null runs all day */
+		schedule: text('schedule', { mode: 'json' }).$type<{ periods: { on: string; off: string }[]; rampMin: number | null }>(),
 		installedAt: text('installed_at'),
 		lastServicedAt: text('last_serviced_at'),
 		notes: text('notes'),
@@ -573,6 +644,29 @@ export const stockPhotos = sqliteTable('stock_photos', {
 	reason: text('reason'),
 	fetchedAt: text('fetched_at').notNull()
 });
+
+/** PAR readings (#25) at spots in a reef tank, a simple map of the light over it. */
+export const parReadings = sqliteTable(
+	'par_readings',
+	{
+		id: id(),
+		tankId: text('tank_id')
+			.notNull()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		/** "Front left", or whatever the keeper calls the spot */
+		spot: text('spot').notNull(),
+		/** where on the tank seen from above, 0–100 across and front to back */
+		x: integer('x').notNull(),
+		y: integer('y').notNull(),
+		/** µmol/m²/s */
+		value: integer('value').notNull(),
+		note: text('note'),
+		measuredAt: text('measured_at').notNull(),
+		createdAt: createdAt()
+	},
+	(t) => [index('par_readings_tank').on(t.tankId)]
+);
+export type ParReading = typeof parReadings.$inferSelect;
 
 export type Equipment = typeof equipment.$inferSelect;
 export type Livestock = typeof livestock.$inferSelect;

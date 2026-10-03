@@ -20,7 +20,7 @@ const kindOf = (slug: string) => importKindOf(slug) ?? error(404, 'Not found');
 
 export const load: PageServerLoad = ({ locals, params }) => {
 	const user = locals.user!;
-	const t = getTank(user.id, params.id);
+	const t = getTank(user.id, params.id, 'owner');
 	const kind = kindOf(params.list);
 	const columns = isHistoryKind(kind) ? historyColumns(kind, trackedOnly(historyContext(user, t))) : importColumns(kind, user);
 	return {
@@ -59,7 +59,7 @@ export const actions: Actions = {
 	/** Read the file and show every row before anything is added. */
 	check: async ({ request, locals, params }) => {
 		const user = locals.user!;
-		const tank = getTank(user.id, params.id);
+		const tank = getTank(user.id, params.id, 'owner');
 		const kind = kindOf(params.list);
 		const form = await request.formData();
 		// a new file, or the same one sent back with its columns picked by hand
@@ -96,7 +96,7 @@ export const actions: Actions = {
 
 	import: async ({ request, locals, params, cookies }) => {
 		const user = locals.user!;
-		const tank = getTank(user.id, params.id);
+		const tank = getTank(user.id, params.id, 'owner');
 		const kind = kindOf(params.list);
 		const form = await request.formData();
 		const fileName = str(form, 'file') || null;

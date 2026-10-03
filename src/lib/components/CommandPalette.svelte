@@ -77,7 +77,8 @@
 				{ group: 'Actions', title: 'Share summary', sub: `${current.name} · for a forum, a friend, your fish store or an AI chat`, run: go(`${base}/summary`) },
 				{ group: 'Actions', title: 'Public page', sub: current.name, run: go(`${base}/public`) },
 				{ group: 'Actions', title: 'Export this tank', sub: current.name, run: go(`/settings/export?tank=${current.id}`) },
-				{ group: 'Actions', title: 'Review tank setup', sub: current.name, run: go(`${base}/review`) }
+				{ group: 'Actions', title: 'Review tank setup', sub: current.name, run: go(`${base}/review`) },
+				{ group: 'Actions', title: 'Calculators', sub: `${current.name} · volume, water change, dosing, heater, substrate, CO₂`, run: go(`/calculators?tank=${current.id}`) }
 			);
 		}
 		list.push(

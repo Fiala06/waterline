@@ -5,7 +5,7 @@ import { todayInZone } from '$lib/time';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals, params }) => {
-	const tank = getTank(locals.user!.id, params.id);
+	const tank = getTank(locals.user!.id, params.id, 'owner');
 	return { tankId: tank.id, values: equipmentFormValues(null, locals.user!), brands: knownBrands(locals.user!.id), today: todayInZone(locals.user!.timeZone) };
 };
 

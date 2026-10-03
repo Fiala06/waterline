@@ -32,6 +32,7 @@
 		<h2 id="everything" class="caps">Everything</h2>
 		<ul class="rows">
 			<li><a href="/tanks"><span>Tanks</span><span class="r">{data.tanks.length}</span></a></li>
+			<li><a href="/calculators{q}"><span>Calculators</span><span class="r">Volume, dosing, heater…</span></a></li>
 			<li><a href="/tasks"><span>Tasks</span><span class="r" class:bad={!!data.overdueCount}>{data.overdueCount ? `${data.overdueCount} overdue` : ''}</span></a></li>
 			<li><button type="button" onclick={() => (ui.alerts = true)}><span>Alerts</span><span class="r">{unread ? `${unread} unread` : ''}</span></button></li>
 			<li><a href="/settings"><span>Settings</span><span class="r" class:upd={!!data.app.update}>{data.app.update ? `↑ Update to ${data.app.update.version}` : `v${data.app.version}`}</span></a></li>

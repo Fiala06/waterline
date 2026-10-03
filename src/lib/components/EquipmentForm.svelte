@@ -4,7 +4,8 @@
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import DateField from '$lib/components/DateField.svelte';
 	import { untrack } from 'svelte';
-	import { DEFAULT_SERVICE, EQUIPMENT_TYPE_LABEL, EQUIPMENT_TYPES, SERVICE_CADENCES, SPEC_FIELDS, serviceVerb, specUnit, type EquipmentType } from '$lib/equipment';
+	import DayTimeline from '$lib/components/DayTimeline.svelte';
+	import { DEFAULT_SERVICE, EQUIPMENT_TYPE_LABEL, EQUIPMENT_TYPES, hoursText, MAX_PERIODS, RAMP_OPTIONS, SERVICE_CADENCES, SPEC_FIELDS, scheduleTotalHours, serviceVerb, specUnit, type EquipmentType } from '$lib/equipment';
 	import type { UnitPrefs } from '$lib/units';
 
 	let {
@@ -28,6 +29,10 @@
 			/** the Service reminder: "off", a preset's days, or "custom" with serviceDays */
 			serviceEvery: string;
 			serviceDays: string;
+			/** when it runs (#25): all day, or on a schedule of periods, with a ramp for lights */
+			runs: string;
+			periods: { on: string; off: string }[];
+			rampMin: string;
 		};
 		errors?: Record<string, string>;
 		brands?: { brand: string; tankName: string }[];
@@ -55,6 +60,13 @@
 	let busy = $state(false);
 	let serviceEvery = $state(untrack(() => values.serviceEvery));
 	let serviceDays = $state(untrack(() => values.serviceDays));
+	// when it runs (#25)
+	let runs = $state(untrack(() => values.runs));
+	let periods = $state<{ on: string; off: string }[]>(untrack(() => (values.periods.length ? values.periods.map((p) => ({ ...p })) : [{ on: '08:00', off: '16:00' }])));
+	let rampMin = $state(untrack(() => values.rampMin));
+	const complete = $derived(periods.filter((p) => /^\d\d:\d\d$/.test(p.on) && /^\d\d:\d\d$/.test(p.off) && p.on !== p.off));
+	const preview = $derived(runs === 'schedule' && complete.length ? { periods: complete, rampMin: type === 'light' ? Number(rampMin) || null : null } : null);
+	const previewHours = $derived(scheduleTotalHours(preview));
 	// a new item's reminder follows its type (a filter monthly) until it's chosen by hand
 	let serviceChosen = $state(false);
 	$effect(() => {
@@ -160,6 +172,49 @@
 			<label class="label" for="eq-notes">Notes</label>
 			<textarea class="input" id="eq-notes" name="notes" rows="2" maxlength="2000" placeholder="Media, settings, where you bought it" bind:value={notes}></textarea>
 		</div>
+
+		<!-- when it runs (#25): all day, or periods in the day; lights can ramp -->
+		<fieldset class="field runs">
+			<legend class="label">Runs</legend>
+			<div class="segmented">
+				<label><input type="radio" name="runs" value="always" bind:group={runs} />All day</label>
+				<label><input type="radio" name="runs" value="schedule" bind:group={runs} />On a schedule</label>
+			</div>
+			{#if runs === 'schedule'}
+				<div class="periods">
+					{#each periods as p, i (i)}
+						<div class="period">
+							<input class="input" type="time" name="periodOn" aria-label="Period {i + 1} on" bind:value={p.on} aria-invalid={!!errors.periods} />
+							<span class="dash" aria-hidden="true">–</span>
+							<input class="input" type="time" name="periodOff" aria-label="Period {i + 1} off" bind:value={p.off} aria-invalid={!!errors.periods} />
+							{#if periods.length > 1}
+								<button type="button" class="btn-icon x" aria-label="Remove period {i + 1}" onclick={() => (periods = periods.filter((_, j) => j !== i))}>✕</button>
+							{/if}
+						</div>
+					{/each}
+					{#if periods.length < MAX_PERIODS}
+						<button type="button" class="btn-text add-period" onclick={() => (periods = [...periods, { on: '', off: '' }])}>+ Add a period{periods.length === 1 ? ' · a midday siesta, or a second run' : ''}</button>
+					{/if}
+				</div>
+				{#if type === 'light'}
+					<div class="ramp-row">
+						<label class="label" for="eq-ramp">Ramp up and down</label>
+						<select class="input" id="eq-ramp" name="rampMin" bind:value={rampMin}>
+							{#each RAMP_OPTIONS as r (r)}<option value={String(r)}>{r === 0 ? 'None' : `${r} min`}</option>{/each}
+						</select>
+					</div>
+				{/if}
+				{#if errors.periods}<span class="error-text">✕ {errors.periods}</span>{/if}
+				{#if preview}
+					<div class="preview">
+						<DayTimeline rows={[{ label: previewHours != null ? hoursText(previewHours) : '', schedule: preview }]} compact />
+						<span class="hint">{type === 'light' ? `Photoperiod ${previewHours != null ? hoursText(previewHours) : '—'} a day; the tank's photoperiod follows it.` : `Runs ${previewHours != null ? hoursText(previewHours) : '—'} a day.`} Changes are kept in History.</span>
+					</div>
+				{/if}
+			{:else}
+				<span class="hint">{type === 'light' || type === 'co2' ? 'A timer? Set its periods here and the tank’s lights and CO₂ times follow.' : 'On a timer? Set its periods here.'}</span>
+			{/if}
+		</fieldset>
 
 		<!-- the service reminder: a maintenance task for this item, kept in step by Save -->
 		<div class="field service">
@@ -312,6 +367,60 @@
 		font-size: 14px;
 	}
 	.suggest button + button {
+		border-top: 1px solid var(--divider);
+	}
+	/* when it runs (#25) */
+	.runs .segmented {
+		max-width: 320px;
+	}
+	.periods {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		margin-top: 6px;
+	}
+	.period {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+	.period .input {
+		width: auto;
+		min-width: 0;
+		flex: 1;
+		max-width: 150px;
+		min-height: 44px;
+	}
+	.dash {
+		color: var(--text-muted);
+	}
+	.period .x {
+		width: 44px;
+		height: 44px;
+		color: var(--text-muted);
+	}
+	.add-period {
+		align-self: flex-start;
+		min-height: 36px;
+		padding: 0;
+		font-size: 14px;
+	}
+	.ramp-row {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		margin-top: 8px;
+	}
+	.ramp-row .input {
+		width: auto;
+		min-height: 44px;
+	}
+	.preview {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		margin-top: 10px;
+		padding-top: 8px;
 		border-top: 1px solid var(--divider);
 	}
 	.service-row {

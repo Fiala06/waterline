@@ -20,7 +20,7 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 		url.searchParams.set('tank', currentTankId);
 		redirect(303, `${url.pathname}?${url.searchParams}`);
 	}
-	const tank = getTank(user.id, tankId);
+	const tank = getTank(user.id, tankId, 'log');
 	const date = url.searchParams.get('date');
 	const time = url.searchParams.get('time');
 	const params = testFormParams(listParams(tank.id), latestReadings(tank.id), user, tank.type);
@@ -46,7 +46,7 @@ export const actions: Actions = {
 		const user = locals.user!;
 		const tankId = url.searchParams.get('tank');
 		if (!tankId) error(400, 'No tank');
-		const tank = getTank(user.id, tankId);
+		const tank = getTank(user.id, tankId, 'log');
 		const form = await request.formData();
 		const params = listParams(tank.id);
 		const { readings, errors } = parseReadings(form, params, user);

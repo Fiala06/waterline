@@ -2,17 +2,20 @@ import { fail, redirect, type RequestEvent } from "@sveltejs/kit";
 import {
   DEFAULT_SERVICE,
   EQUIPMENT_TYPES,
+  MAX_PERIODS,
   SPEC_FIELDS,
   equipmentName,
+  parseSchedule,
   parseServiceCadence,
   serviceCadenceValue,
   serviceVerb,
   specToDisplay,
   specToStored,
   type EquipmentType,
+  type Schedule,
   type SpecField,
 } from "$lib/equipment";
-import { addDays, dateInZone, isDate, todayInZone } from "$lib/time";
+import { addDays, dateInZone, isDate, isTime, todayInZone } from "$lib/time";
 import { formatNumber } from "$lib/units";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { db } from "./db";
@@ -92,6 +95,7 @@ export function equipmentFormValues(e: Equipment | null, user: User) {
         v == null ? "" : typeof v === "number" ? shown(f, v, user) : String(v);
     }
   }
+  const schedule = parseSchedule(e?.schedule);
   const task = e ? serviceTask(e.id) : null;
   const serviceEvery = e
     ? serviceCadenceValue(task?.recurring ? task.intervalDays : null)
@@ -109,6 +113,47 @@ export function equipmentFormValues(e: Equipment | null, user: User) {
       serviceEvery === "custom" && task?.intervalDays
         ? String(task.intervalDays)
         : "",
+    // when it runs (#25): all day, or its periods and ramp
+    runs: schedule ? "schedule" : "always",
+    periods: schedule?.periods ?? [],
+    rampMin: schedule?.rampMin ? String(schedule.rampMin) : "0",
+  };
+}
+
+/**
+ * The schedule from the form (#25): "runs" is always or schedule; periods come
+ * as periodOn / periodOff pairs, blank pairs skipped. undefined when the form
+ * has no such fields (an older page), so the item keeps what it had.
+ */
+export function parseScheduleForm(
+  form: FormData,
+  errors: Record<string, string>,
+): Schedule | null | undefined {
+  if (!form.has("runs")) return undefined;
+  if (str(form, "runs") !== "schedule") return null;
+  const ons = form.getAll("periodOn").map(String);
+  const offs = form.getAll("periodOff").map(String);
+  const periods: Schedule["periods"] = [];
+  for (let i = 0; i < Math.max(ons.length, offs.length); i++) {
+    const on = (ons[i] ?? "").trim();
+    const off = (offs[i] ?? "").trim();
+    if (!on && !off) continue;
+    if (!isTime(on) || !isTime(off)) {
+      errors.periods = "Give each period an on and an off time.";
+      continue;
+    }
+    if (on === off) {
+      errors.periods = "A period's off time must differ from its on time.";
+      continue;
+    }
+    periods.push({ on, off });
+  }
+  if (!periods.length && !errors.periods)
+    errors.periods = "Add at least one period, or choose All day.";
+  const ramp = Math.round(Number(str(form, "rampMin") || 0));
+  return {
+    periods: periods.slice(0, MAX_PERIODS),
+    rampMin: Number.isFinite(ramp) && ramp > 0 ? Math.min(240, ramp) : null,
   };
 }
 
@@ -142,6 +187,7 @@ function parse(form: FormData, user: User, before: Equipment | null) {
   }
   const installedAt = optStr(form, "installedAt");
   if (installedAt && !isDate(installedAt)) errors.installedAt = "Pick a date.";
+  const schedule = parseScheduleForm(form, errors);
   const input: EquipmentInput = {
     type,
     brand: optStr(form, "brand", 60),
@@ -149,6 +195,7 @@ function parse(form: FormData, user: User, before: Equipment | null) {
     specs,
     installedAt,
     notes: optStr(form, "notes"),
+    ...(schedule !== undefined ? { schedule } : {}),
   };
   if (!input.brand && !input.model) errors.brand = "Enter a brand or model.";
   const serviceEvery = str(form, "serviceEvery");
