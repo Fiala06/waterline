@@ -40,7 +40,7 @@ Each server is yours: people sign in with Google (or the local admin login) and 
 ## What it does
 
 - **Log at the tank:** water tests with each reading's status as you type (`✓ OK`, `▲ Near`, `✕ High`), water changes, dosing, maintenance, livestock and equipment changes, observations, notes and photos. Every field is optional, times can be backdated, *Use last readings* fills in the previous test, and entries made offline sync later.
-- **See how it's going:** a dashboard per tank with its photo, what needs attention first (readings out of range or near a limit, and an overdue water change), the rest at a glance, and what's due; charts with water changes and doses marked, and the same parameter in your other tanks; notes when a reading keeps rising, is heading past its target, drifts between water changes or changes after a dose; History and Photos.
+- **See how it's going:** each tank is a workspace with tabs; its Overview shows what needs attention first (readings out of range or near a limit, and an overdue water change), the rest at a glance, and what's due; charts with water changes and doses marked, and the same parameter in your other tanks; notes when a reading keeps rising, is heading past its target, drifts between water changes or changes after a dose; History and Photos.
 - **Tasks, email and push:** recurring or one-off tasks, every so many days or weeks (from completion or on a fixed schedule) or on set days of the week, with snooze. Dosing and feeding routines (a product or food, how much, and when) are on the tank's page, and Done logs the dose or feeding in History. Reminders, overdue and out-of-range alerts by email (one at a time or as a daily or weekly digest) and as push notifications to your phone or computer, or through [ntfy](https://ntfy.sh), each with its own switches, and *Mark done* and *Snooze* right in the email or notification. A private calendar link puts them in Google Calendar, Apple Calendar or Outlook.
 - **Setup review:** every 3 months (or monthly, every 6 months, or off, in the tank's settings) a task asks whether the tank's details, equipment, target ranges, and livestock and plants are still right. Its page shows each part with *Still right* and *Edit*, flags a filter or pump that hasn't been serviced in half a year with *Serviced today*, and *All still right* finishes it with an entry in History.
 - **What's in the tank:** livestock (with a built-in species list, and names and photos for pets), plants and equipment, and what each tank costs, with receipts. Add several species at once by ticking them in the species list, or import a spreadsheet. Each plant and animal shows your own photo, or a photo of its species from Wikimedia Commons with its credit.
@@ -49,7 +49,7 @@ Each server is yours: people sign in with Google (or the local admin login) and 
 - **Your data:** a full backup (ZIP with photos) or a CSV of water tests, imports from spreadsheets (undone in one step), a summary to paste into an AI assistant, or [read-only access for one](#ai-assistants-mcp) over MCP.
 - **Easy to run:** one Docker container and one data folder. The admin sets up sign-in, email (Mailgun or any SMTP server) and public pages in the app, with logs for troubleshooting and a note when a new version is out.
 
-The design it was built from is in [`design_handoff_waterline/`](design_handoff_waterline/README.md).
+The look is the redesign in [`design_handoff_waterline_redesign/`](design_handoff_waterline_redesign/README.md); the original design it was built from is in [`design_handoff_waterline/`](design_handoff_waterline/README.md).
 
 ## Run it locally
 
@@ -133,7 +133,7 @@ Servers set up before these settings moved into the app keep working: `AUTH_GOOG
 
 3. With HTTPS, point your reverse proxy (Nginx Proxy Manager, SWAG, Cloudflare Tunnel…) at `http://<unraid-ip>:<host port>`. Either way, open the `ORIGIN` URL and always use that one: any other address loads, but saving fails the cross-site check.
 
-**Updates:** each release publishes a new `:latest` image, and Unraid's Docker tab shows *update ready* for the container. Applying it keeps everything in `/data`; database migrations run on start. When a new version is released, admins also see *Update to 1.9 available* under Settings in the app's menu; after updating, everyone gets the highlights of what's new since they last looked once on the dashboard, and the full list is in **Settings › What's new**.
+**Updates:** each release publishes a new `:latest` image, and Unraid's Docker tab shows *update ready* for the container. Applying it keeps everything in `/data`; database migrations run on start. When a new version is released, admins also see *↑ Update to 1.9* under their name in the app's menu and in the alerts; after updating, everyone gets the highlights of what's new since they last looked once on the dashboard, and the full list is in **Settings › What's new**.
 
 To run two versions side by side (say `:latest` and a pinned `:1.5`), create two containers with different names, host ports, data folders and `ORIGIN` values. Never point two containers at the same data folder.
 
@@ -173,7 +173,7 @@ npm test           # unit tests: units, status, trends, time zones, imports, mon
 npm run test:e2e   # Playwright, on a phone and a desktop viewport: the core flow and each feature
 ```
 
-The first time, install the Playwright browser with `npx playwright install chromium`. The core flow (`e2e/core-flow.test.ts`) is sign in → setup → create tank → log test → dashboard → complete task. `AUDIT=1 npx playwright test e2e/audit.test.ts --project=desktop` also checks every screen, at phone and desktop sizes in both themes, for accessibility problems, small tap targets and overflow, and writes what it finds to `test-results/audit.json`.
+The first time, install the Playwright browser with `npx playwright install chromium` (or point the tests at a Chromium already on the machine with `PW_CHROMIUM=/path/to/chrome`). The core flow (`e2e/core-flow.test.ts`) is sign in → setup → create tank → log test → dashboard → complete task. `AUDIT=1 npx playwright test e2e/audit.test.ts --project=desktop` also checks every screen, at phone and desktop sizes in both themes, for accessibility problems, small tap targets and overflow, and writes what it finds to `test-results/audit.json`.
 
 ## Releases
 
@@ -191,7 +191,8 @@ SvelteKit 2 (Svelte 5, adapter-node) · TypeScript · Drizzle ORM + better-sqlit
 |---|---|
 | [`CHANGELOG.md`](CHANGELOG.md) | What's new in each release, as the app shows it |
 | [`CLAUDE.md`](CLAUDE.md) | Ground rules and conventions for working on the code |
-| [`design_handoff_waterline/`](design_handoff_waterline/README.md) | The design: tokens, screens, behavior, and the HTML design files |
+| [`design_handoff_waterline_redesign/`](design_handoff_waterline_redesign/README.md) | The current design: tokens, the desktop workspace and phone layouts, each screen, and the HTML prototypes |
+| [`design_handoff_waterline/`](design_handoff_waterline/README.md) | The original design: screens' behavior and the HTML design files |
 | [`DATA_MODEL.md`](design_handoff_waterline/DATA_MODEL.md) | The database tables |
 | [`BUILD_PLAN.md`](design_handoff_waterline/BUILD_PLAN.md) | The order the first version was built in |
 | [`design-brief.md`](design-brief.md) | The original brief the design answered |

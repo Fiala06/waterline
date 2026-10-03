@@ -165,7 +165,6 @@
 	h2 {
 		margin: 0;
 		font-size: 22px;
-		font-weight: 600;
 	}
 	.head .chip {
 		font-weight: 600;
@@ -193,7 +192,7 @@
 	}
 	.month {
 		font-size: 16px;
-		font-weight: 600;
+		font-weight: 800;
 	}
 	.grid {
 		display: grid;
@@ -210,7 +209,7 @@
 	.day {
 		position: relative;
 		height: 40px;
-		border-radius: 20px;
+		border-radius: 0;
 		font-size: 15px;
 		font-variant-numeric: tabular-nums;
 	}
@@ -220,14 +219,13 @@
 		inset: -2px 0;
 	}
 	.day.today {
-		box-shadow: inset 0 0 0 1px var(--accent);
-		color: var(--accent);
-		font-weight: 700;
+		box-shadow: inset 0 0 0 2px var(--ink);
+		font-weight: 800;
 	}
 	.day.selected {
 		background: var(--accent);
 		color: var(--on-accent);
-		font-weight: 700;
+		font-weight: 800;
 		box-shadow: none;
 	}
 	.day:disabled {
@@ -236,7 +234,7 @@
 	}
 	@media (hover: hover) {
 		.day:not(:disabled):not(.selected):hover {
-			background: var(--surface-hi);
+			background: var(--surface);
 		}
 	}
 	.time {
@@ -248,14 +246,13 @@
 		color: var(--text-muted);
 	}
 	.time-box {
-		height: 46px;
-		padding: 0 16px;
-		border-radius: 12px;
-		background: var(--surface-2);
-		border: 1px solid var(--border-strong);
+		height: 44px;
+		padding: 0 14px;
+		background: var(--surface);
+		border: 1px solid var(--divider);
 		color: var(--text);
 		font-size: 17px;
-		font-weight: 600;
+		font-weight: 800;
 		font-variant-numeric: tabular-nums;
 	}
 	.time-box:focus {

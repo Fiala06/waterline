@@ -11,11 +11,13 @@ test('the account menu: your initials, your settings, and signing out', async ({
 	const words = name.split(/[\s._-]+/).filter(Boolean);
 	const initials = (words[0][0] + words[words.length - 1][0]).toUpperCase();
 
-	await open(page, '/');
+	// the sidebar's footer on a computer; the More page on a phone
+	const home = info.project.name === 'phone' ? '/more' : '/';
+	await open(page, home);
 	const account = page.getByRole('button', { name: `Account: ${name}` });
 	await expect(account).toHaveText(initials);
 	await account.click();
-	// the sidebar and the dashboard each have one; only the open menu counts
+	// only the open menu counts
 	const menu = page.locator(':popover-open');
 	await expect(menu.getByText(email)).toBeVisible();
 	await expect(menu.getByText(name, { exact: true })).toBeVisible();
@@ -29,7 +31,7 @@ test('the account menu: your initials, your settings, and signing out', async ({
 	const db = new Database('.e2e-data/waterline.db');
 	db.prepare('update users set is_admin = 1 where email = ?').run(email);
 	db.close();
-	await open(page, '/');
+	await open(page, home);
 	await account.click();
 	await expect(page.getByRole('link', { name: /^Server settings/ })).toBeVisible();
 
@@ -45,7 +47,7 @@ test('the account menu opens without scripts', async ({ page, browser }, info) =
 	const email = await newKeeperWithTank(page, `menu-plain-${info.project.name}`);
 	const ctx = await browser.newContext({ storageState: await page.context().storageState(), javaScriptEnabled: false });
 	const plain = await ctx.newPage();
-	await plain.goto('/');
+	await plain.goto(info.project.name === 'phone' ? '/more' : '/');
 	await plain.getByRole('button', { name: `Account: ${email.split('@')[0]}` }).click();
 	await expect(plain.getByRole('link', { name: 'Account settings' })).toBeVisible();
 	await ctx.close();
@@ -58,7 +60,7 @@ test('the account menu is there before the first tank', async ({ page }, info) =
 	await page.getByRole('button', { name: /Sign in with Google/ }).click();
 	await page.getByRole('button', { name: 'Continue to first tank' }).click();
 	await expect(page.getByLabel('Tank name')).toBeVisible();
-	await open(page, '/');
+	await open(page, info.project.name === 'phone' ? '/more' : '/');
 	await page.getByRole('button', { name: `Account: ${email.split('@')[0]}` }).click();
 	await expect(page.locator(':popover-open').getByText(email)).toBeVisible();
 });
@@ -81,8 +83,8 @@ test('your own photo: upload one, go back to the Google photo, or show initials'
 	await expect(page.getByText('Preview')).toBeVisible();
 	await page.getByRole('button', { name: 'Save photo' }).click();
 	await expect(page.getByText('Your own photo')).toBeVisible();
-	// on a phone the account menu is on the dashboard
-	await open(page, '/');
+	// on a phone the account menu is on the More page
+	await open(page, info.project.name === 'phone' ? '/more' : '/');
 	await expect(account.locator('img')).toBeVisible();
 	// kept small and square, without what the file said about itself
 	const own = await page.request.get('/avatar');
@@ -116,7 +118,7 @@ test('your own photo: upload one, go back to the Google photo, or show initials'
 	await page.getByRole('button', { name: 'Remove photo' }).click();
 	await expect(page.getByText('Your initials')).toBeVisible();
 	expect((await page.request.get('/avatar')).status()).toBe(404);
-	await open(page, '/');
+	await open(page, info.project.name === 'phone' ? '/more' : '/');
 	await expect(account).toBeVisible();
 	await expect(account.locator('img')).toHaveCount(0);
 });
@@ -129,7 +131,7 @@ test('a photo can be uploaded without scripts', async ({ page, browser }, info) 
 	await plain.locator('#photo-file').setInputFiles({ name: 'me.jpg', mimeType: 'image/jpeg', buffer: await photo('#c9763a') });
 	await plain.getByRole('button', { name: 'Save photo' }).click();
 	await expect(plain.getByText('Your own photo')).toBeVisible();
-	await plain.goto('/');
+	await plain.goto(info.project.name === 'phone' ? '/more' : '/');
 	await expect(plain.getByRole('button', { name: `Account: ${email.split('@')[0]}` }).locator('img')).toBeVisible();
 	await ctx.close();
 });

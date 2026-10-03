@@ -105,7 +105,7 @@ test('the version is always in the menu; admins see when a newer one is out', as
 		await open(page, '/settings');
 		await expect(page.getByRole('link', { name: new RegExp(`What's new · ${note}`) })).toBeVisible({ timeout: 1000 });
 	}).toPass({ timeout: 15_000 });
-	if (desktop) await expect(page.getByRole('link', { name: `Waterline v${version} ${note}` })).toBeVisible();
+	if (desktop) await expect(page.getByRole('link', { name: '↑ Update to 99.0', exact: true })).toBeVisible();
 	await page.getByRole('link', { name: new RegExp(`What's new · ${note}`) }).click();
 	await expect(page.getByRole('heading', { name: 'Waterline 99.0 is out' })).toBeVisible();
 	await expect(page.getByText('a release from the future, for the tests.')).toBeVisible();

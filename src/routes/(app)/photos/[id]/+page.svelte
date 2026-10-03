@@ -1,6 +1,7 @@
 <script lang="ts">
-	// 13b (phone) / D8 (desktop). The stage is dark in both themes; the panel,
-	// caption and sheet use the normal theme colors.
+	// The lightbox (README → Photos): prev/next with the arrow keys, the date
+	// and entry, Set as cover and Delete. The stage is dark in both themes; the
+	// panel, caption and sheet use the normal theme colors.
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
@@ -206,7 +207,7 @@
 	.round {
 		width: 44px;
 		height: 44px;
-		border-radius: 22px;
+		border-radius: 0;
 		flex-shrink: 0;
 		background: var(--surface);
 		color: var(--text-muted);
@@ -225,7 +226,7 @@
 		font-size: 15px;
 		font-weight: 600;
 		padding: 5px 12px;
-		border-radius: 999px;
+		border-radius: 0;
 		background: var(--overlay-bg);
 		color: var(--overlay-text);
 		font-variant-numeric: tabular-nums;
@@ -252,9 +253,9 @@
 		transform: translateY(-50%);
 		width: 44px;
 		height: 44px;
-		border-radius: 50%;
+		border-radius: 0;
 		background: var(--surface);
-		border: 1px solid var(--border-strong);
+		border: 1px solid var(--divider);
 		color: var(--text-2);
 		font-size: 20px;
 		line-height: 1;
@@ -282,7 +283,7 @@
 		align-self: center;
 		width: calc(100% - 32px);
 		max-width: 560px;
-		border-radius: 18px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 		color: var(--text);
@@ -303,7 +304,7 @@
 	.title {
 		margin: 0;
 		font-size: 17px;
-		font-weight: 600;
+		font-weight: 800;
 		line-height: 1.3;
 		overflow-wrap: anywhere;
 	}
@@ -324,7 +325,7 @@
 	.link {
 		align-self: flex-start;
 		font-size: 14px;
-		font-weight: 600;
+		font-weight: 800;
 		/* 44px tap target without adding height */
 		padding: 12px 0;
 		margin: -8px 0 -12px;
@@ -336,7 +337,9 @@
 		gap: 6px;
 	}
 	.pets-h {
-		font-size: 13px;
+		font-size: 11px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
 		color: var(--text-muted);
 	}
 	.pets .chips form {
@@ -404,9 +407,9 @@
 
 	/* Public link card */
 	.share {
-		border-radius: 14px;
+		border-radius: 0;
 		background: var(--surface);
-		border: 1px solid var(--border);
+		border: 1px solid var(--divider);
 		padding: 14px;
 		display: flex;
 		flex-direction: column;
@@ -424,10 +427,10 @@
 	}
 	.s-title {
 		font-size: 15px;
-		font-weight: 600;
+		font-weight: 800;
 	}
 	.switch {
-		border-radius: 16px;
+		border-radius: 0;
 	}
 	.switch::before {
 		content: '';
@@ -448,9 +451,9 @@
 		flex: 1;
 		min-width: 0;
 		height: 44px;
-		border-radius: 10px;
+		border-radius: 0;
 		background: var(--bg);
-		border: 1px solid var(--border-strong);
+		border: 1px solid var(--divider);
 		padding: 0 10px;
 		font-size: 13px;
 		color: var(--text-2);
@@ -463,7 +466,7 @@
 	.s-copy {
 		padding: 0 14px;
 		font-size: 14px;
-		border-radius: 10px;
+		border-radius: 0;
 	}
 	.s-opts {
 		display: flex;
@@ -483,7 +486,7 @@
 	/* ── Sheet (phone ••• menu) ──────────────────────────────── */
 	.menu {
 		border: 1px solid var(--border);
-		border-radius: 16px;
+		border-radius: 0;
 		overflow: hidden;
 		display: flex;
 		flex-direction: column;
@@ -498,7 +501,7 @@
 		display: flex;
 		align-items: center;
 		font-size: 16px;
-		font-weight: 600;
+		font-weight: 700;
 		color: var(--text);
 		text-align: left;
 	}
@@ -522,7 +525,7 @@
 	}
 	/* in the sheet the card sits on a surface: recess it */
 	.menu + .share {
-		background: var(--surface-2);
+		background: var(--bg);
 	}
 
 	/* ── Desktop (D8): stage + docked panel ─────────────────── */
@@ -556,8 +559,8 @@
 			overflow-y: auto;
 			border-radius: 0;
 			border: none;
-			border-left: 1px solid var(--border);
-			background: var(--surface-2);
+			border-left: 2px solid var(--divider);
+			background: var(--bg);
 			padding: 24px;
 			gap: 14px;
 		}
@@ -583,6 +586,11 @@
 		.title {
 			font-size: 20px;
 		}
+		.meta {
+			font-size: 11px;
+			letter-spacing: 0.08em;
+			text-transform: uppercase;
+		}
 		.note {
 			font-size: 15px;
 			display: block;
@@ -606,13 +614,13 @@
 		.s-url {
 			height: 38px;
 			font-size: 12px;
-			border-radius: 8px;
+			border-radius: 0;
 		}
 		.s-copy {
 			min-height: 38px;
 			padding: 0 12px;
 			font-size: 13px;
-			border-radius: 8px;
+			border-radius: 0;
 		}
 		.s-opts {
 			gap: 6px;
@@ -625,7 +633,7 @@
 		.s-opts .check-row input {
 			width: 18px;
 			height: 18px;
-			border-radius: 5px;
+			border-radius: 0;
 			border-width: 1.5px;
 		}
 		.s-opts .check-row input:checked::after {
@@ -636,7 +644,7 @@
 		}
 		.buttons .btn {
 			min-height: 42px;
-			border-radius: 10px;
+			border-radius: 0;
 			font-size: 14px;
 		}
 		.delete {

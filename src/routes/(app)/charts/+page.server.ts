@@ -1,9 +1,14 @@
+import { and, eq, gte } from 'drizzle-orm';
 import { eventTitle } from '$lib/events';
 import { displayValue, fmtRange, fmtValue, paramDecimals, paramUnit, statusOf } from '$lib/params';
 import { statusIcon, statusShort } from '$lib/status';
 import { fmtDate, dateInZone } from '$lib/time';
+import { formatNumber } from '$lib/units';
+import { db } from '$lib/server/db';
+import { tests } from '$lib/server/db/schema';
 import { eventsSince, latestReadings, series } from '$lib/server/logs';
 import { getTank, listParams, listTanks } from '$lib/server/tanks';
+import { tankNotes } from '$lib/server/trends';
 import { CHART_RANGES } from '$lib/charts';
 import type { PageServerLoad } from './$types';
 
@@ -33,7 +38,20 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 	if (!param) return { tank: { id: tank.id, name: tank.name }, range: range.key, list, chart: null };
 
 	const raw = series(tank.id, param.id, since);
-	const points = raw.map((r) => ({ t: Date.parse(r.takenAt), v: displayValue(param, r.value, user) }));
+	// a click on a reading opens its test in History: the test taken at that instant
+	const testAt = new Map(
+		db
+			.select({ id: tests.id, takenAt: tests.takenAt })
+			.from(tests)
+			.where(and(eq(tests.tankId, tank.id), gte(tests.takenAt, since)))
+			.all()
+			.map((t) => [t.takenAt, t.id])
+	);
+	const points = raw.map((r) => ({
+		t: Date.parse(r.takenAt),
+		v: displayValue(param, r.value, user),
+		href: testAt.has(r.takenAt) ? `/entries/test/${testAt.get(r.takenAt)}` : undefined
+	}));
 	// Too few points in this range: is it the range, or are there no tests yet?
 	const allTime = points.length < 2 && range.days ? series(tank.id, param.id, '0000').length : points.length;
 	const from = range.days ? now - range.days * 86_400_000 : (points[0]?.t ?? now - 30 * 86_400_000);
@@ -86,18 +104,34 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 	const values = raw.map((r) => r.value);
 	const inRange = values.filter((v) => statusOf(param, v).level !== 'bad').length;
 	const lastValue = values.at(-1);
+	const unit = paramUnit(param, user);
+	const withUnit = (s: string) => (unit ? `${s} ${unit}` : s);
+	// "+11 in 7 days": the latest reading against the one before it
+	const change = (() => {
+		if (raw.length < 2) return null;
+		const a = raw[raw.length - 2];
+		const b = raw[raw.length - 1];
+		const delta = displayValue(param, b.value, user) - displayValue(param, a.value, user);
+		const dec = paramDecimals(param, user);
+		const days = Math.round((Date.parse(b.takenAt) - Date.parse(a.takenAt)) / 86_400_000);
+		const amount = Math.abs(delta) < 10 ** -dec / 2 ? 'No change' : `${delta > 0 ? '+' : '−'}${formatNumber(Math.abs(delta), dec)}`;
+		return { amount, over: days === 0 ? 'since the test before' : days === 1 ? 'in 1 day' : `in ${days} days` };
+	})();
 	const stats = values.length
 		? {
 				latest: fv(lastValue!),
 				latestLevel: statusOf(param, lastValue).level,
 				latestStatus: statusShort(statusOf(param, lastValue)),
-				average: fv(values.reduce((a, b) => a + b, 0) / values.length),
-				min: fv(Math.min(...values)),
-				max: fv(Math.max(...values)),
-				inRange: `${Math.round((inRange / values.length) * 100)}%`,
+				average: withUnit(fv(values.reduce((a, b) => a + b, 0) / values.length)),
+				range: withUnit(`${fv(Math.min(...values))}–${fv(Math.max(...values))}`),
+				inTarget: `${inRange} of ${values.length}`,
+				inRangePct: `${Math.round((inRange / values.length) * 100)}%`,
+				change,
 				count: values.length
 			}
 		: null;
+	// What stands out (a run, a pace, a pattern), as the dashboard tells it
+	const insight = tankNotes(tank.id, user).find((n) => n.parameterId === param.id) ?? null;
 
 	return {
 		tank: { id: tank.id, name: tank.name },
@@ -121,6 +155,7 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 			to: now,
 			markers,
 			stats,
+			insight: insight ? { text: insight.text, warn: insight.warn, up: insight.direction === 'up' } : null,
 			others
 		}
 	};

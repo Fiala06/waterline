@@ -45,7 +45,7 @@
 	   components' button rows, and their `.actions .btn` rules must not restyle it. */
 	.confirm {
 		border: 1px solid var(--border-strong);
-		border-radius: 20px;
+		border-radius: 0;
 		background: var(--surface);
 		color: var(--text);
 		padding: 20px;
@@ -76,7 +76,7 @@
 		height: 44px;
 		min-height: 44px;
 		padding: 0 16px;
-		border-radius: 12px;
+		border-radius: 0;
 		font-size: 15px;
 		font-weight: 700;
 	}

@@ -1,9 +1,8 @@
 <script lang="ts">
-	// Dashboard refresh (1c): the readings that are fine, as a compact grid of
-	// name and value (tap one for its chart), and a line for those never tested.
-	// In a card like Needs attention's, each with its ✓, so it doesn't fade into
-	// the page; quieter than the attention list, but easy to read. A small tile
-	// each, the name over its value, so readings never run together.
+	// Overview › In range (redesign README → Screens §2): the readings that are
+	// fine as a 4-column grid of plain ✓ readings under a 2px ink rule (3 columns
+	// when narrow, 2 on phones), each opening its chart; the header counts them
+	// ("✓ 8 of 11"); then a line for those never tested.
 	interface Item {
 		id: string;
 		label: string;
@@ -27,9 +26,16 @@
 </script>
 
 <section class="in-range" aria-labelledby="in-range-h">
-	<div class="head">
+	<div class="section-head">
 		<h2 id="in-range-h">In range</h2>
-		<span class="count status-ok">{items.length === total ? `✓ All ${total} in range` : `✓ ${items.length} of ${total}`}</span>
+		<span class="count">
+			{#if total === 0}
+				<span class="meta">No readings yet</span>
+			{:else}
+				<span class="status-ok">{items.length === total ? `✓ All ${total} in range` : `✓ ${items.length} of ${total}`}</span>
+				<span class="dot" aria-hidden="true">·</span><a href="/charts">Charts</a>
+			{/if}
+		</span>
 	</div>
 	{#if items.length}
 		<ul class="grid">
@@ -37,7 +43,7 @@
 				<li>
 					<a href="/charts?p={c.id}" title="{c.fullName} · ✓ OK">
 						<span class="k"><span class="ok status-ok" aria-hidden="true">✓</span>{c.label}</span>
-						<span class="data v">{c.value}{#if c.unit}<span class="u">{c.unit.startsWith('°') ? c.unit : ` ${c.unit}`}</span>{/if}</span>
+						<span class="v">{c.value}{#if c.unit}<span class="u">{c.unit}</span>{/if}</span>
 					</a>
 				</li>
 			{/each}
@@ -51,31 +57,31 @@
 	.in-range {
 		display: flex;
 		flex-direction: column;
-		gap: 6px;
-	}
-	.head {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: 12px;
-	}
-	h2 {
-		margin: 0;
-		font-size: 17px;
-		font-weight: 600;
 	}
 	.count {
+		display: flex;
+		align-items: baseline;
+		gap: 6px;
 		font-size: 13px;
 		font-weight: 700;
+		white-space: nowrap;
 	}
-	/* a tile each, its name above its value, so they don't run together */
+	.count .meta {
+		font-weight: 400;
+	}
+	.count a {
+		font-size: 13px;
+	}
+	.dot {
+		color: var(--text-muted);
+	}
+	/* plain readings, the name over the value, a 1px divider under each row */
 	.grid {
 		list-style: none;
 		margin: 0;
 		padding: 0;
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
-		gap: 8px;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 	li {
 		min-width: 0;
@@ -84,15 +90,13 @@
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
-		min-height: 44px;
-		padding: 10px 12px 11px;
-		border-radius: 12px;
-		background: var(--surface);
-		border: 1px solid var(--border);
+		min-height: 52px;
+		padding: 8px 12px 8px 0;
+		border-bottom: 1px solid var(--divider);
 		color: var(--text);
 	}
 	.k {
-		font-size: 13px;
+		font-size: 12px;
 		color: var(--text-muted);
 		min-width: 0;
 		overflow: hidden;
@@ -100,41 +104,65 @@
 		white-space: nowrap;
 	}
 	.ok {
-		margin-right: 5px;
-		font-weight: 700;
+		margin-right: 4px;
 	}
 	.v {
-		font-size: 20px;
-		font-weight: 600;
+		font-size: 19px;
+		font-weight: 800;
 		white-space: nowrap;
 	}
 	.u {
 		margin-left: 2px;
-		font-size: 12px;
+		font-size: 10px;
 		font-weight: 400;
 		color: var(--text-muted);
 	}
 	@media (hover: hover) {
 		a:hover {
-			border-color: var(--accent);
+			background: var(--surface);
+			color: var(--text);
 		}
 	}
 	.bug {
 		margin-right: 6px;
 	}
 	.streak {
-		margin: 6px 0 0;
+		margin: 12px 0 0;
 		font-size: 14px;
 		color: var(--text-2);
 	}
 	.untested {
-		margin: 6px 0 0;
+		margin: 12px 0 0;
 		font-size: 13px;
 		color: var(--text-muted);
 	}
+	@media (min-width: 480px) {
+		.grid {
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+		}
+	}
 	@media (min-width: 1024px) {
 		.grid {
-			grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+		}
+		a {
+			padding: 10px 12px 10px 0;
+		}
+		.k {
+			font-size: 13px;
+		}
+		.v {
+			font-size: 22px;
+		}
+		.u {
+			margin-left: 3px;
+			font-size: 12px;
+		}
+	}
+	/* one column below ~1100px: four across, as on the full layout */
+	@media (min-width: 1024px) and (max-width: 1099px), (min-width: 1200px) {
+		.grid {
+			grid-template-columns: repeat(4, minmax(0, 1fr));
 		}
 	}
 </style>

@@ -21,18 +21,18 @@
 			primary
 		/>
 	{:else}
-		<div class="tiles">
-			<div class="card tile"><span class="tl">This month</span><span class="tv num">{data.totals.month}</span></div>
-			<div class="card tile"><span class="tl">This year</span><span class="tv num">{data.totals.year}</span></div>
-			<div class="card tile"><span class="tl">All time</span><span class="tv num">{data.totals.all}</span></div>
-		</div>
 		{#if data.allTanks}<p class="all">All your tanks this year: <strong class="num">{data.allTanks}</strong></p>{/if}
+		<div class="tiles">
+			<div class="tile"><span class="tl">This month</span><span class="tv num">{data.totals.month}</span></div>
+			<div class="tile"><span class="tl">This year</span><span class="tv num">{data.totals.year}</span></div>
+			<div class="tile"><span class="tl">All time</span><span class="tv num">{data.totals.all}</span></div>
+		</div>
 
 		<div class="cols">
 			<section aria-labelledby="cat-h">
-				<h2 id="cat-h">{data.year} by category</h2>
+				<h2 id="cat-h" class="kicker rule">{data.year} by category</h2>
 				{#if data.byCategory.length}
-					<ul class="card bars">
+					<ul class="bars cats">
 						{#each data.byCategory as c (c.key)}
 							<li>
 								<span class="bl">{c.label}</span>
@@ -46,8 +46,8 @@
 				{/if}
 			</section>
 			<section aria-labelledby="month-h">
-				<h2 id="month-h">The last 12 months</h2>
-				<ul class="card bars months">
+				<h2 id="month-h" class="kicker rule">The last 12 months</h2>
+				<ul class="bars months">
 					{#each [...data.months].reverse() as m (m.key)}
 						<li class:zero={!m.cents}>
 							<span class="bl">{m.label}</span>
@@ -60,8 +60,8 @@
 		</div>
 
 		<section aria-labelledby="list-h">
-			<h2 id="list-h">Expenses</h2>
-			<ul class="card list">
+			<h2 id="list-h" class="kicker rule">Expenses · {data.expenses.length}</h2>
+			<ul class="list">
 				{#each data.expenses as e (e.id)}
 					<li>
 						<a href="{base}/spending/{e.id}">
@@ -82,120 +82,136 @@
 
 <style>
 	.body {
-		padding: 12px 20px 24px;
+		padding: 16px 20px 24px;
 		display: flex;
 		flex-direction: column;
-		gap: 18px;
+		gap: 24px;
+		max-width: 1080px;
 	}
 	section {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
 		min-width: 0;
 	}
-	h2 {
+	.rule {
+		margin: 0;
+		padding-bottom: 6px;
+		border-bottom: 2px solid var(--ink);
+		color: var(--text);
+	}
+	.all {
 		margin: 0;
 		font-size: 13px;
-		font-weight: 600;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
 		color: var(--text-muted);
 	}
-	/* the headline numbers */
+	.all strong {
+		color: var(--text);
+	}
+	/* the headline numbers, side by side under a 2px rule with rules between them */
 	.tiles {
 		display: grid;
 		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: 8px;
+		border-top: 2px solid var(--ink);
 	}
 	.tile {
-		padding: 12px 14px;
+		padding: 14px 12px;
 		display: flex;
 		flex-direction: column;
 		gap: 4px;
 		min-width: 0;
+	}
+	.tile + .tile {
+		border-left: 2px solid var(--divider);
+	}
+	.tile:first-child {
+		padding-left: 0;
 	}
 	.tl {
 		font-size: 12px;
 		color: var(--text-muted);
 	}
 	.tv {
-		font-size: 20px;
-		font-weight: 700;
+		font-size: 22px;
+		font-weight: 800;
+		line-height: 1.1;
 		overflow-wrap: anywhere;
-	}
-	.all {
-		margin: -8px 0 0;
-		font-size: 14px;
-		color: var(--text-muted);
-	}
-	.all strong {
-		color: var(--text);
 	}
 	.cols {
 		display: flex;
 		flex-direction: column;
-		gap: 18px;
+		gap: 24px;
 	}
 	/* one series, labelled: the bar shows its size, the text says it */
 	.bars {
 		margin: 0;
-		padding: 10px 14px;
+		padding: 0;
 		list-style: none;
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
 	}
 	.bars li {
 		display: grid;
-		grid-template-columns: 92px minmax(0, 1fr) auto;
+		grid-template-columns: 110px minmax(0, 1fr) 80px;
 		align-items: center;
-		gap: 10px;
+		gap: 12px;
+		padding: 9px 0;
+		border-bottom: 1px solid var(--divider);
 		font-size: 14px;
 	}
-	.bl {
-		color: var(--text-2);
-	}
 	.bar {
-		height: 8px;
-		border-radius: 4px;
-		background: var(--divider-soft);
-		overflow: hidden;
+		height: 10px;
+		background: var(--neutral-200);
+		display: flex;
 	}
 	.bar i {
 		display: block;
 		height: 100%;
-		border-radius: 4px;
 		background: var(--accent);
 	}
 	.bv {
-		font-weight: 600;
+		font-weight: 800;
 		text-align: right;
+	}
+	.months li {
+		grid-template-columns: 70px minmax(0, 1fr) 80px;
+		padding: 4px 0;
+		border-bottom: none;
+		font-size: 13px;
+	}
+	.months .bar {
+		height: 8px;
+		background: transparent;
+	}
+	.months .bar i {
+		background: var(--ink);
+	}
+	.months .bv {
+		font-weight: 600;
 	}
 	.zero .bl,
 	.zero .bv {
-		color: var(--text-faint);
+		color: var(--text-muted);
 		font-weight: 400;
 	}
 	.none {
 		margin: 0;
+		padding: 10px 0;
 		font-size: 14px;
-		color: var(--text-faint);
+		color: var(--text-muted);
 	}
 	.list {
 		margin: 0;
 		padding: 0;
 		list-style: none;
 	}
-	.list li + li {
-		border-top: 1px solid var(--border);
-	}
 	.list a {
 		min-height: 56px;
-		padding: 10px 14px;
+		padding: 10px 0;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: 12px;
+		border-bottom: 1px solid var(--divider);
 		color: var(--text);
 	}
 	.lt {
@@ -205,6 +221,7 @@
 		min-width: 0;
 	}
 	.lw {
+		font-size: 15px;
 		font-weight: 600;
 		overflow-wrap: anywhere;
 	}
@@ -214,21 +231,30 @@
 	}
 	.la {
 		flex-shrink: 0;
-		font-weight: 700;
+		font-size: 16px;
+		font-weight: 800;
+	}
+	@media (hover: hover) {
+		.list a:hover .lw {
+			color: var(--accent);
+		}
 	}
 	@media (min-width: 1024px) {
 		.body {
-			padding: 20px 24px 32px;
-			max-width: 980px;
+			padding: 24px 32px 48px;
+			gap: 28px;
+		}
+		.tile {
+			padding: 14px 16px;
+		}
+		.tv {
+			font-size: 32px;
 		}
 		.cols {
 			display: grid;
 			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-			gap: 24px;
+			gap: 32px;
 			align-items: start;
-		}
-		.tv {
-			font-size: 24px;
 		}
 	}
 </style>

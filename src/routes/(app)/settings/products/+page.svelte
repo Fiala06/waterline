@@ -47,8 +47,11 @@
 <div class="page sub-page">
 	<div class="head">
 		<a class="back sub-back" href="/settings">‹ Settings</a>
-		<h1>Products</h1>
-		<p class="muted">Links to what you buy again, like conditioner, fertilizer, food or filter media. Dosing a saved product shows its Reorder link.</p>
+		<div class="title-row">
+			<h1>Products</h1>
+			<a class="btn btn-primary" href="#add">+ Add product</a>
+		</div>
+		<p class="lede">Links to what you buy again, like conditioner, fertilizer, food or filter media. Dosing a saved product shows its Reorder link.</p>
 	</div>
 
 	{#if data.products.length}
@@ -96,7 +99,7 @@
 							<input type="hidden" name="id" value={p.id} />
 							{@render fields(`e-${p.id}`, form?.edit?.id === p.id ? form.edit.values : p, form?.edit?.id === p.id ? editErr : {})}
 							<div class="edit-acts">
-								<button class="btn del" formaction="?/delete">Delete</button>
+								<button class="btn btn-danger del" formaction="?/delete">Delete</button>
 								<a class="btn" href="/settings/products" onclick={(e) => (e.preventDefault(), (editing = null))}>Cancel</a>
 								<button class="btn btn-primary">Save</button>
 							</div>
@@ -136,55 +139,61 @@
 		display: flex;
 		flex-direction: column;
 		gap: 20px;
-		max-width: 600px;
+		max-width: 820px;
 	}
 	.head {
 		display: flex;
 		flex-direction: column;
+		gap: 6px;
+	}
+	.title-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
 	}
 	h1 {
-		margin: 0 0 4px;
+		margin: 0;
 		font-size: 28px;
-		font-weight: 600;
 	}
-	.head p {
+	.lede {
 		margin: 0;
 		font-size: 14px;
 		line-height: 1.5;
+		max-width: 620px;
 	}
 
-	/* the list: one card, a row per product */
+	/* the list: a 2px ink rule, then a row per product */
 	.list {
 		list-style: none;
 		margin: 0;
 		padding: 0;
-		border-radius: 16px;
-		background: var(--surface);
-		border: 1px solid var(--border);
+		border-top: 2px solid var(--ink);
 	}
-	.list li + li {
-		border-top: 1px solid var(--border);
+	.list li {
+		border-bottom: 1px solid var(--divider);
 	}
 	.item {
 		display: flex;
 		align-items: center;
-		gap: 12px;
-		padding: 12px 12px 12px 16px;
+		flex-wrap: wrap;
+		gap: 8px 12px;
+		padding: 10px 0;
 	}
 	.t {
 		flex: 1;
-		min-width: 0;
+		min-width: 200px;
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
 	}
 	.name {
-		font-size: 16px;
+		font-size: 15px;
 		font-weight: 600;
 		overflow-wrap: anywhere;
 	}
 	.meta {
-		font-size: 13px;
+		font-size: 12px;
 		color: var(--text-muted);
 		overflow-wrap: anywhere;
 	}
@@ -196,22 +205,12 @@
 	}
 	.edit-link {
 		color: var(--text-muted);
-		font-weight: 600;
-	}
-	.log-link {
-		font-weight: 600;
-	}
-	.reorder {
-		min-height: 40px;
-		padding: 0 14px;
-		border-radius: 10px;
-		font-size: 14px;
 	}
 	.edit {
 		display: flex;
 		flex-direction: column;
 		gap: 14px;
-		padding: 4px 16px 16px;
+		padding: 4px 0 16px;
 	}
 	.edit-acts {
 		display: flex;
@@ -222,29 +221,20 @@
 	}
 	.del {
 		margin-right: auto;
-		color: var(--bad);
-		border-color: var(--bad-border);
 	}
 
-	/* adding: the same fields, always open */
+	/* adding: the same fields, under a rule of their own */
 	.add {
 		display: flex;
 		flex-direction: column;
 		gap: 14px;
-		padding: 16px;
-		border-radius: 16px;
-		background: var(--surface);
-		border: 1px solid var(--border);
+		padding-top: 14px;
+		border-top: 2px solid var(--ink);
+		scroll-margin-top: 16px;
 	}
 	h2 {
 		margin: 0;
-		font-size: 16px;
-		font-weight: 600;
-	}
-	.add :global(.input),
-	.edit :global(.input) {
-		background: var(--surface-2);
-		border-color: var(--border-strong);
+		font-size: 17px;
 	}
 	.go {
 		min-height: 48px;
@@ -254,13 +244,13 @@
 		.edit-link:hover {
 			color: var(--accent);
 		}
-		.del:hover {
-			background: var(--bad-bg);
-		}
 	}
 	@media (min-width: 1024px) {
 		.page {
 			gap: 22px;
+		}
+		h1 {
+			font-size: 22px;
 		}
 		.go {
 			align-self: flex-start;

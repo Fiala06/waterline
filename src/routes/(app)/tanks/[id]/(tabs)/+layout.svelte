@@ -1,72 +1,52 @@
 <script lang="ts">
+	// The tank's tabs (Livestock, Plants, Equipment, Spending, Setup) sit in the
+	// app shell's tank header; this layout holds each tab's own toolbar.
 	import { page } from '$app/state';
 	import { setContext } from 'svelte';
-	import { hscroll } from '$lib/actions';
-	import { photoUrl } from '$lib/media';
 	let { data, children } = $props();
 	const h = $derived(data.tankHead);
 	const base = $derived(`/tanks/${h.id}`);
 	const path = $derived(page.url.pathname);
-	const tabs = $derived([
-		{ href: base, label: 'Overview' },
-		{ href: `${base}/equipment`, label: 'Equipment' },
-		{ href: `${base}/livestock`, label: 'Livestock' },
-		{ href: `${base}/plants`, label: 'Plants' },
-		{ href: `${base}/spending`, label: 'Spending' },
-		{ href: `${base}/settings`, label: 'Settings' }
-	]);
-	const overview = $derived(path === base);
-	// Each tab's page action sits in this header (T2, T4, T7): next to "‹ Tanks" on phones,
-	// at the end of the tab row on desktop. Plants' buttons open that page's sheets.
+	// Plants' buttons open that page's sheets.
 	const plantSheets = $state({ add: false, trim: false });
 	setContext('plant-sheets', plantSheets);
 	const plantCount = $derived(((page.data as { plants?: unknown[] }).plants ?? []).length);
+	const sub = $derived(
+		path === `${base}/equipment`
+			? 'equipment'
+			: path === `${base}/livestock`
+				? 'livestock'
+				: path === `${base}/spending`
+					? 'spending'
+					: path === `${base}/plants`
+						? 'plants'
+						: null
+	);
 </script>
 
 <div class="tank-page">
-	{#if overview}
-		<div class="cover hide-desk" class:photo-placeholder={!h.cover}>
-			{#if h.cover}<img src={photoUrl(h.cover, 'full')} alt="" style:object-position={h.coverPos} />{:else}<span class="mono">cover photo</span>{/if}
-			<a class="back over" href="/tanks">‹ Tanks</a>
-		</div>
+	{#if h.archived}
+		<p class="archived"><span class="tag tag-neutral">Archived</span> This tank is archived. Restore it from <a href="/tanks">Tanks</a>.</p>
 	{/if}
-	<!-- on desktop the header has "Tanks › {name}" -->
-	<div class="head" class:overview>
-		{#if !overview}<a class="back hide-desk" href="/tanks">‹ Tanks</a>{/if}
-		<h1 class="hide-desk">{h.name}{#if h.archived}<span class="archived">Archived</span>{/if}</h1>
-		<p class="sub" class:hide-phone={!overview}>
-			{#if h.archived}<span class="archived hide-phone">Archived</span>{/if}{h.sub}
-		</p>
-		<div class="tabrow">
-			<nav class="tabs hscroll" aria-label="Tank sections" use:hscroll={path}>
-				{#each tabs as t (t.href)}
-					<a href={t.href} class:active={path === t.href} aria-current={path === t.href ? 'page' : undefined}>{t.label}</a>
-				{/each}
-			</nav>
-			{#if path === `${base}/equipment`}
-				<div class="acts">
-					<a class="btn" href="{base}/equipment/new"><span class="hide-desk">+ Add</span><span class="hide-phone">+ Add equipment</span></a>
-				</div>
-			{:else if path === `${base}/livestock`}
-				<div class="acts">
+	{#if sub}
+		<div class="toolbar">
+			<span class="count">{page.data.toolbarText ?? ''}</span>
+			<div class="acts">
+				{#if sub === 'equipment'}
+					<a class="btn btn-primary" href="{base}/equipment/new">+ Add equipment</a>
+				{:else if sub === 'livestock'}
 					<a class="btn" href="{base}/livestock/several">Add several</a>
-					<a class="btn" href="{base}/livestock/new"><span class="hide-desk">+ Add</span><span class="hide-phone">+ Add livestock</span></a>
-				</div>
-			{:else if path === `${base}/spending`}
-				<div class="acts">
-					<a class="btn" href="{base}/spending/new"><span class="hide-desk">+ Add</span><span class="hide-phone">+ Add expense</span></a>
-				</div>
-			{:else if path === `${base}/plants`}
-				<div class="acts">
+					<a class="btn btn-primary" href="{base}/livestock/new">+ Add livestock</a>
+				{:else if sub === 'spending'}
+					<a class="btn btn-primary" href="{base}/spending/new">+ Add expense</a>
+				{:else if sub === 'plants'}
 					{#if plantCount}<button type="button" class="btn" onclick={() => (plantSheets.trim = true)}>Log trim</button>{/if}
 					<a class="btn" href="{base}/plants/several">Add several</a>
-					<button type="button" class="btn" onclick={() => (plantSheets.add = true)}
-						><span class="hide-desk">+ Add</span><span class="hide-phone">+ Add plant</span></button
-					>
-				</div>
-			{/if}
+					<button type="button" class="btn btn-primary" onclick={() => (plantSheets.add = true)}>+ Add plant</button>
+				{/if}
+			</div>
 		</div>
-	</div>
+	{/if}
 	{@render children()}
 </div>
 
@@ -76,156 +56,43 @@
 		flex-direction: column;
 		padding-bottom: calc(24px + env(safe-area-inset-bottom));
 	}
-	/* T1: full-bleed cover with "‹ Tanks" floating on it */
-	.cover {
-		position: relative;
-		height: 170px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-size: 12px;
-		color: var(--text-faint);
-		overflow: hidden;
-		border: none;
-	}
-	.cover img {
-		position: absolute;
-		inset: 0;
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-	}
-	.over {
-		position: absolute;
-		left: 16px;
-		top: 14px;
-		min-height: 36px;
-		padding: 0 12px;
-		border-radius: 18px;
-		background: var(--overlay-bg);
-		font-size: 14px;
-	}
-	/* 36px to match T1, 44px to tap */
-	.over::after {
-		content: '';
-		position: absolute;
-		inset: -4px -2px;
-	}
-	.head {
-		position: relative;
-		padding: 4px 20px 0;
-		border-bottom: 1px solid var(--border);
-	}
-	.head.overview {
-		padding-top: 16px;
-	}
-	h1 {
-		margin: 2px 0 0;
-		font-size: 24px;
-		font-weight: 600;
-		display: flex;
-		align-items: center;
-		gap: 10px;
-	}
-	.overview h1 {
-		margin: 0;
-		font-size: 26px;
-	}
 	.archived {
-		font-size: 12px;
-		font-weight: 700;
-		padding: 2px 8px;
-		border-radius: 8px;
-		background: var(--surface-hi);
-		color: var(--text-muted);
-	}
-	.sub {
-		margin: 4px 0 0;
+		margin: 12px 20px 0;
 		font-size: 14px;
 		color: var(--text-muted);
 	}
-	.sub .archived {
-		margin-right: 8px;
-	}
-	.tabrow {
-		margin-top: 12px;
-	}
-	.tabs {
-		gap: 6px;
-		margin: 0 -20px;
-		padding: 0 12px;
-	}
-	.tabs a {
-		min-height: 44px;
-		padding: 0 8px 12px;
+	.toolbar {
 		display: flex;
-		align-items: flex-end;
-		font-size: 15px;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		padding: 16px 20px 0;
+	}
+	.count {
+		flex: 1 1 100%;
+		font-size: 13px;
 		color: var(--text-muted);
-		white-space: nowrap;
-		border-bottom: 2px solid transparent;
 	}
-	.tabs a:hover {
-		color: var(--text);
+	.count:empty {
+		display: none;
 	}
-	.tabs a.active {
-		color: var(--accent);
-		font-weight: 600;
-		border-bottom-color: var(--accent);
-	}
-	/* phones: in the "‹ Tanks" row above the name */
 	.acts {
-		position: absolute;
-		top: 7px;
-		right: 20px;
 		display: flex;
 		gap: 8px;
-	}
-	.acts .btn {
-		position: relative;
-		min-height: 38px;
-		padding: 0 14px;
-		border-radius: 10px;
-		font-size: 14px;
-	}
-	.acts .btn::after {
-		content: '';
-		position: absolute;
-		inset: -3px 0;
+		flex-wrap: wrap;
+		justify-content: flex-end;
 	}
 	@media (min-width: 1024px) {
-		.head,
-		.head.overview {
-			padding: 18px 32px 0;
+		.archived {
+			margin: 16px 32px 0;
 		}
-		.sub {
-			margin: 0;
+		.toolbar {
+			padding: 20px 32px 0;
+			flex-wrap: nowrap;
 		}
-		/* same height with or without actions, so the tabs don't move between tabs */
-		.tabrow {
-			min-height: 48px;
-			margin-top: 4px;
-			display: flex;
-			align-items: flex-end;
-			justify-content: space-between;
-			gap: 16px;
-		}
-		.tabs {
-			gap: 22px;
-			margin: 0;
-			padding: 0;
-		}
-		.tabs a {
-			padding: 0 2px 12px;
-		}
-		.acts {
-			position: static;
-			flex-shrink: 0;
-			padding-bottom: 8px;
-		}
-		.acts .btn {
-			min-height: 40px;
-			font-size: 15px;
+		.count {
+			flex: 1 1 auto;
 		}
 	}
 </style>

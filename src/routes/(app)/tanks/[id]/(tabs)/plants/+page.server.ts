@@ -17,6 +17,8 @@ export const load: PageServerLoad = ({ locals, params }) => {
 	// the keeper's own photo, else a species photo from Wikimedia Commons (some come in the background)
 	const photos = speciesPhotos(list.map((p) => ({ photoId: p.photoId, scientific: p.scientificName, common: p.name })));
 	return {
+		// the tab's toolbar: "6 plants"
+		toolbarText: list.length ? `${list.length} plant${list.length === 1 ? '' : 's'}` : '',
 		plants: list.map((p, i) => ({
 			id: p.id,
 			name: p.name,
@@ -24,6 +26,7 @@ export const load: PageServerLoad = ({ locals, params }) => {
 			position: p.position,
 			status: p.status,
 			trimmed: p.lastTrimmedAt ? fmtDate(dateInZone(p.lastTrimmedAt, user.timeZone)) : null,
+			added: fmtDate(dateInZone(p.createdAt, user.timeZone)),
 			photo: photos.list[i],
 			ownPhoto: !!p.photoId
 		})),

@@ -58,7 +58,7 @@ test('switching category keeps what was typed for each one', async ({ page }, in
 
 	await open(page, `/entries/event/new?tank=${tankId}&category=water_change`);
 	await page.getByLabel('Note').fill('topped off with prime');
-	await page.getByRole('link', { name: 'Dosing', exact: true }).click();
+	await page.getByRole('link', { name: 'Dose', exact: true }).click();
 	await expect(page).toHaveURL(/category=dosing/);
 	await page.locator('html[data-ready="true"]').waitFor();
 	await page.getByRole('link', { name: 'Water change', exact: true }).click();

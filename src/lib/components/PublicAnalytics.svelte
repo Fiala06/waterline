@@ -47,7 +47,7 @@
 </script>
 
 {#if ask}
-	<div class="consent card" role="region" aria-label="Analytics cookies">
+	<div class="consent" role="region" aria-label="Analytics cookies">
 		<strong>Allow analytics cookies?</strong>
 		<span class="muted">Helps the owner see how many people visit. Nothing loads unless you allow it.</span>
 		<div class="row">
@@ -68,7 +68,9 @@
 		display: flex;
 		flex-direction: column;
 		gap: 6px;
-		box-shadow: var(--shadow-modal);
+		background: var(--bg);
+		border: 2px solid var(--ink);
+		box-shadow: var(--shadow-lg);
 		max-width: 420px;
 		margin: 0 auto;
 		font-size: 14px;

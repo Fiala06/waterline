@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { tankTypeLabel } from '$lib/types';
+	// The app shell (redesign README → App shell): on desktop a sidebar of tanks
+	// and app-wide links beside a tank workspace with its header and tabs; on
+	// phones a header with the tank's name and a bottom bar with Log in the middle.
 	import { afterNavigate, goto, invalidateAll } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import InstallPrompt from '$lib/components/InstallPrompt.svelte';
@@ -8,50 +10,66 @@
 	import { navigating, page } from '$app/state';
 	import Logo from '$lib/components/Logo.svelte';
 	import AccountMenu from '$lib/components/AccountMenu.svelte';
+	import AlertsPanel, { type Alert } from '$lib/components/AlertsPanel.svelte';
+	import CommandPalette from '$lib/components/CommandPalette.svelte';
+	import Icon from '$lib/components/Icon.svelte';
 	import QuickAdd from '$lib/components/QuickAdd.svelte';
-	import TankMenu from '$lib/components/TankMenu.svelte';
+	import ShortcutsSheet from '$lib/components/ShortcutsSheet.svelte';
+	import TankHeader, { type Tab } from '$lib/components/TankHeader.svelte';
 	import TankSwitcher from '$lib/components/TankSwitcher.svelte';
 	import TankThumb from '$lib/components/TankThumb.svelte';
 	import Toast from '$lib/components/Toast.svelte';
-	import { toast, ui } from '$lib/ui.svelte';
+	import { logHref, toast, typing, ui } from '$lib/ui.svelte';
 	import { IMPORTS, importKindOf } from '$lib/imports';
+	import { todayInZone } from '$lib/time';
 
 	let { data, children } = $props();
 
 	const path = $derived(page.url.pathname);
+	const routeId = $derived(page.route.id ?? '');
 	const current = $derived(data.tanks.find((t) => t.id === data.currentTankId));
+	const today = $derived(todayInZone(data.user.timeZone));
 
-	// Phone tab bar on the top-level screens; forms are full screen.
-	const tabRoutes = ['/', '/tanks', '/tasks', '/settings', '/history', '/charts', '/photos'];
-	const showTabs = $derived(tabRoutes.includes(path));
-	// The + button is for logging: on the tank screens and Tasks (03, 06), not on Tanks or Settings (09, 16).
-	const fabRoutes = ['/', '/tasks', '/history', '/charts', '/photos'];
-	const showFab = $derived(fabRoutes.includes(path));
-	// The photo viewer is full screen, without the sidebar or header.
-	const fullscreen = $derived(path.startsWith('/photos/'));
-	// The log forms: a new water test or event for the current tank (05, 08, 14).
+	// ── Where we are ──────────────────────────────────────────────────────
+	// The tank workspace: Overview (/), Charts, History, Photos, the tank's tabs
+	// and everything under /tanks/[id]; entries belong to History.
+	const tankTabRoute = $derived(routeId.startsWith('/(app)/tanks/[id]/'));
+	const tankScoped = $derived(
+		!!current && (path === '/' || /^\/(charts|history|photos)(\/|$)/.test(path) || /^\/entries\//.test(path) || routeId.startsWith('/(app)/tanks/[id]'))
+	);
 	const logForm = $derived(/^\/entries\/(test|event)\/new$/.test(path));
-	// The header's tank switcher only on pages about the current tank; Tasks,
-	// Tanks and Settings cover every tank.
-	const tankScoped = $derived(path === '/' || logForm || /^\/(charts|history|photos)(\/|$)/.test(path));
+	const tabs = $derived.by((): Tab[] => {
+		if (!current) return [];
+		const id = current.id;
+		const base = `/tanks/${id}`;
+		const under = (part: string) => routeId.startsWith(`/(app)/tanks/[id]/${part}`) || routeId.startsWith(`/(app)/tanks/[id]/(tabs)/${part}`);
+		return [
+			{ key: 'overview', label: 'Overview', href: `/?tank=${id}`, active: path === '/' || routeId === '/(app)/tanks/[id]/(tabs)' },
+			{ key: 'charts', label: 'Charts', href: `/charts?tank=${id}`, active: path.startsWith('/charts') },
+			{ key: 'history', label: 'History', href: `/history?tank=${id}`, active: path.startsWith('/history') || path.startsWith('/entries/') },
+			{ key: 'photos', label: 'Photos', href: `/photos?tank=${id}`, count: data.counts.photos, active: path.startsWith('/photos') },
+			{ key: 'livestock', label: 'Livestock', href: `${base}/livestock`, count: data.counts.livestock, active: under('livestock') },
+			{ key: 'plants', label: 'Plants', href: `${base}/plants`, count: data.counts.plants, active: under('plants') },
+			{ key: 'equipment', label: 'Equipment', href: `${base}/equipment`, count: data.counts.equipment, active: under('equipment') },
+			{ key: 'spending', label: 'Spending', href: `${base}/spending`, active: under('spending') },
+			{
+				key: 'setup',
+				label: 'Setup',
+				href: `${base}/settings`,
+				active: under('settings') || under('targets') || under('public') || under('review') || under('remind') || under('import')
+			}
+		];
+	});
+	const setupTab = $derived(tabs.find((t) => t.key === 'setup')?.active ?? false);
+	// the top-level tank pages: the phone header and bottom bar belong to these
+	const topLevel = $derived(
+		path === '/' || /^\/(charts|history|photos|more)$/.test(path) || /^\/\(app\)\/tanks\/\[id\]\/\(tabs\)\/?[a-z]*$/.test(routeId)
+	);
+	const barRoutes = ['/tanks', '/tasks', '/settings'];
+	const showBar = $derived(topLevel || barRoutes.includes(path));
+	const fullscreen = $derived(path.startsWith('/photos/'));
 
-	const nav = [
-		{ href: '/', label: 'Dashboard' },
-		{ href: '/tanks', label: 'Tanks' },
-		{ href: '/tasks', label: 'Tasks' },
-		{ href: '/history', label: 'History' },
-		{ href: '/charts', label: 'Charts' },
-		{ href: '/photos', label: 'Photos' }
-	];
-	const isActive = (href: string) => (href === '/' ? path === '/' : path === href || path.startsWith(href + '/'));
-	// History, Charts and Photos open from the dashboard, so its tab stays lit there.
-	const tabActive = (href: string) => (href === '/' ? path === '/' || /^\/(history|charts|photos)(\/|$)/.test(path) : isActive(href));
-
-	// Desktop header (README → Navigation). The dashboard and log forms get the big tank
-	// switcher (07, 08); History, Charts and Photos a title and a small switcher (D6, D7, 19);
-	// every other page its title, under a breadcrumb when it belongs to another page (D3–D5, D9).
-	const bigSwitcher = $derived(path === '/' || logForm);
-	const sectionTitle = $derived(({ '/history': 'History', '/charts': 'Charts', '/photos': 'Photos' } as Record<string, string | undefined>)[path]);
+	// Desktop sub-page heads (crumbs + title) for pages that aren't a tank tab.
 	const tankName = $derived(
 		(page.data.tankHead?.name ?? page.data.tank?.name ?? data.tanks.find((t) => t.id === page.params.id)?.name ?? 'Tank') as string
 	);
@@ -61,62 +79,114 @@
 		q.set('new', '');
 		return `/tasks?${q}`;
 	});
-	type Header = { title: string; crumbs?: { label: string; href: string }[]; actions?: { label: string; href: string }[] };
+	type Header = { title: string; kicker?: string; crumbs?: { label: string; href: string }[]; actions?: { label: string; href: string }[] };
 	const header = $derived.by((): Header | null => {
-		const id = page.route.id ?? '';
+		const id = routeId;
 		const tanks = { label: 'Tanks', href: '/tanks' };
 		const tasks = { label: 'Tasks', href: '/tasks' };
-		if (id === '/(app)/tanks') return { title: 'Tanks', actions: [{ label: 'Add tank', href: '/tanks/new' }] };
+		if (id === '/(app)/tanks') return { title: 'Tanks', kicker: `${data.tanks.length} active`, actions: [{ label: '+ Add tank', href: '/tanks/new' }] };
 		if (id === '/(app)/tanks/new') return { title: 'Add tank', crumbs: [tanks] };
-		if (id.startsWith('/(app)/tanks/[id]/(tabs)')) return { title: tankName, crumbs: [tanks] };
 		const tankPage = (
 			{
+				'/(app)/tanks/[id]/(tabs)': 'Tank details',
 				'/(app)/tanks/[id]/equipment/new': 'Add equipment',
 				'/(app)/tanks/[id]/equipment/[eid]': 'Edit equipment',
 				'/(app)/tanks/[id]/livestock/new': 'Add livestock',
 				'/(app)/tanks/[id]/livestock/several': 'Add several',
 				'/(app)/tanks/[id]/plants/several': 'Add several plants',
 				'/(app)/tanks/[id]/remind': 'Remind me',
-				'/(app)/tanks/[id]/review': 'Review tank setup',
+				'/(app)/tanks/[id]/review': 'Setup review',
 				'/(app)/tanks/[id]/spending/new': 'Add expense',
 				'/(app)/tanks/[id]/spending/[eid]': 'Edit expense',
 				'/(app)/tanks/[id]/targets': 'Parameters & targets',
 				'/(app)/tanks/[id]/public': 'Public page',
-				'/(app)/tanks/[id]/summary': 'Summary for an AI assistant'
+				'/(app)/tanks/[id]/summary': 'Get help: tank summary'
 			} as Record<string, string | undefined>
 		)[id];
-		if (tankPage) return { title: tankPage, crumbs: [tanks, { label: tankName, href: `/tanks/${page.params.id}` }] };
-		if (id === '/(app)/tanks/[id]/livestock/[lid]') {
-			const a = page.data.animal as { nickname: string | null; commonName: string } | undefined;
-			return { title: a?.nickname ?? a?.commonName ?? 'Livestock', crumbs: [tanks, { label: tankName, href: `/tanks/${page.params.id}/livestock` }] };
-		}
+		if (tankPage) return { title: tankPage };
+		// a pet's page has its own name hero
+		if (id === '/(app)/tanks/[id]/livestock/[lid]') return null;
 		if (id === '/(app)/tanks/[id]/import/[list=importList]') {
 			const kind = importKindOf(page.params.list ?? '');
-			return { title: kind ? IMPORTS[kind].title : 'Import', crumbs: [tanks, { label: tankName, href: `/tanks/${page.params.id}` }] };
+			return { title: kind ? IMPORTS[kind].title : 'Import' };
 		}
-		if (id === '/(app)/tasks') return { title: 'Tasks', actions: [{ label: 'New task', href: newTaskHref }] };
-		// a routine (#17): dosing or feeding
+		if (id === '/(app)/tasks') return { title: 'Tasks', kicker: data.overdueCount ? `${data.overdueCount} overdue` : 'Every tank', actions: [{ label: '+ New task', href: newTaskHref }] };
 		const taskType = (page.data.values as { type?: string } | undefined)?.type;
 		if (id === '/(app)/tasks/new')
 			return { title: taskType === 'dosing' ? 'New dosing routine' : taskType === 'feeding' ? 'New feeding routine' : 'New task', crumbs: [tasks] };
 		if (id === '/(app)/tasks/[id]') return { title: taskType === 'dosing' || taskType === 'feeding' ? 'Edit routine' : 'Edit task', crumbs: [tasks] };
 		if (id.startsWith('/(app)/entries/') && !logForm) {
-			const history = { label: 'History', href: ui.prev?.startsWith('/history') ? ui.prev : '/history' };
-			return { title: id.endsWith('/edit') ? 'Edit entry' : ((page.data.entry?.kindLabel as string | undefined) ?? 'Entry'), crumbs: [history] };
+			return { title: id.endsWith('/edit') ? 'Edit entry' : ((page.data.entry?.kindLabel as string | undefined) ?? 'Entry') };
 		}
-		if (id.startsWith('/(app)/settings')) return { title: 'Settings' };
+		if (id.startsWith('/(app)/settings')) return { title: 'Settings', kicker: [data.user.displayName, data.user.email].filter(Boolean).join(' · ') };
+		if (id === '/(app)/more') return null;
 		return null;
 	});
+	// in the tank workspace, a sub-page's title sits under the tabs
+	const subHead = $derived(tankScoped && header && !tabs.some((t) => t.active && (path === '/' || /^\/(charts|history|photos)$/.test(path) || /\/\(tabs\)\/[a-z]+$/.test(routeId))) ? header : null);
 
 	function pickTank(id: string) {
 		const u = new URL(page.url);
 		u.searchParams.set('tank', id);
 		u.searchParams.delete('task');
-		const keepPage = tabRoutes.includes(u.pathname) || logForm;
+		const keepPage = path === '/' || /^\/(charts|history|photos|tasks|more)$/.test(path) || logForm;
 		goto(keepPage ? `${u.pathname}?${u.searchParams}` : `/?tank=${id}`);
 	}
 
-	// Offline queue: sync when the connection comes back or the app is reopened.
+	// ── Sidebar: pinned or an auto-hiding rail (stored on this device, per user) ──
+	let hover = $state(false);
+	// pinned until the device's choice is read on mount, so most desktops don't see the rail flash
+	const pinned = $derived(ui.navPinned ?? true);
+	const wide = $derived(pinned || hover);
+	function loadNav() {
+		try {
+			const v = localStorage.getItem(`wl_nav:${data.user.id}`);
+			ui.navPinned = v === 'pinned' ? true : v === 'auto' ? false : innerWidth >= 1200;
+		} catch {
+			ui.navPinned = innerWidth >= 1200;
+		}
+	}
+	function togglePin() {
+		ui.navPinned = !pinned;
+		hover = false;
+		try {
+			localStorage.setItem(`wl_nav:${data.user.id}`, ui.navPinned ? 'pinned' : 'auto');
+		} catch {
+			/* storage blocked */
+		}
+	}
+	// "+N more · scroll or see all" under the tank list until it's scrolled to the end
+	let list: HTMLElement | undefined = $state();
+	let moreTanks = $state(0);
+	function listScroll() {
+		if (!list) return;
+		const left = list.scrollHeight - list.scrollTop - list.clientHeight;
+		moreTanks = left > 2 ? Math.max(1, Math.round(left / 48)) : 0;
+	}
+	$effect(() => {
+		data.tanks.length;
+		wide;
+		requestAnimationFrame(listScroll);
+	});
+
+	// ── Alerts: what's new since they were last marked read, on this device ──
+	let seen = $state<string[]>([]);
+	const alerts = $derived.by((): Alert[] => {
+		const list: Alert[] = data.alerts.map((a) => ({ key: a.key, kind: a.kind, title: a.title, sub: a.sub, href: a.href }));
+		if (data.app.update) list.unshift({ key: `update:${data.app.update.version}`, kind: 'update', title: `Update to ${data.app.update.version}`, sub: "See what's new and update the server", href: '/settings/changelog' });
+		return list;
+	});
+	const unread = $derived(alerts.filter((a) => !seen.includes(a.key)).length);
+	function markRead(keys: string[]) {
+		seen = [...new Set([...seen, ...keys])].slice(-300);
+		try {
+			localStorage.setItem(`wl_alerts:${data.user.id}`, JSON.stringify(seen));
+		} catch {
+			/* storage blocked */
+		}
+	}
+
+	// ── Offline queue: sync when the connection comes back or the app is reopened ──
 	async function sync() {
 		const n = await flushQueue();
 		if (n) {
@@ -128,7 +198,9 @@
 		listenForInstall();
 		ui.online = navigator.onLine;
 		ui.userId = data.user.id;
+		loadNav();
 		try {
+			seen = JSON.parse(localStorage.getItem(`wl_alerts:${data.user.id}`) ?? '[]');
 			const t = sessionStorage.getItem('wl_toast');
 			if (t) {
 				sessionStorage.removeItem('wl_toast');
@@ -165,8 +237,8 @@
 		// the browser bar color follows too (as themeColorMeta in hooks.server.ts)
 		for (const m of document.querySelectorAll('meta[name="theme-color"]')) m.remove();
 		const bar = (content: string, media = '') => document.head.append(Object.assign(document.createElement('meta'), { name: 'theme-color', content, media }));
-		if (theme !== 'light') bar('#0c1a1f', theme === 'dark' ? '' : '(prefers-color-scheme: dark)');
-		if (theme !== 'dark') bar('#f4f7f6', theme === 'light' ? '' : '(prefers-color-scheme: light)');
+		if (theme !== 'light') bar('#161514', theme === 'dark' ? '' : '(prefers-color-scheme: dark)');
+		if (theme !== 'dark') bar('#f3f2f2', theme === 'light' ? '' : '(prefers-color-scheme: light)');
 	});
 
 	// Server messages (after a redirect) and browser ones share one toast.
@@ -194,125 +266,212 @@
 		return () => clearTimeout(t);
 	});
 
-	// Desktop header dropdown (G12, ui.tankMenu); phones use the bottom sheet.
-
+	// ── Keyboard (README → Global overlays): ignored while typing in a field ──
+	let goPending = $state(false);
+	let goTimer: ReturnType<typeof setTimeout> | undefined;
 	function onkeydown(e: KeyboardEvent) {
-		if (e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey) && data.tanks.length) {
+		const k = e.key;
+		if ((k === 'k' || k === 'K') && (e.metaKey || e.ctrlKey)) {
 			e.preventDefault();
-			if (tankScoped && matchMedia('(min-width: 1024px)').matches) ui.tankMenu = !ui.tankMenu;
-			else ui.tankSwitcher = true;
+			ui.palette = !ui.palette;
 			return;
 		}
-		if (e.key !== '+' || e.metaKey || e.ctrlKey) return;
-		const t = e.target as HTMLElement;
-		if (t.closest('input, textarea, select, dialog')) return;
-		e.preventDefault();
-		ui.quickAdd = true;
+		if (typing(e) || e.metaKey || e.ctrlKey) return;
+		if (e.altKey && (k === 'ArrowUp' || k === 'ArrowDown') && data.tanks.length > 1 && current) {
+			e.preventDefault();
+			const i = data.tanks.findIndex((t) => t.id === current.id);
+			pickTank(data.tanks[(i + (k === 'ArrowDown' ? 1 : -1) + data.tanks.length) % data.tanks.length].id);
+			return;
+		}
+		if (e.altKey) return;
+		if (goPending) {
+			goPending = false;
+			clearTimeout(goTimer);
+			const to = ({ o: 'overview', c: 'charts', h: 'history', p: 'photos', l: 'livestock', e: 'equipment', s: 'setup' } as Record<string, string | undefined>)[k.toLowerCase()];
+			const tab = tabs.find((t) => t.key === to);
+			if (tab) {
+				e.preventDefault();
+				goto(tab.href);
+			}
+			return;
+		}
+		switch (k) {
+			case '/':
+				e.preventDefault();
+				ui.palette = true;
+				return;
+			case '?':
+				e.preventDefault();
+				ui.keys = true;
+				return;
+			case '[':
+				e.preventDefault();
+				togglePin();
+				return;
+			case '+':
+				e.preventDefault();
+				ui.quickAdd = true;
+				return;
+		}
+		const lower = k.toLowerCase();
+		if (lower === 'g' && current) {
+			goPending = true;
+			clearTimeout(goTimer);
+			goTimer = setTimeout(() => (goPending = false), 1500);
+			return;
+		}
+		if (current && !e.shiftKey) {
+			const kind = ({ t: 'test', w: 'water_change', d: 'dosing', n: 'note' } as const)[lower as 't' | 'w' | 'd' | 'n'];
+			if (kind) {
+				e.preventDefault();
+				goto(logHref(kind, current.id));
+			}
+		}
 	}
-
+	const footerLine = $derived(data.app.update ? `↑ Update to ${data.app.update.version}` : `Waterline v${data.app.version}`);
 </script>
 
 <svelte:window {onkeydown} />
 
 <div class="shell" class:fullscreen>
-	<aside class="sidebar" aria-label="Main">
-		<div class="brand-row">
-			<a class="brand" href="/"><Logo size={28} wordmark wordSize={19} fish /></a>
-			<AccountMenu user={data.user} id="account-menu-side" />
-		</div>
-		<nav class="nav">
-			{#each nav as n (n.href)}
-				<a href={n.href} class:active={isActive(n.href)} aria-current={isActive(n.href) ? 'page' : undefined}>
-					<span>{n.label}</span>
-					{#if n.href === '/tasks' && data.overdueCount}
-						<span class="pill-bad">{data.overdueCount} overdue</span>
-					{/if}
-				</a>
-			{/each}
-		</nav>
-		{#if data.tanks.length}
-			<div class="tank-list">
-				<div class="caps">Tanks</div>
-				{#each data.tanks as t (t.id)}
-					<a
-						href="/?tank={t.id}"
-						class="tank"
-						class:current={t.id === data.currentTankId}
-						aria-current={t.id === data.currentTankId ? 'true' : undefined}
-					>
-						<TankThumb cover={t.cover} size={22} radius={6} />
-						<span class="tname">{t.name}</span>
-						{#if t.alerts}
-							<span class="pill-bad sm">{t.alerts} alert{t.alerts === 1 ? '' : 's'}</span>
-						{:else if t.tested}
-							<span class="good">All good</span>
-						{:else}
-							<span class="nodata">No data</span>
-						{/if}
-					</a>
-				{/each}
+	<!-- ── Desktop sidebar ─────────────────────────────────────────────── -->
+	<div class="navslot" class:rail={!pinned}>
+		<aside
+			class="sidebar"
+			class:wide
+			class:floating={!pinned && hover}
+			aria-label="Main"
+			onmouseenter={() => !pinned && (hover = true)}
+			onmouseleave={() => (hover = false)}
+		>
+			<div class="brand-row">
+				<a class="brand" href="/" aria-label="Waterline"><Logo size={26} fish /><span class="lbl word">Waterline</span></a>
+				<button type="button" class="pin lbl" title="{pinned ? 'Auto-hide menu' : 'Keep menu open'} [" aria-label="{pinned ? 'Auto-hide menu' : 'Keep menu open'} [" onclick={togglePin}>
+					<Icon name={pinned ? 'pin' : 'unpin'} size={18} />
+				</button>
 			</div>
-		{/if}
-		<div class="spacer"></div>
-		<a href="/settings" class="settings" class:active={isActive('/settings')}>Settings</a>
-		<a href="/settings/changelog" class="app-version" class:update={!!data.app.update}>
-			Waterline v{data.app.version}{#if data.app.update}<span class="update-note">Update to {data.app.update.version} available</span>{/if}
-		</a>
-	</aside>
+			<button type="button" class="search" title="Search  ⌘K" onclick={() => (ui.palette = true)}>
+				<Icon name="search" size={18} />
+				<span class="lbl">Search</span><kbd class="lbl">⌘K</kbd>
+			</button>
+			<div class="tanks">
+				<a class="caps lbl" href="/tanks" class:active={path === '/tanks'}>Tanks<span>All ›</span></a>
+				<div class="tank-list" bind:this={list} onscroll={listScroll}>
+					{#each data.tanks as t (t.id)}
+						<a
+							href="/?tank={t.id}"
+							class="tank"
+							class:current={t.id === data.currentTankId && tankScoped}
+							aria-current={t.id === data.currentTankId && tankScoped ? 'true' : undefined}
+							title={t.name}
+							onclick={(e) => {
+								if (e.metaKey || e.ctrlKey || e.shiftKey) return;
+								e.preventDefault();
+								pickTank(t.id);
+							}}
+						>
+							<span class="thumb"><TankThumb cover={t.cover} size={28} />{#if t.alerts}<i class="dot" aria-hidden="true"></i>{/if}</span>
+							<span class="tname lbl">{t.name}</span>
+							<span class="st lbl" class:bad={!!t.alerts} aria-label={t.alerts ? `${t.alerts} need attention` : t.tested ? 'All in range' : 'No data'}>
+								{t.alerts ? `✕ ${t.alerts}` : t.tested ? '✓' : '–'}
+							</span>
+						</a>
+					{/each}
+				</div>
+				{#if moreTanks && wide}
+					<a class="more-tanks" href="/tanks">+{moreTanks} more · scroll or see all</a>
+				{/if}
+				<a class="add" href="/tanks/new" title="Add tank"><span class="plus">+</span><span class="lbl">Add tank</span></a>
+			</div>
+			<div class="rule"></div>
+			<nav class="links" aria-label="App">
+				<button type="button" class="link" class:active={ui.alerts} title="Alerts" onclick={() => (ui.alerts = true)}>
+					<span class="ic"><Icon name="bell" />{#if unread}<span class="badge" aria-hidden="true">{unread > 9 ? '9+' : unread}</span>{/if}</span>
+					<span class="lbl">Alerts</span>{#if unread}<span class="sr-only">{unread} unread</span>{/if}
+				</button>
+				<a href="/tasks" class="link" class:active={path.startsWith('/tasks')} aria-current={path.startsWith('/tasks') ? 'page' : undefined} title="Tasks">
+					<span class="ic"><Icon name="tasks" /></span>
+					<span class="lbl">Tasks</span>
+					{#if data.overdueCount}<span class="tag tag-accent lbl">{data.overdueCount} overdue</span>{/if}
+				</a>
+				<a href="/settings" class="link" class:active={path.startsWith('/settings')} aria-current={path.startsWith('/settings') ? 'page' : undefined} title="Settings">
+					<span class="ic"><Icon name="settings" /></span>
+					<span class="lbl">Settings</span>
+				</a>
+			</nav>
+			<div class="spacer"></div>
+			<div class="foot">
+				<span class="avatar">
+					<AccountMenu user={data.user} id="account-menu-side" />
+					{#if data.app.update}<span class="upd" title="Update available" aria-hidden="true">↑</span>{/if}
+				</span>
+				<span class="me lbl">
+					<span class="me-name">{data.user.displayName || data.user.email}</span>
+					<a href="/settings/changelog" class="ver" class:update={!!data.app.update}>{footerLine}</a>
+				</span>
+			</div>
+		</aside>
+	</div>
 
 	<div class="main">
-		<!-- the dashboard's tank hero (refresh 1c) has the name, Quick add and last test itself -->
-		<header class="topbar" class:hero-page={path === '/' && !!current}>
-			<!-- on the dashboard the hero has the tank's name and switcher -->
-			{#if current && tankScoped && bigSwitcher && path !== '/'}
-				<div class="tank-pick">
-					<button type="button" class="tank-btn" aria-expanded={ui.tankMenu} onclick={() => (ui.tankMenu = !ui.tankMenu)}>
-						<TankThumb cover={current.cover} size={40} radius={10} />
-						<span class="tb-text">
-							<span class="tb-name">{current.name} <span class="caret">{ui.tankMenu ? '▴' : '▾'}</span></span>
-							<span class="tb-sub">{tankTypeLabel(current.type)}{current.volume ? ` · ${current.volume}` : ''}</span>
-						</span>
-					</button>
-					<TankMenu bind:open={ui.tankMenu} tanks={data.tanks} currentId={data.currentTankId} onpick={pickTank} />
-				</div>
-			{:else if tankScoped && sectionTitle}
-				<div class="h-left">
-					<h1 class="h-title">{sectionTitle}</h1>
-					{#if current}
-						<div class="tank-pick">
-							<button type="button" class="tank-mini" aria-expanded={ui.tankMenu} aria-label="{current.name}, switch tank" onclick={() => (ui.tankMenu = !ui.tankMenu)}>
-								{current.name} <span class="caret" aria-hidden="true">{ui.tankMenu ? '▴' : '▾'}</span>
-							</button>
-							<TankMenu bind:open={ui.tankMenu} tanks={data.tanks} currentId={data.currentTankId} onpick={pickTank} />
-						</div>
-					{/if}
-				</div>
-			{:else if header}
-				<div class="h-left">
-					{#if header.crumbs?.length}
-						<nav class="crumbs" aria-label="Breadcrumb">
-							{#each header.crumbs as c (c.href)}<a href={c.href}>{c.label}</a><span class="sep" aria-hidden="true">›</span>{/each}
-						</nav>
-					{/if}
-					<h1 class="h-title">{header.title}</h1>
-				</div>
-			{/if}
-			<div class="spacer"></div>
-			{#if current && path === '/'}<span class="tb-meta">{data.quick.lastTest}</span>{/if}
-			{#each header?.actions ?? [] as a (a.href)}<a class="btn h-action" href={a.href}>{a.label}</a>{/each}
-			<button type="button" class="btn btn-primary" onclick={() => (ui.quickAdd = true)}>
-				<span class="plus">+</span>Quick add
-			</button>
-		</header>
-
 		{#if !ui.online || waiting}
 			<div class="offline" role="status">
 				<strong>{ui.online ? '' : 'Offline'}{!ui.online && waiting ? ' · ' : ''}{waiting ? `${waiting} entr${waiting === 1 ? 'y' : 'ies'} waiting` : ''}</strong>
 				<span>{ui.online ? 'Syncing…' : waiting ? "Saved on this phone. They'll sync when you're back on dry land." : "New entries are saved on this phone until you're back on dry land."}</span>
 			</div>
 		{/if}
-		<main class:with-tabs={showTabs} class:with-fab={showFab} aria-busy={slow}>
-			{@render children()}
+
+		{#if tankScoped && current}
+			<div class:hide-phone={!topLevel}>
+				<TankHeader
+					tank={{ id: current.id, name: current.name, type: current.type, volume: current.volume, startDate: current.startDate, cover: current.cover, coverPos: current.coverPos }}
+					lastTest={data.quick.lastTest}
+					{today}
+					{tabs}
+					{unread}
+					tabsOnPhone={topLevel && path !== '/' && !/^\/(charts|history)$/.test(path)}
+				/>
+			</div>
+			{#if subHead}
+				<div class="sub-head hide-phone"><h2>{subHead.title}</h2></div>
+			{/if}
+		{:else if header}
+			<header class="page-head hide-phone">
+				<div class="ph-text">
+					{#if header.crumbs?.length}
+						<nav class="crumbs" aria-label="Breadcrumb">
+							{#each header.crumbs as c (c.href)}<a href={c.href}>{c.label}</a><span class="sep" aria-hidden="true">›</span>{/each}
+						</nav>
+					{:else if header.kicker}
+						<span class="kicker">{header.kicker}</span>
+					{/if}
+					<h1>{header.title}</h1>
+				</div>
+				{#each header.actions ?? [] as a (a.href)}<a class="btn btn-primary" href={a.href}>{a.label}</a>{/each}
+			</header>
+		{/if}
+
+		<main class:with-bar={showBar} class:setup={setupTab} aria-busy={slow}>
+			{#if setupTab && current}
+				<div class="setup-grid">
+					<nav class="setup-nav hide-phone" aria-label="Setup">
+						<span class="caps">Setup</span>
+						{#each [
+							{ href: `/tanks/${current.id}/settings`, label: 'Details', on: routeId.endsWith('/(tabs)/settings') },
+							{ href: `/tanks/${current.id}/targets`, label: 'Parameters & targets', on: routeId.endsWith('/targets') },
+							{ href: `/tanks/${current.id}/public`, label: 'Public page', on: routeId.endsWith('/public') },
+							{ href: `/tanks/${current.id}/remind`, label: 'Reminders', on: routeId.endsWith('/remind') },
+							{ href: `/tanks/${current.id}/review`, label: 'Setup review', on: routeId.endsWith('/review') }
+						] as s (s.href)}
+							<a href={s.href} class:active={s.on} aria-current={s.on ? 'page' : undefined}>{s.label}</a>
+						{/each}
+						<a class="archive" href="/tanks/{current.id}/settings#archive">Archive</a>
+					</nav>
+					<div class="setup-content">{@render children()}</div>
+				</div>
+			{:else}
+				{@render children()}
+			{/if}
 			{#if slow}
 				<div class="skeleton" aria-hidden="true"><i class="sk-title"></i><i></i><i></i><i class="sk-short"></i></div>
 			{/if}
@@ -320,27 +479,14 @@
 	</div>
 </div>
 
-{#if showFab}
-	<button type="button" class="fab" aria-label="Quick add" onclick={() => (ui.quickAdd = true)}>+</button>
-{/if}
-{#if showTabs}
+<!-- ── Phone bottom bar: Overview, Charts, Log, History, More ──────────── -->
+{#if showBar}
 	<nav class="tabbar" aria-label="Main">
-		<a href="/" class:active={tabActive('/')} aria-current={path === '/' ? 'page' : undefined}>
-			<span class="ti ti-dash" aria-hidden="true"><i></i><i></i><i></i><i></i></span>Dashboard
-		</a>
-		<a href="/tanks" class:active={isActive('/tanks')} aria-current={isActive('/tanks') ? 'page' : undefined}>
-			<span class="ti ti-tanks" aria-hidden="true"></span>Tanks
-		</a>
-		<a href="/tasks" class:active={isActive('/tasks')} aria-current={isActive('/tasks') ? 'page' : undefined}>
-			<span class="ti ti-tasks" aria-hidden="true"></span>Tasks
-		</a>
-		<a
-			href="/settings"
-			class:active={isActive('/settings')}
-			aria-current={isActive('/settings') ? 'page' : undefined}
-		>
-			<span class="ti ti-settings" aria-hidden="true"><i></i></span>Settings
-		</a>
+		<a href="/" class:active={path === '/'} aria-current={path === '/' ? 'page' : undefined}><Icon name="grid" size={22} />Overview</a>
+		<a href="/charts" class:active={path === '/charts'} aria-current={path === '/charts' ? 'page' : undefined}><Icon name="chart" size={22} />Charts</a>
+		<button type="button" class="log" aria-label="Log" onclick={() => (ui.quickAdd = true)}><span class="sq"><Icon name="plus" size={26} /></span><span>Log</span></button>
+		<a href="/history" class:active={path === '/history'} aria-current={path === '/history' ? 'page' : undefined}><Icon name="clock" size={22} />History</a>
+		<a href="/more" class:active={!['/', '/charts', '/history'].includes(path)} aria-current={path === '/more' ? 'page' : undefined}><Icon name="more" size={22} />More</a>
 	</nav>
 {/if}
 
@@ -353,19 +499,23 @@
 	wcDue={data.quick.wcDue}
 />
 <TankSwitcher bind:open={ui.tankSwitcher} tanks={data.tanks} currentId={data.currentTankId} onpick={pickTank} />
+<CommandPalette bind:open={ui.palette} tanks={data.tanks} currentTankId={data.currentTankId} onpick={pickTank} />
+<ShortcutsSheet bind:open={ui.keys} />
+<AlertsPanel bind:open={ui.alerts} {alerts} onread={markRead} />
 
-{#if showTabs}<InstallPrompt />{/if}
+{#if showBar}<InstallPrompt />{/if}
 
 {#key ui.toast?.id}
-	<Toast message={ui.toast?.text} undo={ui.toast?.undo} view={ui.toast?.view} lift={showFab ? 'fab' : showTabs ? 'tabs' : 'none'} />
+	<Toast message={ui.toast?.text} undo={ui.toast?.undo} view={ui.toast?.view} lift={showBar ? 'tabs' : 'none'} />
 {/key}
 
 <style>
 	.shell {
 		min-height: 100dvh;
 	}
-	.sidebar,
-	.topbar {
+	.navslot,
+	.page-head,
+	.sub-head {
 		display: none;
 	}
 	main {
@@ -386,7 +536,6 @@
 		display: block;
 		height: 96px;
 		max-width: 720px;
-		border-radius: 16px;
 		background: var(--surface);
 		animation: wl-pulse 1.4s ease-in-out infinite;
 	}
@@ -397,12 +546,9 @@
 	.skeleton .sk-short {
 		width: 70%;
 	}
-	main.with-tabs {
-		padding-bottom: calc(110px + env(safe-area-inset-bottom));
-	}
-	/* tab bar 88 + gap + the 64px + button, so the last row can scroll clear of it */
-	main.with-fab {
-		padding-bottom: calc(184px + env(safe-area-inset-bottom));
+	/* the bottom bar (78px + the home indicator) and a little air */
+	main.with-bar {
+		padding-bottom: calc(100px + env(safe-area-inset-bottom));
 	}
 	.spacer {
 		flex: 1;
@@ -410,10 +556,8 @@
 	.offline {
 		margin: calc(8px + env(safe-area-inset-top)) 20px 0;
 		padding: 10px 14px;
-		border-radius: 14px;
-		background: var(--warn-bg);
-		border: 1px solid var(--warn-border);
-		color: var(--warn-text);
+		background: var(--surface);
+		border-left: 3px solid var(--ink);
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
@@ -422,307 +566,442 @@
 	.offline strong {
 		font-size: 14px;
 	}
-	.fullscreen .sidebar,
-	.fullscreen .topbar {
+	.fullscreen .navslot {
 		display: none !important;
 	}
-	/* Tablets get the phone layout in a centered column, not edge-to-edge cards. */
+	.caps {
+		font-size: 11px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--text-muted);
+	}
+	/* Tablets get the phone layout in a centered column. */
 	@media (min-width: 700px) and (max-width: 1023px) {
-		main {
+		main,
+		.offline {
 			width: 100%;
 			max-width: 720px;
 			margin-inline: auto;
 		}
-		.offline {
-			max-width: 680px;
-			margin-inline: auto;
-		}
 	}
 
-	/* ── Phone tab bar + FAB ─────────────────────────────────────────── */
-	.fab {
-		position: fixed;
-		right: 20px;
-		bottom: calc(104px + env(safe-area-inset-bottom));
-		width: 64px;
-		height: 64px;
-		border-radius: 32px;
-		background: var(--accent);
-		color: var(--on-accent);
-		font-size: 34px;
-		line-height: 1;
-		box-shadow: var(--shadow-fab);
-		z-index: 20;
-	}
-	.fab:active {
-		transform: scale(0.94);
-	}
+	/* ── Phone bottom bar ─────────────────────────────────────────────── */
 	.tabbar {
 		position: fixed;
 		left: 0;
 		right: 0;
 		bottom: 0;
-		height: calc(88px + env(safe-area-inset-bottom));
-		padding: 10px 0 env(safe-area-inset-bottom);
-		background: var(--surface-2);
-		border-top: 1px solid var(--border);
+		height: calc(78px + env(safe-area-inset-bottom));
+		padding: 8px 0 env(safe-area-inset-bottom);
+		background: var(--bg);
+		border-top: 2px solid var(--ink);
 		display: grid;
-		grid-template-columns: repeat(4, 1fr);
+		grid-template-columns: repeat(5, 1fr);
 		z-index: 20;
 	}
-	.tabbar a {
+	.tabbar a,
+	.tabbar .log {
+		position: relative;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
+		justify-content: center;
 		gap: 4px;
-		font-size: 12px;
-		color: var(--text-muted);
-		--c: var(--text-muted);
-	}
-	.tabbar a {
-		position: relative;
+		font-size: 11px;
+		font-weight: 600;
+		color: var(--text);
+		min-height: 44px;
 	}
 	.tabbar a.active {
 		color: var(--accent);
-		font-weight: 600;
-		--c: var(--accent);
+		font-weight: 800;
 	}
-	/* the active tab: a 2px accent line on the bar's top edge (refresh 1c) */
+	/* the active tab: a 3px accent bar on the bar's top edge */
 	.tabbar a.active::before {
 		content: '';
 		position: absolute;
-		top: -11px;
+		top: -10px;
 		left: 0;
 		right: 0;
-		height: 2px;
+		height: 3px;
 		background: var(--accent);
 	}
-	.ti {
-		display: block;
-		box-sizing: border-box;
+	/* Log: a 60px accent square, raised 18px over the bar */
+	.tabbar .log {
+		margin-top: -18px;
+		gap: 0;
 	}
-	.ti-dash {
-		width: 22px;
-		height: 22px;
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 3px;
-	}
-	.ti-dash i {
-		border: 2px solid var(--c);
-		border-radius: 2px;
-	}
-	.active .ti-dash i {
-		background: var(--c);
-	}
-	.ti-tanks {
-		width: 24px;
-		height: 20px;
-		margin: 1px 0; /* same 22px box as the other icons, so the labels line up */
-		border: 2px solid var(--c);
-		border-radius: 4px;
-	}
-	.active .ti-tanks {
-		background: var(--c);
-	}
-	.ti-tasks {
-		width: 22px;
-		height: 22px;
-		border: 2px solid var(--c);
-		border-radius: 11px;
-	}
-	.active .ti-tasks {
-		background: var(--c);
-	}
-	.ti-settings {
-		width: 22px;
-		height: 22px;
-		border: 2px solid var(--c);
-		border-radius: 6px;
+	.tabbar .log .sq {
+		width: 60px;
+		height: 60px;
+		background: var(--accent);
+		color: var(--on-accent);
 		display: flex;
+		flex-direction: column;
 		align-items: center;
 		justify-content: center;
+		box-shadow: var(--shadow-md);
 	}
-	.ti-settings i {
-		width: 6px;
-		height: 6px;
-		border-radius: 3px;
-		background: var(--c);
+	.tabbar .log .sq + span {
+		position: absolute;
+		bottom: 6px;
+		font-size: 11px;
+		font-weight: 800;
+		color: var(--on-accent);
 	}
 
 	/* ── Desktop ─────────────────────────────────────────────────────── */
 	@media (min-width: 1024px) {
 		.shell {
 			display: flex;
+			min-width: 900px;
 		}
-		.fab,
 		.tabbar {
 			display: none;
 		}
-		main.with-tabs,
-		main.with-fab {
+		main.with-bar {
 			padding-bottom: 0;
 		}
-		.sidebar {
-			display: flex;
-			flex-direction: column;
-			gap: 26px;
-			width: 232px;
+		/* the sidebar's slot in the row: 248px pinned, a 64px rail otherwise */
+		.navslot {
+			display: block;
+			width: 248px;
 			flex-shrink: 0;
 			position: sticky;
 			top: 0;
 			height: 100dvh;
-			overflow-y: auto;
-			background: var(--surface-2);
-			border-right: 1px solid var(--border);
-			padding: 22px 14px;
+			z-index: 25;
+			transition: width 160ms ease;
 		}
-		/* the logo, and your account at the end of its row */
+		.navslot.rail {
+			width: 64px;
+		}
+		.sidebar {
+			position: absolute;
+			inset: 0 auto 0 0;
+			width: 64px;
+			display: flex;
+			flex-direction: column;
+			gap: 14px;
+			padding: 20px 12px;
+			overflow-x: hidden;
+			overflow-y: auto;
+			scrollbar-width: none;
+			background: var(--bg);
+			border-right: 2px solid var(--divider);
+			transition:
+				width 160ms ease,
+				box-shadow 160ms;
+		}
+		.sidebar.wide {
+			width: 248px;
+		}
+		.sidebar.floating {
+			box-shadow: var(--shadow-lg);
+		}
+		/* labels fade out in the rail */
+		.lbl {
+			opacity: 0;
+			transition: opacity 120ms;
+			white-space: nowrap;
+		}
+		.wide .lbl {
+			opacity: 1;
+		}
 		.brand-row {
 			display: flex;
 			align-items: center;
-			justify-content: space-between;
 			gap: 8px;
+			padding: 0 8px;
+			min-width: 224px;
+			flex-shrink: 0;
 		}
 		.brand {
-			padding: 0 8px;
-			color: var(--text);
-		}
-		.nav {
-			display: flex;
-			flex-direction: column;
-			gap: 2px;
-		}
-		.nav a,
-		.settings {
-			height: 40px;
-			padding: 0 12px;
-			border-radius: 10px;
+			flex: 1;
 			display: flex;
 			align-items: center;
-			justify-content: space-between;
-			font-size: 15px;
-			color: var(--text-2);
+			gap: 8px;
+			color: var(--text);
 		}
-		.nav a:hover,
-		.settings:hover {
+		.word {
+			font-weight: 800;
+			font-size: 18px;
+			letter-spacing: -0.015em;
+		}
+		.pin {
+			width: 36px;
+			height: 36px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			color: var(--text-muted);
+		}
+		.pin:hover {
+			color: var(--text);
 			background: var(--surface);
 		}
-		/* the version running, under Settings; a newer one in the accent, for admins */
-		.app-version {
-			min-height: 44px;
-			padding: 4px 12px;
+		.search {
+			flex-shrink: 0;
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			height: 40px;
+			padding: 0 8px;
+			min-width: 224px;
+			border: 1px solid var(--divider);
+			text-align: left;
+			font-size: 14px;
+			color: var(--text-muted);
+		}
+		.search :global(svg) {
+			margin: 0 5px;
+			flex-shrink: 0;
+		}
+		.search .lbl:first-of-type {
+			flex: 1;
+		}
+		.search kbd {
+			font: inherit;
+			font-size: 12px;
+		}
+		.search:hover {
+			border-color: var(--text);
+			color: var(--text);
+		}
+		.tanks {
 			display: flex;
 			flex-direction: column;
-			justify-content: center;
-			gap: 2px;
-			font-size: 12px;
-			color: var(--text-faint);
+			min-width: 224px;
+			flex: 0 1 auto;
+			min-height: calc(144px + 76px);
 		}
-		.app-version:hover {
-			color: var(--text-muted);
-			text-decoration: underline;
+		.tanks .caps {
+			display: flex;
+			justify-content: space-between;
+			padding: 6px 8px 8px;
 		}
-		.update-note {
-			font-weight: 600;
+		.tanks .caps:hover,
+		.tanks .caps.active {
 			color: var(--accent);
-		}
-		.nav a.active,
-		.settings.active {
-			background: var(--selected);
-			color: var(--accent);
-			font-weight: 600;
-		}
-		.pill-bad {
-			font-size: 12px;
-			font-weight: 700;
-			background: var(--bad-bg);
-			color: var(--bad-text);
-			padding: 2px 8px;
-			border-radius: 10px;
-			white-space: nowrap;
-		}
-		.pill-bad.sm {
-			padding: 2px 7px;
 		}
 		.tank-list {
 			display: flex;
 			flex-direction: column;
-			gap: 6px;
-		}
-		.caps {
-			font-size: 12px;
-			letter-spacing: 0.08em;
-			text-transform: uppercase;
-			color: var(--text-faint);
-			padding: 0 12px;
+			flex: 1 1 auto;
+			min-height: 144px;
+			overflow-y: auto;
+			overflow-x: hidden;
+			scrollbar-width: thin;
 		}
 		.tank {
-			height: 42px;
-			padding: 0 12px;
-			border-radius: 10px;
+			flex-shrink: 0;
 			display: flex;
 			align-items: center;
 			gap: 10px;
+			height: 48px;
+			padding: 0 8px;
 			font-size: 14px;
-			color: var(--text-2);
+			color: var(--text);
+			border-left: 3px solid transparent;
+			margin-left: -3px;
 		}
 		.tank:hover {
-			color: var(--text);
 			background: var(--surface);
 		}
 		.tank.current {
-			background: var(--surface-hi);
-			color: var(--text);
-			font-weight: 600;
+			background: var(--surface);
+			border-left-color: var(--accent);
+			font-weight: 800;
+		}
+		.thumb {
+			position: relative;
+			flex-shrink: 0;
+			display: flex;
+		}
+		.dot {
+			position: absolute;
+			top: -4px;
+			right: -4px;
+			width: 10px;
+			height: 10px;
+			background: var(--accent);
+			border: 2px solid var(--bg);
 		}
 		.tname {
 			flex: 1;
 			min-width: 0;
 			overflow: hidden;
 			text-overflow: ellipsis;
-			white-space: nowrap;
 		}
-		.good,
-		.nodata {
+		.st {
 			font-size: 12px;
-			font-weight: 600;
-			color: var(--ok);
+			font-weight: 800;
+		}
+		.st.bad {
+			color: var(--bad);
+		}
+		.more-tanks {
+			flex-shrink: 0;
+			border-top: 1px solid var(--divider);
+			padding: 6px 8px;
+			font-size: 12px;
+			font-weight: 800;
+			color: var(--text-muted);
 			white-space: nowrap;
 		}
-		.nodata {
+		.more-tanks:hover {
+			color: var(--accent);
+		}
+		.add {
+			flex-shrink: 0;
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			padding: 10px 8px;
+			font-size: 14px;
+			font-weight: 800;
+			color: var(--accent);
+		}
+		.add .plus {
+			width: 28px;
+			text-align: center;
+			font-size: 18px;
+			line-height: 1;
+		}
+		.rule {
+			height: 2px;
+			flex-shrink: 0;
+			background: var(--divider);
+		}
+		.links {
+			display: flex;
+			flex-direction: column;
+			min-width: 224px;
+			flex-shrink: 0;
+		}
+		.link {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			height: 44px;
+			padding: 0 8px;
+			font-size: 14px;
+			color: var(--text);
+			text-align: left;
+			width: 100%;
+		}
+		.link .lbl:first-of-type {
+			flex: 1;
+		}
+		.link:hover {
+			background: var(--surface);
+		}
+		.link.active {
+			background: var(--surface);
+			font-weight: 800;
+		}
+		.ic {
+			position: relative;
+			display: flex;
+			margin: 0 4px;
+			flex-shrink: 0;
+		}
+		.badge {
+			position: absolute;
+			top: -7px;
+			right: -8px;
+			min-width: 16px;
+			height: 16px;
+			padding: 0 3px;
+			background: var(--accent);
+			color: var(--on-accent);
+			font-size: 10px;
+			font-weight: 800;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			border: 2px solid var(--bg);
+			box-sizing: content-box;
+		}
+		.foot {
+			display: flex;
+			align-items: center;
+			gap: 6px;
+			padding: 12px 0 0;
+			border-top: 1px solid var(--divider);
+			min-width: 224px;
+			flex-shrink: 0;
+		}
+		.avatar {
+			position: relative;
+			flex-shrink: 0;
+			display: flex;
+		}
+		.upd {
+			position: absolute;
+			top: -2px;
+			right: -2px;
+			width: 16px;
+			height: 16px;
+			background: var(--accent);
+			color: var(--on-accent);
+			font-size: 11px;
+			font-weight: 800;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			pointer-events: none;
+		}
+		.me {
+			flex: 1;
+			min-width: 0;
+			display: flex;
+			flex-direction: column;
+			font-size: 13px;
+			line-height: 1.3;
+		}
+		.me-name {
+			font-weight: 600;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+		.ver {
+			font-size: 12px;
 			color: var(--text-muted);
 		}
+		.ver.update {
+			color: var(--accent);
+			font-weight: 800;
+		}
+		.ver:hover {
+			text-decoration: underline;
+		}
+
 		.main {
 			flex: 1;
 			min-width: 0;
 			display: flex;
 			flex-direction: column;
 		}
-		.topbar {
+		/* a page's title block (Tanks, Tasks, Settings, forms) */
+		.page-head {
 			display: flex;
-			align-items: center;
-			gap: 16px;
-			height: 72px;
-			padding: 0 32px;
-			border-bottom: 1px solid var(--border);
+			align-items: flex-end;
+			justify-content: space-between;
+			gap: 20px;
+			margin: 28px 32px 0;
+			padding-bottom: 16px;
+			border-bottom: 2px solid var(--divider);
 		}
-		.topbar.hero-page {
-			display: none;
-		}
-		.tank-pick {
-			position: relative;
-		}
-		.h-left {
-			display: flex;
-			align-items: center;
-			gap: 10px;
+		.ph-text {
 			min-width: 0;
+			display: flex;
+			flex-direction: column;
+			gap: 4px;
 		}
-		.h-title {
+		.page-head h1 {
 			margin: 0;
-			font-size: 22px;
-			font-weight: 600;
+			font-size: 42px;
 			white-space: nowrap;
 			overflow: hidden;
 			text-overflow: ellipsis;
@@ -731,61 +1010,64 @@
 			display: flex;
 			align-items: center;
 			gap: 8px;
-			flex-shrink: 0;
-			font-size: 15px;
-			font-weight: 600;
+			font-size: 13px;
+			font-weight: 700;
 		}
 		.crumbs .sep {
-			color: var(--accent);
-		}
-		.crumbs .sep:last-child {
-			margin-right: 2px;
-		}
-		.tank-mini {
-			display: inline-flex;
-			align-items: center;
-			gap: 6px;
-			min-height: 44px;
-			padding: 0 4px;
-			font-size: 15px;
 			color: var(--text-muted);
 		}
-		.tank-mini:hover {
-			color: var(--text);
+		.sub-head {
+			display: block;
+			margin: 24px 32px 0;
 		}
-		.h-action {
-			min-height: 44px;
+		.sub-head h2 {
+			margin: 0;
+			font-size: 28px;
 		}
-		.tank-btn {
-			display: flex;
-			align-items: center;
-			gap: 16px;
-			text-align: left;
+		.offline {
+			margin: 16px 32px 0;
 		}
-		.tb-text {
+		/* Setup: a 200px nav, then the page (max 880) */
+		.setup-grid {
+			display: grid;
+			grid-template-columns: 200px minmax(0, 1fr);
+			min-height: 100%;
+		}
+		.setup-nav {
 			display: flex;
 			flex-direction: column;
 			gap: 2px;
+			padding: 24px 12px 24px 32px;
+			border-right: 2px solid var(--divider);
+			position: sticky;
+			top: 0;
+			align-self: start;
 		}
-		.tb-name {
-			font-size: 20px;
-			font-weight: 600;
+		.setup-nav .caps {
+			padding: 0 8px 8px;
 		}
-		.caret {
-			font-size: 13px;
-			color: var(--text-muted);
+		.setup-nav a {
+			min-height: 40px;
+			padding: 8px 8px;
+			display: flex;
+			align-items: center;
+			font-size: 15px;
+			color: var(--text);
 		}
-		.tb-sub,
-		.tb-meta {
-			font-size: 13px;
-			color: var(--text-muted);
+		.setup-nav a:hover {
+			background: var(--surface);
 		}
-		.tb-meta {
-			font-size: 14px;
+		.setup-nav a.active {
+			background: var(--surface);
+			font-weight: 800;
 		}
-		.plus {
-			font-size: 20px;
-			font-weight: 400;
+		.setup-nav .archive {
+			margin-top: 12px;
+			color: var(--bad);
+		}
+		.setup-content {
+			min-width: 0;
+			max-width: 880px;
 		}
 	}
 </style>

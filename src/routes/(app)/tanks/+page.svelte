@@ -1,4 +1,8 @@
 <script lang="ts">
+	// Tanks (redesign README → Screens §1): a grid of cards, each with a 2px ink
+	// top rule, a 180px cover, the name at 22/800 with the spec kicker, a status
+	// tag and a next-task tag, then a meta line; a dashed Add tank tile; then
+	// Archived, with Restore. The desktop title and "+ Add tank" are the shell's.
 	import { tankTypeLabel } from '$lib/types';
 	import { enhance } from '$app/forms';
 	import EmptyState from '$lib/components/EmptyState.svelte';
@@ -13,8 +17,11 @@
 <div class="page">
 	<!-- the desktop header has the title and "Add tank" -->
 	<div class="head hide-desk">
-		<h1>Tanks</h1>
-		<a class="btn" href="/tanks/new">Add tank</a>
+		<div class="ph-text">
+			<span class="kicker">{data.tankCards.length} active{data.archived.length ? ` · ${data.archived.length} archived` : ''}</span>
+			<h1>Tanks</h1>
+		</div>
+		<a class="btn btn-primary" href="/tanks/new">+ Add tank</a>
 	</div>
 
 	{#if data.tankCards.length}
@@ -27,17 +34,17 @@
 					<div class="info">
 						<div class="row">
 							<h2>{t.name}</h2>
-							<span class="spec">{spec(t)}</span>
+							<span class="kicker spec">{spec(t)}</span>
 						</div>
 						<div class="tags">
-							<span class="status-tag tag-{t.status.level}">{t.status.text}</span>
-							{#if t.task}<span class="status-tag tag-{t.task.level}">{t.task.text}</span>{/if}
+							<span class="tag {t.status.level === 'bad' ? 'tag-accent' : 'tag-neutral'} status-tag tag-{t.status.level}">{t.status.text}</span>
+							{#if t.task}<span class="tag tag-neutral status-tag tag-{t.task.level}">{t.task.text}</span>{/if}
 						</div>
-						<p class="meta hide-phone">{t.meta}</p>
+						<p class="meta">{t.meta}</p>
 					</div>
 				</a>
 			{/each}
-			<a class="add-tile hide-phone" href="/tanks/new">
+			<a class="add-tile" href="/tanks/new">
 				<span class="plus" aria-hidden="true">+</span>
 				<span class="add-title">Add tank</span>
 				<span class="add-text">Freshwater, planted, brackish or reef</span>
@@ -56,7 +63,7 @@
 			<ul>
 				{#each data.archived as t (t.id)}
 					<li>
-						<span class="a-thumb"><TankThumb cover={t.cover} size={40} radius={8} /></span>
+						<span class="a-thumb"><TankThumb cover={t.cover} size={40} /></span>
 						<div class="a-text">
 							<span class="a-name">{t.name}</span>
 							<span class="a-meta"
@@ -79,43 +86,48 @@
 		padding: 8px 20px 24px;
 		display: flex;
 		flex-direction: column;
-		gap: 14px;
+		gap: 24px;
 	}
+	/* the phone head: kicker, title and the action, over a 2px rule */
 	.head {
 		display: flex;
 		justify-content: space-between;
-		align-items: center;
+		align-items: flex-end;
 		gap: 12px;
-		padding: 8px 0 2px;
+		padding: 12px 0 14px;
+		border-bottom: 2px solid var(--divider);
+	}
+	.ph-text {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		min-width: 0;
 	}
 	h1 {
 		margin: 0;
 		font-size: 28px;
-		font-weight: 600;
 	}
 	.grid {
 		display: grid;
-		gap: 14px;
+		grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+		gap: 24px;
 	}
-	/* The whole card opens the tank. */
+	/* The whole card opens the tank: a 2px ink rule, the cover, then the text. */
 	.tank {
 		display: flex;
 		flex-direction: column;
-		overflow: hidden;
-		border-radius: 18px;
-		background: var(--surface);
-		border: 1px solid var(--border);
+		border-top: 2px solid var(--ink);
 		color: var(--text);
 	}
-	.tank:hover {
-		color: var(--text);
-		border-color: var(--border-strong);
+	@media (hover: hover) {
+		.tank:hover {
+			color: var(--text);
+			background: var(--surface);
+		}
 	}
 	.cover {
-		height: 120px;
+		height: 180px;
 		flex-shrink: 0;
-		border: none;
-		border-bottom: 1px solid var(--border);
 		overflow: hidden;
 	}
 	.cover img {
@@ -125,7 +137,7 @@
 		display: block;
 	}
 	.info {
-		padding: 14px;
+		padding: 14px 12px 16px;
 		display: flex;
 		flex-direction: column;
 		gap: 10px;
@@ -139,16 +151,14 @@
 	h2 {
 		margin: 0;
 		min-width: 0;
-		font-size: 18px;
-		font-weight: 600;
+		font-size: 22px;
+		font-weight: 800;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 	.spec {
 		flex-shrink: 0;
-		font-size: 13px;
-		color: var(--text-muted);
 		white-space: nowrap;
 	}
 	.tags {
@@ -156,59 +166,82 @@
 		flex-wrap: wrap;
 		gap: 8px;
 	}
+	/* the design's tags: 11px, a touch bolder */
+	.tags .tag {
+		height: auto;
+		padding: 3px 10px;
+		font-size: 11px;
+		font-weight: 600;
+		letter-spacing: 0.02em;
+	}
+	.tags .tag-bad {
+		background: var(--accent-100);
+		color: var(--accent-800);
+		font-weight: 700;
+	}
+	.tags .tag-warn,
+	.tags .tag-ok,
+	.tags .tag-none {
+		background: var(--surface);
+		color: var(--text);
+	}
+	.tags .tag-warn {
+		font-weight: 700;
+	}
+	.tags .tag-none {
+		color: var(--text-muted);
+	}
 	.meta {
 		margin: 0;
 		font-size: 13px;
-		color: var(--text-faint);
+		color: var(--text-muted);
 	}
 	.add-tile {
 		min-height: 300px;
-		border-radius: 18px;
-		border: 1px dashed var(--border-strong);
+		border: 2px dashed var(--divider);
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		gap: 8px;
+		gap: 6px;
 		padding: 20px;
 		text-align: center;
 		color: var(--text);
 	}
-	.add-tile:hover {
-		color: var(--text);
-		background: var(--surface);
+	@media (hover: hover) {
+		.add-tile:hover {
+			color: var(--text);
+			border-color: var(--accent);
+		}
 	}
 	.plus {
-		font-size: 30px;
+		font-size: 32px;
 		line-height: 1;
 		color: var(--accent);
 	}
 	.add-title {
 		font-size: 16px;
-		font-weight: 600;
+		font-weight: 800;
 	}
 	.add-text {
 		font-size: 13px;
 		color: var(--text-muted);
 	}
 
-	/* Archived: one collapsible card (09 phone row, D3 desktop list) */
+	/* Archived: a 2px rule, the toggle row, then rows with 1px dividers */
 	.archived {
-		border-radius: 14px;
-		border: 1px solid var(--border);
+		border-top: 2px solid var(--divider);
 	}
 	.archived summary {
 		list-style: none;
 		min-height: 52px;
-		padding: 0 16px;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: 12px;
 		font-size: 15px;
-		color: var(--text-muted);
+		font-weight: 600;
 		cursor: pointer;
-		border-radius: 14px;
 	}
 	.archived summary::-webkit-details-marker {
 		display: none;
@@ -221,10 +254,6 @@
 	.archived[open] .chev {
 		transform: rotate(90deg);
 	}
-	.archived[open] summary {
-		border-bottom: 1px solid var(--border);
-		border-radius: 14px 14px 0 0;
-	}
 	.archived ul {
 		list-style: none;
 		margin: 0;
@@ -232,14 +261,12 @@
 	}
 	.archived li {
 		min-height: 60px;
-		padding: 8px 8px 8px 16px;
+		padding: 10px 0;
 		display: flex;
 		align-items: center;
 		gap: 14px;
 		font-size: 15px;
-	}
-	.archived li + li {
-		border-top: 1px solid var(--divider-soft);
+		border-top: 1px solid var(--divider);
 	}
 	.a-thumb {
 		opacity: 0.6;
@@ -249,11 +276,9 @@
 		min-width: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 2px;
 	}
 	.a-name {
 		font-weight: 600;
-		color: var(--text-2);
 	}
 	.a-meta {
 		font-size: 13px;
@@ -262,34 +287,15 @@
 	.nowrap {
 		white-space: nowrap;
 	}
-
-	@media (hover: hover) {
-		.archived summary:hover {
-			color: var(--text);
+	/* phones: the card's tags may be narrower; the add tile is shorter */
+	@media (max-width: 1023px) {
+		.add-tile {
+			min-height: 140px;
 		}
 	}
 	@media (min-width: 1024px) {
 		.page {
-			padding: 28px 32px;
-			gap: 22px;
-		}
-		.grid {
-			grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-			gap: 18px;
-		}
-		.cover {
-			height: 180px;
-		}
-		.info {
-			padding: 16px;
-			gap: 12px;
-		}
-		h2 {
-			font-size: 20px;
-		}
-		.archived summary {
-			font-weight: 600;
-			color: var(--text);
+			padding: 28px 32px 48px;
 		}
 	}
 </style>

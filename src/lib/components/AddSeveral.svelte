@@ -1,7 +1,9 @@
 <script lang="ts">
-	// Add several livestock or plants at once: search the species list, tick as
-	// many as you like, set each one's count (or where a plant goes), and add
-	// them together. Without scripts, a list typed one per line does the same.
+	// Add several livestock or plants at once (README → Screens §6, Add several):
+	// "One per row" searches the species list and lists what's picked as rows with
+	// a − n + stepper and a type select; "Paste a list" takes `6 Neon tetra`,
+	// `Otocinclus x 5` or `Amano shrimp, 3` and shows how each line was read.
+	// Without scripts, the typed list alone does the same (the server parses it).
 	import { enhance } from '$app/forms';
 	import { onMount, untrack } from 'svelte';
 	import DateField from './DateField.svelte';
@@ -54,10 +56,12 @@
 
 	let js = $state(false);
 	onMount(() => (js = true));
+	let mode = $state<'rows' | 'paste'>('rows');
 	let q = $state('');
 	let results = $state<Species[]>([]);
 	let searching = $state(false);
 	let picked = $state<Picked[]>([]);
+	let paste = $state('');
 	let addedAt = $state(untrack(() => today));
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	let seq = 0;
@@ -100,15 +104,42 @@
 				position: 'midground'
 			});
 	}
+	function addCustom(name: string, count = 1) {
+		const key = `custom:${name.toLowerCase()}`;
+		if (!isPicked(key)) picked.push({ key, name, scientific: null, kind: 'fish', custom: true, count, position: 'midground' });
+	}
 	function addTyped() {
 		const name = q.trim().slice(0, 80);
 		if (!name) return;
-		const key = `custom:${name.toLowerCase()}`;
-		if (!isPicked(key)) picked.push({ key, name, scientific: null, kind: 'fish', custom: true, count: 1, position: 'midground' });
+		addCustom(name);
 		q = '';
 		results = [];
 	}
 	const exact = $derived(results.some((r) => [r.s, ...r.c].some((n) => n.toLowerCase() === q.trim().toLowerCase())));
+
+	// Paste a list: how each line reads (`6 Neon tetra`, `Otocinclus x 5`, `Amano shrimp, 3`)
+	function parseLine(line: string): { name: string; count: number } | null {
+		const t = line.trim().replace(/\s+/g, ' ');
+		if (!t) return null;
+		let m = t.match(/^(\d+)\s*[x×]?\s+(.+)$/i);
+		if (m) return { name: m[2].trim(), count: Number(m[1]) };
+		m = t.match(/^(.+?)\s*(?:[x×]\s*|,\s*)(\d+)$/i);
+		if (m) return { name: m[1].trim(), count: Number(m[2]) };
+		return { name: t, count: 1 };
+	}
+	const parsed = $derived(
+		paste
+			.split('\n')
+			.map(parseLine)
+			.filter((p): p is { name: string; count: number } => !!p)
+			.map((p) => ({ ...p, name: p.name.slice(0, 80), count: Math.max(1, Math.min(999, p.count || 1)) }))
+	);
+	// from the preview into rows, each one a name of your own (the datalist can still match it)
+	function toRows() {
+		for (const p of parsed) addCustom(p.name, p.count);
+		paste = '';
+		mode = 'rows';
+	}
 
 	const row = (p: Picked) =>
 		JSON.stringify(
@@ -116,14 +147,18 @@
 				? { name: p.name, scientific: p.scientific, position: p.position, status: 'thriving' }
 				: { kind: p.kind, name: p.name, scientific: p.scientific, count: Math.max(1, Math.round(Number(p.count) || 1)) }
 		);
-	const animals = $derived(picked.reduce((n, p) => n + Math.max(1, Math.round(Number(p.count) || 1)), 0));
+	const usingPaste = $derived(js && mode === 'paste');
+	const items = $derived(usingPaste ? parsed.length : picked.length);
+	const animals = $derived(
+		usingPaste ? parsed.reduce((n, p) => n + p.count, 0) : picked.reduce((n, p) => n + Math.max(1, Math.round(Number(p.count) || 1)), 0)
+	);
 	const saveLabel = $derived(
 		!js
 			? 'Add them'
 			: plants
-				? `Add ${picked.length || ''} plant${picked.length === 1 ? '' : 's'}`.replace('  ', ' ')
-				: picked.length
-					? `Add ${animals} animal${animals === 1 ? '' : 's'} · ${picked.length} species`
+				? `Add ${items || ''} plant${items === 1 ? '' : 's'}`.replace('  ', ' ')
+				: items
+					? `Add ${animals} animal${animals === 1 ? '' : 's'} · ${items} species`
 					: 'Add species'
 	);
 	let busy = $state(false);
@@ -144,12 +179,19 @@
 	<div class="bar hide-desk">
 		<a class="cancel" href={back}>Cancel</a>
 		<h1>{plants ? 'Add several plants' : 'Add several'}</h1>
-		<button class="save-top" disabled={busy || (js && !picked.length)}>Add</button>
+		<button class="save-top" disabled={busy || (js && !items)}>Add</button>
 	</div>
 	<div class="body">
 		{#if error}<p class="banner banner-bad" role="alert">✕ {error}</p>{/if}
 
 		{#if js}
+			<div class="segmented modes" role="group" aria-label="How to add them">
+				<label><input type="radio" name="mode" value="rows" bind:group={mode} />One per row</label>
+				<label><input type="radio" name="mode" value="paste" bind:group={mode} />Paste a list</label>
+			</div>
+		{/if}
+
+		{#if js && mode === 'rows'}
 			<div class="field">
 				<label class="label" for="several-q">{plants ? 'Search plants' : 'Search species'}</label>
 				<input
@@ -166,14 +208,14 @@
 						}
 					}}
 					autocomplete="off"
-					placeholder={plants ? 'e.g. Java fern, Monte Carlo' : 'e.g. Neon tetra, Amano shrimp'}
+					placeholder="Search species, or type your own"
 					aria-describedby="several-hint"
 				/>
 				<span id="several-hint" class="hint">Tick as many as you like; each gets its own {plants ? 'place' : 'count'} below.</span>
 			</div>
 
 			{#if results.length || (q.trim().length >= 2 && !searching)}
-				<ul class="card results" aria-label="Matches">
+				<ul class="results" aria-label="Matches">
 					{#each results as s (s.s)}
 						{@const on = isPicked(keyOf(s))}
 						<li>
@@ -187,7 +229,7 @@
 						<li>
 							<button type="button" class="res" onclick={addTyped}>
 								<span class="tick" aria-hidden="true">+</span>
-								<span class="r-text"><span class="r-name">Add “{q.trim()}”</span><span class="r-sci">Not in the species list: a name of your own</span></span>
+								<span class="r-text"><span class="r-name">Add “{q.trim()}”</span><span class="r-sci plain">Your own name · no care ranges</span></span>
 							</button>
 						</li>
 					{/if}
@@ -195,31 +237,34 @@
 			{/if}
 
 			<section class="picked" aria-labelledby="picked-h">
-				<h2 id="picked-h" class="caps">{picked.length ? `Adding · ${picked.length}` : 'Nothing picked yet'}</h2>
+				<div class="thead" class:plants>
+					<h2 id="picked-h" class="kicker">{picked.length ? `Adding · ${picked.length}` : 'Nothing picked yet'}</h2>
+					{#if picked.length}<span class="kicker">{plants ? 'Where' : 'How many'}</span><span class="kicker">{plants ? '' : 'Type'}</span><span></span>{/if}
+				</div>
 				{#if picked.length}
-					<ul class="card list">
+					<ul class="list">
 						{#each picked as p, i (p.key)}
-							<li>
+							<li class="prow" class:plants>
 								<input type="hidden" name="row" value={row(p)} />
 								<div class="p-text">
 									<span class="p-name">{p.name}</span>
-									{#if p.scientific && p.scientific !== p.name}<span class="p-sci">{p.scientific}</span>{/if}
-									{#if !plants && p.custom}
-										<select class="kind" bind:value={p.kind} aria-label="{p.name}: fish, invert or coral">
-											{#each KINDS as k (k.value)}<option value={k.value}>{k.label}</option>{/each}
-										</select>
-									{/if}
+									<span class="p-sci" class:plain={!p.scientific || p.scientific === p.name}>
+										{p.scientific && p.scientific !== p.name ? p.scientific : 'Your own name · no care ranges'}
+									</span>
 								</div>
 								{#if plants}
 									<select class="input pos" bind:value={p.position} aria-label="Where {p.name} goes">
 										{#each POSITIONS as o (o.value)}<option value={o.value}>{o.label}</option>{/each}
 									</select>
 								{:else}
-									<div class="count-stepper">
+									<div class="stepper">
 										<button type="button" aria-label="Fewer {p.name}" disabled={Number(p.count) <= 1} onclick={() => (p.count = Math.max(1, Number(p.count) - 1))}>−</button>
 										<input inputmode="numeric" bind:value={p.count} aria-label="How many {p.name}" />
 										<button type="button" aria-label="More {p.name}" onclick={() => (p.count = (Number(p.count) || 0) + 1)}>+</button>
 									</div>
+									<select class="input kind" bind:value={p.kind} aria-label="{p.name}: fish, invert or coral">
+										{#each KINDS as k (k.value)}<option value={k.value}>{k.label}</option>{/each}
+									</select>
 								{/if}
 								<button type="button" class="remove" aria-label="Take {p.name} off the list" onclick={() => picked.splice(i, 1)}>✕</button>
 							</li>
@@ -230,44 +275,63 @@
 				{/if}
 			</section>
 		{:else}
-			<!-- without scripts: a typed list -->
+			<!-- a typed list: the only way without scripts, "Paste a list" with them -->
 			<div class="field">
 				<label class="label" for="several-lines">{plants ? 'Plants, one per line' : 'Species, one per line, with how many'}</label>
-				<textarea class="input" id="several-lines" name="lines" rows="6" placeholder={plants ? 'Java fern\nMonte Carlo' : '6 Neon tetra\n3 Amano shrimp'}></textarea>
+				<textarea
+					class="input lines"
+					id="several-lines"
+					name="lines"
+					rows="5"
+					bind:value={paste}
+					placeholder={plants ? 'Java fern\nMonte Carlo' : '6 Harlequin rasbora\nOtocinclus x 5\nAmano shrimp, 3'}
+				></textarea>
 			</div>
-		{/if}
-
-		<div class="field">
-			<label class="label" for="several-added">Added</label>
-			<DateField name="addedAt" id="several-added" bind:value={addedAt} label="Added" {today} max={today} required />
-		</div>
-		{#if !plants}
-			<fieldset class="field">
-				<legend class="label">Status</legend>
-				<div class="segmented">
-					<label><input type="radio" name="status" value="in_tank" defaultChecked />In tank</label>
-					<label><input type="radio" name="status" value="quarantine" />Quarantine</label>
+			{#if js && parsed.length}
+				<div class="read">
+					<span class="kicker rule">Read as</span>
+					{#each parsed as p, i (i)}
+						<div class="read-row" class:plants>
+							{#if !plants}<span class="read-n">{p.count} ×</span>{/if}
+							<span class="read-name">{p.name}</span>
+						</div>
+					{/each}
 				</div>
-			</fieldset>
-			<div class="field">
-				<label class="label" for="several-source">Source · optional</label>
-				<input class="input" id="several-source" name="source" maxlength="120" placeholder="Store, breeder, price" />
-			</div>
+				<button type="button" class="ghost edit-rows" onclick={toRows}>Edit as rows ›</button>
+			{/if}
 		{/if}
 
-		<p class="hint">
-			Each is added to History, and adding one that's already in the tank adds to its count. Undo takes them all back.
-		</p>
+		<div class="shared">
+			<div class="field">
+				<label class="label" for="several-added">Added</label>
+				<DateField name="addedAt" id="several-added" bind:value={addedAt} label="Added" {today} max={today} required />
+			</div>
+			{#if !plants}
+				<fieldset class="field">
+					<legend class="label">Where · all of them</legend>
+					<div class="segmented where">
+						<label><input type="radio" name="status" value="in_tank" defaultChecked />In tank</label>
+						<label><input type="radio" name="status" value="quarantine" />Quarantine</label>
+					</div>
+				</fieldset>
+				<div class="field from">
+					<label class="label" for="several-source">From (optional)</label>
+					<input class="input" id="several-source" name="source" maxlength="120" placeholder="e.g. local fish store" />
+				</div>
+			{/if}
+		</div>
+
+		<p class="hint">▲ Each is added to History, and adding one that's already in the tank adds to its count. Undo takes them all back.</p>
 	</div>
 	<div class="foot">
-		<a class="btn hide-phone" href={back}>Cancel</a>
-		<button class="btn btn-primary add" disabled={busy || (js && !picked.length)}>{saveLabel}</button>
+		<button class="btn btn-primary add" disabled={busy || (js && !items)}>{saveLabel}<span class="key hide-phone" aria-hidden="true">⌘↵</span></button>
+		<a class="ghost hide-phone" href={back}>Cancel</a>
 	</div>
 </form>
 
 <style>
 	.lform {
-		max-width: 560px;
+		max-width: 760px;
 		min-height: 100dvh;
 		display: flex;
 		flex-direction: column;
@@ -289,12 +353,12 @@
 	h1 {
 		margin: 0;
 		font-size: 17px;
-		font-weight: 600;
+		font-weight: 800;
 	}
 	.save-top {
 		justify-self: end;
 		color: var(--accent);
-		font-weight: 700;
+		font-weight: 800;
 		font-size: 16px;
 		min-height: 44px;
 	}
@@ -306,7 +370,13 @@
 		padding: 8px 20px 12px;
 		display: flex;
 		flex-direction: column;
-		gap: 18px;
+		gap: 16px;
+	}
+	.modes {
+		align-self: flex-start;
+	}
+	.modes label {
+		padding: 0 16px;
 	}
 	fieldset {
 		border: none;
@@ -315,22 +385,32 @@
 	}
 	legend {
 		padding: 0;
-		margin-bottom: 8px;
+		margin-bottom: 6px;
 	}
-	textarea.input {
-		height: auto;
-		padding: 12px 14px;
-		line-height: 1.5;
+	.ghost {
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		padding: 0 8px;
+		font-size: 14px;
+		font-weight: 800;
+		color: var(--accent);
+		white-space: nowrap;
+	}
+	.lines {
+		font-family: ui-monospace, Menlo, monospace;
+		font-size: 13px;
+		line-height: 1.6;
 	}
 	/* matches, each a toggle */
 	.results {
 		margin: -8px 0 0;
 		padding: 0;
 		list-style: none;
-		overflow: hidden;
+		border: 1px solid var(--divider);
 	}
 	.results li + li {
-		border-top: 1px solid var(--border);
+		border-top: 1px solid var(--divider);
 	}
 	.res {
 		width: 100%;
@@ -342,12 +422,7 @@
 		text-align: left;
 	}
 	.res[aria-pressed='true'] {
-		background: var(--selected);
-	}
-	@media (hover: hover) {
-		.res:hover {
-			background: var(--surface-hi);
-		}
+		background: var(--surface);
 	}
 	.tick {
 		width: 28px;
@@ -356,9 +431,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		border-radius: 8px;
-		border: 1px solid var(--border-strong);
-		font-weight: 700;
+		border: 1px solid var(--divider);
+		font-weight: 800;
 		color: var(--accent);
 	}
 	.res[aria-pressed='true'] .tick {
@@ -382,151 +456,265 @@
 	}
 	.r-sci,
 	.p-sci {
-		font-size: 13px;
+		font-size: 12px;
 		font-style: italic;
 		color: var(--text-muted);
 	}
+	.r-sci.plain,
+	.p-sci.plain {
+		font-style: normal;
+	}
+	/* the picked rows: Species · How many · Type · remove, under a 2px rule */
 	.picked {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
 	}
-	.picked h2 {
+	.thead {
+		display: flex;
+		padding-bottom: 6px;
+		border-bottom: 2px solid var(--ink);
+	}
+	.thead h2 {
 		margin: 0;
-		font-size: 12px;
-		font-weight: 700;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		color: var(--text-muted);
+		font-weight: 400;
+	}
+	.thead .kicker:not(h2),
+	.thead > span {
+		display: none;
 	}
 	.list {
 		margin: 0;
 		padding: 0;
 		list-style: none;
 	}
-	.list li {
-		display: flex;
+	.prow {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		grid-template-areas: 'text remove' 'ctl ctl';
 		align-items: center;
-		gap: 10px;
-		padding: 8px 8px 8px 14px;
-		min-height: 60px;
+		gap: 8px 10px;
+		padding: 10px 0;
+		border-bottom: 1px solid var(--divider);
 	}
-	.list li + li {
-		border-top: 1px solid var(--border);
+	.p-text {
+		grid-area: text;
+	}
+	.stepper,
+	.kind,
+	.pos {
+		grid-area: ctl;
+	}
+	.prow:not(.plants) .stepper {
+		grid-area: auto;
+	}
+	.prow:not(.plants) {
+		grid-template-areas: 'text remove' 'step kind';
+		grid-template-columns: minmax(0, 1fr) auto;
+	}
+	.prow:not(.plants) .stepper {
+		grid-area: step;
+		justify-self: start;
+	}
+	.prow:not(.plants) .kind {
+		grid-area: kind;
+	}
+	.remove {
+		grid-area: remove;
+	}
+	.kind,
+	.pos {
+		height: 44px;
 	}
 	.kind {
-		align-self: flex-start;
-		margin-top: 2px;
-		min-height: 32px;
-		border-radius: 8px;
-		border: 1px solid var(--border);
-		background: var(--surface-2);
-		color: var(--text-2);
-		font-size: 13px;
-		padding: 0 6px;
+		width: 150px;
 	}
-	.count-stepper {
-		display: flex;
-		width: 128px;
-		flex-shrink: 0;
+	/* − n + : three boxes in a row */
+	.stepper {
+		display: grid;
+		grid-template-columns: 40px 52px 40px;
 		height: 44px;
-		padding: 0 2px;
-		background: var(--surface-2);
-		border-color: var(--border);
 	}
-	.count-stepper input {
-		flex: 1;
-		align-self: stretch;
-		width: 0;
-		font-size: 16px;
-		font-weight: 700;
+	.stepper button {
+		border: 1px solid var(--divider);
+		font-size: 18px;
+		color: var(--text);
 	}
-	.count-stepper button {
-		font-size: 20px;
-		color: var(--text-2);
-		border-radius: 10px;
+	.stepper button:first-child {
+		border-right: none;
 	}
-	.count-stepper button:disabled {
+	.stepper button:last-child {
+		border-left: none;
+	}
+	.stepper button:disabled {
 		color: var(--placeholder);
 	}
-	.pos {
-		width: 150px;
-		flex-shrink: 0;
-		height: 44px;
+	.stepper input {
+		width: 100%;
+		height: 100%;
+		border: 1px solid var(--divider);
+		background: var(--surface);
+		text-align: center;
+		font-size: 16px;
+		font-weight: 800;
+		padding: 0;
+		outline: none;
+	}
+	.stepper input:focus {
+		border-color: var(--accent);
 	}
 	.remove {
 		width: 44px;
 		height: 44px;
 		flex-shrink: 0;
-		border-radius: 10px;
 		color: var(--text-muted);
-	}
-	@media (hover: hover) {
-		.remove:hover {
-			background: var(--surface-hi);
-			color: var(--text);
-		}
+		font-size: 15px;
 	}
 	.none {
 		margin: 0;
+		padding: 12px 0;
 		font-size: 14px;
-		color: var(--text-faint);
+		color: var(--text-muted);
+	}
+	/* Paste a list: how each line was read */
+	.read {
+		display: flex;
+		flex-direction: column;
+	}
+	.rule {
+		padding-bottom: 6px;
+		border-bottom: 2px solid var(--ink);
+	}
+	.read-row {
+		display: grid;
+		grid-template-columns: 48px minmax(0, 1fr);
+		gap: 10px;
+		align-items: baseline;
+		padding: 7px 0;
+		border-bottom: 1px solid var(--divider);
+		font-size: 14px;
+	}
+	.read-row.plants {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.read-n {
+		font-weight: 800;
+	}
+	.read-name {
+		font-weight: 600;
+	}
+	.edit-rows {
+		align-self: flex-start;
+		margin-top: -8px;
+		padding: 0 4px;
+	}
+	/* shared fields, past a 2px rule: Added · Where · From */
+	.shared {
+		display: grid;
+		gap: 14px;
+		padding-top: 14px;
+		border-top: 2px solid var(--divider);
+	}
+	.where label {
+		padding: 0 16px;
 	}
 	.hint {
 		margin: 0;
 		font-size: 13px;
-		color: var(--text-faint);
+		color: var(--text-muted);
 		line-height: 1.5;
 	}
 	.foot {
 		padding: 8px 20px calc(24px + env(safe-area-inset-bottom));
 		display: flex;
-		gap: 12px;
+		gap: 10px;
 	}
 	.add {
 		flex: 1;
-		height: 56px;
-		border-radius: 14px;
-		font-size: 17px;
+		height: 52px;
+		font-size: 16px;
+		justify-content: space-between;
+	}
+	.add .key {
+		font-weight: 400;
+		opacity: 0.85;
+	}
+	@media (hover: hover) {
+		.res:hover,
+		.stepper button:not(:disabled):hover,
+		.remove:hover {
+			background: color-mix(in srgb, var(--text) 7%, transparent);
+		}
+		.ghost:hover {
+			background: color-mix(in srgb, var(--accent) 10%, transparent);
+		}
 	}
 	@media (min-width: 1024px) {
 		.lform {
 			min-height: 0;
-			max-width: 680px;
-			margin: 28px auto;
-			padding: 24px 28px;
-			background: var(--surface);
-			border: 1px solid var(--border);
-			border-radius: 20px;
+			padding: 24px 32px 40px;
 		}
 		.body {
 			padding: 0;
 		}
-		.lform :global(.input) {
-			background-color: var(--surface-2);
-			border-color: var(--border-strong);
+		.thead,
+		.prow,
+		.prow:not(.plants) {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) 132px 150px 36px;
+			grid-template-areas: none;
+			gap: 10px;
 		}
-		.segmented {
-			background: var(--surface-2);
+		.thead .kicker:not(h2),
+		.thead > span {
+			display: block;
 		}
-		.results,
-		.list {
-			background: var(--surface-2);
+		.thead.plants {
+			grid-template-columns: minmax(0, 1fr) 150px 36px;
+		}
+		.thead.plants > span:nth-child(3) {
+			display: none;
+		}
+		.prow.plants {
+			grid-template-columns: minmax(0, 1fr) 150px 36px;
+		}
+		.p-text,
+		.stepper,
+		.prow:not(.plants) .stepper,
+		.prow:not(.plants) .kind,
+		.kind,
+		.pos,
+		.remove {
+			grid-area: auto;
+		}
+		.stepper {
+			grid-template-columns: 36px minmax(0, 1fr) 36px;
+			height: 40px;
+		}
+		.kind,
+		.pos {
+			width: auto;
+			height: 40px;
+		}
+		.remove {
+			width: 36px;
+			height: 40px;
+		}
+		.shared {
+			grid-template-columns: auto minmax(0, 1fr);
+			gap: 12px 20px;
+			align-items: end;
+		}
+		.shared > .field:first-child {
+			grid-column: 1 / -1;
+			max-width: 240px;
 		}
 		.foot {
-			margin-top: 24px;
-			padding: 20px 0 0;
-			border-top: 1px solid var(--border);
-			justify-content: flex-end;
-		}
-		.foot .btn {
-			height: 44px;
+			margin-top: 8px;
+			padding: 0;
 		}
 		.add {
-			flex: none;
-			padding: 0 22px;
-			border-radius: 12px;
-			font-size: 15px;
+			height: 44px;
+			font-size: 14px;
 		}
 	}
 </style>

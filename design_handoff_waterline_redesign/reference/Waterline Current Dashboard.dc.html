@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@font-face{font-family:'IBM Plex Mono';src:url('static/fonts/IBMPlexMono-Regular.woff2') format('woff2');font-weight:400}
+@font-face{font-family:'IBM Plex Mono';src:url('static/fonts/IBMPlexMono-Medium.woff2') format('woff2');font-weight:500}
+@font-face{font-family:'IBM Plex Mono';src:url('static/fonts/IBMPlexMono-SemiBold.woff2') format('woff2');font-weight:600}
+body{margin:0;background:#e9eeed;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.4;color:#0f2126;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#197474;text-decoration:none}
+a:hover{color:#146262}
+</style>
+</helmet>
+<div data-screen-label="Current dashboard" style="width:1280px;min-height:800px;display:flex;background:#f4f7f6;">
+  <aside style="display:flex;flex-direction:column;gap:26px;width:232px;flex-shrink:0;background:#eef3f2;border-right:1px solid #d5e0df;padding:22px 14px;min-height:100%;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <a href="#" style="padding:0 8px;color:#0f2126;display:inline-flex;align-items:center;gap:7.5px;">
+        <svg width="28" height="28" viewBox="0 0 56 56"><defs><clipPath id="wlc"><circle cx="28" cy="28" r="19"></circle></clipPath></defs><rect x="0" y="31" width="56" height="30" fill="#197474" clip-path="url(#wlc)"></rect><circle cx="28" cy="28" r="24.5" fill="none" stroke="#0f2126" stroke-width="4"></circle></svg>
+        <span style="font-size:19px;font-weight:600;letter-spacing:-0.02em;">Waterline</span>
+      </a>
+      <span style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;"><span style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#dcefed;border:1px solid #d5e0df;color:#197474;font-size:14px;font-weight:700;letter-spacing:0.02em;">JR</span></span>
+    </div>
+    <nav style="display:flex;flex-direction:column;gap:2px;">
+      <a href="#" style="height:40px;padding:0 12px;border-radius:10px;display:flex;align-items:center;justify-content:space-between;font-size:15px;background:#dcefed;color:#197474;font-weight:600;">Dashboard</a>
+      <a href="#" style="height:40px;padding:0 12px;border-radius:10px;display:flex;align-items:center;font-size:15px;color:#3f5559;" style-hover="background:#ffffff">Tanks</a>
+      <a href="#" style="height:40px;padding:0 12px;border-radius:10px;display:flex;align-items:center;justify-content:space-between;font-size:15px;color:#3f5559;" style-hover="background:#ffffff"><span>Tasks</span><span style="font-size:12px;font-weight:700;background:#fbe9e5;color:#8f2f1f;padding:2px 8px;border-radius:10px;">1 overdue</span></a>
+      <a href="#" style="height:40px;padding:0 12px;border-radius:10px;display:flex;align-items:center;font-size:15px;color:#3f5559;" style-hover="background:#ffffff">History</a>
+      <a href="#" style="height:40px;padding:0 12px;border-radius:10px;display:flex;align-items:center;font-size:15px;color:#3f5559;" style-hover="background:#ffffff">Charts</a>
+      <a href="#" style="height:40px;padding:0 12px;border-radius:10px;display:flex;align-items:center;font-size:15px;color:#3f5559;" style-hover="background:#ffffff">Photos</a>
+    </nav>
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <div style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#586e71;padding:0 12px;">Tanks</div>
+      <a href="#" style="height:42px;padding:0 12px;border-radius:10px;display:flex;align-items:center;gap:10px;font-size:14px;background:#eaf0ef;color:#0f2126;font-weight:600;"><span style="width:22px;height:22px;border-radius:6px;background:repeating-linear-gradient(135deg,#e1e9e8 0 5px,#eaf0ef 5px 10px);border:1px solid #d5e0df;"></span><span style="flex:1;">Riverbed 40</span><span style="font-size:12px;font-weight:700;background:#fbe9e5;color:#8f2f1f;padding:2px 7px;border-radius:10px;">3 alerts</span></a>
+      <a href="#" style="height:42px;padding:0 12px;border-radius:10px;display:flex;align-items:center;gap:10px;font-size:14px;color:#3f5559;"><span style="width:22px;height:22px;border-radius:6px;background:repeating-linear-gradient(135deg,#e1e9e8 0 5px,#eaf0ef 5px 10px);border:1px solid #d5e0df;"></span><span style="flex:1;">Reef 24</span><span style="font-size:12px;font-weight:600;color:#1d7a47;">All good</span></a>
+      <a href="#" style="height:42px;padding:0 12px;border-radius:10px;display:flex;align-items:center;gap:10px;font-size:14px;color:#3f5559;"><span style="width:22px;height:22px;border-radius:6px;background:repeating-linear-gradient(135deg,#e1e9e8 0 5px,#eaf0ef 5px 10px);border:1px solid #d5e0df;"></span><span style="flex:1;">Shrimp 10</span><span style="font-size:12px;font-weight:600;color:#1d7a47;">All good</span></a>
+    </div>
+    <div style="flex:1;"></div>
+    <a href="#" style="height:40px;padding:0 12px;border-radius:10px;display:flex;align-items:center;font-size:15px;color:#3f5559;">Settings</a>
+    <a href="#" style="min-height:44px;padding:4px 12px;display:flex;flex-direction:column;justify-content:center;font-size:12px;color:#586e71;">Waterline v1.9.1</a>
+  </aside>
+
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
+    <div style="padding:28px 32px;display:flex;flex-direction:column;gap:16px;">
+      <div style="position:relative;height:200px;margin:-28px -32px 0;display:flex;flex-direction:column;justify-content:space-between;padding:18px 32px 16px;isolation:isolate;">
+        <div style="position:absolute;inset:0;z-index:-1;overflow:hidden;">
+          <div style="width:100%;height:100%;background:repeating-linear-gradient(135deg,#e1e9e8 0 5px,#eaf0ef 5px 10px);"></div>
+          <div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent,#f4f7f6 85%);"></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;align-items:flex-start;gap:10px;">
+          <a href="#" style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 16px 0 13px;border-radius:12px;background:rgba(255,255,255,0.92);border:1px solid #bccccb;color:#0f2126;font-size:15px;font-weight:600;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <span>Tank settings</span>
+          </a>
+          <button style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 18px;border-radius:12px;background:#197474;border:1px solid #197474;color:#fff;font:inherit;font-size:15px;font-weight:700;cursor:pointer;"><span>+</span> Quick add</button>
+        </div>
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;">
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <span style="display:inline-flex;align-items:center;gap:8px;min-height:44px;font-size:32px;font-weight:700;line-height:1.15;">Riverbed 40 <span style="font-size:16px;color:#4f666b;">▾</span></span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.02em;text-transform:uppercase;color:#3f5559;">Planted · 40 gal · Day 201</span>
+          </div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.02em;text-transform:uppercase;color:#3f5559;padding-bottom:2px;">Last test today, 8:12 AM</span>
+        </div>
+      </div>
+      <div style="height:2px;background:linear-gradient(to right,#197474,transparent);"></div>
+
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:28px;">
+        <div style="display:flex;flex-direction:column;gap:24px;min-width:0;">
+          <section style="display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;"><h2 style="margin:0;font-size:17px;font-weight:600;">Needs attention</h2><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.02em;text-transform:uppercase;color:#4f666b;">Today, 8:12 AM</span></div>
+            <div style="border-radius:16px;background:#fff;border:1px solid #d5e0df;display:flex;flex-direction:column;overflow:hidden;">
+              <sc-for list="{{ attention }}" as="r" hint-placeholder-count="3">
+                <a href="#" style="display:grid;grid-template-columns:minmax(0,1fr) 160px 110px;align-items:center;gap:20px;padding:14px 20px;color:#0f2126;border-bottom:1px solid #e1e9e8;" style-hover="background:#eaf0ef">
+                  <span style="display:flex;flex-direction:column;gap:3px;"><span><span style="font-size:16px;font-weight:600;">{{ r.name }}</span> <span style="font-size:13px;font-weight:600;color:{{ r.color }};">{{ r.status }}</span></span><span style="font-size:13px;color:#4f666b;">Target {{ r.target }}</span></span>
+                  <svg viewBox="0 0 100 24" preserveAspectRatio="none" style="width:100%;height:24px;overflow:visible;"><rect x="0" width="100" y="{{ r.bandY }}" height="{{ r.bandH }}" fill="rgba(25,116,116,0.1)"></rect><polyline points="{{ r.pts }}" fill="none" stroke="{{ r.color }}" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline></svg>
+                  <span style="display:flex;align-items:baseline;justify-content:flex-end;gap:4px;"><span style="font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:24px;line-height:1;">{{ r.value }}</span><span style="font-size:11px;color:#4f666b;">{{ r.unit }}</span></span>
+                </a>
+              </sc-for>
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) 160px 110px;align-items:center;gap:20px;padding:14px 20px;">
+                <span style="display:flex;flex-direction:column;gap:3px;"><span><span style="font-size:16px;font-weight:600;">Water change</span> <span style="font-size:13px;font-weight:600;color:#8a6300;">▲ 1 day over</span></span><span style="font-size:13px;color:#4f666b;">Every 7 days · last Sep 19</span></span>
+                <span style="display:flex;height:6px;border-radius:3px;background:#eaf0ef;overflow:hidden;"><i style="display:block;width:87.5%;background:#197474;"></i><i style="display:block;width:12.5%;background:#c99a1e;"></i></span>
+                <span style="display:flex;justify-content:flex-end;"><span style="font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:15px;color:#3f5559;">8 / 7 d</span></span>
+              </div>
+            </div>
+          </section>
+
+          <section style="display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;"><h2 style="margin:0;font-size:17px;font-weight:600;">In range</h2><span style="font-size:13px;font-weight:700;color:#1d7a47;">✓ 8 of 11</span></div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px;">
+              <sc-for list="{{ inRange }}" as="p" hint-placeholder-count="8">
+                <a href="#" style="display:flex;flex-direction:column;gap:2px;padding:10px 12px 11px;border-radius:12px;background:#fff;border:1px solid #d5e0df;color:#0f2126;" style-hover="border-color:#197474">
+                  <span style="font-size:13px;color:#4f666b;"><span style="margin-right:5px;font-weight:700;color:#1d7a47;">✓</span>{{ p.k }}</span>
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;white-space:nowrap;">{{ p.v }}<span style="margin-left:2px;font-size:12px;font-weight:400;color:#4f666b;">{{ p.u }}</span></span>
+                </a>
+              </sc-for>
+            </div>
+          </section>
+
+          <section style="display:flex;flex-direction:column;gap:14px;padding:18px 20px;border-radius:16px;background:#fff;border:1px solid #d5e0df;">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;"><h2 style="margin:0;font-size:17px;font-weight:600;">Trends <span style="font-size:13px;font-weight:400;color:#4f666b;">· Last 4 weeks</span></h2><a href="#" style="font-size:14px;font-weight:600;">Charts</a></div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+              <sc-for list="{{ chips }}" as="c" hint-placeholder-count="8">
+                <span style="display:inline-flex;align-items:center;height:36px;padding:0 14px;border-radius:18px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font-weight:{{ c.fw }};font-size:14px;">{{ c.label }}</span>
+              </sc-for>
+            </div>
+            <svg viewBox="0 0 560 240" style="width:100%;height:240px;display:block;overflow:visible;">
+              <text transform="translate(11 120) rotate(-90)" text-anchor="middle" fill="#4f666b" font-size="12" font-weight="600">Nitrate (ppm)</text>
+              <line x1="44" x2="560" y1="210" y2="210" stroke="#e1e9e8"></line><text x="38" y="214" text-anchor="end" fill="#586e71" font-size="12">0</text>
+              <line x1="44" x2="560" y1="150" y2="150" stroke="#e1e9e8"></line><text x="38" y="154" text-anchor="end" fill="#586e71" font-size="12">10</text>
+              <line x1="44" x2="560" y1="90" y2="90" stroke="#e1e9e8"></line><text x="38" y="94" text-anchor="end" fill="#586e71" font-size="12">20</text>
+              <line x1="44" x2="560" y1="30" y2="30" stroke="#e1e9e8"></line><text x="38" y="34" text-anchor="end" fill="#586e71" font-size="12">30</text>
+              <rect x="44" y="90" width="516" height="90" fill="rgba(25,116,116,0.1)"></rect>
+              <line x1="44" x2="560" y1="90" y2="90" stroke="#197474" stroke-opacity="0.35" stroke-dasharray="2 3"></line><line x1="44" x2="560" y1="180" y2="180" stroke="#197474" stroke-opacity="0.35" stroke-dasharray="2 3"></line>
+              <line x1="190" x2="190" y1="12" y2="218" stroke="#4f666b" stroke-opacity="0.6" stroke-dasharray="3 3"></line><line x1="390" x2="390" y1="12" y2="218" stroke="#4f666b" stroke-opacity="0.6" stroke-dasharray="3 3"></line>
+              <circle cx="190" cy="12" r="7" fill="#d5e0df" stroke="#4f666b"></circle><circle cx="390" cy="12" r="7" fill="#d5e0df" stroke="#4f666b"></circle>
+              <polyline points="50,126 110,108 170,90 200,144 260,126 320,108 380,84 410,138 470,96 520,54 550,0" fill="none" stroke="#197474" stroke-width="2.5" stroke-linejoin="round"></polyline>
+              <circle cx="550" cy="0" r="4.5" fill="#b8412c"></circle>
+              <line x1="44" x2="560" y1="218" y2="218" stroke="#d5e0df"></line>
+              <text x="44" y="235" fill="#586e71" font-size="12">Sep 4</text><text x="215" y="235" text-anchor="middle" fill="#586e71" font-size="12">Sep 13</text><text x="388" y="235" text-anchor="middle" fill="#586e71" font-size="12">Sep 22</text><text x="560" y="235" text-anchor="end" fill="#586e71" font-size="12">Today</text>
+            </svg>
+            <div style="display:flex;flex-wrap:wrap;gap:16px;font-size:12px;color:#4f666b;">
+              <span style="display:flex;align-items:center;gap:6px;"><i style="width:14px;height:8px;background:rgba(25,116,116,0.1);border:1px dashed #197474;"></i>Target 5–20 ppm</span>
+              <span style="display:flex;align-items:center;gap:6px;"><i style="width:10px;height:10px;border-radius:5px;background:#d5e0df;border:1px solid #4f666b;"></i>Water change</span>
+            </div>
+            <div style="display:flex;flex-direction:column;">
+              <div style="display:flex;align-items:baseline;gap:10px;padding:10px 2px;font-size:14px;line-height:1.45;color:#3f5559;"><span style="width:16px;font-weight:700;color:#8a6300;">↗</span><span>Nitrate has risen after each of the last 3 water changes.</span></div>
+              <div style="display:flex;align-items:baseline;gap:10px;padding:10px 2px;font-size:14px;line-height:1.45;color:#3f5559;border-top:1px solid #e1e9e8;"><span style="width:16px;font-weight:700;color:#4f666b;">↘</span><span>Iron drops within 2 days of dosing.</span></div>
+            </div>
+          </section>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:24px;min-width:0;">
+          <section style="display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;"><h2 style="margin:0;font-size:17px;font-weight:600;">Due</h2><span style="display:flex;gap:16px;font-size:14px;font-weight:600;"><a href="#">Remind me</a><a href="#">All tasks</a></span></div>
+            <div style="border-radius:16px;background:#fff;border:1px solid #d5e0df;display:flex;flex-direction:column;overflow:hidden;">
+              <div style="padding:14px;display:flex;align-items:center;gap:12px;"><div style="flex:1;display:flex;flex-direction:column;gap:4px;"><div style="font-size:15px;font-weight:600;">Water change 25%</div><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.02em;text-transform:uppercase;font-weight:600;color:#b8412c;">✕ 1 day over</div></div><button style="min-height:38px;border-radius:10px;padding:0 14px;font:inherit;font-size:14px;font-weight:700;background:#197474;border:1px solid #197474;color:#fff;">Mark done</button></div>
+              <div style="padding:14px;display:flex;align-items:center;gap:12px;border-top:1px solid #d5e0df;"><div style="flex:1;display:flex;flex-direction:column;gap:4px;"><div style="font-size:15px;font-weight:600;">Test water</div><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.02em;text-transform:uppercase;font-weight:600;color:#8a6300;">▲ Today</div></div><button style="min-height:38px;border-radius:10px;padding:0 14px;font:inherit;font-size:14px;font-weight:600;background:transparent;border:1px solid #bccccb;color:#0f2126;">Mark done</button></div>
+              <div style="padding:14px;display:flex;align-items:center;gap:12px;border-top:1px solid #d5e0df;"><div style="flex:1;display:flex;flex-direction:column;gap:4px;"><div style="font-size:15px;font-weight:600;">Trim stem plants</div><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.02em;text-transform:uppercase;color:#4f666b;">Sep 29 · every 2 weeks</div></div><button style="min-height:38px;border-radius:10px;padding:0 14px;font:inherit;font-size:14px;font-weight:500;background:transparent;border:1px solid transparent;color:#4f666b;">Done early</button></div>
+            </div>
+          </section>
+          <section style="display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;"><h2 style="margin:0;font-size:17px;font-weight:600;">Recent activity</h2><span style="display:flex;gap:16px;font-size:14px;font-weight:600;"><a href="#">Photos</a><a href="#">History</a></span></div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <sc-for list="{{ activity }}" as="a" hint-placeholder-count="4">
+                <a href="#" style="display:flex;gap:12px;align-items:center;padding:8px;margin:0 -8px;border-radius:12px;color:#0f2126;" style-hover="background:#ffffff">
+                  <span style="width:40px;height:40px;border-radius:12px;background:#dcefed;color:#197474;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ a.icon }}"></path></svg></span>
+                  <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;"><span style="font-size:15px;font-weight:600;">{{ a.title }}</span><span style="font-size:13px;color:#4f666b;">{{ a.sub }}</span></span>
+                  <span style="font-size:18px;color:#9fb0b3;">›</span>
+                </a>
+              </sc-for>
+            </div>
+          </section>
+          <section style="display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;"><h2 style="margin:0;font-size:17px;font-weight:600;">In the tank</h2><a href="#" style="font-size:14px;font-weight:600;">Details</a></div>
+            <div style="border-radius:16px;background:#fff;border:1px solid #d5e0df;padding:4px 14px;">
+              <a href="#" style="display:flex;align-items:center;gap:12px;min-height:60px;padding:10px 0;color:#0f2126;"><span style="flex:1;display:flex;flex-direction:column;gap:2px;"><span style="font-size:15px;font-weight:600;">Livestock · 23 in 4 species</span><span style="font-size:13px;color:#4f666b;">Harlequin rasbora, Otocinclus, Amano shrimp +1</span></span><span style="font-size:18px;color:#9fb0b3;">›</span></a>
+              <a href="#" style="display:flex;align-items:center;gap:12px;min-height:60px;padding:10px 0;color:#0f2126;border-top:1px solid #d5e0df;"><span style="flex:1;display:flex;flex-direction:column;gap:2px;"><span style="font-size:15px;font-weight:600;">Plants · 6</span><span style="font-size:13px;color:#4f666b;">Rotala, Ludwigia, Java fern +3</span></span><span style="font-size:18px;color:#9fb0b3;">›</span></a>
+              <a href="#" style="display:flex;align-items:center;gap:12px;min-height:60px;padding:10px 0;color:#0f2126;border-top:1px solid #d5e0df;"><span style="flex:1;display:flex;flex-direction:column;gap:2px;"><span style="font-size:15px;font-weight:600;">Equipment · 4</span><span style="font-size:13px;color:#4f666b;">Canister filter, LED light, Heater +1</span></span><span style="font-size:18px;color:#9fb0b3;">›</span></a>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:1400}}">
+class Component extends DCLogic {
+  renderVals() {
+    const I = {
+      camera: 'M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z M12 10a3 3 0 1 0 0 6 3 3 0 1 0 0-6',
+      test: 'M14.5 2v17.5a2.5 2.5 0 0 1-5 0V2 M8.5 2h7 M9.5 14h5',
+      wrench: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z',
+      dose: 'm2 22 1-1h3l9-9 M3 21v-3l9-9 m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z'
+    };
+    const bad = '#b8412c', warn = '#8a6300';
+    return {
+      attention: [
+        { name: 'Nitrate', status: '✕ High', color: bad, target: '5–20', value: '35', unit: 'ppm', pts: '0,14 15,13 30,15 45,14 60,13 75,14 90,13 100,6', bandY: 13, bandH: 9 },
+        { name: 'Iron', status: '✕ Low', color: bad, target: '0.05–0.2', value: '0.04', unit: 'ppm', pts: '0,12 30,7 45,11 60,10 75,12 88,5 100,17', bandY: 2, bandH: 17 },
+        { name: 'KH', status: '▲ Near low', color: warn, target: '2–5', value: '2', unit: 'dKH', pts: '0,10 30,10 45,4 60,10 85,10 100,18', bandY: 3, bandH: 17 }
+      ],
+      inRange: [
+        { k: 'pH', v: '6.7', u: '' }, { k: 'Ammonia', v: '0', u: ' ppm' }, { k: 'Nitrite', v: '0', u: ' ppm' }, { k: 'Phosphate', v: '0.9', u: ' ppm' },
+        { k: 'Potassium', v: '12', u: ' ppm' }, { k: 'CO₂', v: '25', u: ' ppm' }, { k: 'GH', v: '7', u: ' dGH' }, { k: 'Temp', v: '78', u: '°F' }
+      ],
+      chips: ['Nitrate', 'Iron', 'KH', 'pH', 'Ammonia', 'Nitrite', 'Phosphate', 'Potassium', 'CO₂', 'GH', 'Temp'].map((l, i) => i === 0
+        ? { label: l, bg: '#197474', bd: '#197474', fg: '#fff', fw: 700 }
+        : { label: l, bg: 'transparent', bd: '#bccccb', fg: '#0f2126', fw: 400 }),
+      activity: [
+        { icon: I.camera, title: 'Looking lush after the trim.', sub: 'Today · Note' },
+        { icon: I.test, title: 'Water test · 11 readings', sub: 'Today, 8:12 AM · 2 out of range' },
+        { icon: I.wrench, title: 'Cleaned filter, Replaced media', sub: 'Sep 25 · Maintenance' },
+        { icon: I.dose, title: 'Dosed All-in-one fertilizer · 5 mL', sub: 'Sep 25 · Dosing' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

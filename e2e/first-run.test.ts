@@ -93,7 +93,7 @@ test('the admin sets up sign-in and the server in the app', async ({ page }) => 
 	await page.getByLabel('Tank name').fill('Riverbed 40');
 	await page.getByLabel('Volume').fill('40');
 	await page.getByRole('button', { name: 'Create tank' }).click();
-	await expect(page.getByText('No readings yet')).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'No readings yet' })).toBeVisible();
 
 	await page.goto(at('/settings/server'));
 	await page.locator('html[data-ready="true"]').waitFor();
@@ -142,7 +142,8 @@ test('the admin sets up sign-in and the server in the app', async ({ page }) => 
 
 	// signed out: Google is offered, and only the new password opens the admin login
 	// from the account menu, under the photo (the dashboard has it on phones too)
-	await page.goto(at('/'));
+	// the sidebar's footer on a computer; the More page on a phone
+	await page.goto(at(page.viewportSize()!.width < 1024 ? '/more' : '/'));
 	await page.locator('html[data-ready="true"]').waitFor();
 	await page.getByRole('button', { name: /^Account: / }).locator('visible=true').click();
 	await page.getByRole('button', { name: 'Sign out' }).locator('visible=true').click();
@@ -160,5 +161,5 @@ test('the admin sets up sign-in and the server in the app', async ({ page }) => 
 	await page.getByRole('button', { name: 'Local admin login' }).click();
 	await expect(page).toHaveURL(at('/'));
 	// the same account as before the admin's Google account was set, tank and all
-	await expect(page.getByRole('button', { name: 'Riverbed 40, switch tank' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Riverbed 40', level: 1, exact: true }).or(page.getByRole('button', { name: 'Riverbed 40, switch tank' })).first()).toBeVisible();
 });

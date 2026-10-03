@@ -1,6 +1,8 @@
 <script lang="ts">
-	// Bottom sheet on phone, centered modal on desktop. Built on <dialog> for
-	// focus trapping, Esc to close and an inert background.
+	// Bottom sheet on phones (a 2px ink top rule, a 44×4 grabber, a 45% scrim);
+	// a centred dialog on desktop (a 2px ink border and shadow-lg, scrolling
+	// inside). Built on <dialog> for focus trapping, Esc to close and an inert
+	// background.
 	import type { Snippet } from 'svelte';
 
 	let {
@@ -76,22 +78,22 @@
 		width: 100%;
 		max-height: 92dvh;
 		overflow-y: auto;
-		background: var(--surface);
-		border-top: 1px solid var(--border-strong);
-		border-radius: 28px 28px 0 0;
-		padding: 10px 20px calc(28px + env(safe-area-inset-bottom));
+		background: var(--bg);
+		border-top: 2px solid var(--ink);
+		box-shadow: var(--shadow-lg);
+		padding: 8px 20px calc(28px + env(safe-area-inset-bottom));
 		display: flex;
 		flex-direction: column;
-		gap: 18px;
+		gap: 16px;
 		animation: wl-slide-up 0.25s ease-out;
 	}
 	.handle {
-		width: 40px;
-		height: 5px;
-		border-radius: 3px;
-		background: var(--handle);
+		width: 44px;
+		height: 4px;
+		background: var(--neutral-400);
 		align-self: center;
 		flex-shrink: 0;
+		margin-bottom: -4px;
 	}
 	.head {
 		display: flex;
@@ -102,12 +104,12 @@
 	.head h2 {
 		margin: 0;
 		font-size: 22px;
-		font-weight: 600;
 		flex: 1;
 	}
 	.cancel {
-		font-size: 15px;
-		color: var(--text-muted);
+		font-size: 14px;
+		font-weight: 800;
+		color: var(--accent);
 		min-height: 44px;
 		padding: 0 4px;
 	}
@@ -119,9 +121,8 @@
 		}
 		.panel {
 			width: min(var(--w), calc(100vw - 48px));
-			border-radius: 20px;
-			border: 1px solid var(--border-strong);
-			box-shadow: var(--shadow-modal);
+			max-height: calc(100vh - 32px);
+			border: 2px solid var(--ink);
 			padding: 22px 24px 24px;
 			animation: wl-fade 0.15s ease-out;
 		}

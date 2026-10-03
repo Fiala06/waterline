@@ -10,8 +10,14 @@ export interface ToastUndo {
 export const ui = $state({
 	quickAdd: false,
 	tankSwitcher: false,
-	/** the desktop tank dropdown (G12): in the header, or the dashboard's hero */
-	tankMenu: false,
+	/** ⌘K: tanks, tabs and actions */
+	palette: false,
+	/** the ? sheet */
+	keys: false,
+	/** the alerts panel, from the bell */
+	alerts: false,
+	/** desktop sidebar: kept open, or a rail that expands on hover; null until the user chooses */
+	navPinned: null as boolean | null,
 	online: true,
 	/** the list page the user came from (History, Charts…), for entry Back links and deletes */
 	prev: null as string | null,
@@ -25,4 +31,27 @@ export const ui = $state({
 
 export function toast(text: string) {
 	ui.toast = { text, id: Date.now() };
+}
+
+/** Keyboard shortcuts are ignored while typing in a field or inside a dialog. */
+export function typing(e: KeyboardEvent) {
+	const t = e.target as HTMLElement | null;
+	if (!t) return false;
+	// focus left behind in a closed dialog isn't typing
+	const dialog = t.closest('dialog');
+	if (dialog && !dialog.open) return false;
+	return !!t.closest('input, textarea, select, [contenteditable="true"], dialog');
+}
+
+/** When a dialog closes, don't leave the focus inside it (keys would land in its fields). */
+export function dropFocus(dialog: HTMLDialogElement | undefined) {
+	const a = document.activeElement as HTMLElement | null;
+	if (dialog && a && dialog.contains(a)) a.blur();
+}
+
+/** The page's main log forms for a tank: T test, W water change, D dose, N note. */
+export function logHref(kind: 'test' | 'water_change' | 'dosing' | 'note' | 'maintenance', tankId: string | null) {
+	const q = tankId ? `?tank=${tankId}` : '';
+	if (kind === 'test') return `/entries/test/new${q}`;
+	return `/entries/event/new${q}${q ? '&' : '?'}category=${kind}`;
 }

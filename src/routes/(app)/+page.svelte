@@ -1,17 +1,20 @@
 <script lang="ts">
+	// Overview (redesign README → Screens §2): three equal columns with 2px rules
+	// between them. Needs attention and In range span two; Due and Recent take the
+	// third. Trends and In the tank follow in the same arrangement. The shell has
+	// the tank's name, cover and actions; below ~1100px the page is one column.
 	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
-	import AccountMenu from '$lib/components/AccountMenu.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ImportButton from '$lib/components/ImportButton.svelte';
 	import AttentionList from '$lib/components/AttentionList.svelte';
 	import InRangeList from '$lib/components/InRangeList.svelte';
-	import TankHero from '$lib/components/TankHero.svelte';
 	import TaskList from '$lib/components/TaskList.svelte';
 	import RemindMe from '$lib/components/RemindMe.svelte';
 	import TrendChart from '$lib/components/TrendChart.svelte';
 	import WhatsNew from '$lib/components/WhatsNew.svelte';
 	import { compactName, displayValue, fmtRange, fmtValue, paramDecimals, paramUnit, shortName, statusOf } from '$lib/params';
 	import { statusShort } from '$lib/status';
+	import { dueInfo, intervalText, isRoutine, routineLine } from '$lib/tasks';
 	import { invalidateAll } from '$app/navigation';
 	import { discard, retry } from '$lib/offline';
 	import { toast, ui } from '$lib/ui.svelte';
@@ -20,7 +23,6 @@
 
 	let { data } = $props();
 	const prefs = $derived(data.user);
-	const current = $derived(data.tanks.find((t) => t.id === data.currentTankId));
 
 	/** "Rotala, Ludwigia, Java fern +3" */
 	const preview = (items: string[], n = 3) => items.slice(0, n).join(', ') + (items.length > n ? ` +${items.length - n}` : '');
@@ -58,12 +60,28 @@
 		})
 	);
 	const hasReadings = $derived(cards.some((c) => c.value != null));
-	// Refresh (1c): what needs attention (out of range, then near a limit), what's fine, what's never been tested
+	// what needs attention (out of range, then near a limit), what's fine, what's never been tested
 	const attention = $derived([...cards.filter((c) => c.level === 'bad'), ...cards.filter((c) => c.level === 'warn')]);
-	// the fun bits only when nothing's out of range or overdue
-	const calm = $derived(!cards.some((c) => c.level === 'bad') && !(data.tasks ?? []).some((t) => t.due < (data.today ?? '')));
 	const inRange = $derived(cards.filter((c) => c.level === 'ok'));
 	const untested = $derived(cards.filter((c) => c.level === 'none').map((c) => c.fullName));
+
+	const wc = $derived(data.waterChange);
+	// the water change needs attention once it's due
+	const wcDue = $derived(
+		wc && wc.days != null && wc.days >= wc.goal ? { taskId: wc.taskId, days: wc.days, goal: wc.goal, last: wc.last } : null
+	);
+	// overdue tasks go in Needs attention too, with Done (the water change has its own row)
+	const overdue = $derived(
+		(data.tasks ?? [])
+			.filter((t) => t.due < (data.today ?? '') && !(wcDue && t.id === wcDue.taskId))
+			.map((t) => {
+				const d = dueInfo(t.due, data.today ?? '');
+				return { id: t.id, name: t.name, when: `✕ ${-d.days} day${d.days === -1 ? '' : 's'} over`, sub: isRoutine(t.kind) ? routineLine(t) : intervalText(t) };
+			})
+	);
+	// the fun bits only when nothing's out of range or overdue
+	const calm = $derived(!cards.some((c) => c.level === 'bad') && !overdue.length && !(wcDue && (wcDue.days > wcDue.goal)));
+	const allClear = $derived(hasReadings && !attention.length && !wcDue && !overdue.length);
 
 	// Trends: parameters with at least one reading in the window; pick one.
 	const trendable = $derived(
@@ -83,41 +101,26 @@
 				}))
 			: []
 	);
-
-	const wc = $derived(data.waterChange);
-	// the water change needs attention once it's due
-	const wcDue = $derived(wc && wc.days != null && wc.days >= wc.goal ? { days: wc.days, goal: wc.goal, last: wc.last } : null);
 </script>
 
 <svelte:head><title>{data.tank ? `${data.tank.name} · Waterline` : 'Waterline'}</title></svelte:head>
 
 {#if !data.tank}
 	<div class="page">
-		<div class="head-row">
-			<span class="hide-desk"><AccountMenu user={data.user} id="account-menu-dash" /></span>
-			<h1 class="title">Dashboard</h1>
-		</div>
+		<h1 class="title hide-desk">Dashboard</h1>
 		<EmptyState icon="tank" title="No tanks yet" text="Add your first tank to start logging." href="/tanks/new" label="Add tank" primary />
 	</div>
 {:else}
 	<div class="page">
 		<h1 class="sr-only">{data.tank.name} dashboard</h1>
-		<TankHero
-			tank={data.tank}
-			tanks={data.tanks}
-			cover={current?.cover}
-			coverPos={current?.coverPos}
-			volume={current?.volume}
-			today={data.today}
-			lastTest={data.latestWhen ? `Last test ${data.latestWhen}` : 'No tests yet'}
-			user={data.user}
-		/>
 
-		{#if data.whatsNew}<WhatsNew {...data.whatsNew} />{/if}
+		{#if data.whatsNew}<div class="news"><WhatsNew {...data.whatsNew} /></div>{/if}
 
 		<div class="grid">
-			<div class="col-main">
+			<!-- ── Needs attention (span 2) ─────────────────────────────── -->
+			<div class="cell main first">
 				{#if !hasReadings}
+					<div class="section-head"><h2>Needs attention</h2></div>
 					<EmptyState
 						icon="test"
 						title="No readings yet"
@@ -128,257 +131,262 @@
 					>
 						<ImportButton href="/tanks/{data.tank.id}/import/tests" label="Import past tests" />
 					</EmptyState>
+				{:else if allClear}
+					<!-- not a region: there's nothing in it to land on -->
+					<div class="section-head"><h2>Needs attention</h2>{#if data.latestWhen}<span class="meta">{data.latestWhen}</span>{/if}</div>
+					<p class="clear"><b>✓ Nothing needs attention.</b> <span>Every tracked parameter is in range and no task is overdue.</span></p>
 				{:else}
-					{#if attention.length || wcDue}
-						<AttentionList items={attention} wc={wcDue} when={data.latestWhen} />
-					{/if}
-					{#if calm && data.cheers.milestones.length}
-						<ul class="card milestones" aria-label="Milestones">
-							{#each data.cheers.milestones as m (m.key)}<li>{m.text}</li>{/each}
-						</ul>
-					{/if}
-					<InRangeList items={inRange} {untested} total={cards.length - untested.length} streak={calm ? data.cheers.streak : null} />
-
-					<section class="stack trends">
-						<div class="section-head">
-							<h2>Trends <span class="meta">· Last 4 weeks</span></h2>
-							<a href="/charts{chosen ? `?p=${chosen.id}` : ''}">Charts</a>
-						</div>
-						{#if trendable.length}
-							<div class="chips hscroll" role="group" aria-label="Parameter" use:hscroll={chosen?.id}>
-								{#each trendable as p (p.id)}
-									<button
-										type="button"
-										class="chip"
-										aria-pressed={chosen?.id === p.id}
-										onclick={() => (selected = p.id)}>{shortName(p)}</button
-									>
-								{/each}
-							</div>
-						{/if}
-						<div class="card chart-card">
-							{#if chosen && chosenPoints.length >= 2}
-								<div class="chart-box"><div class="chart-fill"><TrendChart
-									fit
-									points={chosenPoints}
-									band={{
-										min: chosen.min == null ? null : displayValue(chosen, chosen.min, prefs),
-										max: chosen.max == null ? null : displayValue(chosen, chosen.max, prefs)
-									}}
-									markers={data.markers}
-									from={data.trendFrom}
-									to={Date.now()}
-									lastLevel={statusOf(chosen, data.latest?.[chosen.id]?.value).level}
-									label="{chosen.name} over the last 4 weeks"
-									name={chosen.name}
-									unit={paramUnit(chosen, prefs)}
-									decimals={paramDecimals(chosen, prefs)}
-									timeZone={data.user.timeZone}
-								/></div></div>
-								<div class="legend">
-									{#if fmtRange(chosen, prefs)}
-										<span><i class="lg-band"></i>Target {fmtRange(chosen, prefs)}</span>
-									{/if}
-									{#if data.markers.length}<span><i class="lg-marker"></i>Water change</span>{/if}
-								</div>
-							{:else}
-								<p class="muted chart-empty">Charts appear after your second test. Tap + to log another.</p>
-							{/if}
-						</div>
-						{#if data.notes?.length}
-							<!-- Spotting trends: tap one to see its chart -->
-							<ul class="noticed" aria-label="Noticed">
-								{#each data.notes as n (`${n.parameterId}:${n.kind}`)}
-									{@const chartable = trendable.some((p) => p.id === n.parameterId)}
-									<li>
-										<svelte:element
-											this={chartable ? 'button' : 'div'}
-											type={chartable ? 'button' : undefined}
-											class="note"
-											aria-pressed={chartable ? chosen?.id === n.parameterId : undefined}
-											onclick={chartable ? () => (selected = n.parameterId) : undefined}
-											role={chartable ? undefined : 'note'}
-										>
-											<span class="arrow" class:status-warn={n.warn} aria-hidden="true">{n.direction === 'up' ? '↗' : '↘'}</span>
-											<span>{n.text}</span>
-										</svelte:element>
-									</li>
-								{/each}
-							</ul>
-						{/if}
-					</section>
+					<AttentionList items={attention} wc={wcDue} {overdue} when={data.latestWhen} />
+				{/if}
+				{#if hasReadings && calm && data.cheers.milestones.length}
+					<ul class="milestones" aria-label="Milestones">
+						{#each data.cheers.milestones as m (m.key)}<li>{m.text}</li>{/each}
+					</ul>
 				{/if}
 			</div>
 
-			<div class="col-side">
-				<section class="stack" aria-labelledby="due-h">
-					<div class="section-head">
-						<h2 id="due-h">Due</h2>
-						<span class="links"
-							><RemindMe tankId={data.tank.id} tankName={data.tank.name} today={data.today} cls="remind-link" /><a href="/tasks">All tasks</a></span
-						>
-					</div>
-					{#if data.tasks.length}
-						<TaskList tasks={data.tasks.slice(0, 3)} today={data.today} />
-					{:else}
-						<EmptyState
-							compact
-							icon="maintenance"
-							title="Nothing due"
-							text="The fish approve. Set up reminders for water changes and upkeep."
-							href="/tasks/new?tank={data.tank.id}"
-							label="New task"
-						/>
-					{/if}
-				</section>
+			<!-- ── Due (column 3) ───────────────────────────────────────── -->
+			<section class="cell side first" aria-labelledby="due-h">
+				<div class="section-head">
+					<h2 id="due-h">Due</h2>
+					<span class="links"
+						><RemindMe tankId={data.tank.id} tankName={data.tank.name} today={data.today} cls="lnk" /><a href="/tasks">All tasks ›</a></span
+					>
+				</div>
+				{#if data.tasks.length}
+					<TaskList tasks={data.tasks.slice(0, 3)} today={data.today} />
+				{:else}
+					<EmptyState
+						compact
+						icon="maintenance"
+						title="Nothing due"
+						text="The fish approve. Set up reminders for water changes and upkeep."
+						href="/tasks/new?tank={data.tank.id}"
+						label="New task"
+					/>
+				{/if}
+			</section>
 
-				<section class="stack recent">
-					<div class="section-head">
-						<h2>Recent activity</h2>
-						<span class="links"><a href="/photos">Photos</a><a href="/history">History</a></span>
-					</div>
-					<ul class="feed">
-						{#each ui.queue.filter((q) => q.tankId === data.tank?.id) as q (q.id)}
-							<li>
-								<div class="queued">
-									<CategoryIcon kind={q.title.startsWith('Water test') ? 'test' : 'note'} size={40} />
-									<span class="f-text">
-										<span class="f-title">{q.title}</span>
-										<span class="f-sub" class:status-warn={!q.error} class:status-bad={!!q.error}>{q.error ? `✕ ${q.error}` : '▲ Waiting to sync'}</span>
+			<!-- ── In range (span 2) ────────────────────────────────────── -->
+			<div class="cell main">
+				{#if hasReadings}
+					<InRangeList items={inRange} {untested} total={cards.length - untested.length} streak={calm ? data.cheers.streak : null} />
+				{:else}
+					<div class="section-head"><h2>In range</h2><span class="meta">No readings yet</span></div>
+				{/if}
+			</div>
+
+			<!-- ── Recent (column 3) ────────────────────────────────────── -->
+			<section class="cell side recent" aria-labelledby="recent-h">
+				<div class="section-head">
+					<h2 id="recent-h">Recent</h2>
+					<span class="links"><a href="/photos">Photos</a><a href="/history">History ›</a></span>
+				</div>
+				<ul class="feed">
+					{#each ui.queue.filter((q) => q.tankId === data.tank?.id) as q (q.id)}
+						<li>
+							<div class="queued">
+								<CategoryIcon kind={q.title.startsWith('Water test') ? 'test' : 'note'} size={28} />
+								<span class="f-text">
+									<span class="f-title">{q.title}</span>
+									<span class="f-sub" class:status-warn={!q.error} class:status-bad={!!q.error}>{q.error ? `✕ ${q.error}` : '▲ Waiting to sync'}</span>
+								</span>
+								{#if q.error}
+									<span class="q-actions">
+										<button type="button" class="btn" onclick={() => retryEntry(q.id)}>Retry</button>
+										<button type="button" class="btn" onclick={() => discard(q.id)}>Discard</button>
 									</span>
-									{#if q.error}
-										<span class="q-actions">
-											<button type="button" class="btn" onclick={() => retryEntry(q.id)}>Retry</button>
-											<button type="button" class="btn" onclick={() => discard(q.id)}>Discard</button>
-										</span>
-									{/if}
-								</div>
-							</li>
+								{/if}
+							</div>
+						</li>
+					{/each}
+					{#each data.activity as a (a.href)}
+						<li>
+							<a href={a.href}>
+								<CategoryIcon kind={a.icon} size={28} />
+								<span class="f-text">
+									<span class="f-title">{a.title}</span>
+									<span class="f-sub">{a.sub}</span>
+								</span>
+								{#if a.thumb}
+									<img class="f-thumb" src={photoUrl(a.thumb)} alt="" loading="lazy" />
+								{/if}
+							</a>
+						</li>
+					{:else}
+						{#if !ui.queue.some((q) => q.tankId === data.tank?.id)}
+							<li class="none">Nothing logged yet.</li>
+						{/if}
+					{/each}
+				</ul>
+			</section>
+
+			<!-- ── Trends (span 2) ──────────────────────────────────────── -->
+			<section class="cell main trends" aria-labelledby="trends-h">
+				<div class="section-head">
+					<h2 id="trends-h">Trends <span class="meta">· Last 4 weeks</span></h2>
+					<a href="/charts{chosen ? `?p=${chosen.id}` : ''}">Charts ›</a>
+				</div>
+				{#if trendable.length}
+					<div class="chips hscroll" role="group" aria-label="Parameter" use:hscroll={chosen?.id}>
+						{#each trendable as p (p.id)}
+							<button type="button" class="chip" aria-pressed={chosen?.id === p.id} onclick={() => (selected = p.id)}>{shortName(p)}</button>
 						{/each}
-						{#each data.activity as a (a.href)}
+					</div>
+				{/if}
+				{#if chosen && chosenPoints.length >= 2}
+					<div class="chart-box"><div class="chart-fill"><TrendChart
+						fit
+						points={chosenPoints}
+						band={{
+							min: chosen.min == null ? null : displayValue(chosen, chosen.min, prefs),
+							max: chosen.max == null ? null : displayValue(chosen, chosen.max, prefs)
+						}}
+						markers={data.markers}
+						from={data.trendFrom}
+						to={Date.now()}
+						lastLevel={statusOf(chosen, data.latest?.[chosen.id]?.value).level}
+						label="{chosen.name} over the last 4 weeks"
+						name={chosen.name}
+						unit={paramUnit(chosen, prefs)}
+						decimals={paramDecimals(chosen, prefs)}
+						timeZone={data.user.timeZone}
+					/></div></div>
+					<div class="legend">
+						{#if fmtRange(chosen, prefs)}
+							<span><i class="lg-band"></i>Target {fmtRange(chosen, prefs)}</span>
+						{/if}
+						{#if data.markers.length}<span><i class="lg-marker"></i>Water change</span>{/if}
+					</div>
+				{:else}
+					<p class="muted chart-empty">Charts appear after your second test. Tap + to log another.</p>
+				{/if}
+				{#if data.notes?.length}
+					<!-- Spotting trends: tap one to see its chart -->
+					<ul class="noticed" aria-label="Noticed">
+						{#each data.notes as n (`${n.parameterId}:${n.kind}`)}
+							{@const chartable = trendable.some((p) => p.id === n.parameterId)}
 							<li>
-								<a href={a.href}>
-									<CategoryIcon kind={a.icon} size={40} />
-									<span class="f-text">
-										<span class="f-title">{a.title}</span>
-										<span class="f-sub">{a.sub}</span>
-									</span>
-									{#if a.thumb}
-										<img class="f-thumb" src={photoUrl(a.thumb)} alt="" loading="lazy" />
-									{:else}
-										<span class="chev" aria-hidden="true">›</span>
-									{/if}
-								</a>
+								<svelte:element
+									this={chartable ? 'button' : 'div'}
+									type={chartable ? 'button' : undefined}
+									class="note"
+									aria-pressed={chartable ? chosen?.id === n.parameterId : undefined}
+									onclick={chartable ? () => (selected = n.parameterId) : undefined}
+									role={chartable ? undefined : 'note'}
+								>
+									<span class="arrow" class:status-warn={n.warn} aria-hidden="true">{n.direction === 'up' ? '↗' : '↘'}</span>
+									<span>{n.text}</span>
+								</svelte:element>
 							</li>
 						{/each}
 					</ul>
-				</section>
+				{/if}
+			</section>
 
-				<section class="stack in-tank">
-					<div class="section-head">
-						<h2>In the tank</h2>
-						<a href="/tanks/{data.tank.id}">Details</a>
-					</div>
-					<div class="card contents">
-						{#each [
-							{ tab: 'livestock', title: 'Livestock', count: data.contents.animals ? `${data.contents.animals} in ${data.contents.livestock.length} species` : '', items: data.contents.livestock, extra: data.contents.quarantine ? `${data.contents.quarantine} in quarantine` : '' },
-							{ tab: 'plants', title: 'Plants', count: data.contents.plants.length ? String(data.contents.plants.length) : '', items: data.contents.plants, extra: '' },
-							{ tab: 'equipment', title: 'Equipment', count: data.contents.equipment.length ? String(data.contents.equipment.length) : '', items: data.contents.equipment, extra: '' }
-						] as row (row.tab)}
-							<a class="c-row" href="/tanks/{data.tank.id}/{row.tab}">
-								<span class="f-text">
-									<span class="f-title">{row.title}{row.count ? ` · ${row.count}` : ''}</span>
-									<span class="f-sub">{row.items.length ? preview(row.items) : 'None added yet'}{row.extra ? ` · ${row.extra}` : ''}</span>
-								</span>
-								<span class="chev" aria-hidden="true">›</span>
-							</a>
-						{/each}
-					</div>
-				</section>
-			</div>
+			<!-- ── In the tank (column 3) ───────────────────────────────── -->
+			<section class="cell side in-tank" aria-labelledby="in-tank-h">
+				<div class="section-head">
+					<h2 id="in-tank-h">In the tank</h2>
+					<a href="/tanks/{data.tank.id}">Details ›</a>
+				</div>
+				<div class="contents">
+					{#each [
+						{ tab: 'livestock', title: 'Livestock', count: data.contents.animals ? `${data.contents.animals} in ${data.contents.livestock.length} species` : '', items: data.contents.livestock, extra: data.contents.quarantine ? `${data.contents.quarantine} in quarantine` : '' },
+						{ tab: 'plants', title: 'Plants', count: data.contents.plants.length ? String(data.contents.plants.length) : '', items: data.contents.plants, extra: '' },
+						{ tab: 'equipment', title: 'Equipment', count: data.contents.equipment.length ? String(data.contents.equipment.length) : '', items: data.contents.equipment, extra: '' }
+					] as row (row.tab)}
+						<a class="c-row" href="/tanks/{data.tank.id}/{row.tab}">
+							<span class="f-text">
+								<span class="f-title">{row.title}{row.count ? ` · ${row.count}` : ''}</span>
+								<span class="f-sub">{row.items.length ? preview(row.items) : 'None added yet'}{row.extra ? ` · ${row.extra}` : ''}</span>
+							</span>
+							<span class="chev" aria-hidden="true">›</span>
+						</a>
+					{/each}
+				</div>
+			</section>
 		</div>
 	</div>
 {/if}
 
 <style>
 	.page {
-		padding: 8px 20px 24px;
+		padding: 4px 20px 24px;
 		display: flex;
 		flex-direction: column;
-		gap: 16px;
 	}
 	.title {
-		margin: 8px 0;
+		margin: 12px 0 8px;
 		font-size: 28px;
-		font-weight: 600;
 	}
-	.head-row {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		margin-left: -4px;
+	.news {
+		padding: 16px 0 4px;
 	}
-	.grid,
-	.col-main,
-	.col-side {
+	/* Phones: one column, top to bottom (the phone design's order), each section under its own rule */
+	.grid {
 		display: flex;
 		flex-direction: column;
-		gap: 24px;
 		min-width: 0;
 	}
-	.stack {
+	.cell {
 		display: flex;
 		flex-direction: column;
-		gap: 10px;
+		min-width: 0;
+		padding: 18px 0 8px;
+	}
+	.cell > :global(.section-head) {
+		margin-bottom: 0;
+	}
+	.cell :global(.section-head) {
+		padding-bottom: 8px;
 	}
 	.links {
 		display: flex;
-		gap: 16px;
+		align-items: baseline;
+		gap: 14px;
+		font-size: 13px;
 	}
-	/* Phones read top to bottom (refresh 1c): attention, in range, due, trends, recent activity, in the tank. */
-	@media (max-width: 1023px) {
-		.col-main,
-		.col-side {
-			display: contents;
-		}
-		.trends {
-			order: 1;
-		}
-		.recent {
-			order: 2;
-		}
-		.in-tank {
-			order: 3;
-		}
+	.links a,
+	.links :global(.lnk) {
+		font-size: 13px;
+		font-weight: 800;
+		padding: 12px 0;
+		margin: -12px 0;
 	}
-	/* chips run to the screen edge on phones (03) */
+	/* "✓ Nothing needs attention." under the rule */
+	.clear {
+		margin: 0;
+		padding: 18px 0;
+		border-bottom: 1px solid var(--divider);
+		font-size: 15px;
+	}
+	.clear span {
+		color: var(--text-muted);
+	}
+	/* chips run to the screen edge on phones */
 	.chips {
-		margin-inline: -20px;
+		margin: 14px -20px 0;
 		padding-inline: 20px;
-	}
-	.chart-card {
-		padding: 14px 14px 10px;
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
 	}
 	.chart-box {
 		position: relative;
-		height: 132px;
+		height: 160px;
+		margin-top: 14px;
 	}
 	.chart-fill {
 		position: absolute;
 		inset: 0;
 	}
 	.chart-empty {
-		margin: 8px 0;
+		margin: 14px 0 0;
 		font-size: 14px;
 		line-height: 1.5;
 	}
 	/* Spotting trends: a line or two under the chart */
 	.noticed {
 		list-style: none;
-		margin: 0;
+		margin: 8px 0 0;
 		padding: 0;
 		display: flex;
 		flex-direction: column;
@@ -389,14 +397,12 @@
 		gap: 10px;
 		width: 100%;
 		min-height: 44px;
-		padding: 10px 2px;
+		padding: 10px 0;
 		text-align: left;
 		font-size: 14px;
 		line-height: 1.45;
 		color: var(--text-2);
-	}
-	.noticed li + li .note {
-		border-top: 1px solid var(--divider-soft);
+		border-bottom: 1px solid var(--divider);
 	}
 	.arrow {
 		flex-shrink: 0;
@@ -406,6 +412,7 @@
 	}
 	button.note[aria-pressed='true'] {
 		color: var(--text);
+		font-weight: 600;
 	}
 	@media (hover: hover) {
 		button.note:hover {
@@ -416,8 +423,9 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 16px;
-		font-size: 12px;
-		color: var(--text-muted);
+		margin-top: 10px;
+		font-size: 13px;
+		color: var(--text-2);
 	}
 	.legend span {
 		display: flex;
@@ -425,76 +433,97 @@
 		gap: 6px;
 	}
 	.lg-band {
-		width: 14px;
-		height: 8px;
+		width: 16px;
+		height: 10px;
 		background: var(--band);
-		border: 1px dashed var(--accent);
 	}
 	.lg-marker {
 		width: 10px;
 		height: 10px;
-		border-radius: 5px;
-		background: var(--border);
-		border: 1px solid var(--text-muted);
+		background: var(--ink);
 	}
+	/* Recent: a small icon, the title and its line, each row a link */
 	.feed {
 		list-style: none;
 		margin: 0;
 		padding: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 2px;
 	}
-	.feed a {
+	.feed a,
+	.queued {
 		display: flex;
 		gap: 12px;
 		align-items: center;
-		padding: 8px;
-		margin: 0 -8px;
-		border-radius: 12px;
+		min-height: 56px;
+		padding: 10px 0;
+		border-bottom: 1px solid var(--divider);
 		color: var(--text);
 	}
-	.feed a:hover {
-		background: var(--surface);
+	.feed :global(.icon) {
+		border-radius: 0 !important;
+		background: transparent !important;
+		color: var(--text) !important;
+		flex-shrink: 0;
+	}
+	@media (hover: hover) {
+		.feed a:hover {
+			background: var(--surface);
+			box-shadow: -8px 0 0 var(--surface);
+			color: var(--text);
+		}
+	}
+	.none {
+		padding: 14px 0;
+		font-size: 14px;
+		color: var(--text-muted);
 	}
 	.f-text {
 		flex: 1;
 		min-width: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 2px;
 	}
 	.f-title {
-		font-size: 15px;
+		font-size: 14px;
 		font-weight: 600;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 	.f-sub {
-		font-size: 13px;
+		font-size: 12px;
 		color: var(--text-muted);
 	}
 	.chev {
 		font-size: 18px;
-		color: var(--placeholder);
+		color: var(--text-muted);
 	}
 	.contents {
-		padding: 4px 14px;
+		display: flex;
+		flex-direction: column;
 	}
 	.c-row {
 		display: flex;
 		align-items: center;
 		gap: 12px;
-		min-height: 60px;
-		padding: 10px 0;
+		min-height: 56px;
+		padding: 8px 0;
+		border-bottom: 1px solid var(--divider);
 		color: var(--text);
 	}
-	.c-row + .c-row {
-		border-top: 1px solid var(--border);
+	.c-row .f-title {
+		font-size: 15px;
 	}
-	.queued {
-		display: flex;
-		gap: 12px;
-		align-items: center;
-		padding: 8px 0;
+	.c-row .f-sub {
+		font-size: 13px;
+	}
+	@media (hover: hover) {
+		.c-row:hover {
+			background: var(--surface);
+			box-shadow: -8px 0 0 var(--surface);
+			color: var(--text);
+		}
 	}
 	.queued .f-sub {
 		font-weight: 600;
@@ -505,66 +534,91 @@
 	}
 	.q-actions .btn {
 		padding: 0 12px;
-		font-size: 14px;
+		font-size: 13px;
 	}
 	.f-thumb {
-		width: 52px;
-		height: 52px;
-		border-radius: 10px;
+		width: 36px;
+		height: 36px;
 		object-fit: cover;
 		flex-shrink: 0;
-	}
-
-	@media (min-width: 1024px) {
-		.page {
-			padding: 28px 32px;
-		}
-		.head-row {
-			display: none;
-		}
-		.grid {
-			display: grid;
-			grid-template-columns: minmax(0, 1fr) 360px;
-			gap: 28px;
-		}
-		/* Trends is one card with its chips (07) and grows so both columns end together. */
-		.trends {
-			flex: 1;
-			gap: 14px;
-			padding: 18px 20px;
-			border-radius: 16px;
-			background: var(--surface);
-			border: 1px solid var(--border);
-		}
-		/* the card has room for every chip, so they wrap instead of scrolling */
-		.chips {
-			margin-inline: 0;
-			padding-inline: 0;
-			flex-wrap: wrap;
-		}
-		.chart-card {
-			flex: 1;
-			padding: 0;
-			border: none;
-			background: none;
-		}
-		.chart-box {
-			flex: 1;
-			height: auto;
-			min-height: 240px;
-		}
 	}
 	/* a milestone: the tank's birthday, a pet's anniversary, a round number of tests */
 	.milestones {
 		list-style: none;
 		margin: 0;
-		padding: 12px 16px;
+		padding: 12px 0;
 		display: flex;
 		flex-direction: column;
 		gap: 6px;
 		font-size: 15px;
 		font-weight: 600;
-		border-color: var(--accent);
-		background: var(--selected);
+		border-bottom: 1px solid var(--divider);
+	}
+
+	/* ── Desktop: three equal columns, 2px rules between them ─────────── */
+	@media (min-width: 1024px) {
+		.page {
+			padding: 0 32px 32px;
+		}
+		.news {
+			padding: 24px 0 0;
+		}
+		.cell {
+			padding: 24px 0;
+		}
+		.cell :global(.section-head) {
+			padding-bottom: 10px;
+		}
+		.chips {
+			margin: 14px 0 0;
+			padding-inline: 0;
+			flex-wrap: wrap;
+		}
+		.chart-box {
+			height: 240px;
+		}
+	}
+	/* two columns beside one (the README's full layout, from ~1100px of window) */
+	@media (min-width: 1100px) {
+		.grid {
+			display: grid;
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+			align-items: start;
+		}
+		.cell.main {
+			grid-column: span 2;
+			border-right: 2px solid var(--divider);
+			padding-right: 24px;
+		}
+		.cell.side {
+			padding-left: 24px;
+		}
+		.cell:not(.first) {
+			border-top: 2px solid var(--divider);
+		}
+		.cell.main {
+			padding-bottom: 32px;
+		}
+		.cell.side {
+			padding-bottom: 32px;
+		}
+		/* the side column's cells stretch to the row, so the rules line up */
+		.cell {
+			align-self: stretch;
+		}
+	}
+	/* below that, one column: the side sections get a top rule instead of a left rule */
+	@media (min-width: 1024px) and (max-width: 1099px) {
+		.cell:not(.first) {
+			border-top: 2px solid var(--divider);
+		}
+		.cell.side.first {
+			border-top: 2px solid var(--divider);
+		}
+	}
+	@media (min-width: 1200px) {
+		.cell.main {
+			padding-right: 24px;
+		}
 	}
 </style>

@@ -64,9 +64,10 @@
 	}
 	h1 {
 		margin: 8px 0 0;
-		font-size: 26px;
-		font-weight: 600;
-		line-height: 1.25;
+		padding-bottom: 12px;
+		border-bottom: 2px solid var(--ink);
+		font-size: 28px;
+		line-height: 1.2;
 		overflow-wrap: anywhere;
 	}
 	.lede {
@@ -114,9 +115,8 @@
 	@media (min-width: 1024px) {
 		.consent {
 			padding: 28px 32px;
-			border-radius: 20px;
-			background: var(--surface);
-			border: 1px solid var(--border);
+			border: 2px solid var(--ink);
+			box-shadow: var(--shadow-lg);
 		}
 	}
 </style>

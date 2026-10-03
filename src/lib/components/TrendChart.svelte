@@ -38,19 +38,24 @@
 </script>
 
 <script lang="ts">
-	// Trend chart: target band, reading line, event markers (tap to open), the
-	// latest point colored by status, and axes: the parameter and its unit up
-	// the side, dates along the bottom. Hover, tap or drag (or the arrow keys)
-	// for a reading's value, status and when it was taken. Sized to its
-	// container so nothing distorts. `full` adds a dot per reading and a
-	// popover for the chosen marker.
+	// Trend chart (README → Charts): the target band as a neutral rect with its
+	// limits labelled, the readings as a 2px ink line with square points (filled
+	// accent when out of range), event markers (tap to open), and labelled axes:
+	// the parameter and its unit up the side, dates along the bottom. Hover, tap
+	// or drag (or the arrow keys) for a crosshair and a tooltip with the value,
+	// the date and "✕ 15 over target"; a click (or Enter) opens that test.
+	// Sized to its container so nothing distorts. `full` adds the points, the
+	// axis titles, the limit labels and a popover for the chosen marker.
 	import type { Snippet } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { paramStatus, statusShort, type StatusLevel } from '$lib/status';
 	import { formatNumber } from '$lib/units';
 
 	interface Point {
 		t: number; // ms
 		v: number; // display units
+		/** the test this reading belongs to: a click opens it */
+		href?: string;
 	}
 	let {
 		points,
@@ -70,7 +75,8 @@
 		selected = null,
 		onselect,
 		popover,
-		fit = false
+		fit = false,
+		pinLatest = false
 	}: {
 		points: Point[];
 		band: { min: number | null; max: number | null };
@@ -94,14 +100,17 @@
 		popover?: Snippet<[Marker]>;
 		/** Take the height from the container (set it in CSS) instead of `height`. */
 		fit?: boolean;
+		/** Keep a small tooltip on the latest reading while nothing is pointed at (phones). */
+		pinLatest?: boolean;
 	} = $props();
 
 	let el = $state<HTMLDivElement>();
 	let width = $state(320);
 	let measured = $state(0);
 	const h = $derived(fit && measured > 0 ? measured : height);
-	const TOP = 22; // room for marker dots
-	const BOTTOM = 22;
+	const TOP = 22; // room for marker squares
+	// the date ticks, and under them the "Date" title on a full chart
+	const BOTTOM = $derived(full ? 40 : 22);
 	const plotH = $derived(Math.max(1, h - TOP - BOTTOM));
 
 	const domain = $derived.by(() => {
@@ -128,8 +137,9 @@
 		return long.length * 6.5 <= plotH ? long : unit || name;
 	});
 	const LEFT = $derived((title ? 18 : 4) + Math.max(1, ...ticks.map((t) => tickText(t).length)) * 7 + 8);
+	const RIGHT = 10;
 
-	const x = (t: number) => LEFT + ((t - from) / Math.max(1, to - from)) * (width - LEFT - 10);
+	const x = (t: number) => LEFT + ((t - from) / Math.max(1, to - from)) * (width - LEFT - RIGHT);
 	const y = (v: number) => TOP + (1 - (v - domain.lo) / (domain.hi - domain.lo)) * plotH;
 
 	const xTicks = $derived.by(() => {
@@ -142,9 +152,11 @@
 	const bandTop = $derived(band.max != null ? y(band.max) : TOP);
 	const bandBottom = $derived(band.min != null ? y(band.min) : h - BOTTOM);
 	const hasBand = $derived(band.min != null || band.max != null);
+	const baseline = $derived(h - BOTTOM);
 
 	const fmt = (t: number) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone });
-	const isToday = (t: number) => Math.abs(t - Date.now()) < 43_200_000;
+	const dayOf = (t: number) => new Date(t).toLocaleDateString('en-CA', { timeZone });
+	const isToday = (t: number) => dayOf(t) === dayOf(Date.now());
 	const chosen = $derived(markers.find((m) => m.href === selected) ?? null);
 	/** Each marker's tap width: 44px, narrower where the next one is closer, so no tap area covers another's dot. */
 	const tapWidth = $derived.by(() => {
@@ -156,17 +168,28 @@
 	let active = $state<number | null>(null);
 	const hot = $derived(active != null ? (points[active] ?? null) : null);
 	const shown = $derived(active ?? points.length - 1);
+	// nothing pointed at: a small tooltip stays on the latest reading
+	const pinned = $derived(pinLatest && active == null && last ? last : null);
 	const when = (t: number) => {
 		const d = new Date(t);
-		const day = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone });
+		const day = isToday(t) ? 'Today' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone });
 		return times ? `${day} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone })}` : day;
 	};
 	const value = (p: Point) => `${formatNumber(p.v, decimals)}${unit ? ` ${unit}` : ''}`;
-	/** "✕ High", when there's a target to measure against */
-	const status = (p: Point) => (hasBand ? { level: paramStatus(p.v, band).level, text: statusShort(paramStatus(p.v, band)) } : null);
-	const spoken = (p: Point | undefined) => (p ? `${when(p.t)}: ${value(p)}${status(p) ? `, ${status(p)!.text.replace(/^\S+ /, '')}` : ''}` : 'No readings');
+	const level = (p: Point): StatusLevel => (hasBand ? paramStatus(p.v, band).level : 'ok');
+	/** "✕ 15 over target", "▲ Near high", "✓ In range"; "" without a target */
+	const status = (p: Point) => {
+		if (!hasBand) return '';
+		const st = paramStatus(p.v, band);
+		if (st.level !== 'bad') return st.level === 'ok' ? '✓ In range' : statusShort(st);
+		const over = band.max != null && p.v > band.max;
+		const diff = over ? p.v - band.max! : band.min! - p.v;
+		return `✕ ${formatNumber(diff, decimals)} ${over ? 'over' : 'under'} target`;
+	};
+	const spoken = (p: Point | undefined) => (p ? `${when(p.t)}: ${value(p)}${status(p) ? `, ${status(p).replace(/^\S+ /, '')}` : ''}` : 'No readings');
 
-	const onMarker = (e: Event) => !!(e.target as Element | null)?.closest?.('.marker, .pop');
+	const onMarker = (e: Event) => !!(e.target as Element | null)?.closest?.('.marker, .pop, .readout');
+	let pointerType = 'mouse';
 	function showAt(clientX: number) {
 		if (!el || !points.length) return;
 		active = nearestIndex(
@@ -179,10 +202,16 @@
 		if (!onMarker(e) && (e.pointerType === 'mouse' || e.buttons)) showAt(e.clientX);
 	}
 	function onpointerdown(e: PointerEvent) {
+		pointerType = e.pointerType;
 		if (!onMarker(e)) showAt(e.clientX);
 	}
 	function onpointerleave(e: PointerEvent) {
 		if (e.pointerType === 'mouse') active = null;
+	}
+	// a mouse click opens the reading's test; a finger reads first, then taps the tooltip's link
+	function onclick(e: MouseEvent) {
+		if (onMarker(e) || pointerType !== 'mouse' || !hot?.href) return;
+		goto(hot.href);
 	}
 	function onkeydown(e: KeyboardEvent) {
 		const end = points.length - 1;
@@ -192,6 +221,7 @@
 		else if (e.key === 'Home') active = 0;
 		else if (e.key === 'End') active = end;
 		else if (e.key === 'Escape') active = null;
+		else if (e.key === 'Enter' && hot?.href) goto(hot.href);
 		else return;
 		e.preventDefault();
 	}
@@ -226,12 +256,22 @@
 		void points;
 		active = null;
 	});
+
+	/** The tooltip's place: beside the reading, flipped inside the chart's edges. */
+	const tipStyle = (p: Point) => {
+		const px = x(p.t);
+		const py = y(p.v);
+		const side = px < 200 ? '0' : px > width - 200 ? '-100%' : '-50%';
+		const below = py < 110;
+		return `left:${px}px;top:${py}px;transform:translate(${side},${below ? '14px' : 'calc(-100% - 14px)'})`;
+	};
 </script>
 
 <!-- the slider is the plot; the markers are beside it, not inside, so each is its own control -->
 <div class="chart" class:fit class:waiting bind:this={el} bind:clientWidth={width} bind:clientHeight={measured}>
 	<div
 		class="plot"
+		class:clickable={!!hot?.href}
 		role="slider"
 		tabindex={points.length ? 0 : -1}
 		aria-label={label}
@@ -242,67 +282,78 @@
 		{onpointermove}
 		{onpointerdown}
 		{onpointerleave}
+		{onclick}
 		{onkeydown}
 	>
 		<svg {width} height={h} viewBox="0 0 {width} {h}" aria-hidden="true">
 			{#if title}
 				<text class="axis-title" transform="translate(11 {TOP + plotH / 2}) rotate(-90)" text-anchor="middle">{title}</text>
 			{/if}
+			{#if hasBand}
+				<rect x={LEFT} y={bandTop} width={Math.max(0, width - LEFT - RIGHT)} height={Math.max(0, bandBottom - bandTop)} fill="var(--band)"></rect>
+			{/if}
 			{#each ticks as t (t)}
-				<line x1={LEFT} x2={width} y1={y(t)} y2={y(t)} class="grid"></line>
+				<line x1={LEFT} x2={width - RIGHT} y1={y(t)} y2={y(t)} class="grid"></line>
 				<text x={LEFT - 6} y={y(t) + 4} class="axis" text-anchor="end">{tickText(t)}</text>
 			{/each}
 			{#if hasBand}
-				<rect x={LEFT} y={bandTop} width={Math.max(0, width - LEFT)} height={Math.max(0, bandBottom - bandTop)} fill="var(--band)"></rect>
-				{#if band.max != null}<line x1={LEFT} x2={width} y1={bandTop} y2={bandTop} class="band-edge"></line>{/if}
-				{#if band.min != null}<line x1={LEFT} x2={width} y1={bandBottom} y2={bandBottom} class="band-edge"></line>{/if}
+				{#if band.max != null}<line x1={LEFT} x2={width - RIGHT} y1={bandTop} y2={bandTop} class="band-edge"></line>{/if}
+				{#if band.min != null}<line x1={LEFT} x2={width - RIGHT} y1={bandBottom} y2={bandBottom} class="band-edge"></line>{/if}
+				{#if full}
+					{#if band.max != null}<text x={width - RIGHT - 2} y={bandTop - 4} class="limit" text-anchor="end">max {formatNumber(band.max, decimals)}</text>{/if}
+					{#if band.min != null}<text x={width - RIGHT - 2} y={bandBottom + 12} class="limit" text-anchor="end">min {formatNumber(band.min, decimals)}</text>{/if}
+				{/if}
 			{/if}
 			{#each markers as m (m.href)}
 				<line
 					x1={x(m.t)}
 					x2={x(m.t)}
 					y1={TOP - 10}
-					y2={h - BOTTOM}
+					y2={baseline}
 					class="marker-line"
 					class:dosing={m.kind === 'dosing'}
 					class:chosen={m.href === selected}
 				></line>
 			{/each}
-			{#if hot}<line x1={x(hot.t)} x2={x(hot.t)} y1={TOP} y2={h - BOTTOM} class="guide"></line>{/if}
-			<polyline class="trace" pathLength="1" points={line} fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"></polyline>
+			{#if hot}<line x1={x(hot.t)} x2={x(hot.t)} y1={TOP - 4} y2={baseline} class="guide"></line>{/if}
+			{#if pinned}<line x1={x(pinned.t)} x2={x(pinned.t)} y1={TOP - 4} y2={baseline} class="guide"></line>{/if}
+			<polyline class="trace" pathLength="1" points={line} fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"></polyline>
 			{#if full}
-				{#each points as p, i (i)}<circle cx={x(p.t)} cy={y(p.v)} r="2.5" fill="var(--accent)"></circle>{/each}
+				{#each points as p, i (i)}
+					{#if i !== points.length - 1}
+						<rect x={x(p.t) - 3} y={y(p.v) - 3} width="6" height="6" fill={level(p) === 'bad' ? 'var(--accent)' : 'var(--ink)'}></rect>
+					{/if}
+				{/each}
 			{/if}
 			{#if last}
-				<circle
-					class="last-dot"
-					cx={x(last.t)}
-					cy={y(last.v)}
-					r="4.5"
-					fill={lastLevel === 'bad' ? 'var(--bad)' : lastLevel === 'warn' ? 'var(--warn)' : 'var(--accent)'}
-				></circle>
+				<rect class="last-dot" x={x(last.t) - 5} y={y(last.v) - 5} width="10" height="10" fill={lastLevel === 'ok' ? 'var(--ink)' : 'var(--accent)'}></rect>
 			{/if}
-			{#if hot}<circle cx={x(hot.t)} cy={y(hot.v)} r="5.5" class="hot"></circle>{/if}
-			<line x1={LEFT} x2={width} y1={h - BOTTOM} y2={h - BOTTOM} stroke="var(--border)"></line>
+			{#if hot}<rect x={x(hot.t) - 6} y={y(hot.v) - 6} width="12" height="12" class="hot"></rect>{/if}
+			<line x1={LEFT} x2={width - RIGHT} y1={baseline} y2={baseline} class="baseline"></line>
 			{#each xTicks as t, i (i)}
 				<text
-					x={i === 0 ? LEFT : i === xTicks.length - 1 ? width : x(t)}
-					y={h - 5}
+					x={i === 0 ? LEFT : i === xTicks.length - 1 ? width - RIGHT : x(t)}
+					y={baseline + 16}
 					class="axis"
 					text-anchor={i === 0 ? 'start' : i === xTicks.length - 1 ? 'end' : 'middle'}
 					>{i === xTicks.length - 1 && isToday(t) ? 'Today' : fmt(t)}</text
 				>
 			{/each}
+			{#if full}
+				<text class="axis-title" x={LEFT + (width - LEFT - RIGHT) / 2} y={h - 4} text-anchor="middle">Date</text>
+			{/if}
 		</svg>
 		{#if hot}
-			{@const s = status(hot)}
-			<!-- above the reading, or under it near the top; inside the chart's width -->
-			<div class="readout" style:left="{Math.min(Math.max(x(hot.t) - 80, 0), Math.max(0, width - 160))}px" style:top="{y(hot.v) > 70 ? y(hot.v) - 64 : y(hot.v) + 14}px" aria-hidden="true">
-				<div class="r-when">{when(hot.t)}</div>
-				<div class="r-value">
-					<span class="num">{value(hot)}</span>
-					{#if s}<span class="status-{s.level}">{s.text}</span>{/if}
-				</div>
+			<div class="readout" style={tipStyle(hot)}>
+				<span class="r-kicker">{active === points.length - 1 ? 'Latest test' : 'Water test'}</span>
+				<span class="r-value status-{level(hot)}">{value(hot)}</span>
+				<span class="r-when">{when(hot.t)}{status(hot) ? ` · ${status(hot)}` : ''}</span>
+				{#if hot.href}<a class="r-link" href={hot.href}>Open this test ›</a>{/if}
+			</div>
+		{:else if pinned}
+			<div class="readout pinned" style="left:{Math.min(x(pinned.t), width - 8)}px;top:{y(pinned.v) - 10}px">
+				<span class="r-value status-{level(pinned)}">{value(pinned)}</span> · {when(pinned.t).split(' · ')[0]}
+				{#if status(pinned)}<br />{status(pinned)}{/if}
 			</div>
 		{/if}
 	</div>
@@ -312,7 +363,6 @@
 				type="button"
 				class="marker"
 				class:dosing={m.kind === 'dosing'}
-				class:drop={m.kind === 'water_change'}
 				class:chosen={m.href === selected}
 				style:left="{x(m.t)}px"
 				style:top="{TOP - 10}px"
@@ -322,11 +372,11 @@
 				onclick={() => onselect(m)}
 			></button>
 		{:else}
-			<a class="marker" class:dosing={m.kind === 'dosing'} class:drop={m.kind === 'water_change'} href={m.href} style:left="{x(m.t)}px" style:top="{TOP - 10}px" style:--tap="{tapWidth[i]}px" title={m.label} aria-label="{m.label}, {fmt(m.t)}"></a>
+			<a class="marker" class:dosing={m.kind === 'dosing'} href={m.href} style:left="{x(m.t)}px" style:top="{TOP - 10}px" style:--tap="{tapWidth[i]}px" title={m.label} aria-label="{m.label}, {fmt(m.t)}"></a>
 		{/if}
 	{/each}
 	{#if chosen && popover}
-		<div class="pop" style:left="{Math.min(Math.max(x(chosen.t) - 80, 0), width - 180)}px" style:top="{TOP + 4}px">
+		<div class="pop" style:left="{Math.min(Math.max(x(chosen.t) - 90, 0), width - 200)}px" style:top="{TOP + 4}px">
 			{@render popover(chosen)}
 		</div>
 	{/if}
@@ -346,19 +396,30 @@
 	.plot:focus-visible {
 		outline: 2px solid var(--accent);
 		outline-offset: 4px;
-		border-radius: 8px;
+	}
+	.plot.clickable {
+		cursor: pointer;
 	}
 	svg {
 		display: block;
 		overflow: visible;
 	}
 	.grid {
-		stroke: var(--divider-soft);
+		stroke: var(--divider);
+		stroke-dasharray: 2 4;
+	}
+	.baseline {
+		stroke: var(--ink);
+		stroke-width: 2;
 	}
 	.band-edge {
-		stroke: var(--accent);
-		stroke-opacity: 0.35;
+		stroke: var(--neutral-500);
 		stroke-dasharray: 2 3;
+	}
+	.limit {
+		fill: var(--text-muted);
+		font-size: 11px;
+		font-weight: 700;
 	}
 	.marker-line {
 		stroke: var(--text-muted);
@@ -369,62 +430,88 @@
 		stroke-dasharray: 1 3;
 	}
 	.marker-line.chosen {
-		stroke: var(--text);
+		stroke: var(--ink);
 		stroke-opacity: 1;
 		stroke-dasharray: none;
 		stroke-width: 1.5;
 	}
 	.axis {
-		fill: var(--text-faint);
+		fill: var(--text-muted);
 		font-size: 12px;
 	}
 	.axis-title {
-		fill: var(--text-muted);
+		fill: var(--text-2);
 		font-size: 12px;
-		font-weight: 600;
+		font-weight: 700;
 	}
-	/* the reading being read out */
+	/* the crosshair and the reading being read out */
 	.guide {
-		stroke: var(--text-muted);
-		stroke-opacity: 0.5;
+		stroke: var(--accent);
+		stroke-opacity: 0.6;
 	}
 	.hot {
-		fill: var(--bg);
-		stroke: var(--accent);
-		stroke-width: 2.5;
+		fill: var(--accent);
+		stroke: var(--bg);
+		stroke-width: 2;
 	}
 	.readout {
 		position: absolute;
 		z-index: 3;
 		width: max-content;
-		max-width: 200px;
-		padding: 8px 12px;
+		min-width: 190px;
+		max-width: 240px;
+		padding: 10px 12px;
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
-		border-radius: 12px;
 		background: var(--bg);
-		border: 1px solid var(--border-strong);
-		box-shadow: var(--shadow-toast);
+		border: 2px solid var(--ink);
+		box-shadow: var(--shadow-md);
 		pointer-events: none;
 	}
-	.r-when {
-		font-size: 12px;
+	.r-kicker {
+		font-size: 11px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
 		color: var(--text-muted);
 		white-space: nowrap;
 	}
 	.r-value {
-		display: flex;
-		align-items: baseline;
-		gap: 8px;
-		font-size: 14px;
-		font-weight: 600;
+		font-size: 18px;
+		font-weight: 800;
 		white-space: nowrap;
 	}
-	.r-value span:last-child:not(.num) {
+	.r-when {
 		font-size: 13px;
+		white-space: nowrap;
 	}
-	/* a 44px target, with the 14px dot drawn in its middle */
+	.r-link {
+		padding-top: 4px;
+		font-size: 12px;
+		font-weight: 700;
+		color: var(--bad);
+		white-space: nowrap;
+		pointer-events: auto;
+	}
+	/* the small tooltip pinned to the latest reading */
+	.readout.pinned {
+		display: block;
+		min-width: 0;
+		max-width: 170px;
+		padding: 6px 8px;
+		transform: translate(-100%, -100%);
+		border: none;
+		box-shadow: none;
+		background: var(--ink);
+		color: var(--bg);
+		font-size: 12px;
+		line-height: 1.3;
+	}
+	.pinned .r-value {
+		font-size: 12px;
+		color: inherit !important;
+	}
+	/* a 44px target, with the 10px square drawn in its middle */
 	.marker {
 		position: absolute;
 		z-index: 1;
@@ -433,29 +520,22 @@
 		margin: -22px 0 0 calc(var(--tap, 44px) / -2);
 		padding: 0;
 		border: none;
-		border-radius: 50%;
 		background: none;
 	}
 	.marker::before {
 		content: '';
 		position: absolute;
-		top: 15px;
-		left: calc(50% - 7px);
-		width: 14px;
-		height: 14px;
+		top: 17px;
+		left: calc(50% - 5px);
+		width: 10px;
+		height: 10px;
 		box-sizing: border-box;
-		border-radius: 50%;
-		background: var(--border);
-		border: 1px solid var(--text-muted);
+		background: var(--ink);
 	}
+	/* a dose is a diamond */
 	.marker.dosing::before {
-		border-radius: 3px;
-		transform: rotate(45deg) scale(0.85);
-	}
-	/* a water change is a drop of water, point up */
-	.marker.drop::before {
-		border-radius: 50% 0 50% 50%;
-		transform: translateY(1px) rotate(-45deg);
+		transform: rotate(45deg) scale(0.8);
+		background: var(--neutral-600);
 	}
 	/* the reading line draws itself in, then the latest reading pops up */
 	.trace {
@@ -507,12 +587,11 @@
 	}
 	.pop {
 		position: absolute;
-		width: 180px;
+		width: 200px;
 		z-index: 2;
-		border-radius: 12px;
 		background: var(--bg);
-		border: 1px solid var(--border-strong);
+		border: 2px solid var(--ink);
 		padding: 10px 12px;
-		box-shadow: var(--shadow-toast);
+		box-shadow: var(--shadow-md);
 	}
 </style>

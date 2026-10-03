@@ -1,12 +1,13 @@
 <script lang="ts">
-	// What's new: every release, newest first, from CHANGELOG.md in the build,
-	// so it's here offline and always matches the version running. The newest
-	// few are open; older ones fold away by version (1.4, 1.3, …).
+	// What's new (redesign README § 15): every release, newest first, from
+	// CHANGELOG.md in the build, so it's here offline and always matches the
+	// version running. A newer release, for admins, sits at the top with Update now.
 	import { byLine, displayVersion, RELEASES, VERSION, type Release } from '$lib/changelog';
 	import { fmtDateLong } from '$lib/time';
 	let { data } = $props();
 
 	const id = (v: string) => `v${v.replaceAll('.', '-')}`;
+	const installed = RELEASES.find((r) => r.version === VERSION);
 	const OPEN = 3;
 	const earlier = byLine(RELEASES.slice(OPEN));
 	/** "Sep 27, 2026", or "Sep 26, 2026 to Sep 27, 2026" for a line released over days */
@@ -16,8 +17,6 @@
 	};
 	// a newer release on GitHub, for admins (the layout checks)
 	const update = $derived(data.app.update);
-	// the version this server runs, first and plain, and its release marked below
-	const installed = RELEASES.find((r) => r.version === VERSION);
 </script>
 
 <!-- links: off for a release that isn't installed yet, whose pages aren't here -->
@@ -37,53 +36,55 @@
 	</ul>
 {/snippet}
 
+{#snippet release(r: Release, current: boolean, links = true, tag: 'h2' | 'h3' = 'h2')}
+	<section class="release" class:current aria-labelledby={id(r.version)}>
+		<div class="rv">
+			<svelte:element this={tag} id={id(r.version)} class="ver"
+				>{displayVersion(r.version)}{' '}<span class="date">{fmtDateLong(r.date)}</span>{#if current}{' '}<span class="tag tag-accent here">✓ Installed</span>{/if}</svelte:element
+			>
+		</div>
+		{@render lines(r, links)}
+	</section>
+{/snippet}
+
 <svelte:head><title>What's new · Settings · Waterline</title></svelte:head>
 
 <div class="page sub-page">
 	<div class="head">
 		<a class="back sub-back" href="/settings">‹ Settings</a>
 		<h1>What's new</h1>
-		<div class="installed" role="group" aria-label="Installed version">
+		<p class="installed" role="group" aria-label="Installed version">
 			<span class="ik">Installed</span>
-			<span class="iv"><span class="mono">Waterline {displayVersion(VERSION)}</span>{#if installed}<span class="date"
-						>Released {fmtDateLong(installed.date)}</span
-					>{/if}</span
-			>
-			{#if update}<a class="inew" href="#update">▲ {update.version} is out</a>{/if}
-		</div>
-		<p class="muted">The newest changes come first.</p>
-		<a class="repo" href={data.app.repo} target="_blank" rel="noopener noreferrer">Waterline on GitHub<span aria-hidden="true"> ↗</span></a>
+			<span class="mono">Waterline {displayVersion(VERSION)}</span>{#if installed}<span class="date"> · Released {fmtDateLong(installed.date)}</span>{/if}
+		</p>
+		<p class="lede">
+			The newest changes come first ·
+			<a class="repo" href={data.app.repo} target="_blank" rel="noopener noreferrer">Waterline on GitHub<span aria-hidden="true"> ↗</span></a>
+		</p>
 	</div>
 
 	{#if update}
 		<section class="update" id="update" aria-labelledby="update-h">
 			<h2 id="update-h">Waterline {update.version} is out</h2>
-			<p>
-				Update the Docker image to get it; on Unraid, the Docker tab shows update ready. Everything in /data is kept.
-				<a href={update.link} target="_blank" rel="noopener noreferrer">Changelog on GitHub<span aria-hidden="true"> ↗</span></a>
-			</p>
-			{#each update.releases as r (r.version)}
-				<h3>{displayVersion(r.version)} <span class="date">{fmtDateLong(r.date)}</span></h3>
-				{@render lines(r, false)}
-			{/each}
-			{#if update.more}
-				<p class="more">
-					And {update.more} earlier {update.more === 1 ? 'release' : 'releases'}:
-					<a href={update.link} target="_blank" rel="noopener noreferrer">read them on GitHub<span aria-hidden="true"> ↗</span></a>
-				</p>
-			{/if}
+			<span class="upd-text"
+				>You're on {displayVersion(VERSION)}. Update the Docker image to get it (on Unraid, the Docker tab shows update ready); everything in /data is kept.
+				<a href={update.link} target="_blank" rel="noopener noreferrer">Changelog on GitHub<span aria-hidden="true"> ↗</span></a></span
+			>
+			<a class="btn btn-primary" href={update.link} target="_blank" rel="noopener noreferrer">Update now<span aria-hidden="true"> ↗</span></a>
 		</section>
+		{#each update.releases as r (r.version)}
+			{@render release(r, false, false)}
+		{/each}
+		{#if update.more}
+			<p class="more">
+				And {update.more} earlier {update.more === 1 ? 'release' : 'releases'}:
+				<a href={update.link} target="_blank" rel="noopener noreferrer">read them on GitHub<span aria-hidden="true"> ↗</span></a>
+			</p>
+		{/if}
 	{/if}
 
 	{#each RELEASES.slice(0, OPEN) as r (r.version)}
-		<section class="release" aria-labelledby={id(r.version)}>
-			<h2 id={id(r.version)}>
-				{displayVersion(r.version)} <span class="date">{fmtDateLong(r.date)}</span>{#if r.version === VERSION}<span class="status-tag sm tag-ok here"
-						>✓ Installed</span
-					>{/if}
-			</h2>
-			{@render lines(r)}
-		</section>
+		{@render release(r, r.version === VERSION)}
 	{/each}
 
 	{#if earlier.length}
@@ -100,10 +101,7 @@
 						</summary>
 						<div class="fold">
 							{#each g.releases as r (r.version)}
-								<section class="release" aria-labelledby={id(r.version)}>
-									<h3 id={id(r.version)}>{displayVersion(r.version)} <span class="date">{fmtDateLong(r.date)}</span></h3>
-									{@render lines(r)}
-								</section>
+								{@render release(r, r.version === VERSION, true, 'h3')}
 							{/each}
 						</div>
 					</details>
@@ -114,136 +112,108 @@
 </div>
 
 <style>
-	.lines a {
-		font-weight: 600;
-	}
-	.lines a.strong {
-		font-weight: 700;
-	}
 	.page {
 		padding: 8px 20px calc(24px + env(safe-area-inset-bottom));
 		display: flex;
 		flex-direction: column;
-		gap: 24px;
-		max-width: 600px;
+		gap: 0;
+		max-width: 820px;
 	}
 	.head {
 		display: flex;
 		flex-direction: column;
+		gap: 4px;
+		margin-bottom: 18px;
 	}
 	h1 {
-		margin: 0 0 4px;
+		margin: 0;
 		font-size: 28px;
-		font-weight: 600;
 	}
-	.head p {
+	.lede {
 		margin: 0;
 		font-size: 14px;
 		line-height: 1.5;
 	}
-	/* the version this server runs: its own card, above everything */
-	.installed {
-		margin: 8px 0 10px;
-		padding: 12px 16px;
+	.repo {
+		font-weight: 800;
+	}
+	/* a newer release, for admins: a surface box with Update now */
+	.update {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 4px 14px;
-		border-radius: 14px;
+		gap: 12px 14px;
+		padding: 12px 16px;
+		margin-bottom: 18px;
 		background: var(--surface);
-		border: 1px solid var(--border);
+		font-size: 14px;
+		line-height: 1.5;
 	}
-	.ik {
-		font-size: 12px;
-		font-weight: 600;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
+	.upd-text {
+		flex: 1;
+		min-width: 240px;
+	}
+	.more {
+		margin: 0 0 18px;
+		font-size: 14px;
+	}
+	/* one release: version and date on the left, its changes on the right, under a rule */
+	.release {
+		display: grid;
+		grid-template-columns: 150px minmax(0, 1fr);
+		gap: 20px;
+		padding: 16px 0;
+		border-top: 2px solid var(--divider);
+	}
+	.release.current {
+		border-top-color: var(--ink);
+	}
+	.rv {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+	.ver {
+		margin: 0;
+		font-size: 20px;
+	}
+	.date {
+		font-size: 13px;
 		color: var(--text-muted);
 	}
-	.iv {
-		display: flex;
-		align-items: baseline;
-		flex-wrap: wrap;
-		gap: 4px 10px;
-		font-size: 18px;
-		font-weight: 600;
-	}
-	.inew {
-		margin-left: auto;
-		min-height: 44px;
-		display: flex;
-		align-items: center;
-		font-size: 14px;
-		font-weight: 600;
-		color: var(--accent);
-	}
 	.here {
-		align-self: center;
-	}
-	/* the project's page, always */
-	.repo {
 		align-self: flex-start;
-		min-height: 44px;
-		display: flex;
-		align-items: center;
-		font-size: 14px;
-		font-weight: 600;
+		font-weight: 800;
 	}
-	.release {
+	.lines {
+		margin: 0;
+		padding-left: 18px;
 		display: flex;
 		flex-direction: column;
-		gap: 10px;
-	}
-	h2,
-	h3 {
-		margin: 0;
-		font-size: 17px;
-		font-weight: 600;
-		display: flex;
-		align-items: baseline;
-		gap: 10px;
-	}
-	/* a newer release, for admins: in the accent, above what's installed */
-	.update {
-		padding: 16px;
-		display: flex;
-		flex-direction: column;
-		gap: 10px;
-		border-radius: 16px;
-		background: var(--selected);
-		border: 1px solid var(--accent);
-	}
-	.update h2 {
-		color: var(--accent);
-	}
-	.update p {
-		margin: 0;
+		gap: 6px;
 		font-size: 14px;
-		line-height: 1.5;
-		color: var(--text-2);
+		line-height: 1.45;
 	}
-	.update p a {
-		font-weight: 600;
-		white-space: nowrap;
+	.lines a {
+		font-weight: 700;
 	}
-	.update h3 {
-		margin-top: 4px;
-		font-size: 15px;
-	}
-	.update .more {
-		font-size: 14px;
+	strong {
+		font-weight: 800;
 	}
 	/* older releases, one fold per version line, opened on tap (works without scripts) */
 	.earlier {
 		display: flex;
 		flex-direction: column;
 		gap: 10px;
+		padding-top: 16px;
+		border-top: 2px solid var(--divider);
 	}
-	.folds {
-		border-top: 1px solid var(--border);
+	.earlier h2 {
+		margin: 0;
+		font-size: 20px;
 	}
 	details {
-		border-bottom: 1px solid var(--border);
+		border-bottom: 1px solid var(--divider);
 	}
 	summary {
 		min-height: 48px;
@@ -271,49 +241,59 @@
 		transform: rotate(-135deg) translate(-2px, -2px);
 	}
 	.line {
-		font-size: 16px;
-		font-weight: 600;
+		font-size: 15px;
+		font-weight: 800;
 	}
 	.fold {
 		display: flex;
 		flex-direction: column;
-		gap: 20px;
-		padding: 4px 0 16px;
+		padding-bottom: 8px;
 	}
-	.fold h3 {
-		font-size: 15px;
+	.fold .release {
+		border-top-color: var(--divider-soft);
 	}
-	.date {
-		font-size: 14px;
-		font-weight: 400;
-		color: var(--text-muted);
-	}
-	/* one card, a row per change */
-	.lines {
-		list-style: none;
-		margin: 0;
-		padding: 0 14px;
-		border-radius: 14px;
-		background: var(--surface);
-		border: 1px solid var(--border);
-	}
-	.lines li {
-		padding: 12px 0;
-		font-size: 15px;
-		line-height: 1.5;
-		color: var(--text-2);
-	}
-	.lines li + li {
-		border-top: 1px solid var(--divider-soft);
-	}
-	strong {
-		font-weight: 600;
-		color: var(--text);
+	@media (max-width: 1023px) {
+		.release {
+			grid-template-columns: 1fr;
+			gap: 10px;
+		}
+		.rv {
+			flex-direction: row;
+			align-items: baseline;
+			flex-wrap: wrap;
+			gap: 4px 10px;
+		}
 	}
 	@media (min-width: 1024px) {
-		.lines,
-		.installed {
-			max-width: 720px;
+		h1 {
+			font-size: 22px;
 		}
+	}
+	.installed {
+		margin: 0 0 4px;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px 10px;
+		font-size: 14px;
+	}
+	.installed .ik {
+		font-size: 11px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--text-muted);
+		align-self: center;
+	}
+	.installed .date {
+		color: var(--text-muted);
+	}
+	.update h2 {
+		margin: 0;
+		font-size: 20px;
+		flex-basis: 100%;
+	}
+	.ver .here {
+		margin-left: 10px;
+		vertical-align: middle;
+		font-size: 11px;
 	}
 </style>

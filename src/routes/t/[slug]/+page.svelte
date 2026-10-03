@@ -56,9 +56,9 @@
 				</div>
 				{#if v.summary}
 					<div class="pills">
-						{#each v.summary.bad as b (b)}<span class="pill bad">✕ {b}</span>{/each}
-						{#if v.summary.ok}<span class="pill ok">✓ {v.summary.ok} in range</span>{/if}
-						{#if v.tested}<span class="pill plain hide-desk">Tested {v.tested}</span>{/if}
+						{#each v.summary.bad as b (b)}<span class="status-tag tag-bad">✕ {b}</span>{/each}
+						{#if v.summary.ok}<span class="status-tag tag-ok">✓ {v.summary.ok} in range</span>{/if}
+						{#if v.tested}<span class="status-tag tag-none hide-desk">Tested {v.tested}</span>{/if}
 					</div>
 				{/if}
 			</div>
@@ -67,7 +67,7 @@
 
 			{#if chart}
 				<section class="chart">
-					<div class="ch">
+					<div class="ch sh">
 						<h2>{chart.name} · 3 months</h2>
 						{#if v.charts.length > 1}
 							<div class="chips" role="group" aria-label="Parameter">
@@ -96,14 +96,14 @@
 								/>
 							</div>
 						</div>
-						{#if chart.target}<p class="legend"><span class="swatch" aria-hidden="true"></span>Target {chart.target}</p>{/if}
+						{#if chart.target}<p class="legend"><span class="swatch" aria-hidden="true"></span>Target band {chart.target}</p>{/if}
 					</div>
 				</section>
 			{/if}
 
 			{#if inTank}
 				<section class="tank">
-					<h2>In the tank</h2>
+					<div class="sh"><h2>In the tank</h2></div>
 					{#if v.livestock.length}
 						<div class="group">
 							<h3>Livestock</h3>
@@ -154,7 +154,7 @@
 
 			{#if v.photos.length}
 				<section class="photos">
-					<h2>Photos</h2>
+					<div class="sh"><h2>Photos</h2></div>
 					<div class="grid">
 						{#each v.photos.slice(0, 6) as p, i (p)}
 							<a href={photo(p, 'full')}><img src={photo(p)} alt="{v.name} photo {i + 1}" loading="lazy" /></a>
@@ -165,7 +165,7 @@
 
 			{#if v.activity.length}
 				<section class="activity">
-					<h2>Recent activity</h2>
+					<div class="sh"><h2>Recent activity</h2></div>
 					<ul class="rows">
 						{#each v.activity as a (a.key)}<li><span>{a.title}</span><span class="muted">{a.day}</span></li>{/each}
 					</ul>
@@ -188,7 +188,7 @@
 
 	/* ── Header ───────────────────────────────────────────────── */
 	.top {
-		border-bottom: 1px solid var(--border);
+		border-bottom: 2px solid var(--divider);
 		padding-top: env(safe-area-inset-top);
 	}
 	.top-in {
@@ -208,20 +208,15 @@
 		color: var(--text);
 	}
 	.shared {
-		font-size: 13px;
+		font-size: 11px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
 		color: var(--text-muted);
 	}
 	.edit {
-		position: relative;
 		min-height: 36px;
 		padding: 0 14px;
-		border-radius: 10px;
-		font-size: 14px;
-	}
-	.edit::after {
-		content: '';
-		position: absolute;
-		inset: -4px 0;
+		font-size: 13px;
 	}
 
 	/* ── Layout ───────────────────────────────────────────────── */
@@ -231,26 +226,34 @@
 		padding: 0 20px;
 		display: flex;
 		flex-direction: column;
-		gap: 22px;
+		gap: 24px;
 	}
 	.col {
 		display: flex;
 		flex-direction: column;
-		gap: 24px;
+		gap: 28px;
 		min-width: 0;
 	}
 	section {
 		display: flex;
 		flex-direction: column;
-		gap: 10px;
+		gap: 12px;
 		min-width: 0;
+	}
+	/* a heading over a 2px ink rule, its meta on the right */
+	.sh {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		gap: 12px;
+		padding-bottom: 8px;
+		border-bottom: 2px solid var(--ink);
 	}
 	h2 {
 		margin: 0;
-		font-size: 17px;
-		font-weight: 600;
+		font-size: 20px;
 	}
-	/* Phones (P2): one column: cover, title, readings, chart, photos, the tank, activity. */
+	/* Phones: one column: cover, title, readings, chart, photos, the tank, activity. */
 	@media (max-width: 1023px) {
 		.col {
 			display: contents;
@@ -298,20 +301,10 @@
 		object-fit: cover;
 		display: block;
 	}
-	/* the cover fades into the page and the title overlaps it (P2) */
-	.hero::after {
-		content: '';
-		position: absolute;
-		inset: auto 0 0;
-		height: 90px;
-		background: linear-gradient(transparent, var(--bg));
-	}
 	.intro {
-		position: relative;
-		margin-top: -50px;
 		display: flex;
 		flex-direction: column;
-		gap: 22px;
+		gap: 14px;
 	}
 	.title {
 		display: flex;
@@ -321,95 +314,52 @@
 	}
 	h1 {
 		margin: 0;
-		font-size: 30px;
-		font-weight: 600;
-		letter-spacing: -0.01em;
-		line-height: 1.15;
+		font-size: 34px;
+		letter-spacing: -0.02em;
+		line-height: 1.05;
 		overflow-wrap: anywhere;
 	}
 	.sub {
 		margin: 0;
-		font-size: 14px;
+		font-size: 11px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
 		color: var(--text-muted);
 	}
 	.pills {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 8px;
-	}
-	.pill {
-		display: inline-flex;
-		align-items: center;
-		height: 30px;
-		padding: 0 10px;
-		border-radius: 8px;
-		font-size: 13px;
-		font-weight: 600;
-		white-space: nowrap;
-	}
-	.pill.bad {
-		background: var(--bad-bg);
-		color: var(--bad-text);
-	}
-	.pill.ok {
-		background: var(--ok-bg);
-		color: var(--ok-text);
-	}
-	.pill.plain {
-		background: var(--surface);
-		border: 1px solid var(--border);
-		color: var(--text-2);
-		font-weight: 400;
+		gap: 6px;
 	}
 	.desc {
 		margin: 0;
 		font-size: 15px;
 		line-height: 1.6;
-		color: var(--text-2);
 		max-width: 640px;
 	}
 
 	/* ── Readings ─────────────────────────────────────────────── */
-	.sh {
-		display: flex;
-		justify-content: space-between;
-		align-items: baseline;
-		gap: 12px;
+	.sh .muted {
 		font-size: 13px;
-	}
-	@media (max-width: 1023px) {
-		.sh {
-			position: absolute;
-			width: 1px;
-			height: 1px;
-			overflow: hidden;
-			clip: rect(0 0 0 0);
-			white-space: nowrap;
-		}
 	}
 	.tiles {
 		display: grid;
 		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: 8px;
+		border-top: 2px solid var(--ink);
+	}
+	@media (min-width: 1024px) {
+		.tiles {
+			border-top: none;
+		}
 	}
 	.rd {
-		border-radius: 12px;
-		background: var(--surface);
-		border: 1px solid var(--border);
-		padding: 10px;
+		padding: 8px 10px 8px 0;
 		display: grid;
 		grid-template-areas: 'n' 'v' 's';
 		align-content: start;
-		gap: 4px;
+		gap: 2px;
 		min-width: 0;
-	}
-	.rd.bad {
-		background: var(--bad-bg);
-		border-color: var(--bad-border);
-	}
-	.rd.warn {
-		background: var(--warn-bg);
-		border-color: var(--warn-border);
+		border-bottom: 1px solid var(--divider);
 	}
 	.rn {
 		grid-area: n;
@@ -419,61 +369,55 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	.rd.bad .rn,
-	.rd.bad small {
-		color: var(--bad-text);
-	}
-	.rd.warn .rn,
-	.rd.warn small {
-		color: var(--warn-text);
-	}
 	.rv {
 		grid-area: v;
 		font-size: 22px;
-		font-weight: 600;
+		font-weight: 800;
 		line-height: 1.15;
 		overflow-wrap: anywhere;
 	}
 	.rv small {
-		font-size: 12px;
+		font-size: 11px;
 		font-weight: 400;
 		color: var(--text-muted);
 	}
 	.rs {
 		grid-area: s;
 		font-size: 12px;
-		font-weight: 600;
+		font-weight: 800;
 		white-space: nowrap;
+	}
+	/* a reading out of range reads in red; near, in neutral-800 (never colour alone) */
+	.rd.bad .rv {
+		color: var(--bad);
 	}
 
 	/* ── Chart ────────────────────────────────────────────────── */
 	.ch {
-		display: flex;
 		flex-wrap: wrap;
 		gap: 8px 12px;
-		justify-content: space-between;
-		align-items: center;
 	}
 	.ch .chips {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 6px;
 	}
-	.ch .chip[aria-pressed='true'] {
-		font-weight: 700;
+	.ch .chip {
+		height: 30px;
+		padding: 0 10px;
+		font-size: 13px;
+	}
+	.ch .chip::after {
+		inset: -7px 0;
 	}
 	.chart-card {
-		border-radius: 14px;
-		background: var(--surface);
-		border: 1px solid var(--border);
-		padding: 12px;
 		display: flex;
 		flex-direction: column;
 		gap: 10px;
 	}
 	.chart-box {
 		position: relative;
-		height: 150px;
+		height: 160px;
 	}
 	.fill {
 		position: absolute;
@@ -484,14 +428,13 @@
 		display: flex;
 		align-items: center;
 		gap: 6px;
-		font-size: 13px;
+		font-size: 12px;
 		color: var(--text-muted);
 	}
 	.swatch {
 		width: 14px;
 		height: 8px;
 		background: var(--band);
-		border: 1px dashed var(--accent);
 	}
 
 	/* ── Photos ───────────────────────────────────────────────── */
@@ -503,9 +446,8 @@
 	.grid a {
 		display: block;
 		aspect-ratio: 1;
-		border-radius: 6px;
 		overflow: hidden;
-		background: var(--surface-hi);
+		background: var(--surface);
 	}
 	.grid img {
 		width: 100%;
@@ -522,8 +464,8 @@
 	}
 	h3 {
 		margin: 4px 0 0;
-		font-size: 12px;
-		font-weight: 600;
+		font-size: 11px;
+		font-weight: 400;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
 		color: var(--text-muted);
@@ -542,22 +484,19 @@
 		gap: 6px;
 		min-height: 32px;
 		padding: 0 10px;
-		border-radius: 8px;
 		background: var(--surface);
-		border: 1px solid var(--border);
 		font-size: 13px;
 	}
 	.tag b {
-		color: var(--accent);
+		font-weight: 800;
 	}
 	.plants {
 		margin: 0;
 		font-size: 14px;
 		line-height: 1.6;
-		color: var(--text-2);
 	}
 
-	/* Equipment and activity: label left, detail right, soft dividers */
+	/* Equipment and activity: label left, detail right, 1px dividers */
 	.rows {
 		list-style: none;
 		margin: 0;
@@ -572,13 +511,12 @@
 		gap: 16px;
 		padding: 10px 0;
 		font-size: 15px;
-	}
-	.rows li + li {
-		border-top: 1px solid var(--divider-soft);
+		border-bottom: 1px solid var(--divider);
 	}
 	.rows .muted {
 		flex-shrink: 0;
 		text-align: right;
+		font-size: 13px;
 	}
 	.tank .rows li {
 		padding: 8px 0;
@@ -591,12 +529,12 @@
 		gap: 8px;
 		margin-top: 2px;
 		padding: 12px 0 calc(30px + env(safe-area-inset-bottom));
-		border-top: 1px solid var(--border);
+		border-top: 2px solid var(--ink);
 		font-size: 13px;
 		color: var(--text-muted);
 	}
 
-	/* ── Desktop (P3) ─────────────────────────────────────────── */
+	/* ── Desktop ──────────────────────────────────────────────── */
 	@media (min-width: 1024px) {
 		.top-in {
 			min-height: 60px;
@@ -609,19 +547,17 @@
 			align-items: start;
 			padding: 32px 40px 0;
 		}
+		/* the side column sits beyond a 2px rule */
 		.side {
-			gap: 22px;
+			gap: 24px;
+			padding-left: 32px;
+			border-left: 2px solid var(--divider);
 		}
 		.hero {
 			height: 320px;
 			margin: 0;
-			border-radius: 18px;
-		}
-		.hero::after {
-			display: none;
 		}
 		.intro {
-			margin-top: 0;
 			flex-direction: row;
 			justify-content: space-between;
 			align-items: flex-end;
@@ -631,54 +567,23 @@
 			flex: 1;
 		}
 		h1 {
-			font-size: 40px;
-			letter-spacing: -0.02em;
-		}
-		.sub {
-			font-size: 15px;
+			font-size: 42px;
 		}
 		.pills {
 			justify-content: flex-end;
 			max-width: 50%;
 		}
-		.pill {
-			height: 32px;
-			padding: 0 12px;
-		}
 		.desc {
 			font-size: 16px;
 		}
-		/* the chart header moves into the card */
-		.chart {
-			border-radius: 16px;
-			background: var(--surface);
-			border: 1px solid var(--border);
-			padding: 18px;
-		}
-		.chart-card {
-			border: none;
-			border-radius: 0;
-			background: none;
-			padding: 0;
-		}
 		.chart-box {
-			height: 200px;
-		}
-		/* P3's compact chips (phones keep the 36px ones) */
-		.ch .chip {
-			height: 30px;
-			padding: 0 12px;
-			border-radius: 15px;
-			font-size: 13px;
-		}
-		.ch .chip::after {
-			inset: -7px 0;
+			height: 220px;
 		}
 		.tiles {
 			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
 		.rd {
-			padding: 12px;
+			padding: 10px 12px 10px 0;
 			grid-template-columns: minmax(0, 1fr) auto;
 			grid-template-areas: 'n s' 'v v';
 			column-gap: 6px;
@@ -688,16 +593,13 @@
 			font-size: 13px;
 		}
 		.rv {
-			font-size: 24px;
+			font-size: 26px;
 		}
 		.rv small {
-			font-size: 13px;
+			font-size: 12px;
 		}
 		.grid {
 			gap: 6px;
-		}
-		.grid a {
-			border-radius: 8px;
 		}
 		.rows li {
 			padding: 9px 0;

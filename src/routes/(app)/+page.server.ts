@@ -162,6 +162,8 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		tasks,
 		today,
 		waterChange: {
+			// the reminder's id, so Done in Needs attention completes it (and opens the log form)
+			taskId: wcTask?.id ?? null,
 			days: lastWc ? daysBetween(dateInZone(lastWc.occurredAt, tz), today) : null,
 			goal: wcTask?.intervalDays ?? 7,
 			// "Sep 19", for "Every 7 days · last Sep 19"

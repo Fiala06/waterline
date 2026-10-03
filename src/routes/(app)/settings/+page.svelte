@@ -15,22 +15,11 @@
 			.map(([name, list]) => ({ name, list: list.sort((a, b) => a.city.localeCompare(b.city)) }))
 			.sort((a, b) => (a.name === 'Other' ? 1 : b.name === 'Other' ? -1 : a.name.localeCompare(b.name)));
 	}
-
-	/** "Pacific Time" for America/Los_Angeles (as in Setup); the city where there's no name. */
-	function zoneName(tz: string) {
-		try {
-			const name = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'longGeneric' })
-				.formatToParts(new Date())
-				.find((p) => p.type === 'timeZoneName')?.value;
-			if (name && !name.startsWith('GMT')) return name;
-		} catch {
-			/* a zone this browser doesn't know */
-		}
-		return (tz.split('/').pop() ?? tz).replace(/_/g, ' ');
-	}
 </script>
 
 <script lang="ts">
+	// Settings (redesign README § 15): one page of sections, each a heading over a
+	// 2px ink rule and rows with 1px dividers. Changes save as they're made.
 	import { enhance } from '$app/forms';
 	import SectionLink from '$lib/components/SectionLink.svelte';
 	import { invalidateAll } from '$app/navigation';
@@ -67,7 +56,6 @@
 			: null
 	);
 
-	// 16 shows values, not controls: each picker row draws its value over an invisible native select.
 	let unitSystem = $state(untrack(() => u.unitSystem));
 	let hardnessUnit = $state(untrack(() => u.hardnessUnit));
 	let currency = $state(untrack(() => u.currency));
@@ -130,6 +118,15 @@
 			? "▲ 1 entry hasn't synced yet. Sign out once it has, or it may be lost."
 			: `▲ ${n} entries haven't synced yet. Sign out once they have, or they may be lost.`;
 	});
+	// the desktop menu: auto-hide (a rail that opens on hover) or kept open, as the shell stores it
+	function setAutoHide(auto: boolean) {
+		ui.navPinned = !auto;
+		try {
+			localStorage.setItem(`wl_nav:${u.id}`, auto ? 'auto' : 'pinned');
+		} catch {
+			/* storage blocked */
+		}
+	}
 </script>
 
 <svelte:head><title>Settings · Waterline</title></svelte:head>
@@ -138,83 +135,77 @@
 <form id="notify-form" method="POST" action="?/notifications" use:enhance={autosave}></form>
 
 <div class="page sub-page" {onchange}>
-	<h1 class="title hide-desk">Settings</h1>
+	<div class="phead hide-desk">
+		<span class="kicker">{[u.displayName, u.email].filter(Boolean).join(' · ')}</span>
+		<h1 class="title">Settings</h1>
+	</div>
 	<div class="sections">
 		<section id="profile" class="sec" aria-labelledby="profile-h">
 			<h2 id="profile-h">Profile<SectionLink id="profile" label="Profile" /></h2>
-			<div class="group">
+			<div class="rows">
 				<div class="row photo-row"><ProfilePhoto user={u} error={form?.photoError} /></div>
-				<label class="row edit">
-					<span class="k">Name</span>
-					<input
-						class="v"
-						name="displayName"
-						form="settings-form"
-						defaultValue={u.displayName}
-						required
-						maxlength="80"
-						autocomplete="name"
-						aria-invalid={!!nameError}
-						aria-describedby={nameError ? 'name-error' : undefined}
-					/>
-					<span class="chev" aria-hidden="true"></span>
-				</label>
-				<label class="row edit">
-					<span class="k">Notification email</span>
-					<input
-						class="v"
-						id="notifyEmail"
-						name="notifyEmail"
-						form="notify-form"
-						type="email"
-						defaultValue={p.notifyEmail}
-						placeholder={u.email}
-						autocomplete="email"
-						aria-invalid={!!emailError}
-						aria-describedby="{emailError ? 'email-error ' : ''}email-hint"
-					/>
-					<span class="chev" aria-hidden="true"></span>
-				</label>
 			</div>
-			{#if nameError}<p class="error-text" id="name-error" role="alert">✕ {nameError}</p>{/if}
-			{#if emailError}<p class="error-text" id="email-error" role="alert">✕ {emailError}</p>{/if}
-			<p class="hint" id="email-hint">Leave empty to use {u.email}.</p>
+			<div class="field">
+				<label class="label" for="displayName">Name</label>
+				<input
+					class="input"
+					id="displayName"
+					name="displayName"
+					form="settings-form"
+					defaultValue={u.displayName}
+					required
+					maxlength="80"
+					autocomplete="name"
+					aria-invalid={!!nameError}
+					aria-describedby={nameError ? 'name-error' : undefined}
+				/>
+				{#if nameError}<span class="error-text" id="name-error" role="alert">✕ {nameError}</span>{/if}
+			</div>
+			<div class="field">
+				<label class="label" for="notifyEmail">Notification email</label>
+				<input
+					class="input"
+					id="notifyEmail"
+					name="notifyEmail"
+					form="notify-form"
+					type="email"
+					defaultValue={p.notifyEmail}
+					placeholder={u.email}
+					autocomplete="email"
+					aria-invalid={!!emailError}
+					aria-describedby="{emailError ? 'email-error ' : ''}email-hint"
+				/>
+				{#if emailError}<span class="error-text" id="email-error" role="alert">✕ {emailError}</span>{/if}
+				<span class="hint" id="email-hint">Leave empty to use {u.email}.</span>
+			</div>
 		</section>
 
 		<section id="units" class="sec" aria-labelledby="units-h">
 			<h2 id="units-h">Units<SectionLink id="units" label="Units" /></h2>
-			<div class="group">
+			<div class="rows">
 				<div class="row pick">
 					<label class="k" for="unitSystem">Unit system</label>
-					<span class="v" aria-hidden="true">{unitSystem === 'metric' ? 'Metric' : 'Imperial'}</span>
-					<span class="chev" aria-hidden="true"></span>
-					<select id="unitSystem" name="unitSystem" form="settings-form" bind:value={unitSystem}>
+					<select class="input" id="unitSystem" name="unitSystem" form="settings-form" bind:value={unitSystem}>
 						<option value="imperial">Imperial (gal · °F · in)</option>
 						<option value="metric">Metric (L · °C · cm)</option>
 					</select>
 				</div>
 				<div class="row pick">
 					<label class="k" for="hardnessUnit">Hardness</label>
-					<span class="v" aria-hidden="true">{hardnessUnit === 'ppm' ? 'ppm' : 'Degrees (dGH / dKH)'}</span>
-					<span class="chev" aria-hidden="true"></span>
-					<select id="hardnessUnit" name="hardnessUnit" form="settings-form" bind:value={hardnessUnit}>
+					<select class="input" id="hardnessUnit" name="hardnessUnit" form="settings-form" bind:value={hardnessUnit}>
 						<option value="dgh">Degrees (dGH / dKH)</option>
 						<option value="ppm">ppm</option>
 					</select>
 				</div>
 				<div class="row pick">
 					<label class="k" for="currency">Currency</label>
-					<span class="v" aria-hidden="true">{currencyName(currency)}</span>
-					<span class="chev" aria-hidden="true"></span>
-					<select id="currency" name="currency" form="settings-form" bind:value={currency}>
+					<select class="input" id="currency" name="currency" form="settings-form" bind:value={currency}>
 						{#each CURRENCIES as c (c)}<option value={c}>{currencyName(c)}</option>{/each}
 					</select>
 				</div>
 				<div class="row pick">
 					<label class="k" for="timeZone">Time zone</label>
-					<span class="v" aria-hidden="true">{zoneName(timeZone)}</span>
-					<span class="chev" aria-hidden="true"></span>
-					<select id="timeZone" name="timeZone" form="settings-form" bind:value={timeZone}>
+					<select class="input" id="timeZone" name="timeZone" form="settings-form" bind:value={timeZone}>
 						{#each zones as g (g.name)}
 							<optgroup label={g.name}>
 								{#each g.list as z (z.id)}<option value={z.id}>{z.city}</option>{/each}
@@ -223,12 +214,13 @@
 					</select>
 				</div>
 			</div>
+			<p class="hint">Changing units converts how readings are shown. Stored values stay exact.</p>
 		</section>
 
 		<section id="notifications" class="sec" aria-labelledby="notifications-h">
 			<div class="sec-head">
 				<h2 id="notifications-h">Notifications<SectionLink id="notifications" label="Notifications" /></h2>
-				<p class="sub hide-phone">Sent to {p.notifyEmail || u.email} · <label class="change" for="notifyEmail">Change</label></p>
+				<p class="meta">Sent to {p.notifyEmail || u.email} · <label class="change" for="notifyEmail">Change</label></p>
 			</div>
 			{#if !data.emailReady}
 				<p class="banner banner-warn">
@@ -239,8 +231,8 @@
 			{#if unsubscribedOn}
 				<p class="banner banner-warn">▲ You unsubscribed from all emails on {unsubscribedOn}. Turn any of these on to start again.</p>
 			{/if}
-			<div class="group">
-				<div class="row cols" aria-hidden="true"><span class="col">Email</span><span class="col">Push</span></div>
+			<div class="rows">
+				<div class="row cols kicker" aria-hidden="true"><span></span><span>Email</span><span>Push</span></div>
 				{#each toggles as row (row.k)}
 					<div class="row toggle">
 						<span class="ttext"><span class="tt">{row.t}</span><span class="td" id="n-{row.k}-d">{row.d}</span></span>
@@ -262,30 +254,28 @@
 						</span>
 					</div>
 				{/each}
-				<div class="row stack">
+				<div class="row pick seg-row">
 					<span class="k" id="delivery-k">Delivery</span>
-					<div class="segmented sm" role="radiogroup" aria-labelledby="delivery-k">
+					<div class="segmented delivery" role="radiogroup" aria-labelledby="delivery-k">
 						<label><input type="radio" name="delivery" value="individual" form="notify-form" bind:group={delivery} />Each</label>
 						<label><input type="radio" name="delivery" value="daily" form="notify-form" bind:group={delivery} />Daily digest</label>
 						<label><input type="radio" name="delivery" value="weekly" form="notify-form" bind:group={delivery} />Weekly</label>
 					</div>
-					{#if delivery !== 'individual'}<span class="hint"
-							>{delivery === 'weekly' ? 'Weekly digests go out on Mondays. ' : ''}Digests are by email; push still sends each one on its own.</span
-						>{/if}
 				</div>
+				{#if delivery !== 'individual'}
+					<div class="row note-row">
+						<span class="hint">{delivery === 'weekly' ? 'Weekly digests go out on Mondays. ' : ''}Digests are by email; push still sends each one on its own.</span>
+					</div>
+				{/if}
 				<div class="row pick">
 					<label class="k" for="leadDays">Remind me</label>
-					<span class="v" aria-hidden="true">{LEAD_OPTIONS.find((o) => o.days === Number(leadDays))?.label}</span>
-					<span class="chev" aria-hidden="true"></span>
-					<select id="leadDays" name="leadDays" form="notify-form" bind:value={leadDays}>
+					<select class="input" id="leadDays" name="leadDays" form="notify-form" bind:value={leadDays}>
 						{#each LEAD_OPTIONS as o (o.days)}<option value={o.days}>{o.label}</option>{/each}
 					</select>
 				</div>
 				<div class="row pick">
 					<label class="k" for="sendTime">Send at</label>
-					<span class="v" aria-hidden="true">{SEND_TIMES.find((t) => t.value === sendTime)?.label}</span>
-					<span class="chev" aria-hidden="true"></span>
-					<select id="sendTime" name="sendTime" form="notify-form" bind:value={sendTime}>
+					<select class="input" id="sendTime" name="sendTime" form="notify-form" bind:value={sendTime}>
 						{#each SEND_TIMES as t (t.value)}<option value={t.value}>{t.label}</option>{/each}
 					</select>
 				</div>
@@ -297,69 +287,87 @@
 
 		<section id="calendar" class="sec" aria-labelledby="calendar-h">
 			<h2 id="calendar-h">Calendar<SectionLink id="calendar" label="Calendar" /></h2>
+			<p class="lede">See your tasks in Google Calendar, Apple Calendar or Outlook, each on the day it's due, and kept up to date.</p>
 			{#if data.calendar}
-				<div class="group">
-					<div class="row stack">
-						<div class="cal-head">
-							<label class="k" for="cal-url">Your tasks calendar</label>
-							<button type="button" class="btn-text cal-copy" onclick={copyCal}>{calCopied ? '✓ Copied' : 'Copy'}<span class="sr-only"> the calendar link</span></button>
+				<div class="cal card">
+					<div class="field">
+						<label class="label" for="cal-url">Your tasks calendar</label>
+						<div class="cal-line">
+							<input id="cal-url" class="input mono cal-url" readonly value={calUrl} onfocus={(e) => e.currentTarget.select()} />
+							<button type="button" class="btn cal-copy" onclick={copyCal}>{calCopied ? '✓ Copied' : 'Copy'}<span class="sr-only"> the calendar link</span></button>
 						</div>
-						<input id="cal-url" class="input mono cal-url" readonly value={calUrl} onfocus={(e) => e.currentTarget.select()} />
-						{#if data.calendarTanks.length > 1}
-							<label class="cal-for"
-								><span>For</span>
-								<select class="input" bind:value={calTank}>
-									<option value="">All tanks</option>
-									{#each data.calendarTanks as t (t.id)}<option value={t.id}>{t.name}</option>{/each}
-								</select></label
-							>
-						{/if}
 					</div>
-					<a class="row link" href={calUrl.replace(/^https?:/, 'webcal:')}><span class="k">Open in my calendar app</span><span class="chev" aria-hidden="true"></span></a>
-				</div>
-				<p class="hint">
-					In Google Calendar, choose Other calendars › From URL and paste the link. Apple Calendar and Outlook open it from Open in my calendar app. Calendars check for
-					changes every few hours{data.calendar.lastFetchedAt ? `; yours last checked ${fmtWhen(data.calendar.lastFetchedAt, u.timeZone)}` : ''}. Anyone with the link can
-					see your tasks, so keep it private.
-				</p>
-				<div class="cal-acts">
-					<form method="POST" action="?/calendarNew" use:enhance><button class="btn">Make a new link</button></form>
-					<form method="POST" action="?/calendarOff" use:enhance><button class="btn-text cal-off">Turn off</button></form>
+					{#if data.calendarTanks.length > 1}
+						<div class="field cal-for">
+							<label class="label" for="cal-for">For</label>
+							<select id="cal-for" class="input" bind:value={calTank}>
+								<option value="">All tanks</option>
+								{#each data.calendarTanks as t (t.id)}<option value={t.id}>{t.name}</option>{/each}
+							</select>
+						</div>
+					{/if}
+					<div class="cal-acts">
+						<a class="btn" href={calUrl.replace(/^https?:/, 'webcal:')}>Open in my calendar app</a>
+						<form method="POST" action="?/calendarNew" use:enhance><button class="btn-text">Make a new link</button></form>
+						<form method="POST" action="?/calendarOff" use:enhance><button class="btn-text cal-off">Turn off</button></form>
+					</div>
+					<p class="hint">
+						In Google Calendar, choose Other calendars › From URL and paste the link. Apple Calendar and Outlook open it from Open in my calendar app. Calendars check
+						for changes every few hours{data.calendar.lastFetchedAt ? `; yours last checked ${fmtWhen(data.calendar.lastFetchedAt, u.timeZone)}` : ''}. Anyone with the
+						link can see your tasks, so keep it private.
+					</p>
 				</div>
 			{:else}
-				<p class="sub">See your tasks in Google Calendar, Apple Calendar or Outlook, each on the day it's due, and kept up to date.</p>
-				<form method="POST" action="?/calendarOn" use:enhance><button class="btn cal-on">Make a calendar link</button></form>
+				<form method="POST" action="?/calendarOn" use:enhance><button class="btn btn-primary cal-on">Make a calendar link</button></form>
 			{/if}
 		</section>
 
 		<section id="theme" class="sec" aria-labelledby="theme-h">
-			<h2 id="theme-h">Theme<SectionLink id="theme" label="Theme" /></h2>
-			<div class="segmented theme" role="radiogroup" aria-labelledby="theme-h">
-				<label><input type="radio" name="theme" value="light" form="settings-form" defaultChecked={u.theme === 'light'} />Light</label>
-				<label><input type="radio" name="theme" value="dark" form="settings-form" defaultChecked={u.theme === 'dark'} />Dark</label>
-				<label><input type="radio" name="theme" value="system" form="settings-form" defaultChecked={u.theme === 'system'} />System</label>
+			<h2 id="theme-h">Appearance<SectionLink id="theme" label="Appearance" /></h2>
+			<div class="rows">
+				<div class="row pick seg-row">
+					<span class="k" id="theme-k">Theme</span>
+					<div class="segmented theme" role="radiogroup" aria-labelledby="theme-k">
+						<label><input type="radio" name="theme" value="light" form="settings-form" defaultChecked={u.theme === 'light'} />Light</label>
+						<label><input type="radio" name="theme" value="dark" form="settings-form" defaultChecked={u.theme === 'dark'} />Dark</label>
+						<label><input type="radio" name="theme" value="system" form="settings-form" defaultChecked={u.theme === 'system'} />System</label>
+					</div>
+				</div>
+				<div class="row toggle hide-phone">
+					<label class="ttext" for="nav-auto"
+						><span class="tt">Auto-hide the side menu</span><span class="td">Shrinks to icons and opens on hover. Press [ anywhere to switch.</span></label
+					>
+					<span class="switch">
+						<input id="nav-auto" type="checkbox" checked={ui.navPinned === false} onchange={(e) => setAutoHide(e.currentTarget.checked)} />
+						<span></span>
+					</span>
+				</div>
 			</div>
 			<noscript><button class="btn btn-lg" form="settings-form">Save settings</button></noscript>
 		</section>
 
 		<section id="products" class="sec" aria-labelledby="products-h">
 			<h2 id="products-h">Products<SectionLink id="products" label="Products" /></h2>
-			<div class="group">
-				<a class="row link" href="/settings/products"
-					><span class="k">Saved product links</span>{#if data.products}<span class="v">{data.products}</span>{/if}<span class="chev" aria-hidden="true"
-					></span></a
-				>
+			<div class="rows">
+				<a class="row link" href="/settings/products">
+					<span class="ttext"><span class="tt">Saved product links</span><span class="td">Fertilizers, conditioner and food you buy again, one tap to reorder</span></span>
+					{#if data.products}<span class="v">{data.products}</span>{/if}<span class="chev" aria-hidden="true">›</span>
+				</a>
 			</div>
 		</section>
 
 		<section id="data" class="sec" aria-labelledby="data-h">
 			<h2 id="data-h">Data<SectionLink id="data" label="Data" /></h2>
-			<div class="group">
-				<a class="row link" href="/settings/export"><span class="k">Import & export</span><span class="chev" aria-hidden="true"></span></a>
-				<a class="row link" href="/settings/assistant"
-					><span class="k">AI assistant</span><span class="v">{data.assistants ? `${data.assistants} connected` : 'Off'}</span><span class="chev" aria-hidden="true"
-					></span></a
-				>
+			<div class="rows">
+				<a class="row link" href="/settings/export">
+					<span class="ttext"><span class="tt">Import & export</span><span class="td">A full backup, CSV, a summary to share, or a spreadsheet in</span></span>
+					<span class="chev" aria-hidden="true">›</span>
+				</a>
+				<a class="row link" href="/settings/assistant">
+					<!-- the name reads "AI assistant Off": the state follows the title -->
+					<span class="ttext"><span class="tt">AI assistant</span></span>
+					<span class="v">{data.assistants ? `${data.assistants} connected` : 'Off'}</span><span class="chev" aria-hidden="true">›</span>
+				</a>
 				{#if !install.installed}
 					<button
 						type="button"
@@ -370,12 +378,14 @@
 							else installHelp = !installHelp;
 						}}
 					>
-						<span class="k">Install app</span><span class="chev" aria-hidden="true"></span>
+						<span class="ttext"><span class="tt">Install app</span><span class="td">Opens full screen, works offline at the tank</span></span>
+						<span class="chev" aria-hidden="true">›</span>
 					</button>
 				{/if}
 				{#if u.isAdmin}
 					<a class="row link" href="/settings/server">
-						<span class="k">Server settings<span class="badge">Admin</span></span><span class="chev" aria-hidden="true"></span>
+						<span class="ttext"><span class="tt">Server settings<span class="tag tag-outline admin">ADMIN</span></span><span class="td">Sign-in, email, public pages, features and logs</span></span>
+						<span class="chev" aria-hidden="true">›</span>
 					</a>
 				{/if}
 			</div>
@@ -388,16 +398,28 @@
 			{/if}
 		</section>
 
-		<form method="POST" action="?/signout" class="hide-desk">
-			<input type="hidden" name="redirectTo" value="/signin" />
-			<button class="btn signout">Sign out</button>
-			{#if unsynced}<p class="unsynced status-warn">{unsynced}</p>{/if}
-		</form>
-		<a class="version mono" href="/settings/changelog"
-			>Waterline v{data.app.version} · self-hosted · What's new{#if data.app.update}<span class="update-note"
-					>{` · Update to ${data.app.update.version} available`}</span
-				>{/if}</a
-		>
+		<section id="account" class="sec" aria-labelledby="account-h">
+			<h2 id="account-h">Account<SectionLink id="account" label="Account" /></h2>
+			<div class="rows">
+				<form method="POST" action="?/signout" class="row toggle">
+					<input type="hidden" name="redirectTo" value="/signin" />
+					<span class="ttext"><span class="tt">Sign out</span><span class="td">Clears this device. Entries still waiting to sync may be lost.</span></span>
+					<button class="btn signout">Sign out</button>
+				</form>
+				{#if unsynced}<p class="row unsynced status-warn">{unsynced}</p>{/if}
+				<div class="row toggle hide-phone">
+					<span class="ttext"><span class="tt">Keyboard shortcuts</span><span class="td">Press ? anywhere to see them</span></span>
+					<button type="button" class="btn" onclick={() => (ui.keys = true)}>Show shortcuts</button>
+				</div>
+				<div class="row toggle">
+					<a class="version" href="/settings/changelog"
+						>Waterline v{data.app.version} · self-hosted · What's new{#if data.app.update}<span class="status-bad"
+								>{` · Update to ${data.app.update.version} available`}</span
+							>{/if}</a
+					>
+				</div>
+			</div>
+		</section>
 	</div>
 </div>
 
@@ -406,41 +428,56 @@
 		padding: 8px 20px 24px;
 		display: flex;
 		flex-direction: column;
-		gap: 16px;
+		gap: 20px;
+	}
+	.phead {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		padding-bottom: 12px;
+		border-bottom: 2px solid var(--divider);
 	}
 	.title {
 		margin: 0;
 		font-size: 28px;
-		font-weight: 600;
 	}
 	.sections {
 		display: flex;
 		flex-direction: column;
-		gap: 22px;
+		gap: 36px;
 	}
 	.sec {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
+		gap: 14px;
 		scroll-margin-top: 24px;
 	}
 	.sec h2 {
 		margin: 0;
+		font-size: 22px;
+	}
+	.sec-head {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 12px;
+		flex-wrap: wrap;
+	}
+	.meta,
+	.lede {
+		margin: 0;
 		font-size: 13px;
-		font-weight: 600;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
 		color: var(--text-muted);
 	}
-	.sub {
-		margin: 0;
+	.lede {
 		font-size: 14px;
-		color: var(--text-muted);
+		color: var(--text);
+		max-width: 620px;
 	}
 	.change {
 		position: relative;
 		color: var(--accent);
-		font-weight: 600;
+		font-weight: 800;
 		cursor: pointer;
 	}
 	/* a 44px target without a taller line */
@@ -452,7 +489,7 @@
 	.hint {
 		margin: 0;
 		font-size: 13px;
-		color: var(--text-faint);
+		color: var(--text-muted);
 	}
 	.error-text {
 		margin: 0;
@@ -464,113 +501,56 @@
 		margin-left: 4px;
 	}
 
-	/* Grouped rows (16): label on the left, value or control on the right. */
-	.group {
+	/* Rows under a 2px ink rule, 1px dividers between them */
+	.rows {
 		display: flex;
 		flex-direction: column;
-		border-radius: 16px;
-		background: var(--surface);
-		border: 1px solid var(--border);
+		border-top: 2px solid var(--ink);
 	}
 	.row {
-		position: relative;
 		display: flex;
 		align-items: center;
+		gap: 14px;
 		width: 100%;
-		min-height: 50px;
-		padding: 0 16px;
-		font-size: 16px;
+		min-height: 52px;
+		padding: 8px 0;
+		margin: 0;
+		border-bottom: 1px solid var(--divider);
 		color: var(--text);
+		font-size: 15px;
 		text-align: left;
 	}
-	.row + .row {
-		border-top: 1px solid var(--border);
-	}
 	.row.photo-row {
-		padding-top: 14px;
-		padding-bottom: 14px;
+		padding: 14px 0;
 	}
-	.row:first-child {
-		border-radius: 15px 15px 0 0;
+	/* a label, then its control */
+	.pick {
+		display: grid;
+		grid-template-columns: 140px minmax(0, 1fr);
+		gap: 12px;
 	}
-	.row:last-child {
-		border-radius: 0 0 15px 15px;
+	.pick .k {
+		font-size: 15px;
 	}
-	.row:only-child {
-		border-radius: 15px;
+	.pick select.input {
+		max-width: 360px;
 	}
-	.k {
-		flex-shrink: 0;
-		margin-right: 12px;
+	.seg-row .segmented {
+		justify-self: start;
+		max-width: 100%;
 	}
-	.v {
-		margin-left: auto;
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		color: var(--text-muted);
+	.segmented.delivery label,
+	.segmented.theme label {
+		min-height: 40px;
+		min-width: 84px;
+		padding: 0 12px;
+		font-size: 14px;
 	}
-	.chev {
-		flex-shrink: 0;
-		margin-left: 5px;
-		color: var(--text-muted);
-	}
-	.chev::before {
-		content: '›';
-	}
-	.link .chev {
-		margin-left: auto;
-	}
-	/* a text field that reads as the row's value */
-	input.v {
-		flex: 1;
-		align-self: stretch;
-		padding: 0;
-		border: 0;
-		background: transparent;
-		font-size: 16px;
-		text-align: right;
-		outline: none;
-	}
-	input.v:focus {
-		color: var(--text);
-	}
-	/* the sign-in address, used while the field is empty */
-	input.v::placeholder {
-		color: var(--text-faint);
-	}
-	.edit {
-		cursor: text;
-	}
-	/* the row shows the value; the transparent select on top takes the tap */
-	.pick select {
-		position: absolute;
-		inset: 0;
-		width: 100%;
-		height: 100%;
-		opacity: 0;
-		cursor: pointer;
-		font-size: 16px;
-	}
-	.edit:focus-within,
-	.pick:has(select:focus-visible),
-	.link:focus-visible {
-		outline: 2px solid var(--accent);
-		outline-offset: -2px;
-	}
-	@media (hover: hover) {
-		.edit:hover,
-		.pick:hover,
-		.link:hover {
-			background: var(--surface-hi);
-			color: var(--text);
-		}
+	.note-row {
+		min-height: 0;
 	}
 	.toggle {
-		min-height: 56px;
-		padding: 12px 16px;
-		gap: 12px;
+		padding: 12px 0;
 	}
 	.ttext {
 		flex: 1;
@@ -578,7 +558,13 @@
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
+	}
+	label.ttext {
 		cursor: pointer;
+	}
+	.tt {
+		font-size: 15px;
+		font-weight: 600;
 	}
 	.td {
 		font-size: 13px;
@@ -586,45 +572,64 @@
 	}
 	/* Email and Push, over each kind's two switches */
 	.cols {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) 44px 44px;
+		gap: 14px;
 		min-height: 36px;
-		justify-content: flex-end;
-		gap: 12px;
-		font-size: 12px;
-		font-weight: 700;
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
-		color: var(--text-muted);
 	}
-	.col {
-		width: 52px;
-		text-align: center;
+	.link {
+		cursor: pointer;
+	}
+	.link .v {
+		font-size: 13px;
+		color: var(--text-muted);
+		white-space: nowrap;
+	}
+	.chev {
+		font-size: 18px;
+		color: var(--neutral-600);
+	}
+	.admin {
+		margin-left: 8px;
+		font-size: 10px;
+		font-weight: 800;
+		vertical-align: 2px;
+	}
+	.link:focus-visible {
+		outline: 2px solid var(--accent);
+		outline-offset: -2px;
+	}
+	@media (hover: hover) {
+		.link:hover {
+			background: var(--surface);
+			color: var(--text);
+		}
 	}
 	/* the tasks calendar */
-	.cal-head {
-		width: 100%;
+	.cal {
+		padding-top: 14px;
 		display: flex;
-		align-items: center;
-		justify-content: space-between;
+		flex-direction: column;
+		gap: 12px;
 	}
-	.cal-copy {
-		font-weight: 600;
+	.cal-line {
+		display: flex;
+		gap: 8px;
 	}
 	.cal-url {
 		font-size: 13px;
 	}
-	.cal-for {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		font-size: 15px;
+	.cal-copy {
+		flex-shrink: 0;
 	}
 	.cal-for select {
-		flex: 1;
+		max-width: 280px;
 	}
 	.cal-acts {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
-		gap: 12px;
+		gap: 4px 10px;
 	}
 	.cal-off {
 		color: var(--text-muted);
@@ -632,78 +637,23 @@
 	.cal-on {
 		align-self: flex-start;
 	}
-	.stack {
-		flex-direction: column;
-		align-items: stretch;
-		gap: 10px;
-		padding: 14px 16px;
-	}
-	.segmented.sm {
-		border-radius: 12px;
-		background: var(--surface-2);
-	}
-	.segmented.sm label {
-		min-height: 36px;
-		border-radius: 8px;
-		font-size: 14px;
-	}
-	/* 36px segments as drawn, 44px to tap */
-	.segmented.sm label::after {
-		content: '';
-		position: absolute;
-		inset: -4px -2px;
-	}
-	.segmented.theme label {
-		min-height: 44px;
-		font-size: 15px;
-	}
-	.badge {
-		margin-left: 8px;
-		padding: 1px 6px;
-		border-radius: 5px;
-		border: 1px solid var(--border-strong);
-		color: var(--text-muted);
-		font-size: 12px;
-		font-weight: 700;
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
-		vertical-align: 1px;
-	}
-
 	.signout {
-		width: 100%;
-		height: 52px;
-		border-radius: 14px;
-		font-size: 16px;
-		color: var(--bad);
+		color: var(--accent-700);
 	}
 	.unsynced {
-		margin: 10px 0 0;
 		font-size: 14px;
-		font-weight: 600;
-		text-align: center;
-	}
-	/* the running version, a link to What's new */
-	.version {
-		align-self: center;
-		display: flex;
-		align-items: center;
-		min-height: 44px;
-		margin: 0;
-		font-size: 12px;
-		color: var(--text-faint);
-	}
-	@media (hover: hover) {
-		.version:hover {
-			color: var(--text-muted);
-			text-decoration: underline;
-		}
-	}
-	.update-note {
-		font-weight: 600;
-		color: var(--accent);
 	}
 
+	/* phones: a segmented control gets the row to itself, under its label */
+	@media (max-width: 1023px) {
+		.seg-row {
+			grid-template-columns: 1fr;
+			gap: 8px;
+		}
+		.seg-row .segmented {
+			width: 100%;
+		}
+	}
 	@media (min-width: 1024px) {
 		.page {
 			gap: 0;
@@ -711,52 +661,24 @@
 		.sections {
 			gap: 40px;
 		}
-		.sec {
-			gap: 14px;
+		.pick {
+			grid-template-columns: 200px minmax(0, 1fr);
+			gap: 16px;
 		}
-		.sec h2 {
-			font-size: 22px;
-			letter-spacing: normal;
-			text-transform: none;
-			color: var(--text);
+		.cols {
+			grid-template-columns: minmax(0, 1fr) 44px 44px;
 		}
-		.sec-head {
-			display: flex;
-			flex-direction: column;
-			gap: 4px;
-		}
-		.row {
-			min-height: 52px;
-			padding: 0 18px;
-		}
-		/* desktop: pickers open a dropdown (D9 ▾) and names edit in place */
-		.pick .chev::before {
-			content: '▾';
-		}
-		.edit .chev {
-			display: none;
-		}
-		.toggle,
-		.stack {
-			padding: 14px 18px;
-		}
-		/* Delivery fits on one line at desktop width */
-		.stack {
-			flex-direction: row;
-			flex-wrap: wrap;
-			align-items: center;
-			column-gap: 12px;
-		}
-		.stack .segmented {
-			width: 360px;
-			margin-left: auto;
-		}
-		.stack .hint {
-			flex-basis: 100%;
-			text-align: right;
-		}
-		.version {
-			align-self: flex-start;
-		}
+	}
+	.version {
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 4px;
+		font-weight: 700;
+		color: var(--text);
+	}
+	.version:hover {
+		color: var(--accent);
 	}
 </style>

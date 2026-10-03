@@ -187,17 +187,14 @@
 	.head h2 {
 		margin: 0;
 		font-size: 22px;
-		font-weight: 600;
 		flex: 1;
 	}
 	.close {
-		font-size: 15px;
-		color: var(--text-muted);
+		font-size: 14px;
+		font-weight: 800;
+		color: var(--accent);
 		min-height: 44px;
 		padding: 0 4px;
-	}
-	.close:hover {
-		color: var(--text);
 	}
 	.ctx {
 		display: flex;
@@ -210,26 +207,27 @@
 	.big {
 		display: flex;
 		flex-direction: column;
-		gap: 10px;
+		gap: 8px;
 	}
 	.choice {
 		display: flex;
 		align-items: center;
 		gap: 16px;
-		height: 76px;
-		padding: 0 18px;
-		border-radius: 18px;
-		background: var(--surface-hi);
-		border: 1px solid var(--border-strong);
+		height: 72px;
+		padding: 0 16px;
+		border: 1px solid var(--divider);
 		color: var(--text);
 	}
 	.choice:hover {
 		color: var(--text);
-		border-color: var(--accent);
+		border-color: var(--ink);
 	}
 	.choice.primary {
 		background: var(--accent);
 		border-color: var(--accent);
+		color: var(--on-accent);
+	}
+	.choice.primary:hover {
 		color: var(--on-accent);
 	}
 	.ic {
@@ -242,11 +240,8 @@
 		gap: 2px;
 	}
 	.title {
-		font-size: 18px;
-		font-weight: 600;
-	}
-	.primary .title {
-		font-weight: 700;
+		font-size: 17px;
+		font-weight: 800;
 	}
 	.sub {
 		font-size: 13px;
@@ -257,47 +252,47 @@
 	}
 	kbd {
 		display: none;
-		font-family: ui-monospace, Menlo, monospace;
+		font-family: inherit;
 		font-size: 12px;
+		font-weight: 800;
 		color: var(--text-muted);
 	}
 	.primary kbd {
 		color: var(--on-accent);
-		font-weight: 700;
 	}
 	.more {
 		display: flex;
 		flex-direction: column;
-		gap: 10px;
+		gap: 8px;
 	}
 	.more-label {
 		margin: 0;
-		font-size: 13px;
+		padding-bottom: 6px;
+		border-bottom: 2px solid var(--ink);
+		font-size: 11px;
 		font-weight: 400;
 		color: var(--text-muted);
-		letter-spacing: 0.06em;
+		letter-spacing: 0.08em;
 		text-transform: uppercase;
 	}
-	/* the same tile for each: icon at the top, name below, as the big desktop tiles */
+	/* the same tile for each: icon at the top, name below */
 	.tiles {
 		display: grid;
 		grid-template-columns: repeat(3, minmax(0, 1fr));
 		grid-auto-rows: 1fr;
-		gap: 8px;
+		gap: 6px;
 	}
 	.tile {
-		min-height: 88px;
+		min-height: 84px;
 		padding: 12px;
-		border-radius: 14px;
-		background: var(--surface-hi);
-		border: 1px solid var(--border-strong);
+		border: 1px solid var(--divider);
 		display: flex;
 		flex-direction: column;
 		justify-content: space-between;
 		gap: 8px;
 		color: var(--text);
-		font-size: 14px;
-		font-weight: 600;
+		font-size: 13px;
+		font-weight: 700;
 		line-height: 1.25;
 		overflow-wrap: break-word;
 	}
@@ -309,30 +304,23 @@
 	}
 	.tile:hover {
 		color: var(--text);
-		border-color: var(--accent);
+		border-color: var(--ink);
 	}
 	.hint {
 		display: none;
 		margin: 0;
 		font-size: 13px;
-		color: var(--text-faint);
+		color: var(--text-muted);
 	}
 	@media (min-width: 1024px) {
-		.close {
-			font-size: 14px;
-		}
-		.ctx .chip {
-			height: 38px;
-		}
 		.big {
 			display: grid;
 			grid-template-columns: repeat(3, 1fr);
 		}
 		/* icon at the top, name and key along the bottom */
 		.choice {
-			height: 120px;
-			padding: 16px;
-			border-radius: 16px;
+			height: 112px;
+			padding: 14px;
 			display: grid;
 			grid-template: 'icon icon' 1fr 'title key' auto / 1fr auto;
 			align-items: baseline;
@@ -346,7 +334,7 @@
 			grid-area: title;
 		}
 		.title {
-			font-size: 16px;
+			font-size: 15px;
 		}
 		kbd {
 			display: block;

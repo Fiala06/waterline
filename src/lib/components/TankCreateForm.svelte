@@ -110,7 +110,7 @@
 		margin: 0;
 		font-size: 13px;
 		line-height: 1.5;
-		color: var(--text-faint);
+		color: var(--text-muted);
 	}
 	.foot {
 		padding: 0 24px calc(32px + env(safe-area-inset-bottom));
@@ -118,17 +118,13 @@
 	.cancel {
 		display: none;
 	}
-	/* Add tank on desktop: a centered card (the header has the title) */
+	/* Add tank on desktop: a flat form under the shell's title, 2px rule above the footer */
 	@media (min-width: 1024px) {
 		.paged {
 			flex: none;
 			width: 100%;
 			max-width: 640px;
-			margin: 28px auto;
-			padding: 24px 28px;
-			background: var(--surface);
-			border: 1px solid var(--border);
-			border-radius: 20px;
+			padding: 24px 32px 40px;
 		}
 		.paged .body {
 			padding: 0;
@@ -136,32 +132,24 @@
 		.paged .two {
 			grid-template-columns: repeat(4, 1fr);
 		}
-		/* recessed fields on the card (D13) */
-		.paged .input,
-		.paged .unit-input {
-			background-color: var(--surface-2);
-			border-color: var(--border-strong);
-		}
-		.paged .input:focus,
-		.paged .unit-input:focus-within {
-			border-color: var(--accent);
-		}
 		.paged .foot {
-			margin-top: 24px;
-			padding: 20px 0 0;
-			border-top: 1px solid var(--border);
+			margin-top: 20px;
+			padding: 16px 0 0;
+			border-top: 2px solid var(--divider);
 			display: flex;
-			justify-content: flex-end;
+			flex-direction: row-reverse;
+			justify-content: flex-start;
 			gap: 12px;
 		}
 		.paged .cancel {
 			display: inline-flex;
+			border: none;
+			color: var(--text-muted);
 		}
 		.paged .foot .btn {
 			width: auto;
 			height: 44px;
-			border-radius: 12px;
-			font-size: 15px;
+			font-size: 14px;
 		}
 		.paged .btn-primary {
 			padding: 0 22px;

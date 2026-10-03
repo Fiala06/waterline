@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test';
-import { newKeeperWithTank, open } from './helpers';
+import { newKeeperWithTank, open, tankTitle } from './helpers';
 
 test('dashboard (refresh 1c): the hero, and nothing needing attention when all is in range', async ({ page }, info) => {
 	await newKeeperWithTank(page, `dash-${info.project.name}`);
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
 
-	// the tank's name to switch tanks, and what it is
-	await expect(page.getByRole('button', { name: 'Riverbed 40, switch tank' })).toBeVisible();
-	await expect(page.getByRole('main').getByText('Planted · 40 gal', { exact: true })).toBeVisible();
+	// the tank's name (to switch tanks on a phone), and what it is
+	await expect(tankTitle(page, 'Riverbed 40')).toBeVisible();
+	await expect(page.getByText('Planted · 40 gal').first()).toBeVisible();
 
 	await open(page, `/entries/test/new?tank=${tankId}`);
 	await page.getByLabel('pH', { exact: true }).fill('7.0');
@@ -36,11 +36,17 @@ test("What's new links to each feature, and a tank's page opens for the tank you
 test('the dashboard opens the tank settings, and a 2.5 gal tank says 2.5 gal', async ({ page }, info) => {
 	await newKeeperWithTank(page, `dash-settings-${info.project.name}`);
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
-	await page.getByRole('link', { name: 'Tank settings for Riverbed 40' }).click();
+	// the Setup tab on a computer; More › Setup & targets on a phone
+	if (info.project.name === 'phone') {
+		await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'More' }).click();
+		await page.getByRole('link', { name: 'Setup & targets' }).click();
+	} else {
+		await page.getByRole('navigation', { name: 'Tank sections' }).getByRole('link', { name: 'Setup' }).click();
+	}
 	await expect(page).toHaveURL(`/tanks/${tankId}/settings`);
 	await page.getByRole('textbox', { name: 'Nominal volume' }).fill('2.5');
 	await page.getByRole('button', { name: 'Save changes' }).first().click();
 	await expect(page.getByRole('status')).toContainText('saved');
 	await open(page, `/?tank=${tankId}`);
-	await expect(page.getByRole('main').getByText('Planted · 2.5 gal', { exact: true })).toBeVisible();
+	await expect(page.getByText('Planted · 2.5 gal').first()).toBeVisible();
 });

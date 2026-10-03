@@ -220,7 +220,7 @@
 		list-style: none;
 		margin: 0;
 		padding: 0 14px;
-		border-radius: 14px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 	}
@@ -287,7 +287,7 @@
 		top: -2px;
 		width: 28px;
 		height: 28px;
-		border-radius: 14px;
+		border-radius: 0;
 		display: grid;
 		place-items: center;
 		background: var(--surface-hi);
@@ -315,7 +315,7 @@
 	/* the columns, folded away until wanted */
 	.cols {
 		width: 100%;
-		border-radius: 12px;
+		border-radius: 0;
 		background: var(--surface);
 		border: 1px solid var(--border);
 	}
@@ -370,7 +370,7 @@
 		width: 100%;
 		min-height: 88px;
 		padding: 16px;
-		border-radius: 14px;
+		border-radius: 0;
 		border: 1px dashed var(--border-strong);
 		background: var(--surface-2);
 		display: flex;
@@ -420,7 +420,7 @@
 	.go {
 		flex: 1;
 		height: 56px;
-		border-radius: 14px;
+		border-radius: 0;
 		font-size: 17px;
 	}
 
@@ -440,7 +440,7 @@
 			padding: 24px 28px;
 			background: var(--surface);
 			border: 1px solid var(--border);
-			border-radius: 20px;
+			border-radius: 0;
 		}
 		.body {
 			padding: 0;
@@ -470,7 +470,7 @@
 		}
 		.foot .btn {
 			height: 44px;
-			border-radius: 12px;
+			border-radius: 0;
 			font-size: 15px;
 		}
 		.go {

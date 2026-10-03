@@ -51,126 +51,140 @@
 <div class="pet">
 	<!-- phones; on desktop the header has the title -->
 	<div class="bar hide-desk">
-		<a class="back" href={list}>‹ Livestock</a>
+		<a class="back" href={list}>‹ All livestock</a>
 	</div>
 
 	<div class="hero">
-		{#if a.photoId}
-			<a class="pic" href="/photos/{a.photoId}" aria-label="Profile photo of {title}"><img src={photoUrl(a.photoId)} alt="" /></a>
-		{:else if data.stock}
-			<span class="pic"><img src={data.stock.large} alt="" /></span>
-		{:else}
-			<span class="pic none" aria-hidden="true"><CategoryIcon kind="livestock" size={40} /></span>
-		{/if}
 		<div class="who">
+			<p class="facts kicker">
+				<span>{KIND[a.kind]}</span>
+				{#if a.added}<span>· added {a.added}</span>{/if}
+				{#if gone}<span>· left {a.left}</span>{/if}
+			</p>
 			<h1>{title}{#if !one}<span class="count">{' ×' + a.count}</span>{/if}</h1>
 			<p class="species">
 				{#if a.nickname}{a.commonName}{/if}{#if a.nickname && a.scientificName}{' · '}{/if}{#if a.scientificName}<i>{a.scientificName}</i>{/if}
 			</p>
-			<p class="facts">
-				<span>{KIND[a.kind]}</span>
-				{#if a.added}<span>Added {a.added}</span>{/if}
-				{#if gone}<span class="status-tag tag-none sm">Left {a.left}</span>
-				{:else if a.status === 'quarantine'}<span class="status-tag tag-warn sm">▲ Quarantine</span>
-				{:else}<span class="in-tank">✓ In tank</span>{/if}
-			</p>
+		</div>
+		<div class="state">
+			{#if gone}<span class="tag tag-neutral">Left {a.left}</span>
+			{:else if a.status === 'quarantine'}<span class="tag tag-neutral strong">▲ Quarantine</span>
+			{:else}<span class="in-tank">✓ In tank</span>{/if}
 		</div>
 	</div>
 
-	{#if data.stock?.credit}
-		{@const c = data.stock.credit}
-		<p class="credit">
-			Species photo: {c.author} · {#if c.licenseUrl}<a href={c.licenseUrl} target="_blank" rel="noopener noreferrer">{c.license}</a>{:else}{c.license}{/if} ·
-			<a href={c.pageUrl} target="_blank" rel="noopener noreferrer">Wikimedia Commons<span aria-hidden="true"> ↗</span></a>
-		</p>
-	{/if}
-
-	{#if !gone}
-		<div class="photo-acts">
-			<form method="POST" action="?/photo" enctype="multipart/form-data" use:enhance={saving}>
-				<input bind:this={photoInput} id="pet-photo" class="sr-only" type="file" name="photo" accept="image/*" aria-label="Choose a photo" onchange={chosePhoto} />
-				<label class="btn" for="pet-photo" aria-disabled={busy}>{busy ? 'Saving…' : a.photoId ? 'Change photo' : 'Add photo'}</label>
-				{#if !ready}<button class="btn btn-primary">Save photo</button>{/if}
-			</form>
+	<div class="cols">
+		<div class="main">
 			{#if a.photoId}
-				<form method="POST" action="?/removePhoto" use:enhance={saving}><button class="btn-text" disabled={busy}>Remove photo</button></form>
-			{/if}
-		</div>
-		{#if form?.photoError}<p class="error-text" role="alert">✕ {form.photoError}</p>{/if}
-	{/if}
-
-	{#if !gone && !one}
-		<form class="card name-one" method="POST" action="?/nameOne" use:enhance={saving}>
-			<label class="label" for="name-one">Name one of them</label>
-			<div class="inline">
-				<input class="input" id="name-one" name="nickname" maxlength="60" autocomplete="off" placeholder="Pepper" aria-invalid={!!form?.nameError} />
-				<button class="btn btn-primary" disabled={busy}>Name</button>
-			</div>
-			{#if form?.nameError}<p class="error-text" role="alert">✕ {form.nameError}</p>{/if}
-			<p class="hint">Takes one of your {a.count} {a.commonName} into its own entry, with its own photo, notes and history.</p>
-		</form>
-	{/if}
-
-	<form class="details" method="POST" action="?/save" use:enhance={saving}>
-		{#if one && !gone}
-			<div class="field">
-				<label class="label" for="nickname">Name</label>
-				<input class="input" id="nickname" name="nickname" maxlength="60" autocomplete="off" defaultValue={a.nickname ?? ''} placeholder="Give it a name" />
-			</div>
-		{/if}
-		<div class="field">
-			<label class="label" for="source">Source · optional</label>
-			<input class="input" id="source" name="source" maxlength="120" autocomplete="off" defaultValue={a.source ?? ''} placeholder="Store, breeder, price" />
-		</div>
-		<div class="field">
-			<label class="label" for="notes">Notes</label>
-			<textarea class="input" id="notes" name="notes" rows="3" maxlength="4000" defaultValue={a.notes} placeholder="Personality, favourite food, where it hides"></textarea>
-		</div>
-		<div class="foot"><button class="btn btn-primary" disabled={busy}>Save</button></div>
-	</form>
-
-	{#if data.photos.length || a.nickname}
-		<section class="gallery" aria-labelledby="photos-h">
-			<h2 id="photos-h">Photos{data.photos.length ? ` · ${data.photos.length}` : ''}</h2>
-			{#if data.photos.length}
-				<ul>
-					{#each data.photos as id (id)}
-						<li><a href="/photos/{id}"><img src={photoUrl(id)} alt="Photo of {title}" loading="lazy" /></a></li>
-					{/each}
-				</ul>
+				<a class="pic" href="/photos/{a.photoId}" aria-label="Profile photo of {title}"><img src={photoUrl(a.photoId)} alt="" /></a>
+			{:else if data.stock}
+				<span class="pic"><img src={data.stock.large} alt="" /></span>
 			{:else}
-				<p class="none">Tag {title} in a photo from Photos: open one and choose {title} under In this photo.</p>
+				<span class="pic none photo-placeholder" aria-hidden="true"><CategoryIcon kind="livestock" size={40} /></span>
 			{/if}
-		</section>
-	{/if}
+			{#if data.stock?.credit}
+				{@const c = data.stock.credit}
+				<p class="credit">
+					Species photo: {c.author} · {#if c.licenseUrl}<a href={c.licenseUrl} target="_blank" rel="noopener noreferrer">{c.license}</a>{:else}{c.license}{/if} ·
+					<a href={c.pageUrl} target="_blank" rel="noopener noreferrer">Wikimedia Commons<span aria-hidden="true"> ↗</span></a>
+				</p>
+			{/if}
 
-	<section class="history" aria-labelledby="history-h">
-		<h2 id="history-h">History</h2>
-		{#if data.history.length}
-			<ul>
-				{#each data.history as h (h.id)}
-					{@const [what, detail] = split(h.title)}
-					<li>
-						<a href="/entries/event/{h.id}">
-							<span class="t">{what}{#if detail}<span class="muted">{' · ' + detail}</span>{/if}</span>
-							<span class="d">{h.day}</span>
-						</a>
-					</li>
-				{/each}
-			</ul>
-		{:else}
-			<p class="none">Nothing logged yet</p>
-		{/if}
-	</section>
+			{#if !gone}
+				<div class="photo-acts">
+					<form method="POST" action="?/photo" enctype="multipart/form-data" use:enhance={saving}>
+						<input bind:this={photoInput} id="pet-photo" class="sr-only" type="file" name="photo" accept="image/*" aria-label="Choose a photo" onchange={chosePhoto} />
+						<label class="btn" for="pet-photo" aria-disabled={busy}>{busy ? 'Saving…' : a.photoId ? 'Change photo' : '+ Add your photo'}</label>
+						{#if !ready}<button class="btn btn-primary">Save photo</button>{/if}
+					</form>
+					{#if a.photoId}
+						<form method="POST" action="?/removePhoto" use:enhance={saving}><button class="btn-text" disabled={busy}>Remove photo</button></form>
+					{/if}
+				</div>
+				{#if form?.photoError}<p class="error-text" role="alert">✕ {form.photoError}</p>{/if}
+			{/if}
+
+			{#if !gone && !one}
+				<form class="name-one" method="POST" action="?/nameOne" use:enhance={saving}>
+					<label class="label" for="name-one">Name one of them</label>
+					<div class="inline">
+						<input class="input" id="name-one" name="nickname" maxlength="60" autocomplete="off" placeholder="Pepper" aria-invalid={!!form?.nameError} />
+						<button class="btn btn-primary" disabled={busy}>Name</button>
+					</div>
+					{#if form?.nameError}<p class="error-text" role="alert">✕ {form.nameError}</p>{/if}
+					<p class="hint">Takes one of your {a.count} {a.commonName} into its own entry, with its own photo, notes and history.</p>
+				</form>
+			{/if}
+
+			<form class="details" method="POST" action="?/save" use:enhance={saving}>
+				{#if one && !gone}
+					<div class="field">
+						<label class="label" for="nickname">Name</label>
+						<input class="input" id="nickname" name="nickname" maxlength="60" autocomplete="off" defaultValue={a.nickname ?? ''} placeholder="Give it a name" />
+					</div>
+				{/if}
+				<div class="field">
+					<label class="label" for="source">Source · optional</label>
+					<input class="input" id="source" name="source" maxlength="120" autocomplete="off" defaultValue={a.source ?? ''} placeholder="Store, breeder, price" />
+				</div>
+				<div class="field">
+					<label class="label" for="notes">Notes</label>
+					<textarea class="input" id="notes" name="notes" rows="3" maxlength="4000" defaultValue={a.notes} placeholder="Personality, favourite food, where it hides"></textarea>
+				</div>
+				<div class="foot"><button class="btn btn-primary" disabled={busy}>Save</button></div>
+			</form>
+
+			{#if data.photos.length || a.nickname}
+				<section class="gallery" aria-labelledby="photos-h">
+					<h2 id="photos-h" class="kicker rule">Photos{data.photos.length ? ` · ${data.photos.length}` : ''}</h2>
+					{#if data.photos.length}
+						<ul>
+							{#each data.photos as id (id)}
+								<li><a href="/photos/{id}"><img src={photoUrl(id)} alt="Photo of {title}" loading="lazy" /></a></li>
+							{/each}
+						</ul>
+					{:else}
+						<p class="none">Tag {title} in a photo from Photos: open one and choose {title} under In this photo.</p>
+					{/if}
+				</section>
+			{/if}
+		</div>
+
+		<aside class="side">
+			<section class="history" aria-labelledby="history-h">
+				<h2 id="history-h" class="kicker rule">Count history</h2>
+				{#if data.history.length}
+					<ul>
+						{#each data.history as h (h.id)}
+							{@const [what, detail] = split(h.title)}
+							<li>
+								<a href="/entries/event/{h.id}">
+									<span class="t"><b>{what}</b>{#if detail}<span class="muted">{' · ' + detail}</span>{/if}</span>
+									<span class="d">{h.day}</span>
+								</a>
+							</li>
+						{/each}
+					</ul>
+				{:else}
+					<p class="none">Nothing logged yet</p>
+				{/if}
+			</section>
+			{#if a.source}
+				<section class="source">
+					<span class="kicker">Source</span>
+					<span>{a.source}</span>
+				</section>
+			{/if}
+		</aside>
+	</div>
 </div>
 
 <style>
 	.pet {
-		max-width: 640px;
 		padding: 0 20px calc(24px + env(safe-area-inset-bottom));
 		display: flex;
 		flex-direction: column;
-		gap: 16px;
+		gap: 20px;
 	}
 	.bar {
 		padding: 8px 0 0;
@@ -179,41 +193,19 @@
 		min-height: 44px;
 		display: inline-flex;
 		align-items: center;
-		font-size: 15px;
-		color: var(--text-muted);
+		font-size: 14px;
+		font-weight: 800;
+		color: var(--accent);
 	}
+	/* kicker · name 32/800 · scientific, over a 2px rule, the status on the right */
 	.hero {
 		display: flex;
-		align-items: center;
-		gap: 16px;
-	}
-	.pic {
-		flex-shrink: 0;
-		width: 96px;
-		height: 96px;
-		border-radius: 50%;
-		overflow: hidden;
-		background: var(--surface);
-		border: 1px solid var(--border);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-	.pic img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-	}
-	/* the credit a species photo needs */
-	.credit {
-		margin: -8px 0 0;
-		font-size: 12px;
-		line-height: 1.45;
-		color: var(--text-muted);
-	}
-	.credit a {
-		color: var(--text-2);
-		text-decoration: underline;
+		align-items: flex-end;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: 12px 20px;
+		padding-bottom: 14px;
+		border-bottom: 2px solid var(--divider);
 	}
 	.who {
 		min-width: 0;
@@ -221,11 +213,15 @@
 		flex-direction: column;
 		gap: 4px;
 	}
+	.facts {
+		margin: 0;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0 4px;
+	}
 	h1 {
 		margin: 0;
-		font-size: 26px;
-		font-weight: 700;
-		line-height: 1.15;
+		font-size: 28px;
 		overflow-wrap: anywhere;
 	}
 	.count {
@@ -240,18 +236,51 @@
 	.species:empty {
 		display: none;
 	}
-	.facts {
-		margin: 2px 0 0;
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: 4px 12px;
-		font-size: 14px;
-		color: var(--text-muted);
+	.state {
+		font-size: 13px;
 	}
 	.in-tank {
-		color: var(--ok);
-		font-weight: 600;
+		font-weight: 800;
+		color: var(--text-muted);
+	}
+	.strong {
+		font-weight: 800;
+	}
+	.cols,
+	.main,
+	.side {
+		display: flex;
+		flex-direction: column;
+		gap: 20px;
+		min-width: 0;
+	}
+	.pic {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		height: 220px;
+		overflow: hidden;
+		background: var(--surface);
+	}
+	.pic img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+	.pic.none {
+		color: var(--text-muted);
+	}
+	/* the credit a species photo needs */
+	.credit {
+		margin: -12px 0 0;
+		font-size: 12px;
+		line-height: 1.45;
+		color: var(--text-muted);
+	}
+	.credit a {
+		color: var(--text-2);
+		text-decoration: underline;
 	}
 	.photo-acts {
 		display: flex;
@@ -274,6 +303,7 @@
 	}
 	.name-one {
 		padding: 14px 16px;
+		border: 2px solid var(--ink);
 		display: flex;
 		flex-direction: column;
 		gap: 8px;
@@ -295,7 +325,7 @@
 	.hint {
 		margin: 0;
 		font-size: 13px;
-		color: var(--text-faint);
+		color: var(--text-muted);
 		line-height: 1.5;
 	}
 	.details {
@@ -310,17 +340,19 @@
 	.foot .btn {
 		min-width: 120px;
 	}
-	.gallery h2,
-	.history h2 {
-		margin: 8px 0 8px;
-		font-size: 13px;
-		font-weight: 600;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		color: var(--text-muted);
+	.rule {
+		margin: 0;
+		padding-bottom: 6px;
+		border-bottom: 2px solid var(--ink);
+		color: var(--text);
+	}
+	.gallery,
+	.history {
+		display: flex;
+		flex-direction: column;
 	}
 	.gallery ul {
-		margin: 0;
+		margin: 8px 0 0;
 		padding: 0;
 		list-style: none;
 		display: grid;
@@ -330,7 +362,6 @@
 	.gallery a {
 		display: block;
 		aspect-ratio: 1;
-		border-radius: 10px;
 		overflow: hidden;
 		background: var(--surface);
 	}
@@ -344,52 +375,68 @@
 		margin: 0;
 		padding: 0;
 		list-style: none;
-		border-radius: 16px;
-		background: var(--surface);
-		border: 1px solid var(--border);
-	}
-	.history li + li {
-		border-top: 1px solid var(--border);
 	}
 	.history a {
-		min-height: 50px;
-		padding: 10px 16px;
+		padding: 9px 0;
 		display: flex;
-		align-items: center;
 		justify-content: space-between;
-		gap: 12px;
+		gap: 10px;
+		border-bottom: 1px solid var(--divider);
+		font-size: 14px;
 		color: var(--text);
 	}
 	.history .t {
 		min-width: 0;
 	}
+	.history .t b {
+		font-weight: 600;
+	}
 	.history .d {
 		flex-shrink: 0;
-		font-size: 13px;
-		color: var(--text-faint);
+		white-space: nowrap;
+		color: var(--text-muted);
+	}
+	.source {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		padding-top: 10px;
+		border-top: 2px solid var(--ink);
+		font-size: 14px;
 	}
 	.none {
 		margin: 0;
+		padding: 10px 0;
 		font-size: 14px;
-		color: var(--text-faint);
+		color: var(--text-muted);
 	}
-	/* Desktop: a centered card (the header has the title) */
+	@media (hover: hover) {
+		.history a:hover b {
+			color: var(--accent);
+		}
+	}
+	/* Desktop: `minmax(0,1fr) 300px` under the shell's title */
 	@media (min-width: 1024px) {
 		.pet {
-			margin: 28px auto;
-			padding: 24px 28px;
-			background: var(--surface);
-			border: 1px solid var(--border);
-			border-radius: 20px;
+			padding: 20px 32px 48px;
 		}
-		.pet :global(.input) {
-			background-color: var(--surface-2);
-			border-color: var(--border-strong);
+		h1 {
+			font-size: 32px;
 		}
-		.pic,
-		.name-one,
-		.history ul {
-			background: var(--surface-2);
+		.cols {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) 300px;
+			gap: 32px;
+			align-items: start;
+		}
+		.main {
+			gap: 22px;
+		}
+		.side {
+			gap: 24px;
+		}
+		.pic {
+			height: 300px;
 		}
 	}
 </style>

@@ -79,186 +79,165 @@
 
 <form method="POST" action="?/save" enctype="multipart/form-data" class="wrap" use:enhance>
 	{#if data.fromReview}<input type="hidden" name="from" value="review" />{/if}
-	<div class="cols">
-		<div class="body">
-			<div class="cover" class:photo-placeholder={!coverPreview && !data.tank.cover} class:movable={coverPreview || data.tank.cover} bind:this={frame}>
-				{#if coverPreview || data.tank.cover}
-					<!-- dragged, or moved with the arrow keys; its label says so -->
-					<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
-					<img
-						bind:this={img}
-						src={coverPreview ?? photoUrl(data.tank.cover!, 'full')}
-						alt="Tank cover. Drag, or use the arrow keys, to choose which part shows."
-						style:object-position="{focus.x}% {focus.y}%"
-						draggable="false"
-						tabindex="0"
-						onpointerdown={down}
-						onpointermove={move}
-						onpointerup={up}
-						onpointercancel={up}
-						onkeydown={key}
-					/>
-					<span class="drag-hint" aria-hidden="true">✥ Drag to reposition</span>
-					<input type="hidden" name="coverX" value={focus.x} />
-					<input type="hidden" name="coverY" value={focus.y} />
-				{:else}
-					<span class="mono">cover photo</span>
-				{/if}
-				<label class="change">
-					Change
-					<input type="file" name="cover" accept="image/*" onchange={pickCover} />
-				</label>
-			</div>
-			{#if moved}<span class="moved" aria-live="polite">Save changes to keep it there.</span>{/if}
-			{#if errors.cover}<span class="error-text">✕ {errors.cover}</span>{/if}
+	<!-- the Setup nav beside this page is the shell's; on phones the tank header carries the name -->
+	<div class="section-head"><h2>Tank details</h2></div>
+	<div class="body">
+		<div class="cover" class:photo-placeholder={!coverPreview && !data.tank.cover} class:movable={coverPreview || data.tank.cover} bind:this={frame}>
+			{#if coverPreview || data.tank.cover}
+				<!-- dragged, or moved with the arrow keys; its label says so -->
+				<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
+				<img
+					bind:this={img}
+					src={coverPreview ?? photoUrl(data.tank.cover!, 'full')}
+					alt="Tank cover. Drag, or use the arrow keys, to choose which part shows."
+					style:object-position="{focus.x}% {focus.y}%"
+					draggable="false"
+					tabindex="0"
+					onpointerdown={down}
+					onpointermove={move}
+					onpointerup={up}
+					onpointercancel={up}
+					onkeydown={key}
+				/>
+				<span class="drag-hint" aria-hidden="true">✥ Drag to reposition</span>
+				<input type="hidden" name="coverX" value={focus.x} />
+				<input type="hidden" name="coverY" value={focus.y} />
+			{/if}
+			<label class="change btn">
+				Change cover
+				<input type="file" name="cover" accept="image/*" onchange={pickCover} />
+			</label>
+		</div>
+		{#if moved}<span class="moved" aria-live="polite">Save changes to keep it there.</span>{/if}
+		{#if errors.cover}<span class="error-text">✕ {errors.cover}</span>{/if}
 
+		<div class="field">
+			<label class="label" for="name">Name</label>
+			<input class="input" id="name" name="name" defaultValue={data.tank.name} required maxlength="80" />
+			{#if errors.name}<span class="error-text">✕ {errors.name}</span>{/if}
+		</div>
+
+		<fieldset class="field">
+			<legend class="label">Type</legend>
+			<div class="segmented types">
+				{#each types as t (t.value)}
+					<label><input type="radio" name="type" value={t.value} defaultChecked={data.tank.type === t.value} />{t.label}</label>
+				{/each}
+			</div>
+		</fieldset>
+
+		<div class="pair">
 			<div class="field">
-				<label class="label" for="name">Name</label>
-				<input class="input" id="name" name="name" defaultValue={data.tank.name} required maxlength="80" />
-				{#if errors.name}<span class="error-text">✕ {errors.name}</span>{/if}
+				<div class="label-row">
+					<label class="label" for="nominalVolume">Nominal volume ({data.volUnit})</label><Tip text={TIPS.nominalVolume} label="About nominal volume" />
+				</div>
+				<div class="unit-input">
+					<input id="nominalVolume" name="nominalVolume" inputmode="decimal" defaultValue={data.tank.nominalVolume} />
+					<span class="unit">{data.volUnit}</span>
+				</div>
+				{#if errors.nominalVolume}<span class="error-text">✕ {errors.nominalVolume}</span>{/if}
 			</div>
+			<div class="field">
+				<div class="label-row">
+					<label class="label" for="actualVolume">Actual volume ({data.volUnit}) · after rock, substrate</label><Tip text={TIPS.actualVolume} label="About actual volume" />
+				</div>
+				<div class="unit-input">
+					<input id="actualVolume" name="actualVolume" inputmode="decimal" defaultValue={data.tank.actualVolume} />
+					<span class="unit">{data.volUnit}</span>
+				</div>
+				{#if errors.actualVolume}<span class="error-text">✕ {errors.actualVolume}</span>{/if}
+			</div>
+		</div>
 
-			<fieldset class="field">
-				<legend class="label">Type</legend>
-				<div class="options four">
-					{#each types as t (t.value)}
-						<label class="option"><input type="radio" name="type" value={t.value} defaultChecked={data.tank.type === t.value} />{t.label}</label>
+		<fieldset class="field">
+			<legend class="label">Dimensions · L × W × H ({data.lenUnit})</legend>
+			<div class="triple">
+				{#each [['length', 'Length'], ['width', 'Width'], ['height', 'Height']] as [key, label] (key)}
+					<div class="unit-input">
+						<input name={key} inputmode="decimal" aria-label={label} defaultValue={data.tank[key as 'length' | 'width' | 'height']} />
+						<span class="unit">{data.lenUnit}</span>
+					</div>
+				{/each}
+			</div>
+		</fieldset>
+
+		<div class="pair">
+			<div class="field">
+				<label class="label" for="specBrand">Tank brand</label>
+				<input class="input" id="specBrand" name="specBrand" defaultValue={data.tank.specBrand} maxlength="60" placeholder="e.g. Aqualine" />
+			</div>
+			<div class="field">
+				<label class="label" for="specModel">Model</label>
+				<input class="input" id="specModel" name="specModel" defaultValue={data.tank.specModel} maxlength="60" placeholder="e.g. 90P" />
+			</div>
+			<div class="field">
+				<label class="label" for="glass">Glass</label>
+				<input class="input" id="glass" name="glass" defaultValue={data.tank.glass} maxlength="60" placeholder="e.g. Low-iron, rimless" />
+			</div>
+			<div class="field">
+				<label class="label" for="substrate">Substrate</label>
+				<input class="input" id="substrate" name="substrate" defaultValue={data.tank.substrate} maxlength="60" placeholder="e.g. Aquasoil, 3 in" />
+			</div>
+			<div class="field">
+				<label class="label" for="waterSource">Water source</label>
+				<select class="input" id="waterSource" name="waterSource">
+					{#each [['', '—'], ['tap', 'Tap'], ['rodi', 'RODI'], ['mix', 'Mix'], ['well', 'Well']] as [v, l] (v)}
+						<option value={v} selected={data.tank.waterSource === v}>{l}</option>
 					{/each}
-				</div>
-			</fieldset>
-
-			<div class="pair">
-				<div class="field">
-					<div class="label-row">
-						<label class="label" for="nominalVolume">Nominal volume</label><Tip text={TIPS.nominalVolume} label="About nominal volume" />
-					</div>
-					<div class="unit-input">
-						<input id="nominalVolume" name="nominalVolume" inputmode="decimal" defaultValue={data.tank.nominalVolume} />
-						<span class="unit">{data.volUnit}</span>
-					</div>
-					{#if errors.nominalVolume}<span class="error-text">✕ {errors.nominalVolume}</span>{/if}
-				</div>
-				<div class="field">
-					<div class="label-row">
-						<label class="label" for="actualVolume">Actual volume</label><Tip text={TIPS.actualVolume} label="About actual volume" />
-					</div>
-					<div class="unit-input">
-						<input id="actualVolume" name="actualVolume" inputmode="decimal" defaultValue={data.tank.actualVolume} />
-						<span class="unit">{data.volUnit}</span>
-					</div>
-					{#if errors.actualVolume}<span class="error-text">✕ {errors.actualVolume}</span>{/if}
+				</select>
+			</div>
+			<div class="field">
+				<label class="label" for="photoperiodH">Photoperiod (h)</label>
+				<div class="unit-input">
+					<input id="photoperiodH" name="photoperiodH" inputmode="decimal" defaultValue={data.tank.photoperiodH} />
+					<span class="unit">h</span>
 				</div>
 			</div>
-
-			<fieldset class="field">
-				<legend class="label">Dimensions (L × W × H)</legend>
-				<div class="triple">
-					{#each [['length', 'Length'], ['width', 'Width'], ['height', 'Height']] as [key, label] (key)}
-						<div class="unit-input">
-							<input name={key} inputmode="decimal" aria-label={label} defaultValue={data.tank[key as 'length' | 'width' | 'height']} />
-							<span class="unit">{data.lenUnit}</span>
-						</div>
-					{/each}
-				</div>
-			</fieldset>
-
-			<div class="pair">
-				<div class="field">
-					<label class="label" for="specBrand">Tank brand</label>
-					<input class="input" id="specBrand" name="specBrand" defaultValue={data.tank.specBrand} maxlength="60" placeholder="e.g. Aqualine" />
-				</div>
-				<div class="field">
-					<label class="label" for="specModel">Model</label>
-					<input class="input" id="specModel" name="specModel" defaultValue={data.tank.specModel} maxlength="60" placeholder="e.g. 90P" />
-				</div>
-			</div>
-			<div class="pair">
-				<div class="field">
-					<label class="label" for="glass">Glass</label>
-					<input class="input" id="glass" name="glass" defaultValue={data.tank.glass} maxlength="60" placeholder="e.g. Low-iron, rimless" />
-				</div>
-				<div class="field">
-					<label class="label" for="substrate">Substrate</label>
-					<input class="input" id="substrate" name="substrate" defaultValue={data.tank.substrate} maxlength="60" placeholder="e.g. Aquasoil, 3 in" />
-				</div>
-			</div>
-			<div class="pair">
-				<div class="field">
-					<label class="label" for="waterSource">Water source</label>
-					<select class="input" id="waterSource" name="waterSource">
-						{#each [['', '—'], ['tap', 'Tap'], ['rodi', 'RODI'], ['mix', 'Mix'], ['well', 'Well']] as [v, l] (v)}
-							<option value={v} selected={data.tank.waterSource === v}>{l}</option>
-						{/each}
-					</select>
-				</div>
-				<div class="field">
-					<label class="label" for="photoperiodH">Photoperiod</label>
-					<div class="unit-input">
-						<input id="photoperiodH" name="photoperiodH" inputmode="decimal" defaultValue={data.tank.photoperiodH} />
-						<span class="unit">h</span>
-					</div>
-				</div>
-			</div>
-
 			<div class="field">
 				<label class="label" for="startDate">Start date</label>
 				<DateField name="startDate" id="startDate" bind:value={startDate} label="Start date" today={data.today} max={data.today} invalid={!!errors.startDate} />
 				{#if errors.startDate}<span class="error-text">✕ {errors.startDate}</span>{/if}
 			</div>
-
-			<div class="field">
-				<label class="label" for="notes">Notes</label>
-				<textarea class="input" id="notes" name="notes" rows="3" maxlength="2000" bind:value={notes}></textarea>
-			</div>
-		</div>
-
-		<div class="side">
-			<a class="card params" href="/tanks/{data.tank.id}/public">
-				<div>
-					<div class="p-title">Public page</div>
-					<div class="muted sm">
-						{#if data.publicLive}<span class="live">● Live</span>{' · read-only page anyone with the link can see'}{:else}Off · share a read-only page of this tank{/if}
-					</div>
-				</div>
-				<span class="link">Set up ›</span>
-			</a>
-
-			<a class="card params" href="/tanks/{data.tank.id}/targets">
-				<div>
-					<div class="p-title">Parameters</div>
-					<div class="muted sm">
-						{data.paramSummary.tracked} tracked{data.paramSummary.custom ? ` · ${data.paramSummary.custom} custom` : ''}
-					</div>
-					<div class="faint sm">{data.paramSummary.names}</div>
-				</div>
-				<span class="link">Targets ›</span>
-			</a>
-
 			<!-- the setup review (#30): a task every few months to check all this is still right -->
-			<div class="card params review" id="review">
-				<div class="rv-text">
-					<label class="p-title" for="reviewEvery">Setup review</label>
-					<div class="muted sm">
-						A reminder to check these settings, equipment, targets and livestock are still right{data.review.due ? `. Next ${fmtDate(data.review.due)}` : ''}.
-					</div>
-					<a class="link sm" href="/tanks/{data.tank.id}/review">Review now ›</a>
-				</div>
-				<select class="input rv-every" id="reviewEvery" name="reviewEvery" value={data.review.every}>
+			<div class="field" id="review">
+				<label class="label" for="reviewEvery">Setup review</label>
+				<select class="input" id="reviewEvery" name="reviewEvery" value={data.review.every}>
 					{#each REVIEW_INTERVALS as r (r.days)}<option value={String(r.days)}>{r.label}</option>{/each}
 					{#if data.review.custom}<option value={String(data.review.custom)}>Every {data.review.custom} days</option>{/if}
 					<option value="off">Off</option>
 				</select>
+				<span class="hint">
+					A reminder to check these details, equipment, targets and livestock are still right{data.review.due ? `. Next ${fmtDate(data.review.due)}` : ''}.
+					<a href="/tanks/{data.tank.id}/review">Review now ›</a>
+				</span>
 			</div>
-
-			<button class="btn btn-primary btn-lg save">Save changes</button>
-			{#if !data.tank.archived}
-				<!-- reversible, so amber rather than red (10) -->
-				<div class="archive">
-					<button type="button" class="btn btn-warn" popovertarget="confirm-archive">Archive tank</button>
-					<p class="faint sm">History is kept. Archived tanks can be restored.</p>
-				</div>
-			{/if}
 		</div>
+
+		<div class="field">
+			<label class="label" for="notes">Notes</label>
+			<textarea class="input" id="notes" name="notes" rows="3" maxlength="2000" bind:value={notes}></textarea>
+		</div>
+
+		<div class="foot">
+			<button class="btn btn-primary save">Save changes</button>
+			<a class="ghost" href="/tanks/{data.tank.id}">Cancel</a>
+		</div>
+
+		<!-- phones: the setup sections the desktop nav lists -->
+		<nav class="more hide-desk" aria-label="More setup">
+			<a href="/tanks/{data.tank.id}/targets"><span>Parameters &amp; targets</span><span class="muted">{data.paramSummary.tracked} tracked ›</span></a>
+			<a href="/tanks/{data.tank.id}/public"><span>Public page</span><span class="muted">{data.publicLive ? '● Live' : 'Off'} ›</span></a>
+			<a href="/tanks/{data.tank.id}/remind"><span>Reminders</span><span class="muted">›</span></a>
+			<a href="/tanks/{data.tank.id}/review"><span>Setup review</span><span class="muted">›</span></a>
+		</nav>
+
+		{#if !data.tank.archived}
+			<div class="archive" id="archive">
+				<div class="section-head"><h2>Archive</h2></div>
+				<p class="hint">History is kept. Archived tanks can be restored from Tanks.</p>
+				<button type="button" class="btn btn-warn" popovertarget="confirm-archive">Archive tank</button>
+			</div>
+		{/if}
 	</div>
 </form>
 
@@ -274,29 +253,27 @@
 
 <style>
 	.wrap {
-		max-width: 1100px;
-		padding-bottom: calc(24px + env(safe-area-inset-bottom));
-	}
-	.cols,
-	.body,
-	.side {
+		padding: 20px 20px calc(24px + env(safe-area-inset-bottom));
 		display: flex;
 		flex-direction: column;
-		gap: 20px;
+		gap: 18px;
 	}
-	.cols {
-		padding: 20px 20px 8px;
+	.section-head h2 {
+		font-size: 22px;
+	}
+	.body {
+		display: flex;
+		flex-direction: column;
+		gap: 18px;
 	}
 	.cover {
 		position: relative;
-		height: 160px;
-		border-radius: 16px;
+		height: 200px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		font-size: 12px;
-		color: var(--text-faint);
 		overflow: hidden;
+		background: var(--surface);
 	}
 	.cover img {
 		position: absolute;
@@ -321,44 +298,31 @@
 	}
 	.drag-hint {
 		position: absolute;
-		left: 10px;
-		bottom: 10px;
-		height: 36px;
-		padding: 0 12px;
-		border-radius: 10px;
-		background: var(--overlay-bg);
-		color: var(--overlay-text);
+		left: 12px;
+		bottom: 12px;
+		padding: 6px 10px;
+		background: var(--ink);
+		color: var(--bg);
 		font-size: 13px;
 		font-weight: 600;
-		display: flex;
-		align-items: center;
+		white-space: nowrap;
 		pointer-events: none;
 	}
 	.moved {
-		margin-top: -12px;
+		margin-top: -10px;
 		font-size: 13px;
 		color: var(--text-muted);
 	}
 	.change {
 		position: absolute;
-		right: 10px;
-		bottom: 10px;
-		height: 36px;
-		padding: 0 12px;
-		border-radius: 10px;
-		background: var(--overlay-bg);
-		color: var(--overlay-text);
-		border: 1px solid var(--border-strong);
-		font-size: 14px;
-		font-weight: 600;
-		display: flex;
-		align-items: center;
+		right: 12px;
+		bottom: 12px;
+		background: var(--bg);
 		cursor: pointer;
 	}
-	/* 36px to match 10, 44px to tap */
 	.change input {
 		position: absolute;
-		inset: -4px -1px;
+		inset: 0;
 		opacity: 0;
 		cursor: pointer;
 	}
@@ -372,99 +336,105 @@
 	}
 	legend {
 		padding: 0;
-		margin-bottom: 8px;
+		margin-bottom: 6px;
 	}
-	.four {
-		grid-template-columns: repeat(4, 1fr);
+	.types label {
+		min-width: 0;
 	}
 	.pair {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
-		gap: 12px;
+		gap: 16px 12px;
 	}
 	.triple {
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
-		gap: 8px;
+		gap: 10px;
 	}
-	.triple .unit-input {
-		padding: 0 12px;
-	}
-	.params {
-		padding: 16px;
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		gap: 12px;
-		color: var(--text);
-	}
-	.p-title {
-		font-size: 17px;
-		font-weight: 600;
-		margin-bottom: 4px;
-	}
-	.sm {
+	.hint {
 		font-size: 13px;
+		line-height: 1.5;
+		color: var(--text-muted);
 	}
-	.link {
-		color: var(--accent);
-		font-weight: 600;
-		white-space: nowrap;
+	.hint a {
+		font-weight: 800;
 	}
-	.review {
-		flex-direction: column;
-		align-items: stretch;
-	}
-	.rv-text {
+	.foot {
 		display: flex;
-		flex-direction: column;
-		gap: 4px;
+		align-items: center;
+		gap: 10px;
+		padding-top: 16px;
+		border-top: 2px solid var(--divider);
 	}
-	.rv-text .p-title {
-		margin: 0;
+	.save {
+		flex: 1;
+		height: 52px;
+		font-size: 16px;
 	}
-	.rv-text .link {
-		align-self: flex-start;
+	.ghost {
 		display: inline-flex;
 		align-items: center;
 		min-height: 44px;
-		margin: -6px 0 -10px;
+		padding: 0 12px;
+		font-size: 14px;
+		font-weight: 800;
+		color: var(--text-muted);
 	}
-	.live {
-		color: var(--ok);
+	.more {
+		display: flex;
+		flex-direction: column;
+		border-top: 2px solid var(--ink);
+	}
+	.more a {
+		min-height: 52px;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		border-bottom: 1px solid var(--divider);
+		font-size: 16px;
 		font-weight: 600;
+		color: var(--text);
+	}
+	.more .muted {
+		font-size: 13px;
+		font-weight: 400;
 	}
 	.archive {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
-		padding-top: 4px;
+		gap: 10px;
+		padding-top: 8px;
+		scroll-margin-top: 24px;
 	}
 	.archive .btn {
-		height: 52px;
-		border-radius: 14px;
-		font-size: 16px;
+		align-self: flex-start;
 	}
-	.archive p {
+	.archive .hint {
 		margin: 0;
-		text-align: center;
 	}
+	@media (hover: hover) {
+		.ghost:hover {
+			color: var(--text);
+		}
+	}
+	/* Desktop: beside the shell's Setup nav, max 880 */
 	@media (min-width: 1024px) {
-		.cols {
-			display: grid;
-			grid-template-columns: minmax(0, 1fr) 340px;
-			gap: 28px;
-			padding: 24px 32px;
-			align-items: start;
+		.wrap {
+			padding: 24px 32px 48px;
+			max-width: 880px;
+		}
+		.pair {
+			gap: 16px;
+		}
+		.foot {
+			justify-content: flex-start;
 		}
 		.save {
-			height: 48px;
-			border-radius: 12px;
-			font-size: 16px;
-		}
-		.archive .btn {
-			height: 48px;
-			border-radius: 12px;
+			flex: none;
+			height: 44px;
+			font-size: 14px;
+			padding: 0 22px;
 		}
 	}
 </style>

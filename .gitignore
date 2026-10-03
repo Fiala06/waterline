@@ -26,3 +26,5 @@ test-results/
 playwright-report/
 .e2e-data/
 .claude/
+.dev-data/
+.e2e-fresh-*/

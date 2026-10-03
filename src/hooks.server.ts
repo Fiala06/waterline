@@ -112,8 +112,8 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
 
 /** Browser bar color: the page background of the chosen theme, or both for "system". */
 function themeColorMeta(theme: string) {
-	const dark = '<meta name="theme-color" content="#0c1a1f" />';
-	const light = '<meta name="theme-color" content="#f4f7f6" />';
+	const dark = '<meta name="theme-color" content="#161514" />';
+	const light = '<meta name="theme-color" content="#f3f2f2" />';
 	if (theme === 'dark') return dark;
 	if (theme === 'light') return light;
 	return `${dark.replace(' />', ' media="(prefers-color-scheme: dark)" />')}${light.replace(' />', ' media="(prefers-color-scheme: light)" />')}`;

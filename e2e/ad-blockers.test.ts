@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { newKeeperWithTank, open } from './helpers';
+import { newKeeperWithTank, open, openQuickAdd } from './helpers';
 
 // Paths that ad blockers' privacy lists block on every site. EasyPrivacy (on by
 // default in uBlock Origin) blocks "/log/event?" and about 40 more /log/ paths,
@@ -14,8 +14,8 @@ test('logging works with an ad blocker', async ({ page }, info) => {
 		return route.abort('blockedbyclient');
 	});
 	const quickAdd = async (choice: RegExp) => {
-		await page.getByRole('button', { name: 'Quick add' }).click();
-		await page.getByRole('dialog').getByRole('link', { name: choice }).click();
+		await openQuickAdd(page);
+		await page.getByRole('dialog', { name: 'Quick add' }).getByRole('link', { name: choice }).click();
 	};
 
 	// As reported: Quick add → Livestock / plants → 4 Amano shrimp

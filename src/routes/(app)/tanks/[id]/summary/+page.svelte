@@ -1,6 +1,7 @@
 <script lang="ts">
-	// A tank's readings, care log and stocking as text to paste into an AI
-	// assistant with a question. Nothing is sent anywhere from here.
+	// Get help: a tank's readings, care log and stocking as text to paste with
+	// a question into a forum post, a message to a friend or your fish store,
+	// or an AI chat (redesign README § 14). Nothing is sent anywhere from here.
 	import { onMount } from 'svelte';
 	import { toast } from '$lib/ui.svelte';
 	let { data } = $props();
@@ -10,9 +11,12 @@
 		{ days: 90, label: '90 days' },
 		{ days: 365, label: '1 year' }
 	];
+	const lines = $derived(data.text.split('\n').length);
+	const chars = $derived(data.text.length.toLocaleString('en-US'));
 	// Copy needs scripts; without them the text below can be selected, or downloaded.
 	let scripted = $state(false);
 	onMount(() => (scripted = true));
+	let copied = $state(false);
 
 	async function copy() {
 		try {
@@ -27,39 +31,44 @@
 			box.remove();
 			if (!ok) return toast("✕ Couldn't copy. Select the text below and copy it.");
 		}
-		toast('✓ Copied. Paste it into your AI assistant with your question.');
+		copied = true;
+		setTimeout(() => (copied = false), 2000);
+		toast('✓ Copied. Paste it with your question.');
 	}
 </script>
 
-<svelte:head><title>Summary for an AI assistant · {data.tank.name}</title></svelte:head>
+<svelte:head><title>Get help: tank summary · {data.tank.name}</title></svelte:head>
 
 <div class="wrap">
-	<div class="top">
-		<!-- on desktop the header has "Tanks › {tank} › Summary for an AI assistant" -->
-		<a class="back hide-desk" href={base}>‹ {data.tank.name}</a>
-		<h1 class="hide-desk">Summary for an AI assistant</h1>
-		<p class="intro">
-			Paste it into an AI assistant such as ChatGPT, Claude or Gemini, then ask your question, e.g. “Why does my nitrate keep climbing?” It has
-			this tank's readings, care log and stocking, not your account details. Waterline doesn't send it anywhere.
-		</p>
+	<div class="top hide-desk">
+		<a class="back" href={base}>‹ {data.tank.name}</a>
+		<span class="kicker">{data.tank.name}</span>
+		<h1>Get help: tank summary</h1>
 	</div>
+	<p class="intro">
+		A summary of this tank to paste with your question, e.g. “Why does my nitrate keep climbing?”, into a forum post, a message to a friend or your fish store, or an
+		AI chat. It has the readings, care log and stocking, not your account details. Waterline doesn't send it anywhere.
+	</p>
 
 	<div class="controls">
-		<nav class="chips" aria-label="Covering">
-			{#each PERIODS as p (p.days)}
-				<a
-					class="chip"
-					class:selected={data.days === p.days}
-					aria-current={data.days === p.days ? 'true' : undefined}
-					href="?days={p.days}"
-					data-sveltekit-replacestate
-					data-sveltekit-noscroll>{p.label}</a
-				>
-			{/each}
-		</nav>
+		<div class="group">
+			<span class="gk">Format</span>
+			<span class="segmented fmt" role="group" aria-label="Format"><span class="on">Forum / AI</span></span>
+		</div>
+		<div class="group">
+			<span class="gk">Covering</span>
+			<nav class="segmented covering" aria-label="Covering">
+				{#each PERIODS as p (p.days)}
+					<a class:on={data.days === p.days} aria-current={data.days === p.days ? 'true' : undefined} href="?days={p.days}" data-sveltekit-replacestate data-sveltekit-noscroll
+						>{p.label}</a
+					>
+				{/each}
+			</nav>
+		</div>
+		<span class="count">{lines} lines · {chars} characters</span>
 		<div class="acts">
 			<a class="btn" href="{base}/summary.md?days={data.days}" download>Download</a>
-			{#if scripted}<button type="button" class="btn btn-primary" onclick={copy}>Copy summary</button>{/if}
+			{#if scripted}<button type="button" class="btn btn-primary" onclick={copy}>{copied ? '✓ Copied' : 'Copy summary'}</button>{/if}
 		</div>
 	</div>
 
@@ -69,7 +78,7 @@
 
 <style>
 	.wrap {
-		max-width: 760px;
+		max-width: 820px;
 		padding: 0 20px calc(24px + env(safe-area-inset-bottom));
 		display: flex;
 		flex-direction: column;
@@ -84,41 +93,70 @@
 	h1 {
 		margin: 0;
 		font-size: 28px;
-		font-weight: 600;
 	}
 	.intro {
-		margin: 8px 0 0;
-		font-size: 14px;
+		margin: 0;
+		font-size: 15px;
 		line-height: 1.5;
-		color: var(--text-muted);
+		max-width: 720px;
 	}
 	.controls {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		justify-content: space-between;
-		gap: 12px;
+		gap: 12px 14px;
 	}
-	.chips {
+	.group {
 		display: flex;
-		gap: 8px;
+		align-items: center;
+		gap: 10px;
+	}
+	.gk {
+		font-size: 13px;
+		color: var(--text-muted);
+	}
+	/* Format / Covering: one bordered row, the choice filled accent */
+	.segmented {
+		display: flex;
+		min-height: 40px;
+	}
+	.segmented a,
+	.segmented .on {
+		display: inline-flex;
+		align-items: center;
+		min-height: 38px;
+		padding: 0 14px;
+		color: var(--text);
+		font-size: 14px;
+		font-weight: 600;
+	}
+	.segmented a + a {
+		border-left: 1px solid var(--divider);
+	}
+	.segmented .on {
+		background: var(--accent);
+		color: var(--on-accent);
+		font-weight: 800;
+	}
+	.count {
+		font-size: 13px;
+		color: var(--text-muted);
+		margin-left: auto;
 	}
 	.acts {
 		display: flex;
-		gap: 10px;
+		gap: 8px;
 	}
 	.text {
 		margin: 0;
 		max-height: 70vh;
 		overflow: auto;
 		padding: 14px 16px;
-		border-radius: 14px;
 		background: var(--surface);
-		border: 1px solid var(--border);
+		border: 1px solid var(--divider);
 		font-family: ui-monospace, Menlo, monospace;
 		font-size: 12.5px;
 		line-height: 1.55;
-		color: var(--text-2);
 		white-space: pre-wrap;
 		overflow-wrap: anywhere;
 	}
@@ -129,6 +167,10 @@
 
 	/* phones: Copy is the main action, full width under the periods */
 	@media (max-width: 1023px) {
+		.count {
+			margin-left: 0;
+			flex-basis: 100%;
+		}
 		.acts {
 			width: 100%;
 		}
@@ -141,16 +183,9 @@
 			flex: 2;
 		}
 	}
-
 	@media (min-width: 1024px) {
 		.wrap {
-			padding: 24px 32px;
-		}
-		.top {
-			padding: 0;
-		}
-		.intro {
-			margin: 0;
+			padding: 16px 32px 32px;
 		}
 		.text {
 			max-height: none;

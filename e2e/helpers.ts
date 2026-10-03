@@ -20,7 +20,7 @@ export async function newKeeperWithTank(page: Page, tag: string, type: 'Freshwat
 	await page.locator('label', { hasText: type }).click();
 	await page.getByLabel('Volume').fill('40');
 	await page.getByRole('button', { name: 'Create tank' }).click();
-	await expect(page.getByText('No readings yet')).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'No readings yet' })).toBeVisible();
 	return email;
 }
 
@@ -53,6 +53,23 @@ export function linkIn(mail: OutboxMail, needle: string) {
 	const url = mail.text.match(new RegExp(`https?://\\S*${needle}\\S*`))?.[0];
 	if (!url) throw new Error(`No ${needle} link in "${mail.subject}"`);
 	return url;
+}
+
+/** Open the Quick add sheet: the phone's Log button, or More… under the desktop's Log water test ▾. */
+export async function openQuickAdd(page: Page) {
+	const log = page.getByRole('button', { name: 'Log', exact: true });
+	if (await log.isVisible()) {
+		await log.click();
+	} else {
+		await page.getByRole('button', { name: 'Other log types' }).click();
+		await page.getByRole('menuitem', { name: 'More…' }).click();
+	}
+	await expect(page.getByRole('dialog', { name: 'Quick add' })).toBeVisible();
+}
+
+/** The tank's name in the shell: a heading on desktop, the switch-tank button on phones. */
+export function tankTitle(page: Page, name: string) {
+	return page.getByRole('heading', { name, level: 1, exact: true }).or(page.getByRole('button', { name: `${name}, switch tank` })).first();
 }
 
 /** The value of a DateField (a hidden input named `name`). */

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { newKeeperWithTank, open } from './helpers';
+import { newKeeperWithTank, open, openQuickAdd } from './helpers';
 
 const csv = (name: string, text: string) => ({ name, mimeType: 'text/csv', buffer: Buffer.from(text) });
 
@@ -230,8 +230,8 @@ test('imports are found from History, Quick add, Import & export and an empty da
 	await expect(page.getByRole('link', { name: 'Import past tests' })).toHaveAttribute('href', `/tanks/${tankId}/import/tests`);
 
 	// Quick add
-	await page.getByRole('button', { name: 'Quick add' }).first().click();
-	await page.getByRole('dialog').getByRole('link', { name: 'Import a spreadsheet' }).click();
+	await openQuickAdd(page);
+	await page.getByRole('dialog', { name: 'Quick add' }).getByRole('link', { name: 'Import a spreadsheet' }).click();
 	await expect(page).toHaveURL(`/tanks/${tankId}/import/tests`);
 
 	// Settings › Import & export: the kind, for the tank

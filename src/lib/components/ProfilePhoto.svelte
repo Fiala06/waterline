@@ -70,8 +70,8 @@
 	{/if}
 </span>
 <div class="body">
-	<span class="k">Photo</span>
-	<span class="about">{about}</span>
+	<span class="k">Profile photo</span>
+	<span class="about">{about} · shown on your public tank pages</span>
 	<div class="acts">
 		<form method="POST" action="?/photo" enctype="multipart/form-data" use:enhance={submit}>
 			<input bind:this={input} id="photo-file" class="sr-only" type="file" name="photo" accept="image/*" aria-label="Choose a photo" onchange={chose} />
@@ -99,23 +99,26 @@
 </div>
 
 <style>
+	/* a 64px square in ink, with the initials in the page colour (README § 15) */
 	.face {
 		flex-shrink: 0;
 		align-self: flex-start;
-		width: 56px;
-		height: 56px;
-		margin-right: 14px;
-		border-radius: 50%;
+		width: 64px;
+		height: 64px;
+		margin-right: 16px;
+		border-radius: 0;
 		overflow: hidden;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: var(--selected);
-		border: 1px solid var(--border);
-		color: var(--accent);
+		background: var(--ink);
+		color: var(--bg);
 		font-size: 20px;
-		font-weight: 700;
+		font-weight: 800;
 		letter-spacing: 0.02em;
+	}
+	.k {
+		font-weight: 800;
 	}
 	.face img {
 		width: 100%;
@@ -130,7 +133,7 @@
 		gap: 2px;
 	}
 	.about {
-		font-size: 14px;
+		font-size: 13px;
 		color: var(--text-muted);
 	}
 	.acts {

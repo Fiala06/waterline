@@ -38,8 +38,8 @@
 </script>
 
 <script lang="ts">
-	// The last few readings as a line, colored by the latest one's status (design 1a),
-	// over the target band when lo / hi are given (refresh 1c).
+	// The last few readings as a line over the target band when lo / hi are given
+	// (redesign README → Screens §2): ink, or the accent when the latest reading is out of range.
 	import type { StatusLevel } from '$lib/status';
 	let { values, level, lo = null, hi = null }: { values: number[]; level: StatusLevel; lo?: number | null; hi?: number | null } = $props();
 	const points = $derived(sparkPoints(values, lo, hi));
@@ -58,12 +58,13 @@
 		height: 100%;
 		overflow: visible;
 	}
+	/* the target band in neutral-300; the line in ink, red only when the latest reading is out of range */
 	rect {
 		fill: var(--band);
 	}
 	polyline {
 		fill: none;
-		stroke: var(--accent);
+		stroke: var(--ink);
 		stroke-width: 2;
 		stroke-linejoin: round;
 		vector-effect: non-scaling-stroke;
@@ -72,6 +73,6 @@
 		stroke: var(--warn);
 	}
 	.bad polyline {
-		stroke: var(--bad);
+		stroke: var(--accent);
 	}
 </style>

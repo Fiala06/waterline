@@ -1,3 +1,3 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56">
-<rect width="56" height="56" rx="12" fill="#0c1a1f"/>
-<svg x="0" y="0" width="56" height="56" viewBox="0 0 56 56"><defs><clipPath id="w"><circle cx="28" cy="28" r="24"/></clipPath></defs><rect x="0" y="32" width="56" height="30" fill="#4fc4bd" clip-path="url(#w)"/><circle cx="28" cy="28" r="24" fill="none" stroke="#e6f0f0" stroke-width="4"/></svg></svg>
+<rect width="56" height="56" fill="#161514"/>
+<svg x="0" y="0" width="56" height="56" viewBox="0 0 56 56"><defs><clipPath id="w"><circle cx="28" cy="28" r="24"/></clipPath></defs><rect x="0" y="32" width="56" height="30" fill="#ec3013" clip-path="url(#w)"/><circle cx="28" cy="28" r="24" fill="none" stroke="#f0eeed" stroke-width="4"/></svg></svg>

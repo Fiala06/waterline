@@ -31,8 +31,11 @@ export const load: PageServerLoad = ({ locals, params }) => {
 			notes: e.notes
 		};
 	};
+	const items = listEquipment(user.id, params.id).map(view);
 	return {
-		items: listEquipment(user.id, params.id).map(view),
+		// the tab's toolbar: "4 items"
+		toolbarText: items.length ? `${items.length} item${items.length === 1 ? '' : 's'}` : '',
+		items,
 		past: listEquipment(user.id, params.id, { removed: true }).map(view)
 	};
 };

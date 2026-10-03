@@ -1,7 +1,7 @@
 <script lang="ts">
-	// Server settings › Logs: what went wrong on this server (and, when turned
-	// up, what it did), newest first; a reference from an error page finds its
-	// entry. Works without scripts.
+	// Server settings › Logs (redesign README § 16): what went wrong on this
+	// server (and, when turned up, what it did), newest first; a reference from
+	// an error page finds its entry. Works without scripts.
 	import { enhance } from '$app/forms';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import { toast } from '$lib/ui.svelte';
@@ -49,7 +49,7 @@
 	<div class="head">
 		<a class="back sub-back" href="/settings/server">‹ Server settings</a>
 		<h1>Logs</h1>
-		<p class="muted">What went wrong on this server, newest first. Entries are kept for {data.keepDays} days, and the container's log has them too.</p>
+		<p class="lede">What went wrong on this server, newest first. Entries are kept for {data.keepDays} days, and the container's log has them too.</p>
 	</div>
 
 	<form
@@ -63,11 +63,11 @@
 			}}
 	>
 		<fieldset>
-			<legend class="label">What to keep</legend>
-			<div class="group">
+			<legend class="kicker">What to keep</legend>
+			<div class="rows">
 				{#each DETAILS as o (o.value)}
 					<label class="row">
-						<input type="radio" name="detail" value={o.value} defaultChecked={data.detail === o.value} />
+						<input class="radio" type="radio" name="detail" value={o.value} defaultChecked={data.detail === o.value} />
 						<span class="ttext"
 							><span class="tt">{o.label}</span><span class="td">{o.value === 'debug' && data.debugUntil ? `On until ${data.debugUntil}` : o.d}</span></span
 						>
@@ -91,17 +91,17 @@
 		</nav>
 		<form method="GET" class="find" role="search">
 			<label class="sr-only" for="log-ref">Reference from an error page</label>
-			<input class="input mono" id="log-ref" name="ref" value={data.ref ?? ''} placeholder="Reference, e.g. 3f2a1b9c" autocomplete="off" spellcheck="false" />
+			<input class="input mono" id="log-ref" name="ref" value={data.ref ?? ''} placeholder="Reference from an error page, e.g. 3f2a1b9c" autocomplete="off" spellcheck="false" />
 			<button class="btn">Find</button>
 		</form>
-		<a class="btn download" href="/settings/server/logs/download{data.level ? `?level=${data.level}` : ''}" download>Download</a>
+		<a class="btn download" href="/settings/server/logs/download{data.level ? `?level=${data.level}` : ''}" download>Download .txt</a>
 	</div>
 
 	{#if data.entries.length}
 		<ul class="entries">
 			{#each data.entries as e (e.id)}
 				{@const l = levelOf(e.level)}
-				<li class="entry">
+				<li class="entry" class:found={!!data.ref && e.ref === data.ref}>
 					<div class="e-top">
 						<span class="lvl {l.cls}">{l.one}</span>
 						<span class="area">{AREAS[e.area] ?? e.area}</span>
@@ -122,16 +122,18 @@
 		</ul>
 		{#if data.more && data.oldest}<a class="btn older" href={q({ ref: data.ref, before: String(data.oldest) })}>Older entries</a>{/if}
 	{:else}
-		<EmptyState
-			compact
-			icon="note"
-			title={data.ref ? 'No entry with that reference' : 'Nothing logged'}
-			text={data.ref
-				? 'Check the reference on the error page, or look through All.'
-				: data.detail === 'warn'
-					? "No errors or warnings. Keep what the server does too, to see what it's been up to."
-					: 'Nothing yet.'}
-		/>
+		<div class="empty">
+			<EmptyState
+				compact
+				icon="note"
+				title={data.ref ? 'No entry with that reference' : 'Nothing logged'}
+				text={data.ref
+					? 'Check the reference on the error page, or look through All.'
+					: data.detail === 'warn'
+						? "No errors or warnings. Keep what the server does too, to see what it's been up to."
+						: 'Nothing yet.'}
+			/>
+		</div>
 	{/if}
 </div>
 
@@ -141,28 +143,29 @@
 		display: flex;
 		flex-direction: column;
 		gap: 20px;
-		max-width: 760px;
+		max-width: 820px;
 	}
 	.head {
 		display: flex;
 		flex-direction: column;
+		gap: 4px;
 	}
 	h1 {
-		margin: 0 0 4px;
+		margin: 0;
 		font-size: 28px;
-		font-weight: 600;
 	}
-	.head p {
+	.lede {
 		margin: 0;
 		font-size: 14px;
 		line-height: 1.5;
+		max-width: 620px;
 	}
 
-	/* what to keep */
+	/* what to keep: a kicker over a 2px ink rule, then radio rows */
 	.keep {
 		display: flex;
 		flex-direction: column;
-		gap: 10px;
+		gap: 12px;
 	}
 	fieldset {
 		margin: 0;
@@ -170,31 +173,29 @@
 		border: none;
 		display: flex;
 		flex-direction: column;
-		gap: 6px;
 	}
-	.group {
+	legend {
+		width: 100%;
+		padding: 0 0 6px;
+		border-bottom: 2px solid var(--ink);
+		color: var(--text);
+	}
+	.rows {
 		display: flex;
 		flex-direction: column;
-		border-radius: 16px;
-		background: var(--surface);
-		border: 1px solid var(--border);
 	}
 	.row {
 		display: flex;
 		align-items: center;
 		gap: 12px;
-		min-height: 56px;
-		padding: 10px 16px;
+		min-height: 52px;
+		padding: 9px 0;
+		border-bottom: 1px solid var(--divider);
 		cursor: pointer;
 	}
-	.row + .row {
-		border-top: 1px solid var(--border);
-	}
-	.row input {
+	.row .radio {
 		width: 20px;
 		height: 20px;
-		flex-shrink: 0;
-		accent-color: var(--accent);
 	}
 	.ttext {
 		display: flex;
@@ -203,10 +204,11 @@
 	}
 	.tt {
 		font-size: 15px;
+		font-weight: 600;
 	}
 	.td {
-		font-size: 12px;
-		color: var(--text-faint);
+		font-size: 13px;
+		color: var(--text-muted);
 	}
 	.actions {
 		display: flex;
@@ -222,37 +224,41 @@
 	.levels {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 8px;
+		gap: 6px;
+	}
+	.levels .chip {
+		font-size: 13px;
+		font-weight: 700;
 	}
 	.find {
 		display: flex;
-		gap: 8px;
+		gap: 6px;
 		flex: 1;
 		min-width: 240px;
 	}
 	.find .input {
-		height: 44px;
-		font-size: 14px;
+		font-size: 13px;
 	}
 
-	/* the entries */
+	/* the entries, under a 2px ink rule */
 	.entries {
 		list-style: none;
 		margin: 0;
-		padding: 0 16px;
-		border-radius: 16px;
-		background: var(--surface);
-		border: 1px solid var(--border);
+		padding: 0;
+		border-top: 2px solid var(--ink);
 	}
 	.entry {
-		padding: 12px 0;
+		padding: 10px 0;
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
+		gap: 3px;
 		min-width: 0;
+		border-bottom: 1px solid var(--divider);
 	}
-	.entry + .entry {
-		border-top: 1px solid var(--divider-soft);
+	/* the entry a reference found */
+	.entry.found {
+		background: var(--surface);
+		box-shadow: -8px 0 0 var(--surface), 8px 0 0 var(--surface);
 	}
 	.e-top {
 		display: flex;
@@ -262,15 +268,15 @@
 		font-size: 12px;
 	}
 	.lvl {
-		font-weight: 700;
+		font-weight: 800;
 	}
 	.area {
-		color: var(--text-muted);
-		font-weight: 600;
+		color: var(--text-2);
+		font-weight: 700;
 	}
 	.when {
 		margin-left: auto;
-		color: var(--text-faint);
+		color: var(--text-muted);
 		white-space: nowrap;
 	}
 	.msg {
@@ -287,7 +293,7 @@
 	}
 	details summary {
 		font-size: 12px;
-		font-weight: 600;
+		font-weight: 800;
 		color: var(--accent);
 		cursor: pointer;
 		min-height: 32px;
@@ -297,9 +303,8 @@
 	pre {
 		margin: 4px 0 0;
 		padding: 10px 12px;
-		border-radius: 10px;
-		background: var(--bg);
-		border: 1px solid var(--border);
+		background: var(--surface);
+		border: 1px solid var(--divider);
 		font-size: 12px;
 		line-height: 1.5;
 		white-space: pre-wrap;
@@ -310,10 +315,13 @@
 	.older {
 		align-self: flex-start;
 	}
+	.empty {
+		border-top: 2px solid var(--ink);
+		padding-top: 8px;
+	}
 	@media (min-width: 1024px) {
-		.entries,
-		.group {
-			background: var(--surface-2);
+		h1 {
+			font-size: 22px;
 		}
 	}
 </style>

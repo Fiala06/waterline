@@ -110,10 +110,9 @@
 	.tip-pop {
 		max-width: min(290px, calc(100vw - 24px));
 		padding: 10px 12px;
-		border-radius: 12px;
-		background: var(--surface-hi);
-		border: 1px solid var(--border-strong);
-		box-shadow: var(--shadow-modal);
+		background: var(--bg);
+		border: 2px solid var(--ink);
+		box-shadow: var(--shadow-lg);
 		color: var(--text);
 		/* it sits inside a name or label in the page: none of their type */
 		font-size: 13px;

@@ -17,7 +17,7 @@
 		<main>
 			<img src="/s/{s.id}/image" width={s.width} height={s.height} alt={s.title ?? 'Aquarium photo'} />
 			{#if s.title || s.tankName || s.date || s.note}
-				<div class="card cap">
+				<div class="cap">
 					{#if s.title}<h1>{s.title}</h1>{/if}
 					{#if s.tankName || s.date}
 						<p class="meta">
@@ -72,21 +72,21 @@
 		height: auto;
 		max-height: max(var(--photo-h), 240px);
 		object-fit: contain;
-		border-radius: 14px;
+		border-radius: 0;
 		/* letterboxing, if the photo is taller than the screen allows */
 		background: var(--viewer-bg);
 	}
 	.cap {
-		padding: 16px 18px;
+		padding: 12px 0 0;
+		border-top: 2px solid var(--ink);
 		display: flex;
 		flex-direction: column;
 		gap: 4px;
 	}
 	h1 {
 		margin: 0;
-		font-size: 20px;
-		font-weight: 600;
-		line-height: 1.3;
+		font-size: 22px;
+		line-height: 1.2;
 		overflow-wrap: anywhere;
 	}
 	.meta {
@@ -95,7 +95,7 @@
 		color: var(--text-muted);
 	}
 	.meta a {
-		font-weight: 600;
+		font-weight: 800;
 		padding: 12px 0; /* taller tap target; inline, so the line doesn't move */
 	}
 	.note {
@@ -107,10 +107,11 @@
 		overflow-wrap: anywhere;
 	}
 	footer {
-		padding-top: 16px;
+		margin-top: 16px;
+		padding-top: 12px;
+		border-top: 1px solid var(--divider);
 		font-size: 13px;
-		color: var(--text-faint);
-		text-align: center;
+		color: var(--text-muted);
 	}
 	@media (min-width: 1024px) {
 		.share {
@@ -120,7 +121,7 @@
 			min-height: 68px;
 		}
 		h1 {
-			font-size: 22px;
+			font-size: 26px;
 		}
 	}
 </style>

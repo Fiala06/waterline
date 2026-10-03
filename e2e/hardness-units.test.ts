@@ -23,7 +23,7 @@ test('hardness in degrees or ppm, with a nudge for drops typed as ppm', async ({
 	await page.locator('#hardnessUnit').selectOption('ppm');
 	await saved;
 	await open(page, `/entries/test/new?tank=${tankId}`);
-	await expect(page.getByText('Last 107 ·').first()).toBeVisible();
+	await expect(page.getByText(/^Last 107/).first()).toBeVisible();
 	await expect(page.getByText('1 drop = 1°')).toHaveCount(0);
 
 	// 80 ppm reads like 8 drops × 10: one tap makes it ppm
