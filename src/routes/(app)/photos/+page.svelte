@@ -1,7 +1,7 @@
 <script lang="ts">
 	// Photos (README → Screens §5): a month-grouped grid under 2px ink rules,
 	// with Upload in the toolbar. The shell carries the tank name and tabs.
-	import { onMount, untrack } from 'svelte';
+	import { onMount, tick, untrack } from 'svelte';
 	import { enhance } from '$app/forms';
 	import DateField from '$lib/components/DateField.svelte';
 	import { exifHint, exifToWhen, readFileExifDate, type ExifDate } from '$lib/exif';
@@ -9,8 +9,9 @@
 	let { data, form } = $props();
 	const total = $derived(data.months.reduce((n, m) => n + m.photos.length, 0));
 
-	// The upload (#42): choosing photos reads the date each was taken and sets Taken from it;
-	// photos from several days each keep their own. Without JavaScript the field defaults to today.
+	// The upload (#42): choosing photos reads the date each was taken and adds them at once, each
+	// on its own day (today when a photo has none). Without JavaScript, a Taken date and Save photos
+	// follow the chooser instead.
 	let js = $state(false);
 	onMount(() => (js = true));
 	let picked = $state(0);
@@ -26,6 +27,9 @@
 		const first = dates.find((d) => d);
 		taken = first ? exifToWhen(first, data.user.timeZone).date : data.today;
 		if (taken > data.today) taken = data.today;
+		// one step: the hidden date fields are in place, so send it
+		await tick();
+		if (files.length) input.form?.requestSubmit();
 	}
 </script>
 
@@ -41,7 +45,7 @@
 				action="?/upload"
 				enctype="multipart/form-data"
 				class="upload-form"
-				class:picked={picked > 0 || !js}
+				class:picked={!js}
 				use:enhance={() => {
 					busy = true;
 					return async ({ update }) => {
@@ -53,9 +57,9 @@
 				}}
 			>
 				<input type="hidden" name="tankId" value={data.tank.id} />
-				<label class="btn upload" class:btn-primary={!picked && js}>
-					{picked ? `${picked} photo${picked === 1 ? '' : 's'} chosen` : 'Upload'}
-					<input type="file" name="photos" accept="image/*" multiple {onchange} />
+				<label class="btn upload" class:btn-primary={js} class:busy aria-disabled={busy}>
+					{busy ? `Adding ${picked} photo${picked === 1 ? '' : 's'}…` : 'Upload'}
+					<input id="photo-files" type="file" name="photos" accept="image/*" multiple {onchange} disabled={busy} />
 				</label>
 				{#each dates as d, i (i)}<input type="hidden" name="photoTaken" value={d ? exifHint(d) : ''} />{/each}
 				<div class="taken">
@@ -71,8 +75,13 @@
 
 	{#if !total}
 		<div class="empty">
-			<p>No photos yet. Photos you add to notes and tests show up here.</p>
-			{#if data.tank}<a class="btn" href="/entries/event/new?category=note&tank={data.tank.id}">Add photo</a>{/if}
+			<p>No photos yet. Upload some, or add them to a note or a water test; they all show up here, on the day they were taken.</p>
+			{#if data.tank}
+				<div class="empty-acts">
+					<label class="btn btn-primary" for="photo-files">Upload photos</label>
+					<a class="btn" href="/entries/event/new?category=note&tank={data.tank.id}">Add to a note</a>
+				</div>
+			{/if}
 		</div>
 	{/if}
 
@@ -125,6 +134,19 @@
 	.upload:focus-within {
 		outline: 2px solid var(--accent);
 		outline-offset: 2px;
+	}
+	.upload.busy {
+		opacity: 0.7;
+		pointer-events: none;
+	}
+	.empty-acts {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 10px;
+	}
+	.empty-acts .btn {
+		min-height: 44px;
+		cursor: pointer;
 	}
 	.upload-form {
 		display: flex;

@@ -3,7 +3,7 @@ import { dateInZone, fmtDate, isDate, todayInZone, zonedToUtc } from '$lib/time'
 import { setFlash } from '$lib/server/flash';
 import { str } from '$lib/server/forms';
 import { createEvent } from '$lib/server/logs';
-import { datePhotos, photoFiles, photoHints, preparePhotos, storePhotos, tankPhotos } from '$lib/server/photos';
+import { datePhotos, photoDate, photoFiles, photoHints, preparePhotos, storePhotos, tankPhotos } from '$lib/server/photos';
 import { getTank } from '$lib/server/tanks';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -47,6 +47,8 @@ export const actions: Actions = {
 		const fallback = taken === today ? new Date().toISOString() : zonedToUtc(taken, '12:00', user.timeZone).toISOString();
 		const prepared = await preparePhotos(files, photoHints(form));
 		if ('error' in prepared) return fail(400, { error: prepared.error });
+		// photos that don't say when they were taken get the Taken date: the toast says so
+		const undated = prepared.filter((p) => !photoDate(p, user.timeZone)).length;
 		datePhotos(prepared, user.timeZone, fallback);
 		const days = new Map<string, typeof prepared>();
 		for (const p of prepared) {
@@ -59,7 +61,8 @@ export const actions: Actions = {
 			storePhotos(tank.id, group, { eventId: event.id, takenAt: at });
 		}
 		const n = files.length;
-		setFlash(cookies, `✓ ${n} photo${n === 1 ? '' : 's'} added${days.size > 1 ? ` on ${days.size} days` : ''}`);
+		const dated = undated === n ? ` · dated ${taken === today ? 'today' : fmtDate(taken)}` : '';
+		setFlash(cookies, `✓ ${n} photo${n === 1 ? '' : 's'} added${days.size > 1 ? ` on ${days.size} days` : dated}`);
 		redirect(303, '/photos');
 	}
 };

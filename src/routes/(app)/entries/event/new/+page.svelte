@@ -23,6 +23,8 @@
 		volUnit={data.context.volUnit}
 		tankVolume={data.context.tankVolume}
 		tankVolumeIsActual={data.context.tankVolumeIsActual}
+		lastAmountMode={data.context.lastAmountMode}
+		lastAmount={data.context.lastAmount}
 		values={form?.values ?? {}}
 		initialNote={typeof form?.values?.note === 'string' ? form.values.note : ''}
 		initialWhen={data.when}

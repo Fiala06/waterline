@@ -68,7 +68,7 @@
 		initialWhen?: When | null;
 		timeZone: string;
 		closeHref: string;
-		task?: { id: string; label: string; checked: boolean } | null;
+		task?: { id: string; label: string; sub?: string; checked: boolean } | null;
 		error?: string | null;
 		fieldErrors?: Record<string, string>;
 		meta?: string | null;
@@ -92,7 +92,7 @@
 			amountMode: string;
 			amount: string;
 			source: string;
-			task: { id: string; label: string; checked: boolean } | null;
+			task: { id: string; label: string; sub?: string; checked: boolean } | null;
 			volUnit: string;
 			tankVolume: number | null;
 			tankVolumeIsActual: boolean;
@@ -232,11 +232,9 @@
 				? `Save ${filled} reading${filled === 1 ? '' : 's'}${withWc ? ' + water change' : ''}`
 				: 'Save'
 	);
-	// "Also complete task “Water test” (next due Oct 3)": the date on its own line
-	function splitTask(t: { label: string } | null | undefined) {
-		if (!t) return null;
-		const m = t.label.match(/^(.*?)\s*(\(next due [^)]*\))$/);
-		return m ? { main: m[1], next: m[2] } : { main: t.label, next: '' };
+	// "Also mark the reminder “Water test” done", with where it stands on its own line
+	function splitTask(t: { label: string; sub?: string } | null | undefined) {
+		return t ? { main: t.label, next: t.sub ?? '' } : null;
 	}
 	const taskText = $derived(splitTask(task));
 	const wcTaskText = $derived(splitTask(waterChange?.task));

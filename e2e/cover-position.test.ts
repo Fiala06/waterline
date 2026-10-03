@@ -51,7 +51,6 @@ test('choose the cover from the tank’s photos', async ({ page }, info) => {
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
 	await open(page, '/photos');
 	await page.locator('input[type=file][name=photos]').setInputFiles([await jpeg('#2a8c84', 'one.jpg', { at: '2026:03:08 15:20:00' }), await jpeg('#c8a040', 'two.jpg', { at: '2026:04:01 09:00:00' })]);
-	await page.getByRole('button', { name: 'Add 2 photos' }).click();
 	await expect(page.getByRole('status')).toContainText('✓ 2 photos added on 2 days');
 
 	await open(page, `/tanks/${tankId}/settings`);
