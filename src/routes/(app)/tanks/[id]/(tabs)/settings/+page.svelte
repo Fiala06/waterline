@@ -29,9 +29,21 @@
 		const f = (e.currentTarget as HTMLInputElement).files?.[0];
 		if (coverPreview) URL.revokeObjectURL(coverPreview);
 		coverPreview = f ? URL.createObjectURL(f) : null;
+		chosenPhoto = null;
 		// a new photo starts in the middle
 		focus = { x: 50, y: 50 };
 		moved = !!f;
+	}
+	// Choose from photos: one of the tank's own, previewed at once and saved with the rest
+	let chosenPhoto = $state<string | null>(null);
+	let choosing = $state(false);
+	function choosePhoto(id: string) {
+		if (coverPreview?.startsWith('blob:')) URL.revokeObjectURL(coverPreview);
+		chosenPhoto = id;
+		coverPreview = photoUrl(id, 'full');
+		focus = { x: 50, y: 50 };
+		moved = true;
+		choosing = false;
 	}
 
 	// Drag the cover to choose which part shows, as on Facebook; it's saved
@@ -44,8 +56,9 @@
 		untrack(() => {
 			focus = { x: saved.x, y: saved.y };
 			moved = false;
-			if (coverPreview) URL.revokeObjectURL(coverPreview);
+			if (coverPreview?.startsWith('blob:')) URL.revokeObjectURL(coverPreview);
 			coverPreview = null;
+			chosenPhoto = null;
 		});
 	});
 	let frame = $state<HTMLElement>();
@@ -116,11 +129,31 @@
 				<input type="hidden" name="coverX" value={focus.x} />
 				<input type="hidden" name="coverY" value={focus.y} />
 			{/if}
-			<label class="change btn">
-				Change cover
-				<input type="file" name="cover" accept="image/*" onchange={pickCover} />
-			</label>
+			<div class="change-acts">
+				{#if data.photos.length}
+					<button type="button" class="btn change" aria-expanded={choosing} aria-controls="cover-photos" onclick={() => (choosing = !choosing)}>Choose from photos</button>
+				{/if}
+				<label class="change btn">
+					Change cover
+					<input type="file" name="cover" accept="image/*" onchange={pickCover} />
+				</label>
+			</div>
 		</div>
+		{#if data.photos.length}
+			<!-- the tank's photos as radios: a pick previews above (with scripts) and is saved with the rest; without scripts the list is open -->
+			<details class="pick" id="cover-photos" open={choosing} ontoggle={(e) => (choosing = e.currentTarget.open)}>
+				<summary class="sr-only">Choose the cover from the tank's photos</summary>
+				<div class="pick-grid" role="radiogroup" aria-label="Cover photo">
+					{#each data.photos as p (p.id)}
+						<label class="pick-one" class:on={(chosenPhoto ?? (coverPreview ? null : data.tank.cover)) === p.id}>
+							<input type="radio" name="coverPhotoId" value={p.id} checked={chosenPhoto === p.id} onchange={() => choosePhoto(p.id)} />
+							<img src={photoUrl(p.id)} alt="Photo from {p.day}" loading="lazy" />
+							<span class="pick-day">{p.day}</span>
+						</label>
+					{/each}
+				</div>
+			</details>
+		{/if}
 		{#if moved}<span class="moved" aria-live="polite">Save changes to keep it there.</span>{/if}
 		{#if errors.cover}<span class="error-text">✕ {errors.cover}</span>{/if}
 
@@ -382,12 +415,80 @@
 		font-size: 13px;
 		color: var(--text-muted);
 	}
-	.change {
+	.change-acts {
 		position: absolute;
 		right: 12px;
 		bottom: 12px;
+		display: flex;
+		gap: 8px;
+	}
+	.change {
+		position: relative;
 		background: var(--bg);
 		cursor: pointer;
+		min-height: 44px;
+	}
+	/* Choose from photos: thumbnails under the cover, the current one outlined */
+	.pick {
+		margin-top: -8px;
+	}
+	.pick-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+		gap: 6px;
+		padding: 10px 0 0;
+		border-top: 1px solid var(--divider);
+	}
+	.pick-one {
+		position: relative;
+		display: block;
+		aspect-ratio: 1;
+		cursor: pointer;
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+	}
+	.pick-one.on {
+		outline-color: var(--accent);
+	}
+	.pick-one:focus-within {
+		outline-color: var(--ink);
+	}
+	.pick-one input {
+		position: absolute;
+		inset: 0;
+		margin: 0;
+		opacity: 0;
+		cursor: pointer;
+	}
+	.pick-one img {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		background: var(--surface);
+	}
+	.pick-day {
+		position: absolute;
+		left: 0;
+		bottom: 0;
+		padding: 2px 6px;
+		background: var(--ink);
+		color: var(--bg);
+		font-size: 11px;
+		font-weight: 700;
+		pointer-events: none;
+	}
+	/* phones: the two cover buttons take the bottom edge, so the drag hint moves up */
+	@media (max-width: 599px) {
+		.change-acts {
+			left: 12px;
+			justify-content: flex-end;
+			flex-wrap: wrap;
+		}
+		.drag-hint {
+			bottom: auto;
+			top: 12px;
+		}
 	}
 	.change input {
 		position: absolute;

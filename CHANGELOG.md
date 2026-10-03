@@ -11,6 +11,9 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **A cover from the photos you already have:** On [Tank details](/tanks/current/settings), Choose from photos lists the tank's photos under the cover; pick one and it shows at once, ready to drag into place and save with the rest. Change cover still takes a new upload, and Set as cover in a photo's viewer works as before.
+- **Logging a water change clears its reminder again:** When a water change you'd started earlier and left unsaved came back on [Log water change](/entries/event/new?category=water_change), it unticked "Also complete task", so the change was logged but the reminder stayed due. What comes back no longer touches that box: it's ticked whenever the reminder is due today or you came from Mark done.
+
 ## 1.12.0 · 2026-10-03
 
 - **Species care ranges and what to check:** The server downloads care data for the fish in the species list from FishBase (temperature, pH and hardness ranges, adult size, whether it schools), by itself the first time it runs or with Download now under [Server settings › Features](/settings/server#species-care); FishBase is CC BY-NC, so the data is never part of Waterline itself, lives in `/data`, and is credited where it's shown. [Livestock](/tanks/current/livestock) gets a Worth checking list where a tank's targets fall outside a species' range ("Your tank's temperature target (26–30 °C) is outside the Neon tetra's range (20–26 °C)"), a schooling species is kept in fewer than six, or two species are a well-known bad match (bettas and guppies, angelfish and neon tetras, loaches and pet snails: a short, cautious list). The same shows under the species as you add livestock, on an animal's page with its ranges, in the Share summary and to an AI assistant. Without internet, or with the switch off, nothing changes.

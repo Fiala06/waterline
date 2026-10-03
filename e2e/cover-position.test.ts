@@ -44,3 +44,30 @@ test('drag the cover to choose which part of it shows', async ({ page }, info) =
 	await open(page, '/tanks');
 	await expect(page.locator('.cover img').first()).toHaveCSS('object-position', '50% 22%');
 });
+
+// Choose from photos: one of the tank's own photos becomes the cover, saved with the form.
+test('choose the cover from the tank’s photos', async ({ page }, info) => {
+	await newKeeperWithTank(page, `cover-pick-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, '/photos');
+	await page.locator('input[type=file][name=photos]').setInputFiles([await jpeg('#2a8c84', 'one.jpg', { at: '2026:03:08 15:20:00' }), await jpeg('#c8a040', 'two.jpg', { at: '2026:04:01 09:00:00' })]);
+	await page.getByRole('button', { name: 'Add 2 photos' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ 2 photos added on 2 days');
+
+	await open(page, `/tanks/${tankId}/settings`);
+	await expect(page.getByRole('img', { name: /^Tank cover/ })).toHaveCount(0);
+	await page.getByRole('button', { name: 'Choose from photos' }).click();
+	const choices = page.locator('.pick-one');
+	await expect(choices).toHaveCount(2);
+	await choices.filter({ hasText: 'Mar 8' }).click();
+	// previewed at once, with its pick outlined, and saved with the form
+	const cover = page.getByRole('img', { name: /^Tank cover/ });
+	await expect(cover).toBeVisible();
+	const src = await cover.getAttribute('src');
+	expect(src).toMatch(/\/media\/[0-9a-f-]+$/);
+	await expect(page.getByText('Save changes to keep it there.')).toBeVisible();
+	await page.getByRole('button', { name: 'Save changes' }).first().click();
+	await expect(page.getByRole('status')).toContainText('✓ Tank saved');
+	await expect(page.getByRole('img', { name: /^Tank cover/ })).toHaveAttribute('src', src!);
+	await expect(choices.filter({ hasText: 'Mar 8' })).toHaveClass(/on/);
+});

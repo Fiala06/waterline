@@ -3,7 +3,8 @@ import { fail, redirect } from '@sveltejs/kit';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { setFlash } from '$lib/server/flash';
 import { parseTankForm } from '$lib/server/forms';
-import { datePhotos, preparePhotos, setCover, storePhotos } from '$lib/server/photos';
+import { datePhotos, preparePhotos, setCover, storePhotos, tankPhotos } from '$lib/server/photos';
+import { dateInZone, fmtDate } from '$lib/time';
 import { db } from '$lib/server/db';
 import { publicPages } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
@@ -25,6 +26,10 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 	const v = (x: number | null, q: 'volume' | 'length', d: number) =>
 		x == null ? '' : formatNumber(toDisplay(x, q, user), d);
 	return {
+		// the tank's photos, newest first, to pick a cover from (a shot of the whole tank is usually there already)
+		photos: tankPhotos(user.id, tank.id)
+			.slice(0, 60)
+			.map(({ photo }) => ({ id: photo.id, day: fmtDate(dateInZone(photo.takenAt, user.timeZone)) })),
 		tank: {
 			id: tank.id,
 			name: tank.name,
@@ -91,6 +96,9 @@ export const actions: Actions = {
 		updateTank(user.id, params.id, values);
 		const [photo] = storePhotos(params.id, datePhotos(prepared, user.timeZone), { takenAt: new Date().toISOString() });
 		if (photo) setCover(user.id, photo.id);
+		// or one of the tank's own photos, picked under Choose from photos (an upload wins)
+		const chosen = String(form.get('coverPhotoId') ?? '');
+		if (!photo && chosen && tankPhotos(user.id, params.id).some((r) => r.photo.id === chosen)) setCover(user.id, chosen);
 		// where the cover sits in its frame, as dragged (a new photo's too)
 		if (form.has('coverX') || form.has('coverY')) {
 			updateTank(user.id, params.id, { coverX: clampPct(form.get('coverX')), coverY: clampPct(form.get('coverY')) });

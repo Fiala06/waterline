@@ -46,12 +46,17 @@ export function clearAllDrafts() {
 type Control = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 // Hidden fields come from the page, except these, which the form sets from its own state.
 const KEEP_HIDDEN = new Set(['date', 'time', 'scientificName']);
+// Fields the page decides afresh each time, never the draft: "Also complete task" is ticked
+// by whether the task is due today (or was opened from Mark done), and a draft from before
+// it was due would untick it, so the water change gets logged but the reminder stays.
+const NOT_DRAFTED = new Set(['completeTask']);
 
 function controls(form: HTMLFormElement) {
 	return [...form.elements].filter(
 		(el): el is Control =>
 			(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) &&
 			!!el.name &&
+			!NOT_DRAFTED.has(el.name) &&
 			!['file', 'submit', 'button', 'reset'].includes(el.type) &&
 			(el.type !== 'hidden' || KEEP_HIDDEN.has(el.name))
 	);
