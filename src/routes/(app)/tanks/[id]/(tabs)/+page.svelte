@@ -21,10 +21,13 @@
 				<h2>Equipment{data.equipment.length ? ` · ${data.equipment.length}` : ''}</h2>
 				{#if data.equipment.length}<a href="{base}/equipment">All ›</a>{/if}
 			</div>
-			{#if data.equipment.length}
+			{#if data.equipment.length || data.without.length}
 				<div class="list">
 					{#each data.equipment as e (e.id)}
 						<a class="eq" href="{base}/equipment/{e.id}"><span class="k">{e.type}</span><span class="v">{e.name}</span></a>
+					{/each}
+					{#each data.without as w (w)}
+						<a class="eq" href="{base}/equipment"><span class="k">{w}</span><span class="v none-v">None</span></a>
 					{/each}
 				</div>
 			{:else}
@@ -157,6 +160,11 @@
 		min-width: 0;
 		font-size: 15px;
 		font-weight: 700;
+	}
+	/* a kind of equipment it goes without: "Heater · None" */
+	.v.none-v {
+		font-weight: 500;
+		color: var(--text-muted);
 	}
 	/* livestock rows: the name, the count at the end */
 	.stock li {

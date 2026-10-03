@@ -6,7 +6,7 @@ import { error } from '@sveltejs/kit';
 import { and, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
 import { createHash, randomBytes } from 'node:crypto';
 import { env } from '$env/dynamic/private';
-import { equipmentName, specSummary } from '$lib/equipment';
+import { EQUIPMENT_TYPE_LABEL, equipmentName, isWithoutType, specSummary } from '$lib/equipment';
 import { eventTitle } from '$lib/events';
 import { bySpecies, livestockLabel, speciesKey } from '$lib/livestock';
 import { displayValue, fmtRange, fmtValue, paramDecimals, paramUnit, shortName, statusOf } from '$lib/params';
@@ -354,6 +354,8 @@ export function publicView(page: PublicPage, tank: Tank, owner: User, ranges: Pu
 			: perSpecies(animals),
 		plants: plantNames,
 		equipment: gear,
+		// what it goes without on purpose ("Heater · None"), with the equipment
+		without: page.showEquipment ? tank.withoutEquipment.filter(isWithoutType).map((w) => EQUIPMENT_TYPE_LABEL[w]) : [],
 		activity,
 		ranges: { chart: chartRange, log: logRange, chartSince: since ? Date.parse(since) : null }
 	};

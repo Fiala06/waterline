@@ -26,6 +26,15 @@ export const EQUIPMENT_TYPE_LABEL: Record<EquipmentType, string> = {
   skimmer: "Skimmer",
   other: "Other",
 };
+/** What a tank can be marked as going without ("No heater"), so a missing heater reads as a choice, not a gap. */
+export const WITHOUT_TYPES = ["filter", "heater", "light", "co2"] as const;
+export type WithoutType = (typeof WITHOUT_TYPES)[number];
+export const isWithoutType = (v: unknown): v is WithoutType =>
+  WITHOUT_TYPES.includes(v as WithoutType);
+/** "No heater", "No CO₂" */
+export const withoutLabel = (t: WithoutType) =>
+  `No ${t === "co2" ? "CO₂" : EQUIPMENT_TYPE_LABEL[t].toLowerCase()}`;
+
 export const EQUIPMENT_TYPES = Object.keys(
   EQUIPMENT_TYPE_LABEL,
 ) as EquipmentType[];

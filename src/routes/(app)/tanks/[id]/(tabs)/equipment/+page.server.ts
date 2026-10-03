@@ -1,16 +1,23 @@
 import {
   EQUIPMENT_TYPE_LABEL,
   equipmentName,
+  isWithoutType,
   serviceDueText,
   specSummary,
+  WITHOUT_TYPES,
+  withoutLabel,
 } from "$lib/equipment";
+import { error, redirect } from "@sveltejs/kit";
+import { setFlash } from "$lib/server/flash";
+import { getTank } from "$lib/server/tanks";
+import { setWithout } from "$lib/server/specs";
 import { effectiveDue } from "$lib/tasks";
 import { dateInZone, daysBetween, fmtDate, todayInZone } from "$lib/time";
 import { db } from "$lib/server/db";
 import { tasks } from "$lib/server/db/schema";
 import { listEquipment } from "$lib/server/specs";
 import { and, eq, isNotNull } from "drizzle-orm";
-import type { PageServerLoad } from "./$types";
+import type { Actions, PageServerLoad } from "./$types";
 
 const since = (d: string | null) =>
   d
@@ -51,7 +58,9 @@ export const load: PageServerLoad = ({ locals, params }) => {
       notes: e.notes,
     };
   };
-  const items = listEquipment(user.id, params.id).map(view);
+  const current = listEquipment(user.id, params.id);
+  const items = current.map(view);
+  const without = getTank(user.id, params.id).withoutEquipment;
   return {
     // the tab's toolbar: "4 items"
     toolbarText: items.length
@@ -59,5 +68,22 @@ export const load: PageServerLoad = ({ locals, params }) => {
       : "",
     items,
     past: listEquipment(user.id, params.id, { removed: true }).map(view),
+    // Goes without: "No heater" and the like, for the kinds the tank has none of
+    withoutOptions: WITHOUT_TYPES.filter(
+      (t) => without.includes(t) || !current.some((e) => e.type === t),
+    ).map((t) => ({ type: t, label: withoutLabel(t), on: without.includes(t) })),
   };
+};
+
+export const actions: Actions = {
+  /** Goes without: mark or unmark "No heater" (and the like). */
+  without: async ({ request, locals, params, cookies }) => {
+    const form = await request.formData();
+    const type = form.get("type");
+    if (!isWithoutType(type)) error(400, "Unknown equipment");
+    const on = form.get("on") === "1";
+    setWithout(locals.user!.id, params.id, type, on);
+    setFlash(cookies, on ? `✓ ${withoutLabel(type)} in this tank` : `${EQUIPMENT_TYPE_LABEL[type]} no longer marked as none`);
+    redirect(303, `/tanks/${params.id}/equipment`);
+  },
 };

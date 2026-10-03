@@ -76,8 +76,9 @@
 						{/each}
 					</ul>
 				{:else}
-					<p class="none muted">No equipment listed. A filter, a heater and a light are a good start.</p>
+					<p class="none muted">{data.without.length ? 'No equipment listed.' : 'No equipment listed. A filter, a heater and a light are a good start.'}</p>
 				{/if}
+				{#if data.without.length}<p class="plants"><span class="muted">Goes without:</span> {data.without.join(', ')}</p>{/if}
 			{:else if s.key === 'targets'}
 				{#if data.targets.length}
 					<dl class="facts">

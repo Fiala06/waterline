@@ -1,0 +1,1 @@
+ALTER TABLE `tanks` ADD `without_equipment` text DEFAULT '[]' NOT NULL;

@@ -189,6 +189,9 @@ export function eventTitle(e: EventLike, prefs: UnitPrefs): string {
 			return `${action} ${n ? `${n} ` : ''}${name}`;
 		}
 		case 'equipment': {
+			// a tank that goes without a filter, heater, light or CO₂ on purpose
+			if (d.action === 'without') return `${str(d.item) || 'No equipment'} in this tank`;
+			if (d.action === 'without_off') return `${str(d.item) || 'Equipment'}: no longer marked as none`;
 			const action = EQUIPMENT_ACTIONS.find((a) => a.value === d.action)?.label ?? 'Changed';
 			return `${action} ${str(d.item) || 'equipment'}`;
 		}

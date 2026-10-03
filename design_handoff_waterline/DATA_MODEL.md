@@ -29,7 +29,9 @@ tanks            id, user_id, name, type(freshwater|planted|brackish|reef),
                  lights_off when both are set), lights_on?, lights_off?, co2_on?, co2_off?
                  ("HH:MM": the lighting and CO₂ schedule), cycling (still cycling: ammonia and
                  nitrite above target show as ▲ Cycling, the dashboard follows the cycle, and
-                 Mark as running clears it with a "Cycle complete" note), review_checks JSON
+                 Mark as running clears it with a "Cycle complete" note), without_equipment JSON
+                 (what it goes without on purpose, of filter|heater|light|co2: ["heater"]; adding
+                 one takes it off), review_checks JSON
                  (the setup review: when each part was last checked, {details, equipment,
                  targets, livestock}), archived_at?, created_at
 tank_parameters  id, tank_id, key (ph|nh3|no2|no3|gh|kh|temp|… or custom), name, unit,
@@ -52,6 +54,7 @@ events           id, tank_id, category(water_change|dosing|maintenance|livestock
                  --            reason: loss|rehomed|recount}
                  -- equipment {action: installed|replaced|adjusted|removed, equipment_id,
                  --            changes:{field:[old,new]}}
+                 -- equipment {action: without|without_off, type, item} ("No heater in this tank")
                  -- observation {tags:[...], recheck_at?}
                  -- note {system: tank_created|tank_archived|tank_restored} (the tank's own)
                  -- note {system: setup_reviewed, changed:[parts], prev_checks} (All still

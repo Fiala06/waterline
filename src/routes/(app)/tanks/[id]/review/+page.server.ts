@@ -1,5 +1,5 @@
 import { error, redirect } from '@sveltejs/kit';
-import { EQUIPMENT_TYPE_LABEL, equipmentName } from '$lib/equipment';
+import { EQUIPMENT_TYPE_LABEL, equipmentName, isWithoutType, withoutLabel } from '$lib/equipment';
 import { bySpecies, livestockLabel } from '$lib/livestock';
 import { fmtRange } from '$lib/params';
 import { isReviewSection, isServiced, REVIEW_SECTIONS, reviewEvery, sectionChecked, serviceFlag, type ReviewSection } from '$lib/review';
@@ -57,6 +57,8 @@ export const load: PageServerLoad = ({ locals, params }) => {
 		today,
 		sections: REVIEW_SECTIONS.map((s) => section(s.key)),
 		details,
+		// "No heater", "No CO₂": what it goes without on purpose
+		without: tank.withoutEquipment.filter(isWithoutType).map(withoutLabel),
 		equipment: listEquipment(user.id, tank.id).map((e) => ({
 			id: e.id,
 			name: equipmentName(e),

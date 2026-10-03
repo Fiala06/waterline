@@ -38,7 +38,7 @@
 	const squash = (s: string) => s.toLowerCase().replace(/\s+/g, '');
 	// "Tidewell 200 W" doesn't need "200 W" again
 	const specOf = (e: { name: string; spec: string | null }) => (e.spec && !squash(e.name).includes(squash(e.spec)) ? e.spec : null);
-	const inTank = $derived(v.livestock.length > 0 || v.plants.length > 0 || v.equipment.length > 0);
+	const inTank = $derived(v.livestock.length > 0 || v.plants.length > 0 || v.equipment.length > 0 || v.without.length > 0);
 </script>
 
 <PublicHead seo={data.seo} verification={data.verification} {jsonLd} />
@@ -126,12 +126,15 @@
 							</ul>
 						</div>
 					{/if}
-					{#if v.equipment.length}
+					{#if v.equipment.length || v.without.length}
 						<div class="group">
 							<h3>Equipment</h3>
 							<ul class="rows">
 								{#each v.equipment as e (e.id)}
 									<li><span>{e.name}</span>{#if specOf(e)}<span class="muted">{specOf(e)}</span>{/if}</li>
+								{/each}
+								{#each v.without as w (w)}
+									<li><span>{w}</span><span class="muted">None</span></li>
 								{/each}
 							</ul>
 						</div>

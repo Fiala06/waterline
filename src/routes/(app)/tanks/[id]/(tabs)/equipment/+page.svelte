@@ -1,6 +1,7 @@
 <script lang="ts">
 	// Equipment (README → Screens §7): cards with a 2px ink top rule, the type as a
 	// kicker, the name, spec tags, a meta line and Log service / Details.
+	import { enhance } from '$app/forms';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ImportButton from '$lib/components/ImportButton.svelte';
 	let { data } = $props();
@@ -57,6 +58,22 @@
 			</div>
 		</details>
 	{/if}
+	{#if data.withoutOptions.length}
+		<!-- a tank can run without a heater or filter on purpose: say so, so it isn't read as missing -->
+		<section class="without" aria-labelledby="without-h">
+			<h2 class="kicker" id="without-h">Goes without</h2>
+			<p class="w-text">Mark what this tank runs without, so no heater reads as a choice, not a gap.</p>
+			<div class="w-chips">
+				{#each data.withoutOptions as o (o.type)}
+					<form method="POST" action="?/without" use:enhance>
+						<input type="hidden" name="type" value={o.type} />
+						<input type="hidden" name="on" value={o.on ? '0' : '1'} />
+						<button class="chip w-chip" class:selected={o.on} aria-pressed={o.on}>{o.on ? '✓ ' : ''}{o.label}</button>
+					</form>
+				{/each}
+			</div>
+		</section>
+	{/if}
 	<!-- below the list, or below the empty box: in the same place on every tab -->
 	<ImportButton href="{base}/import/equipment" />
 </div>
@@ -71,6 +88,31 @@
 	.grid {
 		display: grid;
 		gap: 24px;
+	}
+	/* Goes without: under a 2px rule, chips that turn on "No heater" */
+	.without {
+		border-top: 2px solid var(--ink);
+		padding-top: 10px;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+	.without h2 {
+		margin: 0;
+		font-weight: 800;
+	}
+	.w-text {
+		margin: 0;
+		font-size: 14px;
+		color: var(--text-muted);
+	}
+	.w-chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+	.w-chip {
+		min-height: 44px;
 	}
 	.eq-card {
 		padding: 12px 0 4px;

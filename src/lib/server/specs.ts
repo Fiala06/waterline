@@ -2,7 +2,7 @@
 // event, so History shows what was added, removed, counted or trimmed.
 import { error } from "@sveltejs/kit";
 import { and, asc, desc, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
-import { equipmentName, type EquipmentType } from "$lib/equipment";
+import { EQUIPMENT_TYPE_LABEL, equipmentName, withoutLabel, type EquipmentType, type WithoutType } from "$lib/equipment";
 import { zonedToUtc } from "$lib/time";
 import { db } from "./db";
 import {
@@ -120,7 +120,26 @@ export function addEquipment(
     { action: "installed", equipment_id: e.id, item: equipmentName(e) },
     { at, importId },
   );
+  // a heater added to a tank marked "No heater": it has one now
+  const tank = getTank(userId, tankId);
+  if (tank.withoutEquipment.includes(e.type)) {
+    db.update(tanks)
+      .set({ withoutEquipment: tank.withoutEquipment.filter((t) => t !== e.type) })
+      .where(eq(tanks.id, tankId))
+      .run();
+  }
   return e;
+}
+
+/** Equipment › Goes without: mark (or unmark) that the tank has no filter, heater, light or CO₂, with a History entry. */
+export function setWithout(userId: string, tankId: string, type: WithoutType, on: boolean) {
+  const tank = getTank(userId, tankId);
+  const has = tank.withoutEquipment.includes(type);
+  if (has === on) return tank;
+  const list = on ? [...tank.withoutEquipment, type] : tank.withoutEquipment.filter((t) => t !== type);
+  db.update(tanks).set({ withoutEquipment: list }).where(eq(tanks.id, tankId)).run();
+  logEvent(tankId, "equipment", on ? { action: "without", type, item: withoutLabel(type) } : { action: "without_off", type, item: EQUIPMENT_TYPE_LABEL[type] });
+  return { ...tank, withoutEquipment: list };
 }
 
 export function updateEquipment(

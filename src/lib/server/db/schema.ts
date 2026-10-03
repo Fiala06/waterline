@@ -118,6 +118,8 @@ export const tanks = sqliteTable(
 		// a new tank cycling: ammonia and nitrite are stages, not failures, until it's running
 		cycling: integer('cycling', { mode: 'boolean' }).notNull().default(false),
 		/** the setup review (#30): when each part was last checked, e.g. {"details": "2026-10-02T…Z"} */
+		/** equipment the tank goes without on purpose ("No heater"): filter | heater | light | co2 */
+		withoutEquipment: text('without_equipment', { mode: 'json' }).$type<string[]>().notNull().default([]),
 		reviewChecks: text('review_checks', { mode: 'json' }).$type<Partial<Record<'details' | 'equipment' | 'targets' | 'livestock', string>>>().notNull().default({}),
 		archivedAt: text('archived_at'),
 		createdAt: createdAt()
