@@ -486,6 +486,8 @@ export const equipment = sqliteTable(
 		brand: text('brand'),
 		model: text('model'),
 		specs: text('specs', { mode: 'json' }).$type<Record<string, unknown>>().notNull().default({}),
+		/** when it runs (#25): periods in the day, and a ramp for lights; null runs all day */
+		schedule: text('schedule', { mode: 'json' }).$type<{ periods: { on: string; off: string }[]; rampMin: number | null }>(),
 		installedAt: text('installed_at'),
 		lastServicedAt: text('last_serviced_at'),
 		notes: text('notes'),
@@ -579,6 +581,29 @@ export const stockPhotos = sqliteTable('stock_photos', {
 	reason: text('reason'),
 	fetchedAt: text('fetched_at').notNull()
 });
+
+/** PAR readings (#25) at spots in a reef tank, a simple map of the light over it. */
+export const parReadings = sqliteTable(
+	'par_readings',
+	{
+		id: id(),
+		tankId: text('tank_id')
+			.notNull()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		/** "Front left", or whatever the keeper calls the spot */
+		spot: text('spot').notNull(),
+		/** where on the tank seen from above, 0–100 across and front to back */
+		x: integer('x').notNull(),
+		y: integer('y').notNull(),
+		/** µmol/m²/s */
+		value: integer('value').notNull(),
+		note: text('note'),
+		measuredAt: text('measured_at').notNull(),
+		createdAt: createdAt()
+	},
+	(t) => [index('par_readings_tank').on(t.tankId)]
+);
+export type ParReading = typeof parReadings.$inferSelect;
 
 export type Equipment = typeof equipment.$inferSelect;
 export type Livestock = typeof livestock.$inferSelect;

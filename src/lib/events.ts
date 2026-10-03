@@ -192,6 +192,9 @@ export function eventTitle(e: EventLike, prefs: UnitPrefs): string {
 			// a tank that goes without a filter, heater, light or CO₂ on purpose
 			if (d.action === 'without') return `${str(d.item) || 'No equipment'} in this tank`;
 			if (d.action === 'without_off') return `${str(d.item) || 'Equipment'}: no longer marked as none`;
+			// a schedule set or changed (#25): "Lumora Pro 90 runs 08:00–12:00, 14:00–18:00 · 8 h"
+			if (d.action === 'schedule') return `${str(d.item) || 'Equipment'} runs ${str(d.schedule) || 'all day'}`;
+			if (d.action === 'par') return `PAR ${str(d.value)} at ${str(d.spot) || 'a spot'}`;
 			const action = EQUIPMENT_ACTIONS.find((a) => a.value === d.action)?.label ?? 'Changed';
 			return `${action} ${str(d.item) || 'equipment'}`;
 		}

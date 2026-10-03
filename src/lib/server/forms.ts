@@ -87,7 +87,10 @@ export function parseTankForm(form: FormData, prefs: UnitPrefs) {
             )
               ? str(form, "waterSource")
               : null,
-            photoperiodH: lightsHours ?? photoperiod(),
+            // the light's schedule (#25) sets the photoperiod; else the lights' times, else the field
+            photoperiodH: form.has("photoperiodFixed")
+              ? photoperiod()
+              : (lightsHours ?? photoperiod()),
             lightsOn,
             lightsOff,
             co2On: time("co2On"),

@@ -70,3 +70,48 @@ describe("lighting and CO₂ schedule", () => {
     ).toBe("");
   });
 });
+
+describe('schedules on equipment (#25)', async () => {
+	const { isOnAt, lightingText, onNowText, parseSchedule, scheduleLabel, scheduleTotalHours, tankLighting } = await import('./equipment');
+	const siesta = { periods: [{ on: '08:00', off: '12:00' }, { on: '14:00', off: '18:00' }], rampMin: 30 };
+
+	it('reads a stored schedule and drops junk', () => {
+		expect(parseSchedule(siesta)).toEqual(siesta);
+		expect(parseSchedule({ periods: [{ on: '8:00', off: '12:00' }] })).toBeNull();
+		expect(parseSchedule({ periods: [], rampMin: 30 })).toBeNull();
+		expect(parseSchedule(null)).toBeNull();
+		expect(parseSchedule({ periods: [{ on: '22:00', off: '06:00' }], rampMin: -5 })).toEqual({ periods: [{ on: '22:00', off: '06:00' }], rampMin: null });
+	});
+
+	it('adds the periods up, across midnight too', () => {
+		expect(scheduleTotalHours(siesta)).toBe(8);
+		expect(scheduleTotalHours({ periods: [{ on: '22:00', off: '06:00' }], rampMin: null })).toBe(8);
+		expect(scheduleTotalHours(null)).toBeNull();
+		expect(scheduleLabel(siesta)).toBe('08:00–12:00, 14:00–18:00 · 8 h · ramps 30 min');
+		expect(scheduleLabel(null)).toBe('All day');
+	});
+
+	it('knows when it is on', () => {
+		expect(isOnAt(siesta, '09:00')).toBe(true);
+		expect(isOnAt(siesta, '13:00')).toBe(false);
+		expect(isOnAt(siesta, '18:00')).toBe(false);
+		expect(isOnAt({ periods: [{ on: '22:00', off: '06:00' }], rampMin: null }, '02:00')).toBe(true);
+		expect(isOnAt(null, '02:00')).toBe(true);
+		expect(onNowText(siesta, '09:00')).toEqual({ on: true, text: '● On now · off at 12:00' });
+		expect(onNowText(siesta, '13:00')).toEqual({ on: false, text: '○ Off · on at 14:00' });
+		expect(onNowText(siesta, '19:00')).toEqual({ on: false, text: '○ Off · on at 08:00' });
+	});
+
+	it("takes the light's schedule over the tank's times, and falls back to them", () => {
+		const tank = { lightsOn: '09:00', lightsOff: '17:00', co2On: '08:00', co2Off: '16:00', photoperiodH: 8 };
+		const light = { id: 'l', type: 'light' as const, name: 'Lumora', schedule: siesta };
+		const l = tankLighting(tank, [light]);
+		expect(l.lights?.item?.id).toBe('l');
+		expect(l.lights?.hours).toBe(8);
+		expect(l.co2?.item).toBeNull();
+		expect(l.co2?.schedule.periods).toEqual([{ on: '08:00', off: '16:00' }]);
+		expect(lightingText(tank, [light])).toBe('Lights 08:00–12:00, 14:00–18:00 · CO₂ 08:00–16:00');
+		expect(lightingText({ lightsOn: null, lightsOff: null, co2On: null, co2Off: null, photoperiodH: null }, [])).toBe('');
+		expect(tankLighting({ lightsOn: null, lightsOff: null, co2On: null, co2Off: null, photoperiodH: 7 }, []).photoperiodH).toBe(7);
+	});
+});

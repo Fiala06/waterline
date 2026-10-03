@@ -17,7 +17,7 @@
 	let co2On = $state(untrack(() => data.tank.co2On));
 	let co2Off = $state(untrack(() => data.tank.co2Off));
 	let photoperiod = $state(untrack(() => data.tank.photoperiodH));
-	const lightsHours = $derived(scheduleHours(lightsOn, lightsOff));
+	const lightsHours = $derived(data.lighting.lights?.hours ?? scheduleHours(lightsOn, lightsOff));
 	const co2Hours = $derived(scheduleHours(co2On, co2Off));
 	$effect(() => {
 		if (lightsHours != null) photoperiod = String(lightsHours);
@@ -200,33 +200,56 @@
 					{/each}
 				</select>
 			</div>
-			<fieldset class="field sched">
-				<legend class="label">Lights on / off</legend>
-				<div class="times">
-					<input class="input" type="time" name="lightsOn" aria-label="Lights on" bind:value={lightsOn} aria-invalid={!!errors.lightsOn} />
-					<span class="dash" aria-hidden="true">–</span>
-					<input class="input" type="time" name="lightsOff" aria-label="Lights off" bind:value={lightsOff} aria-invalid={!!errors.lightsOff} />
-					{#if lightsHours != null}<span class="hours">{hoursText(lightsHours)}</span>{/if}
+			<!-- set on the light's or CO₂ item's schedule (#25): shown here, changed on the item -->
+			{#if data.lighting.lights}
+				<div class="field sched">
+					<span class="label">Lights on / off</span>
+					<input type="hidden" name="lightsOn" value={lightsOn} />
+					<input type="hidden" name="lightsOff" value={lightsOff} />
+					<input type="hidden" name="photoperiodFixed" value="1" />
+					<span class="sched-text">{lightsHours != null ? `${data.lighting.lights.text} · ${hoursText(lightsHours)}` : data.lighting.lights.text}</span>
+					<a class="hint sched-link" href="/tanks/{data.tank.id}/equipment/{data.lighting.lights.item.id}">Set on {data.lighting.lights.item.name} ›</a>
 				</div>
-				{#if errors.lightsOn || errors.lightsOff}<span class="error-text">✕ {errors.lightsOn ?? errors.lightsOff}</span>{/if}
-			</fieldset>
-			<fieldset class="field sched">
-				<legend class="label">CO₂ on / off</legend>
-				<div class="times">
-					<input class="input" type="time" name="co2On" aria-label="CO₂ on" bind:value={co2On} aria-invalid={!!errors.co2On} />
-					<span class="dash" aria-hidden="true">–</span>
-					<input class="input" type="time" name="co2Off" aria-label="CO₂ off" bind:value={co2Off} aria-invalid={!!errors.co2Off} />
-					{#if co2Hours != null}<span class="hours">{hoursText(co2Hours)}</span>{/if}
+			{:else}
+				<fieldset class="field sched">
+					<legend class="label">Lights on / off</legend>
+					<div class="times">
+						<input class="input" type="time" name="lightsOn" aria-label="Lights on" bind:value={lightsOn} aria-invalid={!!errors.lightsOn} />
+						<span class="dash" aria-hidden="true">–</span>
+						<input class="input" type="time" name="lightsOff" aria-label="Lights off" bind:value={lightsOff} aria-invalid={!!errors.lightsOff} />
+						{#if lightsHours != null}<span class="hours">{hoursText(lightsHours)}</span>{/if}
+					</div>
+					{#if errors.lightsOn || errors.lightsOff}<span class="error-text">✕ {errors.lightsOn ?? errors.lightsOff}</span>{/if}
+					<span class="hint">A siesta or several runs a day? Set a schedule on the light under <a href="/tanks/{data.tank.id}/equipment">Equipment</a>.</span>
+				</fieldset>
+			{/if}
+			{#if data.lighting.co2}
+				<div class="field sched">
+					<span class="label">CO₂ on / off</span>
+					<input type="hidden" name="co2On" value={co2On} />
+					<input type="hidden" name="co2Off" value={co2Off} />
+					<span class="sched-text">{data.lighting.co2.hours != null ? `${data.lighting.co2.text} · ${hoursText(data.lighting.co2.hours)}` : data.lighting.co2.text}</span>
+					<a class="hint sched-link" href="/tanks/{data.tank.id}/equipment/{data.lighting.co2.item.id}">Set on {data.lighting.co2.item.name} ›</a>
 				</div>
-				{#if errors.co2On || errors.co2Off}<span class="error-text">✕ {errors.co2On ?? errors.co2Off}</span>{/if}
-			</fieldset>
+			{:else}
+				<fieldset class="field sched">
+					<legend class="label">CO₂ on / off</legend>
+					<div class="times">
+						<input class="input" type="time" name="co2On" aria-label="CO₂ on" bind:value={co2On} aria-invalid={!!errors.co2On} />
+						<span class="dash" aria-hidden="true">–</span>
+						<input class="input" type="time" name="co2Off" aria-label="CO₂ off" bind:value={co2Off} aria-invalid={!!errors.co2Off} />
+						{#if co2Hours != null}<span class="hours">{hoursText(co2Hours)}</span>{/if}
+					</div>
+					{#if errors.co2On || errors.co2Off}<span class="error-text">✕ {errors.co2On ?? errors.co2Off}</span>{/if}
+				</fieldset>
+			{/if}
 			<div class="field">
 				<label class="label" for="photoperiodH">Photoperiod (h)</label>
 				<div class="unit-input">
 					<input id="photoperiodH" name="photoperiodH" inputmode="decimal" bind:value={photoperiod} readonly={lightsHours != null} />
 					<span class="unit">h</span>
 				</div>
-				{#if lightsHours != null}<span class="hint">From the lights' times.</span>{/if}
+				{#if data.lighting.lights}<span class="hint">From the light's schedule.</span>{:else if lightsHours != null}<span class="hint">From the lights' times.</span>{/if}
 			</div>
 			<div class="field">
 				<label class="label" for="startDate">Start date</label>
@@ -432,6 +455,14 @@
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
+	}
+	.sched-text {
+		min-height: 44px;
+		display: flex;
+		align-items: center;
+		font-size: 15px;
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
 	}
 	.hint {
 		font-size: 13px;

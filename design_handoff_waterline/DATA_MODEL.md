@@ -55,6 +55,8 @@ events           id, tank_id, category(water_change|dosing|maintenance|livestock
                  -- equipment {action: installed|replaced|adjusted|removed, equipment_id,
                  --            changes:{field:[old,new]}}
                  -- equipment {action: without|without_off, type, item} ("No heater in this tank")
+                 -- equipment {action: schedule, equipment_id, item, schedule, was} (its periods changed)
+                 -- equipment {action: par, par_id, item: "PAR", spot, value} (a PAR reading)
                  -- observation {tags:[...], recheck_at?}
                  -- note {system: tank_created|tank_archived|tank_restored} (the tank's own)
                  -- note {system: setup_reviewed, changed:[parts], prev_checks} (All still
@@ -79,8 +81,11 @@ task_completions id, task_id, completed_at, event_id?,
 
 ── What's in the tank, and what it costs ──────────────────────────────────────
 equipment        id, tank_id, type(filter|heater|light|co2|pump|skimmer|other), brand?,
-                 model?, specs JSON, installed_at?, last_serviced_at?, notes?,
-                 removed_at?, import_id?, created_at
+                 model?, specs JSON, schedule? JSON ({periods:[{on,off}], rampMin?}: when it
+                 runs; null runs all day; a light's sets the tank's lights times and photoperiod),
+                 installed_at?, last_serviced_at?, notes?, removed_at?, import_id?, created_at
+par_readings     id, tank_id, spot, x, y (0–100 across and front to back), value (µmol/m²/s),
+                 note?, measured_at, created_at
 livestock        id, tank_id, kind(fish|invert|coral), common_name, scientific_name?,
                  count, status(in_tank|quarantine), added_at?, source?, removed_at?,
                  nickname? (a pet: one animal, its own entry), notes?, photo_id?,

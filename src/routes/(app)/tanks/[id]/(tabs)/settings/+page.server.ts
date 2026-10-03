@@ -12,6 +12,8 @@ import { parseReviewEvery, REVIEW_INTERVALS } from '$lib/review';
 import { checkSection, reviewTask, setReviewEvery } from '$lib/server/review';
 import { todayInZone } from '$lib/time';
 import { tankDetails } from '$lib/server/tank-details';
+import { scheduledItems } from '$lib/server/specs';
+import { periodsText, tankLighting } from '$lib/equipment';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals, params, url }) => {
@@ -50,6 +52,12 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 			co2Off: tank.co2Off ?? '',
 			cycling: tank.cycling
 		},
+		// the lights' and CO₂'s times set on an equipment item's schedule (#25): shown here, changed there
+		lighting: (() => {
+			const l = tankLighting(tank, scheduledItems(tank.id));
+			const from = (x: typeof l.lights) => (x?.item ? { text: periodsText(x.schedule), hours: x.hours, item: { id: x.item.id, name: x.item.name } } : null);
+			return { lights: from(l.lights), co2: from(l.co2) };
+		})(),
 		paramSummary: {
 			tracked: tracked.length,
 			custom: all.filter((p) => p.isCustom).length,

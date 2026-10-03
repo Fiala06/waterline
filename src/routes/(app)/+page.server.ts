@@ -1,7 +1,7 @@
 import { and, count, desc, eq, inArray, lte, sql } from "drizzle-orm";
 import { redirect } from "@sveltejs/kit";
 import { cyclingStage, staleAfter, type CycleTest } from "$lib/status";
-import { scheduleText } from "$lib/equipment";
+import { lightingText } from "$lib/equipment";
 import { fmtValue, paramUnit } from "$lib/params";
 import { setFlash } from "$lib/server/flash";
 import {
@@ -35,7 +35,7 @@ import { db } from "$lib/server/db";
 import { testReadings, tests } from "$lib/server/db/schema";
 import { thumbsFor } from "$lib/server/photos";
 import { equipmentName } from "$lib/equipment";
-import { listEquipment, listLivestock, listPlants } from "$lib/server/specs";
+import { listEquipment, scheduledItems, listLivestock, listPlants } from "$lib/server/specs";
 import { getTank, listParams, markRunning } from "$lib/server/tanks";
 import { listTasks } from "$lib/server/tasks";
 import type { Actions, PageServerLoad } from "./$types";
@@ -148,7 +148,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
     plants: listPlants(user.id, tank.id).map((p) => p.name),
     equipment: listEquipment(user.id, tank.id).map(equipmentName),
     // "Lights 08:00–16:00 · CO₂ 07:00–15:00"
-    schedule: scheduleText(tank),
+    schedule: lightingText(tank, scheduledItems(tank.id)),
   };
 
   // ammonia, nitrite and nitrate by test, newest first: the zero streak, and the cycle's stage

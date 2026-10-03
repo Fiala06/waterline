@@ -2,13 +2,14 @@
 // event, so History shows what was added, removed, counted or trimmed.
 import { error } from "@sveltejs/kit";
 import { and, asc, desc, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
-import { EQUIPMENT_TYPE_LABEL, equipmentName, withoutLabel, type EquipmentType, type WithoutType } from "$lib/equipment";
+import { EQUIPMENT_TYPE_LABEL, equipmentName, parseSchedule, scheduleLabel, scheduleTotalHours, withoutLabel, type EquipmentType, type Schedule, type WithoutType } from "$lib/equipment";
 import { zonedToUtc } from "$lib/time";
 import { db } from "./db";
 import {
   equipment,
   events,
   livestock,
+  parReadings,
   photoLivestock,
   photos,
   plants,
@@ -95,6 +96,44 @@ export interface EquipmentInput {
   specs: Record<string, unknown>;
   installedAt: string | null;
   notes: string | null;
+  /** when it runs (#25); null or left out: all day */
+  schedule?: Schedule | null;
+}
+
+/** The items of a tank that run on a schedule, for its lighting and the day timeline. */
+export function scheduledItems(tankId: string) {
+  return db
+    .select()
+    .from(equipment)
+    .where(and(eq(equipment.tankId, tankId), isNull(equipment.removedAt)))
+    .orderBy(asc(equipment.createdAt))
+    .all()
+    .flatMap((e) => {
+      const schedule = parseSchedule(e.schedule);
+      return schedule ? [{ id: e.id, type: e.type as EquipmentType, name: equipmentName(e), schedule }] : [];
+    });
+}
+
+/**
+ * The tank's own lights / CO₂ times follow its light's and CO₂ item's
+ * schedules (#25): first on, last off, and the photoperiod as the hours the
+ * light runs in all, so everything that reads the tank sees the same day.
+ */
+export function syncTankSchedule(tankId: string) {
+  const items = scheduledItems(tankId);
+  const light = items.find((i) => i.type === "light");
+  const co2 = items.find((i) => i.type === "co2");
+  const patch: Partial<typeof tanks.$inferInsert> = {};
+  if (light) {
+    patch.lightsOn = light.schedule.periods[0].on;
+    patch.lightsOff = light.schedule.periods.at(-1)!.off;
+    patch.photoperiodH = scheduleTotalHours(light.schedule);
+  }
+  if (co2) {
+    patch.co2On = co2.schedule.periods[0].on;
+    patch.co2Off = co2.schedule.periods.at(-1)!.off;
+  }
+  if (Object.keys(patch).length) db.update(tanks).set(patch).where(eq(tanks.id, tankId)).run();
 }
 
 export function addEquipment(
@@ -117,9 +156,15 @@ export function addEquipment(
   logEvent(
     tankId,
     "equipment",
-    { action: "installed", equipment_id: e.id, item: equipmentName(e) },
+    {
+      action: "installed",
+      equipment_id: e.id,
+      item: equipmentName(e),
+      ...(input.schedule ? { schedule: scheduleLabel(input.schedule) } : {}),
+    },
     { at, importId },
   );
+  if (input.schedule) syncTankSchedule(tankId);
   // a heater added to a tank marked "No heater": it has one now
   const tank = getTank(userId, tankId);
   if (tank.withoutEquipment.includes(e.type)) {
@@ -162,6 +207,20 @@ export function updateEquipment(
   ])) {
     if (before.specs[k] !== after.specs[k])
       changes[k] = [before.specs[k] ?? null, after.specs[k] ?? null];
+  }
+  // the schedule changed (#25): its own entry, so trends can relate algae or pH to it
+  const wasLabel = scheduleLabel(parseSchedule(before.schedule));
+  const nowLabel = scheduleLabel(parseSchedule(after.schedule));
+  if (wasLabel !== nowLabel) {
+    logEvent(after.tankId, "equipment", {
+      action: "schedule",
+      equipment_id: id,
+      item: equipmentName(after),
+      schedule: nowLabel,
+      was: wasLabel,
+      changes: { schedule: [wasLabel, nowLabel] },
+    });
+    syncTankSchedule(after.tankId);
   }
   if (
     before.brand !== after.brand ||
@@ -239,6 +298,43 @@ export function markServiced(
       eventId: opts.eventId,
       timeZone: opts.timeZone ?? "UTC",
     });
+}
+
+// ── PAR readings (#25): the light over a reef tank, spot by spot ─────────────
+
+export function listPar(userId: string, tankId: string) {
+  getTank(userId, tankId);
+  return db
+    .select()
+    .from(parReadings)
+    .where(eq(parReadings.tankId, tankId))
+    .orderBy(desc(parReadings.measuredAt))
+    .all();
+}
+
+export function addPar(
+  userId: string,
+  tankId: string,
+  input: { spot: string; x: number; y: number; value: number; note: string | null; measuredAt: string },
+) {
+  getTank(userId, tankId);
+  const r = db.insert(parReadings).values({ ...input, tankId }).returning().get();
+  logEvent(
+    tankId,
+    "equipment",
+    { action: "par", par_id: r.id, item: "PAR", spot: input.spot, value: input.value },
+    { at: input.measuredAt, note: input.note },
+  );
+  return r;
+}
+
+export function deletePar(userId: string, tankId: string, id: string) {
+  getTank(userId, tankId);
+  const r = db.select().from(parReadings).where(and(eq(parReadings.id, id), eq(parReadings.tankId, tankId))).get();
+  if (!r) error(404, "Reading not found");
+  db.delete(parReadings).where(eq(parReadings.id, id)).run();
+  db.delete(events).where(sql`json_extract(${events.data}, '$.par_id') = ${id}`).run();
+  return r;
 }
 
 /** Brands the user has on other tanks, for "Tidewell · used in Reef 24". */
