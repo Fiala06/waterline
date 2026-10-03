@@ -11,6 +11,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Sheets stay put on a phone:** With Log, Snooze or any other sheet open, scrolling no longer moves the page behind it; only the sheet scrolls.
 - **More of the tank on its public page:** Visitors to a [public page](/tanks/current/public) now choose how much to see: the trend chart over 30 days, 90 days, 1 year or all time, for every tested parameter rather than three, and the log for the last week, the last month or everything. The owner's switches still decide what's shown at all.
 - **Check the link works:** On a tank's [Public page settings](/tanks/current/public), Check the link works fetches your public address from the server and says whether it answered with the page, or why not: a wrong Public site URL, a proxy sending visitors elsewhere, a 404, no DNS, a refused connection or a certificate problem. It can't see a firewall between the internet and your server, so it also suggests opening the link on a phone with Wi-Fi off.
 

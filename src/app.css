@@ -330,6 +330,19 @@ textarea {
 	background: color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
+/* While a sheet or dialog is open, the page behind it stays put: no scrolling
+   through the scrim on phones, and a sheet's own scroll never chains to the page. */
+html:has(dialog[open]) {
+	overflow: hidden;
+}
+dialog[open] {
+	touch-action: none;
+}
+dialog[open] > * {
+	touch-action: pan-y;
+	overscroll-behavior: contain;
+}
+
 /* `hidden` must win over component display rules (e.g. `.field { display: flex }`). */
 [hidden] {
 	display: none !important;
