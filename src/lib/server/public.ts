@@ -11,7 +11,7 @@ import { eventTitle } from '$lib/events';
 import { bySpecies, livestockLabel, speciesKey } from '$lib/livestock';
 import { displayValue, fmtRange, fmtValue, paramDecimals, paramUnit, shortName, statusOf } from '$lib/params';
 import { statusShort } from '$lib/status';
-import { dateInZone, fmtDate, todayInZone } from '$lib/time';
+import { dateInZone, fmtDate, fmtDateLong, todayInZone } from '$lib/time';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { db } from './db';
 import {
@@ -33,7 +33,7 @@ import {
 	type User
 } from './db/schema';
 import { getServerSettings } from './mail';
-import { latestReadings, series } from './logs';
+import { eventsSince, latestReadings, series } from './logs';
 import { getPhoto } from './photos';
 import { requireRoleOn } from './members';
 import { getTank, listParams } from './tanks';
@@ -223,42 +223,59 @@ export function publicView(page: PublicPage, tank: Tank, owner: User, ranges: Pu
 	const chartParams = [...params]
 		.filter((p) => latest.has(p.id))
 		.sort((a, b) => rank(a) - rank(b));
+	// public charts are by day: noon of the day, so a reading and a water change on the same day line up
+	const dayT = (at: string) => Date.parse(dateInZone(at, tz) + 'T12:00:00Z');
+	// water changes mark the chart as on the keeper's Charts, when the log is public (they're in it)
+	const changes = page.showCharts && page.showActivity ? eventsSince(tank.id, ['water_change'], since || '0000') : [];
 	const charts = page.showCharts
 		? chartParams
-				.map((p) => ({
-					id: p.id,
-					name: p.name,
-					unit: paramUnit(p, prefs),
-					decimals: paramDecimals(p, prefs),
-					target: fmtRange(p, prefs),
-					band: {
-						min: p.min == null ? null : displayValue(p, p.min, prefs),
-						max: p.max == null ? null : displayValue(p, p.max, prefs)
-					},
-					// public charts are by day: the day's last reading stands for it
-					points: [
-						...new Map(
-							series(tank.id, p.id, since).map((r) => {
-								const t = Date.parse(dateInZone(r.takenAt, tz) + 'T12:00:00Z');
-								return [t, { t, v: displayValue(p, r.value, prefs) }];
-							})
-						).values()
-					],
-					lastLevel: statusOf(p, latest.get(p.id)?.value).level
-				}))
+				.map((p) => {
+					const unit = paramUnit(p, prefs);
+					// the day's last reading stands for it
+					const points = [...new Map(series(tank.id, p.id, since).map((r) => [dayT(r.takenAt), { t: dayT(r.takenAt), v: displayValue(p, r.value, prefs) }])).values()];
+					const fv = (v: number) => formatNumber(v, paramDecimals(p, prefs));
+					return {
+						id: p.id,
+						name: p.name,
+						unit,
+						decimals: paramDecimals(p, prefs),
+						target: fmtRange(p, prefs),
+						band: {
+							min: p.min == null ? null : displayValue(p, p.min, prefs),
+							max: p.max == null ? null : displayValue(p, p.max, prefs)
+						},
+						points,
+						// each water change with the reading before and after it: "Nitrate 40 → 10 ppm"
+						markers: changes.map((e) => {
+							const t = dayT(e.occurredAt);
+							const before = [...points].reverse().find((r) => r.t <= t);
+							const after = points.find((r) => r.t > t);
+							return {
+								t,
+								href: `#wc-${e.id}`,
+								kind: 'water_change' as const,
+								label: eventTitle(e, prefs),
+								day: fmtDate(dateInZone(e.occurredAt, tz)),
+								change: before && after ? `${p.name} ${fv(before.v)} → ${fv(after.v)}${unit ? ` ${unit}` : ''}` : null
+							};
+						}),
+						lastLevel: statusOf(p, latest.get(p.id)?.value).level
+					};
+				})
 				.filter((c) => c.points.length >= 2)
 		: [];
 
 	const names = page.showPetNames;
+	// the latest photos, each with the day it was taken (dates are fine, times never)
 	const photoIds = page.showPhotos
 		? db
-				.select({ id: photos.id })
+				.select({ id: photos.id, takenAt: photos.takenAt })
 				.from(photos)
 				.where(and(eq(photos.tankId, tank.id), names ? undefined : untagged))
 				.orderBy(desc(photos.takenAt))
 				.limit(12)
 				.all()
-				.map((p) => p.id)
+				.map((p) => ({ id: p.id, date: fmtDateLong(dateInZone(p.takenAt, tz)) }))
 		: [];
 
 	// quarantined animals aren't in the display tank yet
