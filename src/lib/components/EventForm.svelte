@@ -306,7 +306,7 @@
 			{/if}
 			<div class="trow">
 				<h1>{title}</h1>
-				<button type="button" class="when" onclick={() => (picking = true)}><span class="when-k">When </span><b>{whenLabel(when)}</b><span class="when-c"> ▾</span></button>
+				<button type="button" class="when" onclick={() => (picking = true)}><span class="when-k">When</span>{' '}<b>{whenLabel(when)}</b>{' '}<span class="when-c">▾</span></button>
 			</div>
 		</header>
 

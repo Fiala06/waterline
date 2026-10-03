@@ -40,9 +40,8 @@
 	<section class="release" class:current aria-labelledby={id(r.version)}>
 		<div class="rv">
 			<svelte:element this={tag} id={id(r.version)} class="ver"
-				>{displayVersion(r.version)}{#if current}<span class="tag tag-accent here"> ✓ Installed</span>{/if}</svelte:element
+				>{displayVersion(r.version)}{' '}<span class="date">{fmtDateLong(r.date)}</span>{#if current}{' '}<span class="tag tag-accent here">✓ Installed</span>{/if}</svelte:element
 			>
-			<span class="date">{fmtDateLong(r.date)}</span>
 		</div>
 		{@render lines(r, links)}
 	</section>
