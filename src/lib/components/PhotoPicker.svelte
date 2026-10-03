@@ -1,5 +1,5 @@
 <script lang="ts">
-	// 7.6 · Photo upload. On phones the file input offers camera or library.
+	// Photo upload: square tiles with a remove button over the corner. On phones the file input offers camera or library.
 	// With JS, images are shrunk in the browser (max 2560px) before upload.
 	import { photoUrl, shrinkImage } from '$lib/media';
 
@@ -112,14 +112,12 @@
 		height: 100%;
 		object-fit: cover;
 		display: block;
-		border-radius: 0;
-		border: 1px solid var(--border);
-		background: var(--surface-hi);
+		background: var(--surface);
 	}
 	.tile.gone img {
 		opacity: 0.3;
 	}
-	/* Remove: the button is the 44px tap area; the 24px ring over the corner is drawn inside it (7.6 "Added") */
+	/* Remove: the button is the 44px tap area; the 24px square over the corner is drawn inside it */
 	.x {
 		position: absolute;
 		top: -16px;
@@ -139,9 +137,8 @@
 		position: absolute;
 		inset: 10px;
 		z-index: -1;
-		border-radius: 50%;
 		background: var(--bg);
-		border: 1px solid var(--border-strong);
+		border: 1px solid var(--divider);
 	}
 	.x:focus-visible {
 		outline: none;
@@ -155,13 +152,13 @@
 			color: var(--text);
 		}
 		.x:hover::before {
-			border-color: var(--text-faint);
+			border-color: var(--text);
 		}
 	}
 	/* 7.6 "Uploading": being prepared for upload */
 	.uploading {
 		background: var(--surface);
-		border: 1px solid var(--border);
+		border: 1px solid var(--divider);
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -174,8 +171,7 @@
 	.bar {
 		width: 100%;
 		height: 4px;
-		border-radius: 0;
-		background: var(--border);
+		background: var(--neutral-300);
 		overflow: hidden;
 	}
 	.bar i {
@@ -185,16 +181,17 @@
 		background: var(--accent);
 		animation: wl-pulse 1.4s ease-in-out infinite;
 	}
-	/* 7.6 "Empty" */
+	/* the empty tile: "+ Add" on a surface square */
 	.add {
-		border: 1px dashed var(--border-strong);
+		border: 1px solid var(--divider);
+		background: var(--surface);
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
 		gap: 2px;
 		font-size: 13px;
-		font-weight: 600;
+		font-weight: 800;
 		color: var(--accent);
 		cursor: pointer;
 	}
@@ -208,7 +205,6 @@
 	@media (hover: hover) {
 		.add:hover {
 			border-color: var(--accent);
-			background: var(--selected);
 		}
 	}
 	.plus {
@@ -237,8 +233,9 @@
 		width: auto;
 		height: 48px;
 		padding: 0 14px;
-		border: 1px solid var(--border-strong);
-		font-size: 15px;
+		border: 1px solid var(--divider);
+		background: transparent;
+		font-size: 14px;
 		color: var(--text);
 	}
 	.compact .tile {

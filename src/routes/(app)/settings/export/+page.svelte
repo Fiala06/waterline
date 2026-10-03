@@ -95,11 +95,11 @@
 					<div class="formats">
 						<label class="choice">
 							<input class="sr-only" type="radio" name="format" value="zip" bind:group={format} />
-							<span class="ctext"><strong>Full backup</strong><small>.zip with JSON data and all photos{est ? ` · about ${size(est)}` : ''}</small></span>
+							<span class="ctext"><strong>Full backup</strong><small>ZIP with JSON data and all photos{est ? ` · about ${size(est)}` : ''}</small></span>
 						</label>
 						<label class="choice">
 							<input class="sr-only" type="radio" name="format" value="csv" bind:group={format} />
-							<span class="ctext"><strong>CSV</strong><small>Water tests, one row per test, for spreadsheets</small></span>
+							<span class="ctext"><strong>Water tests (CSV)</strong><small>One row per test, for spreadsheets</small></span>
 						</label>
 						<!-- not a file to build: the tank's summary page, to copy from -->
 						<a class="choice link" href="/tanks/{tankId}/summary">
@@ -139,7 +139,7 @@
 
 			{#if older.length}
 				<div class="recent">
-					<span class="recent-h">Recent exports</span>
+					<h3 class="recent-h">Recent exports</h3>
 					<ul class="list">
 						{#each older as e (e.id)}
 							<li>
@@ -349,6 +349,8 @@
 		flex-direction: column;
 	}
 	.recent-h {
+		margin: 0;
+		font-weight: 400;
 		font-size: 12px;
 		color: var(--text-muted);
 		padding-bottom: 4px;

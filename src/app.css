@@ -1310,3 +1310,11 @@ select.input:disabled {
 		transform: rotate(var(--a)) translateY(-40px) scale(0.6);
 	}
 }
+
+/* a visited link styled as a button keeps the button's colour */
+a.btn:visited {
+	color: inherit;
+}
+a.btn-primary:visited {
+	color: var(--on-accent);
+}

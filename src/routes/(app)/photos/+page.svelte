@@ -1,10 +1,8 @@
 <script lang="ts">
-	// 13 (phone) / D7 (desktop). On desktop the shell header carries the title
-	// and tank switcher, so only the Upload control stays here.
+	// Photos (README → Screens §5): a month-grouped grid under 2px ink rules,
+	// with Upload in the toolbar. The shell carries the tank name and tabs.
 	import { enhance } from '$app/forms';
-	import EmptyState from '$lib/components/EmptyState.svelte';
 	import { photoUrl } from '$lib/media';
-	import { ui } from '$lib/ui.svelte';
 	let { data, form } = $props();
 	let uploadForm: HTMLFormElement | undefined = $state();
 	const total = $derived(data.months.reduce((n, m) => n + m.photos.length, 0));
@@ -13,11 +11,9 @@
 <svelte:head><title>Photos · Waterline</title></svelte:head>
 
 <div class="page">
-	<a class="back hide-desk" href="/">‹ Dashboard</a>
-	<div class="head">
-		<h1 class="hide-desk">Photos</h1>
+	<div class="toolbar">
+		<span class="count">{total} photo{total === 1 ? '' : 's'} · from notes, tests and uploads</span>
 		{#if data.tank}
-			<button type="button" class="tank hide-desk" onclick={() => (ui.tankSwitcher = true)}>{data.tank.name} ▾</button>
 			<form bind:this={uploadForm} method="POST" action="?/upload" enctype="multipart/form-data" use:enhance>
 				<input type="hidden" name="tankId" value={data.tank.id} />
 				<label class="btn upload">
@@ -31,18 +27,15 @@
 	{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
 
 	{#if !total}
-		<EmptyState
-			icon="note"
-			title="No photos yet"
-			text="Photos you add to entries appear here."
-			href={data.tank ? '/entries/event/new?category=note' : undefined}
-			label="Add photo"
-		/>
+		<div class="empty">
+			<p>No photos yet. Photos you add to notes and tests show up here.</p>
+			{#if data.tank}<a class="btn" href="/entries/event/new?category=note&tank={data.tank.id}">Add photo</a>{/if}
+		</div>
 	{/if}
 
 	{#each data.months as m (m.key)}
 		<section>
-			<h2>{m.label}<span class="count">{` · ${m.photos.length}`}</span></h2>
+			<h2><span>{m.label}</span><span class="n">{m.photos.length}</span></h2>
 			<div class="grid">
 				{#each m.photos as p (p.id)}
 					<a class="tile" href="/photos/{p.id}">
@@ -56,37 +49,21 @@
 </div>
 
 <style>
-	/* 13: same header rhythm as History and Charts (11, 12); the links and
-	   Upload keep 44px tap areas without pushing the title down */
 	.page {
-		padding: 0 20px 24px;
+		padding: 12px 20px 24px;
 		display: flex;
 		flex-direction: column;
-		gap: 18px;
+		gap: 20px;
 	}
-	.back {
-		margin-top: -7px;
-		margin-bottom: -24px;
-	}
-	.head {
+	.toolbar {
 		display: flex;
-		align-items: baseline;
+		align-items: center;
+		justify-content: space-between;
 		gap: 12px;
 	}
-	h1 {
-		margin: 0;
-		font-size: 28px;
-		font-weight: 600;
-		flex: 1;
-	}
-	.tank {
-		font-size: 14px;
+	.count {
+		font-size: 13px;
 		color: var(--text-muted);
-		min-height: 44px;
-		margin-block: -10px;
-	}
-	.head form {
-		margin-block: -10px;
 	}
 	.upload {
 		position: relative;
@@ -102,21 +79,37 @@
 		outline: 2px solid var(--accent);
 		outline-offset: 2px;
 	}
+	.empty {
+		border-top: 2px solid var(--ink);
+		padding: 24px 0;
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 14px;
+	}
+	.empty p {
+		margin: 0;
+		font-size: 14px;
+		color: var(--text-2);
+	}
 	section {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
+		gap: 10px;
 	}
 	h2 {
 		margin: 0;
-		font-size: 15px;
-		font-weight: 600;
+		display: flex;
+		align-items: baseline;
+		gap: 8px;
+		padding-bottom: 6px;
+		border-bottom: 2px solid var(--ink);
+		font-size: 16px;
 	}
-	.count {
-		display: none;
-		color: var(--text-muted);
-		font-size: 14px;
+	.n {
+		font-size: 13px;
 		font-weight: 400;
+		color: var(--text-muted);
 	}
 	.grid {
 		display: grid;
@@ -126,9 +119,8 @@
 	.tile {
 		position: relative;
 		aspect-ratio: 1;
-		border-radius: 0;
 		overflow: hidden;
-		background: var(--surface-hi);
+		background: var(--surface);
 	}
 	.tile img {
 		width: 100%;
@@ -140,51 +132,29 @@
 		position: absolute;
 		left: 6px;
 		bottom: 6px;
+		padding: 1px 7px;
+		background: var(--ink);
+		color: var(--bg);
 		font-size: 12px;
-		font-weight: 700;
+		font-weight: 800;
 		line-height: 1.4;
-		padding: 1px 6px;
-		border-radius: 0;
-		background: var(--overlay-bg);
-		color: var(--overlay-text);
 		white-space: nowrap;
 	}
 	@media (min-width: 1024px) {
 		.page {
-			padding: 20px 32px 32px;
-			gap: 20px;
-		}
-		/* D7's Upload: a slim toolbar row (the header has the title and tank) */
-		.head {
-			justify-content: flex-end;
-			margin-bottom: -8px;
-		}
-		.head form {
-			margin-block: 0;
-		}
-		.upload {
-			min-height: 40px;
+			padding: 20px 32px 48px;
+			gap: 28px;
 		}
 		section {
-			gap: 10px;
-		}
-		h2 {
-			font-size: 16px;
-		}
-		.count {
-			display: inline;
+			gap: 12px;
 		}
 		.grid {
-			grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+			grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
 			gap: 8px;
-		}
-		.tile {
-			border-radius: 0;
 		}
 		.day {
 			left: 8px;
 			bottom: 8px;
-			padding: 1px 7px;
 		}
 		@media (hover: hover) {
 			.tile img {

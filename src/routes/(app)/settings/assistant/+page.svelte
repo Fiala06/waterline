@@ -1,8 +1,8 @@
 <script lang="ts">
-	// AI assistant (#9): let an assistant like Claude read the tanks you pick,
-	// over MCP or a JSON API: connected by signing in (steps per app), or with
-	// an access token made here. Read-only; no AI
-	// keys are stored and nothing is sent anywhere: the assistant asks.
+	// AI assistant (#9, redesign README § 15): let an assistant like Claude read
+	// the tanks you pick, over MCP or a JSON API: connected by signing in (steps
+	// per app), or with an access token made here. Read-only; no AI keys are
+	// stored and nothing is sent anywhere: the assistant asks.
 	import { enhance } from '$app/forms';
 	import { untrack } from 'svelte';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
@@ -39,9 +39,11 @@
 {#snippet tankChecks(prefix: string, picked: Set<string>, err: string | undefined)}
 	<fieldset class="tanks" aria-describedby={err ? `${prefix}-tanks-e` : undefined}>
 		<legend class="label">Tanks it can read</legend>
-		{#each data.tanks as t (t.id)}
-			<label class="check-row"><input type="checkbox" name="tank" value={t.id} checked={picked.has(t.id)} /><span>{t.name}{t.archived ? ' · archived' : ''}</span></label>
-		{/each}
+		<div class="checks">
+			{#each data.tanks as t (t.id)}
+				<label class="check-row"><input type="checkbox" name="tank" value={t.id} checked={picked.has(t.id)} /><span>{t.name}{t.archived ? ' · archived' : ''}</span></label>
+			{/each}
+		</div>
 		{#if err}<span class="error-text" id="{prefix}-tanks-e">✕ {err}</span>{/if}
 	</fieldset>
 {/snippet}
@@ -61,23 +63,23 @@
 	<div class="head">
 		<a class="back sub-back" href="/settings">‹ Settings</a>
 		<h1>AI assistant</h1>
-		<p class="muted">
+		<p class="lede">
 			Let an assistant like Claude or ChatGPT read your tanks, to answer questions about them. It can read readings, History, livestock and photos, but can't change
 			anything. Waterline stores no AI keys and sends nothing: the assistant asks, after you sign in to connect it or with an access token you make here.
 		</p>
 	</div>
 
 	{#if created}
-		<section class="card made" aria-labelledby="made-h">
+		<section class="made" aria-labelledby="made-h">
 			<h2 id="made-h">✓ Access token for {created.name}</h2>
 			<p class="warn-text status-warn">▲ Copy it now: it's shown only this once.</p>
 			{@render copyField('made-token', 'Access token', created.token)}
-			<p class="muted small">Paste it into your app or script, as below. Anyone with it can read the tanks you picked, so keep it like a password.</p>
+			<p class="small">Paste it into your app or script, as below. Anyone with it can read the tanks you picked, so keep it like a password.</p>
 		</section>
 	{/if}
 
-	<section aria-labelledby="list-h">
-		<h2 id="list-h">Connected</h2>
+	<section aria-labelledby="list-h" class="block">
+		<h2 id="list-h" class="kicker">Connected · {data.tokens.length}</h2>
 		{#if data.tokens.length}
 			<ul class="list">
 				{#each data.tokens as t (t.id)}
@@ -85,7 +87,7 @@
 						<div class="item">
 							<div class="t">
 								<span class="name">{t.name}{#if !t.bySignIn}{' '}<span class="mono hint-code">…{t.hint}</span>{/if}</span>
-								<span class="meta">Reads {tankList(t.tankNames)}</span>
+								<span class="meta reads">Reads {tankList(t.tankNames)}</span>
 								<span class="meta"
 									>{t.bySignIn ? 'Connected by signing in' : 'Made'} {fmtWhen(t.createdAt, tz)} · {t.lastUsedAt ? `Last used ${fmtWhen(t.lastUsedAt, tz)}` : 'Not used yet'}</span
 								>
@@ -100,7 +102,7 @@
 										editing = editing === t.id ? null : t.id;
 									}}>Tanks<span class="sr-only"> {t.name} can read</span></a
 								>
-								<button type="button" class="btn revoke" popovertarget="revoke-{t.id}">Revoke<span class="sr-only"> {t.name}</span></button>
+								<button type="button" class="btn btn-danger" popovertarget="revoke-{t.id}">Revoke<span class="sr-only"> {t.name}</span></button>
 							</div>
 						</div>
 						{#if editing === t.id}
@@ -139,9 +141,9 @@
 		{/if}
 	</section>
 
-	<section class="card how" aria-labelledby="how-h">
-		<h2 id="how-h">How to connect</h2>
-		<p class="muted small">
+	<section class="block" aria-labelledby="how-h">
+		<h2 id="how-h" class="kicker">How to connect</h2>
+		<p class="small">
 			Waterline is an MCP server. Add it to your assistant with this address, then sign in to Waterline when it asks, pick the tanks and choose Allow. It shows up
 			under Connected.
 		</p>
@@ -154,7 +156,7 @@
 					<li>Name it Waterline, paste the server address, and add it.</li>
 					<li>Choose Connect, sign in to Waterline, pick the tanks and choose Allow.</li>
 				</ol>
-				<p class="muted small">It's then in the Claude Desktop and mobile apps too. On a Team or Enterprise plan, an owner may need to add it first.</p>
+				<p class="small">It's then in the Claude Desktop and mobile apps too. On a Team or Enterprise plan, an owner may need to add it first.</p>
 			</details>
 			<details>
 				<summary>ChatGPT</summary>
@@ -179,15 +181,15 @@
 				</ol>
 			</details>
 		</div>
-		<p class="muted small">These apps rename their menus now and then: if a name differs, look for Connectors or MCP servers.</p>
+		<p class="small">These apps rename their menus now and then: if a name differs, look for Connectors or MCP servers.</p>
 	</section>
 
-	<section class="card tokens" aria-labelledby="tok-h">
-		<h2 id="tok-h">Or use an access token</h2>
-		<p class="muted small">For scripts, the JSON API and apps that can't sign in. You copy it once, into the app.</p>
+	<section class="block" aria-labelledby="tok-h">
+		<h2 id="tok-h" class="kicker">Or use an access token</h2>
+		<p class="small">For scripts, the JSON API and apps that can't sign in. You copy it once, into the app.</p>
 		{#if data.tanks.length}
 			<form method="POST" action="?/create" class="add" id="add" use:enhance={() => async ({ update }) => update({ reset: false })}>
-				<div class="field">
+				<div class="field name-field">
 					<label class="label" for="a-name">Name</label>
 					<input
 						class="input"
@@ -202,14 +204,14 @@
 					{#if createErr.name}<span class="error-text">✕ {createErr.name}</span>{/if}
 				</div>
 				{@render tankChecks('a', createPicked, createErr.tanks)}
-				<p class="muted small">Tanks you add later aren't shared until you tick them here.</p>
+				<p class="small">Tanks you add later aren't shared until you tick them here.</p>
 				<button class="btn btn-primary go">Create access token</button>
 			</form>
 		{/if}
-		<p class="muted small">{created ? 'These have your new token in them.' : 'Put your token in place of <your token>.'}</p>
+		<p class="small">{created ? 'These have your new token in them.' : 'Put your token in place of <your token>.'}</p>
 		{@render copyField('tok-header', 'MCP clients: send this header', `Authorization: Bearer ${token}`)}
 		{@render copyField('tok-api', 'The JSON API', curl)}
-		<p class="muted small">
+		<p class="small">
 			Also <span class="mono">/tanks/&lt;id&gt;/summary</span>, <span class="mono">readings</span>, <span class="mono">history</span>,
 			<span class="mono">livestock</span>, <span class="mono">trends</span> and <span class="mono">photos</span>, and <span class="mono">/photos/&lt;id&gt;</span>.
 		</p>
@@ -221,96 +223,104 @@
 		padding: 8px 20px calc(24px + env(safe-area-inset-bottom));
 		display: flex;
 		flex-direction: column;
-		gap: 20px;
-		max-width: 640px;
+		gap: 22px;
+		max-width: 820px;
 	}
 	.head {
 		display: flex;
 		flex-direction: column;
+		gap: 4px;
 	}
 	h1 {
-		margin: 0 0 4px;
+		margin: 0;
 		font-size: 28px;
-		font-weight: 600;
 	}
-	.head p {
+	.lede {
 		margin: 0;
 		font-size: 14px;
 		line-height: 1.5;
+		max-width: 680px;
 	}
-	section {
+	/* a kicker over a 2px ink rule, then the block */
+	.block {
 		display: flex;
 		flex-direction: column;
-		gap: 10px;
+		gap: 12px;
+		padding-top: 12px;
+		border-top: 2px solid var(--ink);
 	}
-	h2 {
+	.block h2 {
 		margin: 0;
-		font-size: 16px;
-		font-weight: 600;
-	}
-	.card {
-		padding: 16px;
-		border-radius: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 14px;
-	}
-	.made {
-		border-color: var(--accent);
+		font-weight: 400;
 	}
 	.small {
 		margin: 0;
-		font-size: 13px;
+		font-size: 14px;
 		line-height: 1.5;
+		color: var(--text-2);
+		max-width: 620px;
+	}
+	/* a new token: a 2px accent box, shown once */
+	.made {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		padding: 14px 16px;
+		border: 2px solid var(--accent);
+	}
+	.made h2 {
+		margin: 0;
+		font-size: 15px;
 	}
 	.warn-text {
 		margin: 0;
-		font-size: 14px;
-		font-weight: 600;
+		font-size: 13px;
 	}
 	.none {
 		margin: 0;
 		font-size: 14px;
-		color: var(--text-faint);
+		color: var(--text-muted);
 	}
 	.list {
 		list-style: none;
 		margin: 0;
 		padding: 0;
-		border-radius: 0;
-		background: var(--surface);
-		border: 1px solid var(--border);
 	}
-	.list li + li {
-		border-top: 1px solid var(--border);
+	.list li {
+		border-bottom: 1px solid var(--divider);
 	}
 	.item {
 		display: flex;
 		align-items: center;
-		gap: 12px;
-		padding: 12px 12px 12px 16px;
+		flex-wrap: wrap;
+		gap: 8px 12px;
+		padding: 12px 0;
 	}
 	.t {
 		flex: 1;
-		min-width: 0;
+		min-width: 200px;
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
 	}
 	.name {
-		font-size: 16px;
-		font-weight: 600;
+		font-size: 15px;
+		font-weight: 800;
 		overflow-wrap: anywhere;
 	}
 	.hint-code {
-		font-size: 13px;
+		font-size: 12px;
 		font-weight: 400;
-		color: var(--text-faint);
+		color: var(--text-muted);
 	}
 	.meta {
-		font-size: 13px;
+		font-size: 12px;
 		color: var(--text-muted);
 		overflow-wrap: anywhere;
+	}
+	.reads {
+		font-size: 13px;
+		color: var(--text-2);
 	}
 	.acts {
 		flex-shrink: 0;
@@ -319,22 +329,13 @@
 		gap: 4px;
 	}
 	.edit-link {
-		color: var(--text-muted);
-		font-weight: 600;
-	}
-	.revoke {
-		min-height: 44px;
-		padding: 0 14px;
-		border-radius: 0;
-		font-size: 14px;
-		color: var(--bad);
-		border-color: var(--bad-border);
+		color: var(--text-2);
 	}
 	.edit {
 		display: flex;
 		flex-direction: column;
 		gap: 14px;
-		padding: 4px 16px 16px;
+		padding: 0 0 14px;
 	}
 	.edit-acts {
 		display: flex;
@@ -350,25 +351,29 @@
 		padding: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 2px;
+		gap: 4px;
 	}
 	.tanks legend {
 		padding: 0;
-		margin-bottom: 6px;
+		margin-bottom: 4px;
 	}
-	.card :global(.input) {
-		background: var(--surface-2);
-		border-color: var(--border-strong);
+	.checks {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0 18px;
+	}
+	.name-field {
+		max-width: 320px;
 	}
 	/* one app's steps, opened on tap (works without scripts) */
 	.apps {
-		border-top: 1px solid var(--border);
+		border-top: 1px solid var(--divider);
 	}
 	details {
-		border-bottom: 1px solid var(--border);
+		border-bottom: 1px solid var(--divider);
 	}
 	summary {
-		min-height: 48px;
+		min-height: 46px;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
@@ -399,10 +404,9 @@
 		padding-left: 22px;
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
+		gap: 6px;
 		font-size: 14px;
 		line-height: 1.5;
-		color: var(--text-2);
 	}
 	details ol :global(.field) {
 		margin-top: 8px;
@@ -410,22 +414,26 @@
 	details > p.small {
 		margin: -4px 0 14px;
 	}
-	.tokens .add {
+	.add {
 		display: flex;
 		flex-direction: column;
-		gap: 14px;
+		gap: 12px;
 	}
 	.copy-row {
 		justify-content: space-between;
 		align-items: center;
 	}
+	.copy {
+		min-height: 32px;
+		padding: 0 4px;
+		font-size: 12px;
+	}
 	.code {
 		display: block;
-		padding: 12px 14px;
-		border-radius: 0;
-		background: var(--surface-2);
-		border: 1px solid var(--border-strong);
-		font-size: 13px;
+		padding: 10px 12px;
+		background: var(--surface);
+		border: 1px solid var(--divider);
+		font-size: 12.5px;
 		line-height: 1.5;
 		white-space: pre-wrap;
 		word-break: break-all;
@@ -437,9 +445,6 @@
 		word-break: normal;
 		overflow-wrap: anywhere;
 	}
-	.copy {
-		font-weight: 600;
-	}
 	.go {
 		min-height: 48px;
 	}
@@ -447,11 +452,11 @@
 		.edit-link:hover {
 			color: var(--accent);
 		}
-		.revoke:hover {
-			background: var(--bad-bg);
-		}
 	}
 	@media (min-width: 1024px) {
+		h1 {
+			font-size: 22px;
+		}
 		.go {
 			align-self: flex-start;
 			min-height: 44px;

@@ -190,12 +190,12 @@
 	h1 {
 		margin: 0;
 		font-size: 17px;
-		font-weight: 600;
+		font-weight: 800;
 	}
 	.save-top {
 		justify-self: end;
 		color: var(--accent);
-		font-weight: 700;
+		font-weight: 800;
 		font-size: 16px;
 		min-height: 44px;
 	}
@@ -262,7 +262,7 @@
 	}
 	.hint {
 		font-size: 13px;
-		color: var(--text-faint);
+		color: var(--text-muted);
 	}
 	.foot {
 		padding: 8px 20px calc(24px + env(safe-area-inset-bottom));
@@ -275,40 +275,40 @@
 		border-radius: 0;
 		font-size: 17px;
 	}
+	/* Desktop: a flat form under the shell's title, 2px rule above the footer */
 	@media (min-width: 1024px) {
 		.xform {
 			min-height: 0;
 			max-width: 640px;
-			margin: 28px auto;
-			padding: 24px 28px;
-			background: var(--surface);
-			border: 1px solid var(--border);
-			border-radius: 0;
+			padding: 24px 32px 40px;
 		}
 		.body {
 			padding: 0;
 		}
-		.xform :global(.input) {
-			background-color: var(--surface-2);
-			border-color: var(--border-strong);
-		}
 		.foot {
-			margin-top: 24px;
-			padding: 20px 0 0;
-			border-top: 1px solid var(--border);
-			justify-content: flex-end;
+			margin-top: 20px;
+			padding: 16px 0 0;
+			border-top: 2px solid var(--divider);
+			justify-content: flex-start;
+			gap: 12px;
 		}
 		.foot .btn {
 			height: 44px;
+			font-size: 14px;
+		}
+		.foot .hide-phone {
+			order: 2;
+			border: none;
+			color: var(--text-muted);
 		}
 		.save {
+			order: 1;
 			flex: 0 0 auto;
 			min-width: 140px;
-			font-size: 15px;
-			border-radius: 0;
 		}
 		.remove {
-			margin-right: auto;
+			order: 3;
+			margin-left: auto;
 		}
 	}
 </style>

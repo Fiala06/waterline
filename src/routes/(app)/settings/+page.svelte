@@ -645,6 +645,16 @@
 		font-size: 14px;
 	}
 
+	/* phones: a segmented control gets the row to itself, under its label */
+	@media (max-width: 1023px) {
+		.seg-row {
+			grid-template-columns: 1fr;
+			gap: 8px;
+		}
+		.seg-row .segmented {
+			width: 100%;
+		}
+	}
 	@media (min-width: 1024px) {
 		.page {
 			gap: 0;

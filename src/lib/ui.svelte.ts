@@ -10,8 +10,6 @@ export interface ToastUndo {
 export const ui = $state({
 	quickAdd: false,
 	tankSwitcher: false,
-	/** the desktop tank dropdown (G12): in the header, or the dashboard's hero */
-	tankMenu: false,
 	/** ⌘K: tanks, tabs and actions */
 	palette: false,
 	/** the ? sheet */
