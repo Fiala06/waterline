@@ -22,7 +22,7 @@ export const load: PageServerLoad = ({ url }) => {
 			? error === 'CredentialsSignin'
 				? 'Wrong username or password.'
 				: error === 'AccessDenied'
-					? "This Google account isn't allowed on this server. Ask the server owner to add it."
+					? "This Google account isn't allowed on this server. Ask the server owner to add it or send you an invitation."
 					: "Couldn't sign you in. Try again."
 			: null
 	};

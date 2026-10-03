@@ -26,7 +26,8 @@ export function esc(s: unknown): string {
 export interface Footer {
 	reason: string; // "You're getting this because task reminders are on."
 	settingsUrl: string;
-	unsubscribeUrl: string;
+	/** none for an invitation, which goes to someone who isn't signed up */
+	unsubscribeUrl: string | null;
 	host: string;
 	/** Digest footer offers switching delivery instead of settings */
 	settingsLabel?: string;
@@ -60,7 +61,7 @@ ${opts.body}
 </td></tr>
 <tr><td style="padding:20px 4px 0;font:12px/1.6 ${FONT};color:${C.muted}">
 ${f.reason ? `${esc(f.reason)}<br>` : ''}
-<a href="${esc(f.settingsUrl)}" style="color:${C.accent}">${esc(f.settingsLabel ?? 'Notification settings')}</a> · <a href="${esc(f.unsubscribeUrl)}" style="color:${C.accent}">Unsubscribe from all</a><br>
+<a href="${esc(f.settingsUrl)}" style="color:${C.accent}">${esc(f.settingsLabel ?? 'Notification settings')}</a>${f.unsubscribeUrl ? ` · <a href="${esc(f.unsubscribeUrl)}" style="color:${C.accent}">Unsubscribe from all</a>` : ''}<br>
 Waterline · ${esc(f.host)}
 </td></tr>
 </table></td></tr></table>
@@ -94,7 +95,7 @@ const note = (html: string) => `<div style="font:14px/1.5 ${FONT};color:${C.mute
 const link = (label: string, url: string) => `<a href="${esc(url)}" style="color:${C.accent};font-weight:600">${esc(label)}</a>`;
 
 function textFooter(f: Footer) {
-	return `\n\n—\n${f.reason ? `${f.reason}\n` : ''}${f.settingsLabel ?? 'Notification settings'}: ${f.settingsUrl}\nUnsubscribe from all: ${f.unsubscribeUrl}\nWaterline · ${f.host}`;
+	return `\n\n—\n${f.reason ? `${f.reason}\n` : ''}${f.settingsLabel ?? 'Notification settings'}: ${f.settingsUrl}${f.unsubscribeUrl ? `\nUnsubscribe from all: ${f.unsubscribeUrl}` : ''}\nWaterline · ${f.host}`;
 }
 
 // ── E1 / E2 · task reminder and overdue alert ───────────────────────────────
@@ -304,5 +305,33 @@ export function testEmail(e: { host: string; via: string; sent: string; footer: 
 		preheader,
 		html: layout({ preheader, body, footer: e.footer }),
 		text: `✓ Delivery works\nYour server can send email.\n\nserver  ${e.host}\nvia     ${e.via}\nsent    ${e.sent}` + textFooter(e.footer)
+	};
+}
+
+// ── Invitation to the server (#27) ─────────────────────────────────────────
+
+export interface InviteEmail {
+	host: string;
+	/** who sent it: "Cory", or the server when they have no name */
+	inviter: string;
+	acceptUrl: string;
+	/** "Fri, Oct 10" */
+	expires: string;
+	footer: Footer;
+}
+
+export function inviteEmail(e: InviteEmail): Rendered {
+	const subject = `${e.inviter} invited you to Waterline on ${e.host}`;
+	const preheader = 'Accept to keep your aquarium log there.';
+	const body =
+		title("You're invited") +
+		`<p style="margin:0 0 20px;font:15px/1.5 ${FONT}">${esc(e.inviter)} invited you to Waterline, an aquarium log, at <b>${esc(e.host)}</b>. Accept, then sign in with the Google account this email came to.</p>` +
+		buttons(button('Accept the invitation', e.acceptUrl)) +
+		note(`The link works until ${esc(e.expires)}, and only for this address. If you didn't expect this, ignore it.`);
+	return {
+		subject,
+		preheader,
+		html: layout({ preheader, body, footer: e.footer }),
+		text: `You're invited\n${e.inviter} invited you to Waterline, an aquarium log, at ${e.host}. Accept, then sign in with the Google account this email came to.\n\nAccept the invitation: ${e.acceptUrl}\n\nThe link works until ${e.expires}, and only for this address. If you didn't expect this, ignore it.` + textFooter(e.footer)
 	};
 }

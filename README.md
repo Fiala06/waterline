@@ -49,7 +49,7 @@ Each server is yours: people sign in with Google (or the local admin login) and 
 - **Parameters your way:** presets for freshwater, planted, brackish and reef tanks, your own targets and custom parameters, imperial or metric, and hardness in dGH or ppm.
 - **Share it, if you like:** an opt-in public page per tank, with share images and search settings, and share links for single photos. Private notes, tasks and exact times are never public.
 - **Your data:** a full backup (ZIP with photos) or a CSV of water tests, imports from spreadsheets (undone in one step), a summary to paste into an AI assistant, or [read-only access for one](#ai-assistants-mcp) over MCP.
-- **Easy to run:** one Docker container and one data folder. The admin sets up sign-in, email (Mailgun or any SMTP server) and public pages in the app, with logs for troubleshooting and a note when a new version is out.
+- **Easy to run:** one Docker container and one data folder. The admin sets up sign-in, email (Mailgun or any SMTP server) and public pages in the app, with logs for troubleshooting and a note when a new version is out. People join by invitation (an email with an Accept link, or a link to copy), and Server settings › People lists everyone with Make admin, Sign out everywhere and Remove.
 
 The look is the redesign in [`design_handoff_waterline_redesign/`](design_handoff_waterline_redesign/README.md); the original design it was built from is in [`design_handoff_waterline/`](design_handoff_waterline/README.md).
 

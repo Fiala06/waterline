@@ -7,13 +7,14 @@ import { sequence } from '@sveltejs/kit/hooks';
 import { checkAuthConfig, devLoginEnabled, handle as authHandle } from './auth';
 import { clearLoginFailures, loginBlockedMinutes, recordLoginFailure } from '$lib/server/rate-limit';
 import { getUser, isEmailAllowed } from '$lib/server/users';
+import { touchLastSeen } from '$lib/server/people';
 import { publicSettings } from '$lib/server/public';
 import { announceSetup } from '$lib/server/setup';
 import { logger } from '$lib/server/log';
 import { VERSION } from '$lib/changelog';
 import { preloadsInHead } from '$lib/server/preloads';
 
-const PUBLIC_PATHS = ['/signin', '/first-run', '/auth', '/e', '/unsubscribe', '/t', '/s', '/p', '/public', '/sitemap.xml', '/robots.txt', '/mcp', '/api/v1', '/.well-known', '/oauth/register', '/oauth/token', '/cal'];
+const PUBLIC_PATHS = ['/signin', '/first-run', '/auth', '/e', '/invite', '/unsubscribe', '/t', '/s', '/p', '/public', '/sitemap.xml', '/robots.txt', '/mcp', '/api/v1', '/.well-known', '/oauth/register', '/oauth/token', '/cal'];
 /** For AI assistants (#9): signed in by an access token, never the session cookie. */
 const TOKEN_PATHS = ['/mcp', '/api/v1'];
 /** Where apps register and get tokens (OAuth): no cookies, so any site may call them. */
@@ -134,9 +135,13 @@ const appHandle: Handle = async ({ event, resolve }) => {
 
 	const session = await event.locals.auth();
 	const uid = session?.user?.id;
-	const found = uid ? (getUser(uid) ?? null) : null;
-	// Someone taken off ALLOWED_EMAILS is signed out on their next request.
+	let found = uid ? (getUser(uid) ?? null) : null;
+	// Sign out everywhere (#27): a session that began before the admin signed them out is no longer good
+	const signedInAt = (session?.user as { signedInAt?: number } | undefined)?.signedInAt;
+	if (found?.sessionsRevokedAt && typeof signedInAt === 'number' && signedInAt * 1000 < Date.parse(found.sessionsRevokedAt)) found = null;
+	// Someone taken off ALLOWED_EMAILS, or whose invitation was revoked, is signed out on their next request.
 	event.locals.user = found && (devLoginEnabled() || isEmailAllowed(found.email)) ? found : null;
+	if (event.locals.user) touchLastSeen(event.locals.user);
 
 	const path = event.url.pathname;
 	const user = event.locals.user;

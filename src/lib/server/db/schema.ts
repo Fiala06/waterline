@@ -39,8 +39,34 @@ export const users = sqliteTable('users', {
 	avatarChoice: text('avatar_choice', { enum: ['google', 'own', 'none'] }).notNull().default('google'),
 	// when they uploaded their own photo (null: none)
 	ownAvatarAt: text('own_avatar_at'),
+	// People (#27): when they last opened the app (kept to the quarter hour), and
+	// Sign out everywhere: sessions from before this moment are no longer good
+	lastSeenAt: text('last_seen_at'),
+	sessionsRevokedAt: text('sessions_revoked_at'),
 	createdAt: createdAt()
 });
+
+/**
+ * Invitations to the server (#27): the admin invites an address, and an email
+ * (or a copied link) carries the Accept link. Only the token's hash is kept.
+ * An accepted invite lets that address sign in until it's revoked.
+ */
+export const invites = sqliteTable(
+	'invites',
+	{
+		id: id(),
+		email: text('email').notNull(),
+		tokenHash: text('token_hash').notNull(),
+		invitedBy: text('invited_by').references(() => users.id, { onDelete: 'set null' }),
+		createdAt: createdAt(),
+		expiresAt: text('expires_at').notNull(),
+		acceptedAt: text('accepted_at'),
+		acceptedUserId: text('accepted_user_id').references(() => users.id, { onDelete: 'set null' }),
+		revokedAt: text('revoked_at')
+	},
+	(t) => [uniqueIndex('invites_token').on(t.tokenHash), index('invites_email').on(t.email)]
+);
+export type Invite = typeof invites.$inferSelect;
 
 export const notificationPrefs = sqliteTable('notification_prefs', {
 	userId: text('user_id')
@@ -305,7 +331,8 @@ export const serverSettings = sqliteTable('server_settings', {
 	googleClientSecretEnc: text('google_client_secret_enc'),
 	adminEmail: text('admin_email'),
 	// who may sign in with Google besides the admin; null: the environment decides
-	signupMode: text('signup_mode', { enum: ['admin', 'list', 'open'] }),
+	// invited (#27): only people with an accepted invitation
+	signupMode: text('signup_mode', { enum: ['admin', 'list', 'invited', 'open'] }),
 	allowedEmails: text('allowed_emails'), // one email or @domain per line
 	localAdminUsername: text('local_admin_username'),
 	localAdminPasswordHash: text('local_admin_password_hash'), // scrypt, like LOCAL_ADMIN_PASSWORD_HASH

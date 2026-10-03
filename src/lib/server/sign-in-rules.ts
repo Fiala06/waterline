@@ -1,7 +1,7 @@
 // Who may sign in with Google, as rules with no database behind them (sign-in.ts reads the settings).
 import { env } from '$env/dynamic/private';
 
-export type SignupMode = 'admin' | 'list' | 'open';
+export type SignupMode = 'admin' | 'list' | 'invited' | 'open';
 
 /** Emails and @domains, however they were written down: commas, spaces or one per line. */
 export const parseAllowed = (v: string | null | undefined) =>

@@ -11,7 +11,12 @@ users            id, google_sub?, email, display_name, is_admin,
                  theme(system|dark|light), currency (ISO 4217), setup_done,
                  seen_version (last What's new dismissed), alerts_seen JSON (alert keys marked
                  read, the same on every device),
-                 avatar_choice(google|own|none), avatar_at?, own_avatar_at?, created_at
+                 avatar_choice(google|own|none), avatar_at?, own_avatar_at?,
+                 last_seen_at? (to the quarter hour), sessions_revoked_at? (Sign out everywhere:
+                 sessions from before are no longer good), created_at
+invites          id, email, token_hash, invited_by?, created_at, expires_at (7 days),
+                 accepted_at?, accepted_user_id?, revoked_at? (an invitation to the server;
+                 accepted by signing in with Google as that address; revoking locks it out)
 notification_prefs user_id, task_reminders, overdue_alerts, out_of_range_alerts,
                  delivery(individual|daily|weekly), lead_days, send_time,
                  notify_email?, unsubscribed_at? (those three switches are email's);
@@ -130,7 +135,7 @@ server_settings  singleton: email_provider?(mailgun|smtp), mailgun_api_key_enc?,
                  mailgun_domain?, mailgun_region(us|eu), smtp_host?, smtp_port?,
                  smtp_secure, smtp_user?, smtp_password_enc?, sender?,
                  google_client_id?, google_client_secret_enc?, admin_email?,
-                 signup_mode?(admin|list|open), allowed_emails?,
+                 signup_mode?(admin|list|invited|open), allowed_emails?,
                  local_admin_username?, local_admin_password_hash?,
                  allow_public_pages, public_home_enabled, public_base_url?, ga4_id?,
                  consent_banner, search_console_tag?, scheduled_emails, update_check,

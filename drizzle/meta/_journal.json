@@ -225,6 +225,13 @@
       "when": 1791046230950,
       "tag": "0031_equipment_schedules",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "6",
+      "when": 1791046792359,
+      "tag": "0032_invites",
+      "breakpoints": true
     }
   ]
 }
