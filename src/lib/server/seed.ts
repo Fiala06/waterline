@@ -151,7 +151,13 @@ async function seedPlanted(user: User) {
 		// weekly, the last one 8 days ago (so the reminder is a day overdue)
 		if ((d + 8) % 7 === 0 && d <= -8) {
 			const pct = rand() > 0.3 ? 30 : 25;
-			const wc = event(user, tank, d, '19:15', 'water_change', { percent: pct, volume_l: 128.7 * (pct / 100), source: 'rodi' });
+			const wc = event(user, tank, d, '19:15', 'water_change', {
+				percent: pct,
+				volume_l: 128.7 * (pct / 100),
+				source: 'rodi',
+				// RODI goes back in remineralised
+				additives: [{ product: 'GH+ remineraliser', amount: Math.round(pct / 5), unit: 'g' }]
+			});
 			nitrate *= 1 - pct / 100 - 0.05;
 			kh = Math.min(4.5, kh + 1.2);
 			lastWc = d;
@@ -160,6 +166,11 @@ async function seedPlanted(user: User) {
 		const dow = new Date(day(d) + 'T12:00:00Z').getUTCDay();
 		if ([1, 3, 5].includes(dow) && rand() > 0.15) {
 			event(user, tank, d, '09:00', 'dosing', { product: 'All-in-one fertilizer', amount: 5, unit: 'mL' });
+		}
+		// fed most mornings, by hand: flakes, with a wafer for the otos some evenings
+		if (d > -40 && rand() > 0.2) {
+			event(user, tank, d, '08:20', 'feeding', { food: 'Micro pellets', amount: 2, unit: 'pinches' });
+			if (dow === 2 || dow === 5) event(user, tank, d, '20:10', 'feeding', { food: 'Algae wafer', amount: 1 });
 		}
 		if (d % 3 === 0 || d === 0) {
 			const full = d % 9 === 0 || d === 0;
@@ -242,6 +253,10 @@ async function seedPlanted(user: User) {
 		seoTitle: 'Riverbed 40: 40 gal Dutch planted tank log'
 	});
 	createShare(user.id, cover.id);
+
+	// ── Health: Zippy had white spots; a Metro course runs every other day ──
+	event(user, tank, -4, '19:40', 'health', { livestockIds: [zippy.id], names: ['Zippy · Otocinclus'], symptoms: ['White spots', 'Scratching'], treatment: 'Metro', outcome: 'treating' }, 'A few spots on the tail. Raised the temperature a degree.');
+	createTask(user.id, tank.id, { name: 'Dose Metro', kind: 'dosing', recurring: true, intervalDays: 2, scheduleMode: 'completion', nextDue: day(0), openFormOnDone: false, product: 'Metro', amount: 1, amountUnit: 'g', endsOn: day(6) });
 	return tank;
 }
 

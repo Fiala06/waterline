@@ -1,6 +1,7 @@
 // Parsing and view data for the water test and log event forms (new + edit).
 import { error } from '@sveltejs/kit';
 import {
+	additivesOf,
 	DOSING_UNITS,
 	EQUIPMENT_ACTIONS,
 	EQUIPMENT_REASONS,
@@ -11,10 +12,10 @@ import {
 	WATER_SOURCES
 } from '$lib/events';
 import { displayValue, fmtRange, fmtValue, paramDecimals, paramUnit, storedValue } from '$lib/params';
-import { dueInfo, effectiveDue, FEED_UNITS, nextDueAfterCompletion } from '$lib/tasks';
+import { dueInfo, effectiveDue, nextDueAfterCompletion } from '$lib/tasks';
 import { paramTip } from '$lib/tips';
 import { fmtDate, todayInZone, utcToZoned } from '$lib/time';
-import { formatNumber, toDisplay, toStored, unitLabel } from '$lib/units';
+import { formatNumber, parseNumber, toDisplay, toStored, unitLabel } from '$lib/units';
 import { EVENT_CATEGORIES, type EventCategory, type Tank, type TankParameter, type User } from './db/schema';
 import { num, optStr, str, type FieldErrors } from './forms';
 import { lastEventOf, latestTest } from './logs';
@@ -155,6 +156,7 @@ export function parseEventData(
 	switch (category) {
 		case 'water_change': {
 			const mode = str(form, 'amountMode') === 'volume' ? 'volume' : 'percent';
+			const additives = parseAdditives(form, errors);
 			const amount = num(form, 'amount');
 			const source = pick(
 				'source',
@@ -171,7 +173,8 @@ export function parseEventData(
 					data: {
 						percent: amount,
 						...(vol ? { volume_l: (vol * amount) / 100 } : {}),
-						...(source ? { source } : {})
+						...(source ? { source } : {}),
+						...(additives.length ? { additives } : {})
 					},
 					errors
 				};
@@ -181,7 +184,8 @@ export function parseEventData(
 				data: {
 					volume_l: volumeL,
 					...(vol ? { percent: Math.round((volumeL / vol) * 1000) / 10 } : {}),
-					...(source ? { source } : {})
+					...(source ? { source } : {}),
+					...(additives.length ? { additives } : {})
 				},
 				errors
 			};
@@ -197,7 +201,8 @@ export function parseEventData(
 		case 'feeding': {
 			const food = str(form, 'food').slice(0, 80);
 			const amount = num(form, 'amount');
-			const unit = pick('unit', FEED_UNITS);
+			// pinches, cubes, mL, g… or whatever was typed
+			const unit = str(form, 'unit').slice(0, 20) || null;
 			if (!food) errors.food = 'Enter the food.';
 			if (amount != null && amount < 0) errors.amount = 'Enter an amount of 0 or more.';
 			return { data: { food, ...(amount != null ? { amount } : {}), ...(unit ? { unit } : {}) }, errors };
@@ -243,7 +248,43 @@ export function parseEventData(
 			if (!optStr(form, 'note')) errors.note = 'Write a note.';
 			return { data: {}, errors };
 		}
+		case 'health': {
+			// the health page has its own form; here a note is enough
+			if (!optStr(form, 'note')) errors.note = 'Write what you noticed.';
+			return { data: {}, errors };
+		}
 	}
+}
+
+/**
+ * The conditioner / remineraliser rows on the water change form
+ * (`additive_product`, `additive_amount`, `additive_unit`, one of each per row).
+ * Rows with no product are skipped; an amount without a product is an error.
+ */
+function parseAdditives(form: FormData, errors: FieldErrors) {
+	const products = form.getAll('additive_product').map((v) => String(v).trim().slice(0, 80));
+	const amounts = form.getAll('additive_amount').map(String);
+	const units = form.getAll('additive_unit').map((v) => String(v).trim().slice(0, 20));
+	const out: { product: string; amount?: number; unit?: string }[] = [];
+	products.forEach((product, i) => {
+		const raw = (amounts[i] ?? '').trim();
+		const unit = units[i] ?? '';
+		if (!product) {
+			if (raw) errors[`additive_${i}`] = 'Name the product.';
+			return;
+		}
+		let amount: number | undefined;
+		if (raw) {
+			const n = parseNumber(raw);
+			if (n == null || n < 0) {
+				errors[`additive_${i}`] = 'Enter an amount of 0 or more.';
+				return;
+			}
+			amount = n;
+		}
+		out.push({ product, ...(amount != null ? { amount } : {}), ...(unit ? { unit } : {}) });
+	});
+	return out;
 }
 
 /** Form values (display units) for editing an existing event. */
@@ -254,14 +295,22 @@ export function eventFormValues(
 ): Record<string, string | string[]> {
 	const s = (v: unknown) => (v == null ? '' : String(v));
 	switch (category) {
-		case 'water_change':
+		case 'water_change': {
+			const additives = additivesOf(data);
+			const added = {
+				additive_product: additives.map((a) => a.product),
+				additive_amount: additives.map((a) => s(a.amount)),
+				additive_unit: additives.map((a) => s(a.unit))
+			};
 			return typeof data.percent === 'number'
-				? { amountMode: 'percent', amount: formatNumber(data.percent, 1), source: s(data.source) }
+				? { amountMode: 'percent', amount: formatNumber(data.percent, 1), source: s(data.source), ...added }
 				: {
 						amountMode: 'volume',
 						amount: typeof data.volume_l === 'number' ? formatNumber(toDisplay(data.volume_l, 'volume', user), 1) : '',
-						source: s(data.source)
+						source: s(data.source),
+						...added
 					};
+		}
 		case 'dosing':
 			return { product: s(data.product), amount: s(data.amount), unit: s(data.unit) || 'mL' };
 		case 'feeding':

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isDate, isTime, quickWhens, utcToZoned, zonedToUtc } from './time';
+import { isDate, isTime, quickWhens, tankAge, utcToZoned, zonedToUtc } from './time';
 
 describe('isDate / isTime', () => {
 	it('accepts real dates and times only', () => {
@@ -89,5 +89,17 @@ describe('quickWhens', () => {
 		]);
 		// 8:30 AM: "this morning" at 8 would be half an hour ago
 		expect(at('2026-09-26T15:30:00Z').map((q) => q.label)).toEqual(['1 hour ago', 'Yesterday evening']);
+	});
+});
+
+describe('tankAge', () => {
+	it('counts the start date as day 1 and names the start month', () => {
+		expect(tankAge('2026-03-16', '2026-10-02')).toEqual({ day: 201, since: 'Mar 2026', label: 'Day 201 · since Mar 2026' });
+		expect(tankAge('2026-10-02', '2026-10-02').day).toBe(1);
+	});
+	it('has no day before the tank starts, and nothing without a date', () => {
+		expect(tankAge('2026-11-01', '2026-10-02')).toEqual({ day: null, since: 'Nov 2026', label: 'since Nov 2026' });
+		expect(tankAge(null, '2026-10-02')).toEqual({ day: null, since: null, label: null });
+		expect(tankAge('nope', '2026-10-02').label).toBeNull();
 	});
 });

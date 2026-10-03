@@ -71,16 +71,16 @@
 			<a class="btn" href="/tanks/{data.tankHead.id}/plants/several">Add several at once</a>
 		</EmptyState>
 	{:else}
-		<div class="table" role="table" aria-label="Plants">
+		<div class="table" class:no-added={!data.showAdded} role="table" aria-label="Plants">
 			<div class="thead" role="row" aria-rowindex="1">
-				<span role="columnheader">Plant</span><span role="columnheader">Placement</span><span role="columnheader">Added</span
-				><span role="columnheader">Last trimmed</span><span role="columnheader">Status</span>
+				<span role="columnheader">Plant</span><span role="columnheader">Placement</span>{#if data.showAdded}<span role="columnheader">Added</span
+					>{/if}<span role="columnheader">Last trimmed</span><span role="columnheader">Status</span>
 			</div>
 			{#each GROUPS as g (g.key)}
 				{@const list = data.plants.filter((p) => g.match.includes(p.position))}
 				{#if list.length}
 					<div class="group" role="rowgroup">
-						<div class="group-head" role="row"><span class="kicker" role="cell" aria-colspan={5}><h2>{g.label}</h2></span></div>
+						<div class="group-head" role="row"><span class="kicker" role="cell" aria-colspan={data.showAdded ? 5 : 4}><h2>{g.label}</h2></span></div>
 						{#each list as p (p.id)}
 							<div class="tr" role="row">
 								<div class="pl" role="cell">
@@ -101,7 +101,7 @@
 									</button>
 								</div>
 								<span class="d" role="cell">{POSITIONS.find((o) => o.v === p.position)?.l}</span>
-								<span class="d" role="cell">{p.added}</span>
+								{#if data.showAdded}<span class="d" role="cell">{p.added}</span>{/if}
 								<span class="trim" role="cell">
 									<span class="when" class:none={!p.trimmed}>{p.trimmed ? `Trimmed ${p.trimmed}` : 'Never'}</span>
 									<button
@@ -458,6 +458,19 @@
 		.tr {
 			grid-template-columns: minmax(0, 1fr) 100px 72px 150px 100px;
 			column-gap: 10px;
+		}
+	}
+	/* without Added (every plant on one day): four columns */
+	@media (min-width: 1024px) {
+		.no-added .thead,
+		.no-added .tr {
+			grid-template-columns: minmax(0, 1fr) 120px 170px 110px;
+		}
+	}
+	@media (min-width: 1024px) and (max-width: 1199px) {
+		.no-added .thead,
+		.no-added .tr {
+			grid-template-columns: minmax(0, 1fr) 100px 150px 100px;
 		}
 	}
 </style>

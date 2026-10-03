@@ -13,8 +13,10 @@ export const EVENT_CATEGORIES = [
 	'equipment',
 	'observation',
 	'note',
-	// logged when a feeding routine is marked done (#17)
-	'feeding'
+	// logged when a feeding routine is marked done (#17), or by hand
+	'feeding',
+	// a fish's symptoms, a treatment and how it turned out, linked to the animal
+	'health'
 ] as const;
 export type EventCategory = (typeof EVENT_CATEGORIES)[number];
 

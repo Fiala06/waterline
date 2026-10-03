@@ -13,7 +13,14 @@ test('logging works with an ad blocker', async ({ page }, info) => {
 		blocked.push(route.request().url());
 		return route.abort('blockedbyclient');
 	});
+	// the phone's Log button lists every kind; on a computer tests and water changes are under Log water test ▾
 	const quickAdd = async (choice: RegExp) => {
+		const log = page.getByRole('button', { name: 'Log', exact: true });
+		if (!(await log.isVisible()) && /water test/i.test(choice.source)) return page.getByRole('link', { name: /^Log water test/ }).click();
+		if (!(await log.isVisible()) && /water change/i.test(choice.source)) {
+			await page.getByRole('button', { name: 'Other log types' }).click();
+			return page.getByRole('menuitem', { name: 'Log water change' }).click();
+		}
 		await openQuickAdd(page);
 		await page.getByRole('dialog', { name: 'Quick add' }).getByRole('link', { name: choice }).click();
 	};

@@ -9,6 +9,8 @@ interface Schedulable {
 	nextDue: string | null;
 	/** "1,3,5" (0 Sunday … 6 Saturday), for scheduleMode weekdays */
 	weekdays?: string | null;
+	/** the last day it's due ('YYYY-MM-DD'): a course of doses, a round of treatments */
+	endsOn?: string | null;
 }
 
 export const WEEKDAYS = [
@@ -58,6 +60,12 @@ export function effectiveDue(task: { nextDue: string | null; snoozedUntil?: stri
  *   so doing Wednesday's dose early on Monday doesn't bring Wednesday back
  */
 export function nextDueAfterCompletion(task: Schedulable, doneOn: string, today: string): string | null {
+	const next = nextOccurrence(task, doneOn, today);
+	// a course ends: nothing is due after its last day
+	return next && task.endsOn && next > task.endsOn ? null : next;
+}
+
+function nextOccurrence(task: Schedulable, doneOn: string, today: string): string | null {
 	// on set days: the next of them after this one, or after the day it's done if that's later
 	if (task.recurring && task.scheduleMode === 'weekdays') {
 		const days = parseWeekdays(task.weekdays);
@@ -70,6 +78,39 @@ export function nextDueAfterCompletion(task: Schedulable, doneOn: string, today:
 	let next = addDays(task.nextDue, task.intervalDays);
 	while (daysBetween(today, next) <= 0) next = addDays(next, task.intervalDays);
 	return next;
+}
+
+/** Every day a task comes up from its next due date to `endsOn` (inclusive), at most `max` of them. */
+export function occurrencesUntil(task: Schedulable, endsOn: string, max = 1000): string[] {
+	if (!task.nextDue || task.nextDue > endsOn) return [];
+	const days = task.scheduleMode === 'weekdays' ? parseWeekdays(task.weekdays) : [];
+	const step = task.scheduleMode === 'weekdays' ? (days.length ? 1 : 0) : (task.intervalDays ?? 0);
+	if (!task.recurring || !step) return [task.nextDue];
+	const out: string[] = [];
+	let d = task.scheduleMode === 'weekdays' ? onOrAfterWeekday(task.nextDue, days) : task.nextDue;
+	while (d <= endsOn && out.length < max) {
+		out.push(d);
+		d = task.scheduleMode === 'weekdays' ? onOrAfterWeekday(addDays(d, 1), days) : addDays(d, step);
+	}
+	return out;
+}
+
+/** The day of the Nth occurrence counting the next due date as the first: "after 5 doses" → a date. */
+export function endsAfterTimes(task: Schedulable, times: number): string | null {
+	if (!task.nextDue || !Number.isInteger(times) || times < 1) return null;
+	const days = task.scheduleMode === 'weekdays' ? parseWeekdays(task.weekdays) : [];
+	if (!task.recurring || (task.scheduleMode === 'weekdays' ? !days.length : !task.intervalDays)) return task.nextDue;
+	let d = task.scheduleMode === 'weekdays' ? onOrAfterWeekday(task.nextDue, days) : task.nextDue;
+	for (let i = 1; i < times; i++) d = task.scheduleMode === 'weekdays' ? onOrAfterWeekday(addDays(d, 1), days) : addDays(d, task.intervalDays!);
+	return d;
+}
+
+/** A course's line: "3 doses left · ends Oct 9" (null for a task without an end). */
+export function courseText(task: Schedulable & { kind?: string }): string | null {
+	if (!task.endsOn || !task.nextDue) return null;
+	const n = occurrencesUntil(task, task.endsOn).length;
+	const word = task.kind === 'dosing' ? 'dose' : task.kind === 'feeding' ? 'feeding' : 'time';
+	return `${n} ${word}${n === 1 ? '' : 's'} left · ends ${fmtDate(task.endsOn)}`;
 }
 
 export type DueLevel = 'bad' | 'warn' | 'ok';
@@ -102,7 +143,14 @@ export function dueInfo(nextDue: string, today: string): DueInfo {
 }
 
 /** "every 7 days", "every 2 weeks", "Mon, Wed, Fri", "every day but Sun", "one-off" */
-export function intervalText(task: { recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null; kind?: string }): string {
+export function intervalText(task: { recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null; kind?: string; nextDue?: string | null; endsOn?: string | null }): string {
+	const base = repeatText(task);
+	// a course: "every 2 days · 3 doses left · ends Oct 9"
+	const course = task.endsOn && task.nextDue ? courseText({ ...task, scheduleMode: (task.scheduleMode ?? 'completion') as Schedulable['scheduleMode'], nextDue: task.nextDue }) : null;
+	return course ? `${base} · ${course}` : base;
+}
+
+function repeatText(task: { recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null; kind?: string }): string {
 	if (task.recurring && task.scheduleMode === 'weekdays') {
 		const days = parseWeekdays(task.weekdays);
 		if (days.length === 7) return 'every day';
@@ -182,7 +230,7 @@ export function amountText(amount: number | null | undefined, unit: string | nul
 }
 
 /** A routine's line under its name: "1 pump · Mon, Wed, Fri". */
-export function routineLine(task: { kind: string; amount: number | null; amountUnit: string | null; recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null }) {
+export function routineLine(task: { kind: string; amount: number | null; amountUnit: string | null; recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null; nextDue?: string | null; endsOn?: string | null }) {
 	return [amountText(task.amount, task.amountUnit), intervalText(task)].filter(Boolean).join(' · ');
 }
 

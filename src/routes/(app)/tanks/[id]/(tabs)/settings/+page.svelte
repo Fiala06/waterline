@@ -8,7 +8,20 @@
 	import { untrack } from 'svelte';
 	import { REVIEW_INTERVALS } from '$lib/review';
 	import { fmtDate } from '$lib/time';
+	import TankDetailsSections from '$lib/components/TankDetailsSections.svelte';
+	import { hoursText, scheduleHours } from '$lib/equipment';
 	let { data, form } = $props();
+	// the lighting and CO₂ schedule; with both lights times set the photoperiod is the hours between
+	let lightsOn = $state(untrack(() => data.tank.lightsOn));
+	let lightsOff = $state(untrack(() => data.tank.lightsOff));
+	let co2On = $state(untrack(() => data.tank.co2On));
+	let co2Off = $state(untrack(() => data.tank.co2Off));
+	let photoperiod = $state(untrack(() => data.tank.photoperiodH));
+	const lightsHours = $derived(scheduleHours(lightsOn, lightsOff));
+	const co2Hours = $derived(scheduleHours(co2On, co2Off));
+	$effect(() => {
+		if (lightsHours != null) photoperiod = String(lightsHours);
+	});
 	let coverPreview = $state<string | null>(null);
 	let notes = $state(untrack(() => data.tank.notes));
 	let startDate = $state(untrack(() => data.tank.startDate));
@@ -186,12 +199,33 @@
 					{/each}
 				</select>
 			</div>
+			<fieldset class="field sched">
+				<legend class="label">Lights on / off</legend>
+				<div class="times">
+					<input class="input" type="time" name="lightsOn" aria-label="Lights on" bind:value={lightsOn} aria-invalid={!!errors.lightsOn} />
+					<span class="dash" aria-hidden="true">–</span>
+					<input class="input" type="time" name="lightsOff" aria-label="Lights off" bind:value={lightsOff} aria-invalid={!!errors.lightsOff} />
+					{#if lightsHours != null}<span class="hours">{hoursText(lightsHours)}</span>{/if}
+				</div>
+				{#if errors.lightsOn || errors.lightsOff}<span class="error-text">✕ {errors.lightsOn ?? errors.lightsOff}</span>{/if}
+			</fieldset>
+			<fieldset class="field sched">
+				<legend class="label">CO₂ on / off</legend>
+				<div class="times">
+					<input class="input" type="time" name="co2On" aria-label="CO₂ on" bind:value={co2On} aria-invalid={!!errors.co2On} />
+					<span class="dash" aria-hidden="true">–</span>
+					<input class="input" type="time" name="co2Off" aria-label="CO₂ off" bind:value={co2Off} aria-invalid={!!errors.co2Off} />
+					{#if co2Hours != null}<span class="hours">{hoursText(co2Hours)}</span>{/if}
+				</div>
+				{#if errors.co2On || errors.co2Off}<span class="error-text">✕ {errors.co2On ?? errors.co2Off}</span>{/if}
+			</fieldset>
 			<div class="field">
 				<label class="label" for="photoperiodH">Photoperiod (h)</label>
 				<div class="unit-input">
-					<input id="photoperiodH" name="photoperiodH" inputmode="decimal" defaultValue={data.tank.photoperiodH} />
+					<input id="photoperiodH" name="photoperiodH" inputmode="decimal" bind:value={photoperiod} readonly={lightsHours != null} />
 					<span class="unit">h</span>
 				</div>
+				{#if lightsHours != null}<span class="hint">From the lights' times.</span>{/if}
 			</div>
 			<div class="field">
 				<label class="label" for="startDate">Start date</label>
@@ -217,6 +251,12 @@
 			<label class="label" for="notes">Notes</label>
 			<textarea class="input" id="notes" name="notes" rows="3" maxlength="2000" bind:value={notes}></textarea>
 		</div>
+
+		<!-- a new tank: ammonia and nitrite are stages of the cycle, not failures, until it's running -->
+		<label class="check-row cycling">
+			<input type="checkbox" name="cycling" defaultChecked={data.tank.cycling} />
+			<span><b>This tank is still cycling</b><span class="hint">Ammonia and nitrite above target show as ▲ Cycling, and the dashboard follows the cycle.</span></span>
+		</label>
 
 		<div class="foot">
 			<button class="btn btn-primary save">Save changes</button>
@@ -250,6 +290,11 @@
 	label="Archive"
 	tone="warn"
 />
+
+<!-- Specs, notes and routines (the same sections as Notes & routines), after the form -->
+<div class="details-more" id="details-more">
+	<TankDetailsSections tankId={data.tank.id} tankName={data.tank.name} details={data.details} editHref="#specBrand" from="/tanks/{data.tank.id}/settings" />
+</div>
 
 <style>
 	.wrap {
@@ -351,6 +396,42 @@
 		grid-template-columns: repeat(3, 1fr);
 		gap: 10px;
 	}
+	/* two time pickers need the full width on a phone */
+	.sched {
+		grid-column: 1 / -1;
+	}
+	.times {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+	.times .input {
+		flex: 1;
+		min-width: 0;
+		padding-inline: 8px;
+	}
+	.dash,
+	.hours {
+		color: var(--text-muted);
+		font-size: 13px;
+		white-space: nowrap;
+	}
+	.hours {
+		font-weight: 800;
+		color: var(--text);
+	}
+	.cycling {
+		align-items: flex-start;
+		padding: 12px 14px;
+		background: var(--surface);
+		border-left: 3px solid var(--ink);
+		font-size: 14px;
+	}
+	.cycling > span {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
 	.hint {
 		font-size: 13px;
 		line-height: 1.5;
@@ -418,14 +499,28 @@
 			color: var(--text);
 		}
 	}
+	.details-more {
+		padding: 0 20px calc(24px + env(safe-area-inset-bottom));
+		border-top: 2px solid var(--divider);
+		margin: 0 20px;
+		padding-inline: 0;
+	}
 	/* Desktop: beside the shell's Setup nav, max 880 */
 	@media (min-width: 1024px) {
 		.wrap {
 			padding: 24px 32px 48px;
 			max-width: 880px;
 		}
+		.details-more {
+			margin: 0 32px;
+			max-width: 816px;
+			padding-bottom: 48px;
+		}
 		.pair {
 			gap: 16px;
+		}
+		.sched {
+			grid-column: auto;
 		}
 		.foot {
 			justify-content: flex-start;

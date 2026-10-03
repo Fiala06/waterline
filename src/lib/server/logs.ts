@@ -1,6 +1,7 @@
 // Water tests and events: create, read, edit, delete, and the activity feed.
 import { error } from '@sveltejs/kit';
 import { and, desc, eq, gte, inArray } from 'drizzle-orm';
+import { additivesOf } from '$lib/events';
 import { statusOf } from '$lib/params';
 import { db } from './db';
 import {
@@ -295,6 +296,41 @@ export function recentDosingProducts(tankId: string, limit = 6) {
 		const product = String(e.data.product ?? '').trim();
 		if (product && !seen.has(product.toLowerCase())) {
 			seen.set(product.toLowerCase(), { product, amount: e.data.amount, unit: e.data.unit, at: e.occurredAt });
+		}
+	}
+	return [...seen.values()].slice(0, limit);
+}
+
+/** Foods fed recently (by hand or by a feeding routine), most recent first. */
+export function recentFoods(tankId: string, limit = 6) {
+	const rows = db
+		.select()
+		.from(events)
+		.where(and(eq(events.tankId, tankId), eq(events.category, 'feeding')))
+		.orderBy(desc(events.occurredAt))
+		.limit(50)
+		.all();
+	const seen = new Map<string, { food: string; amount: unknown; unit: unknown; at: string }>();
+	for (const e of rows) {
+		const food = String(e.data.food ?? '').trim();
+		if (food && !seen.has(food.toLowerCase())) seen.set(food.toLowerCase(), { food, amount: e.data.amount, unit: e.data.unit, at: e.occurredAt });
+	}
+	return [...seen.values()].slice(0, limit);
+}
+
+/** Products added to recent water changes, most recent first (for the datalist). */
+export function recentAdditives(tankId: string, limit = 6) {
+	const rows = db
+		.select()
+		.from(events)
+		.where(and(eq(events.tankId, tankId), eq(events.category, 'water_change')))
+		.orderBy(desc(events.occurredAt))
+		.limit(50)
+		.all();
+	const seen = new Map<string, { product: string; amount: unknown; unit: unknown; at: string }>();
+	for (const e of rows) {
+		for (const a of additivesOf(e.data)) {
+			if (!seen.has(a.product.toLowerCase())) seen.set(a.product.toLowerCase(), { product: a.product, amount: a.amount, unit: a.unit, at: e.occurredAt });
 		}
 	}
 	return [...seen.values()].slice(0, limit);

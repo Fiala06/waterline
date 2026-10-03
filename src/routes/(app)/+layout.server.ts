@@ -13,6 +13,7 @@ import { takeFlash } from '$lib/server/flash';
 import { latestReadings, latestTest } from '$lib/server/logs';
 import { listParams, listTanks } from '$lib/server/tanks';
 import { shownAvatar } from '$lib/server/avatar-image';
+import { alertsSeen } from '$lib/server/users';
 import { listTasks } from '$lib/server/tasks';
 import { availableUpdate, projectPage } from '$lib/server/updates';
 import type { LayoutServerLoad } from './$types';
@@ -75,6 +76,9 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 			cover: t.coverPhotoId,
 			coverPos: coverPosition(t.coverX, t.coverY),
 			alerts: outOfRange + (overdueByTank.get(t.id) ?? 0),
+			// shown apart in the sidebar: "✕ 1" readings out of range, "▲ 1" tasks overdue
+			outOfRange,
+			overdue: overdueByTank.get(t.id) ?? 0,
 			// never tested: "No data", not "All good"
 			tested: latest.size > 0
 		};
@@ -116,6 +120,8 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 		currentTankId,
 		overdueCount,
 		alerts,
+		// the alert keys already marked read, kept on the account (every device agrees)
+		alertsSeen: alertsSeen(user),
 		counts,
 		quick: {
 			lastTest: lastTest ? `Last test ${fmtWhen(lastTest.takenAt, user.timeZone).replace(/^Today/, 'today').replace(/^Yesterday/, 'yesterday')}` : 'No tests yet',

@@ -1,5 +1,5 @@
 <script lang="ts">
-	// ⌘K / "/": tanks, this tank's tabs, and actions such as Log test, Get help
+	// ⌘K / "/": tanks, this tank's tabs, and actions such as Log test, Share summary
 	// and Keyboard shortcuts, each with its key. Type to filter; ↑↓ move, ↵ opens.
 	import { goto } from '$app/navigation';
 	import { tick } from 'svelte';
@@ -14,6 +14,8 @@
 		type: string;
 		volume: string | null;
 		alerts: number;
+		outOfRange?: number;
+		overdue?: number;
 		cover?: string | null;
 	}
 	interface Item {
@@ -49,7 +51,7 @@
 		const list: Item[] = tanks.map((t) => ({
 			group: 'Tanks',
 			title: t.name,
-			sub: `${tankTypeLabel(t.type)}${t.volume ? ` · ${t.volume}` : ''}${t.alerts ? ` · ✕ ${t.alerts}` : ''}`,
+			sub: `${tankTypeLabel(t.type)}${t.volume ? ` · ${t.volume}` : ''}${t.outOfRange ? ` · ✕ ${t.outOfRange}` : ''}${t.overdue ? ` · ▲ ${t.overdue}` : ''}`,
 			cover: t.cover,
 			run: () => onpick(t.id)
 		}));
@@ -72,7 +74,7 @@
 				{ group: 'Actions', title: 'Log dosing', sub: current.name, key: 'D', run: go(logHref('dosing', current.id)) },
 				{ group: 'Actions', title: 'Add a note', sub: current.name, key: 'N', run: go(logHref('note', current.id)) },
 				{ group: 'Actions', title: 'Add several livestock', sub: current.name, run: go(`${base}/livestock/several`) },
-				{ group: 'Actions', title: 'Get help: copy a summary', sub: current.name, run: go(`${base}/summary`) },
+				{ group: 'Actions', title: 'Share summary', sub: `${current.name} · for a forum, a friend, your fish store or an AI chat`, run: go(`${base}/summary`) },
 				{ group: 'Actions', title: 'Public page', sub: current.name, run: go(`${base}/public`) },
 				{ group: 'Actions', title: 'Export this tank', sub: current.name, run: go(`/settings/export?tank=${current.id}`) },
 				{ group: 'Actions', title: 'Review tank setup', sub: current.name, run: go(`${base}/review`) }

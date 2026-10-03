@@ -135,3 +135,27 @@ export function getUser(id: string): User | undefined {
 export function updateUser(id: string, patch: Partial<Omit<User, 'id' | 'email' | 'createdAt'>>) {
 	return db.update(users).set(patch).where(eq(users.id, id)).returning().get();
 }
+
+// ── Alerts read state (the bell): kept on the account, so every device agrees ──
+
+/** At most this many keys are kept; older ones fall off, and those alerts are long gone anyway. */
+export const ALERTS_SEEN_CAP = 300;
+
+/** The alert keys this person has marked read, oldest first. */
+export function alertsSeen(user: Pick<User, 'alertsSeen'>): string[] {
+	try {
+		const v = JSON.parse(user.alertsSeen || '[]');
+		return Array.isArray(v) ? v.filter((k): k is string => typeof k === 'string') : [];
+	} catch {
+		return [];
+	}
+}
+
+/** Merge newly read alert keys into the account's list (capped at the newest 300). */
+export function markAlertsSeen(userId: string, keys: string[]): string[] {
+	const user = getUser(userId);
+	if (!user) return [];
+	const seen = [...new Set([...alertsSeen(user), ...keys])].slice(-ALERTS_SEEN_CAP);
+	db.update(users).set({ alertsSeen: JSON.stringify(seen) }).where(eq(users.id, userId)).run();
+	return seen;
+}

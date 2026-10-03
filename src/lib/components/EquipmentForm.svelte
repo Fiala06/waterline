@@ -4,7 +4,7 @@
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import DateField from '$lib/components/DateField.svelte';
 	import { untrack } from 'svelte';
-	import { EQUIPMENT_TYPE_LABEL, EQUIPMENT_TYPES, SPEC_FIELDS, SUGGESTED_TASK, specUnit, type EquipmentType } from '$lib/equipment';
+	import { DEFAULT_SERVICE, EQUIPMENT_TYPE_LABEL, EQUIPMENT_TYPES, SERVICE_CADENCES, SPEC_FIELDS, serviceVerb, specUnit, type EquipmentType } from '$lib/equipment';
 	import type { UnitPrefs } from '$lib/units';
 
 	let {
@@ -25,6 +25,9 @@
 			installedAt: string;
 			notes: string;
 			specs: Record<string, string>;
+			/** the Service reminder: "off", a preset's days, or "custom" with serviceDays */
+			serviceEvery: string;
+			serviceDays: string;
 		};
 		errors?: Record<string, string>;
 		brands?: { brand: string; tankName: string }[];
@@ -37,7 +40,7 @@
 			kicker: string;
 			serviced: string | null;
 			history: { id: string; title: string; note: string | null; day: string }[];
-			task: { id: string; name: string; line: string } | null;
+			task: { id: string; name: string; line: string; due: { text: string; level: 'ok' | 'warn' | 'bad' } | null } | null;
 		} | null;
 	} = $props();
 	const tankId = $derived(cancelHref.split('/')[2] ?? '');
@@ -50,7 +53,14 @@
 	let installedAt = $state(untrack(() => values.installedAt));
 	const specs = $state<Record<string, string>>(untrack(() => ({ ...values.specs })));
 	let busy = $state(false);
-	const suggestion = $derived(SUGGESTED_TASK[type]);
+	let serviceEvery = $state(untrack(() => values.serviceEvery));
+	let serviceDays = $state(untrack(() => values.serviceDays));
+	// a new item's reminder follows its type (a filter monthly) until it's chosen by hand
+	let serviceChosen = $state(false);
+	$effect(() => {
+		const d = DEFAULT_SERVICE[type] ?? 'off';
+		if (mode === 'new' && !untrack(() => serviceChosen)) serviceEvery = d;
+	});
 	const fields = $derived(SPEC_FIELDS[type]);
 	const brandMatches = $derived(
 		brand.length >= 2 ? brands.filter((b) => b.brand.toLowerCase().startsWith(brand.toLowerCase()) && b.brand !== brand).slice(0, 3) : []
@@ -151,12 +161,25 @@
 			<textarea class="input" id="eq-notes" name="notes" rows="2" maxlength="2000" placeholder="Media, settings, where you bought it" bind:value={notes}></textarea>
 		</div>
 
-		{#if mode === 'new' && suggestion}
-			<label class="check-row task">
-				<input type="checkbox" name="createTask" defaultChecked={type === 'filter'} />
-				<span>Create a maintenance task: {suggestion.verb.toLowerCase()} every {suggestion.days % 7 === 0 ? `${suggestion.days / 7} weeks` : `${suggestion.days} days`}</span>
-			</label>
-		{/if}
+		<!-- the service reminder: a maintenance task for this item, kept in step by Save -->
+		<div class="field service">
+			<label class="label" for="eq-service">Service reminder</label>
+			<div class="service-row">
+				<select class="input" id="eq-service" name="serviceEvery" bind:value={serviceEvery} onchange={() => (serviceChosen = true)}>
+					{#each SERVICE_CADENCES as c (c.value)}<option value={c.value}>{c.label}</option>{/each}
+				</select>
+				{#if serviceEvery === 'custom'}
+					<div class="unit-input days">
+						<input name="serviceDays" inputmode="numeric" bind:value={serviceDays} aria-label="Service every (days)" placeholder="28" aria-invalid={!!errors.serviceDays} />
+						<span class="unit">days</span>
+					</div>
+				{/if}
+			</div>
+			{#if errors.serviceDays}<span class="error-text">✕ {errors.serviceDays}</span>{/if}
+			<span class="hint">
+				{#if serviceEvery === 'off'}No reminder. Log service still records the date.{:else}A task, “{serviceVerb(type)} {[brand, model].filter(Boolean).join(' ') || EQUIPMENT_TYPE_LABEL[type]}”, due again that long after each service you log.{/if}
+			</span>
+		</div>
 		<p class="hint">Fields adapt to type: heaters get wattage, lights get photoperiod.</p>
 	</div>
 	{#if about}
@@ -165,6 +188,7 @@
 				<div class="block">
 					<span class="kicker">Linked task</span>
 					<span class="task-name">{about.task.name}</span>
+					{#if about.task.due}<span class="task-due status-{about.task.due.level}">{about.task.due.text}</span>{/if}
 					<span class="task-line">{about.task.line}</span>
 					<a class="ghost" href="/tasks?edit={about.task.id}">Open in Tasks ›</a>
 				</div>
@@ -290,11 +314,23 @@
 	.suggest button + button {
 		border-top: 1px solid var(--divider);
 	}
-	.task {
-		padding: 12px 14px;
-		background: var(--surface);
-		border-left: 3px solid var(--ink);
-		font-size: 14px;
+	.service-row {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: 10px;
+	}
+	.service-row .input {
+		min-width: 0;
+	}
+	.days {
+		width: 120px;
+	}
+	.service .hint {
+		margin-top: 6px;
+	}
+	.task-due {
+		font-size: 13px;
+		font-weight: 800;
 	}
 	.hint {
 		margin: 0;

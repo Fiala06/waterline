@@ -184,3 +184,16 @@ export function isValidTimeZone(tz: string): boolean {
 		return false;
 	}
 }
+
+/**
+ * How long a tank has been running, from its start date: `day` is the running
+ * day (the start date is day 1; null before it starts or with no date) and
+ * `since` the start month ("Mar 2026"). The tank header says "Day 201 · since
+ * Mar 2026"; cards and Setup say only "since Mar 2026".
+ */
+export function tankAge(startDate: string | null | undefined, today: string): { day: number | null; since: string | null; label: string | null } {
+	if (!startDate || !isDate(startDate)) return { day: null, since: null, label: null };
+	const since = new Date(startDate + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+	const day = startDate <= today ? daysBetween(startDate, today) + 1 : null;
+	return { day, since, label: day ? `Day ${day} · since ${since}` : `since ${since}` };
+}

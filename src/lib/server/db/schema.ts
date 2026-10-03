@@ -25,6 +25,8 @@ export const users = sqliteTable('users', {
 	hardnessUnit: text('hardness_unit', { enum: ['dgh', 'ppm'] }).notNull().default('dgh'),
 	timeZone: text('time_zone').notNull().default('UTC'),
 	theme: text('theme', { enum: ['system', 'dark', 'light'] }).notNull().default('system'),
+	// alert keys marked read, so the bell agrees on every device
+	alertsSeen: text('alerts_seen').notNull().default('[]'),
 	// what spending is shown in (ISO 4217)
 	currency: text('currency').notNull().default('USD'),
 	setupDone: integer('setup_done', { mode: 'boolean' }).notNull().default(false),
@@ -108,6 +110,13 @@ export const tanks = sqliteTable(
 		substrate: text('substrate'),
 		waterSource: text('water_source'),
 		photoperiodH: real('photoperiod_h'),
+		// the lighting and CO₂ schedule, "08:00"–"16:00" (planted keepers time CO₂ against the lights)
+		lightsOn: text('lights_on'),
+		lightsOff: text('lights_off'),
+		co2On: text('co2_on'),
+		co2Off: text('co2_off'),
+		// a new tank cycling: ammonia and nitrite are stages, not failures, until it's running
+		cycling: integer('cycling', { mode: 'boolean' }).notNull().default(false),
 		/** the setup review (#30): when each part was last checked, e.g. {"details": "2026-10-02T…Z"} */
 		reviewChecks: text('review_checks', { mode: 'json' }).$type<Partial<Record<'details' | 'equipment' | 'targets' | 'livestock', string>>>().notNull().default({}),
 		archivedAt: text('archived_at'),
@@ -129,6 +138,8 @@ export const tankParameters = sqliteTable(
 		decimals: integer('decimals').notNull().default(1),
 		min: real('min'),
 		max: real('max'),
+		// how often this parameter should be tested; a reading older than that is stale
+		testEveryDays: integer('test_every_days'),
 		tracked: integer('tracked', { mode: 'boolean' }).notNull().default(true),
 		sort: integer('sort').notNull().default(0),
 		isCustom: integer('is_custom', { mode: 'boolean' }).notNull().default(false)
@@ -226,6 +237,8 @@ export const tasks = sqliteTable(
 		/** "1,3,5": the days of the week it's due (0 Sunday … 6 Saturday), for schedule_mode weekdays */
 		weekdays: text('weekdays'),
 		nextDue: text('next_due'), // YYYY-MM-DD; null once a one-off task is done
+		// a treatment course or any routine with an end: no more occurrences after this day
+		endsOn: text('ends_on'),
 		snoozedUntil: text('snoozed_until'),
 		equipmentId: text('equipment_id'),
 		openFormOnDone: integer('open_form_on_done', { mode: 'boolean' }).notNull().default(false),

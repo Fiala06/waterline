@@ -1,6 +1,8 @@
 // View data for one entry (water test or event): used by the entry pages
 // and the desktop History detail pane.
 import {
+	additivesOf,
+	additiveText,
 	CATEGORY_LABEL,
 	EQUIPMENT_ACTIONS,
 	eventTitle,
@@ -95,6 +97,7 @@ export function eventView(user: User, id: string): EntryView {
 				typeof d.volume_l === 'number' ? `${formatNumber(toDisplay(d.volume_l, 'volume', user), 1)} ${unitLabel('volume', user)}` : null
 			);
 			add('Source water', labelOf(WATER_SOURCES, d.source));
+			add('Added', additivesOf(d).map(additiveText));
 			break;
 		case 'dosing':
 			add('Product', d.product);

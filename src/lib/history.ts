@@ -9,6 +9,7 @@ export const FILTERS = [
 	{ key: 'livestock', label: 'Livestock / plants' },
 	{ key: 'equipment', label: 'Equipment' },
 	{ key: 'observation', label: 'Observations' },
+	{ key: 'health', label: 'Health' },
 	{ key: 'note', label: 'Notes & photos' }
 ] as const;
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { eventIcon, eventTitle } from './events';
+import { additivesOf, eventIcon, eventTitle } from './events';
 
 describe('eventIcon', () => {
 	it('shows a plant for plant changes, which are logged as livestock', () => {
@@ -28,5 +28,25 @@ describe('pets in History', () => {
 	it('says the species when the name is left out, as on public pages', () => {
 		expect(title({ action: 'status', name: 'Betta', nickname: null, status: 'in_tank', count: 1 })).toBe('Betta moved into the tank');
 		expect(title({ action: 'removed', name: 'Betta', nickname: null, reason: 'loss', count: 1 })).toBe('−1 Betta · loss');
+	});
+});
+
+describe('feeding and water change titles', () => {
+	const prefs = { unitSystem: 'imperial', hardnessUnit: 'dgh' } as const;
+
+	it('says what was fed, the amount first', () => {
+		expect(eventTitle({ category: 'feeding', note: null, data: { food: 'flakes', amount: 2, unit: 'pinches' } }, prefs)).toBe('Fed 2 pinches of flakes');
+		expect(eventTitle({ category: 'feeding', note: null, data: { food: 'flakes', amount: 1, unit: 'pinches' } }, prefs)).toBe('Fed 1 pinch of flakes');
+		expect(eventTitle({ category: 'feeding', note: null, data: { food: 'Micro pellets' } }, prefs)).toBe('Fed Micro pellets');
+		expect(eventTitle({ category: 'feeding', note: null, data: { food: 'Algae wafer', amount: 1 } }, prefs)).toBe('Fed Algae wafer · 1');
+	});
+
+	it('lists what went into a water change', () => {
+		const data = { percent: 25, source: 'tap', additives: [{ product: 'Prime', amount: 2.5, unit: 'mL' }, { product: 'GH+', amount: null, unit: null }] };
+		expect(eventTitle({ category: 'water_change', note: null, data }, prefs)).toBe('Water change · 25% · Tap · Prime 2.5 mL · GH+');
+		expect(additivesOf({ additives: [{ product: '', amount: 1 }, 'junk', { product: 'Prime', amount: '3', unit: 'mL' }] })).toEqual([
+			{ product: 'Prime', amount: null, unit: 'mL' }
+		]);
+		expect(additivesOf({})).toEqual([]);
 	});
 });

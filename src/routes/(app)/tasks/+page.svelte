@@ -69,8 +69,6 @@
 		return d.level === 'warn' ? `▲ ${longDue(t.due)}` : longDue(t.due);
 	};
 	const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-	// Snooze is offered on tasks due within a day (overdue, today, tomorrow)
-	const canSnooze = (t: T) => dueInfo(t.due, data.today).days <= 1;
 	const SECTIONS = $derived([
 		{ key: 'overdue', label: `✕ Overdue · ${sections.overdue.length}`, cls: 'status-bad', items: sections.overdue },
 		{ key: 'soon', label: `▲ Due soon · ${sections.soon.length}`, cls: 'status-warn', items: sections.soon },
@@ -131,15 +129,14 @@
 									</span>
 								</a>
 								<div class="acts">
-									{#if canSnooze(t)}
-										<form method="POST" action="/tasks?/snooze" use:enhance>
-											<input type="hidden" name="taskId" value={t.id} />
-											<input type="hidden" name="from" value={from} />
-											<button class="ghost snooze" aria-expanded={snoozeOpen && snoozing?.id === t.id} onclick={(e) => snooze(e, t)}
-												>Snooze<span aria-hidden="true">&nbsp;▾</span></button
-											>
-										</form>
-									{/if}
+									<!-- Snooze on every task: one not due yet moves back from its due date -->
+									<form method="POST" action="/tasks?/snooze" use:enhance>
+										<input type="hidden" name="taskId" value={t.id} />
+										<input type="hidden" name="from" value={from} />
+										<button class="ghost snooze" aria-expanded={snoozeOpen && snoozing?.id === t.id} onclick={(e) => snooze(e, t)}
+											>Snooze<span aria-hidden="true">&nbsp;▾</span></button
+										>
+									</form>
 									<form method="POST" action="/tasks?/done" use:enhance={markDone}>
 										<input type="hidden" name="taskId" value={t.id} />
 										<input type="hidden" name="from" value={from} />

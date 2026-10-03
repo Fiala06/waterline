@@ -4,6 +4,7 @@
 	import { enhance } from '$app/forms';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import CustomParamSheet from '$lib/components/CustomParamSheet.svelte';
+	import { TEST_CADENCES } from '$lib/status';
 
 	let { data, form } = $props();
 	const errors = $derived((form?.errors ?? {}) as Record<string, string>);
@@ -29,7 +30,7 @@
 		<p class="intro">
 			Set your own range for each parameter. Readings outside it show
 			<span class="status-bad strong">✕ out of range</span>; readings within 10% of a limit show
-			<span class="status-warn strong">▲ near limit</span>. Untracked parameters are hidden from tests and charts.
+			<span class="status-warn strong">▲ near limit</span>. Untracked parameters are hidden from tests and charts. Test every says how often to test one: a reading older than that is due on the dashboard.
 		</p>
 	</div>
 
@@ -37,7 +38,7 @@
 		{#if data.fromReview}<input type="hidden" name="from" value="review" />{/if}
 		<div class="rows">
 			<!-- desktop: one table like D4 -->
-			<div class="thead" aria-hidden="true"><span>Parameter</span><span>Min</span><span>Max</span><span>Unit</span><span>Track</span></div>
+			<div class="thead" aria-hidden="true"><span>Parameter</span><span>Min</span><span>Max</span><span>Unit</span><span>Test every</span><span>Track</span></div>
 			{#each data.rows as r (r.id)}
 				<div class="prow" class:off={!tracked[r.id]}>
 					<div class="p-head">
@@ -66,6 +67,12 @@
 							<input name="max_{r.id}" inputmode="decimal" defaultValue={r.max} aria-label="{r.name} maximum" />
 						</label>
 						<span class="u">{r.unit || '—'}</span>
+						<label class="every">
+							<span>Test every</span>
+							<select name="testEvery_{r.id}" aria-label="Test {r.name} every" value={r.testEvery}>
+								{#each TEST_CADENCES as c (c.days ?? '')}<option value={c.days == null ? '' : String(c.days)}>{c.label}</option>{/each}
+							</select>
+						</label>
 					</div>
 					{#if errors[r.id]}<span class="error-text">✕ {errors[r.id]}</span>{/if}
 					{#if r.isCustom}
@@ -165,6 +172,31 @@
 		display: flex;
 		align-items: center;
 		gap: 10px;
+		flex-wrap: wrap;
+	}
+	/* "Test every": on phones its own line under the range */
+	.every {
+		flex-basis: 100%;
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		font-size: 12px;
+		color: var(--text-muted);
+	}
+	.every select {
+		flex: 1;
+		min-width: 0;
+		height: 44px;
+		padding: 0 12px;
+		background: var(--surface);
+		border: 1px solid var(--divider);
+		font-size: 15px;
+		font-weight: 600;
+		color: var(--text);
+	}
+	.every select:focus {
+		outline: none;
+		border-color: var(--accent);
 	}
 	.range[hidden] {
 		display: none;
@@ -256,7 +288,7 @@
 		.thead,
 		.prow {
 			display: grid;
-			grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) 64px 56px;
+			grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) 64px 120px 56px;
 			column-gap: 12px;
 			align-items: center;
 		}
@@ -293,8 +325,20 @@
 			grid-row: 1;
 			width: auto;
 		}
-		.p-head .switch {
+		.every {
 			grid-column: 5;
+			grid-row: 1;
+			flex-basis: auto;
+		}
+		.every span {
+			display: none;
+		}
+		.every select {
+			width: 100%;
+			font-size: 14px;
+		}
+		.p-head .switch {
+			grid-column: 6;
 			grid-row: 1;
 		}
 		/* the column headers say Min and Max */

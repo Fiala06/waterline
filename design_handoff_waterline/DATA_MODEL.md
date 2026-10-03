@@ -9,7 +9,8 @@ All measurements are stored metric (L, °C, cm, hardness in dGH); timestamps are
 users            id, google_sub?, email, display_name, is_admin,
                  unit_system(imperial|metric), hardness_unit(dgh|ppm), time_zone,
                  theme(system|dark|light), currency (ISO 4217), setup_done,
-                 seen_version (last What's new dismissed),
+                 seen_version (last What's new dismissed), alerts_seen JSON (alert keys marked
+                 read, the same on every device),
                  avatar_choice(google|own|none), avatar_at?, own_avatar_at?, created_at
 notification_prefs user_id, task_reminders, overdue_alerts, out_of_range_alerts,
                  delivery(individual|daily|weekly), lead_days, send_time,
@@ -24,11 +25,16 @@ tanks            id, user_id, name, type(freshwater|planted|brackish|reef),
                  nominal_volume_l?, actual_volume_l?, length_cm?, width_cm?, height_cm?,
                  start_date?, notes?, cover_photo_id?, cover_x, cover_y (the cover's focus, 0–100,
                  50 50 the middle), spec_brand?, spec_model?, glass?,
-                 substrate?, water_source?, photoperiod_h?, review_checks JSON (the setup
-                 review: when each part was last checked, {details, equipment, targets,
-                 livestock}), archived_at?, created_at
+                 substrate?, water_source?, photoperiod_h? (the hours between lights_on and
+                 lights_off when both are set), lights_on?, lights_off?, co2_on?, co2_off?
+                 ("HH:MM": the lighting and CO₂ schedule), cycling (still cycling: ammonia and
+                 nitrite above target show as ▲ Cycling, the dashboard follows the cycle, and
+                 Mark as running clears it with a "Cycle complete" note), review_checks JSON
+                 (the setup review: when each part was last checked, {details, equipment,
+                 targets, livestock}), archived_at?, created_at
 tank_parameters  id, tank_id, key (ph|nh3|no2|no3|gh|kh|temp|… or custom), name, unit,
-                 decimals, min?, max?, tracked, sort, is_custom
+                 decimals, min?, max?, test_every_days? (Test every: a reading older than this
+                 is due on the dashboard), tracked, sort, is_custom
 
 tests            id, tank_id, taken_at, note?, edited_at?, client_id? (offline dedupe),
                  import_id?
@@ -58,7 +64,9 @@ tasks            id, tank_id, name, kind(water_change|test|maintenance|other|dos
                  review: the setup review, one per tank, every 30/91/182 days or none when off;
                  done on its page, not by Mark done),
                  recurring, interval_days?, schedule_mode(completion|fixed|weekdays),
-                 weekdays? ("1,3,5", 0 = Sunday), next_due?, snoozed_until?, equipment_id?,
+                 weekdays? ("1,3,5", 0 = Sunday), next_due?, ends_on? (no occurrences after
+                 this day), snoozed_until?, equipment_id? (the item's service reminder: the
+                 equipment form sets its cadence, and a logged service completes it),
                  open_form_on_done, product?, amount?, amount_unit? (a dosing or feeding
                  routine: Done logs the dose or feeding, and Undo removes it), created_at
 task_completions id, task_id, completed_at, event_id?,

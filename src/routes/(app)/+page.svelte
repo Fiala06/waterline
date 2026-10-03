@@ -13,7 +13,9 @@
 	import TrendChart from '$lib/components/TrendChart.svelte';
 	import WhatsNew from '$lib/components/WhatsNew.svelte';
 	import { compactName, displayValue, fmtRange, fmtValue, paramDecimals, paramUnit, shortName, statusOf } from '$lib/params';
-	import { statusShort } from '$lib/status';
+	import { CYCLING_TEXT, cyclingLevel, isCyclingStatus, statusShort } from '$lib/status';
+	import Sparkline from '$lib/components/Sparkline.svelte';
+	import { enhance } from '$app/forms';
 	import { dueInfo, intervalText, isRoutine, routineLine } from '$lib/tasks';
 	import { invalidateAll } from '$app/navigation';
 	import { discard, retry } from '$lib/offline';
@@ -38,7 +40,9 @@
 	const cards = $derived(
 		(data.params ?? []).map((p) => {
 			const r = data.latest?.[p.id];
-			const st = statusOf(p, r?.value);
+			// while the tank is cycling, high ammonia and nitrite are a stage, not a failure
+			const cycling = !!data.tank?.cycling;
+			const st = cyclingLevel(p.key, statusOf(p, r?.value), cycling);
 			const range = fmtRange(p, prefs, false);
 			return {
 				id: p.id,
@@ -48,7 +52,9 @@
 				value: r ? fmtValue(p, r.value, prefs) : null,
 				unit: paramUnit(p, prefs),
 				level: st.level,
-				statusText: statusShort(st),
+				statusText: isCyclingStatus(p.key, st, cycling) ? CYCLING_TEXT : statusShort(st),
+				// days since the reading when it's older than its Test every cadence
+				due: data.stale?.[p.id] ?? null,
 				sub: r ? (range ? `Target ${range}` : 'No target') : 'Not tested',
 				range: r ? range : '',
 				spark: data.sparks?.[p.id] ?? [],
@@ -64,6 +70,8 @@
 	const attention = $derived([...cards.filter((c) => c.level === 'bad'), ...cards.filter((c) => c.level === 'warn')]);
 	const inRange = $derived(cards.filter((c) => c.level === 'ok'));
 	const untested = $derived(cards.filter((c) => c.level === 'none').map((c) => c.fullName));
+	// "Due a test: KH (23 days), GH (40 days)", longest first
+	const dueTests = $derived(cards.filter((c) => c.due != null).map((c) => ({ name: c.fullName, days: c.due! })).sort((a, b) => b.days - a.days));
 
 	const wc = $derived(data.waterChange);
 	// the water change needs attention once it's due
@@ -79,6 +87,8 @@
 				return { id: t.id, name: t.name, when: `✕ ${-d.days} day${d.days === -1 ? '' : 's'} over`, sub: isRoutine(t.kind) ? routineLine(t) : intervalText(t) };
 			})
 	);
+	// Due: the water change isn't listed twice when Needs attention has its row (with Done)
+	const dueTasks = $derived((data.tasks ?? []).filter((t) => !(wcDue && t.id === wcDue.taskId)));
 	// the fun bits only when nothing's out of range or overdue
 	const calm = $derived(!cards.some((c) => c.level === 'bad') && !overdue.length && !(wcDue && (wcDue.days > wcDue.goal)));
 	const allClear = $derived(hasReadings && !attention.length && !wcDue && !overdue.length);
@@ -115,6 +125,33 @@
 		<h1 class="sr-only">{data.tank.name} dashboard</h1>
 
 		{#if data.whatsNew}<div class="news"><WhatsNew {...data.whatsNew} /></div>{/if}
+
+		{#if data.cycling}
+			<!-- ── Cycling: ammonia, nitrite and nitrate side by side, and where the cycle is ── -->
+			<section class="cycling" aria-labelledby="cycling-h">
+				<div class="section-head">
+					<h2 id="cycling-h">Cycling</h2>
+					<a href="/tanks/{data.tank.id}/settings">Setup ›</a>
+				</div>
+				<div class="cycle-charts">
+					{#each data.cycling.charts as c (c.key)}
+						<a class="cycle-chart" href="/charts{c.id ? `?p=${c.id}` : ''}" title="{c.name} over the last 8 weeks">
+							<span class="cc-name">{c.name}</span>
+							<span class="cc-value">{#if c.value != null}{c.value}{#if c.unit}<span class="cc-unit">{c.unit}</span>{/if}{:else}<span class="cc-none">–</span>{/if}</span>
+							<span class="cc-spark">{#if c.values.length}<Sparkline values={c.values} level="ok" lo={c.lo} hi={c.hi} />{/if}</span>
+							<span class="cc-when">{c.when ?? 'Not tested'}</span>
+						</a>
+					{/each}
+				</div>
+				<div class="cycle-foot">
+					<p class="stage">{data.cycling.text}</p>
+					<form method="POST" action="?/markRunning" use:enhance>
+						<input type="hidden" name="tankId" value={data.tank.id} />
+						<button class="btn" class:btn-primary={data.cycling.cycled}>Mark as running</button>
+					</form>
+				</div>
+			</section>
+		{/if}
 
 		<div class="grid">
 			<!-- ── Needs attention (span 2) ─────────────────────────────── -->
@@ -153,8 +190,8 @@
 						><RemindMe tankId={data.tank.id} tankName={data.tank.name} today={data.today} cls="lnk" /><a href="/tasks">All tasks ›</a></span
 					>
 				</div>
-				{#if data.tasks.length}
-					<TaskList tasks={data.tasks.slice(0, 3)} today={data.today} />
+				{#if dueTasks.length}
+					<TaskList tasks={dueTasks.slice(0, 3)} today={data.today} />
 				{:else}
 					<EmptyState
 						compact
@@ -170,7 +207,7 @@
 			<!-- ── In range (span 2) ────────────────────────────────────── -->
 			<div class="cell main">
 				{#if hasReadings}
-					<InRangeList items={inRange} {untested} total={cards.length - untested.length} streak={calm ? data.cheers.streak : null} />
+					<InRangeList items={inRange} {untested} total={cards.length - untested.length} streak={calm ? data.cheers.streak : null} due={dueTests} testHref="/entries/test/new?tank={data.tank.id}" />
 				{:else}
 					<div class="section-head"><h2>In range</h2><span class="meta">No readings yet</span></div>
 				{/if}
@@ -304,6 +341,15 @@
 							<span class="chev" aria-hidden="true">›</span>
 						</a>
 					{/each}
+					{#if data.contents.schedule}
+						<a class="c-row" href="/tanks/{data.tank.id}/settings">
+							<span class="f-text">
+								<span class="f-title">Schedule</span>
+								<span class="f-sub">{data.contents.schedule}</span>
+							</span>
+							<span class="chev" aria-hidden="true">›</span>
+						</a>
+					{/if}
 				</div>
 			</section>
 		</div>
@@ -322,6 +368,89 @@
 	}
 	.news {
 		padding: 16px 0 4px;
+	}
+	/* Cycling: three small charts side by side under the rule, then the stage and Mark as running */
+	.cycling {
+		display: flex;
+		flex-direction: column;
+		padding: 18px 0 8px;
+	}
+	.cycle-charts {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 16px;
+	}
+	.cycle-chart {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		min-width: 0;
+		padding: 10px 0 8px;
+		border-bottom: 1px solid var(--divider);
+		color: var(--text);
+	}
+	.cc-name {
+		font-size: 12px;
+		color: var(--text-muted);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.cc-value {
+		font-size: 22px;
+		font-weight: 800;
+		line-height: 1.1;
+		white-space: nowrap;
+	}
+	.cc-unit {
+		margin-left: 3px;
+		font-size: 11px;
+		font-weight: 400;
+		color: var(--text-muted);
+	}
+	.cc-none {
+		color: var(--text-muted);
+	}
+	.cc-spark {
+		display: block;
+		height: 36px;
+		margin-top: 4px;
+	}
+	.cc-when {
+		font-size: 12px;
+		color: var(--text-muted);
+	}
+	.cycle-foot {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		padding-top: 12px;
+	}
+	.stage {
+		margin: 0;
+		font-size: 15px;
+		line-height: 1.45;
+	}
+	.cycle-foot .btn {
+		align-self: flex-start;
+		min-height: 44px;
+	}
+	@media (hover: hover) {
+		.cycle-chart:hover {
+			background: var(--surface);
+			color: var(--text);
+		}
+	}
+	@media (min-width: 1024px) {
+		.cycle-charts {
+			gap: 32px;
+		}
+		.cycle-foot {
+			flex-direction: row;
+			align-items: center;
+			justify-content: space-between;
+			gap: 24px;
+		}
 	}
 	/* Phones: one column, top to bottom (the phone design's order), each section under its own rule */
 	.grid {

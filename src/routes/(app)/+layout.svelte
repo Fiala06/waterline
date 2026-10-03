@@ -44,7 +44,7 @@
 		const base = `/tanks/${id}`;
 		const under = (part: string) => routeId.startsWith(`/(app)/tanks/[id]/${part}`) || routeId.startsWith(`/(app)/tanks/[id]/(tabs)/${part}`);
 		return [
-			{ key: 'overview', label: 'Overview', href: `/?tank=${id}`, active: path === '/' || routeId === '/(app)/tanks/[id]/(tabs)' },
+			{ key: 'overview', label: 'Overview', href: `/?tank=${id}`, active: path === '/' },
 			{ key: 'charts', label: 'Charts', href: `/charts?tank=${id}`, active: path.startsWith('/charts') },
 			{ key: 'history', label: 'History', href: `/history?tank=${id}`, active: path.startsWith('/history') || path.startsWith('/entries/') },
 			{ key: 'photos', label: 'Photos', href: `/photos?tank=${id}`, count: data.counts.photos, active: path.startsWith('/photos') },
@@ -56,7 +56,8 @@
 				key: 'setup',
 				label: 'Setup',
 				href: `${base}/settings`,
-				active: under('settings') || under('targets') || under('public') || under('review') || under('remind') || under('import')
+				// Notes & routines (/tanks/[id]) is a Setup page too
+				active: under('settings') || under('targets') || under('public') || under('review') || under('remind') || under('import') || routeId === '/(app)/tanks/[id]/(tabs)'
 			}
 		];
 	});
@@ -88,8 +89,9 @@
 		if (id === '/(app)/tanks/new') return { title: 'Add tank', crumbs: [tanks] };
 		const tankPage = (
 			{
-				'/(app)/tanks/[id]/(tabs)': 'Tank details',
+				'/(app)/tanks/[id]/(tabs)': 'Notes & routines',
 				'/(app)/tanks/[id]/equipment/new': 'Add equipment',
+				'/(app)/tanks/[id]/health': 'Log health',
 				'/(app)/tanks/[id]/equipment/[eid]': 'Edit equipment',
 				'/(app)/tanks/[id]/livestock/new': 'Add livestock',
 				'/(app)/tanks/[id]/livestock/several': 'Add several',
@@ -100,7 +102,7 @@
 				'/(app)/tanks/[id]/spending/[eid]': 'Edit expense',
 				'/(app)/tanks/[id]/targets': 'Parameters & targets',
 				'/(app)/tanks/[id]/public': 'Public page',
-				'/(app)/tanks/[id]/summary': 'Get help: tank summary'
+				'/(app)/tanks/[id]/summary': 'Share summary'
 			} as Record<string, string | undefined>
 		)[id];
 		if (tankPage) return { title: tankPage };
@@ -125,6 +127,15 @@
 	// in the tank workspace, a sub-page's title sits under the tabs
 	const subHead = $derived(tankScoped && header && !tabs.some((t) => t.active && (path === '/' || /^\/(charts|history|photos)$/.test(path) || /\/\(tabs\)\/[a-z]+$/.test(routeId))) ? header : null);
 
+	// "1 reading out of range · 2 tasks overdue"
+	function attentionText(t: { outOfRange: number; overdue: number }) {
+		return [
+			t.outOfRange ? `${t.outOfRange} reading${t.outOfRange === 1 ? '' : 's'} out of range` : null,
+			t.overdue ? `${t.overdue} task${t.overdue === 1 ? '' : 's'} overdue` : null
+		]
+			.filter(Boolean)
+			.join(' · ');
+	}
 	function pickTank(id: string) {
 		const u = new URL(page.url);
 		u.searchParams.set('tank', id);
@@ -169,8 +180,10 @@
 		requestAnimationFrame(listScroll);
 	});
 
-	// ── Alerts: what's new since they were last marked read, on this device ──
-	let seen = $state<string[]>([]);
+	// ── Alerts: what's new since they were last marked read (kept on the account) ──
+	// what the server knows, plus what was just marked read here before the page refreshes
+	let seenHere = $state<string[]>([]);
+	const seen = $derived([...data.alertsSeen, ...seenHere]);
 	const alerts = $derived.by((): Alert[] => {
 		const list: Alert[] = data.alerts.map((a) => ({ key: a.key, kind: a.kind, title: a.title, sub: a.sub, href: a.href }));
 		if (data.app.update) list.unshift({ key: `update:${data.app.update.version}`, kind: 'update', title: `Update to ${data.app.update.version}`, sub: "See what's new and update the server", href: '/settings/changelog' });
@@ -178,12 +191,10 @@
 	});
 	const unread = $derived(alerts.filter((a) => !seen.includes(a.key)).length);
 	function markRead(keys: string[]) {
-		seen = [...new Set([...seen, ...keys])].slice(-300);
-		try {
-			localStorage.setItem(`wl_alerts:${data.user.id}`, JSON.stringify(seen));
-		} catch {
-			/* storage blocked */
-		}
+		seenHere = [...new Set([...seenHere, ...keys])].slice(-300);
+		fetch('/alerts', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ keys }) }).catch(() => {
+			/* offline: the bell forgets on the next load */
+		});
 	}
 
 	// ── Offline queue: sync when the connection comes back or the app is reopened ──
@@ -200,7 +211,6 @@
 		ui.userId = data.user.id;
 		loadNav();
 		try {
-			seen = JSON.parse(localStorage.getItem(`wl_alerts:${data.user.id}`) ?? '[]');
 			const t = sessionStorage.getItem('wl_toast');
 			if (t) {
 				sessionStorage.removeItem('wl_toast');
@@ -375,7 +385,7 @@
 							class="tank"
 							class:current={t.id === data.currentTankId && tankScoped}
 							aria-current={t.id === data.currentTankId && tankScoped ? 'true' : undefined}
-							title={t.name}
+							title={t.outOfRange || t.overdue ? `${t.name} · ${attentionText(t)}` : t.name}
 							onclick={(e) => {
 								if (e.metaKey || e.ctrlKey || e.shiftKey) return;
 								e.preventDefault();
@@ -384,9 +394,14 @@
 						>
 							<span class="thumb"><TankThumb cover={t.cover} size={28} />{#if t.alerts}<i class="dot" aria-hidden="true"></i>{/if}</span>
 							<span class="tname lbl">{t.name}</span>
-							<span class="st lbl" class:bad={!!t.alerts} aria-label={t.alerts ? `${t.alerts} need attention` : t.tested ? 'All in range' : 'No data'}>
-								{t.alerts ? `✕ ${t.alerts}` : t.tested ? '✓' : '–'}
-							</span>
+							<!-- readings out of range (✕, red) and overdue tasks (▲) apart; the title spells them out -->
+							{#if t.outOfRange || t.overdue}
+								<span class="st lbl" aria-label={attentionText(t)}>
+									{#if t.outOfRange}<span class="bad">✕ {t.outOfRange}</span>{/if}{#if t.overdue}<span class="warn">▲ {t.overdue}</span>{/if}
+								</span>
+							{:else}
+								<span class="st lbl" aria-label={t.tested ? 'All in range' : 'No data'}>{t.tested ? '✓' : '–'}</span>
+							{/if}
 						</a>
 					{/each}
 				</div>
@@ -441,7 +456,7 @@
 					{today}
 					{tabs}
 					{unread}
-					tabsOnPhone={topLevel && path !== '/' && !/^\/(charts|history)$/.test(path)}
+					tabsOnPhone={topLevel}
 				/>
 			</div>
 			{#if subHead}
@@ -472,7 +487,8 @@
 							{ href: `/tanks/${current.id}/settings`, label: 'Details', on: routeId.endsWith('/(tabs)/settings') },
 							{ href: `/tanks/${current.id}/targets`, label: 'Parameters & targets', on: routeId.endsWith('/targets') },
 							{ href: `/tanks/${current.id}/public`, label: 'Public page', on: routeId.endsWith('/public') },
-							{ href: `/tanks/${current.id}/remind`, label: 'Reminders', on: routeId.endsWith('/remind') },
+							{ href: `/tanks/${current.id}/remind`, label: 'Remind me', on: routeId.endsWith('/remind') },
+							{ href: `/tanks/${current.id}`, label: 'Notes & routines', on: routeId === '/(app)/tanks/[id]/(tabs)' },
 							{ href: `/tanks/${current.id}/review`, label: 'Setup review', on: routeId.endsWith('/review') }
 						] as s (s.href)}
 							<a href={s.href} class:active={s.on} aria-current={s.on ? 'page' : undefined}>{s.label}</a>
@@ -769,9 +785,11 @@
 			justify-content: center;
 			color: var(--text-muted);
 		}
-		.pin:hover {
-			color: var(--text);
-			background: var(--surface);
+		@media (hover: hover) {
+			.pin:hover {
+				color: var(--text);
+				background: var(--surface);
+			}
 		}
 		.search {
 			flex-shrink: 0;
@@ -797,9 +815,11 @@
 			font: inherit;
 			font-size: 12px;
 		}
-		.search:hover {
-			border-color: var(--text);
-			color: var(--text);
+		@media (hover: hover) {
+			.search:hover {
+				border-color: var(--text);
+				color: var(--text);
+			}
 		}
 		.tanks {
 			display: flex;
@@ -813,9 +833,16 @@
 			justify-content: space-between;
 			padding: 6px 8px 8px;
 		}
-		.tanks .caps:hover,
 		.tanks .caps.active {
 			color: var(--accent-text);
+		}
+		/* the whole "TANKS · All ›" row opens Tanks */
+		@media (hover: hover) {
+			.tanks .caps:hover {
+				color: var(--accent-text);
+				text-decoration: underline;
+				text-underline-offset: 3px;
+			}
 		}
 		.tank-list {
 			display: flex;
@@ -838,8 +865,10 @@
 			border-left: 3px solid transparent;
 			margin-left: -3px;
 		}
-		.tank:hover {
-			background: var(--surface);
+		@media (hover: hover) {
+			.tank:hover {
+				background: var(--surface);
+			}
 		}
 		.tank.current {
 			background: var(--surface);
@@ -870,8 +899,15 @@
 			font-size: 12px;
 			font-weight: 800;
 		}
-		.st.bad {
+		.st {
+			display: flex;
+			gap: 8px;
+		}
+		.st .bad {
 			color: var(--bad);
+		}
+		.st .warn {
+			color: var(--warn);
 		}
 		.more-tanks {
 			flex-shrink: 0;
@@ -882,8 +918,10 @@
 			color: var(--text-muted);
 			white-space: nowrap;
 		}
-		.more-tanks:hover {
-			color: var(--accent-text);
+		@media (hover: hover) {
+			.more-tanks:hover {
+				color: var(--accent-text);
+			}
 		}
 		.add {
 			flex-shrink: 0;
@@ -926,8 +964,10 @@
 		.link .lbl:first-of-type {
 			flex: 1;
 		}
-		.link:hover {
-			background: var(--surface);
+		@media (hover: hover) {
+			.link:hover {
+				background: var(--surface);
+			}
 		}
 		.link.active {
 			background: var(--surface);
@@ -1006,8 +1046,10 @@
 			color: var(--accent-text);
 			font-weight: 800;
 		}
-		.ver:hover {
-			text-decoration: underline;
+		@media (hover: hover) {
+			.ver:hover {
+				text-decoration: underline;
+			}
 		}
 
 		.main {
@@ -1087,8 +1129,10 @@
 			font-size: 15px;
 			color: var(--text);
 		}
-		.setup-nav a:hover {
-			background: var(--surface);
+		@media (hover: hover) {
+			.setup-nav a:hover {
+				background: var(--surface);
+			}
 		}
 		.setup-nav a.active {
 			background: var(--surface);

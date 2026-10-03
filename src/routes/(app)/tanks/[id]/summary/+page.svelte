@@ -1,5 +1,5 @@
 <script lang="ts">
-	// Get help: a tank's readings, care log and stocking as text to paste with
+	// Share summary (get help): a tank's readings, care log and stocking as text to paste with
 	// a question into a forum post, a message to a friend or your fish store,
 	// or an AI chat (redesign README § 14). Nothing is sent anywhere from here.
 	import { onMount } from 'svelte';
@@ -37,13 +37,13 @@
 	}
 </script>
 
-<svelte:head><title>Get help: tank summary · {data.tank.name}</title></svelte:head>
+<svelte:head><title>Share summary · {data.tank.name}</title></svelte:head>
 
 <div class="wrap">
 	<div class="top hide-desk">
 		<a class="back" href={base}>‹ {data.tank.name}</a>
 		<span class="kicker">{data.tank.name}</span>
-		<h1>Get help: tank summary</h1>
+		<h1>Share summary</h1>
 	</div>
 	<p class="intro">
 		A summary of this tank to paste with your question, e.g. “Why does my nitrate keep climbing?”, into a forum post, a message to a friend or your fish store, or an

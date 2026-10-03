@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { and, desc, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { addDays, dateInZone, todayInZone } from '$lib/time';
 import { effectiveDue, isRoutine, nextDueAfterCompletion } from '$lib/tasks';
 import { db } from './db';
@@ -53,7 +53,13 @@ export function completeTask(userId: string, taskId: string, opts: { at?: string
 	const task = getTask(userId, taskId);
 	const at = opts.at ?? new Date().toISOString();
 	const nextDue = nextDueAfterCompletion(task, dateInZone(at, opts.timeZone), todayInZone(opts.timeZone));
+	// the last of a course: it's done, and History says so
+	const finished = task.recurring && task.endsOn && !nextDue;
 	const completion = db.transaction((tx) => {
+		if (finished)
+			tx.insert(events)
+				.values({ tankId: task.tankId, occurredAt: at, category: 'note', note: `Finished: ${isRoutine(task.kind) ? `${task.product ?? task.name} course` : task.name}`, data: { system: 'course_finished', task_id: task.id } })
+				.run();
 		const logged =
 			!opts.eventId && isRoutine(task.kind)
 				? tx.insert(events).values({ tankId: task.tankId, occurredAt: at, note: null, ...routineEntry(task) }).returning().get()
@@ -98,6 +104,9 @@ export function undoCompletion(userId: string, completionId: string) {
 			.where(eq(tasks.id, row.task.id))
 			.run();
 		tx.delete(taskCompletions).where(eq(taskCompletions.id, completionId)).run();
+		// the course isn't over after all
+		if (row.task.endsOn && !row.task.nextDue)
+			tx.delete(events).where(and(eq(events.tankId, row.task.tankId), eq(events.category, 'note'), sql`json_extract(${events.data}, '$.system') = 'course_finished' AND json_extract(${events.data}, '$.task_id') = ${row.task.id}`)).run();
 		// a routine's dose or feeding was logged by Done: undoing takes it back out of History
 		if (isRoutine(row.task.kind) && row.c.eventId) tx.delete(events).where(eq(events.id, row.c.eventId)).run();
 		// a setup review (#30): its History entry goes, and the parts it checked are as they were
@@ -126,7 +135,7 @@ export function taskOfKind(userId: string, tankId: string, kind: Task['kind']) {
 }
 
 export type TaskInput = Pick<Task, 'name' | 'kind' | 'recurring' | 'intervalDays' | 'scheduleMode' | 'nextDue' | 'openFormOnDone'> &
-	Partial<Pick<Task, 'equipmentId' | 'weekdays' | 'product' | 'amount' | 'amountUnit'>>;
+	Partial<Pick<Task, 'equipmentId' | 'weekdays' | 'product' | 'amount' | 'amountUnit' | 'endsOn'>>;
 
 export function createTask(userId: string, tankId: string, input: TaskInput) {
 	getTank(userId, tankId);

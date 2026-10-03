@@ -74,7 +74,7 @@ export function tankSummary(user: User, tankId: string, days: number, now = new 
 	// ── The tank ────────────────────────────────────────────────────────────
 	const volume = t.nominalVolumeL != null ? vol(t.nominalVolumeL) : null;
 	const facts: [string, string | null][] = [
-		['Type', tankTypeLabel(t.type)],
+		['Type', t.cycling ? `${tankTypeLabel(t.type)} · Cycling` : tankTypeLabel(t.type)],
 		['Volume', volume && t.actualVolumeL != null ? `${volume} (${vol(t.actualVolumeL)} of water)` : volume],
 		['Size', t.lengthCm && t.widthCm && t.heightCm ? `${len(t.lengthCm)} × ${len(t.widthCm)} × ${len(t.heightCm)} ${unitLabel('length', user)}` : null],
 		['Set up', t.startDate ? `${fmtDateLong(t.startDate)} (${age(t.startDate, today)} ago)` : null],

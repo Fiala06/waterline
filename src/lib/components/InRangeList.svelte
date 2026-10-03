@@ -10,18 +10,25 @@
 		value: string | null;
 		/** "ppm", "°F"; empty for pH */
 		unit: string;
+		/** days since the reading, when it's older than its Test every cadence */
+		due?: number | null;
 	}
 	let {
 		items,
 		untested,
 		total,
-		streak = null
+		streak = null,
+		due = [],
+		testHref = '/entries/test/new'
 	}: {
 		items: Item[];
 		untested: string[];
 		total: number;
 		/** "Ammonia and nitrite at 0 for 6 tests. The bacteria are clocking in." */
 		streak?: string | null;
+		/** "Due a test: KH (23 days), GH (40 days)", any status */
+		due?: { name: string; days: number }[];
+		testHref?: string;
 	} = $props();
 </script>
 
@@ -41,15 +48,21 @@
 		<ul class="grid">
 			{#each items as c (c.id)}
 				<li>
-					<a href="/charts?p={c.id}" title="{c.fullName} · ✓ OK">
+					<a href="/charts?p={c.id}" title="{c.fullName} · {c.due != null ? `✓ OK · ▲ due a test, ${c.due} days ago` : '✓ OK'}">
 						<span class="k"><span class="ok status-ok" aria-hidden="true">✓</span>{c.label}</span>
 						<span class="v">{c.value}{#if c.unit}<span class="u">{c.unit}</span>{/if}</span>
+						{#if c.due != null}<span class="due"><span class="status-warn" aria-hidden="true">▲</span> – {c.due} days ago · due</span>{/if}
 					</a>
 				</li>
 			{/each}
 		</ul>
 	{/if}
 	{#if streak}<p class="streak"><span class="bug" aria-hidden="true">🦠</span>{streak}</p>{/if}
+	{#if due.length}
+		<p class="due-line">
+			<a href={testHref}><span class="status-warn" aria-hidden="true">▲</span> Due a test: {due.map((d) => `${d.name} (${d.days} days)`).join(', ')}</a>
+		</p>
+	{/if}
 	{#if untested.length}<p class="untested">Not tested: {untested.join(', ')}</p>{/if}
 </section>
 
@@ -86,7 +99,7 @@
 	li {
 		min-width: 0;
 	}
-	a {
+	.grid a {
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
@@ -118,7 +131,7 @@
 		color: var(--text-muted);
 	}
 	@media (hover: hover) {
-		a:hover {
+		.grid a:hover {
 			background: var(--surface);
 			color: var(--text);
 		}
@@ -136,6 +149,24 @@
 		font-size: 13px;
 		color: var(--text-muted);
 	}
+	.due {
+		font-size: 11px;
+		color: var(--text-muted);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.due-line {
+		margin: 12px 0 0;
+		font-size: 13px;
+	}
+	.due-line a {
+		color: var(--text-2);
+		font-weight: 600;
+	}
+	.due-line a:hover {
+		color: var(--accent-text);
+	}
 	@media (min-width: 480px) {
 		.grid {
 			grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -145,7 +176,7 @@
 		.grid {
 			grid-template-columns: repeat(3, minmax(0, 1fr));
 		}
-		a {
+		.grid a {
 			padding: 10px 12px 10px 0;
 		}
 		.k {

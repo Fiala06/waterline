@@ -1,5 +1,6 @@
 import { coverPosition } from '$lib/media';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
+import { tankAge, todayInZone } from '$lib/time';
 import { getTank } from '$lib/server/tanks';
 import type { LayoutServerLoad } from './$types';
 import { tankTypeLabel } from '$lib/types';
@@ -11,9 +12,7 @@ export const load: LayoutServerLoad = ({ locals, params }) => {
 	const volUnit = unitLabel('volume', user);
 	const nominal = vol(t.nominalVolumeL);
 	const actual = vol(t.actualVolumeL);
-	const since = t.startDate
-		? new Date(t.startDate + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' })
-		: null;
+	const { since } = tankAge(t.startDate, todayInZone(user.timeZone));
 	return {
 		tankHead: {
 			id: t.id,

@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import { listTanks } from '$lib/server/tanks';
-import { routineProducts, saveTaskAction, taskFormValues, taskType } from '$lib/server/task-form';
+import { routineProducts, saveTaskAction, taskFormValues, taskPreset, taskType } from '$lib/server/task-form';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, parent, url }) => {
@@ -14,7 +14,8 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 	const from = url.searchParams.get('from') ?? '';
 	return {
 		formTanks: tanks,
-		values: taskFormValues(null, user, tankId, type),
+		// ?product, ?every, ?ends, ?amount: filled in by a link (a treatment course from a health entry)
+		values: taskFormValues(null, user, tankId, type, taskPreset(url.searchParams)),
 		products: routineProducts(user.id),
 		from: from.startsWith('/tanks/') ? from : null
 	};

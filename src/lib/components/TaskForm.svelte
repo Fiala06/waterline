@@ -9,7 +9,8 @@
 	import DateField from '$lib/components/DateField.svelte';
 	import { untrack } from 'svelte';
 	import { DOSING_UNITS } from '$lib/events';
-	import { FEED_UNITS, scheduleExamples, WEEKDAYS } from '$lib/tasks';
+	import { endsAfterTimes, FEED_UNITS, scheduleExamples, WEEKDAYS } from '$lib/tasks';
+	import { fmtDate } from '$lib/time';
 	import { parseNumber } from '$lib/units';
 
 	interface Values {
@@ -27,6 +28,10 @@
 		product: string;
 		amount: string;
 		amountUnit: string;
+		/** a course: runs until a date, or for N times */
+		ends: 'never' | 'on' | 'times';
+		endsOn: string;
+		endsTimes: string;
 	}
 	let {
 		mode,
@@ -67,6 +72,9 @@
 	let scheduleMode = $state(untrack(() => values.scheduleMode));
 	let tankId = $state(untrack(() => values.tankId));
 	let onDone = $state(untrack(() => values.onDone));
+	let ends = $state(untrack(() => values.ends));
+	let endsOn = $state(untrack(() => values.endsOn));
+	let endsTimes = $state(untrack(() => values.endsTimes));
 	let busy = $state(false);
 
 	const days = $derived((parseNumber(every) ?? 0) * (unit === 'weeks' ? 7 : 1));
@@ -76,6 +84,16 @@
 		mode === 'edit' ? (routine ? 'Edit routine' : 'Edit task') : type === 'dosing' ? 'New dosing routine' : type === 'feeding' ? 'New feeding routine' : 'New task'
 	);
 	const units = $derived(type === 'dosing' ? DOSING_UNITS : FEED_UNITS);
+	// "After 5 times" → the day of the fifth: "ends Oct 9"
+	const timesEnd = $derived.by(() => {
+		const n = parseNumber(endsTimes);
+		if (!n || !nextDue) return null;
+		return endsAfterTimes(
+			{ recurring: true, intervalDays: days || null, scheduleMode: repeat === 'days' ? 'weekdays' : scheduleMode, weekdays: weekdays.join(','), nextDue },
+			n
+		);
+	});
+	const times = $derived(type === 'dosing' ? 'doses' : type === 'feeding' ? 'feedings' : 'times');
 </script>
 
 <form
@@ -258,6 +276,32 @@
 			</fieldset>
 		{/if}
 
+		{#if repeat !== 'no'}
+			<!-- a course (a treatment, a round of doses) stops: on a date, or after N times -->
+			<fieldset class="field">
+				<legend class="label">Ends</legend>
+				<div class="segmented ends-seg">
+					<label><input type="radio" name="ends" value="never" bind:group={ends} />Never</label>
+					<label><input type="radio" name="ends" value="on" bind:group={ends} />On a date</label>
+					<label><input type="radio" name="ends" value="times" bind:group={ends} />After</label>
+				</div>
+				{#if ends === 'on'}
+					<div class="ends-in">
+						<DateField name="endsOn" id="t-ends" bind:value={endsOn} required label="Last day" format="weekday" min={nextDue || today} {today} invalid={!!errors.endsOn} />
+						{#if errors.endsOn}<span class="error-text">✕ {errors.endsOn}</span>{/if}
+					</div>
+				{:else if ends === 'times'}
+					<div class="ends-in">
+						<div class="every">
+							<input class="input num-in" name="endsTimes" inputmode="numeric" bind:value={endsTimes} aria-label="How many times" aria-invalid={!!errors.endsTimes} />
+							<span class="times-word">{times}{#if timesEnd}<span class="muted">{` · ends ${fmtDate(timesEnd)}`}</span>{/if}</span>
+						</div>
+						{#if errors.endsTimes}<span class="error-text">✕ {errors.endsTimes}</span>{/if}
+					</div>
+				{/if}
+			</fieldset>
+		{/if}
+
 		{#if routine}
 			<p class="hint">{type === 'dosing' ? 'Marking it done logs the dose in History.' : 'Marking it done logs the feeding in History.'}</p>
 		{:else}
@@ -418,6 +462,26 @@
 	}
 	.every .segmented {
 		flex: 1;
+	}
+	.ends-in {
+		margin-top: 8px;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+	.times-word {
+		align-self: center;
+		font-size: 15px;
+	}
+	.times-word .muted {
+		color: var(--text-muted);
+	}
+	.compact .num-in {
+		height: 44px;
+		font-size: 15px;
+	}
+	.compact .times-word {
+		font-size: 14px;
 	}
 	/* 15: the two schedule modes as one list */
 	.choices {

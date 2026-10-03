@@ -27,6 +27,7 @@
 					{#if e.summary.length}
 						<div class="specs">{#each e.summary as s, i (i)}<span class="tag tag-neutral">{s}</span>{/each}</div>
 					{/if}
+					{#if e.service}<div class="service status-{e.service.level}">{e.service.text}</div>{/if}
 					{#if meta(e)}<div class="meta">{meta(e)}</div>{/if}
 					<div class="acts">
 						<a class="ghost" href={serviceHref}>Log service</a>
@@ -121,6 +122,13 @@
 	.meta {
 		font-size: 13px;
 		color: var(--text-2);
+	}
+	.service {
+		font-size: 13px;
+		font-weight: 800;
+	}
+	.service + .meta {
+		margin-top: -6px;
 	}
 	.acts {
 		display: flex;

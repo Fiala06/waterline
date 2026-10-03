@@ -81,12 +81,12 @@ test('a daily feeding routine: done from the dashboard, the feeding is in Histor
 
 	// in History under Feeding, and editable
 	await open(page, `/history?tank=${tankId}&cat=feeding&range=all`);
-	const entry = (await page.getByRole('link', { name: 'Fed Micro pellets · 2 pinches' }).getAttribute('href'))!;
+	const entry = (await page.getByRole('link', { name: 'Fed 2 pinches of Micro pellets' }).getAttribute('href'))!;
 	await open(page, entry);
 	await expect(page.getByText('Food', { exact: true })).toBeVisible();
 	await open(page, `${entry}/edit`);
 	await page.getByLabel('Amount').fill('3');
 	await page.getByRole('button', { name: 'Save changes' }).click();
 	await open(page, `/history?tank=${tankId}&cat=feeding&range=all`);
-	await expect(page.getByRole('link', { name: 'Fed Micro pellets · 3 pinches' })).toBeVisible();
+	await expect(page.getByRole('link', { name: 'Fed 3 pinches of Micro pellets' })).toBeVisible();
 });

@@ -12,7 +12,7 @@ test('equipment, livestock and plants', async ({ page }, info) => {
 	await page.getByLabel('Model').fill('C-400');
 	await page.getByLabel('Filter type').selectOption('Canister');
 	await page.getByLabel('Flow rate').fill('300');
-	await expect(page.getByText('Create a maintenance task: clean every 4 weeks')).toBeVisible();
+	await expect(page.getByLabel('Service reminder')).toHaveValue('30');
 	await page.getByRole('button', { name: 'Save' }).last().click();
 	await expect(page.getByRole('status')).toContainText('✓ Tidewell C-400 canister added');
 	await expect(page.getByText('300 gph')).toBeVisible();

@@ -2,7 +2,7 @@ import { and, eq, gte } from 'drizzle-orm';
 import { eventTitle } from '$lib/events';
 import { displayValue, fmtRange, fmtValue, paramDecimals, paramUnit, statusOf } from '$lib/params';
 import { statusIcon, statusShort } from '$lib/status';
-import { fmtDate, dateInZone } from '$lib/time';
+import { fmtDate, fmtDay, dateInZone } from '$lib/time';
 import { formatNumber } from '$lib/units';
 import { db } from '$lib/server/db';
 import { tests } from '$lib/server/db/schema';
@@ -106,16 +106,16 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 	const lastValue = values.at(-1);
 	const unit = paramUnit(param, user);
 	const withUnit = (s: string) => (unit ? `${s} ${unit}` : s);
-	// "+11 in 7 days": the latest reading against the one before it
+	// "+11 since Sep 29": the latest reading against the one before it
 	const change = (() => {
 		if (raw.length < 2) return null;
 		const a = raw[raw.length - 2];
 		const b = raw[raw.length - 1];
 		const delta = displayValue(param, b.value, user) - displayValue(param, a.value, user);
 		const dec = paramDecimals(param, user);
-		const days = Math.round((Date.parse(b.takenAt) - Date.parse(a.takenAt)) / 86_400_000);
 		const amount = Math.abs(delta) < 10 ** -dec / 2 ? 'No change' : `${delta > 0 ? '+' : '−'}${formatNumber(Math.abs(delta), dec)}`;
-		return { amount, over: days === 0 ? 'since the test before' : days === 1 ? 'in 1 day' : `in ${days} days` };
+		const before = fmtDay(a.takenAt, user.timeZone);
+		return { amount, over: before === 'Today' ? 'since the test before' : `since ${before.toLowerCase() === 'yesterday' ? 'yesterday' : before}` };
 	})();
 	const stats = values.length
 		? {
