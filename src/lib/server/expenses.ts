@@ -8,6 +8,7 @@ import { dirname, join } from 'node:path';
 import sharp from 'sharp';
 import { addDays } from '$lib/time';
 import { db } from './db';
+import { requireRoleOn, visibleTo } from './members';
 import { expenses, tanks, type Expense } from './db/schema';
 import { dataDir } from './instance';
 import { getTank } from './tanks';
@@ -40,21 +41,21 @@ export function getExpense(userId: string, id: string): Expense {
 		.select({ e: expenses })
 		.from(expenses)
 		.innerJoin(tanks, eq(tanks.id, expenses.tankId))
-		.where(and(eq(expenses.id, id), eq(tanks.userId, userId)))
+		.where(and(eq(expenses.id, id), visibleTo(userId)))
 		.get();
 	if (!row) error(404, 'Expense not found');
 	return row.e;
 }
 
 export function addExpense(userId: string, tankId: string, input: ExpenseInput, importId: string | null = null) {
-	getTank(userId, tankId);
+	getTank(userId, tankId, 'owner');
 	return db.insert(expenses).values({ ...input, tankId, importId }).returning().get();
 }
 
 /** An expense's details; moving it to another of the keeper's tanks keeps its receipt. */
 export function updateExpense(userId: string, id: string, input: ExpenseInput & { tankId: string }) {
 	const before = getExpense(userId, id);
-	getTank(userId, input.tankId);
+	getTank(userId, input.tankId, 'owner');
 	let receiptPath = before.receiptPath;
 	if (receiptPath && input.tankId !== before.tankId) {
 		const moved = receiptFile(input.tankId, before.id, before.receiptType!);
@@ -68,6 +69,7 @@ export function updateExpense(userId: string, id: string, input: ExpenseInput & 
 
 export function deleteExpense(userId: string, id: string) {
 	const e = getExpense(userId, id);
+	requireRoleOn(userId, e.tankId, 'owner');
 	if (e.receiptPath) rmSync(fullPath(e.receiptPath), { force: true });
 	db.delete(expenses).where(eq(expenses.id, id)).run();
 	return e;
@@ -134,6 +136,7 @@ export function receiptOf(userId: string, id: string) {
 /** Attach (or replace) a receipt: a photo, kept as a JPEG without its metadata, or a PDF. */
 export async function attachReceipt(userId: string, id: string, file: File): Promise<{ error: string } | null> {
 	const e = getExpense(userId, id);
+	requireRoleOn(userId, e.tankId, 'owner');
 	if (file.size > MAX_RECEIPT_BYTES) return { error: 'That receipt is over 10 MB.' };
 	const buf = Buffer.from(await file.arrayBuffer());
 	let type: 'image/jpeg' | 'application/pdf';
@@ -163,6 +166,7 @@ export async function attachReceipt(userId: string, id: string, file: File): Pro
 
 export function removeReceipt(userId: string, id: string) {
 	const e = getExpense(userId, id);
+	requireRoleOn(userId, e.tankId, 'owner');
 	if (e.receiptPath) rmSync(fullPath(e.receiptPath), { force: true });
 	db.update(expenses).set({ receiptPath: null, receiptType: null }).where(eq(expenses.id, e.id)).run();
 }

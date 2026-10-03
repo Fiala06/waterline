@@ -7,7 +7,7 @@ import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ locals, parent }) => {
 	const user = locals.user!;
 	const { currentTankId } = await parent();
-	const tanks = [...listTanks(user.id), ...listTanks(user.id, { archived: true })].map((t) => ({ id: t.id, name: t.name }));
+	const tanks = [...listTanks(user.id, { own: true }), ...listTanks(user.id, { archived: true, own: true })].map((t) => ({ id: t.id, name: t.name }));
 	return {
 		exportTanks: tanks,
 		defaultTank: currentTankId ?? tanks[0]?.id ?? null,

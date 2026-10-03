@@ -16,7 +16,7 @@ function editableParams(tankId: string, readings: Map<string, number>) {
 export const load: PageServerLoad = ({ locals, params }) => {
 	const user = locals.user!;
 	const { test, readings, previous } = getTest(user.id, params.id);
-	const tank = getTank(user.id, test.tankId);
+	const tank = getTank(user.id, test.tankId, 'log');
 	const ps = editableParams(tank.id, readings);
 	return {
 		entry: { id: test.id, tankId: tank.id, tankName: tank.name, note: test.note ?? '', day: fmtDate(dateInZone(test.takenAt, user.timeZone)) },

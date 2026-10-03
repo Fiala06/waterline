@@ -8,7 +8,7 @@ import type { Actions, PageServerLoad } from './$types';
 
 // Add several livestock at once, picked from the species list.
 export const load: PageServerLoad = ({ locals, params }) => {
-	const t = getTank(locals.user!.id, params.id);
+	const t = getTank(locals.user!.id, params.id, 'log');
 	return {
 		tank: { id: t.id, name: t.name },
 		// reef tanks search marine species, brackish both, everything else freshwater
@@ -20,7 +20,7 @@ export const load: PageServerLoad = ({ locals, params }) => {
 export const actions: Actions = {
 	default: async ({ request, locals, params, cookies }) => {
 		const user = locals.user!;
-		const t = getTank(user.id, params.id);
+		const t = getTank(user.id, params.id, 'log');
 		const water = t.type === 'reef' ? 'marine' : t.type === 'brackish' ? null : 'fresh';
 		const done = addSeveral('livestock', await request.formData(), user, t.id, water);
 		if ('error' in done) return fail(400, { error: done.error });

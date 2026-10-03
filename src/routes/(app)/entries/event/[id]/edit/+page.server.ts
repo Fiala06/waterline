@@ -14,7 +14,7 @@ export const load: PageServerLoad = ({ locals, params }) => {
 	const user = locals.user!;
 	const e = getEvent(user.id, params.id);
 	if (!eventEditable(e)) error(400, "This entry can't be edited");
-	const tank = getTank(user.id, e.tankId);
+	const tank = getTank(user.id, e.tankId, 'log');
 	return {
 		entry: { id: e.id, tankName: tank.name, category: e.category, note: e.note ?? '', title: eventTitle(e, user), day: fmtDate(dateInZone(e.occurredAt, user.timeZone)) },
 		context: eventFormContext(tank, user),
@@ -30,7 +30,7 @@ export const actions: Actions = {
 		const user = locals.user!;
 		const e = getEvent(user.id, params.id);
 		if (!eventEditable(e)) error(400, "This entry can't be edited");
-		const tank = getTank(user.id, e.tankId);
+		const tank = getTank(user.id, e.tankId, 'log');
 		const form = await request.formData();
 		const values: Record<string, string | string[]> = {};
 		for (const k of new Set(form.keys())) {

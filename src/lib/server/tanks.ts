@@ -14,6 +14,7 @@ import { defaultParameters } from "$lib/params";
 import { newReviewTask } from "$lib/review";
 import { addDays, todayInZone } from "$lib/time";
 import { db } from "./db";
+import { requireRole, roleAllows, tankRole, visibleTo, type Role } from "./members";
 import {
   events,
   tankParameters,
@@ -27,16 +28,17 @@ import {
   type User,
 } from "./db/schema";
 
+/** The tanks this person owns, and those shared with them (#22); `own` keeps it to their own. */
 export function listTanks(
   userId: string,
-  opts: { archived?: boolean } = {},
+  opts: { archived?: boolean; own?: boolean } = {},
 ): Tank[] {
   return db
     .select()
     .from(tanks)
     .where(
       and(
-        eq(tanks.userId, userId),
+        opts.own ? eq(tanks.userId, userId) : visibleTo(userId),
         opts.archived ? isNotNull(tanks.archivedAt) : isNull(tanks.archivedAt),
       ),
     )
@@ -44,14 +46,26 @@ export function listTanks(
     .all();
 }
 
-/** A tank the user owns, or a 404. */
-export function getTank(userId: string, tankId: string): Tank {
+/** This person's role on each of their tanks, for the shell and the Tanks page. */
+export const roleOn = (userId: string, tank: Tank): Role => tankRole(userId, tank) ?? "view";
+
+/**
+ * A tank the user owns or is a member of (#22), or a 404. `need` is what
+ * they're about to do: "log" (an entry, a task done) or "owner" (setup,
+ * targets, sharing); a 403 says why when their role doesn't allow it.
+ */
+export function getTank(
+  userId: string,
+  tankId: string,
+  need: "view" | "log" | "owner" = "view",
+): Tank {
   const tank = db
     .select()
     .from(tanks)
-    .where(and(eq(tanks.id, tankId), eq(tanks.userId, userId)))
+    .where(and(eq(tanks.id, tankId), visibleTo(userId)))
     .get();
   if (!tank) error(404, "Tank not found");
+  if (need !== "view" && !roleAllows(tankRole(userId, tank), need)) requireRole(userId, tank, need);
   return tank;
 }
 
@@ -78,6 +92,9 @@ export interface TankInput {
   co2Off?: string | null;
   /** still cycling: ammonia and nitrite are stages, not failures */
   cycling?: boolean;
+  /** a shared tank (#22): whom reminders and alerts go to */
+  remindTo?: "all" | "owner";
+  alertTo?: "all" | "owner";
   /** the cover photo (null: none) and its focus, 0–100 */
   coverPhotoId?: string | null;
   coverX?: number;
@@ -136,7 +153,7 @@ export function updateTank(
   tankId: string,
   patch: Partial<TankInput>,
 ): Tank {
-  getTank(userId, tankId);
+  getTank(userId, tankId, "owner");
   return db
     .update(tanks)
     .set(patch)
@@ -146,7 +163,7 @@ export function updateTank(
 }
 
 export function setArchived(userId: string, tankId: string, archived: boolean) {
-  getTank(userId, tankId);
+  getTank(userId, tankId, "owner");
   db.transaction((tx) => {
     tx.update(tanks)
       .set({ archivedAt: archived ? new Date().toISOString() : null })
@@ -195,7 +212,7 @@ export function updateParams(
     testEveryDays?: number | null;
   }[],
 ) {
-  getTank(userId, tankId);
+  getTank(userId, tankId, "owner");
   db.transaction((tx) => {
     for (const r of rows) {
       tx.update(tankParameters)
@@ -226,7 +243,7 @@ export function addCustomParam(
     decimals: number;
   },
 ) {
-  getTank(userId, tankId);
+  getTank(userId, tankId, "owner");
   const last = db
     .select({ s: max(tankParameters.sort) })
     .from(tankParameters)
@@ -303,7 +320,7 @@ export function deleteCustomParam(
   tankId: string,
   paramId: string,
 ) {
-  getTank(userId, tankId);
+  getTank(userId, tankId, "owner");
   db.transaction((tx) => {
     tx.delete(tankParameters)
       .where(
@@ -333,7 +350,7 @@ export function deleteCustomParam(
  * Custom parameters are untouched.
  */
 export function resetParamDefaults(user: User, tankId: string) {
-  const tank = getTank(user.id, tankId);
+  const tank = getTank(user.id, tankId, "owner");
   const preset = defaultParameters(user, tank.type);
   const existing = new Map(
     listParams(tankId, { all: true })
@@ -373,7 +390,7 @@ export function resetParamDefaults(user: User, tankId: string) {
 
 /** The tank is cycled and running: cycling off, with a "Cycle complete" note in History. */
 export function markRunning(userId: string, tankId: string) {
-  const tank = getTank(userId, tankId);
+  const tank = getTank(userId, tankId, "owner");
   if (!tank.cycling) return tank;
   return db.transaction((tx) => {
     const t = tx

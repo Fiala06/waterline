@@ -335,3 +335,35 @@ export function inviteEmail(e: InviteEmail): Rendered {
 		text: `You're invited\n${e.inviter} invited you to Waterline, an aquarium log, at ${e.host}. Accept, then sign in with the Google account this email came to.\n\nAccept the invitation: ${e.acceptUrl}\n\nThe link works until ${e.expires}, and only for this address. If you didn't expect this, ignore it.` + textFooter(e.footer)
 	};
 }
+
+// ── A tank shared with someone (#22) ───────────────────────────────────────
+
+export interface ShareEmail {
+	host: string;
+	inviter: string;
+	tankName: string;
+	/** "log care" or "view" */
+	can: 'log' | 'view';
+	acceptUrl: string;
+	expires: string;
+	/** they aren't on the server yet: the same link signs them up too */
+	newToServer: boolean;
+	footer: Footer;
+}
+
+export function shareEmail(e: ShareEmail): Rendered {
+	const what = e.can === 'log' ? 'log tests, water changes, dosing, notes and photos, and mark tasks done' : 'see how it’s doing';
+	const subject = `${e.inviter} shared ${e.tankName} with you on Waterline`;
+	const preheader = `Accept to ${e.can === 'log' ? 'help look after it' : 'follow along'}.`;
+	const body =
+		title(`${e.inviter} shared ${e.tankName}`) +
+		`<p style="margin:0 0 20px;font:15px/1.5 ${FONT}">${esc(e.inviter)} would like you to help with <b>${esc(e.tankName)}</b> on Waterline, an aquarium log, at ${esc(e.host)}. You'll be able to ${what}. Accept, then sign in with the Google account this email came to.</p>` +
+		buttons(button('Accept', e.acceptUrl)) +
+		note(`The link works until ${esc(e.expires)}, and only for this address.${e.newToServer ? ' It also lets you sign in to this server.' : ''} If you didn't expect this, ignore it.`);
+	return {
+		subject,
+		preheader,
+		html: layout({ preheader, body, footer: e.footer }),
+		text: `${e.inviter} shared ${e.tankName}\n${e.inviter} would like you to help with ${e.tankName} on Waterline, an aquarium log, at ${e.host}. You'll be able to ${what}. Accept, then sign in with the Google account this email came to.\n\nAccept: ${e.acceptUrl}\n\nThe link works until ${e.expires}, and only for this address.${e.newToServer ? ' It also lets you sign in to this server.' : ''} If you didn't expect this, ignore it.` + textFooter(e.footer)
+	};
+}

@@ -147,11 +147,43 @@ export const tanks = sqliteTable(
 		/** equipment the tank goes without on purpose ("No heater"): filter | heater | light | co2 */
 		withoutEquipment: text('without_equipment', { mode: 'json' }).$type<string[]>().notNull().default([]),
 		reviewChecks: text('review_checks', { mode: 'json' }).$type<Partial<Record<'details' | 'equipment' | 'targets' | 'livestock', string>>>().notNull().default({}),
+		/** a shared tank (#22): whom its task reminders and out-of-range alerts go to */
+		remindTo: text('remind_to', { enum: ['all', 'owner'] }).notNull().default('all'),
+		alertTo: text('alert_to', { enum: ['all', 'owner'] }).notNull().default('all'),
 		archivedAt: text('archived_at'),
 		createdAt: createdAt()
 	},
 	(t) => [index('tanks_user').on(t.userId)]
 );
+
+/**
+ * People a tank is shared with (#22): invited by email, they can log care
+ * (tests, water changes, dosing, notes, photos, tasks done) or only view.
+ * Only the owner changes setup, targets and sharing. The invite link's token
+ * is kept hashed; accepting (signing in as that address) fills in user_id.
+ */
+export const TANK_ROLES = ['log', 'view'] as const;
+export type TankRole = (typeof TANK_ROLES)[number];
+export const tankMembers = sqliteTable(
+	'tank_members',
+	{
+		id: id(),
+		tankId: text('tank_id')
+			.notNull()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		email: text('email').notNull(),
+		userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
+		role: text('role', { enum: TANK_ROLES }).notNull().default('log'),
+		tokenHash: text('token_hash').notNull(),
+		invitedBy: text('invited_by').references(() => users.id, { onDelete: 'set null' }),
+		createdAt: createdAt(),
+		expiresAt: text('expires_at').notNull(),
+		acceptedAt: text('accepted_at'),
+		revokedAt: text('revoked_at')
+	},
+	(t) => [index('tank_members_tank').on(t.tankId), index('tank_members_user').on(t.userId), uniqueIndex('tank_members_token').on(t.tokenHash)]
+);
+export type TankMember = typeof tankMembers.$inferSelect;
 
 export const tankParameters = sqliteTable(
 	'tank_parameters',
@@ -186,7 +218,9 @@ export const tests = sqliteTable(
 		note: text('note'),
 		editedAt: text('edited_at'),
 		clientId: text('client_id'),
-		importId: text('import_id') // the import that added it (undone together)
+		importId: text('import_id'), // the import that added it (undone together)
+		/** who logged it, on a shared tank (#22); null from before sharing or for the owner's own tank */
+		loggedBy: text('logged_by')
 	},
 	(t) => [
 		index('tests_tank_taken').on(t.tankId, t.takenAt),
@@ -224,7 +258,9 @@ export const events = sqliteTable(
 		data: text('data', { mode: 'json' }).$type<Record<string, unknown>>().notNull().default({}),
 		editedAt: text('edited_at'),
 		clientId: text('client_id'),
-		importId: text('import_id') // the import that added it (undone together)
+		importId: text('import_id'), // the import that added it (undone together)
+		/** who logged it, on a shared tank (#22) */
+		loggedBy: text('logged_by')
 	},
 	(t) => [
 		index('events_tank_occurred').on(t.tankId, t.occurredAt),

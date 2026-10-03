@@ -18,7 +18,7 @@ import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals, params, url }) => {
 	const user = locals.user!;
-	const tank = getTank(user.id, params.id);
+	const tank = getTank(user.id, params.id, 'owner');
 	const review = reviewTask(tank.id);
 	const all = listParams(tank.id, { all: true });
 	const tracked = all.filter((p) => p.tracked);
@@ -106,7 +106,7 @@ export const actions: Actions = {
 		redirect(303, `/tanks/${params.id}/settings`); // stay on the tab, like the other tank tabs
 	},
 	archive: async ({ locals, params, cookies }) => {
-		const tank = getTank(locals.user!.id, params.id);
+		const tank = getTank(locals.user!.id, params.id, 'owner');
 		setArchived(locals.user!.id, params.id, true);
 		cookies.delete('wl_tank', { path: '/' });
 		setFlash(cookies, `${tank.name} archived`);

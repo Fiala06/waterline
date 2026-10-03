@@ -13,7 +13,7 @@ import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals, params, url }) => {
 	const user = locals.user!;
-	const tank = getTank(user.id, params.id);
+	const tank = getTank(user.id, params.id, 'owner');
 	return {
 		tank: { id: tank.id, name: tank.name },
 		today: todayInZone(user.timeZone),
@@ -24,7 +24,7 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 export const actions: Actions = {
 	default: async ({ request, locals, params, cookies }) => {
 		const user = locals.user!;
-		const tank = getTank(user.id, params.id);
+		const tank = getTank(user.id, params.id, 'owner');
 		const form = await request.formData();
 		const name = str(form, 'name').slice(0, 80);
 		const values = { name, when: str(form, 'when'), date: str(form, 'date') };

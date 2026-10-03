@@ -1,4 +1,5 @@
 import { fail, redirect, type RequestEvent } from '@sveltejs/kit';
+import { visibleTo } from './members';
 import { and, desc, eq } from 'drizzle-orm';
 import { DOSING_UNITS } from '$lib/events';
 import { endsAfterTimes, FEED_UNITS, isRoutine, onOrAfterWeekday, parseWeekdays } from '$lib/tasks';
@@ -39,7 +40,7 @@ export function taskFormValues(task: Task | null, user: User, tankId: string | n
 		return {
 			type,
 			name: '',
-			tankId: tankId ?? listTanks(user.id)[0]?.id ?? '',
+			tankId: tankId ?? listTanks(user.id, { own: true })[0]?.id ?? '',
 			recurring: true,
 			repeat: 'every' as Repeat,
 			// a routine is most often daily; a task, weekly
@@ -87,7 +88,7 @@ export function routineProducts(userId: string): string[] {
 		.select({ data: events.data })
 		.from(events)
 		.innerJoin(tanks, eq(tanks.id, events.tankId))
-		.where(and(eq(tanks.userId, userId), eq(events.category, 'dosing')))
+		.where(and(visibleTo(userId), eq(events.category, 'dosing')))
 		.orderBy(desc(events.occurredAt))
 		.limit(200)
 		.all()

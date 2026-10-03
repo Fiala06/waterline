@@ -8,6 +8,7 @@ import sharp from 'sharp';
 import { env } from '$env/dynamic/private';
 import { parseExifHint, readExifDate, takenAtFrom, type ExifDate } from '$lib/exif';
 import { db } from './db';
+import { requireRoleOn, visibleTo } from './members';
 import { events, photos, publicPages, tanks, tests } from './db/schema';
 import { getTank } from './tanks';
 
@@ -137,6 +138,7 @@ export function storePhotos(
 /** The keeper fixes a photo's date in the viewer (#42): from then on it no longer follows its entry's. */
 export function setPhotoDate(userId: string, photoId: string, takenAt: string) {
 	const p = getPhoto(userId, photoId);
+	requireRoleOn(userId, p.tankId, 'log');
 	db.update(photos).set({ takenAt, takenAtSet: true }).where(eq(photos.id, p.id)).run();
 	return p;
 }
@@ -155,7 +157,7 @@ export function getPhoto(userId: string, photoId: string): Photo {
 		.select({ photo: photos })
 		.from(photos)
 		.innerJoin(tanks, eq(tanks.id, photos.tankId))
-		.where(and(eq(photos.id, photoId), eq(tanks.userId, userId)))
+		.where(and(eq(photos.id, photoId), visibleTo(userId)))
 		.get();
 	if (!row) error(404, 'Photo not found');
 	return row.photo;
@@ -173,6 +175,7 @@ function unlinkPhoto(id: string) {
 
 export function deletePhoto(userId: string, photoId: string) {
 	const p = getPhoto(userId, photoId);
+	requireRoleOn(userId, p.tankId, 'log');
 	unlinkPhoto(p.id);
 	db.delete(photos).where(eq(photos.id, photoId)).run();
 	rmSync(photoFilePath(p, 'full'), { force: true });
@@ -245,6 +248,7 @@ export function tankPhotos(userId: string, tankId: string) {
 
 export function setCover(userId: string, photoId: string) {
 	const p = getPhoto(userId, photoId);
+	requireRoleOn(userId, p.tankId, 'owner');
 	// a new cover starts in the middle; Settings moves it
 	db.update(tanks).set({ coverPhotoId: p.id, coverX: 50, coverY: 50 }).where(eq(tanks.id, p.tankId)).run();
 	return p;

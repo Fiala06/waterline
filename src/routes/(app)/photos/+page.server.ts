@@ -37,7 +37,7 @@ export const actions: Actions = {
 	upload: async ({ request, locals, cookies }) => {
 		const user = locals.user!;
 		const form = await request.formData();
-		const tank = getTank(user.id, String(form.get('tankId') ?? ''));
+		const tank = getTank(user.id, String(form.get('tankId') ?? ''), 'log');
 		const files = photoFiles(form);
 		if (!files.length) return fail(400, { error: 'Choose at least one photo.' });
 		const today = todayInZone(user.timeZone);

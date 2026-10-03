@@ -1,3 +1,4 @@
+import { getTank } from '$lib/server/tanks';
 import { fail, redirect } from '@sveltejs/kit';
 import { dateInZone, fmtDate } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
@@ -67,6 +68,7 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const id = str(form, 'id');
 		if (getPlant(locals.user!.id, id).tankId !== params.id) return fail(404);
+		getTank(locals.user!.id, params.id, 'log');
 		const files = photoFiles(form, 'photo').slice(0, 1);
 		if (!files.length) return fail(400, { error: 'Choose a photo.' });
 		const tooBig = checkPhotoFiles(files);

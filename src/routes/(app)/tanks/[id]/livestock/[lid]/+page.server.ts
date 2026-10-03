@@ -104,6 +104,7 @@ export const actions: Actions = {
 	photo: async ({ request, locals, params, cookies }) => {
 		const user = locals.user!;
 		const l = entry(user.id, params.id, params.lid);
+		getTank(user.id, l.tankId, 'log');
 		const files = photoFiles(await request.formData(), 'photo').slice(0, 1);
 		if (!files.length) return fail(400, { photoError: 'Choose a photo.' });
 		const tooBig = checkPhotoFiles(files);

@@ -2,6 +2,7 @@
 // fertilizer, filter media), so reordering is one tap. Account-wide, not per
 // tank; dosing shows "Reorder" for a product with a saved link.
 import { error } from '@sveltejs/kit';
+import { visibleTo } from './members';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { dateInZone } from '$lib/time';
 import { db } from './db';
@@ -104,7 +105,7 @@ export function lastDosed(userId: string, timeZone: string) {
 		.select({ data: events.data, at: events.occurredAt, tank: tanks.name })
 		.from(events)
 		.innerJoin(tanks, eq(tanks.id, events.tankId))
-		.where(and(eq(tanks.userId, userId), eq(events.category, 'dosing')))
+		.where(and(visibleTo(userId), eq(events.category, 'dosing')))
 		.orderBy(desc(events.occurredAt))
 		.limit(500)
 		.all();

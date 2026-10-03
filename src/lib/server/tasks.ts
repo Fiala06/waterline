@@ -3,6 +3,7 @@ import { and, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { addDays, dateInZone, todayInZone } from '$lib/time';
 import { effectiveDue, isRoutine, nextDueAfterCompletion } from '$lib/tasks';
 import { db } from './db';
+import { requireRoleOn, visibleTo } from './members';
 import { events, taskCompletions, tanks, tasks, type Tank, type Task } from './db/schema';
 import { getTank } from './tanks';
 
@@ -14,7 +15,7 @@ export function listTasks(userId: string, tankId?: string) {
 		.innerJoin(tanks, eq(tanks.id, tasks.tankId))
 		.where(
 			and(
-				eq(tanks.userId, userId),
+				visibleTo(userId),
 				isNull(tanks.archivedAt),
 				isNotNull(tasks.nextDue),
 				tankId ? eq(tasks.tankId, tankId) : undefined
@@ -30,7 +31,7 @@ export function getTask(userId: string, taskId: string): Task {
 		.select({ task: tasks })
 		.from(tasks)
 		.innerJoin(tanks, eq(tanks.id, tasks.tankId))
-		.where(and(eq(tasks.id, taskId), eq(tanks.userId, userId)))
+		.where(and(eq(tasks.id, taskId), visibleTo(userId)))
 		.get();
 	if (!row) error(404, 'Task not found');
 	return row.task;
@@ -51,6 +52,7 @@ function routineEntry(task: Task) {
  */
 export function completeTask(userId: string, taskId: string, opts: { at?: string; eventId?: string; timeZone: string }) {
 	const task = getTask(userId, taskId);
+	requireRoleOn(userId, task.tankId, 'log');
 	const at = opts.at ?? new Date().toISOString();
 	const nextDue = nextDueAfterCompletion(task, dateInZone(at, opts.timeZone), todayInZone(opts.timeZone));
 	// the last of a course: it's done, and History says so
@@ -88,9 +90,10 @@ export function undoCompletion(userId: string, completionId: string) {
 		.from(taskCompletions)
 		.innerJoin(tasks, eq(tasks.id, taskCompletions.taskId))
 		.innerJoin(tanks, eq(tanks.id, tasks.tankId))
-		.where(and(eq(taskCompletions.id, completionId), eq(tanks.userId, userId)))
+		.where(and(eq(taskCompletions.id, completionId), visibleTo(userId)))
 		.get();
 	if (!row) error(404, 'Nothing to undo');
+	requireRoleOn(userId, row.task.tankId, 'log');
 	const latest = db
 		.select()
 		.from(taskCompletions)
@@ -124,6 +127,7 @@ export function undoCompletion(userId: string, completionId: string) {
 /** Snooze moves only the current occurrence; the schedule after it stays the same. */
 export function snoozeTask(userId: string, taskId: string, until: string) {
 	const task = getTask(userId, taskId);
+	requireRoleOn(userId, task.tankId, 'log');
 	if (!task.nextDue) return task;
 	return db.update(tasks).set({ snoozedUntil: until }).where(eq(tasks.id, taskId)).returning().get();
 }
@@ -138,13 +142,14 @@ export type TaskInput = Pick<Task, 'name' | 'kind' | 'recurring' | 'intervalDays
 	Partial<Pick<Task, 'equipmentId' | 'weekdays' | 'product' | 'amount' | 'amountUnit' | 'endsOn'>>;
 
 export function createTask(userId: string, tankId: string, input: TaskInput) {
-	getTank(userId, tankId);
+	getTank(userId, tankId, 'owner');
 	return db.insert(tasks).values({ ...input, tankId }).returning().get();
 }
 
 export function updateTask(userId: string, taskId: string, input: TaskInput & { tankId: string }) {
 	const task = getTask(userId, taskId);
-	getTank(userId, input.tankId);
+	requireRoleOn(userId, task.tankId, 'owner');
+	getTank(userId, input.tankId, 'owner');
 	// The form shows the snoozed date as "Next due". Left as shown, the schedule and
 	// snooze stay; a new date replaces both.
 	const same = input.nextDue === effectiveDue(task);
@@ -154,6 +159,7 @@ export function updateTask(userId: string, taskId: string, input: TaskInput & { 
 
 export function deleteTask(userId: string, taskId: string) {
 	const task = getTask(userId, taskId);
+	requireRoleOn(userId, task.tankId, 'owner');
 	db.delete(tasks).where(eq(tasks.id, taskId)).run();
 	return task;
 }

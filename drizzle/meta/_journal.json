@@ -232,6 +232,13 @@
       "when": 1791046792359,
       "tag": "0032_invites",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "6",
+      "when": 1791047516309,
+      "tag": "0033_tank_members",
+      "breakpoints": true
     }
   ]
 }

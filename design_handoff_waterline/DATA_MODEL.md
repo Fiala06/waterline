@@ -37,6 +37,8 @@ tanks            id, user_id, name, type(freshwater|planted|brackish|reef),
                  Mark as running clears it with a "Cycle complete" note), without_equipment JSON
                  (what it goes without on purpose, of filter|heater|light|co2: ["heater"]; adding
                  one takes it off), review_checks JSON
+                 remind_to(all|owner), alert_to(all|owner) (a shared tank: whom its reminders and
+                 out-of-range alerts go to),
                  (the setup review: when each part was last checked, {details, equipment,
                  targets, livestock}), archived_at?, created_at
 tank_parameters  id, tank_id, key (ph|nh3|no2|no3|gh|kh|temp|… or custom), name, unit,
@@ -44,12 +46,12 @@ tank_parameters  id, tank_id, key (ph|nh3|no2|no3|gh|kh|temp|… or custom), nam
                  is due on the dashboard), tracked, sort, is_custom
 
 tests            id, tank_id, taken_at, note?, edited_at?, client_id? (offline dedupe),
-                 import_id?
+                 import_id?, logged_by? (who logged it on a shared tank)
 test_readings    test_id, parameter_id, value, prev_value? (before the last edit: "was 40")
 
 events           id, tank_id, category(water_change|dosing|maintenance|livestock|
                  equipment|observation|note|feeding), occurred_at, note?, data JSON, edited_at?,
-                 client_id?, import_id?
+                 client_id?, import_id?, logged_by? (who logged it on a shared tank)
                  -- data examples:
                  -- water_change {percent, volume_l, source: tap|rodi|mix}
                  -- dosing {product, amount, unit, task_id? (logged by a routine's Done)}
@@ -110,6 +112,10 @@ public_pages     tank_id, enabled, slug, show_readings, show_charts, show_photos
                  show_pet_names, description?, display_name, indexable, seo_title?,
                  seo_description?, og_photo_id?, og_plain, view_count
 public_page_views tank_id, day, views
+tank_members     id, tank_id, email, user_id? (once accepted), role(log|view), token_hash,
+                 invited_by?, created_at, expires_at (7 days), accepted_at?, revoked_at?
+                 (people a tank is shared with: "log" logs tests, water changes, dosing, notes,
+                 photos and tasks done; "view" is read-only; only the owner changes setup)
 photo_shares     id (slug), photo_id, include_note, include_tank, created_at, revoked_at?
 
 ── Data in and out ────────────────────────────────────────────────────────────

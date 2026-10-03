@@ -17,7 +17,7 @@ export interface FlashUndo {
 }
 
 /** The actions an Undo can post to. */
-const UNDO_ACTIONS = [/^\/tasks\?\/undo$/, /^\/tanks\/[\w-]+\/import\/[a-z-]+\?\/undo$/, /^\/photos\/[\w-]+\?\/uncover$/];
+const UNDO_ACTIONS = [/^\/tasks\?\/undo$/, /^\/tanks\/[\w-]+\/import\/[a-z-]+\?\/undo$/, /^\/photos\/[\w-]+\?\/uncover$/, /^\/tanks\/[\w-]+\/sharing\?\/restore$/];
 
 function validUndo(u: unknown): FlashUndo | undefined {
 	if (!u || typeof u !== 'object') return undefined;

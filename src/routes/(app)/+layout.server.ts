@@ -5,13 +5,14 @@ import { statusOf } from '$lib/params';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { fmtValue, shortName } from '$lib/params';
 import { listEquipment, listLivestock, listPlants } from '$lib/server/specs';
+import { listMembers } from '$lib/server/members';
 import { db } from '$lib/server/db';
 import { photos } from '$lib/server/db/schema';
 import { count, eq } from 'drizzle-orm';
 import { displayVersion, VERSION } from '$lib/changelog';
 import { takeFlash } from '$lib/server/flash';
 import { latestReadings, latestTest } from '$lib/server/logs';
-import { listParams, listTanks } from '$lib/server/tanks';
+import { listParams, listTanks, roleOn } from '$lib/server/tanks';
 import { shownAvatar } from '$lib/server/avatar-image';
 import { alertsSeen } from '$lib/server/users';
 import { listTasks } from '$lib/server/tasks';
@@ -73,6 +74,8 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 					? `${formatNumber(toDisplay(t.nominalVolumeL, 'volume', user), 1)} ${unitLabel('volume', user)}`
 					: null,
 			startDate: t.startDate,
+			// shared with this person (#22): what they may do, and whose it is
+			role: roleOn(user.id, t),
 			cover: t.coverPhotoId,
 			coverPos: coverPosition(t.coverX, t.coverY),
 			alerts: outOfRange + (overdueByTank.get(t.id) ?? 0),
@@ -92,9 +95,11 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 				photos: db.select({ n: count() }).from(photos).where(eq(photos.tankId, currentTankId)).get()?.n ?? 0,
 				livestock: listLivestock(user.id, currentTankId).reduce((n, l) => n + (l.status === 'in_tank' || l.status === 'quarantine' ? l.count : 0), 0),
 				plants: listPlants(user.id, currentTankId).length,
-				equipment: listEquipment(user.id, currentTankId).length
+				equipment: listEquipment(user.id, currentTankId).length,
+				// people the tank is shared with (#22), for Setup › Sharing
+				members: listMembers(currentTankId).filter((m) => m.state === 'accepted' || m.state === 'pending').length
 			}
-		: { photos: 0, livestock: 0, plants: 0, equipment: 0 };
+		: { photos: 0, livestock: 0, plants: 0, equipment: 0, members: 0 };
 	const wcTask = tasks.find((r) => r.task.tankId === currentTankId && r.task.kind === 'water_change')?.task;
 
 	const flash = takeFlash(cookies);

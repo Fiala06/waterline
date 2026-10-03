@@ -20,7 +20,7 @@ const SOURCES: Record<string, string> = { tap: 'Tap', rodi: 'RODI', mix: 'Mix', 
 
 export const load: PageServerLoad = ({ locals, params }) => {
 	const user = locals.user!;
-	const tank = getTank(user.id, params.id);
+	const tank = getTank(user.id, params.id, 'owner');
 	const today = todayInZone(user.timeZone);
 	const day = (iso: string) => fmtDate(dateInZone(iso, user.timeZone));
 	const last = lastReviewAt(tank.id);
@@ -102,7 +102,7 @@ export const actions: Actions = {
 	/** All still right: finish the review. */
 	finish: async ({ locals, params, cookies }) => {
 		const user = locals.user!;
-		const tank = getTank(user.id, params.id);
+		const tank = getTank(user.id, params.id, 'owner');
 		const done = finishReview(user, tank.id);
 		setFlash(cookies, `✓ ${tank.name} reviewed${done.nextDue ? ` · next ${fmtDate(done.nextDue)}` : ''}`, {
 			...(done.completionId ? { undo: { action: '/tasks?/undo', name: 'completionId', value: done.completionId } } : {})

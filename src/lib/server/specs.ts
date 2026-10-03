@@ -5,6 +5,7 @@ import { and, asc, desc, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { EQUIPMENT_TYPE_LABEL, equipmentName, parseSchedule, scheduleLabel, scheduleTotalHours, withoutLabel, type EquipmentType, type Schedule, type WithoutType } from "$lib/equipment";
 import { zonedToUtc } from "$lib/time";
 import { db } from "./db";
+import { requireRoleOn, visibleTo } from "./members";
 import {
   equipment,
   events,
@@ -83,7 +84,7 @@ export function getEquipment(userId: string, id: string): Equipment {
     .select({ e: equipment })
     .from(equipment)
     .innerJoin(tanks, eq(tanks.id, equipment.tankId))
-    .where(and(eq(equipment.id, id), eq(tanks.userId, userId)))
+    .where(and(eq(equipment.id, id), visibleTo(userId)))
     .get();
   if (!row) error(404, "Equipment not found");
   return row.e;
@@ -143,7 +144,7 @@ export function addEquipment(
   timeZone: string,
   importId: string | null = null,
 ) {
-  getTank(userId, tankId);
+  getTank(userId, tankId, "owner");
   const e = db
     .insert(equipment)
     .values({ ...input, tankId, importId })
@@ -178,7 +179,7 @@ export function addEquipment(
 
 /** Equipment › Goes without: mark (or unmark) that the tank has no filter, heater, light or CO₂, with a History entry. */
 export function setWithout(userId: string, tankId: string, type: WithoutType, on: boolean) {
-  const tank = getTank(userId, tankId);
+  const tank = getTank(userId, tankId, "owner");
   const has = tank.withoutEquipment.includes(type);
   if (has === on) return tank;
   const list = on ? [...tank.withoutEquipment, type] : tank.withoutEquipment.filter((t) => t !== type);
@@ -193,6 +194,7 @@ export function updateEquipment(
   input: EquipmentInput,
 ) {
   const before = getEquipment(userId, id);
+  requireRoleOn(userId, before.tankId, "owner");
   const after = db
     .update(equipment)
     .set(input)
@@ -244,6 +246,7 @@ export function removeEquipment(
   meta: EntryMeta & { reasons?: string[] } = {},
 ) {
   const e = getEquipment(userId, id);
+  requireRoleOn(userId, e.tankId, "owner");
   db.update(equipment)
     .set({ removedAt: meta.at ?? now() })
     .where(eq(equipment.id, id))
@@ -276,7 +279,7 @@ export function markServiced(
   at: string,
   opts: { timeZone?: string; eventId?: string } = {},
 ) {
-  getEquipment(userId, id);
+  requireRoleOn(userId, getEquipment(userId, id).tankId, "log");
   db.update(equipment)
     .set({ lastServicedAt: at })
     .where(eq(equipment.id, id))
@@ -317,7 +320,7 @@ export function addPar(
   tankId: string,
   input: { spot: string; x: number; y: number; value: number; note: string | null; measuredAt: string },
 ) {
-  getTank(userId, tankId);
+  getTank(userId, tankId, "log");
   const r = db.insert(parReadings).values({ ...input, tankId }).returning().get();
   logEvent(
     tankId,
@@ -329,7 +332,7 @@ export function addPar(
 }
 
 export function deletePar(userId: string, tankId: string, id: string) {
-  getTank(userId, tankId);
+  getTank(userId, tankId, "log");
   const r = db.select().from(parReadings).where(and(eq(parReadings.id, id), eq(parReadings.tankId, tankId))).get();
   if (!r) error(404, "Reading not found");
   db.delete(parReadings).where(eq(parReadings.id, id)).run();
@@ -345,7 +348,7 @@ export function knownBrands(userId: string) {
     .innerJoin(tanks, eq(tanks.id, equipment.tankId))
     .where(
       and(
-        eq(tanks.userId, userId),
+        visibleTo(userId),
         isNotNull(equipment.brand),
         ne(equipment.brand, ""),
       ),
@@ -388,7 +391,7 @@ export function getLivestock(userId: string, id: string): Livestock {
     .select({ l: livestock })
     .from(livestock)
     .innerJoin(tanks, eq(tanks.id, livestock.tankId))
-    .where(and(eq(livestock.id, id), eq(tanks.userId, userId)))
+    .where(and(eq(livestock.id, id), visibleTo(userId)))
     .get();
   if (!row) error(404, "Livestock not found");
   return row.l;
@@ -435,7 +438,7 @@ export function addLivestock(
   input: LivestockInput,
   meta: EntryMeta = {},
 ) {
-  getTank(userId, tankId);
+  getTank(userId, tankId, "log");
   const same = sameSpecies(tankId, input);
   const row = same
     ? db
@@ -478,6 +481,7 @@ export function changeCount(
 ) {
   const at = meta.at ?? now();
   const l = getLivestock(userId, id);
+  requireRoleOn(userId, l.tankId, "log");
   const delta = newCount - l.count;
   if (delta === 0)
     return Object.assign(l, {
@@ -514,6 +518,7 @@ export function setLivestockStatus(
   status: Livestock["status"],
 ) {
   const l = getLivestock(userId, id);
+  requireRoleOn(userId, l.tankId, "log");
   if (l.status === status) return l;
   const same = l.nickname
     ? undefined
@@ -550,6 +555,7 @@ export function nameLivestock(
   meta: EntryMeta = {},
 ) {
   const l = getLivestock(userId, id);
+  requireRoleOn(userId, l.tankId, "log");
   if (l.removedAt)
     error(400, "Livestock that has left the tank can't be renamed");
   nickname = nickname?.trim().slice(0, 60) || null;
@@ -606,7 +612,7 @@ export function updateLivestockDetails(
   id: string,
   patch: Partial<Pick<Livestock, "notes" | "source" | "photoId">>,
 ) {
-  getLivestock(userId, id);
+  requireRoleOn(userId, getLivestock(userId, id).tankId, "log");
   if (patch.photoId) tagPhoto(userId, patch.photoId, id, true);
   return db
     .update(livestock)
@@ -626,6 +632,7 @@ export function tagPhoto(
   on: boolean,
 ) {
   const l = getLivestock(userId, livestockId);
+  requireRoleOn(userId, l.tankId, "log");
   const photo = db.select().from(photos).where(eq(photos.id, photoId)).get();
   if (!photo || photo.tankId !== l.tankId) error(404, "Photo not found");
   if (on)
@@ -683,7 +690,7 @@ export function getPlant(userId: string, id: string): Plant {
     .select({ p: plants })
     .from(plants)
     .innerJoin(tanks, eq(tanks.id, plants.tankId))
-    .where(and(eq(plants.id, id), eq(tanks.userId, userId)))
+    .where(and(eq(plants.id, id), visibleTo(userId)))
     .get();
   if (!row) error(404, "Plant not found");
   return row.p;
@@ -695,7 +702,7 @@ export function addPlant(
   input: Pick<Plant, "name" | "scientificName" | "position" | "status">,
   meta: EntryMeta = {},
 ) {
-  getTank(userId, tankId);
+  getTank(userId, tankId, "log");
   const p = db
     .insert(plants)
     .values({ ...input, tankId, importId: meta.importId ?? null })
@@ -721,7 +728,7 @@ export function updatePlant(
   id: string,
   patch: Partial<Pick<Plant, "position" | "status" | "photoId">>,
 ) {
-  getPlant(userId, id);
+  requireRoleOn(userId, getPlant(userId, id).tankId, "log");
   return db
     .update(plants)
     .set(patch)
@@ -732,6 +739,7 @@ export function updatePlant(
 
 export function removePlant(userId: string, id: string, meta: EntryMeta = {}) {
   const p = getPlant(userId, id);
+  requireRoleOn(userId, p.tankId, "log");
   db.update(plants)
     .set({ removedAt: meta.at ?? now() })
     .where(eq(plants.id, id))
