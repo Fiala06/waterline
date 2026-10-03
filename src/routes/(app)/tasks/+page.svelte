@@ -136,7 +136,7 @@
 											<input type="hidden" name="taskId" value={t.id} />
 											<input type="hidden" name="from" value={from} />
 											<button class="ghost snooze" aria-expanded={snoozeOpen && snoozing?.id === t.id} onclick={(e) => snooze(e, t)}
-												>Snooze<span aria-hidden="true"> ▾</span></button
+												>Snooze<span aria-hidden="true">&nbsp;▾</span></button
 											>
 										</form>
 									{/if}
@@ -375,6 +375,16 @@
 	@media (max-width: 1023px) {
 		.row.extra {
 			display: none;
+		}
+		/* phones: Snooze stays on what's overdue (the sheet has the same choices); rows keep to one action */
+		.row:not(.overdue) .snooze {
+			display: none;
+		}
+		.row {
+			padding-left: 10px;
+		}
+		.mark {
+			padding: 0 12px;
 		}
 	}
 	@media (hover: hover) {

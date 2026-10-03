@@ -173,7 +173,7 @@
 						</div>
 						<div class="stat"><span class="sl">Average</span><span class="sv num">{s.average}</span></div>
 						<div class="stat"><span class="sl">Range</span><span class="sv num">{s.range}</span></div>
-						<div class="stat"><span class="sl">In target</span><span class="sv num">{s.inTarget}</span><span class="st">{s.inRangePct} of readings</span></div>
+						<div class="stat"><span class="sl">In target</span><span class="sv num">{s.inTarget}</span><span class="st">{s.inRangePct} in range</span></div>
 						<div class="stat"><span class="sl">Change</span><span class="sv num">{s.change?.amount ?? '–'}</span>{#if s.change}<span class="st">{s.change.over}</span>{/if}</div>
 					</div>
 				{/if}
@@ -182,11 +182,9 @@
 						<h2 class="kicker">Events in range · {markers.length}</h2>
 						<ul>
 							{#each [...markers].reverse() as m (m.href)}
-								{@const full = c.markers.find((x) => x.href === m.href)}
 								<li>
 									<button type="button" class:active={chosen?.href === m.href} aria-pressed={chosen?.href === m.href} onclick={() => (selected = selected === m.href ? null : m.href)}>
 										<span class="e-row"><span class="e-title">{m.label}</span><span class="e-day">{m.day}</span></span>
-										{#if full?.change}<span class="e-change">{full.change}</span>{/if}
 									</button>
 								</li>
 							{/each}
@@ -443,10 +441,6 @@
 		color: var(--text-muted);
 		white-space: nowrap;
 	}
-	.e-change {
-		font-size: 12px;
-		color: var(--text-2);
-	}
 	.compare {
 		order: 7;
 		display: flex;
@@ -644,7 +638,7 @@
 			padding-top: 12px;
 		}
 		.chart-box {
-			height: max(340px, calc(100dvh - 400px));
+			height: clamp(340px, calc(100dvh - 400px), 560px);
 		}
 		.insight {
 			border-top: 1px solid var(--divider);
@@ -668,7 +662,7 @@
 			font-size: 20px;
 		}
 		.cmp-grid {
-			grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+			grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
 			gap: 24px;
 		}
 		.cmp-chart {

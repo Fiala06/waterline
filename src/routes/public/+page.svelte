@@ -18,11 +18,11 @@
 		</div>
 	</header>
 	<main>
-		<h1>Aquariums on {data.host}</h1>
+		<div class="head"><span class="kicker">Public tanks</span><h1>Aquariums on {data.host}</h1></div>
 		{#if !data.tanks.length}<p class="muted">No public tanks yet.</p>{/if}
 		<div class="grid">
 			{#each data.tanks as t (t.slug)}
-				<a class="card tank" href="/t/{t.slug}">
+				<a class="tank" href="/t/{t.slug}">
 					<span class="cover" class:photo-placeholder={!t.cover}>{#if t.cover}<img src="/p/{t.slug}/{t.cover}?size=thumb" alt="" loading="lazy" />{/if}</span>
 					<span class="info">
 						<strong>{t.name}</strong>
@@ -41,7 +41,7 @@
 		color: var(--text);
 	}
 	.top {
-		border-bottom: 1px solid var(--border);
+		border-bottom: 2px solid var(--divider);
 		padding-top: env(safe-area-inset-top);
 	}
 	.top-in {
@@ -58,49 +58,57 @@
 		display: inline-flex;
 	}
 	.signin {
-		position: relative;
 		min-height: 36px;
 		padding: 0 14px;
-		border-radius: 0;
-		font-size: 14px;
-	}
-	.signin::after {
-		content: '';
-		position: absolute;
-		inset: -4px 0;
+		font-size: 13px;
 	}
 	main {
 		max-width: 1280px;
 		margin: 0 auto;
 		padding: 24px 20px calc(40px + env(safe-area-inset-bottom));
+		display: flex;
+		flex-direction: column;
+		gap: 20px;
+	}
+	.head {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		padding-bottom: 12px;
+		border-bottom: 2px solid var(--ink);
 	}
 	h1 {
-		font-size: 28px;
-		font-weight: 600;
-		margin: 0 0 16px;
+		font-size: 30px;
+		margin: 0;
+	}
+	.muted {
+		margin: 0;
 	}
 	.grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-		gap: 14px;
+		gap: 20px 16px;
 	}
 	.tank {
-		overflow: hidden;
 		color: var(--text);
 		display: flex;
 		flex-direction: column;
+		border-top: 2px solid var(--ink);
+		padding-top: 10px;
 	}
 	@media (hover: hover) {
 		.tank:hover {
 			color: var(--text);
-			border-color: var(--border-strong);
+		}
+		.tank:hover strong {
+			color: var(--accent);
 		}
 	}
 	.cover {
 		height: 150px;
 		border: none;
 		display: block;
-		background-color: var(--surface-hi);
+		background-color: var(--surface);
 	}
 	.cover img {
 		display: block;
@@ -109,15 +117,15 @@
 		object-fit: cover;
 	}
 	.info {
-		padding: 12px 14px;
+		padding: 10px 0 0;
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
-		font-size: 14px;
+		font-size: 13px;
 	}
 	.info strong {
 		font-size: 17px;
-		font-weight: 600;
+		font-weight: 800;
 	}
 	@media (min-width: 1024px) {
 		.top-in {
@@ -126,6 +134,9 @@
 		}
 		main {
 			padding: 32px 40px 48px;
+		}
+		h1 {
+			font-size: 42px;
 		}
 	}
 </style>

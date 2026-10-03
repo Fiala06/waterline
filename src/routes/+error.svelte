@@ -47,7 +47,7 @@
 	{:else}
 		<Logo size={56} />
 	{/if}
-	<p class="code mono">{status}</p>
+	<p class="code kicker">{status}</p>
 	<h1>{title}</h1>
 	{#if detail}<p class="muted">{detail}</p>{/if}
 	{#if ref}<p class="ref">Reference <span class="mono">{ref}</span>: the admin can look it up in Settings › Server settings › Logs.</p>{/if}
@@ -150,7 +150,7 @@
 	}
 	.err {
 		min-height: 100dvh;
-		max-width: 440px;
+		max-width: 480px;
 		margin: 0 auto;
 		padding: 48px 24px;
 		display: flex;
@@ -162,14 +162,12 @@
 	}
 	.code {
 		margin: 8px 0 0;
-		font-size: 13px;
-		color: var(--text-faint);
-		letter-spacing: 0.1em;
+		font-weight: 800;
+		color: var(--accent-700);
 	}
 	h1 {
 		margin: 0;
-		font-size: 24px;
-		font-weight: 600;
+		font-size: 32px;
 	}
 	p {
 		margin: 0;

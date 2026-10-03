@@ -638,6 +638,15 @@
 		.thead .r {
 			white-space: nowrap;
 		}
+		/* the status column is narrow here: "Move in" goes under the tag */
+		.st {
+			flex-wrap: wrap;
+			gap: 0 8px;
+			min-width: 0;
+		}
+		.st .move {
+			margin: -6px 0 -10px;
+		}
 	}
 	@media (max-width: 1023px) and (min-width: 600px) {
 		.side {

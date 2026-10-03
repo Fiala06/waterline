@@ -42,19 +42,18 @@
 		padding: 48px 20px;
 		display: flex;
 		flex-direction: column;
-		gap: 24px;
+		gap: 28px;
 	}
 	.box {
-		padding: 24px;
+		padding: 18px 0 0;
 		display: flex;
 		flex-direction: column;
 		gap: 16px;
 	}
 	h1 {
 		margin: 0;
-		font-size: 22px;
-		font-weight: 600;
-		line-height: 1.3;
+		font-size: 26px;
+		line-height: 1.2;
 	}
 	p {
 		margin: 0;
@@ -67,6 +66,6 @@
 		display: inline-flex;
 		align-items: center;
 		min-height: 44px;
-		font-weight: 600;
+		font-weight: 800;
 	}
 </style>

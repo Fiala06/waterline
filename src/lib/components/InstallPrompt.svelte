@@ -89,10 +89,9 @@
 		display: flex;
 		flex-direction: column;
 		gap: 14px;
-		border-radius: 0;
-		background: var(--surface);
-		border: 1px solid var(--border-strong);
-		box-shadow: var(--shadow-modal);
+		background: var(--bg);
+		border: 2px solid var(--ink);
+		box-shadow: var(--shadow-lg);
 		animation: wl-slide-up 0.25s ease-out;
 	}
 	.top {
@@ -104,9 +103,7 @@
 		width: 56px;
 		height: 56px;
 		flex-shrink: 0;
-		border-radius: 0;
-		background: var(--bg);
-		border: 1px solid var(--border);
+		background: var(--surface);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -122,7 +119,7 @@
 	.text strong {
 		color: var(--text);
 		font-size: 17px;
-		font-weight: 600;
+		font-weight: 800;
 		line-height: 1.3;
 		text-wrap: balance;
 	}
@@ -137,8 +134,5 @@
 		flex: 1;
 		height: 46px;
 		font-size: 15px;
-	}
-	.actions .btn:not(.btn-primary) {
-		font-weight: 400;
 	}
 </style>

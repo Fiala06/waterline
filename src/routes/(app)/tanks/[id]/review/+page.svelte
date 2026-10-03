@@ -26,7 +26,7 @@
 		<h1 class="hide-desk">Review tank setup</h1>
 		<div class="ask">
 			<div class="ask-text">
-				<span class="kicker">{data.lastReview ? `Last reviewed ${data.lastReview}` : 'Not reviewed yet'}</span>
+				<span class="kicker">{data.lastReview ? `Last reviewed ${data.lastReview}.` : 'Not reviewed yet.'}</span>
 				<h2 class="q">Is this still right?</h2>
 			</div>
 			<span class="progress"><span class="p-n">{data.sections.length - left} of {data.sections.length}</span><span class="bars" aria-hidden="true">{#each data.sections as s (s.key)}<span class:on={s.checked}></span>{/each}</span></span>

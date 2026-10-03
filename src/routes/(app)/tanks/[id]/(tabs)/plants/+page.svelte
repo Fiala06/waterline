@@ -84,23 +84,26 @@
 						{#each list as p (p.id)}
 							<div class="tr" role="row">
 								<div class="pl" role="cell">
-									{#if p.photo}<img class="thumb" src={p.photo.src} alt="" loading="lazy" />{:else}<span class="thumb photo-placeholder"></span>{/if}
-									<span class="text">
-										<button
-											type="button"
-											class="name"
-											onclick={() => {
-												editing = p;
-												editOpen = true;
-											}}>{p.name}</button
-										>
-										{#if p.scientific && p.scientific !== p.name}<span class="sci">{p.scientific}</span>{/if}
-									</span>
+									<!-- the plant opens its sheet (status, placement, photo) -->
+									<button
+										type="button"
+										class="plant"
+										onclick={() => {
+											editing = p;
+											editOpen = true;
+										}}
+									>
+										{#if p.photo}<img class="thumb" src={p.photo.src} alt="" loading="lazy" />{:else}<span class="thumb photo-placeholder"></span>{/if}
+										<span class="text">
+											<span class="name">{p.name}</span>
+											{#if p.scientific && p.scientific !== p.name}<span class="sci">{p.scientific}</span>{/if}
+										</span>
+									</button>
 								</div>
 								<span class="d" role="cell">{POSITIONS.find((o) => o.v === p.position)?.l}</span>
 								<span class="d" role="cell">{p.added}</span>
 								<span class="trim" role="cell">
-									<span class="when" class:none={!p.trimmed}>{p.trimmed ?? 'Never'}</span>
+									<span class="when" class:none={!p.trimmed}>{p.trimmed ? `Trimmed ${p.trimmed}` : 'Never'}</span>
 									<button
 										type="button"
 										class="ghost"
@@ -258,9 +261,19 @@
 	.pl {
 		grid-area: pl;
 		display: flex;
+		min-width: 0;
+	}
+	.plant {
+		flex: 1;
+		min-width: 0;
+		display: flex;
 		align-items: center;
 		gap: 12px;
-		min-width: 0;
+		text-align: left;
+		color: var(--text);
+	}
+	.plant:hover .name {
+		color: var(--accent);
 	}
 	.thumb {
 		width: 40px;
@@ -279,12 +292,7 @@
 	.name {
 		font-size: 15px;
 		font-weight: 600;
-		text-align: left;
-		color: var(--text);
 		overflow-wrap: anywhere;
-	}
-	.name:hover {
-		color: var(--accent);
 	}
 	.sci {
 		font-size: 12px;
@@ -303,15 +311,8 @@
 	.trim .when {
 		min-width: 52px;
 	}
-	.trim .when::before {
-		content: 'Trimmed ';
-		color: var(--text-muted);
-	}
 	.trim .when.none {
 		color: var(--text-muted);
-	}
-	.trim .when.none::before {
-		content: 'Trimmed: ';
 	}
 	.st {
 		grid-area: st;
@@ -441,10 +442,6 @@
 			overflow: hidden;
 			text-overflow: ellipsis;
 			max-width: 100%;
-		}
-		.trim .when::before,
-		.trim .when.none::before {
-			content: none;
 		}
 	}
 	@media (min-width: 1024px) and (max-width: 1199px) {

@@ -71,7 +71,7 @@
 	}}
 >
 	{#if task}
-		<div class="panel" role="menu">
+		<div class="panel">
 			<div class="handle" aria-hidden="true"></div>
 			<div class="head">
 				<span class="kicker">{task.name} · {tankName}</span>
@@ -83,7 +83,7 @@
 						<input type="hidden" name="taskId" value={task.id} />
 						<input type="hidden" name="until" value={o.date} />
 						<input type="hidden" name="from" value={from} />
-						<button class="opt" role="menuitem"><span>{o.label}</span><span class="date">{longDate(o.date)}</span></button>
+						<button class="opt"><span>{o.label}</span><span class="date">{longDate(o.date)}</span></button>
 					</form>
 				{/each}
 				{#if picking}
@@ -96,7 +96,7 @@
 						<button class="btn btn-primary">Snooze</button>
 					</form>
 				{:else}
-					<button type="button" class="opt pick-date" role="menuitem" onclick={() => (picking = true)}><span>Pick a date…</span><span aria-hidden="true">›</span></button>
+					<button type="button" class="opt pick-date" onclick={() => (picking = true)}><span>Pick a date…</span><span aria-hidden="true">›</span></button>
 				{/if}
 			</div>
 			<p class="note">Snoozing moves only this occurrence. The schedule after it stays the same.</p>

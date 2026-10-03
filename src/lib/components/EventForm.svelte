@@ -2,8 +2,8 @@
 	import { onMount, tick, untrack } from 'svelte';
 	// 14 / G2–G5 / D13 · Log event: one layout that adapts to the category.
 	import { enhance } from '$app/forms';
+	import { page } from '$app/state';
 	import { queueable } from '$lib/offline';
-	import { hscroll } from '$lib/actions';
 	import { clearDraft, logDraft, type Restored } from '$lib/draft';
 	import ConfirmDelete from './ConfirmDelete.svelte';
 	import { ui } from '$lib/ui.svelte';
@@ -221,8 +221,26 @@
 				}[category]
 	);
 	const title = $derived(
-		mode === 'edit' ? `Edit ${CATEGORY_LABEL[category].toLowerCase()}` : category === 'note' ? 'Add note or photo' : 'Log event'
+		mode === 'edit'
+			? `Edit ${CATEGORY_LABEL[category].toLowerCase()}`
+			: category === 'note'
+				? 'Add note or photo'
+				: category === 'dosing'
+					? 'Log a dose'
+					: `Log ${CATEGORY_LABEL[category].toLowerCase()}`
 	);
+	// the types at the top (README § 11): Test, Water change, Dose, Note, then the rest under More
+	const MAIN: EventCategory[] = ['water_change', 'dosing', 'note'];
+	const more = $derived(LOG_CATEGORIES.filter((c) => !MAIN.includes(c)));
+	const inMore = $derived(!MAIN.includes(category));
+	const testHref = $derived.by(() => {
+		const q = new URLSearchParams();
+		for (const k of ['tank', 'date', 'time']) {
+			const v = page.url.searchParams.get(k);
+			if (v) q.set(k, v);
+		}
+		return `/entries/test/new?${q}`;
+	});
 
 	// Notes start one line tall (14, G2) and grow with what's typed.
 	function autosize(el: HTMLTextAreaElement) {
@@ -262,51 +280,38 @@
 	<input type="hidden" name="time" value={when?.time ?? ''} />
 
 	<div class="panel">
-		<!-- phone: 14 / G2–G5 top bar (G6 in edit mode) -->
-		<header class="bar hide-desk">
-			{#if mode === 'edit'}
-				<a class="bar-text" href={closeHref}>Cancel</a>
-			{:else}
-				<a class="btn-icon close" href={closeHref} aria-label="Close">✕</a>
-			{/if}
-			<div class="title">
-				<h1>{title}</h1>
-				<button type="button" class="sub" onclick={() => (picking = true)}
-					>{mode === 'edit' ? whenLabel(when) : `${tankName} · ${whenLabel(when)}`} ▾</button
+		<header class="top">
+			<div class="kick">
+				<button type="button" class="kicker tank" onclick={() => ontankclick?.()} disabled={!ontankclick}
+					>{mode === 'edit' ? 'Edit' : 'Log for'} {tankName}{#if ontankclick}<span aria-hidden="true"> ▾</span>{/if}</button
 				>
+				<a class="btn-icon close" href={closeHref} aria-label="Close">✕</a>
 			</div>
-			{#if mode === 'edit'}
-				<button class="bar-text bar-save" disabled={busy}>Save</button>
-			{:else}
-				<span class="spacer" aria-hidden="true"></span>
+			{#if mode === 'new' && categoryHref}
+				<!-- the type: this one, and the others as links (README § 11) -->
+				<nav class="types" aria-label="Log type">
+					<a class="ty" href={testHref}>Test<kbd>T</kbd></a>
+					<a class="ty" class:on={category === 'water_change'} aria-current={category === 'water_change' ? 'page' : undefined} href={categoryHref('water_change')}>Water change<kbd>W</kbd></a>
+					<a class="ty" class:on={category === 'dosing'} aria-current={category === 'dosing' ? 'page' : undefined} href={categoryHref('dosing')}>Dose<kbd>D</kbd></a>
+					<a class="ty" class:on={category === 'note'} aria-current={category === 'note' ? 'page' : undefined} href={categoryHref('note')}>Note<kbd>N</kbd></a>
+					<a class="ty" class:on={inMore} aria-current={inMore ? 'page' : undefined} href={categoryHref(inMore ? category : more[0])}>More</a>
+				</nav>
+				{#if inMore}
+					<nav class="cats" aria-label="Category">
+						{#each more as c (c)}
+							<a class="chip" class:selected={c === category} aria-current={c === category ? 'page' : undefined} href={categoryHref(c)}>{CATEGORY_LABEL[c]}</a>
+						{/each}
+					</nav>
+				{/if}
 			{/if}
-		</header>
-
-		<!-- desktop: D13 header -->
-		<header class="dhead hide-phone">
-			<h1>{title}</h1>
-			<button type="button" class="chip chip-pill" onclick={() => ontankclick?.()} disabled={!ontankclick}
-				>{tankName} <span class="caret">▾</span></button
-			>
-			<button type="button" class="chip chip-pill when" onclick={() => (picking = true)}
-				>{whenLabel(when)} <span class="caret">▾</span></button
-			>
-			<a class="btn-icon x" href={closeHref} aria-label="Close">✕</a>
+			<div class="trow">
+				<h1>{title}</h1>
+				<button type="button" class="when" onclick={() => (picking = true)}><span class="when-k">When</span><b>{whenLabel(when)}</b><span aria-hidden="true"> ▾</span></button>
+			</div>
 		</header>
 
 		<div class="body">
 			{#if meta}<p class="meta">{meta}</p>{/if}
-
-			{#if mode === 'new' && categoryHref && category !== 'note'}
-				<!-- phones show the chosen category first; desktop keeps the order (D13) -->
-				<nav class="cats hscroll" aria-label="Category" use:hscroll={category}>
-					{#each LOG_CATEGORIES as c (c)}
-						<a class="chip" class:selected={c === category} aria-current={c === category ? 'page' : undefined} href={categoryHref(c)}
-							>{CATEGORY_LABEL[c]}</a
-						>
-					{/each}
-				</nav>
-			{/if}
 
 			{#if error}<p class="banner banner-bad" role="alert">✕ {error}</p>{/if}
 			{#if restored}
@@ -627,9 +632,9 @@
 
 		<footer class="foot">
 			<span class="grow" aria-hidden="true"></span>
+			{#if remove}<button type="button" class="btn btn-danger remove" popovertarget="confirm-entry-delete">Delete entry</button>{/if}
 			<a class="btn cancel" href={closeHref}>Cancel</a>
 			<button class="btn btn-primary save" disabled={busy}>{saveLabel}</button>
-			{#if remove}<button type="button" class="remove" popovertarget="confirm-entry-delete">Delete entry</button>{/if}
 		</footer>
 	</div>
 </form>
@@ -657,104 +662,110 @@
 		padding: 0 20px;
 	}
 
-	/* ── Phone top bar ── */
-	.bar {
+	/* ── Head: the tank, the type, the title and when ── */
+	.top {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		padding: 10px 0 12px;
+		border-bottom: 2px solid var(--divider);
+	}
+	.kick {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: 12px;
-		padding: 12px 0;
+	}
+	.tank {
+		min-height: 44px;
+		text-align: left;
+	}
+	.tank:disabled {
+		cursor: default;
 	}
 	.close {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		flex-shrink: 0;
-	}
-	.bar-text {
-		min-width: 60px;
-		min-height: 44px;
-		display: flex;
-		align-items: center;
-		flex-shrink: 0;
-		font-size: 16px;
-		color: var(--text-muted);
-	}
-	.bar-save {
-		justify-content: flex-end;
+		margin-right: -12px;
 		color: var(--accent);
-		font-weight: 700;
+		font-size: 16px;
 	}
-	.bar-save:disabled {
-		opacity: 0.45;
-	}
-	.title {
+	.types,
+	.cats {
 		display: flex;
-		flex-direction: column;
+		gap: 6px;
+		overflow-x: auto;
+		scrollbar-width: none;
+		margin: 0 -20px;
+		padding: 0 20px;
+	}
+	.types::-webkit-scrollbar,
+	.cats::-webkit-scrollbar {
+		display: none;
+	}
+	.cats .chip {
+		flex-shrink: 0;
+		height: 36px;
+		font-size: 13px;
+	}
+	.ty {
+		flex-shrink: 0;
+		display: inline-flex;
 		align-items: center;
-		gap: 2px;
-		min-width: 0;
-		text-align: center;
+		gap: 6px;
+		min-height: 40px;
+		padding: 0 12px;
+		border: 1px solid var(--divider);
+		color: var(--text);
+		font-size: 13px;
+		font-weight: 700;
+		white-space: nowrap;
+	}
+	.ty.on {
+		background: var(--accent);
+		border-color: var(--accent);
+		color: var(--on-accent);
+		font-weight: 800;
+	}
+	.ty kbd {
+		display: none;
+		font-family: inherit;
+		font-size: 11px;
+		font-weight: 400;
+		opacity: 0.65;
+	}
+	.trow {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 12px;
 	}
 	h1 {
 		margin: 0;
-		font-size: 17px;
-		font-weight: 600;
+		font-size: 22px;
+		min-width: 0;
 	}
-	/* a 36px box (44px to tap) that takes the title's 24px */
-	.sub {
-		position: relative;
-		font-size: 12px;
-		color: var(--text-muted);
-		min-height: 36px;
-		margin: -6px 0;
-	}
-	.sub::after {
-		content: '';
-		position: absolute;
-		inset: -4px -8px;
-	}
-	.spacer {
-		width: 44px;
+	.when {
 		flex-shrink: 0;
+		min-height: 44px;
+		font-size: 13px;
+		white-space: nowrap;
+		text-align: right;
 	}
-	.dhead {
-		display: flex;
+	.when-k {
+		color: var(--text-muted);
+		margin-right: 6px;
 	}
 
 	.body {
 		display: flex;
 		flex-direction: column;
-		padding-bottom: 20px;
+		padding: 16px 0 20px;
 	}
 	.meta {
 		margin: 0 0 16px;
 		padding: 10px 14px;
-		border-radius: 0;
-		background: var(--surface-2);
-		border: 1px solid var(--border);
+		background: var(--surface);
 		font-size: 13px;
 		color: var(--text-muted);
-	}
-
-	/* ── Category chips (14, G2–G5) ── */
-	.cats {
-		margin-inline: -20px;
-		padding-inline: 20px;
-		margin-bottom: 16px;
-	}
-	.cats .chip {
-		height: 40px;
-		border-radius: 0;
-		color: var(--text);
-	}
-	.cats .chip.selected {
-		color: var(--on-accent);
-	}
-	@media (max-width: 1023px) {
-		.cats .chip.selected {
-			order: -1;
-		}
 	}
 	.banner,
 	.draft-note {
@@ -777,7 +788,7 @@
 	.hint {
 		margin: 0;
 		font-size: 13px;
-		color: var(--text-faint);
+		color: var(--text-muted);
 	}
 	/* "Reorder Seachem Prime ↗" under the dosing fields */
 	.reorder {
@@ -787,11 +798,10 @@
 		min-height: 44px;
 		margin: -12px 0 -8px;
 		font-size: 14px;
-		font-weight: 600;
-		color: var(--accent);
+		font-weight: 800;
 	}
 
-	/* ── Dosing: product, amount, unit (D13 puts them in one row) ── */
+	/* ── Dosing: product, amount, unit (one row on desktop) ── */
 	.dose {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
@@ -802,13 +812,12 @@
 		grid-column: 1 / -1;
 	}
 
-	/* ── Pick-any chips (G2, G4, G5) ── */
+	/* ── Pick-any chips ── */
 	.pick {
 		height: 40px;
-		border-radius: 0;
 	}
 
-	/* ── Segmented choices (G3, G4) ── */
+	/* ── Segmented choices ── */
 	.segmented label {
 		min-height: 40px;
 		font-size: 14px;
@@ -821,18 +830,12 @@
 	.stepper {
 		display: flex;
 		width: 100%;
-		height: 52px;
-		background: var(--surface);
-		border-color: var(--border);
+		height: 48px;
 	}
 	.stepper button {
 		width: 48px;
 		flex-shrink: 0;
 		font-size: 22px;
-		color: var(--text-2);
-	}
-	.stepper button:disabled {
-		color: var(--placeholder);
 	}
 	.stepper input {
 		flex: 1;
@@ -840,14 +843,13 @@
 		width: auto;
 		min-width: 0;
 		font-size: 18px;
-		font-weight: 700;
+		font-weight: 800;
 	}
 	.preview {
 		margin: 0;
-		padding: 12px 14px;
-		border-radius: 0;
-		background: var(--surface-2);
-		border: 1px solid var(--border);
+		padding: 10px 0;
+		border-top: 1px solid var(--divider);
+		border-bottom: 1px solid var(--divider);
 		font-size: 13px;
 		line-height: 1.5;
 		color: var(--text-2);
@@ -861,33 +863,27 @@
 
 	/* ── Note ── */
 	.note {
-		min-height: 52px;
-		padding-top: 13px;
-		padding-bottom: 13px;
+		min-height: 44px;
+		padding-top: 10px;
+		padding-bottom: 10px;
 		font-size: 16px;
-		background: transparent;
-		border-color: var(--border-strong);
 		resize: none;
 		overflow-y: hidden;
 	}
 	.note.long {
 		min-height: 140px;
 	}
-	.note:focus {
-		box-shadow: inset 0 0 0 1px var(--accent);
-	}
 
-	/* ── G5 "Remind me to check again" ── */
+	/* ── "Remind me to check again" ── */
 	.remind {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: 12px;
 		min-height: 48px;
-		padding: 2px 6px 2px 14px;
-		border-radius: 0;
-		background: var(--surface);
-		border: 1px solid var(--border);
+		padding: 2px 0;
+		border-top: 1px solid var(--divider);
+		border-bottom: 1px solid var(--divider);
 		font-size: 14px;
 	}
 	.remind-pick {
@@ -902,11 +898,10 @@
 		min-height: 44px;
 		padding: 0 26px 0 8px;
 		border: none;
-		border-radius: 0;
 		background: transparent;
 		color: var(--accent);
 		font-size: 14px;
-		font-weight: 600;
+		font-weight: 800;
 		cursor: pointer;
 		text-align: right;
 		text-align-last: right;
@@ -923,10 +918,9 @@
 
 	/* ── Task ── */
 	.task {
-		padding: 12px 14px;
-		border-radius: 0;
-		background: var(--surface);
-		border: 1px solid var(--border);
+		padding: 10px 0;
+		border-top: 1px solid var(--divider);
+		border-bottom: 1px solid var(--divider);
 		font-size: 14px;
 		line-height: 1.4;
 	}
@@ -934,18 +928,18 @@
 		display: block;
 	}
 
-	/* ── Footer: sticky Save (14); G6 puts Save changes and Delete entry at the end ── */
+	/* ── Footer: sticky Save on phones; Delete entry at the start when editing ── */
 	.foot {
 		position: sticky;
 		bottom: 0;
 		z-index: 2;
 		margin: auto -20px 0;
-		padding: 14px 20px calc(28px + env(safe-area-inset-bottom));
+		padding: 12px 20px calc(24px + env(safe-area-inset-bottom));
 		background: var(--bg);
-		border-top: 1px solid var(--divider-soft);
+		border-top: 2px solid var(--divider);
 		display: flex;
 		align-items: center;
-		gap: 12px;
+		gap: 10px;
 	}
 	.grow,
 	.cancel {
@@ -953,86 +947,40 @@
 	}
 	.save {
 		flex: 1;
-		height: 56px;
-		border-radius: 0;
-		font-size: 17px;
-	}
-	.edit .foot {
-		position: static;
-		flex-direction: column;
-		align-items: stretch;
-		gap: 10px;
-		border-top: none;
-		background: transparent;
-	}
-	.edit .save {
-		flex: none;
-		height: 52px;
+		min-height: 52px;
+		font-size: 16px;
 	}
 	.remove {
-		min-height: 44px;
-		font-size: 15px;
-		font-weight: 600;
-		color: var(--bad);
+		min-height: 52px;
 	}
 
 	@media (min-width: 1024px) {
+		:global(html:has(.eform)) {
+			scroll-padding-bottom: 96px;
+		}
 		.eform {
 			min-height: 0;
-			padding: 28px 32px;
-			align-items: center;
+			padding: 20px 32px 32px;
 		}
 		.panel {
 			width: 600px;
 			max-width: 100%;
 			flex: none;
 			padding: 0;
-			border-radius: 0;
-			background: var(--surface);
-			border: 1px solid var(--border-strong);
-			box-shadow: var(--shadow-modal);
-			/* rounds the sticky footer's corners without making the card a scroller */
-			overflow: clip;
 		}
-		.dhead {
-			align-items: center;
-			gap: 10px;
-			padding: 20px 24px;
-			border-bottom: 1px solid var(--border);
+		.top {
+			padding: 0 0 14px;
 		}
-		.dhead h1 {
-			flex: 1;
-			min-width: 0;
-			font-size: 22px;
+		.ty kbd {
+			display: inline;
 		}
-		.dhead .chip {
-			height: 36px;
-			padding: 0 12px;
-		}
-		.when {
-			font-weight: 400;
-		}
-		.x {
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			flex-shrink: 0;
-			background: transparent;
-		}
-		.body {
-			padding: 20px 24px;
-		}
+		.types,
 		.cats {
 			flex-wrap: wrap;
 			overflow: visible;
-			margin: 0 0 18px;
+			margin: 0;
 			padding: 0;
 		}
-		.cats .chip {
-			height: 36px;
-			border-radius: 0;
-		}
-		/* D13: 13px labels, 48px fields on the card (the species field included) */
 		.fields :global(.field) {
 			gap: 6px;
 		}
@@ -1042,25 +990,11 @@
 		legend {
 			margin-bottom: 6px;
 		}
-		.fields :global(.input) {
-			height: 48px;
-			font-size: 15px;
-			padding: 0 14px;
-			background-color: var(--surface-2);
-			border-color: var(--border-strong);
-		}
-		.fields :global(select.input) {
-			padding-right: 40px;
-		}
-		.fields :global(.input:focus) {
-			border-color: var(--accent);
-		}
 		.note,
 		.fields .note {
 			height: auto;
-			min-height: 48px;
-			padding: 12px 14px;
-			background-color: transparent;
+			min-height: 44px;
+			padding: 10px 12px;
 		}
 		.note.long {
 			min-height: 120px;
@@ -1072,28 +1006,13 @@
 		.product {
 			grid-column: auto;
 		}
-		.stepper {
-			background: var(--surface-2);
-			border-color: var(--border-strong);
-		}
-		.stepper {
-			height: 48px;
-		}
-		.remind,
-		.task {
-			background: var(--surface-2);
-		}
 		.foot,
 		.edit .foot {
 			position: sticky;
 			bottom: 0;
 			margin: 0;
-			padding: 16px 24px 20px;
-			flex-direction: row;
-			align-items: center;
-			gap: 10px;
-			border-top: 1px solid var(--border);
-			background: var(--surface);
+			padding: 12px 0 0;
+			border-top: 2px solid var(--divider);
 		}
 		.grow {
 			display: block;
@@ -1101,28 +1020,16 @@
 		}
 		.cancel {
 			display: inline-flex;
-			font-weight: 400;
-			padding: 0 18px;
 		}
 		.save,
 		.edit .save {
 			flex: none;
-			height: 44px;
-			border-radius: 0;
-			font-size: 15px;
-			padding: 0 22px;
+			min-height: 44px;
+			font-size: 14px;
+			padding: 0 20px;
 		}
 		.remove {
-			order: -1;
-			height: 44px;
-			padding: 0 16px;
-			border-radius: 0;
-			border: 1px solid var(--bad-border);
-		}
-	}
-	@media (min-width: 1024px) and (hover: hover) {
-		.remove:hover {
-			background: var(--bad-bg);
+			min-height: 40px;
 		}
 	}
 </style>

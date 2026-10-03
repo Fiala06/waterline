@@ -16,7 +16,7 @@
 	import Tip from './Tip.svelte';
 	import WaterChangeFields from './WaterChangeFields.svelte';
 	import { WATER_SOURCES } from '$lib/events';
-	import { paramStatus, statusIcon, statusLong, statusMedium } from '$lib/status';
+	import { paramStatus, statusIcon, statusLong, statusMedium, statusShort } from '$lib/status';
 	import { dropsAsPpm, parseNumber } from '$lib/units';
 	import { whenLabel, type When } from '$lib/time';
 
@@ -131,6 +131,36 @@
 	);
 	const filled = $derived(rows.filter((r) => r.v != null).length);
 
+	// the other log types, with the tank and time this one has (README § 11)
+	const typeHref = (category: string) => {
+		const q = new URLSearchParams();
+		for (const k of ['tank', 'date', 'time']) {
+			const v = page.url.searchParams.get(k);
+			if (v) q.set(k, v);
+		}
+		q.set('category', category);
+		return `/entries/event/new?${q}`;
+	};
+	function clearAll() {
+		for (const p of params) draft[p.id] = '';
+		copied = null;
+	}
+	// "▲ Nitrate is above target. Saving adds it to Needs attention.", before Save
+	const names = (xs: { name: string }[]) =>
+		xs.length <= 2 ? xs.map((x) => x.name).join(' and ') : `${xs.slice(0, -1).map((x) => x.name).join(', ')} and ${xs.at(-1)!.name}`;
+	const summary = $derived.by(() => {
+		if (mode !== 'new') return '';
+		const bad = rows.filter((r) => r.st?.level === 'bad');
+		const warn = rows.filter((r) => r.st?.level === 'warn');
+		if (bad.length) {
+			const one = bad.length === 1;
+			const how = one ? (bad[0].st?.direction === 'high' ? 'above' : 'below') + ' target' : 'out of range';
+			return `▲ ${names(bad)} ${one ? 'is' : 'are'} ${how}. Saving adds ${one ? 'it' : 'them'} to Needs attention.`;
+		}
+		if (warn.length) return `▲ ${names(warn)} ${warn.length === 1 ? 'is' : 'are'} near a limit.`;
+		return '';
+	});
+
 	// "Use last readings": each empty field gets its previous reading; Undo
 	// empties the ones still holding it.
 	const fillable = $derived(mode === 'new' ? params.filter((p) => p.lastInput != null && !(draft[p.id] ?? '')) : []);
@@ -234,58 +264,31 @@
 	<input type="hidden" name="time" value={when?.time ?? ''} />
 
 	<div class="panel">
-		<!-- phone: 05 / G6 top bar -->
-		<header class="bar hide-desk">
-			{#if mode === 'edit'}
-				<a class="bar-text" href={closeHref}>Cancel</a>
-			{:else}
-				<a class="btn-icon close" href={closeHref} aria-label="Close">✕</a>
-			{/if}
-			<div class="title">
-				<h1>{mode === 'edit' ? 'Edit water test' : 'Water test'}</h1>
-				<button type="button" class="sub" onclick={() => (picking = true)}
-					>{mode === 'edit' ? whenLabel(when) : `${tankName} · ${whenLabel(when)}`} ▾</button
+		<header class="top">
+			<div class="kick">
+				<button type="button" class="kicker tank" onclick={() => ontankclick?.()} disabled={!ontankclick}
+					>{mode === 'edit' ? 'Edit' : 'Log for'} {tankName}{#if ontankclick}<span aria-hidden="true"> ▾</span>{/if}</button
 				>
+				<a class="btn-icon close" href={closeHref} aria-label="Close">✕</a>
 			</div>
-			{#if mode === 'edit'}
-				<button class="bar-text bar-save" disabled={busy}>Save</button>
-			{:else}
-				<span class="spacer" aria-hidden="true"></span>
+			{#if mode === 'new'}
+				<!-- the type: this one, and the others as links (README § 11) -->
+				<nav class="types" aria-label="Log type">
+					<span class="ty on" aria-current="page">Test<kbd>T</kbd></span>
+					<a class="ty" href={typeHref('water_change')}>Water change<kbd>W</kbd></a>
+					<a class="ty" href={typeHref('dosing')}>Dose<kbd>D</kbd></a>
+					<a class="ty" href={typeHref('note')}>Note<kbd>N</kbd></a>
+					<a class="ty" href={typeHref('maintenance')}>More</a>
+				</nav>
 			{/if}
-		</header>
-
-		<!-- desktop: 08 header -->
-		<header class="dhead hide-phone">
-			<h1>{mode === 'edit' ? 'Edit water test' : 'Log water test'}</h1>
-			<button type="button" class="chip chip-pill" onclick={() => ontankclick?.()} disabled={!ontankclick}
-				>{tankName} <span class="caret">▾</span></button
-			>
-			<button type="button" class="chip chip-pill when" onclick={() => (picking = true)}
-				>{whenLabel(when)} <span class="caret">▾</span></button
-			>
-			<a class="btn-icon x" href={closeHref} aria-label="Close">✕</a>
+			<div class="trow">
+				<h1>{mode === 'edit' ? 'Edit water test' : 'Log water test'}</h1>
+				<button type="button" class="when" onclick={() => (picking = true)}><span class="when-k">When</span><b>{whenLabel(when)}</b><span aria-hidden="true"> ▾</span></button>
+			</div>
 		</header>
 
 		<div class="body">
 			{#if meta}<p class="meta">{meta}</p>{/if}
-			{#if mode === 'new'}<p class="hint hide-desk">All fields optional. Previous reading shown for reference.</p>{/if}
-			{#if mode === 'new' && (copied || fillable.length)}
-				<div class="use-last" aria-live="polite">
-					{#if copied}
-						<span class="filled-note">✓ Filled {Object.keys(copied).length} from last readings</span>
-						<button type="button" class="btn-text" onclick={undoLast}>Undo</button>
-					{:else}
-						<a
-							class="chip"
-							href={fillHref}
-							onclick={(e) => {
-								e.preventDefault();
-								useLast();
-							}}>Use last readings</a
-						>
-					{/if}
-				</div>
-			{/if}
 			{#if error}<p class="banner banner-bad" role="alert">✕ {error}</p>{/if}
 			{#if restored}
 				<div class="draft-note" role="status">
@@ -297,12 +300,32 @@
 					<button type="button" class="btn-text" onclick={() => restored?.discard()}>Discard</button>
 				</div>
 			{/if}
+			{#if mode === 'new'}
+				<div class="use-last" aria-live="polite">
+					{#if copied}
+						<span class="filled-note">✓ Filled {Object.keys(copied).length} from last readings</span>
+						<button type="button" class="btn-text" onclick={undoLast}>Undo</button>
+					{:else if fillable.length}
+						<a
+							class="btn-text use"
+							href={fillHref}
+							onclick={(e) => {
+								e.preventDefault();
+								useLast();
+							}}>Use last readings</a
+						>
+					{:else}
+						<span class="filled-note">All fields optional</span>
+					{/if}
+					{#if filled}<button type="button" class="btn-text clear" onclick={clearAll}>Clear</button>{/if}
+				</div>
+			{/if}
 
 			<div class="rows">
 				{#each rows as r (r.id)}
 					<div class="row">
 						<div class="line">
-							<!-- the name is the field's label; "Last 7.0 · Sep 18" describes it -->
+							<!-- the name is the field's label; the target or "Last 7.0" describes it -->
 							<div class="lbl">
 								<span class="pline"
 									><label class="pname" for="v_{r.id}">{r.name}</label>{#if r.tip}<Tip text={r.tip} label="About {r.name}" />{/if}</span
@@ -315,9 +338,9 @@
 											>
 										{:else if r.was}
 											<span class="was">was {r.was}</span>
+										{:else}
+											{r.rangeText ? `Target ${r.rangeText}` : 'No target'}
 										{/if}
-									{:else if r.last}
-										{r.lastValue}<span class="hide-desk">{' · '}{r.lastDate}</span>
 									{:else}
 										{r.rangeText ? `Target ${r.rangeText}` : 'No target'}
 									{/if}
@@ -327,7 +350,6 @@
 							<div
 								class="box"
 								class:empty={r.v == null}
-								class:follow={mode === 'new' && r.v != null}
 								class:warn={mode === 'new' && r.st?.level === 'warn'}
 								class:bad={mode === 'new' && r.st?.level === 'bad'}
 								onclick={focusField}
@@ -337,23 +359,25 @@
 									name="v_{r.id}"
 									inputmode="decimal"
 									autocomplete="off"
-									placeholder="—"
+									placeholder="–"
 									value={r.raw}
 									oninput={(e) => clean(r.id, e)}
 									aria-describedby={[`last_${r.id}`, mode === 'new' && r.st ? `s_${r.id}` : ''].filter(Boolean).join(' ')}
 									aria-invalid={r.st?.level === 'bad' || !!fieldErrors[r.id]}
 								/>
+							</div>
+							<div class="flag">
 								{#if r.unit}<span class="unit">{r.unit}</span>{/if}
 								{#if mode === 'new' && r.st}
-									<span class="st status-{r.st.level}" aria-hidden="true"
-										>{statusIcon[r.st.level]}<span class="st-word">{' '}{statusWord(r)}</span></span
-									>
+									<span class="st status-{r.st.level}" aria-hidden="true">{r.st.level === 'ok' ? '✓' : statusShort(r.st)}</span>
+								{:else if mode === 'new' && r.last}
+									<span class="lastv">{r.lastValue}</span>
 								{/if}
 							</div>
 						</div>
 						{#if mode === 'new' && r.st}
-							<!-- 05: under the field on phones; 08 shows it inside the field, so this is for screen readers there -->
-							<div class="msg st-msg status-{r.st.level}" class:quiet={r.st.level === 'ok'} id="s_{r.id}">{statusLong(r.st, r.rangeText)}</div>
+							<!-- the flag beside the field is short; the full reading of it, for screen readers -->
+							<div class="msg st-msg status-{r.st.level}" id="s_{r.id}">{statusLong(r.st, r.rangeText)}</div>
 						{/if}
 						{#if fieldErrors[r.id]}<div class="msg status-bad">✕ {fieldErrors[r.id]}</div>{/if}
 						{#if r.drops}
@@ -373,16 +397,13 @@
 				{/each}
 				{#if mode === 'new' && targetsHref}
 					<a
-						class="add-param hide-phone"
+						class="add-param"
 						href={targetsHref}
 						onclick={(e) => {
 							e.preventDefault();
 							addOpen = true;
-						}}
+						}}>+ Add parameter</a
 					>
-						<span class="ap-label">+ Add parameter</span>
-						<span class="ap-box" aria-hidden="true"></span>
-					</a>
 				{/if}
 			</div>
 
@@ -408,7 +429,7 @@
 			{/if}
 
 			{#if mode === 'new' && waterChange}
-				<!-- without JS the checkbox opens the card too (:has) -->
+				<!-- without JS the checkbox opens the block too (:has) -->
 				<div class="wc" class:on={wcOn}>
 					<label class="check-row wc-toggle">
 						<input type="checkbox" name="wc" value="1" bind:checked={wcOn} />
@@ -442,14 +463,17 @@
 		</div>
 
 		<footer class="foot">
-			{#if mode === 'new'}
-				<span class="count">{filled} of {params.length} filled{outOfRange ? ` · ${outOfRange} out of range` : ''}</span>
-			{:else}
-				<span class="grow" aria-hidden="true"></span>
-			{/if}
-			<a class="btn cancel" href={closeHref}>Cancel</a>
-			<button class="btn btn-primary save" disabled={busy}>{saveLabel}</button>
-			{#if remove}<button type="button" class="remove" popovertarget="confirm-entry-delete">Delete entry</button>{/if}
+			{#if summary}<p class="summary status-warn" role="status">{summary}</p>{/if}
+			<div class="foot-line">
+				{#if mode === 'new'}
+					<span class="count">{filled} of {params.length} filled{outOfRange ? ` · ${outOfRange} out of range` : ''}</span>
+				{:else}
+					<span class="grow" aria-hidden="true"></span>
+				{/if}
+				{#if remove}<button type="button" class="btn btn-danger remove" popovertarget="confirm-entry-delete">Delete entry</button>{/if}
+				<a class="btn cancel" href={closeHref}>Cancel</a>
+				<button class="btn btn-primary save" disabled={busy}>{saveLabel}</button>
+			</div>
 		</footer>
 	</div>
 </form>
@@ -467,7 +491,7 @@
 <style>
 	/* a field scrolled or tabbed to stays clear of the sticky Save bar */
 	:global(html:has(.tform)) {
-		scroll-padding-bottom: 112px;
+		scroll-padding-bottom: 132px;
 	}
 	.tform {
 		min-height: 100dvh;
@@ -481,69 +505,91 @@
 		padding: 0 20px;
 	}
 
-	/* ── Phone top bar (05, G6) ── */
-	.bar {
+	/* ── Head: the tank, the type, the title and when ── */
+	.top {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		padding: 10px 0 12px;
+		border-bottom: 2px solid var(--divider);
+	}
+	.kick {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: 12px;
-		padding: 12px 0;
+	}
+	.tank {
+		min-height: 44px;
+		text-align: left;
+	}
+	.tank:disabled {
+		cursor: default;
 	}
 	.close {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		flex-shrink: 0;
-	}
-	.bar-text {
-		min-width: 60px;
-		min-height: 44px;
-		display: flex;
-		align-items: center;
-		flex-shrink: 0;
-		font-size: 16px;
-		color: var(--text-muted);
-	}
-	.bar-save {
-		justify-content: flex-end;
+		margin-right: -12px;
 		color: var(--accent);
-		font-weight: 700;
+		font-size: 16px;
 	}
-	.bar-save:disabled {
-		opacity: 0.45;
-	}
-	.title {
+	/* the types: one bordered row, this one filled accent */
+	.types {
 		display: flex;
-		flex-direction: column;
+		gap: 6px;
+		overflow-x: auto;
+		scrollbar-width: none;
+		margin: 0 -20px;
+		padding: 0 20px;
+	}
+	.types::-webkit-scrollbar {
+		display: none;
+	}
+	.ty {
+		flex-shrink: 0;
+		display: inline-flex;
 		align-items: center;
-		gap: 2px;
-		min-width: 0;
-		text-align: center;
+		gap: 6px;
+		min-height: 40px;
+		padding: 0 12px;
+		border: 1px solid var(--divider);
+		color: var(--text);
+		font-size: 13px;
+		font-weight: 700;
+		white-space: nowrap;
+	}
+	.ty.on {
+		background: var(--accent);
+		border-color: var(--accent);
+		color: var(--on-accent);
+		font-weight: 800;
+	}
+	.ty kbd {
+		display: none;
+		font-family: inherit;
+		font-size: 11px;
+		font-weight: 400;
+		opacity: 0.65;
+	}
+	.trow {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 12px;
 	}
 	h1 {
 		margin: 0;
-		font-size: 17px;
-		font-weight: 600;
+		font-size: 22px;
+		min-width: 0;
 	}
-	/* a 36px box (44px to tap) that takes the title's 24px */
-	.sub {
-		position: relative;
-		font-size: 12px;
-		color: var(--text-muted);
-		min-height: 36px;
-		margin: -6px 0;
-	}
-	.sub::after {
-		content: '';
-		position: absolute;
-		inset: -4px -8px;
-	}
-	.spacer {
-		width: 44px;
+	.when {
 		flex-shrink: 0;
+		min-height: 44px;
+		font-size: 13px;
+		white-space: nowrap;
+		text-align: right;
 	}
-	.dhead {
-		display: flex;
+	.when-k {
+		color: var(--text-muted);
+		margin-right: 6px;
 	}
 
 	.body {
@@ -552,54 +598,60 @@
 		padding-bottom: 16px;
 	}
 	.meta {
-		margin: 0 0 8px;
+		margin: 12px 0 0;
 		padding: 10px 14px;
-		border-radius: 0;
-		background: var(--surface-2);
-		border: 1px solid var(--border);
-		font-size: 13px;
-		color: var(--text-muted);
-	}
-	.hint {
-		margin: 0;
+		background: var(--surface);
 		font-size: 13px;
 		color: var(--text-muted);
 	}
 	.banner,
 	.draft-note {
-		margin: 10px 0 0;
+		margin: 12px 0 0;
+	}
+	.use-last {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+		min-height: 44px;
+		margin: 2px 0;
+	}
+	.use {
+		padding-left: 0;
+	}
+	.clear {
+		margin-left: auto;
+		color: var(--text-muted);
+	}
+	.filled-note {
+		font-size: 13px;
+		color: var(--text-muted);
 	}
 
-	/* ── Readings (05 rows) ── */
+	/* ── Readings: one row each under a 2px ink rule ── */
 	.rows {
-		padding-top: 10px;
 		display: flex;
 		flex-direction: column;
+		border-top: 2px solid var(--ink);
 	}
 	.row {
 		display: flex;
 		flex-direction: column;
-		gap: 6px;
-		padding: 9px 0;
-		border-bottom: 1px solid var(--divider-soft);
-	}
-	.edit .row {
-		padding: 8px 0;
-	}
-	.tform:not(.edit) .row:last-of-type {
-		border-bottom: none;
+		gap: 4px;
+		padding: 6px 0;
+		border-bottom: 1px solid var(--divider);
 	}
 	.line {
-		display: flex;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) 96px 84px;
+		gap: 10px;
 		align-items: center;
-		gap: 12px;
+		min-height: 44px;
 	}
 	.lbl {
-		flex: 1;
 		min-width: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 2px;
 	}
 	.pline {
 		display: inline-flex;
@@ -608,100 +660,82 @@
 		min-width: 0;
 	}
 	.pname {
-		font-size: 16px;
-		font-weight: 600;
+		font-size: 15px;
+		font-weight: 700;
 	}
 	.last {
 		font-size: 12px;
-		color: var(--text-faint);
+		color: var(--text-muted);
 	}
+	/* the value box: 44px, 1px while empty, 2px ink with a value, accent when out of range */
 	.box {
-		width: 132px;
-		height: 48px;
-		flex-shrink: 0;
 		display: flex;
 		align-items: center;
-		gap: 4px;
-		padding: 0 12px;
-		border-radius: 0;
+		height: 44px;
+		padding: 0 10px;
+		border: 1px solid var(--divider);
 		background: var(--surface);
-		border: 1px solid var(--border-strong);
 		cursor: text;
 	}
-	.edit .box {
-		height: 46px;
-	}
-	.box.empty {
-		background: var(--surface-2);
-		border-style: dashed;
-	}
-	/* 2px states draw the second pixel inside, so the padding (and the value) never moves */
-	.box:focus-within {
-		border-style: solid;
-		border-color: var(--accent);
-		box-shadow: inset 0 0 0 1px var(--accent);
-	}
-	.box.warn {
-		border-color: var(--warn);
-		box-shadow: inset 0 0 0 1px var(--warn);
+	.box:not(.empty) {
+		border: 2px solid var(--ink);
+		padding: 0 9px;
+		background: var(--bg);
 	}
 	.box.bad {
-		border-color: var(--bad);
-		box-shadow: inset 0 0 0 1px var(--bad);
+		border-color: var(--accent);
+	}
+	.box:focus-within {
+		border: 2px solid var(--accent);
+		padding: 0 9px;
+		background: var(--bg);
 	}
 	.box input {
-		flex: 1;
+		width: 100%;
 		min-width: 0;
 		height: 100%;
 		padding: 0;
 		background: transparent;
 		border: none;
 		outline: none;
-		font-size: 20px;
-		font-weight: 600;
+		text-align: right;
+		font-size: 18px;
+		font-weight: 800;
 		font-variant-numeric: tabular-nums;
 	}
-	.edit .box input {
-		font-size: 19px;
-	}
 	.box input::placeholder {
+		color: var(--neutral-500);
 		font-weight: 400;
 	}
-	/* 05 / 08: the unit follows the value, the status sits at the end */
-	@supports (field-sizing: content) {
-		.box.follow input {
-			flex: 0 1 auto;
-			field-sizing: content;
-		}
+	/* the unit, then the flag ("✕ High") or the last reading */
+	.flag {
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+		min-width: 0;
+		font-size: 12px;
+		line-height: 1.3;
 	}
 	.unit {
-		font-size: 12px;
 		color: var(--text-muted);
-		white-space: nowrap;
-	}
-	.box.empty .unit {
-		color: var(--text-faint);
 	}
 	.st {
-		margin-left: auto;
-		padding-left: 4px;
-		font-size: 12px;
-		font-weight: 600;
+		font-weight: 800;
 		white-space: nowrap;
 	}
-	.st-word {
-		display: none;
+	.lastv {
+		color: var(--text-muted);
+		white-space: nowrap;
 	}
 	.msg {
 		font-size: 13px;
 		font-weight: 600;
-		text-align: right;
 	}
 	.msg.hard-hint {
 		color: var(--text-muted);
 	}
 	.msg.hard-hint a {
-		font-weight: 600;
+		font-weight: 700;
 	}
 	/* "8 drops are about 143 ppm" and its one-tap fix */
 	.msg.drops {
@@ -710,19 +744,19 @@
 		align-items: center;
 		gap: 6px 10px;
 		margin-top: 4px;
-		text-align: left;
 		font-weight: 500;
 	}
 	.use-ppm {
-		min-height: 44px;
+		min-height: 40px;
 		padding: 0 14px;
-		font-size: 14px;
+		font-size: 13px;
 	}
 	.drops .or {
 		flex-basis: 100%;
 		font-size: 12px;
 	}
-	.msg.quiet {
+	/* the flag is beside the field, so the full reading is for screen readers */
+	.st-msg {
 		position: absolute;
 		width: 1px;
 		height: 1px;
@@ -730,12 +764,20 @@
 		clip: rect(0, 0, 0, 0);
 		white-space: nowrap;
 	}
+	.add-param {
+		display: flex;
+		align-items: center;
+		min-height: 44px;
+		font-size: 14px;
+		font-weight: 800;
+		border-bottom: 1px solid var(--divider);
+	}
 
 	/* ── Note, photo, task ── */
 	.note-row {
 		display: flex;
 		gap: 8px;
-		margin-top: 12px;
+		margin-top: 14px;
 		align-items: flex-start;
 	}
 	/* with photos, the note keeps the full width and the photos get their own row */
@@ -748,21 +790,12 @@
 	.note {
 		flex: 1;
 		min-width: 0;
-		height: 48px;
-		padding: 0 14px;
-		font-size: 16px;
-		background: transparent;
-		border-color: var(--border-strong);
-	}
-	.note::placeholder {
-		color: var(--text-muted);
 	}
 	.task {
 		margin-top: 12px;
-		padding: 12px 14px;
-		border-radius: 0;
-		background: var(--surface);
-		border: 1px solid var(--border);
+		padding: 10px 0;
+		border-top: 1px solid var(--divider);
+		border-bottom: 1px solid var(--divider);
 		font-size: 14px;
 		line-height: 1.4;
 	}
@@ -770,28 +803,13 @@
 		display: block;
 	}
 
-	/* ── Use last readings ── */
-	.use-last {
-		display: flex;
-		align-items: center;
-		gap: 4px;
-		min-height: 44px;
-		margin-top: 6px;
-	}
-	.filled-note {
-		font-size: 13px;
-		color: var(--text-muted);
-	}
-
-	/* ── Also log a water change: a card like the task's that opens up ── */
+	/* ── Also log a water change: a block under a rule that opens up ── */
 	.wc {
-		margin-top: 12px;
-		border-radius: 0;
-		background: var(--surface);
-		border: 1px solid var(--border);
+		margin-top: 14px;
+		border-top: 2px solid var(--ink);
 	}
 	.wc-toggle {
-		padding: 10px 14px;
+		padding: 8px 0;
 	}
 	.wc-head {
 		display: flex;
@@ -801,7 +819,7 @@
 	}
 	.wc-title {
 		font-size: 15px;
-		font-weight: 600;
+		font-weight: 700;
 	}
 	.wc-sub {
 		font-size: 13px;
@@ -811,7 +829,7 @@
 		display: none;
 		flex-direction: column;
 		gap: 16px;
-		padding: 2px 14px 14px;
+		padding: 4px 0 14px;
 	}
 	.wc.on .wc-body,
 	.wc:has(.wc-toggle input:checked) .wc-body {
@@ -826,18 +844,28 @@
 		line-height: 1.4;
 	}
 
-	/* ── Footer: sticky Save (05); G6 puts Save changes and Delete entry at the end ── */
+	/* ── Footer: the warning, then Save, sticky on phones ── */
 	.foot {
 		position: sticky;
 		bottom: 0;
 		z-index: 2;
 		margin: auto -20px 0;
-		padding: 14px 20px calc(28px + env(safe-area-inset-bottom));
+		padding: 12px 20px calc(24px + env(safe-area-inset-bottom));
 		background: var(--bg);
-		border-top: 1px solid var(--divider-soft);
+		border-top: 2px solid var(--divider);
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+	.summary {
+		margin: 0;
+		font-size: 13px;
+		font-weight: 600;
+	}
+	.foot-line {
 		display: flex;
 		align-items: center;
-		gap: 12px;
+		gap: 10px;
 	}
 	.count,
 	.grow,
@@ -846,236 +874,65 @@
 	}
 	.save {
 		flex: 1;
-		height: 56px;
-		border-radius: 0;
-		font-size: 17px;
-	}
-	.edit .foot {
-		position: static;
-		flex-direction: column;
-		align-items: stretch;
-		gap: 10px;
-		border-top: none;
-		background: transparent;
-	}
-	.edit .save {
-		flex: none;
-		height: 52px;
+		min-height: 52px;
+		font-size: 16px;
 	}
 	.remove {
-		min-height: 44px;
-		font-size: 15px;
-		font-weight: 600;
-		color: var(--bad);
+		min-height: 52px;
 	}
 
 	@media (min-width: 1024px) {
+		:global(html:has(.tform)) {
+			scroll-padding-bottom: 96px;
+		}
 		.tform {
 			min-height: 0;
-			padding: 28px 32px;
-			align-items: center;
+			padding: 20px 32px 32px;
 		}
 		.panel {
-			width: 640px;
+			width: 600px;
 			max-width: 100%;
 			flex: none;
 			padding: 0;
-			border-radius: 0;
-			background: var(--surface);
-			border: 1px solid var(--border-strong);
-			box-shadow: var(--shadow-modal);
-			/* rounds the sticky footer's corners without making the card a scroller */
-			overflow: clip;
 		}
-		.dhead {
-			align-items: center;
-			gap: 10px;
-			padding: 22px 24px 16px;
-			border-bottom: 1px solid var(--border);
+		.top {
+			padding: 0 0 14px;
 		}
-		.dhead h1 {
-			flex: 1;
-			min-width: 0;
-			font-size: 22px;
-		}
-		.dhead .chip {
-			height: 36px;
-			padding: 0 12px;
-		}
-		.when {
-			font-weight: 400;
-		}
-		.x {
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			flex-shrink: 0;
-			background: transparent;
-		}
-		.body {
-			padding: 20px 24px;
-		}
-		.meta {
-			margin: 0 0 16px;
-		}
-		.banner,
-		.draft-note {
-			margin: 0 0 16px;
-		}
-		.rows {
-			display: grid;
-			/* two equal halves, whatever is in them: a field never pushes its half past the card */
-			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-			gap: 14px 20px;
-			padding: 0;
-		}
-		.row,
-		.edit .row,
-		.tform:not(.edit) .row:last-of-type {
-			border: none;
-			padding: 0;
-			gap: 4px;
-			min-width: 0;
-		}
-		.line {
-			flex-direction: column;
-			align-items: stretch;
-			gap: 6px;
-		}
-		.lbl {
-			flex-direction: row;
-			justify-content: space-between;
-			align-items: baseline;
-			gap: 8px;
-		}
-		.pname,
-		.last {
-			font-size: 14px;
-		}
-		.last {
-			text-align: right;
-		}
-		.box,
-		.edit .box {
-			width: 100%;
-			height: 48px;
-			padding: 0 14px;
-			background: var(--surface-2);
-		}
-		.box.empty {
-			background: var(--bg);
-		}
-		.box input,
-		.edit .box input {
-			font-size: 19px;
-		}
-		.unit,
-		.st {
-			font-size: 13px;
-		}
-		.st-word {
+		.ty kbd {
 			display: inline;
 		}
-		/* the status is inside the field (08), so the message is for screen readers only */
-		.st-msg {
-			position: absolute;
-			width: 1px;
-			height: 1px;
-			overflow: hidden;
-			clip: rect(0, 0, 0, 0);
-			white-space: nowrap;
-		}
-		.msg {
-			text-align: left;
-		}
-		.add-param {
-			display: flex;
-			flex-direction: column;
-			gap: 6px;
-			color: var(--text-muted);
-		}
-		.ap-label {
-			font-size: 14px;
-			font-weight: 600;
-		}
-		.ap-box {
-			height: 48px;
-			border-radius: 0;
-			border: 1px dashed var(--border);
-		}
-		.add-param:hover {
-			color: var(--accent);
-		}
-		.add-param:hover .ap-box {
-			border-color: var(--accent);
+		.line {
+			grid-template-columns: minmax(0, 1fr) 100px 96px;
 		}
 		.note-row {
-			margin-top: 14px;
 			gap: 10px;
 		}
-		.note {
-			font-size: 15px;
-		}
-		.task {
-			margin-top: 14px;
-			background: var(--surface-2);
-		}
-		.use-last {
-			margin: -4px 0 12px;
-		}
-		.wc {
-			margin-top: 14px;
-			background: var(--surface-2);
-		}
-		.wc-toggle {
-			padding: 10px 16px;
-		}
-		.wc-body {
-			padding: 4px 16px 16px;
-		}
-		.foot,
-		.edit .foot {
+		.foot {
 			position: sticky;
 			bottom: 0;
 			margin: 0;
-			padding: 16px 24px 22px;
-			flex-direction: row;
-			align-items: center;
-			gap: 12px;
-			border-top: 1px solid var(--border);
-			background: var(--surface);
+			padding: 12px 0 0;
+			border-top: 2px solid var(--divider);
 		}
 		.count,
 		.grow {
 			display: block;
 			flex: 1;
-			font-size: 14px;
+			font-size: 13px;
 			color: var(--text-muted);
 		}
 		.cancel {
 			display: inline-flex;
-			font-weight: 400;
-			padding: 0 18px;
 		}
-		.save,
-		.edit .save {
+		.save {
 			flex: none;
-			height: 44px;
-			border-radius: 0;
-			font-size: 15px;
-			padding: 0 22px;
+			min-height: 44px;
+			font-size: 14px;
+			padding: 0 20px;
 		}
 		.remove {
+			min-height: 40px;
 			order: -1;
-			height: 44px;
-			padding: 0 16px;
-			border-radius: 0;
-			border: 1px solid var(--bad-border);
-		}
-	}
-	@media (min-width: 1024px) and (hover: hover) {
-		.remove:hover {
-			background: var(--bad-bg);
 		}
 	}
 </style>

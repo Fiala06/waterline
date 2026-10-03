@@ -113,20 +113,6 @@
 					<span class="total">{data.total} entr{data.total === 1 ? 'y' : 'ies'}</span>
 				</form>
 
-				{#if !data.groups?.length}
-					<div class="empty-list">
-						<div class="hide-desk">
-							<EmptyState compact icon={emptyIcon} title="Nothing logged here yet" text="Try a longer date range or another category.">
-								{#if importHref}<ImportButton href={importHref} />{/if}
-							</EmptyState>
-						</div>
-						<div class="hide-phone empty-desk">
-							<p>No entries in this range.</p>
-							{#if importHref}<ImportButton href={importHref} />{/if}
-						</div>
-					</div>
-				{/if}
-
 				{#each data.groups ?? [] as g (g.day)}
 					<section>
 						<h2 class="day">{g.label}</h2>
@@ -150,6 +136,15 @@
 				{/each}
 				{#if data.groups?.length && importHref}<ImportButton href={importHref} />{/if}
 			</div>
+
+			{#if !data.groups?.length}
+				<div class="empty-block">
+					<span class="hide-desk"><CategoryIcon kind={emptyIcon} size={44} /></span>
+					<h2 class="e-title">Nothing logged here yet</h2>
+					<p class="e-text"><span class="hide-desk">Try a longer date range or another category.</span><span class="hide-phone">{emptyText}</span></p>
+					{#if importHref}<ImportButton href={importHref} />{/if}
+				</div>
+			{/if}
 
 			<aside class="detail" aria-label="Entry detail">
 				{#if data.detail}
@@ -192,11 +187,8 @@
 						</div>
 					</div>
 				{:else}
+					<!-- the empty state (.empty-block) sits over the top of this pane -->
 					<div class="pane">
-						<div class="d-head">
-							<h2 class="d-title">Nothing logged here yet</h2>
-							<span class="d-empty">{emptyText}</span>
-						</div>
 						<div class="spacer"></div>
 						<div class="actions">
 							<a class="btn btn-primary" href="/entries/test/new?tank={data.tank.id}">Log water test</a>
@@ -288,16 +280,23 @@
 		height: 36px;
 		font-size: 14px;
 	}
-	.empty-desk {
+	/* one "Nothing logged here yet": a card under the chips on phones, the top of the pane on desktop */
+	.empty-block {
+		background: var(--surface);
+		padding: 18px;
 		display: flex;
 		flex-direction: column;
+		align-items: flex-start;
 		gap: 12px;
-		padding-top: 12px;
-		border-top: 2px solid var(--ink);
 	}
-	.empty-desk p {
+	.e-title {
+		margin: 0;
+		font-size: 18px;
+	}
+	.e-text {
 		margin: 0;
 		font-size: 14px;
+		line-height: 1.5;
 		color: var(--text-2);
 	}
 	section {
@@ -386,6 +385,8 @@
 			display: block;
 		}
 		.list {
+			grid-column: 1;
+			grid-row: 1;
 			padding: 20px 24px 32px 0;
 			gap: 18px;
 		}
@@ -419,6 +420,8 @@
 			height: 40px;
 		}
 		.detail {
+			grid-column: 2;
+			grid-row: 1;
 			display: block;
 			min-width: 0;
 			background: var(--surface);
@@ -465,10 +468,27 @@
 			font-size: 14px;
 			color: var(--text-muted);
 		}
-		.d-empty {
-			font-size: 14px;
-			color: var(--text-2);
-			line-height: 1.45;
+		.empty-block {
+			grid-column: 2;
+			grid-row: 1;
+			z-index: 1;
+			align-self: start;
+			align-items: stretch;
+			padding: 20px 20px 0;
+			gap: 8px;
+			background: transparent;
+		}
+		.empty-block :global(.btn) {
+			height: auto;
+			padding: 10px 14px;
+			white-space: normal;
+			text-align: left;
+		}
+		.e-title {
+			font-size: 22px;
+		}
+		.e-text {
+			margin-bottom: 8px;
 		}
 		.drows {
 			flex-shrink: 0;
@@ -539,6 +559,8 @@
 			grid-template-columns: 150px minmax(0, 1fr) 270px;
 		}
 		.cats {
+			grid-column: 1;
+			grid-row: 1;
 			display: flex;
 			flex-direction: column;
 			min-width: 0;
@@ -600,7 +622,12 @@
 			content: none;
 		}
 		.list {
+			grid-column: 2;
 			padding: 20px 24px 32px;
+		}
+		.detail,
+		.empty-block {
+			grid-column: 3;
 		}
 	}
 	@media (min-width: 1200px) {
@@ -610,7 +637,8 @@
 		.cats {
 			padding-right: 16px;
 		}
-		.pane {
+		.pane,
+		.empty-block {
 			padding: 24px 24px 0;
 		}
 		.actions {

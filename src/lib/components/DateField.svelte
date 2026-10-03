@@ -152,7 +152,6 @@
 	h2 {
 		margin: 0;
 		font-size: 22px;
-		font-weight: 600;
 	}
 	.head-actions {
 		display: flex;
@@ -176,7 +175,7 @@
 	}
 	.month {
 		font-size: 17px;
-		font-weight: 600;
+		font-weight: 800;
 	}
 	.grid {
 		display: grid;
@@ -206,14 +205,13 @@
 		inset: -4px 0;
 	}
 	.day.today {
-		box-shadow: inset 0 0 0 1px var(--accent);
-		color: var(--accent);
-		font-weight: 600;
+		box-shadow: inset 0 0 0 2px var(--ink);
+		font-weight: 800;
 	}
 	.day.selected {
 		background: var(--accent);
 		color: var(--on-accent);
-		font-weight: 700;
+		font-weight: 800;
 		box-shadow: none;
 	}
 	.day:disabled {
@@ -222,7 +220,7 @@
 	}
 	@media (hover: hover) {
 		.day:not(:disabled):not(.selected):hover {
-			background: var(--surface-hi);
+			background: var(--surface);
 		}
 	}
 </style>

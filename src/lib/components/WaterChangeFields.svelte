@@ -27,6 +27,14 @@
 		compact?: boolean;
 	} = $props();
 
+	// % and volume convert into each other when the tank's volume is known (README § 11)
+	function switchMode(mode: string) {
+		const a = parseNumber(amount);
+		if (a != null && tankVolume && mode !== amountMode) {
+			amount = mode === 'percent' ? String(Math.round((a / tankVolume) * 100)) : formatNumber((tankVolume * a) / 100, 1);
+		}
+		amountMode = mode;
+	}
 	// "≈ 8.5 gal of 34 gal actual volume"
 	const wcNote = $derived.by(() => {
 		const a = parseNumber(amount);
@@ -44,8 +52,8 @@
 			<label class="label" for="amount">Amount</label>
 			<fieldset class="unit-toggle">
 				<legend class="sr-only">Amount unit</legend>
-				<label><input type="radio" name="amountMode" value="percent" bind:group={amountMode} />%</label>
-				<label><input type="radio" name="amountMode" value="volume" bind:group={amountMode} />{volUnit}</label>
+				<label><input type="radio" name="amountMode" value="percent" checked={amountMode === 'percent'} onchange={() => switchMode('percent')} />%</label>
+				<label><input type="radio" name="amountMode" value="volume" checked={amountMode === 'volume'} onchange={() => switchMode('volume')} />{volUnit}</label>
 			</fieldset>
 		</div>
 		<div class="amount-box">
@@ -104,10 +112,10 @@
 	.hint {
 		margin: 0;
 		font-size: 13px;
-		color: var(--text-faint);
+		color: var(--text-muted);
 	}
 
-	/* one big amount field (14) */
+	/* one big amount field, with % / gal switching the unit (and converting the value) */
 	.amount-head {
 		display: flex;
 		align-items: center;
@@ -115,26 +123,25 @@
 		gap: 12px;
 	}
 	.amount-head .label {
-		font-size: 14px;
+		font-size: 13px;
 		color: var(--text-muted);
 	}
 	.unit-toggle {
 		display: flex;
-		gap: 2px;
-		padding: 2px;
-		border-radius: 0;
-		background: var(--surface);
-		border: 1px solid var(--border);
+		border: 1px solid var(--divider);
 	}
 	.unit-toggle label {
 		position: relative;
-		min-width: 44px;
-		padding: 4px 10px;
-		border-radius: 0;
+		min-width: 48px;
+		padding: 5px 10px;
 		text-align: center;
 		font-size: 13px;
-		color: var(--text-muted);
+		font-weight: 700;
+		color: var(--text);
 		cursor: pointer;
+	}
+	.unit-toggle label + label {
+		border-left: 1px solid var(--divider);
 	}
 	/* 30px to match the design, 44px to tap */
 	.unit-toggle label::after {
@@ -143,9 +150,9 @@
 		inset: -7px 0;
 	}
 	.unit-toggle label:has(input:checked) {
-		background: var(--border);
-		color: var(--text);
-		font-weight: 600;
+		background: var(--accent);
+		color: var(--on-accent);
+		font-weight: 800;
 	}
 	.unit-toggle label:has(input:focus-visible) {
 		outline: 2px solid var(--accent);
@@ -159,18 +166,18 @@
 		display: flex;
 		align-items: center;
 		gap: 8px;
-		height: 64px;
-		padding: 0 16px;
-		border-radius: 0;
+		height: 56px;
+		padding: 0 14px;
 		background: var(--surface);
-		border: 1px solid var(--border);
+		border: 1px solid var(--divider);
 	}
 	.amount-box:focus-within {
-		border-color: var(--accent);
-		box-shadow: inset 0 0 0 1px var(--accent);
+		border: 2px solid var(--accent);
+		padding: 0 13px;
+		background: var(--bg);
 	}
 	.amount-box:has(input[aria-invalid='true']) {
-		border-color: var(--bad);
+		border-color: var(--accent);
 	}
 	.amount-box input {
 		flex: 1;
@@ -180,68 +187,51 @@
 		background: transparent;
 		border: none;
 		outline: none;
-		font-size: 28px;
-		font-weight: 600;
+		font-size: 26px;
+		font-weight: 800;
 		font-variant-numeric: tabular-nums;
 	}
 	.amount-box .unit {
-		font-size: 17px;
+		font-size: 15px;
 		color: var(--text-muted);
 	}
 	.presets {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 8px;
+		gap: 6px;
 	}
 	.presets .chip {
 		padding: 0 12px;
 		font-size: 13px;
-	}
-	.presets .chip[aria-pressed='true'] {
-		color: var(--on-accent);
+		font-weight: 700;
 	}
 	.three {
 		grid-template-columns: repeat(3, 1fr);
 	}
-	/* 14: the choices are outlined; the picked one is filled */
-	.option:not(:has(input:checked)) {
-		background: transparent;
-	}
 
-	/* On the water test (05, 08): the size of a reading, not the page's main field */
+	/* On the water test: the size of a reading, not the page's main field */
 	.compact {
 		gap: 16px;
 	}
-	/* a well in the card around it */
 	.compact .amount-box {
-		height: 48px;
-		padding: 0 12px;
-		border-radius: 0;
-		background: var(--bg);
-		border-color: var(--border-strong);
+		height: 44px;
+		padding: 0 10px;
+	}
+	.compact .amount-box:focus-within {
+		padding: 0 9px;
 	}
 	.compact .amount-box input {
-		font-size: 20px;
+		font-size: 18px;
 	}
 	.compact .amount-box .unit {
-		font-size: 14px;
+		font-size: 13px;
 	}
 	.compact .option {
 		min-height: 44px;
 	}
 
 	@media (min-width: 1024px) {
-		.amount-head .label {
-			font-size: 13px;
-		}
-		legend {
-			margin-bottom: 6px;
-		}
-		.amount-box {
-			background: var(--surface-2);
-			border-color: var(--border-strong);
-		}
-		/* 08 is two readings wide: amount and source side by side */
+		/* two readings wide: amount and source side by side */
 		.compact {
 			display: grid;
 			grid-template-columns: 1fr 1fr;
@@ -250,15 +240,6 @@
 		}
 		.compact .field {
 			gap: 6px;
-		}
-		.compact .field > .label {
-			font-size: 13px;
-		}
-		.compact .amount-box input {
-			font-size: 19px;
-		}
-		.compact .amount-box .unit {
-			font-size: 13px;
 		}
 	}
 </style>
