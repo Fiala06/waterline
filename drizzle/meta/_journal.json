@@ -204,6 +204,13 @@
       "when": 1791042408287,
       "tag": "0028_without_equipment",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "6",
+      "when": 1791044984946,
+      "tag": "0029_photo_taken_at_set",
+      "breakpoints": true
     }
   ]
 }

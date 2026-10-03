@@ -9,6 +9,10 @@ How to write a line:
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
+## Unreleased
+
+- **Photos keep the date they were taken:** A photo you add is dated when it was taken, read from the photo itself, not when you uploaded it, so last month's photos land in last month in [Photos](/photos) and History. On the Photos page, Upload shows a Taken date set from the photos (or today), and photos from different days each keep their own, as one note per day. On a log entry, a photo from another day offers "Use the photo's date" for the entry. Opening a photo shows when it was taken, and Change date fixes it. The photo's other details (camera, location) are still not kept.
+
 ## 1.11.1 · 2026-10-03
 
 - **Bigger charts on a computer:** In [Charts](/charts), up to a 1440px-wide window the latest reading, averages and events move under the chart, so the chart gets the full width. The charts of the same reading in your other tanks are now wide and tall enough to read.

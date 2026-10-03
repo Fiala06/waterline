@@ -24,7 +24,8 @@
 		RECHECK_OPTIONS
 	} from '$lib/events';
 	import { FEED_UNITS } from '$lib/tasks';
-	import { whenLabel, type When } from '$lib/time';
+	import { exifToWhen, fmtWhenShort, type ExifDate } from '$lib/exif';
+	import { todayInZone, whenLabel, type When } from '$lib/time';
 	import type { EventCategory } from '$lib/types';
 
 	let {
@@ -119,6 +120,18 @@
 	let clientId = $state('');
 	let busy = $state(false);
 	onMount(() => (clientId = crypto.randomUUID()));
+
+	// A photo taken on another day than the entry (#42): offer its date, without changing the entry by itself.
+	let photoDates = $state<(ExifDate | null)[]>([]);
+	const photoWhen = $derived.by(() => {
+		const day = when?.date ?? todayInZone(timeZone);
+		for (const d of photoDates) {
+			if (!d) continue;
+			const w = exifToWhen(d, timeZone);
+			if (w.date !== day) return w;
+		}
+		return null;
+	});
 
 	// An entry that was left before it was saved comes back, with Discard.
 	let restored = $state<{ discard: () => Promise<void> } | null>(null);
@@ -620,7 +633,10 @@
 					{#if errors.note}<span class="error-text">✕ {errors.note}</span>{/if}
 				</div>
 
-				<PhotoPicker existing={existingPhotos} />
+				<PhotoPicker existing={existingPhotos} ontaken={(d) => (photoDates = d)} />
+				{#if photoWhen}
+					<button type="button" class="btn-text photo-date" onclick={() => (when = photoWhen)}>Use the photo's date ({fmtWhenShort(photoWhen)})</button>
+				{/if}
 
 				{#if category === 'livestock' && preview}
 					<p class="preview">
@@ -799,6 +815,13 @@
 	legend {
 		padding: 0;
 		margin-bottom: 8px;
+	}
+	/* "Use the photo's date (Sep 14, 3:20 PM)" under the photos (#42) */
+	.photo-date {
+		align-self: flex-start;
+		font-size: 14px;
+		min-height: 32px;
+		padding: 0;
 	}
 	.hint {
 		margin: 0;

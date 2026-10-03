@@ -17,7 +17,7 @@ import {
 } from './db/schema';
 import { getTank } from './tanks';
 import { completeTask } from './tasks';
-import { removeEntryPhotoFiles } from './photos';
+import { followEntryDate, removeEntryPhotoFiles } from './photos';
 
 // ── Tests ───────────────────────────────────────────────────────────────────
 
@@ -114,6 +114,7 @@ export function updateTest(userId: string, testId: string, input: Omit<TestInput
 			.set({ takenAt: input.takenAt, note: input.note, editedAt: new Date().toISOString() })
 			.where(eq(tests.id, testId))
 			.run();
+		if (input.takenAt !== test.takenAt) followEntryDate({ testId }, input.takenAt);
 		tx.delete(testReadings).where(eq(testReadings.testId, testId)).run();
 		if (input.readings.size) {
 			tx.insert(testReadings)
@@ -246,13 +247,15 @@ export function updateEvent(
 	eventId: string,
 	patch: Pick<EventInput, 'occurredAt' | 'note' | 'data'>
 ) {
-	getEvent(userId, eventId);
-	return db
+	const before = getEvent(userId, eventId);
+	const updated = db
 		.update(events)
 		.set({ ...patch, editedAt: new Date().toISOString() })
 		.where(eq(events.id, eventId))
 		.returning()
 		.get();
+	if (patch.occurredAt !== before.occurredAt) followEntryDate({ eventId }, patch.occurredAt);
+	return updated;
 }
 
 export function deleteEvent(userId: string, eventId: string) {

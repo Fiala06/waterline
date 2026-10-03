@@ -60,6 +60,8 @@ events           id, tank_id, category(water_change|dosing|maintenance|livestock
                  -- note {system: setup_reviewed, changed:[parts], prev_checks} (All still
                  --       right on the setup review; prev_checks lets Undo put the checks back)
 photos           id, tank_id, event_id?, test_id?, path, thumb_path, width, height, taken_at
+                 (from the photo's details, the day picked on upload, or its entry's date),
+                 taken_at_set (the keeper changed it in the viewer: it no longer follows the entry)
 photo_livestock  photo_id, livestock_id (pets tagged in a photo)
 
 ── Tasks ──────────────────────────────────────────────────────────────────────

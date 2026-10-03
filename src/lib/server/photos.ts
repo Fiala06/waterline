@@ -6,6 +6,7 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import sharp from 'sharp';
 import { env } from '$env/dynamic/private';
+import { parseExifHint, readExifDate, takenAtFrom, type ExifDate } from '$lib/exif';
 import { db } from './db';
 import { events, photos, publicPages, tanks, tests } from './db/schema';
 import { getTank } from './tanks';
@@ -27,6 +28,14 @@ export function photoFiles(form: FormData, field = 'photos'): File[] {
 		.slice(0, MAX_PHOTOS_PER_ENTRY);
 }
 
+/**
+ * The dates taken the browser read before shrinking the photos (#42), one per
+ * file in order: shrinking drops the details, so this is all that's left of them.
+ */
+export function photoHints(form: FormData, field = 'photoTaken'): (string | null)[] {
+	return form.getAll(field).map((v) => (typeof v === 'string' && v ? v : null));
+}
+
 export function checkPhotoFiles(files: File[]): string | null {
 	for (const f of files) {
 		if (f.size > MAX_PHOTO_BYTES) return `${f.name || 'A photo'} is over 20 MB.`;
@@ -42,34 +51,57 @@ export interface PreparedPhoto {
 	thumb: Buffer;
 	width: number;
 	height: number;
+	/** the date taken from the photo's details (#42), read before they're stripped; null when it has none */
+	exif: ExifDate | null;
+	/** the instant it was taken, once datePhotos() has worked it out; otherwise it takes the entry's date */
+	takenAt?: string;
 }
 
 /**
  * Decode and resize uploads before anything is saved, so a bad file fails the
- * whole form instead of leaving an entry without its photo.
+ * whole form instead of leaving an entry without its photo. `hints` are the
+ * dates the browser read before shrinking the photos, one per file.
  */
-export async function preparePhotos(files: File[]): Promise<PreparedPhoto[] | { error: string }> {
+export async function preparePhotos(files: File[], hints: (string | null)[] = []): Promise<PreparedPhoto[] | { error: string }> {
 	const tooBig = checkPhotoFiles(files);
 	if (tooBig) return { error: tooBig };
 	const out: PreparedPhoto[] = [];
-	for (const file of files) {
+	for (const [i, file] of files.entries()) {
 		try {
 			const input = Buffer.from(await file.arrayBuffer());
+			const image = sharp(input, { failOn: 'error', limitInputPixels: MAX_PIXELS });
+			// the date taken, from the details the output won't carry; the browser's reading when it shrank the photo first
+			const exif = readExifDate((await image.metadata()).exif ?? new Uint8Array(0)) ?? parseExifHint(hints[i]);
 			// rotate() applies EXIF orientation; output carries no metadata (no GPS).
 			// the pixel cap keeps a tiny file that decodes to a huge image from tying up the server
-			const { data: full, info } = await sharp(input, { failOn: 'error', limitInputPixels: MAX_PIXELS })
+			const { data: full, info } = await image
 				.rotate()
 				.resize(FULL, FULL, { fit: 'inside', withoutEnlargement: true })
 				.jpeg({ quality: 82, mozjpeg: true })
 				.toBuffer({ resolveWithObject: true });
 			const thumb = await sharp(full).resize(THUMB, THUMB, { fit: 'cover' }).jpeg({ quality: 76 }).toBuffer();
-			out.push({ full, thumb, width: info.width, height: info.height });
+			out.push({ full, thumb, width: info.width, height: info.height, exif });
 		} catch (e) {
 			const huge = String((e as Error)?.message).includes('pixel limit');
 			return { error: `${file.name || 'A photo'} ${huge ? 'is too large (over 100 megapixels)' : "couldn't be read as an image"}.` };
 		}
 	}
 	return out;
+}
+
+/**
+ * Give each photo the date it was taken (#42): from its details when it has a
+ * usable one, else `fallback` (now, or the date the keeper picked). Photos on
+ * a log entry skip this and take the entry's date.
+ */
+export function datePhotos<T extends PreparedPhoto>(prepared: T[], timeZone: string, fallback = new Date().toISOString(), now = new Date()): T[] {
+	for (const p of prepared) p.takenAt = takenAtFrom(p.exif, timeZone, now) ?? fallback;
+	return prepared;
+}
+
+/** The date a photo on an entry was taken, to offer for the entry when it's another day. */
+export function photoDate(p: PreparedPhoto, timeZone: string): string | null {
+	return takenAtFrom(p.exif, timeZone);
 }
 
 export function storePhotos(
@@ -95,11 +127,26 @@ export function storePhotos(
 				thumbPath: join(tankId, `${id}_t.jpg`),
 				width: p.width,
 				height: p.height,
-				takenAt: link.takenAt
+				takenAt: p.takenAt ?? link.takenAt
 			})
 			.returning()
 			.get();
 	});
+}
+
+/** The keeper fixes a photo's date in the viewer (#42): from then on it no longer follows its entry's. */
+export function setPhotoDate(userId: string, photoId: string, takenAt: string) {
+	const p = getPhoto(userId, photoId);
+	db.update(photos).set({ takenAt, takenAtSet: true }).where(eq(photos.id, p.id)).run();
+	return p;
+}
+
+/** An entry moved to another date: its photos move with it, except those whose date the keeper set. */
+export function followEntryDate(entry: { eventId?: string; testId?: string }, takenAt: string) {
+	db.update(photos)
+		.set({ takenAt })
+		.where(and(entry.eventId ? eq(photos.eventId, entry.eventId) : eq(photos.testId, entry.testId!), eq(photos.takenAtSet, false)))
+		.run();
 }
 
 /** A photo the user owns, or a 404. */

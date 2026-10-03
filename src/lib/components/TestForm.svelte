@@ -18,7 +18,8 @@
 	import { WATER_SOURCES } from '$lib/events';
 	import { paramStatus, statusIcon, statusLong, statusMedium, statusShort } from '$lib/status';
 	import { dropsAsPpm, parseNumber } from '$lib/units';
-	import { whenLabel, type When } from '$lib/time';
+	import { exifToWhen, fmtWhenShort, type ExifDate } from '$lib/exif';
+	import { todayInZone, whenLabel, type When } from '$lib/time';
 
 	interface Param {
 		id: string;
@@ -98,6 +99,17 @@
 	let note = $state(untrack(() => initialNote));
 	let when = $state<When | null>(untrack(() => initialWhen));
 	let picking = $state(false);
+	// A photo taken on another day than the test (#42): offer its date, without changing the test by itself.
+	let photoDates = $state<(ExifDate | null)[]>([]);
+	const photoWhen = $derived.by(() => {
+		const day = when?.date ?? todayInZone(timeZone);
+		for (const d of photoDates) {
+			if (!d) continue;
+			const w = exifToWhen(d, timeZone);
+			if (w.date !== day) return w;
+		}
+		return null;
+	});
 	// "+ Add parameter" opens G7 here, so the test in progress stays on screen
 	let addOpen = $state(false);
 	let clientId = $state('');
@@ -420,8 +432,11 @@
 					placeholder={desk ? 'Note, e.g. “before water change”' : 'Add note…'}
 					aria-label="Note"
 				/>
-				<PhotoPicker compact existing={existingPhotos} />
+				<PhotoPicker compact existing={existingPhotos} ontaken={(d) => (photoDates = d)} />
 			</div>
+			{#if photoWhen}
+				<button type="button" class="btn-text photo-date" onclick={() => (when = photoWhen)}>Use the photo's date ({fmtWhenShort(photoWhen)})</button>
+			{/if}
 
 			{#if task && taskText}
 				<label class="check-row task">

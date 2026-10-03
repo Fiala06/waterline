@@ -1,7 +1,9 @@
-import { redirect } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import { eventKindLabel, eventTitle } from '$lib/events';
+import { utcToZoned } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
-import { deletePhoto, getPhoto, setCover, tankPhotos } from '$lib/server/photos';
+import { parseWhen } from '$lib/server/forms';
+import { deletePhoto, getPhoto, setCover, setPhotoDate, tankPhotos } from '$lib/server/photos';
 import { getTank, updateTank } from '$lib/server/tanks';
 import { getLivestock, getPlant, listLivestock, listPlants, photoPets, tagPhoto, updateLivestockDetails, updatePlant } from '$lib/server/specs';
 import { livestockLabel } from '$lib/livestock';
@@ -60,6 +62,9 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 		prev: i > 0 ? all[i - 1].photo.id : null,
 		next: i < all.length - 1 ? all[i + 1].photo.id : null,
 		when: entry ? `${when} · ${entry.kind}` : when,
+		// Change date (#42): the date taken as the keeper's wall clock, to fix afterwards
+		taken: utcToZoned(photo.takenAt, user.timeZone),
+		today: utcToZoned(new Date(), user.timeZone).date,
 		entry,
 		pets,
 		subjects: subjects.map(({ uses, ...s }) => s),
@@ -122,6 +127,15 @@ export const actions: Actions = {
 			updateLivestockDetails(user.id, l.id, { photoId: photo.id });
 			setFlash(cookies, `✓ The photo for ${livestockLabel(l)}`);
 		} else return { error: 'Choose a plant or an animal.' };
+		redirect(303, `/photos/${params.id}`);
+	},
+	/** Change date (#42): fix when the photo was taken; from then on it no longer follows its entry's date. */
+	date: async ({ locals, params, request, cookies }) => {
+		const user = locals.user!;
+		const when = parseWhen(await request.formData(), user.timeZone);
+		if ('error' in when) return fail(400, { dateError: when.error });
+		setPhotoDate(user.id, params.id, when.at);
+		setFlash(cookies, '✓ Date changed');
 		redirect(303, `/photos/${params.id}`);
 	},
 	unshare: ({ locals, params, cookies }) => {

@@ -3,7 +3,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { setFlash } from '$lib/server/flash';
 import { parseTankForm } from '$lib/server/forms';
-import { preparePhotos, setCover, storePhotos } from '$lib/server/photos';
+import { datePhotos, preparePhotos, setCover, storePhotos } from '$lib/server/photos';
 import { db } from '$lib/server/db';
 import { publicPages } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
@@ -81,7 +81,7 @@ export const actions: Actions = {
 		const prepared = cover instanceof File && cover.size ? await preparePhotos([cover]) : [];
 		if ('error' in prepared) return fail(400, { errors: { cover: prepared.error } });
 		updateTank(user.id, params.id, values);
-		const [photo] = storePhotos(params.id, prepared, { takenAt: new Date().toISOString() });
+		const [photo] = storePhotos(params.id, datePhotos(prepared, user.timeZone), { takenAt: new Date().toISOString() });
 		if (photo) setCover(user.id, photo.id);
 		// where the cover sits in its frame, as dragged (a new photo's too)
 		if (form.has('coverX') || form.has('coverY')) {

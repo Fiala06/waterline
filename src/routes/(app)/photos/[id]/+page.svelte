@@ -9,8 +9,9 @@
 	import { photoUrl } from '$lib/media';
 	import type { SubmitFunction } from '@sveltejs/kit';
 
-	let { data } = $props();
+	let { data, form } = $props();
 	let menu = $state(false);
+	let changingDate = $state(false);
 	let copied = $state(false);
 	const share = $derived(data.sharing?.share ?? null);
 	const shareUrl = $derived(share && data.sharing ? `${data.sharing.base}/s/${share.id}` : '');
@@ -124,10 +125,22 @@
 			<a class="round close" href="/photos" aria-label="Close">✕</a>
 		</div>
 		<div class="caption">
-			<div class="meta">{data.when}</div>
+			<div class="meta">Taken {data.when}</div>
 			{#if data.entry?.title}<h1 class="title">{data.entry.title}</h1>{/if}
 			{#if data.entry?.note}<p class="note">{data.entry.note}</p>{/if}
 			{#if data.entry}<a class="link" href={data.entry.href}>View entry ›</a>{/if}
+			<!-- Change date (#42): a details block, so it opens without JavaScript too -->
+			<details class="change-date" bind:open={changingDate}>
+				<summary class="btn-text">{changingDate ? 'Keep the date' : 'Change date'}</summary>
+				<form method="POST" action="?/date" use:enhance class="date-form">
+					<label class="sr-only" for="photo-date">Date taken</label>
+					<input class="input" id="photo-date" type="date" name="date" value={data.taken.date} max={data.today} required />
+					<label class="sr-only" for="photo-time">Time taken</label>
+					<input class="input" id="photo-time" type="time" name="time" value={data.taken.time} required />
+					<button class="btn btn-primary">Save date</button>
+					{#if form?.dateError}<span class="error-text">✕ {form.dateError}</span>{/if}
+				</form>
+			</details>
 			{#if data.pets.length}
 				<div class="pets" role="group" aria-labelledby="pets-h">
 					<span class="pets-h" id="pets-h">In this photo</span>
@@ -329,6 +342,37 @@
 		/* 44px tap target without adding height */
 		padding: 12px 0;
 		margin: -8px 0 -12px;
+	}
+	/* Change date (#42) */
+	.change-date {
+		margin-top: 4px;
+	}
+	.change-date summary {
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		font-size: 14px;
+		font-weight: 800;
+		color: var(--accent-text);
+		cursor: pointer;
+		list-style: none;
+	}
+	.change-date summary::-webkit-details-marker {
+		display: none;
+	}
+	.date-form {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		gap: 8px;
+		padding-bottom: 8px;
+	}
+	.date-form .input {
+		min-height: 44px;
+		min-width: 0;
+	}
+	.date-form .btn,
+	.date-form .error-text {
+		grid-column: 1 / -1;
 	}
 	.pets {
 		margin-top: 10px;

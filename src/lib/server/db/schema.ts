@@ -217,7 +217,10 @@ export const photos = sqliteTable('photos', {
 	thumbPath: text('thumb_path').notNull(),
 	width: integer('width').notNull(),
 	height: integer('height').notNull(),
-	takenAt: text('taken_at').notNull()
+	/** when it was taken: from the photo's details, the date picked on upload, or its entry's date (#42) */
+	takenAt: text('taken_at').notNull(),
+	/** the keeper set the date in the viewer, so it no longer follows the entry's */
+	takenAtSet: integer('taken_at_set', { mode: 'boolean' }).notNull().default(false)
 });
 
 

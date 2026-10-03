@@ -1,0 +1,1 @@
+ALTER TABLE `photos` ADD `taken_at_set` integer DEFAULT false NOT NULL;
