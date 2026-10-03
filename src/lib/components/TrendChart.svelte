@@ -155,7 +155,8 @@
 	const baseline = $derived(h - BOTTOM);
 
 	const fmt = (t: number) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone });
-	const isToday = (t: number) => Math.abs(t - Date.now()) < 43_200_000;
+	const dayOf = (t: number) => new Date(t).toLocaleDateString('en-CA', { timeZone });
+	const isToday = (t: number) => dayOf(t) === dayOf(Date.now());
 	const chosen = $derived(markers.find((m) => m.href === selected) ?? null);
 	/** Each marker's tap width: 44px, narrower where the next one is closer, so no tap area covers another's dot. */
 	const tapWidth = $derived.by(() => {

@@ -154,20 +154,20 @@
 	}
 	.reuse h3 {
 		margin: 0;
-		font-size: 13px;
-		font-weight: 600;
+		font-size: 11px;
+		font-weight: 400;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
 		color: var(--text-muted);
 	}
 	.reuse ul {
 		margin: 0;
 		padding: 0;
 		list-style: none;
-		border-radius: 0;
-		background: var(--surface-2);
-		border: 1px solid var(--border);
+		border-top: 2px solid var(--ink);
 	}
-	.reuse li + li {
-		border-top: 1px solid var(--border);
+	.reuse li {
+		border-bottom: 1px solid var(--divider);
 	}
 	.reuse-row {
 		width: 100%;
@@ -193,7 +193,7 @@
 	.add {
 		flex-shrink: 0;
 		font-size: 14px;
-		font-weight: 600;
+		font-weight: 800;
 		color: var(--accent);
 	}
 	.or {
@@ -222,30 +222,10 @@
 	.sm {
 		font-size: 12px;
 	}
-	/* G7: the chosen unit is ticked, like the other pick-from-a-list chips */
-	.units label.chip:has(input:checked) {
-		background: var(--selected);
-		border-color: var(--accent);
-		color: var(--text);
-		font-weight: 600;
-	}
-	.units label.chip:has(input:checked)::before {
-		content: '✓';
-		color: var(--accent);
-		font-weight: 700;
-	}
 	.c-range {
 		display: grid;
 		grid-template-columns: 1fr 1fr 1fr;
 		gap: 8px;
-	}
-	/* G7: recessed fields in the sheet; background-color keeps the select's ▾ */
-	.custom .input {
-		background-color: var(--surface-2);
-		border-color: var(--border-strong);
-	}
-	.custom .input:focus {
-		border-color: var(--accent);
 	}
 	.c-range .input {
 		padding: 0 12px;
@@ -259,9 +239,8 @@
 	}
 	.preview {
 		padding: 12px 14px;
-		border-radius: 0;
-		background: var(--surface-2);
-		border: 1px solid var(--border);
+		background: var(--surface);
+		border-left: 3px solid var(--ink);
 		display: flex;
 		align-items: center;
 		justify-content: space-between;

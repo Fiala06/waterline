@@ -160,41 +160,6 @@
 					</p>
 				{/if}
 
-				{#if c.others.length}
-					<section class="compare" aria-labelledby="compare-h">
-						<h2 id="compare-h">{c.name} in your other tanks</h2>
-						<div class="cmp-grid">
-							{#each c.others as o (o.tankId)}
-								<div class="cmp">
-									<div class="cmp-head">
-										<a class="cmp-tank" href="/charts?tank={o.tankId}&p={o.paramId}&r={data.range}">{o.tankName}</a>
-										<span class="cmp-latest"><span class="num">{o.latest}</span> <span class="status-{o.level} cmp-st">{o.status}</span></span>
-									</div>
-									{#if o.points.length >= 2}
-										<div class="cmp-chart">
-											<TrendChart
-												fit
-												points={o.points}
-												band={o.band}
-												from={c.from}
-												to={c.to}
-												lastLevel={o.level}
-												label="{c.name} in {o.tankName}"
-												name={c.name}
-												unit={c.unit}
-												decimals={o.decimals}
-												timeZone={data.user.timeZone}
-											/>
-										</div>
-									{:else}
-										<p class="cmp-none">Fewer than 2 readings in this range</p>
-									{/if}
-									{#if o.target}<p class="cmp-target">Target {o.target}</p>{/if}
-								</div>
-							{/each}
-						</div>
-					</section>
-				{/if}
 			</div>
 
 			<div class="side">
@@ -229,6 +194,42 @@
 					</div>
 				{/if}
 			</div>
+
+			{#if c.others.length}
+				<section class="compare" aria-labelledby="compare-h">
+					<h2 id="compare-h">{c.name} in your other tanks</h2>
+					<div class="cmp-grid">
+						{#each c.others as o (o.tankId)}
+							<div class="cmp">
+								<div class="cmp-head">
+									<a class="cmp-tank" href="/charts?tank={o.tankId}&p={o.paramId}&r={data.range}">{o.tankName}</a>
+									<span class="cmp-latest"><span class="num">{o.latest}</span> <span class="status-{o.level} cmp-st">{o.status}</span></span>
+								</div>
+								{#if o.points.length >= 2}
+									<div class="cmp-chart">
+										<TrendChart
+											fit
+											points={o.points}
+											band={o.band}
+											from={c.from}
+											to={c.to}
+											lastLevel={o.level}
+											label="{c.name} in {o.tankName}"
+											name={c.name}
+											unit={c.unit}
+											decimals={o.decimals}
+											timeZone={data.user.timeZone}
+										/>
+									</div>
+								{:else}
+									<p class="cmp-none">Fewer than 2 readings in this range</p>
+								{/if}
+								{#if o.target}<p class="cmp-target">Target {o.target}</p>{/if}
+							</div>
+						{/each}
+					</div>
+				</section>
+			{/if}
 		</div>
 	{/if}
 </div>
@@ -533,7 +534,10 @@
 		.layout {
 			display: grid;
 			grid-template-columns: 168px minmax(0, 1fr) 260px;
-			grid-template-areas: 'plist centre side';
+			grid-template-rows: auto 1fr;
+			grid-template-areas:
+				'plist centre side'
+				'plist compare side';
 			gap: 0;
 			min-height: calc(100dvh - 240px);
 		}
@@ -546,7 +550,11 @@
 		.centre {
 			grid-area: centre;
 			gap: 14px;
-			padding: 24px 24px 32px;
+			padding: 24px 24px 20px;
+		}
+		.compare {
+			grid-area: compare;
+			padding: 0 24px 32px;
 		}
 		.side {
 			grid-area: side;
@@ -671,9 +679,11 @@
 	@media (min-width: 1024px) and (max-width: 1199px) {
 		.layout {
 			grid-template-columns: 150px minmax(0, 1fr);
+			grid-template-rows: auto auto 1fr;
 			grid-template-areas:
 				'plist centre'
-				'plist side';
+				'plist side'
+				'plist compare';
 		}
 		.plist {
 			padding-right: 12px;
@@ -687,11 +697,11 @@
 			border-left: none;
 			border-top: 2px solid var(--divider);
 		}
-		.centre {
-			padding-bottom: 20px;
-		}
 		.chart-box {
 			height: clamp(300px, calc(100dvh - 520px), 440px);
+		}
+		.compare {
+			padding-top: 8px;
 		}
 	}
 </style>

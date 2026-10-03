@@ -60,8 +60,10 @@
 	<a class="back hide-desk" href="/tanks/{data.tank.id}/settings">‹ {data.tank.name}</a>
 	<div class="head">
 		<h1 class="hide-desk">Public page</h1>
-		{#if p.enabled}<span class="live hide-phone">● Live</span>{/if}
-		<button class="btn btn-primary">Save</button>
+		<span class="head-acts">
+			{#if p.enabled}<a class="btn" href="/t/{p.slug}" target="_blank" rel="noopener">Preview page</a>{/if}
+			<button class="btn btn-primary">Save</button>
+		</span>
 	</div>
 	{#if !data.allowed}
 		<p class="banner banner-warn">▲ The server owner has turned public pages off, so this page can't be published right now.</p>
@@ -69,7 +71,7 @@
 
 	<div class="cols">
 		<div class="col">
-			<section class="card box" class:on={live}>
+			<section class="box" class:on={live}>
 				<div class="trow">
 					<label for="pp-enabled" class="ttext">
 						<span class="tt">Share this tank</span>
@@ -89,15 +91,14 @@
 					</div>
 					{#if form?.slugError}<span class="error-text">✕ {form.slugError}</span>{/if}
 					<div class="links">
-						<button type="button" class="btn" onclick={copy}>{copied ? '✓ Copied' : 'Copy'}</button>
-						{#if p.enabled}<a class="btn" href="/t/{p.slug}" target="_blank" rel="noopener">Preview</a>{/if}
+						<button type="button" class="btn" onclick={copy}>{copied ? '✓ Copied' : 'Copy link'}</button>
 					</div>
 				</div>
 			</section>
 
 			<section class="stack">
-				<h2 class="caps">Show on the page</h2>
-				<div class="card toggles">
+				<h2 class="kicker rule">Show on the page</h2>
+				<div class="toggles">
 					{#each toggles as t (t.k)}
 						<div class="trow">
 							<label for="pp-{t.k}" class="ttext"><span class="tt">{t.t}</span><span class="td">{t.d}</span></label>
@@ -117,14 +118,12 @@
 						<option value="none" selected={p.displayName === 'none'}>Don't show a name</option>
 					</select>
 				</div>
-				<p class="hint">
-					Never public: tasks, private notes, exact times, your email. Search &amp; sharing settings control indexing, title and share image.
-				</p>
+				<p class="hint">Never public: tasks, private notes, exact times, your email.</p>
 			</section>
 
 			<section class="stack">
-				<h2 class="caps">Search &amp; sharing</h2>
-				<div class="card toggles">
+				<h2 class="kicker rule">Search &amp; sharing</h2>
+				<div class="toggles">
 					<div class="trow">
 						<label for="pp-index" class="ttext"><span class="tt strong">Allow search engines</span><span class="td">Page is indexable and listed in sitemap.xml</span></label>
 						<span class="switch"><input id="pp-index" type="checkbox" name="indexable" defaultChecked={p.indexable} /><span></span></span>
@@ -164,8 +163,8 @@
 		<!-- P4: previews beside the fields on desktop -->
 		<aside class="col previews">
 			<section class="stack">
-				<h2 class="caps">Search preview</h2>
-				<div class="card preview">
+				<h2 class="kicker">Search preview</h2>
+				<div class="preview">
 					<div class="g-url mono">{data.host} › t › {slug}</div>
 					<div class="g-title">{shownTitle}</div>
 					<div class="g-desc">{shownDesc}</div>
@@ -173,16 +172,13 @@
 			</section>
 			{#if p.enabled}
 				<section class="stack">
-					<h2 class="caps">Social preview</h2>
-					<div class="card preview social">
+					<h2 class="kicker">Social preview</h2>
+					<div class="preview social">
 						<img class="og-img" src="/t/{p.slug}/og.png?v={data.ogVersion}" alt="How the link looks when shared" />
 					</div>
 				</section>
 			{/if}
-			<p class="hint">
-				Added automatically: canonical URL, Open Graph and Twitter tags, schema.org structured data, and a server-rendered page, so
-				crawlers see full content without JavaScript.
-			</p>
+			<p class="hint">Canonical URL, Open Graph tags and structured data are added automatically.</p>
 		</aside>
 	</div>
 	<button class="btn btn-primary btn-lg save-end">Save</button>
@@ -193,8 +189,7 @@
 		padding: 8px 20px 32px;
 		display: flex;
 		flex-direction: column;
-		gap: 18px;
-		max-width: 640px;
+		gap: 20px;
 	}
 	.head {
 		display: flex;
@@ -202,44 +197,49 @@
 		align-items: center;
 		gap: 12px;
 	}
+	.head-acts {
+		display: flex;
+		gap: 8px;
+		margin-left: auto;
+	}
 	h1 {
 		margin: 0;
 		font-size: 28px;
-		font-weight: 600;
 	}
 	.cols,
 	.col {
 		display: flex;
 		flex-direction: column;
-		gap: 18px;
+		gap: 20px;
 		min-width: 0;
 	}
+	/* the share box: a 2px border, ink while the page is live */
 	.box {
-		padding: 16px;
+		padding: 14px 16px;
+		border: 2px solid var(--divider);
 		display: flex;
 		flex-direction: column;
-		gap: 14px;
+		gap: 12px;
 	}
-	/* P1: the card is outlined in accent while the page is live */
 	.box.on {
-		border-color: var(--accent);
+		border-color: var(--ink);
 	}
 	.live {
-		color: var(--ok);
-		font-weight: 600;
+		font-weight: 800;
 	}
 	.stack {
 		display: flex;
 		flex-direction: column;
 		gap: 12px;
 	}
-	.caps {
+	.kicker {
 		margin: 0;
-		font-size: 13px;
-		font-weight: 600;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		color: var(--text-muted);
+	}
+	.rule {
+		padding-bottom: 6px;
+		border-bottom: 2px solid var(--ink);
+		color: var(--text);
+		margin-bottom: -12px;
 	}
 	.toggles {
 		display: flex;
@@ -248,48 +248,52 @@
 	.trow {
 		display: flex;
 		align-items: center;
-		gap: 12px;
-		padding: 12px 16px;
+		gap: 14px;
+		padding: 10px 0;
+		border-bottom: 1px solid var(--divider);
 	}
 	.box .trow {
 		padding: 0;
-	}
-	.trow + .trow {
-		border-top: 1px solid var(--border);
+		border-bottom: none;
 	}
 	.ttext {
 		flex: 1;
 		display: flex;
 		flex-direction: column;
-		gap: 2px;
+		gap: 1px;
 		cursor: pointer;
 	}
 	.tt {
 		font-size: 15px;
-	}
-	.box .tt,
-	.tt.strong {
-		font-size: 16px;
 		font-weight: 600;
 	}
+	.box .tt {
+		font-size: 16px;
+		font-weight: 800;
+	}
 	.td {
-		font-size: 13px;
+		font-size: 12px;
 		color: var(--text-muted);
 	}
 	.td.live {
-		color: var(--ok);
+		color: var(--text);
+		font-size: 13px;
 	}
-	/* 52 × 32 like the design, 44px to tap */
+	/* 44px to tap */
 	.switch input {
-		inset: -6px -4px;
+		inset: -10px -4px;
 	}
 	.slug {
-		padding-left: 12px;
+		padding-left: 10px;
 		gap: 2px;
+		background: var(--bg);
 	}
-	.slug .unit,
+	.slug .unit {
+		font-size: 13px;
+	}
 	.slug input {
-		font-size: 14px;
+		font-size: 13px;
+		font-weight: 700;
 	}
 	.links {
 		display: flex;
@@ -298,7 +302,7 @@
 	.count {
 		float: right;
 		font-size: 12px;
-		color: var(--text-faint);
+		color: var(--text-muted);
 	}
 	fieldset {
 		border: none;
@@ -307,7 +311,7 @@
 	}
 	legend {
 		padding: 0;
-		margin-bottom: 8px;
+		margin-bottom: 6px;
 		width: 100%;
 	}
 	.og-photos {
@@ -320,7 +324,6 @@
 		position: relative;
 		width: 72px;
 		height: 72px;
-		border-radius: 0;
 		overflow: hidden;
 		flex-shrink: 0;
 		border: 2px solid transparent;
@@ -347,11 +350,16 @@
 		height: 100%;
 		object-fit: cover;
 	}
+	.previews .stack {
+		gap: 8px;
+	}
 	.preview {
-		padding: 16px 18px;
+		padding: 14px;
+		border: 1px solid var(--divider);
+		background: var(--bg);
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
+		gap: 3px;
 	}
 	.social {
 		padding: 0;
@@ -362,12 +370,13 @@
 		color: var(--text-muted);
 	}
 	.g-title {
-		font-size: 18px;
-		color: var(--accent);
+		font-size: 17px;
+		line-height: 1.25;
+		color: var(--accent-700);
 	}
 	.g-desc {
-		font-size: 14px;
-		line-height: 1.5;
+		font-size: 13px;
+		line-height: 1.45;
 		color: var(--text-2);
 	}
 	.og-img {
@@ -379,25 +388,24 @@
 	.hint {
 		margin: 0;
 		font-size: 13px;
-		color: var(--text-faint);
+		color: var(--text-muted);
 		line-height: 1.5;
 	}
+	.save-end {
+		height: 52px;
+	}
+	/* Desktop: beside the shell's Setup nav (its title too), fields | 280px previews */
 	@media (min-width: 1024px) {
 		.page {
-			padding: 16px 32px 32px;
-			max-width: 1180px;
-			gap: 16px;
+			padding: 24px 32px 48px;
+			max-width: 880px;
 		}
 		.head {
-			justify-content: flex-end;
-		}
-		.head .btn {
-			min-height: 42px;
-			padding: 0 20px;
+			margin-top: -8px;
 		}
 		.cols {
 			display: grid;
-			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+			grid-template-columns: minmax(0, 1fr) 280px;
 			gap: 28px;
 			align-items: start;
 		}
@@ -408,10 +416,17 @@
 		.save-end {
 			width: auto;
 			height: 44px;
-			border-radius: 0;
-			font-size: 15px;
+			font-size: 14px;
 			padding: 0 22px;
 			align-self: flex-start;
+		}
+	}
+	@media (min-width: 1024px) and (max-width: 1199px) {
+		.cols {
+			grid-template-columns: minmax(0, 1fr);
+		}
+		.previews {
+			position: static;
 		}
 	}
 </style>

@@ -46,21 +46,19 @@
 	h1 {
 		margin: 0;
 		font-size: 17px;
-		font-weight: 600;
+		font-weight: 800;
 	}
 	.body {
 		padding: 8px 20px 24px;
 	}
 	@media (min-width: 1024px) {
 		.page {
-			margin: 28px auto;
-			padding: 24px 28px;
-			background: var(--surface);
-			border: 1px solid var(--border);
-			border-radius: 0;
+			max-width: 880px;
+			padding: 24px 32px 48px;
 		}
 		.body {
 			padding: 0;
+			max-width: 560px;
 		}
 	}
 </style>

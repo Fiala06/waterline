@@ -24,17 +24,23 @@
 		<!-- on desktop the header has "Tanks › {tank} › Review tank setup" -->
 		<a class="back hide-desk" href="/tanks/{data.tank.id}">‹ {data.tank.name}</a>
 		<h1 class="hide-desk">Review tank setup</h1>
+		<div class="ask">
+			<div class="ask-text">
+				<span class="kicker">{data.lastReview ? `Last reviewed ${data.lastReview}` : 'Not reviewed yet'}</span>
+				<h2 class="q">Is this still right?</h2>
+			</div>
+			<span class="progress"><span class="p-n">{data.sections.length - left} of {data.sections.length}</span><span class="bars" aria-hidden="true">{#each data.sections as s (s.key)}<span class:on={s.checked}></span>{/each}</span></span>
+		</div>
 		<p class="intro">
-			Is this still right? Light timers move, heaters get swapped and fish get rehomed, and Waterline only knows what it's told. Check each part, or fix it here.
+			Light timers move, heaters get swapped and fish get rehomed, and Waterline only knows what it's told. Check each part, or fix it here.
 		</p>
 		<p class="when muted">
-			{data.lastReview ? `Last reviewed ${data.lastReview}.` : 'Not reviewed yet.'}
 			{#if data.task}Comes up {data.task.every}.{:else}It's off, so it won't come up on its own: <a href="/tanks/{data.tank.id}/settings#review">turn it on</a>.{/if}
 		</p>
 	</div>
 
 	{#each data.sections as s (s.key)}
-		<section class="card part" id={s.key} aria-labelledby="{s.key}-h">
+		<section class="part" class:done={s.checked} id={s.key} aria-labelledby="{s.key}-h">
 			<div class="head">
 				<h2 id="{s.key}-h">{s.label}</h2>
 				<span class="state" class:status-ok={s.checked} class:muted={!s.checked}>
@@ -106,7 +112,7 @@
 				{#if !s.checked}
 					<form method="POST" action="?/check" use:enhance={stay}>
 						<input type="hidden" name="section" value={s.key} />
-						<button class="btn" aria-label="{s.label} still right">✓ Still right</button>
+						<button class="btn btn-primary" aria-label="{s.label} still right">✓ Still right</button>
 					</form>
 				{/if}
 				<a class="btn" href={edit[s.key]} aria-label="Edit {s.label.toLowerCase()}">Edit</a>
@@ -120,33 +126,68 @@
 			{left ? (left === 1 ? 'The part not checked yet counts as checked.' : `The ${left} parts not checked yet count as checked.`) : 'Every part is checked.'}
 			{#if data.task}The next review comes up {data.task.every}.{/if}
 		</p>
+		<a class="ghost" href="/tanks/{data.tank.id}/settings">Finish later</a>
 	</form>
 </div>
 
 <style>
 	.wrap {
-		max-width: 640px;
 		padding: 0 20px calc(24px + env(safe-area-inset-bottom));
 		display: flex;
 		flex-direction: column;
-		gap: 12px;
+		gap: 18px;
 	}
 	.top {
-		padding: 8px 0 4px;
+		padding: 8px 0 0;
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
+		gap: 8px;
 	}
 	h1 {
 		margin: 0;
 		font-size: 28px;
-		font-weight: 600;
+	}
+	.ask {
+		display: flex;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: 16px;
+	}
+	.ask-text {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+	.q {
+		margin: 0;
+		font-size: 22px;
+	}
+	.progress {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+	}
+	.p-n {
+		font-size: 13px;
+		font-weight: 800;
+		white-space: nowrap;
+	}
+	.bars {
+		display: grid;
+		grid-template-columns: repeat(4, 22px);
+		gap: 3px;
+	}
+	.bars span {
+		height: 6px;
+		background: var(--neutral-300);
+	}
+	.bars span.on {
+		background: var(--ink);
 	}
 	.intro {
-		margin: 8px 0 0;
+		margin: 0;
 		font-size: 14px;
 		line-height: 1.5;
-		color: var(--text-muted);
 	}
 	.when {
 		margin: 0;
@@ -154,13 +195,19 @@
 	}
 	.when a {
 		color: var(--accent);
+		font-weight: 800;
 	}
+	/* each part under a 2px rule: ink until it's checked, then divider */
 	.part {
-		padding: 16px;
+		padding-top: 12px;
+		border-top: 2px solid var(--ink);
 		display: flex;
 		flex-direction: column;
 		gap: 12px;
 		scroll-margin-top: 80px;
+	}
+	.part.done {
+		border-top-color: var(--divider);
 	}
 	.head {
 		display: flex;
@@ -171,12 +218,11 @@
 	}
 	h2 {
 		margin: 0;
-		font-size: 17px;
-		font-weight: 600;
+		font-size: 18px;
 	}
 	.state {
 		font-size: 13px;
-		font-weight: 600;
+		font-weight: 800;
 	}
 	.changed {
 		margin: -6px 0 0;
@@ -185,14 +231,14 @@
 	.facts {
 		margin: 0;
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-		gap: 8px 16px;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 10px 24px;
 	}
 	.facts div {
 		min-width: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 2px;
+		gap: 1px;
 	}
 	dt {
 		font-size: 12px;
@@ -201,7 +247,7 @@
 	dd {
 		margin: 0;
 		font-size: 15px;
-		font-weight: 500;
+		font-weight: 600;
 		overflow-wrap: anywhere;
 	}
 	.items {
@@ -215,10 +261,8 @@
 		display: flex;
 		align-items: center;
 		gap: 12px;
-		padding: 10px 0;
-	}
-	.items li + li {
-		border-top: 1px solid var(--border);
+		padding: 8px 0;
+		border-bottom: 1px solid var(--divider);
 	}
 	.it-text {
 		flex: 1;
@@ -227,7 +271,7 @@
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
-		gap: 2px;
+		gap: 1px;
 		color: inherit;
 		text-decoration: none;
 	}
@@ -235,28 +279,30 @@
 		font-size: 15px;
 		font-weight: 600;
 	}
-	.it-meta,
-	.it-flag {
-		font-size: 13px;
+	.it-meta {
+		font-size: 12px;
 	}
 	.it-flag {
-		font-weight: 600;
+		font-size: 12px;
+		font-weight: 800;
 	}
 	.chev {
 		flex: none;
-		font-size: 20px;
-		color: var(--text-faint);
+		font-size: 16px;
+		color: var(--neutral-600);
 		padding: 0 4px;
 	}
 	.changed a {
 		color: var(--accent);
+		font-weight: 800;
 	}
 	.sm-btn {
 		flex: none;
-		font-size: 14px;
+		white-space: nowrap;
 	}
 	.plants {
 		margin: 0;
+		padding-top: 8px;
 		font-size: 14px;
 		line-height: 1.5;
 	}
@@ -268,6 +314,7 @@
 		display: flex;
 		gap: 8px;
 		flex-wrap: wrap;
+		padding-bottom: 6px;
 	}
 	.acts form {
 		display: contents;
@@ -278,23 +325,41 @@
 	.finish {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
-		padding-top: 4px;
+		gap: 10px;
+		padding-top: 16px;
+		border-top: 2px solid var(--ink);
 	}
 	.finish p {
 		margin: 0;
-		text-align: center;
 	}
 	.sm {
 		font-size: 13px;
 	}
+	.ghost {
+		display: inline-flex;
+		align-items: center;
+		align-self: flex-start;
+		min-height: 44px;
+		padding: 0 8px;
+		font-size: 14px;
+		font-weight: 800;
+		color: var(--text-muted);
+	}
+	/* Desktop: beside the shell's Setup nav, which shows the title */
 	@media (min-width: 1024px) {
 		.wrap {
-			padding-top: 8px;
+			max-width: 880px;
+			padding: 24px 32px 48px;
+		}
+		.top {
+			padding: 0;
 		}
 		.acts .btn {
 			flex: none;
 			min-width: 140px;
+		}
+		.acts .btn:not(.btn-primary) {
+			min-width: 100px;
 		}
 		.finish {
 			flex-direction: row;
@@ -303,13 +368,12 @@
 		}
 		.finish .btn-lg {
 			width: auto;
-			height: 48px;
-			padding: 0 28px;
-			font-size: 16px;
-			border-radius: 0;
+			height: 44px;
+			padding: 0 24px;
+			font-size: 14px;
 		}
-		.finish p {
-			text-align: left;
+		.ghost {
+			margin-left: auto;
 		}
 	}
 </style>

@@ -27,9 +27,9 @@
 		<h1 class="hide-desk">Parameters &amp; targets</h1>
 		<div class="muted hide-desk">{data.tank.name} · {tankTypeLabel(data.tank.type)}</div>
 		<p class="intro">
-			Set your own range for each parameter. Readings outside it are flagged
+			Set your own range for each parameter. Readings outside it show
 			<span class="status-bad strong">✕ out of range</span>; readings within 10% of a limit show
-			<span class="status-warn strong">▲ near limit</span>.
+			<span class="status-warn strong">▲ near limit</span>. Untracked parameters are hidden from tests and charts.
 		</p>
 	</div>
 
@@ -39,7 +39,7 @@
 			<!-- desktop: one table like D4 -->
 			<div class="thead" aria-hidden="true"><span>Parameter</span><span>Min</span><span>Max</span><span>Unit</span><span>Track</span></div>
 			{#each data.rows as r (r.id)}
-				<div class="card prow" class:off={!tracked[r.id]}>
+				<div class="prow" class:off={!tracked[r.id]}>
 					<div class="p-head">
 						<div class="p-name">
 							<span class="nm-line"><span class="nm">{r.name}</span>{#if r.tip}<Tip text={r.tip} label="About {r.name}" />{/if}</span>
@@ -76,8 +76,8 @@
 		</div>
 
 		<div class="foot">
-			<button type="button" class="add" onclick={() => (addOpen = true)}>+ Add custom parameter</button>
-			<button class="btn btn-primary btn-lg">Save targets</button>
+			<button type="button" class="btn add" onclick={() => (addOpen = true)}>+ Add custom parameter</button>
+			<button class="btn btn-primary save">Save targets</button>
 			<button class="reset" formaction="?/reset" formnovalidate>Reset to {tankTypeLabel(data.tank.type)} defaults</button>
 		</div>
 	</form>
@@ -101,7 +101,6 @@
 
 <style>
 	.wrap {
-		max-width: 640px;
 		padding: 0 20px calc(24px + env(safe-area-inset-bottom));
 	}
 	.top {
@@ -113,7 +112,6 @@
 	h1 {
 		margin: 0;
 		font-size: 28px;
-		font-weight: 600;
 	}
 	.nm-line {
 		display: inline-flex;
@@ -124,28 +122,30 @@
 		margin: 8px 0 0;
 		font-size: 14px;
 		line-height: 1.5;
-		color: var(--text-muted);
+		max-width: 620px;
 	}
 	.strong {
-		font-weight: 600;
+		font-weight: 800;
 	}
 	.sm {
 		font-size: 12px;
 	}
 	.rows {
-		padding-top: 16px;
+		margin-top: 14px;
+		display: flex;
+		flex-direction: column;
+		border-top: 2px solid var(--ink);
+	}
+	.prow {
+		padding: 10px 0;
 		display: flex;
 		flex-direction: column;
 		gap: 10px;
+		border-bottom: 1px solid var(--divider);
 	}
-	.prow {
-		padding: 14px;
-		display: flex;
-		flex-direction: column;
-		gap: 12px;
-	}
-	.prow.off {
-		opacity: 0.6;
+	.prow.off .p-name,
+	.prow.off .range {
+		opacity: 0.55;
 	}
 	.p-head {
 		display: flex;
@@ -156,10 +156,9 @@
 		flex: 1;
 		display: flex;
 		flex-direction: column;
-		gap: 2px;
 	}
 	.nm {
-		font-size: 16px;
+		font-size: 15px;
 		font-weight: 600;
 	}
 	.range {
@@ -173,10 +172,9 @@
 	.minmax {
 		flex: 1;
 		min-width: 0;
-		height: 48px;
-		border-radius: 0;
-		background: var(--surface-2);
-		border: 1px solid var(--border-strong);
+		height: 44px;
+		background: var(--surface);
+		border: 1px solid var(--divider);
 		display: flex;
 		align-items: center;
 		gap: 6px;
@@ -194,11 +192,12 @@
 		width: 100%;
 		background: transparent;
 		border: none;
-		font-size: 18px;
+		font-size: 16px;
 		font-weight: 600;
 		text-align: right;
 		outline: none;
 		font-variant-numeric: tabular-nums;
+		color: var(--text);
 	}
 	.dash {
 		color: var(--placeholder);
@@ -208,13 +207,14 @@
 		font-size: 13px;
 		color: var(--text-muted);
 	}
-	/* 52 × 32 like the design, 44px to tap */
+	/* 44px to tap */
 	.p-head .switch input {
-		inset: -6px -4px;
+		inset: -10px -4px;
 	}
 	.remove {
 		align-self: flex-start;
 		font-size: 14px;
+		font-weight: 800;
 		color: var(--bad);
 		min-height: 44px;
 		margin: -4px 0;
@@ -223,18 +223,14 @@
 		display: flex;
 		flex-direction: column;
 		gap: 10px;
-		padding-top: 10px;
+		padding-top: 14px;
 	}
 	.add {
-		height: 52px;
-		border-radius: 0;
-		border: 1px dashed var(--border-strong);
-		font-size: 15px;
-		font-weight: 600;
-		color: var(--accent);
+		border-style: dashed;
 	}
 	.reset {
 		font-size: 14px;
+		font-weight: 800;
 		color: var(--text-muted);
 		padding: 8px;
 		min-height: 44px;
@@ -242,11 +238,11 @@
 	.thead {
 		display: none;
 	}
-	/* Desktop (D4): one table, Parameter · Min · Max · Unit · Track */
+	/* Desktop: one table, Parameter · Min · Max · Unit · Track, beside the shell's Setup nav */
 	@media (min-width: 1024px) {
 		.wrap {
-			max-width: 840px;
-			padding: 24px 32px;
+			max-width: 880px;
+			padding: 24px 32px 48px;
 		}
 		.top {
 			padding: 0;
@@ -255,13 +251,7 @@
 			margin: 0;
 		}
 		.rows {
-			margin-top: 16px;
-			padding: 0;
-			gap: 0;
-			border-radius: 0;
-			background: var(--surface);
-			border: 1px solid var(--border);
-			overflow: hidden;
+			border-top: none;
 		}
 		.thead,
 		.prow {
@@ -271,22 +261,16 @@
 			align-items: center;
 		}
 		.thead {
-			padding: 10px 18px;
-			font-size: 12px;
-			letter-spacing: 0.06em;
+			padding: 8px 0;
+			border-bottom: 2px solid var(--ink);
+			font-size: 11px;
+			letter-spacing: 0.08em;
 			text-transform: uppercase;
-			color: var(--text-faint);
-			border-bottom: 1px solid var(--border);
+			color: var(--text-muted);
 		}
 		.prow {
 			row-gap: 6px;
-			padding: 8px 18px;
-			border: none;
-			border-radius: 0;
-			background: none;
-		}
-		.prow + .prow {
-			border-top: 1px solid var(--divider-soft);
+			padding: 6px 0;
 		}
 		.p-head,
 		.range {
@@ -318,10 +302,6 @@
 		.minmax span {
 			display: none;
 		}
-		.minmax {
-			height: 40px;
-			border-radius: 0;
-		}
 		.minmax input {
 			font-size: 15px;
 			text-align: left;
@@ -335,23 +315,16 @@
 			flex-direction: row;
 			align-items: center;
 			gap: 12px;
-			padding-top: 16px;
+			padding-top: 14px;
 		}
 		.add {
-			height: 44px;
-			padding: 0 18px;
 			margin-right: auto;
 		}
 		.reset {
 			order: 1;
 		}
-		.foot .btn-lg {
+		.save {
 			order: 2;
-			width: auto;
-			height: 44px;
-			border-radius: 0;
-			font-size: 15px;
-			padding: 0 22px;
 		}
 	}
 </style>

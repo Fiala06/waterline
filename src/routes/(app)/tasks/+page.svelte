@@ -1,4 +1,7 @@
 <script lang="ts">
+	// Tasks (README → Screens §10): Overdue / Due soon / Later across all tanks,
+	// each row with its name, the when (✕/▲), tank · cadence, Done and Snooze ▾
+	// (on tasks due within a day). On desktop the selected task edits in a pane.
 	import { enhance } from '$app/forms';
 	import { markDone } from '$lib/splash';
 	import { goto } from '$app/navigation';
@@ -48,23 +51,31 @@
 
 	let snoozing = $state<T | null>(null);
 	let snoozeOpen = $state(false);
+	// where the Snooze ▾ button is, so the desktop menu hangs under it
+	let snoozeAnchor = $state<DOMRect | null>(null);
 	function snooze(e: Event, t: T) {
 		e.preventDefault();
 		snoozing = t;
+		snoozeAnchor = (e.currentTarget as HTMLElement).getBoundingClientRect();
 		snoozeOpen = true;
 	}
 
 	const longDue = (d: string) =>
 		new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
-	// D5: "✕ Overdue 1 day", "▲ Due today", "▲ Sat, Sep 27", "Fri, Oct 3"
+	// "✕ Overdue 1 day", "▲ Due today", "▲ Sat, Sep 27", "Fri, Oct 3"
 	const dueLabel = (t: T) => {
 		const d = dueInfo(t.due, data.today);
 		if (d.section === 'overdue' || d.days === 0) return d.text;
 		return d.level === 'warn' ? `▲ ${longDue(t.due)}` : longDue(t.due);
 	};
 	const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-	const fmtShort = (d: string) =>
-		new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+	// Snooze is offered on tasks due within a day (overdue, today, tomorrow)
+	const canSnooze = (t: T) => dueInfo(t.due, data.today).days <= 1;
+	const SECTIONS = $derived([
+		{ key: 'overdue', label: `✕ Overdue · ${sections.overdue.length}`, cls: 'status-bad', items: sections.overdue },
+		{ key: 'soon', label: `▲ Due soon · ${sections.soon.length}`, cls: 'status-warn', items: sections.soon },
+		{ key: 'later', label: `Later · ${sections.later.length}`, cls: 'muted', items: sections.later }
+	]);
 </script>
 
 <svelte:head><title>Tasks · Waterline</title></svelte:head>
@@ -72,15 +83,18 @@
 <div class="page" class:with-pane={!!data.pane}>
 	<div class="list-col">
 		<div class="head hide-desk">
-			<h1>Tasks</h1>
-			<a class="btn new" href={data.filter ? `/tasks/new?tank=${data.filter}` : '/tasks/new'}>New task</a>
+			<div class="head-text">
+				<span class="kicker">{data.overdueCount ? `${data.overdueCount} overdue` : 'Every tank'}</span>
+				<h1>Tasks</h1>
+			</div>
+			<a class="btn btn-primary new" href={data.filter ? `/tasks/new?tank=${data.filter}` : '/tasks/new'}>New task</a>
 		</div>
 		{#if data.tanks.length > 1}
-			<div class="chips hscroll tank-filter" role="group" aria-label="Filter by tank" use:hscroll={data.filter}>
-				<a class="chip" class:selected={!data.filter} aria-current={!data.filter ? 'true' : undefined} href={q({ filter: null, edit: null })}>All tanks</a>
+			<div class="seg-links hscroll tank-filter" role="group" aria-label="Filter by tank" use:hscroll={data.filter}>
+				<a class="seg-link" class:selected={!data.filter} aria-current={!data.filter ? 'true' : undefined} href={q({ filter: null, edit: null })}>All tanks</a>
 				{#each data.tanks as t (t.id)}
 					<a
-						class="chip"
+						class="seg-link"
 						class:selected={data.filter === t.id}
 						aria-current={data.filter === t.id ? 'true' : undefined}
 						href={q({ filter: t.id, edit: null })}>{t.name}</a
@@ -97,65 +111,47 @@
 			</div>
 		{/if}
 
-		{#if sections.overdue.length}
-			<section>
-				<h2 class="caps status-bad">✕ Overdue · {sections.overdue.length}</h2>
-				{#each sections.overdue as t (t.id)}
-					<div class="card ocard" class:selected={selectedId === t.id}>
-						<a class="otext t-link" href="/tasks/{t.id}" onclick={(e) => openEdit(e, t.id)}>
-							<span class="name">{t.name}</span>
-							<span class="meta hide-desk">{tankNames[t.tankId]} · due {fmtShort(t.due)} · {every(t)}</span>
-							<span class="d-due status-bad hide-phone">{dueInfo(t.due, data.today).text}</span>
-							<span class="d-tank hide-phone">{tankNames[t.tankId]}</span>
-							<span class="d-int hide-phone">{cap(every(t))}</span>
-						</a>
-						<div class="oactions">
-							<form method="POST" action="/tasks?/done" use:enhance={markDone} class="grow">
-								<input type="hidden" name="taskId" value={t.id} />
-								<input type="hidden" name="from" value={from} />
-								<button class="btn btn-primary mark">{t.kind === 'review' ? 'Review' : 'Mark done'}</button>
-							</form>
-							<form method="POST" action="/tasks?/snooze" use:enhance>
-								<input type="hidden" name="taskId" value={t.id} />
-								<input type="hidden" name="from" value={from} />
-								<button class="btn snooze" onclick={(e) => snooze(e, t)}>Snooze</button>
-							</form>
-							<a class="btn more hide-desk" href="/tasks/{t.id}" aria-label="Edit {t.name}">•••</a>
-						</div>
-					</div>
-				{/each}
-			</section>
-		{/if}
-
-		{#each [{ key: 'soon', label: `▲ Due soon · ${sections.soon.length}`, cls: 'status-warn', items: sections.soon }, { key: 'later', label: `Later · ${sections.later.length}`, cls: 'muted', items: sections.later }] as s (s.key)}
+		{#each SECTIONS as s (s.key)}
 			{#if s.items.length}
 				{@const folded = s.key === 'later' && s.items.length > LATER_LIMIT && !showAllLater}
 				<section>
 					<div class="sec-head">
-						<h2 class="caps {s.cls}">{s.label}</h2>
+						<h2 class="sec {s.cls}">{s.label}</h2>
 						{#if folded}<a class="show-all hide-desk" href={q({ later: 'all' })} data-sveltekit-noscroll>Show all</a>{/if}
 					</div>
-					<div class="card rows">
+					<div class="rows">
 						{#each s.items as t, i (t.id)}
 							{@const d = dueInfo(t.due, data.today)}
-							<div class="row" class:selected={selectedId === t.id} class:extra={folded && i >= LATER_LIMIT}>
+							<div class="row {s.key}" class:selected={selectedId === t.id} class:extra={folded && i >= LATER_LIMIT}>
 								<a class="rtext t-link" href="/tasks/{t.id}" onclick={(e) => openEdit(e, t.id)}>
 									<span class="name">{t.name}</span>
-									<!-- 06: only "Today" stands out; the section header carries the ▲ -->
-									<span class="meta hide-desk"
-										>{tankNames[t.tankId]}{' · '}{#if d.days === 0}<span class="today">Today</span>{:else}{fmtShort(t.due)}{/if}{' · '}{every(t)}</span
-									>
-									<span class="d-due hide-phone {d.level === 'ok' ? 'plain' : `status-${d.level}`}">{dueLabel(t)}</span>
-									<span class="d-tank hide-phone">{tankNames[t.tankId]}</span>
-									<span class="d-int hide-phone">{cap(every(t))}</span>
+									<span class="line">
+										<span class="when {d.level === 'ok' ? 'plain' : `status-${d.level}`}">{dueLabel(t)}</span>
+										<span class="meta">{tankNames[t.tankId]} · {every(t)}</span>
+									</span>
 								</a>
-								<form method="POST" action="/tasks?/done" use:enhance={markDone}>
-									<input type="hidden" name="taskId" value={t.id} />
-									<input type="hidden" name="from" value={from} />
-									<button class="check" class:primary={d.days <= 0} aria-label={t.kind === 'review' ? t.name : `Mark ${t.name} done`}
-										><span class="d-label">{t.kind === 'review' ? 'Review' : 'Mark done'}</span></button
-									>
-								</form>
+								<div class="acts">
+									{#if canSnooze(t)}
+										<form method="POST" action="/tasks?/snooze" use:enhance>
+											<input type="hidden" name="taskId" value={t.id} />
+											<input type="hidden" name="from" value={from} />
+											<button class="ghost snooze" aria-expanded={snoozeOpen && snoozing?.id === t.id} onclick={(e) => snooze(e, t)}
+												>Snooze<span aria-hidden="true"> ▾</span></button
+											>
+										</form>
+									{/if}
+									<form method="POST" action="/tasks?/done" use:enhance={markDone}>
+										<input type="hidden" name="taskId" value={t.id} />
+										<input type="hidden" name="from" value={from} />
+										{#if s.key === 'overdue'}
+											<button class="btn btn-primary mark">{t.kind === 'review' ? 'Review' : 'Mark done'}</button>
+										{:else}
+											<button class="btn mark" class:btn-primary={d.days <= 0} aria-label={t.kind === 'review' ? t.name : `Mark ${t.name} done`}
+												>{t.kind === 'review' ? 'Review' : 'Mark done'}</button
+											>
+										{/if}
+									</form>
+								</div>
 							</div>
 						{/each}
 					</div>
@@ -187,87 +183,128 @@
 	{/if}
 </div>
 
-<SnoozeSheet bind:open={snoozeOpen} task={snoozing} tankName={snoozing ? tankNames[snoozing.tankId] : ''} today={data.today} />
+<SnoozeSheet bind:open={snoozeOpen} task={snoozing} tankName={snoozing ? tankNames[snoozing.tankId] : ''} today={data.today} anchor={snoozeAnchor} />
 
 <style>
-	.cal-link {
-		align-self: flex-start;
-		min-height: 44px;
-		display: inline-flex;
-		align-items: center;
-		font-size: 14px;
-		font-weight: 600;
-	}
 	.page {
 		padding: 8px 20px 24px;
 	}
 	.list-col {
 		display: flex;
 		flex-direction: column;
-		gap: 14px;
+		gap: 18px;
 		min-width: 0;
 	}
+	/* the phone head: kicker, Tasks 28/800, + New task */
 	.head {
 		display: flex;
 		justify-content: space-between;
-		align-items: center;
+		align-items: flex-end;
 		gap: 12px;
+		padding: 8px 0 4px;
+	}
+	.head-text {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
 	}
 	h1 {
 		margin: 0;
 		font-size: 28px;
-		font-weight: 600;
 	}
-	/* 06: the chips run to the screen edge */
+	/* the tank filter: one bordered row, the chosen part accent */
+	.seg-links {
+		display: flex;
+		gap: 0;
+		align-self: flex-start;
+		max-width: 100%;
+		border: 1px solid var(--divider);
+	}
+	.seg-link {
+		display: flex;
+		align-items: center;
+		min-height: 42px;
+		padding: 0 14px;
+		font-size: 14px;
+		font-weight: 600;
+		color: var(--text);
+		white-space: nowrap;
+	}
+	.seg-link + .seg-link {
+		border-left: 1px solid var(--divider);
+	}
+	.seg-link.selected {
+		background: var(--accent);
+		color: var(--on-accent);
+		font-weight: 800;
+	}
 	.tank-filter {
 		margin-inline: -20px;
 		padding-inline: 20px;
+		border: none;
 	}
-	.chip {
-		color: var(--text);
+	.tank-filter .seg-link {
+		border: 1px solid var(--divider);
 	}
-	.chip.selected,
-	.chip.selected:hover {
-		color: var(--on-accent);
+	.tank-filter .seg-link + .seg-link {
+		border-left: none;
+	}
+	.tank-filter .seg-link.selected {
+		border-color: var(--accent);
 	}
 	section {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
 	}
 	.sec-head {
 		display: flex;
 		justify-content: space-between;
-		align-items: center;
+		align-items: baseline;
 		gap: 12px;
+		padding-bottom: 6px;
+		border-bottom: 2px solid var(--ink);
 	}
-	.caps {
+	.sec {
 		margin: 0;
-		font-size: 13px;
-		letter-spacing: 0.06em;
+		font-size: 12px;
+		font-weight: 800;
+		letter-spacing: 0.08em;
 		text-transform: uppercase;
-		font-weight: 600;
+	}
+	.sec.muted {
+		color: var(--text-muted);
 	}
 	.show-all {
 		display: inline-flex;
 		align-items: center;
 		font-size: 14px;
-		font-weight: 600;
+		font-weight: 800;
 		/* 44px to tap without making the header taller */
 		min-height: 44px;
 		margin-block: -13px;
 	}
-	.name {
-		font-size: 16px;
-		font-weight: 600;
+	.rows {
+		display: flex;
+		flex-direction: column;
 	}
-	.meta {
-		font-size: 13px;
-		color: var(--text-muted);
+	/* a row: name, then the when and tank · cadence; a 3px mark at the left for what's due */
+	.row {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: 12px;
+		align-items: center;
+		padding: 10px 0 10px 8px;
+		border-bottom: 1px solid var(--divider);
+		border-left: 3px solid transparent;
 	}
-	.today {
-		color: var(--warn);
-		font-weight: 600;
+	.row.overdue {
+		border-left-color: var(--accent);
+	}
+	.row.soon {
+		border-left-color: var(--neutral-400);
+	}
+	.row.selected {
+		background: var(--surface);
 	}
 	.t-link {
 		display: flex;
@@ -275,64 +312,62 @@
 		gap: 3px;
 		color: var(--text);
 		min-width: 0;
-		flex: 1;
 	}
-	.ocard {
-		padding: 14px;
+	.name {
+		font-size: 15px;
+		font-weight: 600;
+	}
+	.line {
 		display: flex;
-		flex-direction: column;
-		gap: 12px;
-		border-color: var(--bad-border);
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 2px 12px;
 	}
-	.oactions {
-		display: flex;
-		gap: 8px;
+	.when {
+		font-size: 12px;
+		font-weight: 800;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		white-space: nowrap;
 	}
-	.grow {
-		flex: 1;
-	}
-	.mark {
-		width: 100%;
-	}
-	.snooze {
-		font-weight: 400;
-	}
-	.more {
-		width: 44px;
-		padding: 0;
+	.when.plain {
 		color: var(--text-muted);
 	}
-	.rows {
-		display: flex;
-		flex-direction: column;
+	.meta {
+		font-size: 13px;
+		color: var(--text-2);
+		white-space: nowrap;
 	}
-	.row {
-		position: relative;
-		padding: 12px 14px;
+	.acts {
 		display: flex;
+		justify-content: flex-end;
 		align-items: center;
-		gap: 12px;
+		gap: 6px;
 	}
-	.row + .row {
-		border-top: 1px solid var(--border);
+	.ghost {
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		padding: 0 8px;
+		font-size: 14px;
+		font-weight: 800;
+		color: var(--text-2);
+		white-space: nowrap;
 	}
-	.row:first-child {
-		border-top-left-radius: 0;
-		border-top-right-radius: 0;
+	.ghost[aria-expanded='true'] {
+		background: var(--surface);
 	}
-	.row:last-child {
-		border-bottom-left-radius: 0;
-		border-bottom-right-radius: 0;
+	.mark {
+		min-height: 40px;
+		padding: 0 14px;
 	}
-	.check {
-		width: 44px;
-		height: 44px;
-		flex-shrink: 0;
-		border-radius: 0;
-		border: 2px solid var(--border-strong);
-	}
-	.d-label {
-		display: none;
+	.cal-link {
+		align-self: flex-start;
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
+		font-size: 14px;
+		font-weight: 800;
 	}
 	.pane {
 		display: none;
@@ -342,31 +377,36 @@
 			display: none;
 		}
 	}
-	@media (hover: hover) and (max-width: 1023px) {
-		.check:hover {
-			border-color: var(--accent);
-			background: var(--selected);
+	@media (hover: hover) {
+		.ghost:hover {
+			background: var(--surface);
+			color: var(--text);
+		}
+		.row:not(.selected):has(> .t-link:hover) {
+			background: var(--surface);
+		}
+		.t-link:hover .name {
+			color: var(--accent);
 		}
 	}
 
-	/* ── D5: list + docked edit pane ─────────────────────────────── */
+	/* ── Desktop: the list, then a 380px edit pane past a 2px rule ───────── */
 	@media (min-width: 1024px) {
 		.page {
 			padding: 0;
 			display: grid;
 			grid-template-columns: minmax(0, 1fr);
-			min-height: calc(100dvh - 72px);
 		}
 		.page.with-pane {
 			grid-template-columns: minmax(0, 1fr) clamp(340px, 31.25vw, 400px);
 		}
 		.list-col {
-			padding: 18px 28px 32px;
-			gap: 12px;
+			padding: 22px 32px 48px;
+			gap: 22px;
 			container: tasks / inline-size;
 		}
 		.tank-filter {
-			margin: 0 0 4px;
+			margin: 0;
 			padding-inline: 0;
 			flex-wrap: wrap;
 			overflow: visible;
@@ -374,196 +414,26 @@
 		.empty {
 			max-width: 560px;
 		}
-		.ocard,
 		.row {
-			display: grid;
-			grid-template-columns: minmax(0, 1fr) auto;
-			align-items: center;
-			column-gap: 16px;
-			padding: 10px 16px;
-			min-height: 64px;
+			gap: 16px;
 		}
-		.ocard {
-			border-radius: 0;
-		}
-		.rows {
-			border-radius: 0;
-		}
-		.row:first-child {
-			border-top-left-radius: 0;
-			border-top-right-radius: 0;
-		}
-		.row:last-child {
-			border-bottom-left-radius: 0;
-			border-bottom-right-radius: 0;
-		}
-		/* narrow list: name, due date, then tank · interval */
-		.t-link {
-			flex-direction: row;
-			flex-wrap: wrap;
-			align-items: baseline;
-			column-gap: 0;
-			row-gap: 3px;
-		}
-		.t-link .name,
-		.d-due {
-			flex-basis: 100%;
-		}
-		.d-due {
-			font-size: 13px;
-			font-weight: 600;
-		}
-		.d-due.plain {
-			color: var(--text-muted);
-			font-weight: 400;
-		}
-		.d-tank,
-		.d-int {
-			font-size: 13px;
-			color: var(--text-muted);
-		}
-		.d-int::before {
-			content: '·';
-			margin: 0 6px;
-		}
-		.oactions {
-			flex: none;
-		}
-		.grow {
-			flex: none;
-		}
-		.oactions .btn {
-			min-height: 38px;
-			height: 38px;
-			padding: 0 14px;
-			border-radius: 0;
-			font-size: 14px;
-		}
-		.oactions .snooze {
-			padding: 0 12px;
-		}
-		.check {
-			width: auto;
-			height: 38px;
-			padding: 0 14px;
-			border-radius: 0;
-			border-width: 1px;
-			font-size: 14px;
-			font-weight: 600;
-			white-space: nowrap;
-		}
-		.check.primary {
-			background: var(--accent);
-			border-color: var(--accent);
-			color: var(--on-accent);
-			font-weight: 700;
-		}
-		.d-label {
-			display: inline;
-		}
-		/* D5: the task in the pane: accent border, tinted row */
-		.ocard.selected {
-			background: var(--selected);
-			border-color: var(--accent);
-		}
-		.row.selected {
-			z-index: 1;
-			background: var(--selected);
-		}
-		.row.selected::after {
-			content: '';
-			position: absolute;
-			inset: -1px;
-			border: 1px solid var(--accent);
-			border-radius: inherit;
-			pointer-events: none;
-		}
-		.row.selected:first-child::after {
-			border-top-left-radius: 0;
-			border-top-right-radius: 0;
-		}
-		.row.selected:last-child::after {
-			border-bottom-left-radius: 0;
-			border-bottom-right-radius: 0;
+		.mark {
+			min-width: 110px;
 		}
 		.pane {
 			display: block;
 			min-width: 0;
-			background: var(--surface-2);
-			border-left: 1px solid var(--border);
+			background: var(--surface);
+			border-left: 2px solid var(--divider);
 		}
 		.pane-inner {
 			position: sticky;
 			top: 0;
-			height: calc(100dvh - 72px);
+			height: 100dvh;
 			overflow-y: auto;
-			padding: 22px 24px;
+			padding: 28px 24px;
 			display: flex;
 			flex-direction: column;
-		}
-		/* once the header has scrolled away the pane can use the full window height,
-		   so Save stays at the bottom edge */
-		@supports (animation-timeline: scroll()) {
-			.pane-inner {
-				animation: pane-fill linear both;
-				animation-timeline: scroll(root);
-				animation-range: 0px 72px;
-			}
-		}
-	}
-	@keyframes pane-fill {
-		to {
-			height: 100dvh;
-		}
-	}
-	@media (min-width: 1024px) and (hover: hover) {
-		.row:not(.selected):has(> .t-link:hover),
-		.ocard:not(.selected):has(> .t-link:hover) {
-			background: var(--surface-hi);
-		}
-		.check:not(.primary):hover {
-			background: var(--surface-hi);
-		}
-		.check.primary:hover {
-			background: color-mix(in srgb, var(--accent) 86%, var(--text));
-			border-color: color-mix(in srgb, var(--accent) 86%, var(--text));
-		}
-	}
-	/* D5 columns once the list is wide enough: name and due | tank | interval */
-	@container tasks (min-width: 540px) {
-		.t-link {
-			display: grid;
-			grid-template-columns: minmax(0, 1fr) 128px;
-			grid-template-areas: 'name tank' 'due int';
-			column-gap: 16px;
-		}
-		.t-link .name {
-			grid-area: name;
-		}
-		.d-due {
-			grid-area: due;
-		}
-		.d-tank {
-			grid-area: tank;
-			font-size: 14px;
-			color: var(--text-2);
-		}
-		.d-int {
-			grid-area: int;
-		}
-		.d-int::before {
-			content: none;
-		}
-	}
-	@container tasks (min-width: 820px) {
-		.t-link {
-			grid-template-columns: minmax(0, 1fr) 140px 150px;
-			grid-template-areas: 'name tank int' 'due tank int';
-			align-items: center;
-		}
-		.d-int {
-			font-size: 14px;
-			color: var(--text-2);
 		}
 	}
 </style>

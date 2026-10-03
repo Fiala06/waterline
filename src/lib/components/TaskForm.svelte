@@ -96,8 +96,11 @@
 >
 	{#if compact}
 		<div class="phead">
-			<h2>{title}</h2>
-			{#if mode === 'new'}<a class="close" href={cancelHref} aria-label="Close">✕</a>{/if}
+			<div class="phead-text">
+				<span class="kicker">{mode === 'edit' ? (routine ? 'Routine' : 'Task') : 'New'}</span>
+				<h2>{title}</h2>
+			</div>
+			{#if mode === 'new'}<a class="close" href={cancelHref}>Close ✕</a>{/if}
 		</div>
 	{:else}
 		<div class="bar hide-desk">
@@ -317,7 +320,7 @@
 	h1 {
 		margin: 0;
 		font-size: 17px;
-		font-weight: 600;
+		font-weight: 800;
 	}
 	.save-top {
 		justify-self: end;
@@ -389,9 +392,9 @@
 		cursor: pointer;
 	}
 	.day:has(input:checked) {
-		background: var(--selected);
+		background: var(--accent);
 		border-color: var(--accent);
-		color: var(--accent);
+		color: var(--on-accent);
 	}
 	.day:has(input:focus-visible) {
 		outline: 2px solid var(--accent);
@@ -420,9 +423,7 @@
 	.choices {
 		display: flex;
 		flex-direction: column;
-		border-radius: 0;
-		border: 1px solid var(--border);
-		background: var(--surface);
+		border: 1px solid var(--divider);
 	}
 	.choice {
 		display: flex;
@@ -495,28 +496,30 @@
 	.phead {
 		display: flex;
 		justify-content: space-between;
-		align-items: center;
+		align-items: flex-start;
 		gap: 12px;
+	}
+	.phead-text {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
 	}
 	.phead h2 {
 		margin: 0;
-		font-size: 18px;
-		font-weight: 600;
+		font-size: 22px;
 	}
 	.close {
-		width: 36px;
-		height: 36px;
-		margin: -6px -8px -6px 0;
-		border-radius: 0;
+		min-height: 36px;
+		margin: -6px -8px 0 0;
+		padding: 0 8px;
 		display: flex;
 		align-items: center;
-		justify-content: center;
-		font-size: 15px;
-		color: var(--text-muted);
+		font-size: 14px;
+		font-weight: 800;
+		color: var(--accent);
 	}
 	.close:hover {
-		background: var(--surface-hi);
-		color: var(--text);
+		background: color-mix(in srgb, var(--accent) 10%, transparent);
 	}
 	.compact .body {
 		padding: 0;
@@ -624,69 +627,59 @@
 	}
 	.compact .foot {
 		margin-top: auto;
-		padding: 8px 0 0;
+		padding: 14px 0 0;
+		border-top: 2px solid var(--divider);
 		flex-direction: row;
-		justify-content: flex-end;
 		align-items: center;
 		gap: 10px;
 	}
 	.compact .delete {
 		align-self: auto;
-		margin-right: auto;
-		margin-left: -14px;
 		padding: 0 14px;
-		border-radius: 0;
 		font-size: 14px;
+		border: 1px solid var(--divider);
 	}
 	.compact .save {
+		flex: 1;
 		height: 44px;
 		padding: 0 18px;
-		border-radius: 0;
-		font-size: 15px;
+		font-size: 14px;
 	}
 
-	/* ── Desktop: the form as a centered card; the header has the title ── */
+	/* ── Desktop: a flat form under the shell's title, 2px rule above the footer ── */
 	@media (min-width: 1024px) {
 		.tform:not(.compact) {
 			min-height: 0;
 			max-width: 640px;
-			margin: 28px auto;
-			padding: 24px 28px;
-			background: var(--surface);
-			border: 1px solid var(--border);
-			border-radius: 0;
+			margin: 0;
+			padding: 24px 32px 40px;
 		}
 		.tform:not(.compact) .body {
 			padding: 0;
 		}
-		/* recessed fields on the card */
-		.tform:not(.compact) .field :global(.input),
-		.tform:not(.compact) .segmented,
-		.tform:not(.compact) .choices {
-			background-color: var(--surface-2);
-		}
 		.tform:not(.compact) .foot {
-			margin-top: 24px;
-			padding: 20px 0 0;
-			border-top: 1px solid var(--border);
+			margin-top: 20px;
+			padding: 16px 0 0;
+			border-top: 2px solid var(--divider);
 			flex-direction: row;
-			justify-content: flex-end;
+			justify-content: flex-start;
 			align-items: center;
 		}
 		.tform:not(.compact) .delete {
 			align-self: auto;
-			margin-right: auto;
-			margin-left: -16px;
-			font-size: 15px;
+			margin-left: auto;
+			font-size: 14px;
+			font-weight: 800;
 		}
 		.tform:not(.compact) .save {
+			order: -1;
 			height: 44px;
 			padding: 0 22px;
-			border-radius: 0;
-			font-size: 15px;
+			font-size: 14px;
 		}
 		.cancel-btn {
-			font-weight: 600;
+			border: none;
+			color: var(--text-muted);
 		}
 	}
 </style>
