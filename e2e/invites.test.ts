@@ -45,7 +45,7 @@ test('invitations and People', async ({ page, browser }, info) => {
 	await open(page, '/settings/server/people');
 	const row = page.locator('li.person', { hasText: invitee }).first();
 	await expect(row).toContainText('Invited · joined');
-	await expect(page.getByText('✓ Accepted')).toBeVisible();
+	await expect(page.getByText('✓ Accepted').first()).toBeVisible();
 	await row.getByRole('button', { name: 'Make admin' }).click();
 	await expect(page.getByRole('status')).toContainText('is an admin');
 	await expect(row.locator('.tag', { hasText: 'ADMIN' })).toBeVisible();
@@ -55,6 +55,10 @@ test('invitations and People', async ({ page, browser }, info) => {
 	// Sign out everywhere: their next request lands on the sign-in page
 	await row.getByRole('button', { name: 'Sign out everywhere' }).click();
 	await expect(page.getByRole('status')).toContainText('signed out everywhere');
+	// a second later (the cookie is re-signed on every request; the sign-in time must not move with it)
+	await theirPage.waitForTimeout(1100);
+	await theirPage.goto('/setup');
+	await expect(theirPage).toHaveURL(/\/signin/);
 	await theirPage.goto('/setup');
 	await expect(theirPage).toHaveURL(/\/signin/);
 
@@ -64,7 +68,7 @@ test('invitations and People', async ({ page, browser }, info) => {
 	await row.getByRole('button', { name: 'Remove person' }).click();
 	await expect(page.getByRole('status')).toContainText('removed with 0 tanks and 0 photos');
 	await expect(page.locator('section[aria-labelledby="people-h"] li.person', { hasText: invitee })).toHaveCount(0);
-	await expect(page.getByText('○ Revoked')).toBeVisible();
+	await expect(page.getByText('○ Revoked').first()).toBeVisible();
 	await them.close();
 });
 

@@ -11,6 +11,9 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.12.1 · 2026-10-03
+
+- **Sign out everywhere signs them out for good:** [Server settings › People](/settings/server/people) › Sign out everywhere used to hold only for a second, because a session's start time moved with every request; it now stays put, so the person is asked to sign in again on their next request, whenever that is.
 - **A cover from the photos you already have:** On [Tank details](/tanks/current/settings), Choose from photos lists the tank's photos under the cover; pick one and it shows at once, ready to drag into place and save with the rest. Change cover still takes a new upload, and Set as cover in a photo's viewer works as before.
 - **Logging a water change clears its reminder again:** When a water change you'd started earlier and left unsaved came back on [Log water change](/entries/event/new?category=water_change), it unticked "Also complete task", so the change was logged but the reminder stayed due. What comes back no longer touches that box: it's ticked whenever the reminder is due today or you came from Mark done.
 
