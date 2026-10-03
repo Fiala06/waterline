@@ -11,6 +11,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Locked down a little more:** The app now tells browsers to run scripts only from your server (and Google's tag when analytics is on), never to show Waterline inside another site's frame, and that it doesn't use the camera, microphone or location. Check the link works refuses internal addresses. Two libraries with known problems are updated.
 - **Easier to read:** Red text (links, the active tab, ✕ states) is a deeper red in the light theme and a lighter one in the dark theme, and buttons' red is a shade darker, so every word meets the contrast guideline; faint hints are a little darker too. Keyboard users get a Skip to content link, the Plants table reads correctly to a screen reader, and the Copy buttons on the AI assistant page are easier to tap.
 - **The bottom bar gets out of the way:** On a phone, the bar with Overview, Charts, Log, History and More slides away while you scroll down a page and comes back as soon as you scroll up or reach the top. Log's label sits under its button instead of behind it.
 - **Sheets stay put on a phone:** With Log, Snooze or any other sheet open, scrolling no longer moves the page behind it; only the sheet scrolls.

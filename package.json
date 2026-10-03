@@ -50,7 +50,9 @@
 		"yazl": "^3.3.1"
 	},
 	"overrides": {
-		"nodemailer": "$nodemailer"
+		"nodemailer": "$nodemailer",
+		"fflate": "^0.8.2",
+		"cookie": "^0.7.2"
 	},
 	"engines": {
 		"node": ">=22"
