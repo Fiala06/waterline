@@ -9,7 +9,7 @@ How to write a line:
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
-## Unreleased
+## 1.10.0 · 2026-10-03
 
 - **A new look, and a tank workspace:** Waterline has a fresh design: one typeface throughout, square corners, and red kept for what matters. On a computer, your tanks sit in a menu on the left (press `[` to keep it open or let it tuck away), and each tank is a workspace with tabs for [Overview](/), [Charts](/charts), [History](/history), [Photos](/photos), [Livestock](/tanks/current/livestock), [Plants](/tanks/current/plants), [Equipment](/tanks/current/equipment), [Spending](/tanks/current/spending) and [Setup](/tanks/current/settings). Log water test is one click or the `T` key away from anywhere, with the other log types under its ▾; `W`, `D` and `N` log a water change, a dose or a note. Press `⌘K` (or `/`) to jump to any tank, tab or action, `?` for every shortcut, `G` then a letter to switch tabs. The bell lists readings out of range and overdue tasks across your tanks. On a phone, the bottom bar has Overview, Charts, a big Log button, History and More.
 - **Review tank setup:** Every 3 months, a Review tank setup task comes up in [Tasks](/tasks) and on the dashboard, in case something changed and wasn't updated: a new light timer, a heater swapped, fish rehomed. It shows the tank's details, equipment, target ranges, and livestock and plants, each with Still right or Edit. A filter or pump not serviced in 6 months gets a Serviced today button. All still right finishes it, with an entry in History. Change how often, or turn it off, in [the tank's settings](/tanks/current/settings#review).
