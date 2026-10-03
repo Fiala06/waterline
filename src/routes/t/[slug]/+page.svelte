@@ -32,6 +32,11 @@
 	const step = (d: number) => {
 		if (shot != null && shots.length) shot = (shot + d + shots.length) % shots.length;
 	};
+	// a tap on the dark stage around the photo closes it (the photo, the arrows and the bar don't)
+	function onboxclick(e: MouseEvent) {
+		const t = e.target as HTMLElement;
+		if (t === box || t.classList.contains('lb') || t.classList.contains('lb-stage')) box?.close();
+	}
 	function onboxkey(e: KeyboardEvent) {
 		if (e.key === 'ArrowRight') step(1);
 		else if (e.key === 'ArrowLeft') step(-1);
@@ -319,7 +324,7 @@
 </div>
 
 <!-- The lightbox: the photo on a dark stage, its date, prev/next, Esc or a tap outside to close -->
-<dialog class="lightbox" bind:this={box} aria-label="Photo" onclose={() => (shot = null)} onclick={(e) => e.target === box && box.close()} onkeydown={onboxkey}>
+<dialog class="lightbox" bind:this={box} aria-label="Photo" onclose={() => (shot = null)} onclick={onboxclick} onkeydown={onboxkey}>
 	{#if current}
 		<div class="lb">
 			<div class="lb-stage"><img src={photo(current.id, 'full')} alt="{v.name} on {current.date}" /></div>

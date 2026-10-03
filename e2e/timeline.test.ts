@@ -115,6 +115,11 @@ test('tank timeline: moments, what changed, compare, public', async ({ page, bro
 	await v.keyboard.press('Escape');
 	await expect(box).toBeHidden();
 	await expect(v).toHaveURL(new RegExp(`/t/${slug}$`));
+	// a tap on the dark stage beside the photo closes it too
+	await tl.locator('a.tl-shot').first().click();
+	await expect(box).toBeVisible();
+	await box.locator('.lb-stage').click({ position: { x: 4, y: 4 } });
+	await expect(box).toBeHidden();
 
 	// the chart is the full one, as on Charts: points, limit labels and the Date axis
 	await v.goto(`/t/${slug}?chart=all`);
