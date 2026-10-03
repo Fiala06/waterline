@@ -407,6 +407,9 @@ export const products = sqliteTable(
 		name: text('name').notNull(),
 		url: text('url').notNull(),
 		note: text('note'), // "500 mL · about $19"
+		// its strength for the Dose → ppm calculator (#18): mg per mL of what it adds ("nitrate"); null when not given
+		strengthMgPerMl: real('strength_mg_per_ml'),
+		strengthOf: text('strength_of'),
 		createdAt: createdAt()
 	},
 	(t) => [index('products_user').on(t.userId)]

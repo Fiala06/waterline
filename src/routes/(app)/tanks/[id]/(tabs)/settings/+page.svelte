@@ -159,6 +159,7 @@
 					<span class="unit">{data.volUnit}</span>
 				</div>
 				{#if errors.actualVolume}<span class="error-text">✕ {errors.actualVolume}</span>{/if}
+				<a class="hint calc-link" href="/calculators?tank={data.tank.id}#volume">Work it out from the size ›</a>
 			</div>
 		</div>
 

@@ -211,6 +211,13 @@
       "when": 1791044984946,
       "tag": "0029_photo_taken_at_set",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "6",
+      "when": 1791045557013,
+      "tag": "0030_product_strength",
+      "breakpoints": true
     }
   ]
 }

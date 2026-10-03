@@ -11,6 +11,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Calculators:** [Calculators](/calculators) (in the tank's More ▾ menu, `⌘K`, and More on a phone) works out the tank's volume from its size, with Save as the tank's water volume; how much water to change to bring nitrate (or any reading) down to a target, in % and in your volume unit; what a dose of a product adds in ppm and the dose for a target, from a strength you can save with a product under [Settings › Products](/settings/products); the heater size for the tank and room; how much substrate to buy; CO₂ from pH and KH, with the pH to aim for; and the baking soda, gypsum and Epsom salt to bring RO water up to a GH and KH. Everything starts from the tank's size, volume and latest readings, in your units, and [Tank details](/tanks/current/settings) and Log a dose link to the one that helps there.
 - **Photos keep the date they were taken:** A photo you add is dated when it was taken, read from the photo itself, not when you uploaded it, so last month's photos land in last month in [Photos](/photos) and History. On the Photos page, Upload shows a Taken date set from the photos (or today), and photos from different days each keep their own, as one note per day. On a log entry, a photo from another day offers "Use the photo's date" for the entry. Opening a photo shows when it was taken, and Change date fixes it. The photo's other details (camera, location) are still not kept.
 
 ## 1.11.1 · 2026-10-03

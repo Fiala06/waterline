@@ -66,7 +66,7 @@
 	const topLevel = $derived(
 		path === '/' || /^\/(charts|history|photos|more)$/.test(path) || /^\/\(app\)\/tanks\/\[id\]\/\(tabs\)\/?[a-z]*$/.test(routeId)
 	);
-	const barRoutes = ['/tanks', '/tasks', '/settings'];
+	const barRoutes = ['/tanks', '/tasks', '/settings', '/calculators'];
 	const showBar = $derived(topLevel || barRoutes.includes(path));
 	const fullscreen = $derived(path.startsWith('/photos/'));
 
@@ -112,6 +112,7 @@
 			const kind = importKindOf(page.params.list ?? '');
 			return { title: kind ? IMPORTS[kind].title : 'Import' };
 		}
+		if (id === '/(app)/calculators') return { title: 'Calculators', kicker: current ? `For ${current.name}` : 'Volume, water change, dosing, heater, substrate, CO₂' };
 		if (id === '/(app)/tasks') return { title: 'Tasks', kicker: data.overdueCount ? `${data.overdueCount} overdue` : 'Every tank', actions: [{ label: '+ New task', href: newTaskHref }] };
 		const taskType = (page.data.values as { type?: string } | undefined)?.type;
 		if (id === '/(app)/tasks/new')

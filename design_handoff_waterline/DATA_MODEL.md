@@ -88,7 +88,8 @@ livestock        id, tank_id, kind(fish|invert|coral), common_name, scientific_n
 plants           id, tank_id, name, scientific_name?, position(background|midground|
                  foreground|epiphyte|floating), status(thriving|melting|algae|other),
                  last_trimmed_at?, removed_at?, import_id?, photo_id? (the keeper's own), created_at
-products         id, user_id, name, url, note?, created_at (saved reorder links)
+products         id, user_id, name, url, note?, strength_mg_per_ml?, strength_of? (its strength for
+                 the Dose → ppm calculator: mg per mL of what it adds), created_at (saved reorder links)
 expenses         id, tank_id, date, amount_cents, category(livestock|plants|equipment|
                  consumables|other), what, note?, product_id?, receipt_path?,
                  receipt_type?(image/jpeg|application/pdf), import_id?, created_at

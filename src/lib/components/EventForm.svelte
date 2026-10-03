@@ -390,6 +390,7 @@
 						</div>
 					</div>
 					{#if doseHint}<span class="hint">{doseHint}</span>{/if}
+					{#if mode === 'new'}<a class="hint calc-link" href="/calculators?tank={page.url.searchParams.get('tank') ?? ''}#dose">What does this dose add? Dose → ppm ›</a>{/if}
 					{#if mode === 'new' && savedLink}
 						<a class="reorder" href={savedLink.url} target="_blank" rel="noopener noreferrer"
 							>Reorder {savedLink.name}<span aria-hidden="true"> ↗</span><span class="sr-only"> (opens in a new tab)</span></a

@@ -10,13 +10,15 @@
 	// the product whose form is open: after a refused save, from ?edit= without scripts, or picked here
 	let editing = $state<string | null>(untrack(() => form?.edit?.id ?? data.edit ?? null));
 	const addErr = $derived<Record<string, string>>(form?.add?.errors ?? {});
-	const addVal = $derived(form?.add?.values ?? { name: data.prefill, url: '', note: '' });
+	const blank = { name: '', url: '', note: '', strengthDose: '', strengthPer: '', strengthPpm: '', strengthOf: '' };
+	const addVal = $derived(form?.add?.values ?? { ...blank, name: data.prefill });
+	type Vals = typeof blank;
 	const editErr = $derived<Record<string, string>>(form?.edit?.errors ?? {});
 </script>
 
 <svelte:head><title>Products · Settings · Waterline</title></svelte:head>
 
-{#snippet fields(prefix: string, v: { name: string; url: string; note: string | null }, err: Record<string, string>)}
+{#snippet fields(prefix: string, v: Omit<Vals, 'note'> & { note: string | null }, err: Record<string, string>)}
 	<div class="field">
 		<label class="label" for="{prefix}-name">Name</label>
 		<input class="input" id="{prefix}-name" name="name" maxlength="80" value={v.name} list="dosed" autocomplete="off" placeholder="e.g. Water conditioner" aria-invalid={!!err.name} />
@@ -42,6 +44,20 @@
 		<label class="label" for="{prefix}-note">Note · optional</label>
 		<input class="input" id="{prefix}-note" name="note" maxlength="120" value={v.note ?? ''} autocomplete="off" placeholder="Size, price, which one" />
 	</div>
+	<!-- the strength, as the bottle states it, for the Dose → ppm calculator (#18) -->
+	<fieldset class="field strength">
+		<legend class="label">Strength · optional, as the bottle says</legend>
+		<div class="strength-row">
+			<input class="input" name="strengthDose" inputmode="decimal" value={v.strengthDose} autocomplete="off" aria-label="Dose in mL" placeholder="5" />
+			<span>mL in</span>
+			<input class="input" name="strengthPer" inputmode="decimal" value={v.strengthPer} autocomplete="off" aria-label="Volume in {data.volUnit}" placeholder="50" />
+			<span>{data.volUnit} adds</span>
+			<input class="input" name="strengthPpm" inputmode="decimal" value={v.strengthPpm} autocomplete="off" aria-label="ppm added" placeholder="1" />
+			<span>ppm of</span>
+			<input class="input of" name="strengthOf" maxlength="40" value={v.strengthOf} autocomplete="off" aria-label="What it adds" placeholder="nitrate" />
+		</div>
+		{#if err.strength}<span class="error-text">✕ {err.strength}</span>{:else}<span class="hint">Used by the <a href="/calculators#dose">Dose → ppm calculator</a>.</span>{/if}
+	</fieldset>
 {/snippet}
 
 <div class="page sub-page">
@@ -61,7 +77,7 @@
 					<div class="item">
 						<div class="t">
 							<span class="name">{p.name}</span>
-							<span class="meta">{p.host}{p.note ? ` · ${p.note}` : ''}</span>
+							<span class="meta">{p.host}{p.note ? ` · ${p.note}` : ''}{p.strength ? ` · ${p.strength}` : ''}</span>
 							{#if p.dosed}<span class="meta">Last dosed {fmtDateLong(p.dosed.date)} in {p.dosed.tank}</span>{/if}
 						</div>
 						<div class="acts">
@@ -163,6 +179,24 @@
 		max-width: 620px;
 	}
 
+	.strength-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 6px 8px;
+		font-size: 14px;
+		color: var(--text-2);
+	}
+	.strength-row .input {
+		width: 72px;
+		min-height: 44px;
+	}
+	.strength-row .of {
+		width: 120px;
+	}
+	.strength .hint a {
+		color: var(--accent-text);
+	}
 	/* the list: a 2px ink rule, then a row per product */
 	.list {
 		list-style: none;

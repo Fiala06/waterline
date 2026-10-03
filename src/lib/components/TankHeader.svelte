@@ -48,6 +48,7 @@
 		{ title: 'Export this tank', sub: 'A backup or CSV in Settings › Import & export', href: `/settings/export?tank=${tank.id}` },
 		{ title: 'Public page', sub: 'Share a read-only page', href: `${base}/public` },
 		{ title: 'Review tank setup', sub: 'Walk through details, equipment, targets and livestock', href: `${base}/review`, sep: true },
+		{ title: 'Calculators', sub: 'Volume, water change, dosing, heater, substrate, CO₂', href: `/calculators?tank=${tank.id}` },
 		{ title: 'Archive tank', sub: 'Hide it from the list; you can restore it', href: `${base}/settings#archive`, sep: true, danger: true }
 	]);
 	const logKinds = [
