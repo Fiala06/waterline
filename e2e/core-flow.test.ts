@@ -59,7 +59,7 @@ test('core flow', async ({ page }, info) => {
 	await expect(due.getByRole('button', { name: 'Mark done', exact: true })).toHaveCount(0);
 	await due.getByRole('button', { name: 'Mark Water change 25% done early' }).click();
 	await expect(page).toHaveURL(/\/entries\/event\/new\?.*category=water_change/);
-	await expect(page.getByLabel(/Also complete task “Water change 25%”/)).toBeChecked();
+	await expect(page.getByLabel(/Also mark the reminder “Water change 25%” done/)).toBeChecked();
 	await page.locator('label', { hasText: 'RODI' }).click();
 	await page.getByRole('button', { name: 'Save water change' }).click();
 

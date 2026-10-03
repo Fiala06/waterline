@@ -43,6 +43,8 @@
 		closeHref,
 		returnTo = null,
 		task = null,
+		lastAmountMode = 'percent',
+		lastAmount = null,
 		recentProducts = [],
 		recentAdditives = [],
 		recentFoods = [],
@@ -71,7 +73,10 @@
 		closeHref: string;
 		/** where saving goes back to (a page in the app), instead of the dashboard */
 		returnTo?: string | null;
-		task?: { id: string; label: string; checked: boolean } | null;
+		task?: { id: string; label: string; sub?: string; checked: boolean } | null;
+		/** % or volume, and how much, as the last water change was logged */
+		lastAmountMode?: 'percent' | 'volume';
+		lastAmount?: string | null;
 		recentProducts?: { product: string; amount: unknown; unit: unknown; at: string }[];
 		/** Water change: conditioners and remineralisers added before, then dosed products */
 		recentAdditives?: { product: string; amount: unknown; unit: unknown; at: string }[];
@@ -147,8 +152,8 @@
 	}
 
 	// Water change
-	let amountMode = $state(v('amountMode') || 'percent');
-	let amount = $state(untrack(() => v('amount') || (mode === 'new' ? '25' : '')));
+	let amountMode = $state(untrack(() => v('amountMode') || lastAmountMode));
+	let amount = $state(untrack(() => v('amount') || (mode === 'new' ? lastAmount || '25' : '')));
 
 	let note = $state(untrack(() => initialNote));
 	let recheck = $state('3');
@@ -231,11 +236,8 @@
 		return null;
 	});
 
-	const taskText = $derived.by(() => {
-		if (!task) return null;
-		const m = task.label.match(/^(.*?)\s*(\(next due [^)]*\))$/);
-		return m ? { main: m[1], next: m[2] } : { main: task.label, next: '' };
-	});
+	// "Also mark the reminder “Water change 25%” done", with where it stands on its own line
+	const taskText = $derived(task ? { main: task.label, next: task.sub ?? '' } : null);
 
 	const saveLabel = $derived(
 		mode === 'edit'

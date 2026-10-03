@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **The reminder box on a log form says what it does:** Under [Log water change](/entries/event/new?category=water_change) and Log water test, the box now reads "Also mark the reminder “Water change 25%” done", with where the reminder stands under it ("Due today · next Oct 10", "Not due until Oct 6 · next would be Oct 13"). It's ticked by itself when the reminder is due or you came from Mark done, and left for you to tick when you're doing it early.
+- **% or gallons, the way you logged it last:** [Log water change](/entries/event/new?category=water_change) opens in % or in your volume unit, with the amount filled in, the way the tank's last water change was logged; the first one still starts at 25%.
 ## 1.12.1 · 2026-10-03
 
 - **Sign out everywhere signs them out for good:** [Server settings › People](/settings/server/people) › Sign out everywhere used to hold only for a second, because a session's start time moved with every request; it now stays put, so the person is asked to sign in again on their next request, whenever that is.

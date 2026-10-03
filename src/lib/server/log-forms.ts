@@ -113,11 +113,16 @@ export function completableTask(
 	const due = task ? effectiveDue(task) : null;
 	if (!task || !due) return null;
 	const next = nextDueAfterCompletion(task, today, today);
+	const d = dueInfo(due, today);
+	// "Also mark the reminder “Water change 25%” done", then where it stands: ticked by itself when it's due
+	const state = d.days < 0 ? `${-d.days} day${d.days === -1 ? '' : 's'} overdue` : d.days === 0 ? 'Due today' : `Not due until ${fmtDate(due)}`;
+	const after = next ? (d.days > 0 ? `next would be ${fmtDate(next)}` : `next ${fmtDate(next)}`) : 'closes the reminder';
 	return {
 		id: task.id,
 		name: task.name,
-		label: `Also complete task “${task.name}”${next ? ` (next due ${fmtDate(next)})` : ''}`,
-		checked: fromRequest || dueInfo(due, today).days <= 0
+		label: `Also mark the reminder “${task.name}” done`,
+		sub: `${state} · ${after}`,
+		checked: fromRequest || d.days <= 0
 	};
 }
 
@@ -128,10 +133,15 @@ export function tankVolumeL(tank: Tank) {
 
 export function eventFormContext(tank: Tank, user: User) {
 	const vol = tankVolumeL(tank);
+	// % or volume, and how much: the way the last water change was logged
+	const last = lastEventOf(tank.id, 'water_change');
+	const values = last ? eventFormValues('water_change', last.data, user) : null;
 	return {
 		volUnit: unitLabel('volume', user),
 		tankVolume: vol == null ? null : Number(formatNumber(toDisplay(vol, 'volume', user), 1)),
-		tankVolumeIsActual: tank.actualVolumeL != null
+		tankVolumeIsActual: tank.actualVolumeL != null,
+		lastAmountMode: (values?.amountMode === 'volume' ? 'volume' : 'percent') as 'volume' | 'percent',
+		lastAmount: (values?.amount as string | undefined) || null
 	};
 }
 
@@ -171,6 +181,7 @@ export function parseEventData(
 				if (amount > 100) errors.amount = 'Enter a percentage up to 100.';
 				return {
 					data: {
+						amount_mode: 'percent',
 						percent: amount,
 						...(vol ? { volume_l: (vol * amount) / 100 } : {}),
 						...(source ? { source } : {}),
@@ -182,6 +193,7 @@ export function parseEventData(
 			const volumeL = toStored(amount, 'volume', user);
 			return {
 				data: {
+					amount_mode: 'volume',
 					volume_l: volumeL,
 					...(vol ? { percent: Math.round((volumeL / vol) * 1000) / 10 } : {}),
 					...(source ? { source } : {}),
@@ -302,7 +314,7 @@ export function eventFormValues(
 				additive_amount: additives.map((a) => s(a.amount)),
 				additive_unit: additives.map((a) => s(a.unit))
 			};
-			return typeof data.percent === 'number'
+			return typeof data.percent === 'number' && data.amount_mode !== 'volume'
 				? { amountMode: 'percent', amount: formatNumber(data.percent, 1), source: s(data.source), ...added }
 				: {
 						amountMode: 'volume',

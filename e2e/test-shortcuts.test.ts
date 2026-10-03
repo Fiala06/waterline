@@ -59,7 +59,7 @@ test('water test: also log a water change', async ({ page }, info) => {
 	await expect(amount).toHaveValue('25');
 	await page.getByRole('button', { name: '50%' }).click();
 	await page.locator('label', { hasText: 'RODI' }).click();
-	await expect(page.getByLabel(/Also complete task “Water change 25%”/)).toBeChecked();
+	await expect(page.getByLabel(/Also mark the reminder “Water change 25%” done/)).toBeChecked();
 	await page.getByRole('button', { name: 'Save 1 reading + water change' }).click();
 	await expect(page.getByRole('status')).toContainText('✓ Saved 1 reading + water change · 1 out of range');
 
@@ -145,4 +145,20 @@ test('water test: Copy puts the readings on the clipboard as plain text', async 
 	expect(lines[0]).toMatch(/^Riverbed 40 · water test · \w{3} \d+, \d{4}, \d+:\d{2} [AP]M$/);
 	expect(lines.slice(1)).toEqual(['pH 7.8', 'Nitrate 40 ppm']);
 	expect(text).not.toMatch(/High|range|✕|✓/);
+});
+
+// The %/volume choice and the amount stick: the next water change form opens the way the last one was logged.
+test('water change: the amount unit is remembered from the last one', async ({ page }, info) => {
+	await newKeeperWithTank(page, `wcunit-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	const form = `/entries/event/new?tank=${tankId}&category=water_change`;
+	await open(page, form);
+	await expect(page.getByRole('radio', { name: '%' })).toBeChecked();
+	await page.getByRole('radio', { name: 'gal' }).check({ force: true });
+	await page.getByLabel('Amount', { exact: true }).fill('5');
+	await page.getByRole('button', { name: 'Save water change' }).click();
+	await expect(page.locator('.toast-region')).toContainText('✓');
+	await open(page, form);
+	await expect(page.getByRole('radio', { name: 'gal' })).toBeChecked();
+	await expect(page.getByLabel('Amount', { exact: true })).toHaveValue('5');
 });

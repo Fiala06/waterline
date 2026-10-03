@@ -74,7 +74,7 @@ test('a restored water change draft keeps "Also complete task" ticked', async ({
 
 	// a water change started while the reminder isn't due (no task box on the form), left unsaved
 	await open(page, `/entries/event/new?tank=${tankId}&category=water_change`);
-	await expect(page.getByLabel(/Also complete task/)).toHaveCount(0);
+	await expect(page.getByLabel(/Also mark the reminder/)).toHaveCount(0);
 	await page.getByLabel('Amount', { exact: true }).fill('36');
 	// Close on a phone, Cancel on a computer
 	await page.locator('a[aria-label="Close"]:visible, a.cancel:visible').first().click();
@@ -86,7 +86,8 @@ test('a restored water change draft keeps "Also complete task" ticked', async ({
 	await expect(page).toHaveURL(/\/entries\/event\/new\?.*task=/);
 	await expect(page.getByText(/^▲ Restored/)).toBeVisible();
 	await expect(page.getByLabel('Amount', { exact: true })).toHaveValue('36');
-	await expect(page.getByLabel(/Also complete task “Water change 25%”/)).toBeChecked();
+	await expect(page.getByLabel(/Also mark the reminder “Water change 25%” done/)).toBeChecked();
+	await expect(page.locator('.check-row.task')).toContainText(/Not due until .* · next would be/);
 	await page.getByRole('button', { name: 'Save water change' }).click();
 	await expect(page.locator('.toast-region')).toContainText('✓ Water change logged · next due');
 	// the reminder moved on a week
