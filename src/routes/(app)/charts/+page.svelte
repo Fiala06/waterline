@@ -488,7 +488,7 @@
 		font-size: 12px;
 	}
 	.cmp-chart {
-		height: 120px;
+		height: 160px;
 	}
 	.cmp-none,
 	.cmp-target {
@@ -661,16 +661,18 @@
 		.compare h2 {
 			font-size: 20px;
 		}
+		/* big enough to read: one other tank takes the row, more share it */
 		.cmp-grid {
-			grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+			grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
 			gap: 24px;
 		}
 		.cmp-chart {
-			height: 96px;
+			height: 200px;
 		}
 	}
-	/* Narrow desktop (main < 1000px): stats and events move under the chart, side by side */
-	@media (min-width: 1024px) and (max-width: 1199px) {
+	/* Narrower desktop (up to a 1440px window): stats and events move under the chart, side by side,
+	   so the chart gets the width instead of a tall, thin column */
+	@media (min-width: 1024px) and (max-width: 1439px) {
 		.layout {
 			grid-template-columns: 150px minmax(0, 1fr);
 			grid-template-rows: auto auto 1fr;
@@ -692,7 +694,7 @@
 			border-top: 2px solid var(--divider);
 		}
 		.chart-box {
-			height: clamp(300px, calc(100dvh - 520px), 440px);
+			height: clamp(320px, calc(100dvh - 460px), 480px);
 		}
 		.compare {
 			padding-top: 8px;

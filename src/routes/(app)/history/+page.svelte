@@ -110,7 +110,9 @@
 						</select>
 					</label>
 					<noscript><button class="btn apply">Apply</button></noscript>
-					<span class="total">{data.total} entr{data.total === 1 ? 'y' : 'ies'}</span>
+					<span class="total"
+						>{data.total} entr{data.total === 1 ? 'y' : 'ies'}{#if data.older}{' · '}<a class="older-count" href={q({ range: 'all', entry: null })}>{data.older.count} older</a>{/if}</span
+					>
 				</form>
 
 				{#each data.groups ?? [] as g (g.day)}
@@ -134,15 +136,28 @@
 						</div>
 					</section>
 				{/each}
+				{#if data.groups?.length && data.older}
+					<p class="older">
+						<span>{data.older.count} older entr{data.older.count === 1 ? 'y' : 'ies'} before {data.older.before}</span>
+						<a class="older-link" href={q({ range: 'all', entry: null })}>Show all time</a>
+					</p>
+				{/if}
 				{#if data.groups?.length && importHref}<ImportButton href={importHref} />{/if}
 			</div>
 
 			{#if !data.groups?.length}
 				<div class="empty-block">
 					<span class="hide-desk"><CategoryIcon kind={emptyIcon} size={44} /></span>
-					<h2 class="e-title">Nothing logged here yet</h2>
-					<p class="e-text"><span class="hide-desk">Try a longer date range or another category.</span><span class="hide-phone">{emptyText}</span></p>
-					{#if importHref}<ImportButton href={importHref} />{/if}
+					{#if data.older}
+						<!-- older entries exist: the range is what's empty, not the tank's history -->
+						<h2 class="e-title">Nothing in the {data.rangeLabel.toLowerCase()}</h2>
+						<p class="e-text">{data.older.count} older entr{data.older.count === 1 ? 'y' : 'ies'} before {data.older.before}.</p>
+						<a class="btn" href={q({ range: 'all', entry: null })}>Show all time</a>
+					{:else}
+						<h2 class="e-title">Nothing logged here yet</h2>
+						<p class="e-text"><span class="hide-desk">Try a longer date range or another category.</span><span class="hide-phone">{emptyText}</span></p>
+						{#if importHref}<ImportButton href={importHref} />{/if}
+					{/if}
 				</div>
 			{/if}
 
@@ -274,6 +289,29 @@
 	}
 	.total {
 		margin-left: auto;
+	}
+	/* the end of a short range: what's before it, and the way to it */
+	.older {
+		margin: 4px 0 0;
+		padding: 14px 0;
+		border-top: 2px solid var(--ink);
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 4px 12px;
+		font-size: 14px;
+		color: var(--text-muted);
+	}
+	.older-count {
+		color: var(--accent);
+		font-weight: 600;
+	}
+	.older-link {
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		color: var(--accent);
+		font-weight: 700;
 	}
 	.apply {
 		min-height: 36px;

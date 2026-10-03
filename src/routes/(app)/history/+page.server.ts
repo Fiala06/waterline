@@ -1,7 +1,7 @@
-import { and, desc, eq, gte } from 'drizzle-orm';
+import { and, count as countRows, desc, eq, gte, lt } from 'drizzle-orm';
 import { eventIcon, eventKindLabel, eventTitle } from '$lib/events';
 import { shortName, statusOf, fmtValue } from '$lib/params';
-import { dateInZone, daysBetween, fmtTime, todayInZone } from '$lib/time';
+import { dateInZone, daysBetween, fmtDate, fmtTime, todayInZone } from '$lib/time';
 import { db } from '$lib/server/db';
 import { events, testReadings, tests } from '$lib/server/db/schema';
 import { eventView, testView, type EntryView } from '$lib/server/entry-view';
@@ -11,7 +11,10 @@ import type { EventCategory } from '$lib/types';
 import { FILTERS, RANGES } from '$lib/history';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals, parent, url }) => {
+// the range picked last time, so History opens the way it was left (All time, once chosen, stays)
+const RANGE_COOKIE = 'wl_history_range';
+
+export const load: PageServerLoad = async ({ locals, parent, url, cookies }) => {
 	const user = locals.user!;
 	const { currentTankId } = await parent();
 	if (!currentTankId) return { tank: null };
@@ -19,7 +22,11 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 	const tz = user.timeZone;
 
 	const cat = FILTERS.some((f) => f.key === url.searchParams.get('cat')) ? url.searchParams.get('cat')! : 'all';
-	const range = RANGES.some((r) => r.key === url.searchParams.get('range')) ? url.searchParams.get('range')! : '30';
+	const valid = (v: string | null | undefined) => !!v && RANGES.some((r) => r.key === v);
+	const asked = url.searchParams.get('range');
+	if (valid(asked)) cookies.set(RANGE_COOKIE, asked!, { path: '/', httpOnly: true, sameSite: 'lax', maxAge: 60 * 60 * 24 * 365 });
+	const saved = cookies.get(RANGE_COOKIE);
+	const range = valid(asked) ? asked! : valid(saved) ? saved! : '30';
 	const since = range === 'all' ? '0000' : new Date(Date.now() - Number(range) * 86_400_000).toISOString();
 
 	const allTests = db
@@ -39,6 +46,22 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 	for (const e of allEvents) counts[e.category] = (counts[e.category] ?? 0) + 1;
 
 	const showTests = cat === 'all' || cat === 'test';
+	// what's before the range, so a short range never looks like missing data: "42 older entries · Show all time"
+	let older: { count: number; before: string } | null = null;
+	if (range !== 'all') {
+		const olderTests = showTests
+			? (db.select({ n: countRows() }).from(tests).where(and(eq(tests.tankId, tank.id), lt(tests.takenAt, since))).get()?.n ?? 0)
+			: 0;
+		const olderEvents =
+			cat === 'test'
+				? 0
+				: (db
+						.select({ n: countRows() })
+						.from(events)
+						.where(and(eq(events.tankId, tank.id), lt(events.occurredAt, since), cat === 'all' ? undefined : eq(events.category, cat as EventCategory)))
+						.get()?.n ?? 0);
+		if (olderTests + olderEvents) older = { count: olderTests + olderEvents, before: fmtDate(dateInZone(since, tz)) };
+	}
 	const shownEvents = cat === 'all' ? allEvents : cat === 'test' ? [] : allEvents.filter((e) => e.category === (cat as EventCategory));
 	const shownTests = showTests ? allTests : [];
 	const thumbs = thumbsFor(
@@ -130,6 +153,8 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 		counts,
 		groups,
 		total: items.length,
+		older,
+		rangeLabel: RANGES.find((r) => r.key === range)!.label,
 		selected: detail ? `${detail.kind}:${detail.id}` : null,
 		detail
 	};

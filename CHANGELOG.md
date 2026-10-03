@@ -9,6 +9,11 @@ How to write a line:
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
+## Unreleased
+
+- **Bigger charts on a computer:** In [Charts](/charts), up to a 1440px-wide window the latest reading, averages and events move under the chart, so the chart gets the full width. The charts of the same reading in your other tanks are now wide and tall enough to read.
+- **Older History is never out of sight:** [History](/history) still opens on the last 30 days, but it now says how many older entries there are ("70 entries · 183 older") and ends with Show all time. A range with nothing in it says so and offers the same. The range you pick is remembered, so choosing All time once keeps it.
+
 ## 1.11.0 · 2026-10-03
 
 - **Readings and tasks apart in the menu:** Beside each tank in the side menu, readings out of range show as `✕ 1` in red and overdue tasks as `▲ 1`, both when there are both; hovering spells it out ("1 reading out of range · 1 task overdue"). Searching with `⌘K` shows the same.
