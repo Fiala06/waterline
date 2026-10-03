@@ -1,9 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { bySpecies, healthTitle, livestockLabel, outcomeText, speciesCount, speciesKey, underTreatment } from './livestock';
+import { bySpecies, healthTitle, livestockLabel, outcomeText, speciesCount, speciesKey, underTreatment, validLivestockCount } from './livestock';
 
 const cory = { commonName: 'Corydoras', scientificName: 'Corydoras paleatus' };
 const betta = { commonName: 'Betta', scientificName: 'Betta splendens' };
 const tetra = { commonName: 'Neon tetra', scientificName: null };
+
+describe('livestock counts', () => {
+	it('accepts only supported positive whole counts', () => {
+		expect(validLivestockCount(1)).toBe(true);
+		expect(validLivestockCount(10_000)).toBe(true);
+		for (const count of [0, -1, 1.5, 10_001, Infinity, '6']) expect(validLivestockCount(count)).toBe(false);
+	});
+});
 
 describe('livestock with pets', () => {
 	it('labels a pet with its species', () => {

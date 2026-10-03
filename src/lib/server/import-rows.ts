@@ -14,6 +14,7 @@ import {
 	type SpecField
 } from '$lib/equipment';
 import { fmtMoney, parseMoney } from '$lib/money';
+import { MAX_LIVESTOCK_COUNT, validLivestockCount } from '$lib/livestock';
 import { fmtDateLong, isDate } from '$lib/time';
 import type { UnitPrefs, UnitSystem } from '$lib/units';
 import { exactSpecies } from './species';
@@ -445,7 +446,7 @@ function checkLivestock(c: Cells, ctx: ImportContext): Omit<CheckedRow, 'line' |
 	const count = rawCount === '' ? 1 : whole ? Number(whole[1]) : NaN;
 	if (Number.isNaN(count)) problems.push(`Count ${quoted(rawCount)} isn't a whole number`);
 	else if (count < 1) problems.push('Count is 0');
-	else if (count > 10_000) problems.push('Count is over 10,000');
+	else if (count > MAX_LIVESTOCK_COUNT) problems.push('Count is over 10,000');
 	const added = dateCell(c.added ?? '', 'Added', ctx, problems);
 	const status = pick(c.status ?? '', wordsFor<LivestockValue['status']>('livestock', 'status', ctx));
 	if (status === null) problems.push(`Status ${quoted(c.status)} isn't In tank or Quarantine`);
@@ -721,9 +722,7 @@ export function validValue(list: ImportList, v: unknown, today: string): ImportV
 			LIVESTOCK_KINDS.includes(o.kind as Kind) &&
 			text(o.name, 80) &&
 			optText(o.scientific, 120) &&
-			Number.isInteger(o.count) &&
-			(o.count as number) >= 1 &&
-			(o.count as number) <= 10_000 &&
+			validLivestockCount(o.count) &&
 			date(o.added, today) &&
 			(o.status === 'in_tank' || o.status === 'quarantine') &&
 			optText(o.source, 120);

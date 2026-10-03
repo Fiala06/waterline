@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Sensible livestock counts everywhere:** Adding livestock from the [Log form](/entries/event/new?category=livestock) now applies the same 1–10,000 limit as the Livestock page, imports and the wish list, so an accidentally enormous count cannot be saved.
+
 ## 1.12.3 · 2026-10-03
 
 - **The summary knows the new things too:** [Share summary](/tanks/current/summary) (and what an AI assistant reads) now carries each equipment item's schedule ("runs 08:00–12:00, 14:00–18:00 · 8 h"), what the tank goes without on purpose, the latest reading from each sensor, a reef's PAR readings by spot, and the wish list as Planned to add, beside the species care it already had.
