@@ -9,7 +9,7 @@ How to write a line:
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
-## Unreleased
+## 1.11.1 · 2026-10-03
 
 - **Bigger charts on a computer:** In [Charts](/charts), up to a 1440px-wide window the latest reading, averages and events move under the chart, so the chart gets the full width. The charts of the same reading in your other tanks are now wide and tall enough to read.
 - **Copy a water test:** Open a water test in [History](/history) and Copy puts its readings on the clipboard as plain text, one a line ("pH 7.8", "Nitrate 40 ppm") under the tank and the time, without the statuses, ready to paste into a message.
