@@ -298,8 +298,11 @@ a {
 	text-decoration: none;
 	text-underline-offset: 3px;
 }
-a:hover {
-	color: var(--accent-text-hover);
+/* only where there's a pointer, so a tap doesn't leave a link stuck in its hover colour */
+@media (hover: hover) {
+	a:hover {
+		color: var(--accent-text-hover);
+	}
 }
 
 button,
