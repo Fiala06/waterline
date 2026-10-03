@@ -152,8 +152,32 @@ function perSpecies(rows: { id: string; commonName: string; scientificName: stri
 const monthYear = (d: string) =>
 	new Date(d.slice(0, 10) + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 
+/** How much of the page a visitor asked to see (?chart= and ?log=); the owner's switches still decide what. */
+export const CHART_RANGES = [
+	{ key: '30d', days: 30, label: '30 days', title: 'the last 30 days' },
+	{ key: '90d', days: 91, label: '90 days', title: 'the last 3 months' },
+	{ key: '1y', days: 365, label: '1 year', title: 'the last year' },
+	{ key: 'all', days: 0, label: 'All', title: 'all time' }
+] as const;
+export const LOG_RANGES = [
+	{ key: 'week', days: 7, label: 'Last week' },
+	{ key: 'month', days: 30, label: 'Last month' },
+	{ key: 'all', days: 0, label: 'Everything' }
+] as const;
+export type PublicRanges = { chart: (typeof CHART_RANGES)[number]['key']; log: (typeof LOG_RANGES)[number]['key'] };
+export function publicRanges(url: URL): PublicRanges {
+	const c = url.searchParams.get('chart');
+	const l = url.searchParams.get('log');
+	return {
+		chart: CHART_RANGES.some((r) => r.key === c) ? (c as PublicRanges['chart']) : '90d',
+		log: LOG_RANGES.some((r) => r.key === l) ? (l as PublicRanges['log']) : 'month'
+	};
+}
+/** The most a visitor can scroll through at once. */
+const LOG_MAX = 200;
+
 /** Everything the public page may show, already filtered by the owner's switches. */
-export function publicView(page: PublicPage, tank: Tank, owner: User) {
+export function publicView(page: PublicPage, tank: Tank, owner: User, ranges: PublicRanges = { chart: '90d', log: 'month' }) {
 	const tz = owner.timeZone;
 	const prefs = owner;
 	const today = todayInZone(tz);
@@ -182,8 +206,9 @@ export function publicView(page: PublicPage, tank: Tank, owner: User) {
 	const lastDay = cards.reduce<string | null>((m, c) => (!m || c.day > m ? c.day : m), null);
 	const bad = cards.filter((c) => c.level === 'bad');
 
-	// Charts: up to three parameters, bad ones first; dates only (no times).
-	const since = new Date(Date.now() - 91 * 86_400_000).toISOString();
+	// Charts: every tested parameter, bad ones first; dates only (no times). The visitor picks the range.
+	const chartRange = CHART_RANGES.find((r) => r.key === ranges.chart)!;
+	const since = chartRange.days ? new Date(Date.now() - chartRange.days * 86_400_000).toISOString() : '';
 	// Problems first, then the usual headline parameters.
 	const ORDER = ['no3', 'ph', 'kh', 'temp', 'gh', 'nh3', 'no2'];
 	const rank = (p: (typeof params)[number]) => {
@@ -193,8 +218,7 @@ export function publicView(page: PublicPage, tank: Tank, owner: User) {
 	};
 	const chartParams = [...params]
 		.filter((p) => latest.has(p.id))
-		.sort((a, b) => rank(a) - rank(b))
-		.slice(0, 3);
+		.sort((a, b) => rank(a) - rank(b));
 	const charts = page.showCharts
 		? chartParams
 				.map((p) => ({
@@ -254,30 +278,32 @@ export function publicView(page: PublicPage, tank: Tank, owner: User) {
 		: [];
 
 	let activity: { key: string; title: string; kind: string; day: string }[] = [];
+	const logRange = LOG_RANGES.find((r) => r.key === ranges.log)!;
 	if (page.showActivity) {
+		const logSince = logRange.days ? new Date(Date.now() - logRange.days * 86_400_000).toISOString() : '';
 		const ev = db
 			.select()
 			.from(events)
-			.where(and(eq(events.tankId, tank.id), inArray(events.category, [...PUBLIC_CATEGORIES])))
+			.where(and(eq(events.tankId, tank.id), inArray(events.category, [...PUBLIC_CATEGORIES]), logSince ? gte(events.occurredAt, logSince) : undefined))
 			.orderBy(desc(events.occurredAt))
-			.limit(16)
+			.limit(LOG_MAX * 2)
 			.all()
 			.filter((e) => names || !isNaming(e))
-			.slice(0, 8)
+			.slice(0, LOG_MAX)
 			.map((e) => ({ key: `e:${e.id}`, at: e.occurredAt, title: eventTitle(names ? e : withoutPetNames(e), prefs), kind: e.category }));
 		const ts = db
 			.select({ id: tests.id, at: tests.takenAt, n: sql<number>`count(${testReadings.parameterId})` })
 			.from(tests)
 			.leftJoin(testReadings, eq(testReadings.testId, tests.id))
-			.where(eq(tests.tankId, tank.id))
+			.where(and(eq(tests.tankId, tank.id), logSince ? gte(tests.takenAt, logSince) : undefined))
 			.groupBy(tests.id)
 			.orderBy(desc(tests.takenAt))
-			.limit(8)
+			.limit(LOG_MAX)
 			.all()
 			.map((t) => ({ key: `t:${t.id}`, at: t.at, title: `Water test · ${t.n} reading${t.n === 1 ? '' : 's'}`, kind: 'test' }));
 		activity = [...ev, ...ts]
 			.sort((a, b) => b.at.localeCompare(a.at))
-			.slice(0, 8)
+			.slice(0, LOG_MAX)
 			.map(({ key, at, title, kind }) => {
 				const d = dateInZone(at, tz);
 				return { key, title, kind, day: d === today ? 'Today' : fmtDate(d) };
@@ -309,7 +335,8 @@ export function publicView(page: PublicPage, tank: Tank, owner: User) {
 			: perSpecies(animals),
 		plants: plantNames,
 		equipment: gear,
-		activity
+		activity,
+		ranges: { chart: chartRange, log: logRange, chartSince: since ? Date.parse(since) : null }
 	};
 }
 

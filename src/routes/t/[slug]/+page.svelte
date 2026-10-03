@@ -13,6 +13,15 @@
 	let chartIdx = $state(0);
 	const chart = $derived(v.charts[chartIdx] ?? v.charts[0]);
 	const now = Date.now();
+	// the visitor's ranges are links, so they work without scripts; each keeps the other
+	const rangeHref = (patch: Partial<typeof data.ranges>) => {
+		const r = { ...data.ranges, ...patch };
+		const q = new URLSearchParams();
+		if (r.chart !== '90d') q.set('chart', r.chart);
+		if (r.log !== 'month') q.set('log', r.log);
+		const s = q.toString();
+		return `/t/${v.slug}${s ? `?${s}` : ''}`;
+	};
 	const jsonLd = $derived({
 		'@context': 'https://schema.org',
 		'@type': 'WebPage',
@@ -68,15 +77,20 @@
 			{#if chart}
 				<section class="chart">
 					<div class="ch sh">
-						<h2>{chart.name} · 3 months</h2>
-						{#if v.charts.length > 1}
-							<div class="chips" role="group" aria-label="Parameter">
-								{#each v.charts as c, i (c.id)}
-									<button type="button" class="chip" aria-pressed={chartIdx === i} onclick={() => (chartIdx = i)}>{c.name}</button>
-								{/each}
-							</div>
-						{/if}
+						<h2>{chart.name} · {v.ranges.chart.label === 'All' ? 'all time' : `last ${v.ranges.chart.label}`}</h2>
+						<nav class="chips" aria-label="Chart range">
+							{#each data.chartRanges as r (r.key)}
+								<a class="chip" class:selected={data.ranges.chart === r.key} aria-current={data.ranges.chart === r.key ? 'true' : undefined} href={rangeHref({ chart: r.key })}>{r.label}</a>
+							{/each}
+						</nav>
 					</div>
+					{#if v.charts.length > 1}
+						<div class="chips params" role="group" aria-label="Parameter">
+							{#each v.charts as c, i (c.id)}
+								<button type="button" class="chip" aria-pressed={chartIdx === i} onclick={() => (chartIdx = i)}>{c.name}</button>
+							{/each}
+						</div>
+					{/if}
 					<div class="chart-card">
 						<div class="chart-box">
 							<div class="fill">
@@ -84,10 +98,10 @@
 									fit
 									points={chart.points}
 									band={chart.band}
-									from={now - 91 * 86_400_000}
+									from={v.ranges.chartSince ?? Math.min(now - 30 * 86_400_000, ...chart.points.map((p) => p.t))}
 									to={now}
 									lastLevel={chart.lastLevel}
-									label="{chart.name} over the last 3 months"
+									label="{chart.name} over {v.ranges.chart.title}"
 									name={chart.name}
 									unit={chart.unit}
 									decimals={chart.decimals}
@@ -163,12 +177,23 @@
 				</section>
 			{/if}
 
-			{#if v.activity.length}
+			{#if v.activity.length || data.ranges.log !== 'month'}
 				<section class="activity">
-					<div class="sh"><h2>Recent activity</h2></div>
-					<ul class="rows">
-						{#each v.activity as a (a.key)}<li><span>{a.title}</span><span class="muted">{a.day}</span></li>{/each}
-					</ul>
+					<div class="sh ch">
+						<h2>Log</h2>
+						<nav class="chips" aria-label="Log range">
+							{#each data.logRanges as r (r.key)}
+								<a class="chip" class:selected={data.ranges.log === r.key} aria-current={data.ranges.log === r.key ? 'true' : undefined} href={rangeHref({ log: r.key })}>{r.label}</a>
+							{/each}
+						</nav>
+					</div>
+					{#if v.activity.length}
+						<ul class="rows">
+							{#each v.activity as a (a.key)}<li><span>{a.title}</span><span class="muted">{a.day}</span></li>{/each}
+						</ul>
+					{:else}
+						<p class="muted none">Nothing logged in this range.</p>
+					{/if}
 				</section>
 			{/if}
 		</div>
@@ -409,6 +434,21 @@
 	}
 	.ch .chip::after {
 		inset: -7px 0;
+	}
+	.chips.params {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		margin-bottom: 10px;
+	}
+	.chips.params .chip {
+		height: 30px;
+		padding: 0 10px;
+		font-size: 13px;
+	}
+	.none {
+		margin: 8px 0 0;
+		font-size: 14px;
 	}
 	.chart-card {
 		display: flex;
