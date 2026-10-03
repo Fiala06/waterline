@@ -4,6 +4,7 @@
 import { error } from '@sveltejs/kit';
 import { and, asc, desc, eq, isNotNull, isNull } from 'drizzle-orm';
 import { EQUIPMENT_TYPES, type EquipmentType } from '$lib/equipment';
+import { validLivestockCount } from '$lib/livestock';
 import { parseMoney } from '$lib/money';
 import { todayInZone } from '$lib/time';
 import { db } from './db';
@@ -55,7 +56,7 @@ export function parseWish(form: FormData): { errors: Record<string, string>; inp
 	const equipmentType = str(form, 'equipmentType') as EquipmentType;
 	if (!WISH_KINDS.includes(kind)) errors.kind = 'Pick what it is.';
 	if (!name) errors.name = kind === 'equipment' ? 'Name the item, e.g. Fluval 307.' : 'Enter the species.';
-	if (!Number.isInteger(count) || count < 1 || count > 10000) errors.count = 'Enter how many, 1 or more.';
+	if (!validLivestockCount(count)) errors.count = 'Enter a whole number from 1 to 10,000.';
 	if (price && priceCents == null) errors.price = 'Enter a price, like 12.50.';
 	if (rawUrl && !url) errors.url = "That doesn't look like a web address.";
 	if (kind === 'equipment' && !EQUIPMENT_TYPES.includes(equipmentType)) errors.equipmentType = 'Pick the kind of equipment.';

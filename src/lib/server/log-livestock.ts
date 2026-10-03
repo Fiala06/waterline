@@ -3,7 +3,7 @@
 // writes its own History entry; this returns that entry so photos attach.
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { dateInZone } from '$lib/time';
-import { HEALTH_SYMPTOMS, isHealthOutcome, livestockLabel, underTreatment } from '$lib/livestock';
+import { HEALTH_SYMPTOMS, isHealthOutcome, livestockLabel, underTreatment, validLivestockCount } from '$lib/livestock';
 import { db } from './db';
 import { events, type Tank, type User } from './db/schema';
 import { num, optStr, str } from './forms';
@@ -31,7 +31,7 @@ export function handleLinkedLivestock(user: User, tank: Tank, form: FormData, at
 			return { eventId: p.event.id, message: `✓ ${p.name} added to Plants` };
 		}
 		const count = num(form, 'count') ?? 1;
-		if (!Number.isInteger(count) || count < 1) return { errors: { count: 'Enter a whole number.' } };
+		if (!validLivestockCount(count)) return { errors: { count: 'Enter a whole number from 1 to 10,000.' } };
 		const { row, event } = addLivestock(
 			user.id,
 			tank.id,
