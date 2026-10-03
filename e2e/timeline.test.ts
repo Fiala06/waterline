@@ -28,7 +28,6 @@ test('tank timeline: moments, what changed, compare, public', async ({ page, bro
 		await jpeg('#2a8c84', 'before.jpg', { at: '2025:03:08 15:20:00' }),
 		await jpeg('#c8a040', 'after.jpg', { at: '2025:03:20 15:20:00' })
 	]);
-	await page.getByRole('button', { name: 'Add 2 photos' }).click();
 	await expect(page.getByRole('status')).toContainText('✓ 2 photos added on 2 days');
 
 	// The timeline: oldest first, each with its nearest test's readings and the stock of the moment
