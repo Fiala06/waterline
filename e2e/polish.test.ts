@@ -124,7 +124,7 @@ test('phones reach Charts and Photos from the dashboard', async ({ page }, info)
 	await expect(bar.getByRole('link', { name: 'Charts' })).toBeVisible();
 	// Photos is under More
 	await bar.getByRole('link', { name: 'More' }).click();
-	await page.getByRole('link', { name: /^Photos/ }).click();
+	await page.getByRole('main').getByRole('link', { name: /^Photos/ }).click();
 	await expect(page).toHaveURL(/\/photos/);
 });
 
