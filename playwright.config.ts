@@ -15,7 +15,13 @@ export default defineConfig({
 	// On GitHub: failures annotated on the run, and a report kept with the run's files.
 	reporter: process.env.CI ? [['list'], ['github'], ['html', { open: 'never' }]] : 'list',
 	// Service workers are off except in the offline test, so caching can't hide bugs.
-	use: { baseURL: `http://localhost:${PORT}`, trace: 'retain-on-failure', serviceWorkers: 'block' },
+	use: {
+		baseURL: `http://localhost:${PORT}`,
+		trace: 'retain-on-failure',
+		serviceWorkers: 'block',
+		// a Chromium already on the machine (PW_CHROMIUM=/path/to/chrome), when the pinned one can't be downloaded
+		...(process.env.PW_CHROMIUM ? { launchOptions: { executablePath: process.env.PW_CHROMIUM } } : {})
+	},
 	projects: [
 		{ name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } } },
 		{ name: 'phone', use: { ...devices['Pixel 7'] } }

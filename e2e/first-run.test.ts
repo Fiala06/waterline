@@ -160,5 +160,5 @@ test('the admin sets up sign-in and the server in the app', async ({ page }) => 
 	await page.getByRole('button', { name: 'Local admin login' }).click();
 	await expect(page).toHaveURL(at('/'));
 	// the same account as before the admin's Google account was set, tank and all
-	await expect(page.getByRole('button', { name: 'Riverbed 40, switch tank' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Riverbed 40', level: 1 }).or(page.getByRole('button', { name: 'Riverbed 40, switch tank' }))).toBeVisible();
 });

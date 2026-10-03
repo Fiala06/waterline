@@ -2,19 +2,19 @@
 // every client; 600px single column, light theme (email dark mode is uneven).
 
 const C = {
-	page: '#eef3f2',
-	card: '#ffffff',
-	border: '#d5e0df',
-	divider: '#e1e9e8',
-	text: '#0f2126',
-	muted: '#4f666b',
-	accent: '#1a7a7a',
-	secondaryBorder: '#bccccb',
-	ok: '#1d7a47',
-	warn: '#8a6300',
-	bad: '#b8412c'
+	page: '#eae9e9',
+	card: '#f3f2f2',
+	border: '#a6a5a4',
+	divider: '#d7d3d3',
+	text: '#201e1d',
+	muted: '#605d5d',
+	accent: '#ec3013',
+	secondaryBorder: '#a6a5a4',
+	ok: '#201e1d',
+	warn: '#444141',
+	bad: '#ae1800'
 };
-const FONT = `'Helvetica Neue',Helvetica,Arial,sans-serif`;
+const FONT = `Archivo,'Helvetica Neue',Helvetica,Arial,sans-serif`;
 
 export type Level = 'ok' | 'warn' | 'bad';
 const levelColor = (l: Level) => (l === 'bad' ? C.bad : l === 'warn' ? C.warn : C.ok);
@@ -55,7 +55,7 @@ function layout(opts: { preheader: string; body: string; footer: Footer }): stri
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.page}"><tr><td align="center" style="padding:32px 12px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px">
 <tr><td style="padding:0 4px 20px">${logo}</td></tr>
-<tr><td style="background:${C.card};border:1px solid ${C.border};border-radius:16px;padding:32px 28px;font:15px/1.5 ${FONT};color:${C.text}">
+<tr><td style="background:${C.card};border:1px solid ${C.border};padding:32px 28px;font:15px/1.5 ${FONT};color:${C.text}">
 ${opts.body}
 </td></tr>
 <tr><td style="padding:20px 4px 0;font:12px/1.6 ${FONT};color:${C.muted}">
@@ -85,7 +85,7 @@ ${items
 }
 
 function button(label: string, url: string, primary = true) {
-	return `<a href="${esc(url)}" style="display:inline-block;padding:14px 24px;border-radius:10px;font:${primary ? 700 : 600} 16px ${FONT};text-decoration:none;${
+	return `<a href="${esc(url)}" style="display:inline-block;padding:14px 24px;font:${primary ? 700 : 600} 16px ${FONT};text-decoration:none;${
 		primary ? `background:${C.accent};color:#ffffff;border:1px solid ${C.accent}` : `background:#ffffff;color:${C.text};border:1px solid ${C.secondaryBorder}`
 	}">${esc(label)}</a>`;
 }
@@ -187,7 +187,7 @@ export function digestEmail(e: DigestEmail): Rendered {
 					(k) => `<tr><td style="padding:10px 0;border-top:1px solid ${C.divider}">
 <div style="font:600 15px ${FONT};color:${C.text}">${esc(k.name)}</div>
 <div style="font:600 13px ${FONT};color:${levelColor(k.level)}">${esc(k.due)}</div></td>
-<td align="right" style="padding:10px 0;border-top:1px solid ${C.divider}"><a href="${esc(k.doneUrl)}" style="display:inline-block;padding:8px 14px;border-radius:8px;border:1px solid ${C.secondaryBorder};font:600 14px ${FONT};color:${C.text};text-decoration:none">${k.review ? 'Review' : 'Mark done'}</a></td></tr>`
+<td align="right" style="padding:10px 0;border-top:1px solid ${C.divider}"><a href="${esc(k.doneUrl)}" style="display:inline-block;padding:8px 14px;border:1px solid ${C.secondaryBorder};font:600 14px ${FONT};color:${C.text};text-decoration:none">${k.review ? 'Review' : 'Mark done'}</a></td></tr>`
 				)
 				.join('');
 			const readingRows = t.readings.length
@@ -262,7 +262,7 @@ export function outOfRangeEmail(e: OutOfRangeEmail): Rendered {
 	const subject = `${headline}: ${e.value}${e.unit ? ' ' + e.unit : ''}`;
 	const preheader = `Your target is ${e.targetWithUnit}. Logged ${e.logged}.`;
 	const cell = (label: string, value: string, sub = '', color = C.text) =>
-		`<td width="33%" style="padding:12px;border:1px solid ${C.divider};border-radius:10px;vertical-align:top">
+		`<td width="33%" style="padding:12px;border:1px solid ${C.divider};vertical-align:top">
 <div style="font:13px ${FONT};color:${C.muted}">${esc(label)}</div>
 <div style="font:600 22px ${FONT};color:${color}">${esc(value)}${sub ? ` <span style="font:13px ${FONT};color:${C.muted}">${esc(sub)}</span>` : ''}</div></td>`;
 	const body =
@@ -298,7 +298,7 @@ export function testEmail(e: { host: string; via: string; sent: string; footer: 
 		status('✓ Delivery works', 'ok') +
 		title('Your server can send email') +
 		`<p style="margin:0 0 20px;font:15px/1.5 ${FONT}">Task reminders, alerts and digests will arrive at this address.</p>` +
-		`<table role="presentation" cellpadding="0" cellspacing="0" style="background:${C.page};border-radius:10px;padding:12px;margin:0 0 8px;width:100%"><tr><td style="padding:12px"><table role="presentation" cellpadding="0" cellspacing="0">${mono('server', e.host)}${mono('via', e.via)}${mono('sent', e.sent)}</table></td></tr></table>`;
+		`<table role="presentation" cellpadding="0" cellspacing="0" style="background:${C.page};padding:12px;margin:0 0 8px;width:100%"><tr><td style="padding:12px"><table role="presentation" cellpadding="0" cellspacing="0">${mono('server', e.host)}${mono('via', e.via)}${mono('sent', e.sent)}</table></td></tr></table>`;
 	return {
 		subject,
 		preheader,

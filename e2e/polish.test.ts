@@ -125,18 +125,29 @@ test('phones reach Charts and Photos from the dashboard', async ({ page }, info)
 	await expect(page).toHaveURL(/\/photos/);
 });
 
-test('desktop tank switcher opens with the keyboard', async ({ page }, info) => {
-	test.skip(info.project.name !== 'desktop', 'desktop header');
+test('the command palette opens with the keyboard and finds a tank', async ({ page }, info) => {
+	test.skip(info.project.name !== 'desktop', 'desktop keyboard');
 	await newKeeperWithTank(page, `menu-${info.project.name}`);
 	await page.keyboard.press('Control+k');
-	const menu = page.getByRole('dialog', { name: 'Switch tank' });
-	await expect(menu.getByPlaceholder('Search tanks…')).toBeFocused();
-	await menu.getByPlaceholder('Search tanks…').fill('zzz');
-	await expect(menu).toContainText('No tank matches');
-	await menu.getByPlaceholder('Search tanks…').fill('river');
+	const menu = page.getByRole('dialog', { name: 'Search' });
+	const search = menu.getByPlaceholder('Search tanks or type an action');
+	await expect(search).toBeFocused();
+	await search.fill('zzz');
+	await expect(menu).toContainText('No tank or action matches');
+	await search.fill('river');
 	await page.keyboard.press('Enter');
 	await expect(menu).toBeHidden();
 	await expect(page).toHaveURL(/\?tank=/);
+	// an action: Keyboard shortcuts
+	await page.keyboard.press('/');
+	await search.fill('shortcuts');
+	await page.keyboard.press('Enter');
+	await expect(page.getByRole('dialog', { name: 'Keyboard shortcuts' })).toBeVisible();
+	await page.keyboard.press('Escape');
+	// G then C goes to Charts
+	await page.keyboard.press('g');
+	await page.keyboard.press('c');
+	await expect(page).toHaveURL(/\/charts/);
 });
 
 test('the dashboard shows what is in the tank and opens each list', async ({ page }, info) => {

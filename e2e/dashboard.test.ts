@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test';
-import { newKeeperWithTank, open } from './helpers';
+import { newKeeperWithTank, open, tankTitle } from './helpers';
 
 test('dashboard (refresh 1c): the hero, and nothing needing attention when all is in range', async ({ page }, info) => {
 	await newKeeperWithTank(page, `dash-${info.project.name}`);
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
 
-	// the tank's name to switch tanks, and what it is
-	await expect(page.getByRole('button', { name: 'Riverbed 40, switch tank' })).toBeVisible();
-	await expect(page.getByRole('main').getByText('Planted · 40 gal', { exact: true })).toBeVisible();
+	// the tank's name (to switch tanks on a phone), and what it is
+	await expect(tankTitle(page, 'Riverbed 40')).toBeVisible();
+	await expect(page.getByText('Planted · 40 gal').first()).toBeVisible();
 
 	await open(page, `/entries/test/new?tank=${tankId}`);
 	await page.getByLabel('pH', { exact: true }).fill('7.0');

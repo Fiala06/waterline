@@ -60,21 +60,19 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		border-radius: 50%;
 	}
+	/* a square ink block with your initials, or your photo */
 	.face {
-		width: 36px;
-		height: 36px;
-		border-radius: 50%;
+		width: 34px;
+		height: 34px;
 		overflow: hidden;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: var(--selected);
-		border: 1px solid var(--border);
-		color: var(--accent);
-		font-size: 14px;
-		font-weight: 700;
+		background: var(--ink);
+		color: var(--bg);
+		font-size: 13px;
+		font-weight: 800;
 		letter-spacing: 0.02em;
 	}
 	.face img {
@@ -94,7 +92,8 @@
 	}
 	@media (hover: hover) {
 		.avatar:hover .face {
-			border-color: var(--accent);
+			outline: 2px solid var(--accent);
+			outline-offset: 2px;
 		}
 	}
 
@@ -107,10 +106,10 @@
 		margin: 0;
 		width: min(300px, calc(100vw - 32px));
 		padding: 8px;
-		border-radius: 16px;
-		background: var(--surface);
-		border: 1px solid var(--border-strong);
-		box-shadow: var(--shadow-modal);
+		border-radius: 0;
+		background: var(--bg);
+		border: 2px solid var(--ink);
+		box-shadow: var(--shadow-lg);
 		color: var(--text);
 	}
 	.who {
@@ -146,7 +145,7 @@
 	.signout {
 		min-height: 44px;
 		padding: 0 10px;
-		border-radius: 10px;
+		border-radius: 0;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
@@ -158,7 +157,7 @@
 	}
 	.badge {
 		padding: 1px 6px;
-		border-radius: 5px;
+		border-radius: 0;
 		border: 1px solid var(--border-strong);
 		color: var(--text-muted);
 		font-size: 11px;

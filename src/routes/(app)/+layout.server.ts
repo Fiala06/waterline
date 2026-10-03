@@ -3,6 +3,11 @@ import { dueInfo } from '$lib/tasks';
 import { fmtWhen, todayInZone } from '$lib/time';
 import { statusOf } from '$lib/params';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
+import { fmtValue, shortName } from '$lib/params';
+import { listEquipment, listLivestock, listPlants } from '$lib/server/specs';
+import { db } from '$lib/server/db';
+import { photos } from '$lib/server/db/schema';
+import { count, eq } from 'drizzle-orm';
 import { displayVersion, VERSION } from '$lib/changelog';
 import { takeFlash } from '$lib/server/flash';
 import { latestReadings, latestTest } from '$lib/server/logs';
@@ -29,18 +34,35 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 	const tasks = listTasks(user.id);
 	const overdueByTank = new Map<string, number>();
 	let overdueCount = 0;
+	// the alerts panel: overdue tasks and out-of-range readings, each with where to go
+	const alerts: { key: string; kind: 'task' | 'reading'; title: string; sub: string; href: string; tankId: string }[] = [];
+	const nameOf = (id: string) => tanks.find((t) => t.id === id)?.name ?? '';
 	for (const { task } of tasks) {
-		if (dueInfo(task.due, today).section === 'overdue') {
+		const d = dueInfo(task.due, today);
+		if (d.section === 'overdue') {
 			overdueCount++;
 			overdueByTank.set(task.tankId, (overdueByTank.get(task.tankId) ?? 0) + 1);
+			alerts.push({ key: `task:${task.id}:${task.due}`, kind: 'task', title: task.name, sub: `${nameOf(task.tankId)} · ${d.text}`, href: `/tasks?filter=${task.tankId}`, tankId: task.tankId });
 		}
 	}
 
 	const summaries = tanks.map((t) => {
 		const latest = latestReadings(t.id);
-		const outOfRange = listParams(t.id).filter(
-			(p) => statusOf(p, latest.get(p.id)?.value).level === 'bad'
-		).length;
+		let outOfRange = 0;
+		for (const p of listParams(t.id)) {
+			const r = latest.get(p.id);
+			const st = statusOf(p, r?.value);
+			if (st.level !== 'bad' || !r) continue;
+			outOfRange++;
+			alerts.push({
+				key: `reading:${p.id}:${r.takenAt}`,
+				kind: 'reading',
+				title: `${shortName(p)} ${st.direction === 'low' ? 'low' : 'high'} · ${fmtValue(p, r.value, user)}`,
+				sub: `${t.name} · ${fmtWhen(r.takenAt, user.timeZone)}`,
+				href: `/charts?tank=${t.id}&p=${p.id}`,
+				tankId: t.id
+			});
+		}
 		return {
 			id: t.id,
 			name: t.name,
@@ -60,6 +82,15 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 
 	// Context for the quick-add sheet.
 	const lastTest = currentTankId ? latestTest(currentTankId) : undefined;
+	// the tank tabs' counts (Photos 34, Livestock 23, …)
+	const counts = currentTankId
+		? {
+				photos: db.select({ n: count() }).from(photos).where(eq(photos.tankId, currentTankId)).get()?.n ?? 0,
+				livestock: listLivestock(user.id, currentTankId).reduce((n, l) => n + (l.status === 'in_tank' || l.status === 'quarantine' ? l.count : 0), 0),
+				plants: listPlants(user.id, currentTankId).length,
+				equipment: listEquipment(user.id, currentTankId).length
+			}
+		: { photos: 0, livestock: 0, plants: 0, equipment: 0 };
 	const wcTask = tasks.find((r) => r.task.tankId === currentTankId && r.task.kind === 'water_change')?.task;
 
 	const flash = takeFlash(cookies);
@@ -84,8 +115,11 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 		tanks: summaries,
 		currentTankId,
 		overdueCount,
+		alerts,
+		counts,
 		quick: {
 			lastTest: lastTest ? `Last test ${fmtWhen(lastTest.takenAt, user.timeZone).replace(/^Today/, 'today').replace(/^Yesterday/, 'yesterday')}` : 'No tests yet',
+			lastTestAt: lastTest?.takenAt ?? null,
 			wcDue: wcTask ? dueInfo(wcTask.due, today) : null
 		},
 		flash: flash ? { ...flash, id: crypto.randomUUID() } : null,

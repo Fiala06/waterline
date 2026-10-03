@@ -55,6 +55,23 @@ export function linkIn(mail: OutboxMail, needle: string) {
 	return url;
 }
 
+/** Open the Quick add sheet: the phone's Log button, or More… under the desktop's Log water test ▾. */
+export async function openQuickAdd(page: Page) {
+	const log = page.getByRole('button', { name: 'Log', exact: true });
+	if (await log.isVisible()) {
+		await log.click();
+	} else {
+		await page.getByRole('button', { name: 'Other log types' }).click();
+		await page.getByRole('menuitem', { name: 'More…' }).click();
+	}
+	await expect(page.getByRole('dialog', { name: 'Quick add' })).toBeVisible();
+}
+
+/** The tank's name in the shell: a heading on desktop, the switch-tank button on phones. */
+export function tankTitle(page: Page, name: string) {
+	return page.getByRole('heading', { name, level: 1 }).or(page.getByRole('button', { name: `${name}, switch tank` }));
+}
+
 /** The value of a DateField (a hidden input named `name`). */
 export function dateValue(page: Page, name: string) {
 	return page.locator(`input[type=hidden][name="${name}"]`).inputValue();

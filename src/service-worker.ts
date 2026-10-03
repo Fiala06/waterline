@@ -181,9 +181,9 @@ const offlinePage = `<!doctype html><meta name="viewport" content="width=device-
 <style>
 :root{--bg:#0c1a1f;--text:#e6f0f0;--text-muted:#9fb4b8;--accent:#4fc4bd;color-scheme:dark}
 @media (prefers-color-scheme:light){:root{--bg:#f4f7f6;--text:#0f2126;--text-muted:#4f666b;--accent:#197474;color-scheme:light}}
-body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;background:var(--bg);color:var(--text);font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;text-align:center}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;background:var(--bg);color:var(--text);font-family:Archivo,system-ui,sans-serif;text-align:center}
 body>div{max-width:360px}
-h1{margin:0 0 8px;font-size:22px;font-weight:600}
+h1{margin:0 0 8px;font-size:22px;font-weight:800}
 p{margin:0;color:var(--text-muted);line-height:1.5;text-wrap:pretty}
 a{display:inline-flex;align-items:center;min-height:44px;margin-top:8px;color:var(--accent);font-weight:600;text-decoration:none}
 </style>

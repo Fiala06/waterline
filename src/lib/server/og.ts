@@ -15,7 +15,7 @@ import type { PublicView } from './public';
 
 const W = 1200;
 const H = 630;
-const C = { bg: '#0c1a1f', surface: '#13262c', border: '#24414a', text: '#e6f0f0', muted: '#9fb4b8', accent: '#4fc4bd', ok: '#6fd39a', warn: '#e8c060', bad: '#f08a78' };
+const C = { bg: '#161514', surface: '#22201f', border: '#57534f', text: '#f0eeed', muted: '#bab6b6', accent: '#ec3013', ok: '#f0eeed', warn: '#d7d3d3', bad: '#ff9783' };
 
 const require = createRequire(import.meta.url);
 let fonts: { name: string; data: Buffer; weight: 400 | 600 | 700; style: 'normal' }[] | null = null;
@@ -123,7 +123,7 @@ export async function tankCard(view: PublicView, opts: { cover: Photo | null; fo
 						...readings.map((r) =>
 							h(
 								'div',
-								{ flexDirection: 'column', gap: 4, padding: '16px 20px', borderRadius: 18, background: C.surface, border: `2px solid ${r.level === 'bad' ? C.bad : C.border}`, minWidth: 170 },
+								{ flexDirection: 'column', gap: 4, padding: '16px 20px', borderRadius: 0, background: C.surface, border: `2px solid ${r.level === 'bad' ? C.bad : C.border}`, minWidth: 170 },
 								h('div', { fontSize: 22, color: C.muted }, r.name),
 								h('div', { alignItems: 'baseline', gap: 6 }, h('div', { fontSize: 44, fontWeight: 700, color: C.text }, r.value), r.unit ? h('div', { fontSize: 20, color: C.muted }, r.unit) : null),
 								h('div', { alignItems: 'center', gap: 6, fontSize: 20, fontWeight: 600, color: levelColor(r.level) }, statusIcon(r.level), statusWord(r.level, r.status))

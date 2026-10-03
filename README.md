@@ -49,7 +49,7 @@ Each server is yours: people sign in with Google (or the local admin login) and 
 - **Your data:** a full backup (ZIP with photos) or a CSV of water tests, imports from spreadsheets (undone in one step), a summary to paste into an AI assistant, or [read-only access for one](#ai-assistants-mcp) over MCP.
 - **Easy to run:** one Docker container and one data folder. The admin sets up sign-in, email (Mailgun or any SMTP server) and public pages in the app, with logs for troubleshooting and a note when a new version is out.
 
-The design it was built from is in [`design_handoff_waterline/`](design_handoff_waterline/README.md).
+The look is the redesign in [`design_handoff_waterline_redesign/`](design_handoff_waterline_redesign/README.md); the original design it was built from is in [`design_handoff_waterline/`](design_handoff_waterline/README.md).
 
 ## Run it locally
 
@@ -191,7 +191,8 @@ SvelteKit 2 (Svelte 5, adapter-node) · TypeScript · Drizzle ORM + better-sqlit
 |---|---|
 | [`CHANGELOG.md`](CHANGELOG.md) | What's new in each release, as the app shows it |
 | [`CLAUDE.md`](CLAUDE.md) | Ground rules and conventions for working on the code |
-| [`design_handoff_waterline/`](design_handoff_waterline/README.md) | The design: tokens, screens, behavior, and the HTML design files |
+| [`design_handoff_waterline_redesign/`](design_handoff_waterline_redesign/README.md) | The current design: tokens, the desktop workspace and phone layouts, each screen, and the HTML prototypes |
+| [`design_handoff_waterline/`](design_handoff_waterline/README.md) | The original design: screens' behavior and the HTML design files |
 | [`DATA_MODEL.md`](design_handoff_waterline/DATA_MODEL.md) | The database tables |
 | [`BUILD_PLAN.md`](design_handoff_waterline/BUILD_PLAN.md) | The order the first version was built in |
 | [`design-brief.md`](design-brief.md) | The original brief the design answered |
