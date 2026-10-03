@@ -189,7 +189,23 @@
 					</div>
 					{#if v.activity.length}
 						<ul class="rows">
-							{#each v.activity as a (a.key)}<li><span>{a.title}</span><span class="muted">{a.day}</span></li>{/each}
+							{#each v.activity as a (a.key)}
+								{#if a.readings?.length}
+									<!-- a water test opens to its readings; <details> works without scripts -->
+									<li class="test">
+										<details>
+											<summary><span class="t-title">{a.title}<span class="chev" aria-hidden="true">▾</span></span><span class="muted">{a.day}</span></summary>
+											<ul class="t-readings">
+												{#each a.readings as r (r.name)}
+													<li><span>{r.name}</span><span class="num">{r.value}{r.unit ? ` ${r.unit}` : ''}</span><span class="rs status-{r.level}">{r.status}</span></li>
+												{/each}
+											</ul>
+										</details>
+									</li>
+								{:else}
+									<li><span>{a.title}</span><span class="muted">{a.day}</span></li>
+								{/if}
+							{/each}
 						</ul>
 					{:else}
 						<p class="muted none">Nothing logged in this range.</p>
@@ -561,6 +577,63 @@
 	.tank .rows li {
 		padding: 8px 0;
 		font-size: 14px;
+	}
+	/* a water test in the log opens to its readings */
+	.rows li.test {
+		display: block;
+		padding: 0;
+	}
+	.test summary {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		gap: 16px;
+		min-height: 44px;
+		padding: 10px 0;
+		box-sizing: border-box;
+		cursor: pointer;
+		list-style: none;
+	}
+	.test summary::-webkit-details-marker {
+		display: none;
+	}
+	.test summary:hover .t-title {
+		text-decoration: underline;
+	}
+	.chev {
+		display: inline-block;
+		margin-left: 6px;
+		font-size: 11px;
+		color: var(--text-muted);
+		transition: transform 0.15s;
+	}
+	.test details[open] .chev {
+		transform: rotate(180deg);
+	}
+	.t-readings {
+		list-style: none;
+		margin: 0 0 10px;
+		padding: 0;
+		border-top: 1px solid var(--divider);
+	}
+	.rows .t-readings li {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto 7.5em;
+		gap: 12px;
+		padding: 6px 0 6px 12px;
+		font-size: 14px;
+		border-bottom: 1px solid var(--divider);
+	}
+	.rows .t-readings li:last-child {
+		border-bottom: none;
+	}
+	.t-readings .num {
+		font-weight: 700;
+		text-align: right;
+	}
+	.t-readings .rs {
+		grid-area: auto;
+		text-align: right;
 	}
 	/* ── Footer ───────────────────────────────────────────────── */
 	.foot {

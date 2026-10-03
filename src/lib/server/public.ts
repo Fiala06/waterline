@@ -277,7 +277,8 @@ export function publicView(page: PublicPage, tank: Tank, owner: User, ranges: Pu
 				.map((e) => ({ id: e.id, name: equipmentName(e), spec: specSummary(e.type, e.specs, prefs)[0] ?? null }))
 		: [];
 
-	let activity: { key: string; title: string; kind: string; day: string }[] = [];
+	type Reading = { name: string; value: string; unit: string; level: string; status: string };
+	let activity: { key: string; title: string; kind: string; day: string; readings?: Reading[] }[] = [];
 	const logRange = LOG_RANGES.find((r) => r.key === ranges.log)!;
 	if (page.showActivity) {
 		const logSince = logRange.days ? new Date(Date.now() - logRange.days * 86_400_000).toISOString() : '';
@@ -308,6 +309,24 @@ export function publicView(page: PublicPage, tank: Tank, owner: User, ranges: Pu
 				const d = dateInZone(at, tz);
 				return { key, title, kind, day: d === today ? 'Today' : fmtDate(d) };
 			});
+		// a water test opens to its readings, when the page shows readings (the owner's switch)
+		const testIds = activity.filter((a) => a.kind === 'test').map((a) => a.key.slice(2));
+		if (page.showReadings && testIds.length) {
+			const byId = new Map(params.map((p) => [p.id, p]));
+			const order = new Map(params.map((p, i) => [p.id, i]));
+			const rows = db.select().from(testReadings).where(inArray(testReadings.testId, testIds)).all();
+			const per = new Map<string, Reading[]>();
+			for (const r of rows.sort((a, b) => (order.get(a.parameterId) ?? 99) - (order.get(b.parameterId) ?? 99))) {
+				const p = byId.get(r.parameterId);
+				if (!p) continue; // a parameter no longer tracked
+				const st = statusOf(p, r.value);
+				per.set(r.testId, [
+					...(per.get(r.testId) ?? []),
+					{ name: shortName(p), value: fmtValue(p, r.value, prefs), unit: paramUnit(p, prefs), level: st.level, status: statusShort(st) }
+				]);
+			}
+			activity = activity.map((a) => (a.kind === 'test' ? { ...a, readings: per.get(a.key.slice(2)) ?? [] } : a));
+		}
 	}
 
 	return {

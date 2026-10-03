@@ -33,6 +33,12 @@ test('public tank page and photo share link', async ({ page, browser }, info) =>
 	await expect(v.getByText('Latest readings')).toBeVisible();
 	await expect(v.locator('body')).not.toContainText('SECRET');
 	await expect(v.locator('body')).not.toContainText('Water change 25%'); // tasks are never public
+	// a water test in the log opens to its readings (never its note)
+	const testRow = v.locator('li.test', { hasText: 'Water test · 2 readings' });
+	await testRow.locator('summary').click();
+	await expect(testRow.getByText('35 ppm')).toBeVisible();
+	await expect(testRow.getByText('✕ High')).toBeVisible();
+	await expect(testRow).not.toContainText('SECRET');
 	await expect(v).toHaveTitle('Riverbed 40: planted tank log');
 	await expect(v.locator('meta[name="robots"]')).toHaveAttribute('content', 'index, follow');
 	await expect(v.locator('meta[property="og:image"]')).toHaveAttribute('content', new RegExp(`/t/${slug}/og\\.png\\?v=`));
