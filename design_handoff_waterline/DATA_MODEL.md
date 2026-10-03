@@ -157,6 +157,10 @@ stock_photos     name (the scientific name looked up), status(ok|none|failed), f
 sensor_readings  id, tank_id, parameter_id, value (stored units), at, source (the token's name),
                  token_id? (readings from probes and controllers, apart from tests: one a minute
                  per parameter, kept a year, averaged for charts, never an alert by themselves)
+wishes           id, tank_id, kind(fish|invert|coral|plant|equipment), name, scientific_name?,
+                 count, equipment_type?, note?, price_cents?, url?, created_at, added_at?
+                 (the wish list; Add to tank writes the livestock, plant or equipment row,
+                 its event and, when asked, the expense, then sets added_at)
 action_tokens    token_hash, task_id, action(done|snooze), due, expires_at, used_at?
 email_log        id, user_id, key, created_at, error? (so nothing is sent twice; pushes
                  are "push:<key>")

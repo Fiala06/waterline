@@ -689,6 +689,39 @@ export const parReadings = sqliteTable(
 );
 export type ParReading = typeof parReadings.$inferSelect;
 
+/**
+ * The wish list (#24): livestock, plants and equipment the keeper plans to add
+ * to a tank, with a note, a price and a link. Add to tank moves one into the
+ * tank's lists (and can log the purchase); it then shows under Added.
+ */
+export const WISH_KINDS = ['fish', 'invert', 'coral', 'plant', 'equipment'] as const;
+export type WishKind = (typeof WISH_KINDS)[number];
+export const wishes = sqliteTable(
+	'wishes',
+	{
+		id: id(),
+		tankId: text('tank_id')
+			.notNull()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		kind: text('kind', { enum: WISH_KINDS }).notNull(),
+		name: text('name').notNull(),
+		scientificName: text('scientific_name'),
+		/** how many, for livestock */
+		count: integer('count').notNull().default(1),
+		/** for equipment: filter, heater, light… */
+		equipmentType: text('equipment_type', { enum: EQUIPMENT_TYPES }),
+		note: text('note'),
+		/** in cents of the keeper's currency */
+		priceCents: integer('price_cents'),
+		url: text('url'),
+		createdAt: createdAt(),
+		/** when it was added to the tank; still listed under Added */
+		addedAt: text('added_at')
+	},
+	(t) => [index('wishes_tank').on(t.tankId)]
+);
+export type Wish = typeof wishes.$inferSelect;
+
 export type Equipment = typeof equipment.$inferSelect;
 export type Livestock = typeof livestock.$inferSelect;
 export type Plant = typeof plants.$inferSelect;

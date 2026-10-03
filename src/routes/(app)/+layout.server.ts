@@ -7,8 +7,8 @@ import { fmtValue, shortName } from '$lib/params';
 import { listEquipment, listLivestock, listPlants } from '$lib/server/specs';
 import { listMembers } from '$lib/server/members';
 import { db } from '$lib/server/db';
-import { photos } from '$lib/server/db/schema';
-import { count, eq } from 'drizzle-orm';
+import { photos, wishes } from '$lib/server/db/schema';
+import { and, count, eq, isNull } from 'drizzle-orm';
 import { displayVersion, VERSION } from '$lib/changelog';
 import { takeFlash } from '$lib/server/flash';
 import { latestReadings, latestTest } from '$lib/server/logs';
@@ -97,9 +97,11 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 				plants: listPlants(user.id, currentTankId).length,
 				equipment: listEquipment(user.id, currentTankId).length,
 				// people the tank is shared with (#22), for Setup › Sharing
-				members: listMembers(currentTankId).filter((m) => m.state === 'accepted' || m.state === 'pending').length
+				members: listMembers(currentTankId).filter((m) => m.state === 'accepted' || m.state === 'pending').length,
+				// still planned on the wish list (#24), for More on a phone
+				wishes: db.select({ n: count() }).from(wishes).where(and(eq(wishes.tankId, currentTankId), isNull(wishes.addedAt))).get()?.n ?? 0
 			}
-		: { photos: 0, livestock: 0, plants: 0, equipment: 0, members: 0 };
+		: { photos: 0, livestock: 0, plants: 0, equipment: 0, members: 0, wishes: 0 };
 	const wcTask = tasks.find((r) => r.task.tankId === currentTankId && r.task.kind === 'water_change')?.task;
 
 	const flash = takeFlash(cookies);

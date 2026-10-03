@@ -108,6 +108,7 @@
 				'/(app)/tanks/[id]/targets': 'Parameters & targets',
 				'/(app)/tanks/[id]/public': 'Public page',
 				'/(app)/tanks/[id]/sharing': 'Sharing',
+				'/(app)/tanks/[id]/wishlist': 'Wish list',
 				'/(app)/tanks/[id]/summary': 'Share summary'
 			} as Record<string, string | undefined>
 		)[id];
