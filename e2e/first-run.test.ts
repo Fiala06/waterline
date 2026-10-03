@@ -142,7 +142,8 @@ test('the admin sets up sign-in and the server in the app', async ({ page }) => 
 
 	// signed out: Google is offered, and only the new password opens the admin login
 	// from the account menu, under the photo (the dashboard has it on phones too)
-	await page.goto(at('/'));
+	// the sidebar's footer on a computer; the More page on a phone
+	await page.goto(at(page.viewportSize()!.width < 1024 ? '/more' : '/'));
 	await page.locator('html[data-ready="true"]').waitFor();
 	await page.getByRole('button', { name: /^Account: / }).locator('visible=true').click();
 	await page.getByRole('button', { name: 'Sign out' }).locator('visible=true').click();

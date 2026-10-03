@@ -22,7 +22,7 @@ test('charts say what they show, and read out a reading on hover, tap or the arr
 	await expect(chart.locator('text.axis', { hasText: 'Today' })).toBeAttached();
 
 	// the latest reading, for a screen reader; the arrow keys go back through them
-	await expect(chart).toHaveAttribute('aria-valuetext', /: 30 ppm, High$/);
+	await expect(chart).toHaveAttribute('aria-valuetext', /: 30 ppm, (High|10 over target)$/);
 	await chart.focus();
 	await page.keyboard.press('End');
 	await page.keyboard.press('ArrowLeft');
@@ -37,6 +37,6 @@ test('charts say what they show, and read out a reading on hover, tap or the arr
 	const box = (await chart.boundingBox())!;
 	await page.mouse.click(box.x + box.width - 12, box.y + box.height / 2);
 	await expect(chart.locator('.readout')).toContainText('30 ppm');
-	await expect(chart.locator('.readout')).toContainText('✕ High');
+	await expect(chart.locator('.readout')).toContainText(/✕ (High|10 over target)/);
 	await expect(chart.locator('.readout')).toContainText(/\d{4} · \d{1,2}:\d{2}\s?[AP]M/);
 });

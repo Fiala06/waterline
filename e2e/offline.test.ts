@@ -5,7 +5,7 @@ test.use({ serviceWorkers: 'allow' });
 
 test('manifest and icons are served', async ({ request }) => {
 	const m = await (await request.get('/manifest.webmanifest')).json();
-	expect(m).toMatchObject({ name: 'Waterline', display: 'standalone', background_color: '#0c1a1f', theme_color: '#0c1a1f' });
+	expect(m).toMatchObject({ name: 'Waterline', display: 'standalone', background_color: '#161514', theme_color: '#161514' });
 	expect(m.icons.map((i: { purpose: string }) => i.purpose)).toContain('maskable');
 	for (const i of m.icons) expect((await request.get(i.src)).headers()['content-type']).toBe('image/png');
 	expect((await request.get('/service-worker.js')).ok()).toBe(true);

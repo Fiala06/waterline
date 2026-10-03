@@ -7,6 +7,7 @@
 	let { data } = $props();
 
 	const id = (v: string) => `v${v.replaceAll('.', '-')}`;
+	const installed = RELEASES.find((r) => r.version === VERSION);
 	const OPEN = 3;
 	const earlier = byLine(RELEASES.slice(OPEN));
 	/** "Sep 27, 2026", or "Sep 26, 2026 to Sep 27, 2026" for a line released over days */
@@ -52,8 +53,12 @@
 	<div class="head">
 		<a class="back sub-back" href="/settings">‹ Settings</a>
 		<h1>What's new</h1>
+		<p class="installed" role="group" aria-label="Installed version">
+			<span class="ik">Installed</span>
+			<span class="mono">Waterline {displayVersion(VERSION)}</span>{#if installed}<span class="date"> · Released {fmtDateLong(installed.date)}</span>{/if}
+		</p>
 		<p class="lede">
-			The newest changes come first. You're on <span class="mono">Waterline {displayVersion(VERSION)}</span> ·
+			The newest changes come first ·
 			<a class="repo" href={data.app.repo} target="_blank" rel="noopener noreferrer">Waterline on GitHub<span aria-hidden="true"> ↗</span></a>
 		</p>
 	</div>
@@ -259,5 +264,22 @@
 		h1 {
 			font-size: 22px;
 		}
+	}
+	.installed {
+		margin: 0 0 4px;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px 10px;
+		font-size: 14px;
+	}
+	.installed .ik {
+		font-size: 11px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--text-muted);
+		align-self: center;
+	}
+	.installed .date {
+		color: var(--text-muted);
 	}
 </style>

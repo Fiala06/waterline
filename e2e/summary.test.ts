@@ -25,7 +25,7 @@ test('summary for an AI assistant', async ({ page, context }, info) => {
 
 	// From the tank's Overview
 	await open(page, `/tanks/${tankId}`);
-	await page.getByRole('link', { name: /Summary for an AI assistant/ }).click();
+	await page.getByRole('link', { name: /Copy a summary of this tank/ }).click();
 	await expect(page).toHaveURL(`/tanks/${tankId}/summary`);
 	const pre = page.getByLabel('The summary');
 	const text = (await pre.textContent())!;

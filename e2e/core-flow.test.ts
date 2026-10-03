@@ -13,7 +13,7 @@ test('core flow', async ({ page }, info) => {
 	await page.getByRole('button', { name: /Sign in with Google/ }).click();
 
 	// Setup
-	await expect(page.getByRole('heading', { name: 'Set up your log' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Keep every tank on track.' })).toBeVisible();
 	await expect(page.getByLabel('Display name')).toHaveValue('Jordan Reyes');
 	await page.locator('label', { hasText: 'Imperial' }).click();
 	await page.locator('label', { hasText: 'dGH / dKH' }).click();

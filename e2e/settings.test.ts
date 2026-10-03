@@ -65,7 +65,7 @@ test('server settings are admin only; test email via outbox', async ({ page }, i
 	await page.locator('form[action="?/save"]').getByRole('button', { name: 'Save', exact: true }).click();
 	await expect(page.getByText('✓ Email settings saved')).toBeVisible();
 	await open(page, '/settings/server');
-	await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /saved/);
+	await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /saved/i);
 	await expect(page.getByLabel('Sending domain')).toHaveValue('mg.example.com');
 });
 

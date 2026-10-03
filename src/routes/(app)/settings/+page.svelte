@@ -412,12 +412,11 @@
 					<button type="button" class="btn" onclick={() => (ui.keys = true)}>Show shortcuts</button>
 				</div>
 				<div class="row toggle">
-					<span class="ttext"
-						><span class="tt">Waterline v{data.app.version}</span><span class="td"
-							>{#if data.app.update}<span class="status-bad">↑ Update to {data.app.update.version} available</span>{:else}Self-hosted · up to date{/if}</span
-						></span
+					<a class="version" href="/settings/changelog"
+						>Waterline v{data.app.version} · self-hosted · What's new{#if data.app.update}<span class="status-bad"
+								>{` · Update to ${data.app.update.version} available`}</span
+							>{/if}</a
 					>
-					<a class="btn-text" href="/settings/changelog">What's new ›</a>
 				</div>
 			</div>
 		</section>
@@ -669,5 +668,17 @@
 		.cols {
 			grid-template-columns: minmax(0, 1fr) 44px 44px;
 		}
+	}
+	.version {
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 4px;
+		font-weight: 700;
+		color: var(--text);
+	}
+	.version:hover {
+		color: var(--accent);
 	}
 </style>
