@@ -9,7 +9,7 @@ How to write a line:
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
-## Unreleased
+## 1.11.0 · 2026-10-03
 
 - **Readings and tasks apart in the menu:** Beside each tank in the side menu, readings out of range show as `✕ 1` in red and overdue tasks as `▲ 1`, both when there are both; hovering spells it out ("1 reading out of range · 1 task overdue"). Searching with `⌘K` shows the same.
 - **Snooze any task:** In [Tasks](/tasks), every task has Snooze ▾, not only those due within a day; one that isn't due yet moves back from its due date.
