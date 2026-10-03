@@ -2,6 +2,7 @@
 	// 14 · Water change amount (% or volume, with presets) and source water.
 	// The log event form uses it as is; the water test's "Also log a water
 	// change" card uses it `compact`, sized like the readings around it.
+	import { untrack } from 'svelte';
 	import { DOSING_UNITS, WATER_SOURCES } from '$lib/events';
 	import { formatNumber, parseNumber } from '$lib/units';
 	import { TIPS } from '$lib/tips';
@@ -37,7 +38,7 @@
 	} = $props();
 
 	// Conditioner / remineraliser rows: start with what the entry has, add rows as needed
-	let rows = $state(additives.map((a) => ({ ...a })));
+	let rows = $state(untrack(() => additives.map((a) => ({ ...a }))));
 	const addRow = () => (rows = [...rows, { product: '', amount: '', unit: 'mL' }]);
 	const removeRow = (i: number) => (rows = rows.filter((_, j) => j !== i));
 	function pickProduct(i: number) {
