@@ -476,7 +476,7 @@
 	}
 	.change {
 		position: relative;
-		color: var(--accent);
+		color: var(--accent-text);
 		font-weight: 800;
 		cursor: pointer;
 	}
@@ -679,6 +679,6 @@
 		color: var(--text);
 	}
 	.version:hover {
-		color: var(--accent);
+		color: var(--accent-text);
 	}
 </style>

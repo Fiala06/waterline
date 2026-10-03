@@ -168,7 +168,7 @@
 		color: var(--bad);
 	}
 	.g.up {
-		color: var(--accent);
+		color: var(--accent-text);
 	}
 	.text {
 		flex: 1;

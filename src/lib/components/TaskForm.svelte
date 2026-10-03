@@ -324,7 +324,7 @@
 	}
 	.save-top {
 		justify-self: end;
-		color: var(--accent);
+		color: var(--accent-text);
 		font-weight: 700;
 		font-size: 16px;
 		min-height: 44px;
@@ -516,7 +516,7 @@
 		align-items: center;
 		font-size: 14px;
 		font-weight: 800;
-		color: var(--accent);
+		color: var(--accent-text);
 	}
 	.close:hover {
 		background: color-mix(in srgb, var(--accent) 10%, transparent);

@@ -294,7 +294,7 @@
 	details summary {
 		font-size: 12px;
 		font-weight: 800;
-		color: var(--accent);
+		color: var(--accent-text);
 		cursor: pointer;
 		min-height: 32px;
 		display: flex;

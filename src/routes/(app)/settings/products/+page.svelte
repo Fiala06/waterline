@@ -242,7 +242,7 @@
 
 	@media (hover: hover) {
 		.edit-link:hover {
-			color: var(--accent);
+			color: var(--accent-text);
 		}
 	}
 	@media (min-width: 1024px) {

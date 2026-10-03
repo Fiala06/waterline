@@ -99,7 +99,7 @@
 		font-weight: 700;
 	}
 	.r.upd {
-		color: var(--accent);
+		color: var(--accent-text);
 		font-weight: 800;
 	}
 	.account {

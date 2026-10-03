@@ -102,7 +102,7 @@
 	/* not due yet: the design's ghost, there if it's needed but not asking to be pressed */
 	.early {
 		border-color: transparent;
-		color: var(--accent);
+		color: var(--accent-text);
 	}
 	@media (hover: hover) {
 		.early:hover {

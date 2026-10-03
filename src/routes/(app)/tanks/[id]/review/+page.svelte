@@ -194,7 +194,7 @@
 		font-size: 13px;
 	}
 	.when a {
-		color: var(--accent);
+		color: var(--accent-text);
 		font-weight: 800;
 	}
 	/* each part under a 2px rule: ink until it's checked, then divider */
@@ -293,7 +293,7 @@
 		padding: 0 4px;
 	}
 	.changed a {
-		color: var(--accent);
+		color: var(--accent-text);
 		font-weight: 800;
 	}
 	.sm-btn {

@@ -375,15 +375,15 @@
 		color: var(--text-muted);
 	}
 	.tabs a:hover {
-		color: var(--accent);
+		color: var(--accent-text);
 	}
 	.tabs a.active {
-		color: var(--accent);
+		color: var(--accent-text);
 		font-weight: 800;
 		border-bottom-color: var(--accent);
 	}
 	.tabs a.active .n {
-		color: var(--accent);
+		color: var(--accent-text);
 	}
 	@media (min-width: 1024px) {
 		.th {

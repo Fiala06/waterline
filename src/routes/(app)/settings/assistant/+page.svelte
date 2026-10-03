@@ -424,8 +424,9 @@
 		align-items: center;
 	}
 	.copy {
-		min-height: 32px;
-		padding: 0 4px;
+		min-height: 44px;
+		min-width: 44px;
+		padding: 0 6px;
 		font-size: 12px;
 	}
 	.code {
@@ -450,7 +451,7 @@
 	}
 	@media (hover: hover) {
 		.edit-link:hover {
-			color: var(--accent);
+			color: var(--accent-text);
 		}
 	}
 	@media (min-width: 1024px) {

@@ -206,7 +206,7 @@
 		padding: 0 4px;
 		font-size: 14px;
 		font-weight: 800;
-		color: var(--accent);
+		color: var(--accent-text);
 		white-space: nowrap;
 	}
 
@@ -266,7 +266,7 @@
 		overflow-wrap: anywhere;
 	}
 	.name:hover {
-		color: var(--accent);
+		color: var(--accent-text);
 	}
 	.of {
 		font-weight: 400;
@@ -401,7 +401,7 @@
 		padding: 0 4px;
 		font-size: 14px;
 		font-weight: 800;
-		color: var(--accent);
+		color: var(--accent-text);
 		cursor: pointer;
 	}
 	.past summary::-webkit-details-marker {
@@ -532,14 +532,14 @@
 		.ghost:hover,
 		.past summary:hover {
 			background: color-mix(in srgb, var(--accent) 10%, transparent);
-			color: var(--accent);
+			color: var(--accent-text);
 		}
 		.cancel:hover {
 			color: var(--text);
 		}
 		.eq:hover .line,
 		.recent a:hover .rc-t b {
-			color: var(--accent);
+			color: var(--accent-text);
 		}
 	}
 

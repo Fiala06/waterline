@@ -17,7 +17,7 @@
 		width: 18px;
 		height: 18px;
 		flex-shrink: 0;
-		color: var(--accent);
+		color: var(--accent-text);
 	}
 	@media (hover: hover) {
 		.import:hover {

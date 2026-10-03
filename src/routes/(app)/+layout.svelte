@@ -344,6 +344,7 @@
 
 <svelte:window {onkeydown} {onscroll} />
 
+<a class="skip" href="#main">Skip to content</a>
 <div class="shell" class:fullscreen>
 	<!-- ── Desktop sidebar ─────────────────────────────────────────────── -->
 	<div class="navslot" class:rail={!pinned}>
@@ -462,7 +463,7 @@
 			</header>
 		{/if}
 
-		<main class:with-bar={showBar} class:setup={setupTab} aria-busy={slow}>
+		<main id="main" tabindex="-1" class:with-bar={showBar} class:setup={setupTab} aria-busy={slow}>
 			{#if setupTab && current}
 				<div class="setup-grid">
 					<nav class="setup-nav hide-phone" aria-label="Setup">
@@ -523,6 +524,24 @@
 <style>
 	.shell {
 		min-height: 100dvh;
+	}
+	/* keyboard users jump past the menus; visible only while focused */
+	.skip {
+		position: fixed;
+		top: 8px;
+		left: 8px;
+		z-index: 100;
+		padding: 10px 14px;
+		background: var(--ink);
+		color: var(--bg);
+		font-weight: 800;
+		transform: translateY(-200%);
+	}
+	.skip:focus {
+		transform: none;
+	}
+	main:focus {
+		outline: none;
 	}
 	.navslot,
 	.page-head,
@@ -628,7 +647,7 @@
 		min-height: 44px;
 	}
 	.tabbar a.active {
-		color: var(--accent);
+		color: var(--accent-text);
 		font-weight: 800;
 	}
 	/* the active tab: a 3px accent bar on the bar's top edge */
@@ -796,7 +815,7 @@
 		}
 		.tanks .caps:hover,
 		.tanks .caps.active {
-			color: var(--accent);
+			color: var(--accent-text);
 		}
 		.tank-list {
 			display: flex;
@@ -864,7 +883,7 @@
 			white-space: nowrap;
 		}
 		.more-tanks:hover {
-			color: var(--accent);
+			color: var(--accent-text);
 		}
 		.add {
 			flex-shrink: 0;
@@ -874,7 +893,7 @@
 			padding: 10px 8px;
 			font-size: 14px;
 			font-weight: 800;
-			color: var(--accent);
+			color: var(--accent-text);
 		}
 		.add .plus {
 			width: 28px;
@@ -984,7 +1003,7 @@
 			color: var(--text-muted);
 		}
 		.ver.update {
-			color: var(--accent);
+			color: var(--accent-text);
 			font-weight: 800;
 		}
 		.ver:hover {

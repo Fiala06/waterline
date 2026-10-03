@@ -192,7 +192,7 @@
 	.close {
 		font-size: 14px;
 		font-weight: 800;
-		color: var(--accent);
+		color: var(--accent-text);
 		min-height: 44px;
 		padding: 0 4px;
 	}

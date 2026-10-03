@@ -395,7 +395,7 @@
 		min-height: 44px;
 		font-size: 13px;
 		font-weight: 800;
-		color: var(--accent);
+		color: var(--accent-text);
 	}
 	.events {
 		order: 6;

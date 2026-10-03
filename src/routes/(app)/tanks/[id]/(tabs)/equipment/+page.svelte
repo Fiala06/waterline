@@ -103,7 +103,7 @@
 		letter-spacing: -0.015em;
 	}
 	.name:hover {
-		color: var(--accent);
+		color: var(--accent-text);
 	}
 	.chev {
 		font-size: 16px;
@@ -136,7 +136,7 @@
 		padding: 0 4px;
 		font-size: 14px;
 		font-weight: 800;
-		color: var(--accent);
+		color: var(--accent-text);
 	}
 	.muted-link {
 		color: var(--text-muted);
@@ -156,7 +156,7 @@
 		padding: 0 4px;
 		font-size: 14px;
 		font-weight: 800;
-		color: var(--accent);
+		color: var(--accent-text);
 		cursor: pointer;
 	}
 	.past summary::-webkit-details-marker {
@@ -193,10 +193,10 @@
 		.ghost:hover,
 		.past summary:hover {
 			background: color-mix(in srgb, var(--accent) 10%, transparent);
-			color: var(--accent);
+			color: var(--accent-text);
 		}
 		.past-row a:hover {
-			color: var(--accent);
+			color: var(--accent-text);
 		}
 	}
 	@media (min-width: 1024px) {

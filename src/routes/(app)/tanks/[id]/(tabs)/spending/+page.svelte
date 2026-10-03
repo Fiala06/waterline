@@ -236,7 +236,7 @@
 	}
 	@media (hover: hover) {
 		.list a:hover .lw {
-			color: var(--accent);
+			color: var(--accent-text);
 		}
 	}
 	@media (min-width: 1024px) {
