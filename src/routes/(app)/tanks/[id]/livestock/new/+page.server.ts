@@ -1,5 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { isDate, todayInZone } from '$lib/time';
+import { isDate, todayInZone, zonedToUtc } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
 import { num, optStr, str } from '$lib/server/forms';
 import { addLivestock } from '$lib/server/specs';
@@ -26,16 +26,24 @@ export const actions: Actions = {
 		const values = { name, scientificName: str(form, 'scientificName'), count: String(count), kind };
 		if (!name) return fail(400, { error: 'Enter the species.', values });
 		if (!Number.isInteger(count) || count < 1 || count > 10000) return fail(400, { error: 'Enter how many, 1 or more.', values });
-		const addedAt = optStr(form, 'addedAt');
-		const { row } = addLivestock(user.id, params.id, {
-			kind: kind === 'invert' || kind === 'coral' ? kind : 'fish',
-			commonName: name,
-			scientificName: optStr(form, 'scientificName', 120),
-			count,
-			status: str(form, 'status') === 'quarantine' ? 'quarantine' : 'in_tank',
-			addedAt: addedAt && isDate(addedAt) ? addedAt : todayInZone(user.timeZone),
-			source: optStr(form, 'source', 120)
-		});
+		const today = todayInZone(user.timeZone);
+		const picked = optStr(form, 'addedAt');
+		const addedAt = picked && isDate(picked) ? picked : today;
+		const { row } = addLivestock(
+			user.id,
+			params.id,
+			{
+				kind: kind === 'invert' || kind === 'coral' ? kind : 'fish',
+				commonName: name,
+				scientificName: optStr(form, 'scientificName', 120),
+				count,
+				status: str(form, 'status') === 'quarantine' ? 'quarantine' : 'in_tank',
+				addedAt,
+				source: optStr(form, 'source', 120)
+			},
+			// added on an earlier day: the History entry (and the timeline, #26) sit on that day
+			{ at: addedAt < today ? zonedToUtc(addedAt, '12:00', user.timeZone).toISOString() : undefined }
+		);
 		setFlash(cookies, `✓ Added ${count} ${row.commonName}`);
 		redirect(303, `/tanks/${params.id}/livestock`);
 	}

@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 import { randomBytes, scryptSync } from 'node:crypto';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 // Runs the production build against a throwaway database with the mock
 // Google sign-in (AUTH_DEV_LOGIN) turned on.
@@ -45,6 +47,8 @@ export default defineConfig({
 			// species photos from a stand-in for Wikipedia and Commons (src/routes/dev/wiki)
 			STOCK_PHOTO_WIKI: `http://localhost:${PORT}/dev/wiki`,
 			STOCK_PHOTO_COMMONS: `http://localhost:${PORT}/dev/wiki`,
+			// species care from a tiny stand-in for FishBase's snapshot (e2e/files/fishbase)
+			SPECIES_CARE_URL: pathToFileURL(resolve('e2e/files/fishbase')).href,
 			LOCAL_ADMIN_PASSWORD_HASH: hash
 		}
 	}

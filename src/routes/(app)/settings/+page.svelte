@@ -353,6 +353,10 @@
 					<span class="ttext"><span class="tt">Saved product links</span><span class="td">Fertilizers, conditioner and food you buy again, one tap to reorder</span></span>
 					{#if data.products}<span class="v">{data.products}</span>{/if}<span class="chev" aria-hidden="true">›</span>
 				</a>
+				<a class="row link" href="/settings/test-kits">
+					<span class="ttext"><span class="tt">Test kits</span><span class="td">Each test's steps and waits, run with a timer on the water test form</span></span>
+					{#if data.kits}<span class="v">{data.kits}</span>{/if}<span class="chev" aria-hidden="true">›</span>
+				</a>
 			</div>
 		</section>
 
@@ -362,6 +366,10 @@
 				<a class="row link" href="/settings/export">
 					<span class="ttext"><span class="tt">Import & export</span><span class="td">A full backup, CSV, a summary to share, or a spreadsheet in</span></span>
 					<span class="chev" aria-hidden="true">›</span>
+				</a>
+				<a class="row link" href="/settings/sensors">
+					<span class="ttext"><span class="tt">Sensors & controllers</span><span class="td">A token for probes and controllers to log readings on their own</span></span>
+					<span class="v">{data.sensors ? `${data.sensors} connected` : 'Off'}</span><span class="chev" aria-hidden="true">›</span>
 				</a>
 				<a class="row link" href="/settings/assistant">
 					<!-- the name reads "AI assistant Off": the state follows the title -->

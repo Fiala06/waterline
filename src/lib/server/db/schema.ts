@@ -282,7 +282,9 @@ export const photos = sqliteTable('photos', {
 	/** when it was taken: from the photo's details, the date picked on upload, or its entry's date (#42) */
 	takenAt: text('taken_at').notNull(),
 	/** the keeper set the date in the viewer, so it no longer follows the entry's */
-	takenAtSet: integer('taken_at_set', { mode: 'boolean' }).notNull().default(false)
+	takenAtSet: integer('taken_at_set', { mode: 'boolean' }).notNull().default(false),
+	/** in the tank's timeline (#26); off for a close-up that doesn't show the tank changing */
+	inTimeline: integer('in_timeline', { mode: 'boolean' }).notNull().default(true)
 });
 
 
@@ -376,6 +378,8 @@ export const serverSettings = sqliteTable('server_settings', {
 	updateCheck: integer('update_check', { mode: 'boolean' }).notNull().default(true),
 	// species photos from Wikimedia Commons for plants and livestock
 	stockPhotos: integer('stock_photos', { mode: 'boolean' }).notNull().default(true),
+	// species care ranges from FishBase (#20), downloaded by this server into DATA_DIR, never bundled (CC BY-NC)
+	speciesCare: integer('species_care', { mode: 'boolean' }).notNull().default(true),
 	// what the log keeps: errors and warnings, or also what the server did;
 	// everything (debug) only until log_debug_until, while troubleshooting
 	logLevel: text('log_level', { enum: ['warn', 'info'] }).notNull().default('warn'),
@@ -479,6 +483,27 @@ export const products = sqliteTable(
 );
 
 export type Product = typeof products.$inferSelect;
+
+/**
+ * Test kits (#21): the steps of a test and its waits, per parameter, so the
+ * water test form can run them with a timer. Account-wide, like products.
+ */
+export const testKits = sqliteTable(
+	'test_kits',
+	{
+		id: id(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		name: text('name').notNull(),
+		/** ph | nh3 | no2 | no3 | gh | kh | temp, or custom:<name> */
+		paramKey: text('param_key').notNull(),
+		steps: text('steps', { mode: 'json' }).$type<{ text: string; seconds?: number }[]>().notNull().default([]),
+		createdAt: createdAt()
+	},
+	(t) => [index('test_kits_user').on(t.userId)]
+);
+export type TestKit = typeof testKits.$inferSelect;
 
 // ── Spending ─────────────────────────────────────────────────────────────────
 
@@ -668,6 +693,39 @@ export const parReadings = sqliteTable(
 );
 export type ParReading = typeof parReadings.$inferSelect;
 
+/**
+ * The wish list (#24): livestock, plants and equipment the keeper plans to add
+ * to a tank, with a note, a price and a link. Add to tank moves one into the
+ * tank's lists (and can log the purchase); it then shows under Added.
+ */
+export const WISH_KINDS = ['fish', 'invert', 'coral', 'plant', 'equipment'] as const;
+export type WishKind = (typeof WISH_KINDS)[number];
+export const wishes = sqliteTable(
+	'wishes',
+	{
+		id: id(),
+		tankId: text('tank_id')
+			.notNull()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		kind: text('kind', { enum: WISH_KINDS }).notNull(),
+		name: text('name').notNull(),
+		scientificName: text('scientific_name'),
+		/** how many, for livestock */
+		count: integer('count').notNull().default(1),
+		/** for equipment: filter, heater, light… */
+		equipmentType: text('equipment_type', { enum: EQUIPMENT_TYPES }),
+		note: text('note'),
+		/** in cents of the keeper's currency */
+		priceCents: integer('price_cents'),
+		url: text('url'),
+		createdAt: createdAt(),
+		/** when it was added to the tank; still listed under Added */
+		addedAt: text('added_at')
+	},
+	(t) => [index('wishes_tank').on(t.tankId)]
+);
+export type Wish = typeof wishes.$inferSelect;
+
 export type Equipment = typeof equipment.$inferSelect;
 export type Livestock = typeof livestock.$inferSelect;
 export type Plant = typeof plants.$inferSelect;
@@ -689,6 +747,8 @@ export const publicPages = sqliteTable(
 		showLivestock: integer('show_livestock', { mode: 'boolean' }).notNull().default(true),
 		showEquipment: integer('show_equipment', { mode: 'boolean' }).notNull().default(true),
 		showDescription: integer('show_description', { mode: 'boolean' }).notNull().default(true),
+		// the timeline (#26): photos in date order with the readings of the moment; follows the photos and readings switches
+		showTimeline: integer('show_timeline', { mode: 'boolean' }).notNull().default(false),
 		// pets' names, and photos tagged with a pet; off: species only, tagged photos hidden
 		showPetNames: integer('show_pet_names', { mode: 'boolean' }).notNull().default(false),
 		description: text('description'),
@@ -744,6 +804,8 @@ export const assistantTokens = sqliteTable(
 		tokenHash: text('token_hash').notNull(),
 		// the token's last 4 characters, to tell tokens apart
 		hint: text('hint').notNull(),
+		// assistant: reads its tanks; sensor (#19): may only add readings to them
+		kind: text('kind', { enum: ['assistant', 'sensor'] }).notNull().default('assistant'),
 		tankIds: text('tank_ids', { mode: 'json' }).$type<string[]>().notNull().default([]),
 		createdAt: createdAt(),
 		lastUsedAt: text('last_used_at'),
@@ -762,6 +824,30 @@ export const assistantTokens = sqliteTable(
 );
 
 export type AssistantToken = typeof assistantTokens.$inferSelect;
+
+/**
+ * Readings from sensors and controllers (#19): a probe's samples, kept apart
+ * from hand-logged tests. Stored metric, at most one a minute per parameter,
+ * and thinned for charts. `source` is the token's name ("Apex", "ESPHome").
+ */
+export const sensorReadings = sqliteTable(
+	'sensor_readings',
+	{
+		id: id(),
+		tankId: text('tank_id')
+			.notNull()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		parameterId: text('parameter_id')
+			.notNull()
+			.references(() => tankParameters.id, { onDelete: 'cascade' }),
+		value: real('value').notNull(),
+		at: text('at').notNull(),
+		source: text('source').notNull(),
+		tokenId: text('token_id').references(() => assistantTokens.id, { onDelete: 'set null' })
+	},
+	(t) => [index('sensor_readings_tank_param_at').on(t.tankId, t.parameterId, t.at)]
+);
+export type SensorReading = typeof sensorReadings.$inferSelect;
 
 /** Apps that registered themselves to connect by signing in (OAuth dynamic client registration). */
 export const oauthClients = sqliteTable('oauth_clients', {

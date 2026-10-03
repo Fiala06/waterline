@@ -33,14 +33,17 @@
 			<span class="count">{page.data.toolbarText ?? ''}</span>
 			<div class="acts">
 				{#if sub === 'equipment'}
+					<a class="btn" href="{base}/wishlist">Wish list</a>
 					{#if h.role === 'owner'}<a class="btn btn-primary" href="{base}/equipment/new">+ Add equipment</a>{/if}
 				{:else if sub === 'livestock'}
+					<a class="btn" href="{base}/wishlist">Wish list</a>
 					<a class="btn" href="{base}/health">Health</a>
 					<a class="btn" href="{base}/livestock/several">Add several</a>
 					<a class="btn btn-primary" href="{base}/livestock/new">+ Add livestock</a>
 				{:else if sub === 'spending'}
 					{#if h.role === 'owner'}<a class="btn btn-primary" href="{base}/spending/new">+ Add expense</a>{/if}
 				{:else if sub === 'plants'}
+					<a class="btn" href="{base}/wishlist">Wish list</a>
 					{#if plantCount}<button type="button" class="btn" onclick={() => (plantSheets.trim = true)}>Log trim</button>{/if}
 					<a class="btn" href="{base}/plants/several">Add several</a>
 					<button type="button" class="btn btn-primary" onclick={() => (plantSheets.add = true)}>+ Add plant</button>

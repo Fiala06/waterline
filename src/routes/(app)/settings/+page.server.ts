@@ -13,6 +13,7 @@ import { parseTopicUrl } from '$lib/server/push/ntfy';
 import { listSubscriptions, removeSubscription, vapidKeys } from '$lib/server/push/webpush';
 import { encrypt } from '$lib/server/secrets';
 import { listProducts } from '$lib/server/products';
+import { listKits } from '$lib/server/kits';
 import { listAssistantTokens } from '$lib/server/assistant/tokens';
 import { getFeed, makeFeed, removeFeed } from '$lib/server/calendar';
 import { listTanks } from '$lib/server/tanks';
@@ -51,6 +52,8 @@ export const load: PageServerLoad = ({ locals, url }) => {
 		},
 		emailReady: emailConfigured(),
 		products: listProducts(locals.user!.id).length,
+		kits: listKits(locals.user!.id).length,
+		sensors: listAssistantTokens(locals.user!.id, 'sensor').length,
 		assistants: listAssistantTokens(locals.user!.id).length,
 		// the tasks calendar link (#23), and each tank for a link of its own
 		calendar: feed ? { url: `${url.origin}/cal/${feed.token}.ics`, lastFetchedAt: feed.lastFetchedAt } : null,

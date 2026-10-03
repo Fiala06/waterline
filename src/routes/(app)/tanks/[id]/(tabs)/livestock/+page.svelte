@@ -59,6 +59,18 @@
 <div class="body">
 	<div class="main">
 		{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
+		{#if data.warnings.length}
+			<!-- care (#20): never in the way: a short list above the table, with its source -->
+			<section class="check" aria-labelledby="check-h">
+				<h2 id="check-h" class="check-h">Worth checking</h2>
+				<ul>
+					{#each data.warnings as w (w)}<li>{w}</li>{/each}
+				</ul>
+				<p class="check-src">
+					Care ranges from <a href={data.careSource?.url} target="_blank" rel="noopener noreferrer">{data.careSource?.name}</a> ({data.careSource?.license}); group sizes and conflicts are the hobby's rules of thumb, not every fish reads them.
+				</p>
+			</section>
+		{/if}
 
 		{#if !data.items.length}
 			<EmptyState
@@ -653,5 +665,43 @@
 		.side {
 			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
+	}
+	/* care (#20) */
+	.check {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		padding: 10px 14px 12px;
+		border-left: 2px solid var(--ink);
+		background: var(--surface);
+		margin-bottom: 4px;
+	}
+	.check-h {
+		margin: 0;
+		font-size: 13px;
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+	}
+	.check ul {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+	.check li {
+		font-size: 14px;
+		line-height: 1.45;
+	}
+	.check-src {
+		margin: 2px 0 0;
+		font-size: 12px;
+		color: var(--text-muted);
+	}
+	.check-src a {
+		color: inherit;
+		text-decoration: underline;
 	}
 </style>

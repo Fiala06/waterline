@@ -35,7 +35,7 @@
 	// and everything under /tanks/[id]; entries belong to History.
 	const tankTabRoute = $derived(routeId.startsWith('/(app)/tanks/[id]/'));
 	const tankScoped = $derived(
-		!!current && (path === '/' || /^\/(charts|history|photos)(\/|$)/.test(path) || /^\/entries\//.test(path) || routeId.startsWith('/(app)/tanks/[id]'))
+		!!current && (path === '/' || /^\/(charts|history|photos|timeline)(\/|$)/.test(path) || /^\/entries\//.test(path) || routeId.startsWith('/(app)/tanks/[id]'))
 	);
 	const logForm = $derived(/^\/entries\/(test|event)\/new$/.test(path));
 	const tabs = $derived.by((): Tab[] => {
@@ -47,7 +47,7 @@
 			{ key: 'overview', label: 'Overview', href: `/?tank=${id}`, active: path === '/' },
 			{ key: 'charts', label: 'Charts', href: `/charts?tank=${id}`, active: path.startsWith('/charts') },
 			{ key: 'history', label: 'History', href: `/history?tank=${id}`, active: path.startsWith('/history') || path.startsWith('/entries/') },
-			{ key: 'photos', label: 'Photos', href: `/photos?tank=${id}`, count: data.counts.photos, active: path.startsWith('/photos') },
+			{ key: 'photos', label: 'Photos', href: `/photos?tank=${id}`, count: data.counts.photos, active: path.startsWith('/photos') || path === '/timeline' },
 			{ key: 'livestock', label: 'Livestock', href: `${base}/livestock`, count: data.counts.livestock, active: under('livestock') },
 			{ key: 'plants', label: 'Plants', href: `${base}/plants`, count: data.counts.plants, active: under('plants') },
 			{ key: 'equipment', label: 'Equipment', href: `${base}/equipment`, count: data.counts.equipment, active: under('equipment') },
@@ -108,6 +108,7 @@
 				'/(app)/tanks/[id]/targets': 'Parameters & targets',
 				'/(app)/tanks/[id]/public': 'Public page',
 				'/(app)/tanks/[id]/sharing': 'Sharing',
+				'/(app)/tanks/[id]/wishlist': 'Wish list',
 				'/(app)/tanks/[id]/summary': 'Share summary'
 			} as Record<string, string | undefined>
 		)[id];
@@ -118,6 +119,7 @@
 			const kind = importKindOf(page.params.list ?? '');
 			return { title: kind ? IMPORTS[kind].title : 'Import' };
 		}
+		if (id === '/(app)/timeline') return { title: 'Timeline', kicker: 'Photos in date order, with the readings and stock of each moment' };
 		if (id === '/(app)/calculators') return { title: 'Calculators', kicker: current ? `For ${current.name}` : 'Volume, water change, dosing, heater, substrate, CO₂' };
 		if (id === '/(app)/tasks') return { title: 'Tasks', kicker: data.overdueCount ? `${data.overdueCount} overdue` : 'Every tank', actions: [{ label: '+ New task', href: newTaskHref }] };
 		const taskType = (page.data.values as { type?: string } | undefined)?.type;
@@ -147,7 +149,7 @@
 		const u = new URL(page.url);
 		u.searchParams.set('tank', id);
 		u.searchParams.delete('task');
-		const keepPage = path === '/' || /^\/(charts|history|photos|tasks|more)$/.test(path) || logForm;
+		const keepPage = path === '/' || /^\/(charts|history|photos|timeline|tasks|more)$/.test(path) || logForm;
 		goto(keepPage ? `${u.pathname}?${u.searchParams}` : `/?tank=${id}`);
 	}
 

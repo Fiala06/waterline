@@ -35,6 +35,7 @@
 	<div class="toolbar">
 		<span class="count">{total} photo{total === 1 ? '' : 's'} · from notes, tests and uploads</span>
 		{#if data.tank}
+			<a class="btn timeline" href="/timeline?tank={data.tank.id}">Timeline</a>
 			<form
 				method="POST"
 				action="?/upload"
@@ -106,6 +107,10 @@
 	.count {
 		font-size: 13px;
 		color: var(--text-muted);
+		margin-right: auto;
+	}
+	.timeline {
+		min-height: 44px;
 	}
 	.upload {
 		position: relative;

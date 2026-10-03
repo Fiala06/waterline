@@ -239,6 +239,41 @@
       "when": 1791047516309,
       "tag": "0033_tank_members",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "6",
+      "when": 1791050796045,
+      "tag": "0034_test_kits",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "6",
+      "when": 1791051242772,
+      "tag": "0035_sensor_readings",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "6",
+      "when": 1791051665899,
+      "tag": "0036_wishes",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "6",
+      "when": 1791052419078,
+      "tag": "0037_timeline",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "6",
+      "when": 1791053607124,
+      "tag": "0038_species_care",
+      "breakpoints": true
     }
   ]
 }

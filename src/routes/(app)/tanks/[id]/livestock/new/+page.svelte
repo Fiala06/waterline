@@ -7,6 +7,29 @@
 	let kind = $state<'fish' | 'invert' | 'coral'>('fish');
 	let count = $state(1);
 	let addedAt = $state(untrack(() => data.today));
+
+	// Care (#20): once a species is picked, its ranges and what to check against this tank, from FishBase when the server has it
+	let picked = $state<{ s: string; name: string } | null>(null);
+	let care = $state<{ care: { line: string; source: { name: string; url: string; license: string; licenseUrl: string } } | null; warnings: string[] } | null>(null);
+	let seq = 0;
+	$effect(() => {
+		const p = picked;
+		const n = Number(count) || 1;
+		if (!p) {
+			care = null;
+			return;
+		}
+		const my = ++seq;
+		const t = setTimeout(async () => {
+			try {
+				const r = await fetch(`/api/species/care?${new URLSearchParams({ s: p.s, name: p.name, count: String(n), tank: data.tank.id })}`);
+				if (my === seq && r.ok) care = await r.json();
+			} catch {
+				/* offline: no hints */
+			}
+		}, 150);
+		return () => clearTimeout(t);
+	});
 </script>
 
 <svelte:head><title>Add livestock · {data.tank.name}</title></svelte:head>
@@ -26,7 +49,18 @@
 			<label><input type="radio" name="kind" value="coral" bind:group={kind} />Coral</label>
 		</div>
 
-		{#key kind}<SpeciesInput {kind} water={data.water} initialName={form?.values?.name ?? ''} initialScientific={form?.values?.scientificName ?? ''} invalid={!!form?.error} />{/key}
+		{#key kind}<SpeciesInput {kind} water={data.water} initialName={form?.values?.name ?? ''} initialScientific={form?.values?.scientificName ?? ''} invalid={!!form?.error} onpick={(p) => (picked = p)} />{/key}
+		{#if care && (care.care || care.warnings.length)}
+			<div class="care" aria-live="polite">
+				{#if care.care}
+					<p class="care-line"><b>{picked?.name}</b> · {care.care.line}</p>
+				{/if}
+				{#each care.warnings as w (w)}<p class="care-warn">{w}</p>{/each}
+				{#if care.care}
+					<p class="care-src">Care ranges from <a href={care.care.source.url} target="_blank" rel="noopener noreferrer">{care.care.source.name}</a> · <a href={care.care.source.licenseUrl} target="_blank" rel="noopener noreferrer">{care.care.source.license}</a></p>
+				{/if}
+			</div>
+		{/if}
 
 		<!-- T5: Count and Added side by side -->
 		<div class="pair">
@@ -152,6 +186,31 @@
 		font-size: 13px;
 		color: var(--text-faint);
 		line-height: 1.5;
+	}
+	/* care (#20): a plain block under the species, warnings in bold with their ▲ */
+	.care {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		padding: 10px 12px;
+		border-left: 2px solid var(--ink);
+		background: var(--surface);
+	}
+	.care p {
+		margin: 0;
+		font-size: 13px;
+		line-height: 1.5;
+	}
+	.care-warn {
+		font-weight: 700;
+	}
+	.care-src {
+		color: var(--text-muted);
+		font-size: 12px;
+	}
+	.care-src a {
+		color: inherit;
+		text-decoration: underline;
 	}
 	.foot {
 		padding: 8px 20px calc(24px + env(safe-area-inset-bottom));

@@ -107,6 +107,19 @@
 				{#if form?.photoError}<p class="error-text" role="alert">✕ {form.photoError}</p>{/if}
 			{/if}
 
+			{#if data.care}
+				<section class="care" aria-labelledby="care-h">
+					<h2 id="care-h" class="care-h">Care</h2>
+					{#if data.care.line}<p class="care-line">{data.care.line}</p>{/if}
+					{#each data.care.warnings as w (w)}<p class="care-warn">{w}</p>{/each}
+					{#if data.care.source}
+						<p class="care-src">
+							Ranges from <a href={data.care.source.url} target="_blank" rel="noopener noreferrer">{data.care.source.name}</a>{data.care.fb && data.care.fb !== a.commonName ? ` (as ${data.care.fb})` : ''} · <a href={data.care.source.licenseUrl} target="_blank" rel="noopener noreferrer">{data.care.source.license}</a>
+						</p>
+					{/if}
+				</section>
+			{/if}
+
 			{#if !gone && !one}
 				<form class="name-one" method="POST" action="?/nameOne" use:enhance={saving}>
 					<label class="label" for="name-one">Name one of them</label>
@@ -516,5 +529,37 @@
 		.pic {
 			height: 300px;
 		}
+	}
+	/* care (#20) */
+	.care {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		padding: 10px 12px;
+		border-left: 2px solid var(--ink);
+		background: var(--surface);
+	}
+	.care-h {
+		margin: 0;
+		font-size: 12px;
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+	}
+	.care p {
+		margin: 0;
+		font-size: 14px;
+		line-height: 1.5;
+	}
+	.care-warn {
+		font-weight: 700;
+	}
+	.care-src {
+		color: var(--text-muted);
+		font-size: 12px !important;
+	}
+	.care-src a {
+		color: inherit;
+		text-decoration: underline;
 	}
 </style>

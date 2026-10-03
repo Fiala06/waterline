@@ -180,6 +180,37 @@
 				</section>
 			{/if}
 
+			{#if v.timeline.length}
+				<section class="timeline">
+					<div class="sh"><h2>Timeline</h2></div>
+					<ol class="tl">
+						{#each v.timeline as e (e.id)}
+							{#if e.gap}
+								<li class="tl-gap"><b>{e.gap.label}</b>{e.gap.summary ? ` · ${e.gap.summary}` : ''}</li>
+							{/if}
+							<li class="tl-entry">
+								<a class="tl-shot" href={photo(e.id, 'full')}><img src={photo(e.id)} alt="{v.name} on {e.date}" loading="lazy" /></a>
+								<div class="tl-info">
+									<span class="tl-date">{e.date}</span>
+									<span class="muted tl-stats">
+										{[e.dayNumber ? `Day ${e.dayNumber}` : null, e.animals ? `${e.animals} animal${e.animals === 1 ? '' : 's'}` : null, e.plants ? `${e.plants} plant${e.plants === 1 ? '' : 's'}` : null]
+											.filter(Boolean)
+											.join(' · ')}
+									</span>
+									{#if e.readings?.length}
+										<ul class="tl-readings">
+											{#each e.readings as r (r.name)}
+												<li><span class="muted">{r.name}</span> <span class="num">{r.value}{r.unit ? ` ${r.unit}` : ''}</span> <span class="rs status-{r.level}">{r.status}</span></li>
+											{/each}
+										</ul>
+									{/if}
+								</div>
+							</li>
+						{/each}
+					</ol>
+				</section>
+			{/if}
+
 			{#if v.activity.length || data.ranges.log !== 'month'}
 				<section class="activity">
 					<div class="sh ch">
@@ -320,15 +351,74 @@
 		.photos {
 			order: 5;
 		}
-		.tank {
+		.timeline {
 			order: 6;
 		}
-		.activity {
+		.tank {
 			order: 7;
 		}
-		.foot {
+		.activity {
 			order: 8;
 		}
+		.foot {
+			order: 9;
+		}
+	}
+	/* ── Timeline (#26) ─────────────────────────────────────── */
+	.tl {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	.tl-entry {
+		display: grid;
+		grid-template-columns: 96px minmax(0, 1fr);
+		gap: 12px;
+		padding: 10px 0;
+		border-bottom: 1px solid var(--divider);
+	}
+	.tl-shot img {
+		display: block;
+		width: 96px;
+		height: 96px;
+		object-fit: cover;
+		background: var(--surface);
+	}
+	.tl-info {
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+		min-width: 0;
+	}
+	.tl-date {
+		font-weight: 800;
+		font-size: 15px;
+	}
+	.tl-stats {
+		font-size: 13px;
+	}
+	.tl-readings {
+		list-style: none;
+		margin: 2px 0 0;
+		padding: 0;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 2px 14px;
+		font-size: 13px;
+	}
+	.tl-readings .num {
+		font-weight: 700;
+	}
+	.tl-readings .rs {
+		font-size: 12px;
+		font-weight: 700;
+	}
+	.tl-gap {
+		padding: 6px 0 6px 12px;
+		border-left: 2px solid var(--ink);
+		margin: 6px 0;
+		font-size: 13px;
+		color: var(--text-2);
 	}
 
 	/* ── Cover + title ────────────────────────────────────────── */

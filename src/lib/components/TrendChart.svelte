@@ -76,7 +76,8 @@
 		onselect,
 		popover,
 		fit = false,
-		pinLatest = false
+		pinLatest = false,
+		sensor = []
 	}: {
 		points: Point[];
 		band: { min: number | null; max: number | null };
@@ -102,6 +103,8 @@
 		fit?: boolean;
 		/** Keep a small tooltip on the latest reading while nothing is pointed at (phones). */
 		pinLatest?: boolean;
+		/** readings from a sensor (#19), drawn as a thin neutral line under the tests */
+		sensor?: { t: number; v: number }[];
 	} = $props();
 
 	let el = $state<HTMLDivElement>();
@@ -115,6 +118,7 @@
 
 	const domain = $derived.by(() => {
 		const vals = points.map((p) => p.v);
+		for (const s of sensor) vals.push(s.v);
 		if (band.min != null) vals.push(band.min);
 		if (band.max != null) vals.push(band.max);
 		let lo = Math.min(...vals);
@@ -317,6 +321,9 @@
 			{/each}
 			{#if hot}<line x1={x(hot.t)} x2={x(hot.t)} y1={TOP - 4} y2={baseline} class="guide"></line>{/if}
 			{#if pinned}<line x1={x(pinned.t)} x2={x(pinned.t)} y1={TOP - 4} y2={baseline} class="guide"></line>{/if}
+			{#if sensor.length > 1}
+				<polyline class="sensor" points={sensor.map((p) => `${x(p.t)},${y(p.v)}`).join(' ')} fill="none" stroke="var(--neutral-600)" stroke-width="1.25" stroke-linejoin="round"></polyline>
+			{/if}
 			<polyline class="trace" pathLength="1" points={line} fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"></polyline>
 			{#if full}
 				{#each points as p, i (i)}

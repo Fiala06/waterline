@@ -70,7 +70,8 @@ events           id, tank_id, category(water_change|dosing|maintenance|livestock
                  --       right on the setup review; prev_checks lets Undo put the checks back)
 photos           id, tank_id, event_id?, test_id?, path, thumb_path, width, height, taken_at
                  (from the photo's details, the day picked on upload, or its entry's date),
-                 taken_at_set (the keeper changed it in the viewer: it no longer follows the entry)
+                 taken_at_set (the keeper changed it in the viewer: it no longer follows the entry),
+                 in_timeline (off: left out of the tank's timeline, e.g. a close-up)
 photo_livestock  photo_id, livestock_id (pets tagged in a photo)
 
 ── Tasks ──────────────────────────────────────────────────────────────────────
@@ -100,6 +101,9 @@ livestock        id, tank_id, kind(fish|invert|coral), common_name, scientific_n
 plants           id, tank_id, name, scientific_name?, position(background|midground|
                  foreground|epiphyte|floating), status(thriving|melting|algae|other),
                  last_trimmed_at?, removed_at?, import_id?, photo_id? (the keeper's own), created_at
+test_kits        id, user_id, name, param_key (ph|nh3|no2|no3|gh|kh|temp or custom:<name>),
+                 steps JSON [{text, seconds?}] (a test's steps, timed ones run on the form),
+                 created_at
 products         id, user_id, name, url, note?, strength_mg_per_ml?, strength_of? (its strength for
                  the Dose → ppm calculator: mg per mL of what it adds), created_at (saved reorder links)
 expenses         id, tank_id, date, amount_cents, category(livestock|plants|equipment|
@@ -109,6 +113,8 @@ expenses         id, tank_id, date, amount_cents, category(livestock|plants|equi
 ── Sharing ────────────────────────────────────────────────────────────────────
 public_pages     tank_id, enabled, slug, show_readings, show_charts, show_photos,
                  show_activity, show_livestock, show_equipment, show_description,
+                 show_timeline (photos in date order with the day, readings and changes between,
+                 following the readings, pet names, livestock and activity switches),
                  show_pet_names, description?, display_name, indexable, seo_title?,
                  seo_description?, og_photo_id?, og_plain, view_count
 public_page_views tank_id, day, views
@@ -125,7 +131,8 @@ imports          id, user_id, tank_id, kind(livestock|plants|equipment|tests|
 exports          id, user_id, scope(tank|account), tank_id?, format(zip|csv), status,
                  progress, progress_text?, file_path?, file_name?, size?, summary?,
                  error?, created_at, expires_at?
-assistant_tokens id, user_id, name, token_hash (SHA-256), hint (last 4), tank_ids JSON,
+assistant_tokens id, user_id, name, token_hash (SHA-256), hint (last 4), kind(assistant|sensor:
+                 may only add readings), tank_ids JSON,
                  created_at, last_used_at? (read-only access for an AI assistant);
                  connected by signing in: client_id?, expires_at?, refresh_hash?,
                  refresh_expires_at?
@@ -145,11 +152,19 @@ server_settings  singleton: email_provider?(mailgun|smtp), mailgun_api_key_enc?,
                  local_admin_username?, local_admin_password_hash?,
                  allow_public_pages, public_home_enabled, public_base_url?, ga4_id?,
                  consent_banner, search_console_tag?, scheduled_emails, update_check,
-                 log_level(warn|info), log_debug_until?, stock_photos, vapid_public_key?,
+                 log_level(warn|info), log_debug_until?, stock_photos, species_care (care ranges
+                 from FishBase, downloaded by the server into DATA_DIR/species-care.json), vapid_public_key?,
                  vapid_private_key_enc? (Web Push keys, made on first use)
 stock_photos     name (the scientific name looked up), status(ok|none|failed), file?,
                  width?, height?, author?, license?, license_url?, page_url?, reason?,
                  fetched_at (species photos from Wikimedia Commons, kept in DATA_DIR/stock)
+sensor_readings  id, tank_id, parameter_id, value (stored units), at, source (the token's name),
+                 token_id? (readings from probes and controllers, apart from tests: one a minute
+                 per parameter, kept a year, averaged for charts, never an alert by themselves)
+wishes           id, tank_id, kind(fish|invert|coral|plant|equipment), name, scientific_name?,
+                 count, equipment_type?, note?, price_cents?, url?, created_at, added_at?
+                 (the wish list; Add to tank writes the livestock, plant or equipment row,
+                 its event and, when asked, the expense, then sets added_at)
 action_tokens    token_hash, task_id, action(done|snooze), due, expires_at, used_at?
 email_log        id, user_id, key, created_at, error? (so nothing is sent twice; pushes
                  are "push:<key>")

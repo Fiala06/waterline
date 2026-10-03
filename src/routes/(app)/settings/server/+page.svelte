@@ -36,6 +36,8 @@
 	const errors = $derived((form?.errors ?? {}) as Record<string, string>);
 	const stockResult = $derived(form && 'stock' in form ? (form.stock as { ok: boolean; message: string }) : null);
 	const stock = $derived(data.server.stock);
+	const careResult = $derived(form && 'care' in form ? (form.care as { ok: boolean; message: string }) : null);
+	const care = $derived(data.server.care);
 	const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 	const test = $derived(form && 'test' in form ? form.test : null);
 	// the first sentence in bold, a trailing "(401 Unauthorized)" in mono
@@ -540,6 +542,16 @@
 					>
 					<span class="switch"><input id="sv-stock" type="checkbox" name="stockPhotos" defaultChecked={data.server.stockPhotos && !data.server.stockPhotosOff} disabled={data.server.stockPhotosOff} /><span></span></span>
 				</div>
+				<div class="row" id="species-care">
+					<label for="sv-care" class="ttext"
+						><span class="tt">Species care ranges</span><span class="td"
+							>{care.off
+								? 'Off: SPECIES_CARE=off is set.'
+								: 'Temperature, pH and hardness ranges, adult size and schooling for the fish in the species list, from FishBase (CC BY-NC, so downloaded by this server, never bundled). Shown on Livestock, when adding livestock and in the AI summary, with warnings where a tank’s targets, a group’s size or a well-known conflict calls for a look.'}</span
+						></label
+					>
+					<span class="switch"><input id="sv-care" type="checkbox" name="speciesCare" defaultChecked={care.on} disabled={care.off} /><span></span></span>
+				</div>
 			</div>
 			<div class="actions"><button class="btn btn-primary">Save</button></div>
 		</form>
@@ -577,6 +589,40 @@
 				</div>
 				{#if stockResult}
 					<p class="result {stockResult.ok ? 'ok' : 'bad'}" role="status">{stockResult.message}</p>
+				{/if}
+			</form>
+		{/if}
+		{#if care.on}
+			<form
+				method="POST"
+				action="?/careDownload"
+				class="block plain care-data"
+				use:enhance={() => {
+					busy = 'care';
+					return async ({ update }) => {
+						await update({ reset: false });
+						busy = null;
+					};
+				}}
+			>
+				<div class="rows">
+					<div class="row">
+						<span class="ttext"
+							><span class="tt">Species care data</span><span class="td"
+								>{care.have
+									? `FishBase ${care.version} · ${care.count} of the bundled fish · downloaded ${new Date(care.fetchedAt ?? 0).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+									: care.downloading
+										? 'Downloading now…'
+										: 'Not downloaded yet. It needs internet access once; the server tries by itself, or press Download now.'}</span
+							>{#if care.error}<span class="td">Last problem: <span class="mono">{care.error}</span></span>{/if}<span class="td"
+								>Data © <a href={care.source.url} target="_blank" rel="noopener noreferrer">FishBase</a>, <a href={care.source.licenseUrl} target="_blank" rel="noopener noreferrer">{care.source.license}</a>: for non-commercial use.</span
+							></span
+						>
+						<button class="btn" disabled={busy === 'care'}>{busy === 'care' ? 'Downloading…' : care.have ? 'Download again' : 'Download now'}</button>
+					</div>
+				</div>
+				{#if careResult}
+					<p class="result {careResult.ok ? 'ok' : 'bad'}" role="status">{careResult.message}</p>
 				{/if}
 			</form>
 		{/if}

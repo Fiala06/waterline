@@ -7,6 +7,8 @@ import { db } from '../db';
 import { assistantTokens, tanks, users, type AssistantToken, type User } from '../db/schema';
 
 const PREFIX = 'wl_';
+/** sensor tokens (#19): may only add readings */
+const SENSOR_PREFIX = 'wls_';
 /** How often "last used" is written: at most once a minute per token. */
 const TOUCH_MS = 60_000;
 export const MAX_TOKENS = 20;
@@ -15,9 +17,14 @@ export const hash = (t: string) => createHash('sha256').update(t).digest('hex');
 /** A new random token with this prefix: `wl_` for access, `wlr_` for refresh. */
 export const newToken = (prefix = PREFIX) => prefix + randomBytes(32).toString('base64url');
 
-/** Every connection: pasted tokens and apps connected by signing in. */
-export function listAssistantTokens(userId: string): AssistantToken[] {
-	return db.select().from(assistantTokens).where(eq(assistantTokens.userId, userId)).orderBy(desc(assistantTokens.createdAt)).all();
+/** Every connection of a kind: pasted tokens and apps connected by signing in, or sensor tokens. */
+export function listAssistantTokens(userId: string, kind: 'assistant' | 'sensor' = 'assistant'): AssistantToken[] {
+	return db
+		.select()
+		.from(assistantTokens)
+		.where(and(eq(assistantTokens.userId, userId), eq(assistantTokens.kind, kind)))
+		.orderBy(desc(assistantTokens.createdAt))
+		.all();
 }
 
 /** The keeper's own tanks among these ids, in their order. */
@@ -27,11 +34,11 @@ export function ownTanks(userId: string, tankIds: string[]) {
 }
 
 /** A new token for these tanks: the token itself, to show once, and its row. */
-export function createAssistantToken(userId: string, name: string, tankIds: string[]) {
-	const token = newToken();
+export function createAssistantToken(userId: string, name: string, tankIds: string[], kind: 'assistant' | 'sensor' = 'assistant') {
+	const token = newToken(kind === 'sensor' ? SENSOR_PREFIX : PREFIX);
 	const row = db
 		.insert(assistantTokens)
-		.values({ userId, name: name.trim().slice(0, 60) || 'AI assistant', tokenHash: hash(token), hint: token.slice(-4), tankIds: ownTanks(userId, tankIds) })
+		.values({ userId, name: name.trim().slice(0, 60) || (kind === 'sensor' ? 'Sensor' : 'AI assistant'), kind, tokenHash: hash(token), hint: token.slice(-4), tankIds: ownTanks(userId, tankIds) })
 		.returning()
 		.get();
 	return { token, row };
@@ -72,9 +79,28 @@ export function authenticateAssistant(authorization: string | null, now = Date.n
 		.innerJoin(users, eq(users.id, assistantTokens.userId))
 		.where(eq(assistantTokens.tokenHash, hash(m[1])))
 		.get();
-	if (!row) return null;
+	if (!row || row.token.kind !== 'assistant') return null;
 	// connected by signing in: the access token lasts an hour, then the app renews it
 	if (row.token.expiresAt && row.token.expiresAt <= new Date(now).toISOString()) return null;
+	if (!row.token.lastUsedAt || now - Date.parse(row.token.lastUsedAt) > TOUCH_MS) {
+		const at = new Date(now).toISOString();
+		db.update(assistantTokens).set({ lastUsedAt: at }).where(eq(assistantTokens.id, row.token.id)).run();
+		row.token.lastUsedAt = at;
+	}
+	return { user: row.user, token: row.token, tankIds: new Set(ownTanks(row.user.id, row.token.tankIds)) };
+}
+
+/** "Bearer wls_…" (#19) to the sensor token and the tanks it may add readings to, or null. Marks it used. */
+export function authenticateSensor(authorization: string | null, now = Date.now()): AssistantAccess | null {
+	const m = /^Bearer\s+(\S+)\s*$/i.exec(authorization ?? '');
+	if (!m || !m[1].startsWith(SENSOR_PREFIX)) return null;
+	const row = db
+		.select({ token: assistantTokens, user: users })
+		.from(assistantTokens)
+		.innerJoin(users, eq(users.id, assistantTokens.userId))
+		.where(eq(assistantTokens.tokenHash, hash(m[1])))
+		.get();
+	if (!row || row.token.kind !== 'sensor') return null;
 	if (!row.token.lastUsedAt || now - Date.parse(row.token.lastUsedAt) > TOUCH_MS) {
 		const at = new Date(now).toISOString();
 		db.update(assistantTokens).set({ lastUsedAt: at }).where(eq(assistantTokens.id, row.token.id)).run();

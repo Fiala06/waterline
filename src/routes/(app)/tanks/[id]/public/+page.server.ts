@@ -59,6 +59,7 @@ export const actions: Actions = {
 			showReadings: on(form, 'showReadings'),
 			showCharts: on(form, 'showCharts'),
 			showPhotos: on(form, 'showPhotos'),
+			showTimeline: on(form, 'showTimeline'),
 			showLivestock: on(form, 'showLivestock'),
 			showPetNames: on(form, 'showPetNames'),
 			showEquipment: on(form, 'showEquipment'),

@@ -23,6 +23,7 @@
 		{ k: 'showReadings', t: 'Latest readings', d: 'Values and in-range status' },
 		{ k: 'showCharts', t: 'Trend charts', d: 'Every tested parameter; visitors pick 30 days to all time' },
 		{ k: 'showPhotos', t: 'Photos', d: 'Newest 12' },
+		{ k: 'showTimeline', t: 'Timeline', d: 'Photos in date order with the day, the readings of the moment (when readings are on) and what changed between' },
 		{ k: 'showLivestock', t: 'Livestock & plants', d: 'Species and counts; no sources or prices' },
 		{ k: 'showPetNames', t: 'Pet names and photos', d: 'Names you gave your pets, and photos tagged with them' },
 		{ k: 'showEquipment', t: 'Equipment', d: 'Brands and models; no notes' },

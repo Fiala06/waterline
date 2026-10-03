@@ -21,6 +21,8 @@
 		spark: number[];
 		lo: number | null;
 		hi: number | null;
+		/** a sensor's latest reading (#19): "Live 25.4 °C · 2 min ago" */
+		live?: string | null;
 	}
 	interface Overdue {
 		id: string;
@@ -62,7 +64,7 @@
 			<a class="row param" href="/charts?p={c.id}">
 				<span class="text">
 					<span class="title"><span class="name">{c.fullName}</span> <span class="status status-{c.level}">{c.statusText}</span></span>
-					<span class="sub">{c.range ? `Target ${c.range}` : 'No target'}</span>
+					<span class="sub">{c.range ? `Target ${c.range}` : 'No target'}{#if c.live}{' · '}<span class="live">● {c.live}</span>{/if}</span>
 				</span>
 				<span class="spark"><Sparkline values={c.spark} level={c.level} lo={c.lo} hi={c.hi} /></span>
 				<span class="val"><span class="v">{c.value}</span>{#if c.unit}<span class="unit">{c.unit}</span>{/if}</span>

@@ -51,6 +51,8 @@
 			? [
 					{ title: 'Get help: copy a summary', sub: 'For a forum, a friend, your fish store or an AI chat', href: `${base}/summary` },
 					{ title: 'Share with someone', sub: 'Let someone log care or view this tank', href: `${base}/sharing` },
+					{ title: 'Wish list', sub: 'Fish, plants and gear you plan to add', href: `${base}/wishlist` },
+					{ title: 'Timeline', sub: 'Photos in date order, with the readings of each moment', href: `/timeline?tank=${tank.id}` },
 					{ title: 'Export this tank', sub: 'A backup or CSV in Settings › Import & export', href: `/settings/export?tank=${tank.id}` },
 					{ title: 'Public page', sub: 'Share a read-only page', href: `${base}/public` },
 					{ title: 'Review tank setup', sub: 'Walk through details, equipment, targets and livestock', href: `${base}/review`, sep: true },
@@ -59,6 +61,8 @@
 				]
 			: [
 					{ title: 'Get help: copy a summary', sub: 'For a forum, a friend, your fish store or an AI chat', href: `${base}/summary` },
+					{ title: 'Wish list', sub: 'Fish, plants and gear planned for this tank', href: `${base}/wishlist` },
+					{ title: 'Timeline', sub: 'Photos in date order, with the readings of each moment', href: `/timeline?tank=${tank.id}` },
 					{ title: 'Calculators', sub: 'Volume, water change, dosing, heater, substrate, CO₂', href: `/calculators?tank=${tank.id}` }
 				]
 	);
