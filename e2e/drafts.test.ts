@@ -66,3 +66,29 @@ test('switching category keeps what was typed for each one', async ({ page }, in
 	await expect(page.getByText("Restored what you hadn't saved")).toBeVisible();
 	await expect(page.getByLabel('Note')).toHaveValue('topped off with prime');
 });
+
+// A draft never decides whether the task is completed: that box is the page's call for today.
+test('a restored water change draft keeps "Also complete task" ticked', async ({ page }, info) => {
+	await newKeeperWithTank(page, `draft-task-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+
+	// a water change started while the reminder isn't due (no task box on the form), left unsaved
+	await open(page, `/entries/event/new?tank=${tankId}&category=water_change`);
+	await expect(page.getByLabel(/Also complete task/)).toHaveCount(0);
+	await page.getByLabel('Amount', { exact: true }).fill('36');
+	// Close on a phone, Cancel on a computer
+	await page.locator('a[aria-label="Close"]:visible, a.cancel:visible').first().click();
+	await expect(page).not.toHaveURL(/\/entries\/event\/new/);
+
+	// Mark done opens the form with the box ticked; the draft comes back without unticking it
+	await open(page, `/?tank=${tankId}`);
+	await page.getByRole('region', { name: 'Due' }).getByRole('button', { name: 'Mark Water change 25% done early' }).click();
+	await expect(page).toHaveURL(/\/entries\/event\/new\?.*task=/);
+	await expect(page.getByText(/^▲ Restored/)).toBeVisible();
+	await expect(page.getByLabel('Amount', { exact: true })).toHaveValue('36');
+	await expect(page.getByLabel(/Also complete task “Water change 25%”/)).toBeChecked();
+	await page.getByRole('button', { name: 'Save water change' }).click();
+	await expect(page.locator('.toast-region')).toContainText('✓ Water change logged · next due');
+	// the reminder moved on a week
+	await expect(page.getByRole('region', { name: 'Due' }).getByText(/^In 7 days · every 7 days$/i)).toBeVisible();
+});
