@@ -1,8 +1,8 @@
 import { fail, redirect, type RequestEvent } from '@sveltejs/kit';
 import { and, desc, eq } from 'drizzle-orm';
 import { DOSING_UNITS } from '$lib/events';
-import { FEED_UNITS, isRoutine, onOrAfterWeekday, parseWeekdays } from '$lib/tasks';
-import { isDate, todayInZone } from '$lib/time';
+import { endsAfterTimes, FEED_UNITS, isRoutine, onOrAfterWeekday, parseWeekdays } from '$lib/tasks';
+import { addDays, isDate, todayInZone } from '$lib/time';
 import { db } from './db';
 import { events, tanks, type Task, type User } from './db/schema';
 import { listProducts } from './products';
@@ -16,13 +16,26 @@ export type OnDone = 'none' | 'test' | 'water_change';
 export type TaskType = 'task' | 'dosing' | 'feeding';
 /** Repeat every N days or weeks, on set days of the week, or once. */
 export type Repeat = 'every' | 'days' | 'no';
+/** A recurring task runs on, or ends: a course of doses stops on a date or after N times. */
+export type Ends = 'never' | 'on' | 'times';
+
+/** What a link can fill in on the new-task form: "Start a treatment course" from a health entry. */
+export interface TaskPreset {
+	product?: string | null;
+	every?: string | null;
+	/** 'YYYY-MM-DD' */
+	ends?: string | null;
+	amount?: string | null;
+}
 
 export const taskType = (v: string | null | undefined): TaskType => (v === 'dosing' || v === 'feeding' ? v : 'task');
 
 /** Form values for a task (15 / D5). */
-export function taskFormValues(task: Task | null, user: User, tankId: string | null, type: TaskType = 'task') {
+export function taskFormValues(task: Task | null, user: User, tankId: string | null, type: TaskType = 'task', preset: TaskPreset = {}) {
 	if (!task) {
 		const routine = type !== 'task';
+		const every = preset.every && /^\d{1,3}$/.test(preset.every) && Number(preset.every) >= 1 ? preset.every : null;
+		const ends = preset.ends && isDate(preset.ends) ? preset.ends : '';
 		return {
 			type,
 			name: '',
@@ -30,15 +43,18 @@ export function taskFormValues(task: Task | null, user: User, tankId: string | n
 			recurring: true,
 			repeat: 'every' as Repeat,
 			// a routine is most often daily; a task, weekly
-			every: '1',
-			unit: routine ? ('days' as const) : ('weeks' as const),
+			every: every ?? '1',
+			unit: routine || every ? ('days' as const) : ('weeks' as const),
 			weekdays: [] as number[],
 			nextDue: todayInZone(user.timeZone),
 			scheduleMode: 'completion' as 'completion' | 'fixed',
 			onDone: 'none' as OnDone,
-			product: '',
-			amount: '',
-			amountUnit: type === 'dosing' ? 'mL' : ''
+			product: (preset.product ?? '').slice(0, 80),
+			amount: preset.amount && /^\d+([.,]\d+)?$/.test(preset.amount) ? preset.amount : '',
+			amountUnit: type === 'dosing' ? 'mL' : '',
+			ends: (ends ? 'on' : 'never') as Ends,
+			endsOn: ends,
+			endsTimes: ''
 		};
 	}
 	const d = task.intervalDays ?? 7;
@@ -58,7 +74,10 @@ export function taskFormValues(task: Task | null, user: User, tankId: string | n
 		onDone: (task.openFormOnDone && (task.kind === 'test' || task.kind === 'water_change') ? task.kind : 'none') as OnDone,
 		product: task.product ?? '',
 		amount: task.amount != null ? String(task.amount) : '',
-		amountUnit: task.amountUnit ?? ''
+		amountUnit: task.amountUnit ?? '',
+		ends: (task.endsOn ? 'on' : 'never') as Ends,
+		endsOn: task.endsOn ?? '',
+		endsTimes: ''
 	};
 }
 
@@ -79,6 +98,10 @@ export function routineProducts(userId: string): string[] {
 const repeatOf = (form: FormData): Repeat => {
 	const r = str(form, 'recurring');
 	return r === 'no' ? 'no' : r === 'days' ? 'days' : 'every';
+};
+const endsOf = (form: FormData): Ends => {
+	const e = str(form, 'ends');
+	return e === 'on' ? 'on' : e === 'times' ? 'times' : 'never';
 };
 
 function parse(form: FormData, existing: Task | null) {
@@ -109,6 +132,23 @@ function parse(form: FormData, existing: Task | null) {
 	else if (repeat === 'days' && days.length) nextDue = onOrAfterWeekday(nextDue, days);
 	const onDone = routine ? 'none' : (str(form, 'onDone') as OnDone);
 
+	// a course: until a date, or for N times (the date of the Nth from the next due)
+	const ends = repeat === 'no' ? 'never' : endsOf(form);
+	let endsOn: string | null = null;
+	if (ends === 'on') {
+		endsOn = str(form, 'endsOn');
+		if (!isDate(endsOn)) errors.endsOn = 'Pick the last day.';
+		else if (isDate(nextDue) && endsOn < nextDue) errors.endsOn = 'The last day must be on or after the next due date.';
+	} else if (ends === 'times') {
+		const times = num(form, 'endsTimes');
+		if (times == null || !Number.isInteger(times) || times < 1 || times > 365) errors.endsTimes = 'Enter how many times, 1 to 365.';
+		else if (isDate(nextDue))
+			endsOn = endsAfterTimes(
+				{ recurring: true, intervalDays: repeat === 'every' ? (every ?? 1) * unit : null, scheduleMode: repeat === 'days' ? 'weekdays' : 'completion', weekdays: days.join(','), nextDue },
+				times
+			);
+	}
+
 	let kind: Task['kind'];
 	if (routine) kind = type;
 	else if (onDone === 'water_change' || onDone === 'test') kind = onDone;
@@ -129,7 +169,8 @@ function parse(form: FormData, existing: Task | null) {
 		amount: routine ? amount : null,
 		amountUnit: routine
 			? (type === 'dosing' ? (DOSING_UNITS.includes(amountUnit) ? amountUnit : 'mL') : FEED_UNITS.includes(amountUnit) ? amountUnit : null)
-			: null
+			: null,
+		endsOn
 	};
 	return { errors, input };
 }
@@ -150,9 +191,24 @@ const formValues = (form: FormData, existing: Task | null) => {
 		onDone: str(form, 'onDone') as OnDone,
 		product: str(form, 'product'),
 		amount: str(form, 'amount'),
-		amountUnit: str(form, 'amountUnit')
+		amountUnit: str(form, 'amountUnit'),
+		ends: endsOf(form),
+		endsOn: str(form, 'endsOn'),
+		endsTimes: str(form, 'endsTimes')
 	};
 };
+
+/** The new-task form's query string: ?tank, ?type, ?from and what a link fills in. */
+export function taskPreset(params: URLSearchParams): TaskPreset {
+	return { product: params.get('product'), every: params.get('every'), ends: params.get('ends'), amount: params.get('amount') };
+}
+
+/** A treatment course from a health entry: a dose every other day for 10 days, from today. */
+export function courseHref(tankId: string, product: string | null, today: string, from: string) {
+	const q = new URLSearchParams({ tank: tankId, type: 'dosing', every: '2', ends: addDays(today, 10), from });
+	if (product) q.set('product', product);
+	return `/tasks/new?${q}`;
+}
 
 export async function saveTaskAction({ request, locals, cookies }: RequestEvent, taskId: string | null) {
 	const user = locals.user!;

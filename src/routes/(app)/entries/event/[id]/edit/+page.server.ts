@@ -35,7 +35,7 @@ export const actions: Actions = {
 		const values: Record<string, string | string[]> = {};
 		for (const k of new Set(form.keys())) {
 			const all = form.getAll(k).map(String);
-			values[k] = ['actions', 'tags', 'reasons'].includes(k) ? all : all[0];
+			values[k] = ['actions', 'tags', 'reasons', 'additive_product', 'additive_amount', 'additive_unit'].includes(k) ? all : all[0];
 		}
 		const files = photoFiles(form);
 		const { data, errors } = parseEventData(e.category, form, tank, user);

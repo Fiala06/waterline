@@ -61,7 +61,12 @@
 	<div class="head">
 		<h1 class="hide-desk">Public page</h1>
 		<span class="head-acts">
-			{#if p.enabled}<a class="btn" href="/t/{p.slug}" target="_blank" rel="noopener">Preview page</a>{/if}
+			<!-- while the page is off there's nothing to preview: the button stays, muted -->
+			{#if p.enabled}
+				<a class="btn" href="/t/{p.slug}" target="_blank" rel="noopener">Preview page</a>
+			{:else}
+				<a class="btn off" role="link" aria-disabled="true" title="Turn the page on first" tabindex="-1">Preview page</a>
+			{/if}
 			<button class="btn btn-primary">Save</button>
 		</span>
 	</div>
@@ -206,6 +211,11 @@
 	}
 	.head h1 {
 		flex-basis: 100%;
+	}
+	.btn.off {
+		color: var(--text-muted);
+		border-color: var(--divider);
+		cursor: not-allowed;
 	}
 	.head-acts {
 		display: flex;

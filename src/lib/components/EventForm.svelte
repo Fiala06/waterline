@@ -18,7 +18,7 @@
 		EQUIPMENT_REASONS,
 		LIVESTOCK_ACTIONS,
 		LIVESTOCK_STATUS,
-		LOG_CATEGORIES,
+		LOG_TYPES,
 		MAINTENANCE_ACTIONS,
 		OBSERVATION_TAGS,
 		RECHECK_OPTIONS
@@ -43,6 +43,8 @@
 		returnTo = null,
 		task = null,
 		recentProducts = [],
+		recentAdditives = [],
+		recentFoods = [],
 		productLinks = [],
 		error = null,
 		errors = {},
@@ -70,6 +72,10 @@
 		returnTo?: string | null;
 		task?: { id: string; label: string; checked: boolean } | null;
 		recentProducts?: { product: string; amount: unknown; unit: unknown; at: string }[];
+		/** Water change: conditioners and remineralisers added before, then dosed products */
+		recentAdditives?: { product: string; amount: unknown; unit: unknown; at: string }[];
+		/** Feeding: foods fed before, by hand or by a routine */
+		recentFoods?: { food: string; amount: unknown; unit: unknown; at: string }[];
 		/** Saved products (Settings → Products): dosing one shows its Reorder link */
 		productLinks?: { name: string; url: string }[];
 		error?: string | null;
@@ -133,6 +139,18 @@
 
 	let note = $state(untrack(() => initialNote));
 	let recheck = $state('3');
+
+	// Feeding
+	let food = $state(v('food'));
+	let feedUnit = $state(untrack(() => v('unit') || (mode === 'new' ? 'pinches' : '')));
+	function pickFood(r: (typeof recentFoods)[number]) {
+		food = r.food;
+		if (typeof r.unit === 'string' && r.unit) feedUnit = r.unit;
+	}
+	// Water change: what went in
+	const initialAdditives = untrack(() =>
+		list('additive_product').map((product, i) => ({ product, amount: list('additive_amount')[i] ?? '', unit: list('additive_unit')[i] ?? '' }))
+	);
 
 	// Dosing
 	let product = $state(v('product'));
@@ -217,7 +235,8 @@
 					livestock: 'Save change',
 					equipment: 'Save equipment change',
 					observation: 'Save observation',
-					note: 'Save note'
+					note: 'Save note',
+					health: 'Save health entry'
 				}[category]
 	);
 	const title = $derived(
@@ -229,10 +248,7 @@
 					? 'Log a dose'
 					: `Log ${CATEGORY_LABEL[category].toLowerCase()}`
 	);
-	// the types at the top (README § 11): Test, Water change, Dose, Note, then the rest under More
-	const MAIN: EventCategory[] = ['water_change', 'dosing', 'note'];
-	const more = $derived(LOG_CATEGORIES.filter((c) => !MAIN.includes(c)));
-	const inMore = $derived(!MAIN.includes(category));
+	// the types at the top (README § 11): Test, then every kind of entry as an equal chip
 	const testHref = $derived.by(() => {
 		const q = new URLSearchParams();
 		for (const k of ['tank', 'date', 'time']) {
@@ -266,7 +282,9 @@
 				? `Water change · ${amount}${amountMode === 'percent' ? '%' : ` ${volUnit}`}`
 				: category === 'dosing' && product
 					? `Dosed ${product}`
-					: CATEGORY_LABEL[category],
+					: category === 'feeding' && food
+						? `Fed ${food}`
+						: CATEGORY_LABEL[category],
 		closeHref: () => closeHref,
 		timeZone,
 		busy: (b) => (busy = b),
@@ -291,18 +309,12 @@
 				<!-- the type: this one, and the others as links (README § 11) -->
 				<nav class="types" aria-label="Log type">
 					<a class="ty" href={testHref}>Test<kbd aria-hidden="true">T</kbd></a>
-					<a class="ty" class:on={category === 'water_change'} aria-current={category === 'water_change' ? 'page' : undefined} href={categoryHref('water_change')}>Water change<kbd aria-hidden="true">W</kbd></a>
-					<a class="ty" class:on={category === 'dosing'} aria-current={category === 'dosing' ? 'page' : undefined} href={categoryHref('dosing')}>Dose<kbd aria-hidden="true">D</kbd></a>
-					<a class="ty" class:on={category === 'note'} aria-current={category === 'note' ? 'page' : undefined} href={categoryHref('note')}>Note<kbd aria-hidden="true">N</kbd></a>
-					<a class="ty" class:on={inMore} aria-current={inMore ? 'page' : undefined} href={categoryHref(inMore ? category : more[0])}>More</a>
+					{#each LOG_TYPES as t (t.category)}
+						<a class="ty" class:on={category === t.category} aria-current={category === t.category ? 'page' : undefined} href={categoryHref(t.category)}
+							>{t.label}{#if t.key}<kbd aria-hidden="true">{t.key}</kbd>{/if}</a
+						>
+					{/each}
 				</nav>
-				{#if inMore}
-					<nav class="cats" aria-label="Category">
-						{#each more as c (c)}
-							<a class="chip" class:selected={c === category} aria-current={c === category ? 'page' : undefined} href={categoryHref(c)}>{CATEGORY_LABEL[c]}</a>
-						{/each}
-					</nav>
-				{/if}
 			{/if}
 			<div class="trow">
 				<h1>{title}</h1>
@@ -331,6 +343,9 @@
 						{tankVolume}
 						{tankVolumeIsActual}
 						error={errors.amount}
+						additives={initialAdditives}
+						recentProducts={recentAdditives}
+						{errors}
 					/>
 				{:else if category === 'dosing'}
 					<div class="dose">
@@ -370,28 +385,40 @@
 						<!-- a product dosed before is one worth a link -->
 						<a class="reorder" href="/settings/products?name={encodeURIComponent(product.trim())}#add">Save a reorder link</a>
 					{/if}
-				{:else if category === 'feeding'}
-					<!-- logged by a feeding routine's Done (#17), edited here -->
+					{:else if category === 'feeding'}
+					<!-- by hand here, or logged by a feeding routine's Done (#17): the same food / amount / unit -->
 					<div class="dose">
 						<div class="field product">
 							<label class="label" for="food">Food</label>
-							<input class="input" id="food" name="food" defaultValue={v('food')} maxlength="80" autocomplete="off" placeholder="e.g. Micro pellets" aria-invalid={!!errors.food} />
+							<input class="input" id="food" name="food" bind:value={food} list="recent-foods" maxlength="80" autocomplete="off" placeholder="e.g. Micro pellets" aria-invalid={!!errors.food} />
+							<datalist id="recent-foods">
+								{#each recentFoods as r (r.food)}<option value={r.food}></option>{/each}
+							</datalist>
+							{#if recentFoods.length && !food}
+								<div class="chips">
+									{#each recentFoods as r (r.food)}
+										<button type="button" class="chip" onclick={() => pickFood(r)}>{r.food}</button>
+									{/each}
+								</div>
+							{/if}
 							{#if errors.food}<span class="error-text">✕ {errors.food}</span>{/if}
 						</div>
 						<div class="field">
 							<label class="label" for="amount">Amount</label>
-							<input class="input" id="amount" name="amount" inputmode="decimal" autocomplete="off" defaultValue={v('amount')} aria-invalid={!!errors.amount} />
+							<input class="input" id="amount" name="amount" inputmode="decimal" autocomplete="off" defaultValue={v('amount')} placeholder="e.g. 2" aria-invalid={!!errors.amount} />
 							{#if errors.amount}<span class="error-text">✕ {errors.amount}</span>{/if}
 						</div>
 						<div class="field">
 							<label class="label" for="unit">Unit</label>
-							<select class="input" id="unit" name="unit" value={v('unit')}>
-								<option value="">—</option>
-								{#each FEED_UNITS as u (u)}<option value={u}>{u}</option>{/each}
-							</select>
+							<input class="input" id="unit" name="unit" bind:value={feedUnit} list="feed-units" maxlength="20" autocomplete="off" placeholder="pinches, cubes, mL, g" />
+							<datalist id="feed-units">
+								{#each FEED_UNITS as u (u)}<option value={u}></option>{/each}
+								<option value="mL"></option>
+								<option value="tablets"></option>
+							</datalist>
 						</div>
 					</div>
-				{:else if category === 'maintenance'}
+					{:else if category === 'maintenance'}
 					<fieldset class="field">
 						<legend class="label">What did you do?</legend>
 						<div class="chips">
@@ -688,23 +715,11 @@
 		color: var(--accent-text);
 		font-size: 16px;
 	}
-	.types,
-	.cats {
+	/* every kind as one wrapping row of equal chips, the current one accent */
+	.types {
 		display: flex;
+		flex-wrap: wrap;
 		gap: 6px;
-		overflow-x: auto;
-		scrollbar-width: none;
-		margin: 0 -20px;
-		padding: 0 20px;
-	}
-	.types::-webkit-scrollbar,
-	.cats::-webkit-scrollbar {
-		display: none;
-	}
-	.cats .chip {
-		flex-shrink: 0;
-		height: 36px;
-		font-size: 13px;
 	}
 	.ty {
 		flex-shrink: 0;
@@ -973,13 +988,6 @@
 		}
 		.ty kbd {
 			display: inline;
-		}
-		.types,
-		.cats {
-			flex-wrap: wrap;
-			overflow: visible;
-			margin: 0;
-			padding: 0;
 		}
 		.fields :global(.field) {
 			gap: 6px;

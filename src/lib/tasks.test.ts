@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { amountText, dueInfo, effectiveDue, intervalText, nextDueAfterCompletion, onOrAfterWeekday, parseWeekdays, reminderDue, routineLine, scheduleExamples, snoozeOptions } from './tasks';
+import { amountText, courseText, dueInfo, effectiveDue, endsAfterTimes, intervalText, nextDueAfterCompletion, occurrencesUntil, onOrAfterWeekday, parseWeekdays, reminderDue, routineLine, scheduleExamples, snoozeOptions } from './tasks';
 
 const weekly = { recurring: true, intervalDays: 7, scheduleMode: 'completion' as const, nextDue: '2026-09-24' };
 
@@ -17,6 +17,54 @@ describe('nextDueAfterCompletion', () => {
 
 	it('closes one-off tasks', () => {
 		expect(nextDueAfterCompletion({ ...weekly, recurring: false }, '2026-09-26', '2026-09-26')).toBeNull();
+	});
+
+	it('stops at the end of a course', () => {
+		// every 2 days from Oct 1, ending Oct 9: Oct 1, 3, 5, 7, 9
+		const course = { recurring: true, intervalDays: 2, scheduleMode: 'completion' as const, nextDue: '2026-10-01', endsOn: '2026-10-09' };
+		expect(nextDueAfterCompletion(course, '2026-10-01', '2026-10-01')).toBe('2026-10-03');
+		expect(nextDueAfterCompletion({ ...course, nextDue: '2026-10-07' }, '2026-10-07', '2026-10-07')).toBe('2026-10-09');
+		// the last dose: done, nothing more is due
+		expect(nextDueAfterCompletion({ ...course, nextDue: '2026-10-09' }, '2026-10-09', '2026-10-09')).toBeNull();
+		// done late, after the end: over
+		expect(nextDueAfterCompletion({ ...course, nextDue: '2026-10-09' }, '2026-10-12', '2026-10-12')).toBeNull();
+		// a fixed schedule that would step past the end
+		expect(nextDueAfterCompletion({ ...course, scheduleMode: 'fixed', nextDue: '2026-10-07' }, '2026-10-10', '2026-10-10')).toBeNull();
+		// on set days: Mon, Wed, Fri until Fri Oct 9
+		const days = { recurring: true, intervalDays: null, scheduleMode: 'weekdays' as const, weekdays: '1,3,5', nextDue: '2026-10-07', endsOn: '2026-10-09' };
+		expect(nextDueAfterCompletion(days, '2026-10-07', '2026-10-07')).toBe('2026-10-09');
+		expect(nextDueAfterCompletion({ ...days, nextDue: '2026-10-09' }, '2026-10-09', '2026-10-09')).toBeNull();
+		// no end: as before
+		expect(nextDueAfterCompletion({ ...course, endsOn: null, nextDue: '2026-10-09' }, '2026-10-09', '2026-10-09')).toBe('2026-10-11');
+	});
+});
+
+describe('a course with an end', () => {
+	const course = { recurring: true, intervalDays: 2, scheduleMode: 'completion' as const, nextDue: '2026-10-01', endsOn: '2026-10-09', kind: 'dosing' };
+
+	it('lists the days left', () => {
+		expect(occurrencesUntil(course, '2026-10-09')).toEqual(['2026-10-01', '2026-10-03', '2026-10-05', '2026-10-07', '2026-10-09']);
+		expect(occurrencesUntil({ ...course, nextDue: '2026-10-10' }, '2026-10-09')).toEqual([]);
+		expect(occurrencesUntil({ ...course, scheduleMode: 'weekdays', weekdays: '1,3,5', nextDue: '2026-10-06' }, '2026-10-12')).toEqual(['2026-10-07', '2026-10-09', '2026-10-12']);
+		expect(occurrencesUntil({ ...course, recurring: false }, '2026-10-09')).toEqual(['2026-10-01']);
+	});
+
+	it('turns "N times" into the last day', () => {
+		expect(endsAfterTimes(course, 1)).toBe('2026-10-01');
+		expect(endsAfterTimes(course, 5)).toBe('2026-10-09');
+		expect(endsAfterTimes({ ...course, scheduleMode: 'weekdays', weekdays: '1,3,5', nextDue: '2026-10-06' }, 3)).toBe('2026-10-12');
+		expect(endsAfterTimes(course, 0)).toBeNull();
+		expect(endsAfterTimes({ ...course, nextDue: null }, 3)).toBeNull();
+	});
+
+	it('says what is left', () => {
+		expect(courseText(course)).toBe('5 doses left · ends Oct 9');
+		expect(courseText({ ...course, nextDue: '2026-10-09' })).toBe('1 dose left · ends Oct 9');
+		expect(courseText({ ...course, kind: 'feeding', nextDue: '2026-10-07' })).toBe('2 feedings left · ends Oct 9');
+		expect(courseText({ ...course, kind: 'maintenance' })).toBe('5 times left · ends Oct 9');
+		expect(courseText({ ...course, endsOn: null })).toBeNull();
+		expect(intervalText(course)).toBe('every 2 days · 5 doses left · ends Oct 9');
+		expect(routineLine({ ...course, amount: 1, amountUnit: 'g' })).toBe('1 g · every 2 days · 5 doses left · ends Oct 9');
 	});
 });
 

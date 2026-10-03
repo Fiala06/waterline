@@ -10,7 +10,7 @@ import {
 	parseCategory,
 	parseEventData
 } from '$lib/server/log-forms';
-import { createEvent, eventByClientId, recentDosingProducts } from '$lib/server/logs';
+import { createEvent, eventByClientId, recentAdditives, recentDosingProducts, recentFoods } from '$lib/server/logs';
 import { photoFiles, preparePhotos, storePhotos } from '$lib/server/photos';
 import { listProducts } from '$lib/server/products';
 import { getTank } from '$lib/server/tanks';
@@ -31,6 +31,8 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 		redirect(303, `${url.pathname}?${url.searchParams}`);
 	}
 	const tank = getTank(user.id, tankId);
+	// Health has its own page
+	if (url.searchParams.get('category') === 'health') redirect(303, `/tanks/${tank.id}/health`);
 	const category = parseCategory(url.searchParams.get('category'));
 	const date = url.searchParams.get('date');
 	const time = url.searchParams.get('time');
@@ -44,6 +46,9 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 		when: date && time ? { date, time } : null,
 		task: completableTask(user, tank.id, taskKindFor(category), url.searchParams.get('task')),
 		recentProducts: category === 'dosing' ? recentDosingProducts(tank.id) : [],
+		// a water change's conditioner / remineraliser rows: what was added before, then what's been dosed
+		recentAdditives: category === 'water_change' ? dedupe([...recentAdditives(tank.id), ...recentDosingProducts(tank.id)]) : [],
+		recentFoods: category === 'feeding' ? recentFoods(tank.id) : [],
 		// "Reorder" for a dosed product with a saved link
 		productLinks: category === 'dosing' ? listProducts(user.id).map((p) => ({ name: p.name, url: p.url })) : [],
 		inventory: ['livestock', 'equipment', 'maintenance'].includes(category)
@@ -64,6 +69,11 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 	};
 };
 
+const dedupe = <T extends { product: string }>(rows: T[]) => {
+	const seen = new Set<string>();
+	return rows.filter((r) => !seen.has(r.product.toLowerCase()) && seen.add(r.product.toLowerCase()));
+};
+
 export const actions: Actions = {
 	default: async ({ request, locals, url, cookies }) => {
 		const user = locals.user!;
@@ -75,7 +85,7 @@ export const actions: Actions = {
 		const values: Record<string, string | string[]> = {};
 		for (const k of new Set(form.keys())) {
 			const all = form.getAll(k).map(String);
-			values[k] = ['actions', 'tags', 'reasons'].includes(k) ? all : all[0];
+			values[k] = ['actions', 'tags', 'reasons', 'additive_product', 'additive_amount', 'additive_unit'].includes(k) ? all : all[0];
 		}
 
 		const files = photoFiles(form);
@@ -166,6 +176,8 @@ export const actions: Actions = {
 			message = `✓ Water change logged${next ? ` · next due ${fmtDate(next)}` : ''}`;
 		} else if (category === 'observation' && data.recheck_at) {
 			message = `✓ Observation saved · check again ${fmtDate(data.recheck_at as string)}`;
+		} else if (category === 'feeding') {
+			message = '✓ Feeding logged';
 		} else if (category === 'note') {
 			message = files.length && !optStr(form, 'note') ? `✓ Photo${files.length === 1 ? '' : 's'} added` : '✓ Note saved';
 		} else if (completeTaskId) {

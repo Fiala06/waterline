@@ -2,7 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import { eventKindLabel, eventTitle } from '$lib/events';
 import { setFlash } from '$lib/server/flash';
 import { deletePhoto, getPhoto, setCover, tankPhotos } from '$lib/server/photos';
-import { getTank } from '$lib/server/tanks';
+import { getTank, updateTank } from '$lib/server/tanks';
 import { getLivestock, getPlant, listLivestock, listPlants, photoPets, tagPhoto, updateLivestockDetails, updatePlant } from '$lib/server/specs';
 import { livestockLabel } from '$lib/livestock';
 import { createShare, getShareForPhoto, publicSettings, revokeShare, updateShare } from '$lib/server/public';
@@ -69,8 +69,26 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 
 export const actions: Actions = {
 	cover: ({ locals, params, cookies }) => {
-		setCover(locals.user!.id, params.id);
-		setFlash(cookies, '✓ Set as tank cover');
+		const user = locals.user!;
+		const photo = getPhoto(user.id, params.id);
+		const before = getTank(user.id, photo.tankId);
+		setCover(user.id, params.id);
+		// Undo puts the cover before back (or none), where it was
+		setFlash(cookies, '✓ Cover set', {
+			undo: { action: `/photos/${params.id}?/uncover`, name: 'previous', value: [before.coverPhotoId ?? '', before.coverX, before.coverY].join(',') }
+		});
+		redirect(303, `/photos/${params.id}`);
+	},
+	/** Undo of Set as cover: the cover from before, or none. */
+	uncover: async ({ locals, params, request, cookies }) => {
+		const user = locals.user!;
+		const photo = getPhoto(user.id, params.id);
+		const [prev = '', x = '50', y = '50'] = String((await request.formData()).get('previous') ?? '').split(',');
+		const pct = (s: string) => Math.min(100, Math.max(0, Number(s) || 50));
+		// only a photo of this tank can be its cover again
+		const back = prev && tankPhotos(user.id, photo.tankId).some((r) => r.photo.id === prev) ? prev : null;
+		updateTank(user.id, photo.tankId, { coverPhotoId: back, coverX: pct(x), coverY: pct(y) });
+		setFlash(cookies, back ? 'Cover put back' : 'Cover removed');
 		redirect(303, `/photos/${params.id}`);
 	},
 	share: ({ locals, params }) => {

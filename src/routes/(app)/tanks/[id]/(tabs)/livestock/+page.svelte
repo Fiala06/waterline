@@ -102,6 +102,7 @@
 								{:else}
 									<span class="in-tank">✓ In tank</span>
 								{/if}
+								{#if l.health}<span class="tag tag-neutral q">▲ Under treatment</span>{/if}
 							</div>
 							<div class="cnt" role="cell">
 								<div class="stepper">

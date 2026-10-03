@@ -313,7 +313,7 @@ export function publicView(page: PublicPage, tank: Tank, owner: User, ranges: Pu
 	return {
 		slug: page.slug,
 		name: tank.name,
-		type: tankTypeLabel(tank.type),
+		type: tank.cycling ? `${tankTypeLabel(tank.type)} · Cycling` : tankTypeLabel(tank.type),
 		volume: vol,
 		since: tank.startDate ? monthYear(tank.startDate) : null,
 		keeper: displayNameFor(owner, page.displayName),

@@ -19,6 +19,8 @@ export const load: PageServerLoad = ({ locals, params }) => {
 	return {
 		// the tab's toolbar: "6 plants"
 		toolbarText: list.length ? `${list.length} plant${list.length === 1 ? '' : 's'}` : '',
+		// the Added column says something only when the dates differ (an import gives them all one day)
+		showAdded: new Set(list.map((p) => dateInZone(p.createdAt, user.timeZone))).size > 1,
 		plants: list.map((p, i) => ({
 			id: p.id,
 			name: p.name,

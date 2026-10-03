@@ -2,7 +2,7 @@
 	// 14 · Water change amount (% or volume, with presets) and source water.
 	// The log event form uses it as is; the water test's "Also log a water
 	// change" card uses it `compact`, sized like the readings around it.
-	import { WATER_SOURCES } from '$lib/events';
+	import { DOSING_UNITS, WATER_SOURCES } from '$lib/events';
 	import { formatNumber, parseNumber } from '$lib/units';
 	import { TIPS } from '$lib/tips';
 	import Tip from './Tip.svelte';
@@ -15,7 +15,10 @@
 		tankVolume,
 		tankVolumeIsActual,
 		error = null,
-		compact = false
+		compact = false,
+		additives = [],
+		recentProducts = [],
+		errors = {}
 	}: {
 		amountMode?: string;
 		amount?: string;
@@ -25,7 +28,22 @@
 		tankVolumeIsActual: boolean;
 		error?: string | null;
 		compact?: boolean;
+		/** What went in: conditioner / remineraliser rows (not shown `compact`) */
+		additives?: { product: string; amount: string; unit: string }[];
+		/** For the product datalist: added before, or dosed */
+		recentProducts?: { product: string; amount: unknown; unit: unknown; at: string }[];
+		/** `additive_<i>` from the server */
+		errors?: Record<string, string>;
 	} = $props();
+
+	// Conditioner / remineraliser rows: start with what the entry has, add rows as needed
+	let rows = $state(additives.map((a) => ({ ...a })));
+	const addRow = () => (rows = [...rows, { product: '', amount: '', unit: 'mL' }]);
+	const removeRow = (i: number) => (rows = rows.filter((_, j) => j !== i));
+	function pickProduct(i: number) {
+		const r = recentProducts.find((p) => p.product.toLowerCase() === rows[i].product.trim().toLowerCase());
+		if (r && typeof r.unit === 'string' && r.unit) rows[i].unit = r.unit;
+	}
 
 	// % and volume convert into each other when the tank's volume is known (README § 11)
 	function switchMode(mode: string) {
@@ -86,6 +104,47 @@
 			{/each}
 		</div>
 	</fieldset>
+	{#if !compact}
+		<!-- what went in: optional, one row per product -->
+		<fieldset class="field additives">
+			<legend class="label">What went in · optional</legend>
+			{#if rows.length}
+				<datalist id="recent-additives">
+					{#each recentProducts as r (r.product)}<option value={r.product}></option>{/each}
+				</datalist>
+				<div class="rows">
+					{#each rows as row, i (i)}
+						<div class="additive">
+							<label class="sr-only" for="additive-product-{i}">Product</label>
+							<input
+								class="input"
+								id="additive-product-{i}"
+								name="additive_product"
+								list="recent-additives"
+								maxlength="80"
+								autocomplete="off"
+								placeholder="Conditioner or remineraliser"
+								bind:value={row.product}
+								onchange={() => pickProduct(i)}
+								aria-invalid={!!errors[`additive_${i}`]}
+							/>
+							<label class="sr-only" for="additive-amount-{i}">Amount</label>
+							<input class="input" id="additive-amount-{i}" name="additive_amount" inputmode="decimal" autocomplete="off" placeholder="Amount" bind:value={row.amount} />
+							<label class="sr-only" for="additive-unit-{i}">Unit</label>
+							<input class="input" id="additive-unit-{i}" name="additive_unit" list="additive-units" maxlength="20" autocomplete="off" placeholder="mL" bind:value={row.unit} />
+							<button type="button" class="btn-icon" aria-label="Remove {row.product || 'this row'}" onclick={() => removeRow(i)}>✕</button>
+							{#if errors[`additive_${i}`]}<span class="error-text">✕ {errors[`additive_${i}`]}</span>{/if}
+						</div>
+					{/each}
+				</div>
+				<datalist id="additive-units">
+					{#each DOSING_UNITS as u (u)}<option value={u}></option>{/each}
+					<option value="capfuls"></option>
+				</datalist>
+			{/if}
+			<button type="button" class="btn-text add" onclick={addRow}>+ Add conditioner or remineraliser</button>
+		</fieldset>
+	{/if}
 </div>
 
 <style>
@@ -207,6 +266,34 @@
 	}
 	.three {
 		grid-template-columns: repeat(3, 1fr);
+	}
+
+	/* what went in: product wide, amount and unit small, ✕ to take a row out */
+	.additives .rows {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+	.additive {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) 72px 72px 44px;
+		gap: 6px;
+		align-items: center;
+	}
+	.additive .error-text {
+		grid-column: 1 / -1;
+	}
+	.additive .btn-icon {
+		width: 44px;
+		height: 44px;
+		color: var(--text-muted);
+	}
+	.additives .add {
+		min-height: 44px;
+		margin-top: 2px;
+		padding: 0;
+		font-size: 14px;
+		font-weight: 800;
 	}
 
 	/* On the water test: the size of a reading, not the page's main field */

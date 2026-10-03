@@ -1,6 +1,8 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { and, desc, eq, or, sql } from 'drizzle-orm';
 import { eventTitle } from '$lib/events';
+import { outcomeOpen, outcomeText } from '$lib/livestock';
+import { healthEvents } from '$lib/server/log-livestock';
 import { dateInZone, fmtDate, fmtDateLong } from '$lib/time';
 import { db } from '$lib/server/db';
 import { events } from '$lib/server/db/schema';
@@ -39,7 +41,19 @@ export const load: PageServerLoad = ({ locals, params }) => {
 		.all()
 		.map((e) => ({ id: e.id, title: eventTitle(e, user), day: fmtDate(dateInZone(e.occurredAt, user.timeZone)) }));
 	const tank = getTank(user.id, l.tankId);
+	// its health entries, newest first; "▲ Under treatment" while the latest is still open
+	const health = healthEvents(l.tankId, l.id).map((e) => ({
+		id: e.id,
+		day: fmtDate(dateInZone(e.occurredAt, user.timeZone)),
+		symptoms: Array.isArray(e.data.symptoms) ? (e.data.symptoms as string[]) : [],
+		treatment: typeof e.data.treatment === 'string' ? e.data.treatment : null,
+		outcome: outcomeText(e.data.outcome),
+		open: outcomeOpen(e.data.outcome),
+		note: e.note
+	}));
 	return {
+		health,
+		underTreatment: !l.removedAt && !!health[0]?.open,
 		tank: { id: tank.id, name: tank.name },
 		animal: {
 			id: l.id,

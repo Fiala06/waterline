@@ -33,6 +33,8 @@ export const load: PageServerLoad = ({ locals, params }) => {
 		tank.lengthCm && tank.widthCm && tank.heightCm ? `${len(tank.lengthCm)} × ${len(tank.widthCm)} × ${len(tank.heightCm)} ${unitLabel('length', user)}` : null;
 	const details: [string, string | null][] = [
 		['Photoperiod', tank.photoperiodH != null ? `${tank.photoperiodH} h` : null],
+		['Lights', tank.lightsOn && tank.lightsOff ? `${tank.lightsOn}–${tank.lightsOff}` : null],
+		['CO₂', tank.co2On && tank.co2Off ? `${tank.co2On}–${tank.co2Off}` : null],
 		['Substrate', tank.substrate],
 		['Water source', tank.waterSource ? (SOURCES[tank.waterSource] ?? tank.waterSource) : null],
 		['Volume', vol(tank.actualVolumeL ?? tank.nominalVolumeL)],

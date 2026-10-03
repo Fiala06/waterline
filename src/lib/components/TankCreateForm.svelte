@@ -71,6 +71,10 @@
 			</div>
 			{#if errors.nominalVolume}<span class="error-text">✕ {errors.nominalVolume}</span>{/if}
 		</div>
+		<label class="check-row cycling">
+			<input type="checkbox" name="cycling" defaultChecked={values.cycling === 'on'} />
+			<span>This tank is still cycling</span>
+		</label>
 		<p class="hint">
 			Default parameters and a weekly water-change reminder are added. You can change them later in tank settings.
 		</p>
@@ -111,6 +115,10 @@
 		font-size: 13px;
 		line-height: 1.5;
 		color: var(--text-muted);
+	}
+	.cycling {
+		font-size: 14px;
+		font-weight: 600;
 	}
 	.foot {
 		padding: 0 24px calc(32px + env(safe-area-inset-bottom));

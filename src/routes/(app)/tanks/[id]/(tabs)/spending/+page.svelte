@@ -1,6 +1,7 @@
 <script lang="ts">
 	// Spending (#7): this month, this year and all time, this year by category,
-	// the last 12 months, and each expense (with its receipt, #8).
+	// the last 12 months, and each expense (with its receipt, #8). A category or
+	// month bar is a link that filters the list (?cat=, ?month=), so it works without JS.
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ImportButton from '$lib/components/ImportButton.svelte';
 	let { data } = $props();
@@ -11,7 +12,7 @@
 
 <!-- "+ Add expense" is in the tank header (layout) -->
 <div class="body">
-	{#if !data.expenses.length}
+	{#if !data.total}
 		<EmptyState
 			icon="maintenance"
 			title="No spending logged yet"
@@ -34,10 +35,12 @@
 				{#if data.byCategory.length}
 					<ul class="bars cats">
 						{#each data.byCategory as c (c.key)}
-							<li>
-								<span class="bl">{c.label}</span>
-								<span class="bar" aria-hidden="true"><i style:width="{Math.max(2, c.share * 100)}%"></i></span>
-								<span class="bv num">{c.amount}</span>
+							<li class:on={c.on}>
+								<a href={c.on ? `${base}/spending` : `${base}/spending?cat=${c.key}`} aria-current={c.on ? 'true' : undefined} title="Show only {c.label}">
+									<span class="bl">{c.label}</span>
+									<span class="bar" aria-hidden="true"><i style:width="{Math.max(2, c.share * 100)}%"></i></span>
+									<span class="bv num">{c.amount}</span>
+								</a>
 							</li>
 						{/each}
 					</ul>
@@ -49,10 +52,18 @@
 				<h2 id="month-h" class="kicker rule">The last 12 months</h2>
 				<ul class="bars months">
 					{#each [...data.months].reverse() as m (m.key)}
-						<li class:zero={!m.cents}>
-							<span class="bl">{m.label}</span>
-							<span class="bar" aria-hidden="true"><i style:width="{m.cents ? Math.max(2, m.share * 100) : 0}%"></i></span>
-							<span class="bv num">{m.amount}</span>
+						<li class:zero={!m.cents} class:on={m.on}>
+							{#if m.cents}
+								<a href={m.on ? `${base}/spending` : `${base}/spending?month=${m.key}`} aria-current={m.on ? 'true' : undefined} title="Show only {m.label}">
+									<span class="bl">{m.label}</span>
+									<span class="bar" aria-hidden="true"><i style:width="{Math.max(2, m.share * 100)}%"></i></span>
+									<span class="bv num">{m.amount}</span>
+								</a>
+							{:else}
+								<span class="bl">{m.label}</span>
+								<span class="bar" aria-hidden="true"></span>
+								<span class="bv num">{m.amount}</span>
+							{/if}
 						</li>
 					{/each}
 				</ul>
@@ -60,7 +71,13 @@
 		</div>
 
 		<section aria-labelledby="list-h">
-			<h2 id="list-h" class="kicker rule">Expenses · {data.expenses.length}</h2>
+			<h2 id="list-h" class="kicker rule">Expenses · {data.expenses.length}{data.filter ? ` of ${data.total}` : ''}</h2>
+			{#if data.filter}
+				<p class="showing">Showing: {data.filter.label} · <a href="{base}/spending">clear</a></p>
+			{/if}
+			{#if !data.expenses.length}
+				<p class="none">Nothing in {data.filter?.label}.</p>
+			{/if}
 			<ul class="list">
 				{#each data.expenses as e (e.id)}
 					<li>
@@ -149,14 +166,43 @@
 		display: flex;
 		flex-direction: column;
 	}
-	.bars li {
+	.bars li,
+	.bars li a {
 		display: grid;
 		grid-template-columns: 110px minmax(0, 1fr) 80px;
 		align-items: center;
 		gap: 12px;
+		font-size: 14px;
+		color: var(--text);
+	}
+	.bars li {
 		padding: 9px 0;
 		border-bottom: 1px solid var(--divider);
-		font-size: 14px;
+	}
+	/* the bar is the link: the row holds it, so the grid is the link's */
+	.bars li:has(> a) {
+		display: block;
+	}
+	.bars li a {
+		min-height: 24px;
+	}
+	.bars li.on .bl {
+		font-weight: 800;
+	}
+	@media (hover: hover) {
+		.bars li a:hover .bl {
+			color: var(--accent-text);
+			text-decoration: underline;
+			text-underline-offset: 3px;
+		}
+	}
+	.showing {
+		margin: 8px 0 0;
+		font-size: 13px;
+		color: var(--text-muted);
+	}
+	.showing a {
+		font-weight: 800;
 	}
 	.bar {
 		height: 10px;
@@ -172,11 +218,14 @@
 		font-weight: 800;
 		text-align: right;
 	}
-	.months li {
+	.months li,
+	.months li a {
 		grid-template-columns: 70px minmax(0, 1fr) 80px;
+		font-size: 13px;
+	}
+	.months li {
 		padding: 4px 0;
 		border-bottom: none;
-		font-size: 13px;
 	}
 	.months .bar {
 		height: 8px;

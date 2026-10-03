@@ -35,6 +35,7 @@
 				{#if sub === 'equipment'}
 					<a class="btn btn-primary" href="{base}/equipment/new">+ Add equipment</a>
 				{:else if sub === 'livestock'}
+					<a class="btn" href="{base}/health">Health</a>
 					<a class="btn" href="{base}/livestock/several">Add several</a>
 					<a class="btn btn-primary" href="{base}/livestock/new">+ Add livestock</a>
 				{:else if sub === 'spending'}

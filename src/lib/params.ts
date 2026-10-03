@@ -118,6 +118,9 @@ export function defaultParameters(prefs: UnitPrefs, type: TankType = 'freshwater
 
 	const ammonia = p('nh3', 'Ammonia', 'ppm', 2, [0, 0.25]);
 	const nitrite = p('no2', 'Nitrite', 'ppm', 2, [0, 0.25]);
+	// shrimp keepers and RODI remineralisers test TDS (and conductivity) daily
+	const tds = p('tds', 'TDS', 'ppm', 0, [100, 250]);
+	const ec = p('ec', 'Conductivity', 'µS/cm', 0, [150, 450]);
 
 	const sets: Record<TankType, ReturnType<typeof p>[]> = {
 		freshwater: [
@@ -127,6 +130,8 @@ export function defaultParameters(prefs: UnitPrefs, type: TankType = 'freshwater
 			p('no3', 'Nitrate', 'ppm', 0, [5, 20]),
 			p('gh', 'GH', 'dGH', 0, hard([4, 8], [70, 140])),
 			p('kh', 'KH', 'dKH', 0, hard([2, 5], [35, 90])),
+			tds,
+			ec,
 			temp([74, 80], [23, 27])
 		],
 		planted: [
@@ -140,6 +145,8 @@ export function defaultParameters(prefs: UnitPrefs, type: TankType = 'freshwater
 			p('co2', 'CO₂', 'ppm', 0, [20, 30]),
 			p('gh', 'GH', 'dGH', 0, hard([4, 8], [70, 140])),
 			p('kh', 'KH', 'dKH', 0, hard([2, 5], [35, 90])),
+			tds,
+			ec,
 			temp([74, 80], [23, 27])
 		],
 		brackish: [
@@ -150,6 +157,8 @@ export function defaultParameters(prefs: UnitPrefs, type: TankType = 'freshwater
 			p('sal', 'Salinity', 'ppt', 0, [5, 15]),
 			p('gh', 'GH', 'dGH', 0, hard([12, 20], [210, 360])),
 			p('kh', 'KH', 'dKH', 0, hard([10, 18], [180, 320])),
+			p('tds', 'TDS', 'ppm', 0, [3000, 12000]),
+			p('ec', 'Conductivity', 'µS/cm', 0, [5000, 20000]),
 			temp([75, 80], [24, 27])
 		],
 		reef: [
@@ -162,6 +171,7 @@ export function defaultParameters(prefs: UnitPrefs, type: TankType = 'freshwater
 			ammonia,
 			nitrite,
 			p('ph', 'pH', '', 1, [7.9, 8.4]),
+			p('orp', 'ORP', 'mV', 0, [300, 450]),
 			temp([76, 79], [24.5, 26])
 		]
 	};
@@ -183,6 +193,9 @@ const COMPACT_NAMES: Record<string, string> = {
 	ca: 'Ca',
 	mg: 'Mg',
 	sal: 'Sal',
+	tds: 'TDS',
+	ec: 'EC',
+	orp: 'ORP',
 	temp: 'Temp'
 };
 

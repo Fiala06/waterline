@@ -9,6 +9,7 @@ import { events } from '$lib/server/db/schema';
 import { setFlash } from '$lib/server/flash';
 import { num, str } from '$lib/server/forms';
 import { changeCount, getLivestock, listEquipment, listLivestock, setLivestockStatus, type CountReason } from '$lib/server/specs';
+import { underTreatmentIn } from '$lib/server/log-livestock';
 import { speciesPhotos } from '$lib/server/stock-photos';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -39,7 +40,9 @@ export const load: PageServerLoad = ({ locals, params }) => {
 	const rows = bySpecies(listLivestock(user.id, params.id));
 	// a pet's own photo, else the species photo from Wikimedia Commons (some come in the background)
 	const photos = speciesPhotos(rows.map((l) => ({ photoId: l.photoId, scientific: l.scientificName, common: l.commonName })));
-	const items = rows.map((l, i) => ({ ...view(l), photo: photos.list[i]?.src ?? null }));
+	// ▲ on a row whose latest health entry is still watching or treating
+	const treating = underTreatmentIn(params.id);
+	const items = rows.map((l, i) => ({ ...view(l), photo: photos.list[i]?.src ?? null, health: treating.has(l.id) }));
 	const animals = items.reduce((n, l) => n + l.count, 0);
 	const species = speciesCount(rows);
 	return {

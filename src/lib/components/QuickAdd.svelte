@@ -1,7 +1,9 @@
 <script lang="ts">
 	// 04 / D12 · Quick add. Defaults to the current tank and now; both changeable.
-	// The three main kinds big (rows on phones, tiles on desktop), then the rest
-	// and importing as one grid of the same smaller tiles.
+	// On phones the Log button is the only way in, so the three main kinds are
+	// big rows and the rest (with Dosing) are tiles. On desktop it opens from
+	// "More…" under Log water test ▾, which already lists Test, Water change,
+	// Dose and Note, so only the other kinds and importing are shown.
 	// Desktop keys: T water test, W water change, N note.
 	import { goto } from '$app/navigation';
 	import CategoryIcon from './CategoryIcon.svelte';
@@ -60,12 +62,15 @@
 	}
 
 	// the other kinds, and importing: one grid of the same tiles, 3 across
+	// (Dosing only on phones: the desktop's Log ▾ menu has it)
 	const more = [
-		{ category: 'dosing', label: 'Dosing' },
+		{ category: 'dosing', label: 'Dosing', phone: true },
+		{ category: 'feeding', label: 'Feeding' },
 		{ category: 'maintenance', label: 'Maintenance' },
 		{ category: 'livestock', label: 'Livestock / plants' },
 		{ category: 'equipment', label: 'Equipment' },
-		{ category: 'observation', label: 'Observation' }
+		{ category: 'observation', label: 'Observation' },
+		{ category: 'health', label: 'Health' }
 	] as const;
 
 	// "Now · Sep 28, 8:14 AM": when the sheet opened, in the keeper's time zone
@@ -116,8 +121,8 @@
 			</button>
 		</div>
 
-		<!-- phones: three wide rows (04); desktop: three tiles with their key (D12) -->
-		<div class="big">
+		<!-- phones: three wide rows (04); the desktop's Log ▾ menu already has these -->
+		<div class="big hide-desk">
 			<a class="choice primary" href={href('/entries/test/new')} onclick={() => (open = false)}>
 				<span class="ic hide-desk"><CategoryIcon kind="test" size={44} inverted /></span>
 				<span class="ic hide-phone"><CategoryIcon kind="test" size={36} inverted /></span>
@@ -159,7 +164,7 @@
 			<h3 class="more-label" id="qa-more">More</h3>
 			<div class="tiles">
 				{#each more as m (m.category)}
-					<a class="tile" href={href('/entries/event/new', { category: m.category })} onclick={() => (open = false)}>
+					<a class="tile" class:hide-desk={'phone' in m} href={href('/entries/event/new', { category: m.category })} onclick={() => (open = false)}>
 						<CategoryIcon kind={m.category} size={32} />
 						<span>{m.label}</span>
 					</a>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bySpecies, livestockLabel, speciesCount, speciesKey } from './livestock';
+import { bySpecies, healthTitle, livestockLabel, outcomeText, speciesCount, speciesKey, underTreatment } from './livestock';
 
 const cory = { commonName: 'Corydoras', scientificName: 'Corydoras paleatus' };
 const betta = { commonName: 'Betta', scientificName: 'Betta splendens' };
@@ -25,5 +25,34 @@ describe('livestock with pets', () => {
 			{ ...cory, nickname: 'Pepper' }
 		];
 		expect(bySpecies(rows).map(livestockLabel)).toEqual(['Corydoras', 'Pepper · Corydoras', 'Salt · Corydoras', 'Neon tetra', 'Captain · Betta']);
+	});
+});
+
+describe('health entries', () => {
+	it('titles an entry for History', () => {
+		expect(healthTitle({ names: ['Betta'], symptoms: ['White spots'], outcome: 'treating' })).toBe('Health · Betta · White spots · treating');
+		expect(healthTitle({ names: ['Captain · Betta', 'Neon tetra'], symptoms: ['Gasping', 'Lethargic'], outcome: 'recovered' })).toBe('Health · Captain · Betta, Neon tetra · Gasping, Lethargic · recovered');
+		expect(healthTitle({ names: ['a', 'b', 'c'], symptoms: [], outcome: 'lost' })).toBe('Health · 3 animals · lost');
+		expect(healthTitle({})).toBe('Health · watching');
+	});
+
+	it('shows the outcome as glyph and word', () => {
+		expect(outcomeText('watching')).toBe('▲ Watching');
+		expect(outcomeText('treating')).toBe('▲ Treating');
+		expect(outcomeText('recovered')).toBe('✓ Recovered');
+		expect(outcomeText('lost')).toBe('✕ Lost');
+		expect(outcomeText('nonsense')).toBe('▲ Watching');
+	});
+
+	it('flags the animals whose latest entry is still open', () => {
+		// newest first
+		const entries = [
+			{ data: { livestockIds: ['a'], outcome: 'recovered' } },
+			{ data: { livestockIds: ['a', 'b'], outcome: 'treating' } },
+			{ data: { livestockIds: ['c'], outcome: 'lost' } },
+			{ data: { livestockIds: ['d'], outcome: 'watching' } }
+		];
+		expect([...underTreatment(entries)].sort()).toEqual(['b', 'd']);
+		expect(underTreatment([])).toEqual(new Set());
 	});
 });

@@ -1,10 +1,10 @@
 <script lang="ts">
 	// The tank workspace header: the cover, a kicker ("PLANTED · 40 GAL · DAY 201 ·
-	// LAST TEST TODAY"), the name at 42/800, then Get help, the Log water test
+	// SINCE MAR 2026 · LAST TEST TODAY"), the name at 42/800, then Share summary, the Log water test
 	// split button and the More menu; under them, the tabs with their counts.
 	// On phones the name opens the Switch tank sheet and the bell sits at the right.
 	import { goto } from '$app/navigation';
-	import { daysBetween } from '$lib/time';
+	import { tankAge } from '$lib/time';
 	import { tankTypeLabel } from '$lib/types';
 	import { photoUrl } from '$lib/media';
 	import { logHref, ui } from '$lib/ui.svelte';
@@ -33,12 +33,12 @@
 		tabs: Tab[];
 		/** unread alerts, on the phone's bell */
 		unread?: number;
-		/** phones show the tab strip only on pages the bottom bar doesn't reach */
+		/** phones show the tab strip too (the active tab scrolled into view) */
 		tabsOnPhone?: boolean;
 	} = $props();
 
-	const day = $derived(tank.startDate && tank.startDate <= today ? daysBetween(tank.startDate, today) + 1 : null);
-	const kicker = $derived([tankTypeLabel(tank.type), tank.volume, day ? `Day ${day}` : null].filter(Boolean).join(' · '));
+	// "Day 201 · since Mar 2026"
+	const kicker = $derived([tankTypeLabel(tank.type), tank.volume, tankAge(tank.startDate, today).label].filter(Boolean).join(' · '));
 
 	let logMenu = $state(false);
 	let moreMenu = $state(false);
@@ -47,8 +47,7 @@
 		{ title: 'Get help: copy a summary', sub: 'For a forum, a friend, your fish store or an AI chat', href: `${base}/summary` },
 		{ title: 'Export this tank', sub: 'A backup or CSV in Settings › Import & export', href: `/settings/export?tank=${tank.id}` },
 		{ title: 'Public page', sub: 'Share a read-only page', href: `${base}/public` },
-		{ title: 'Tank details', sub: 'Specs, notes and routines', href: base, sep: true },
-		{ title: 'Review tank setup', sub: 'Walk through details, equipment, targets and livestock', href: `${base}/review` },
+		{ title: 'Review tank setup', sub: 'Walk through details, equipment, targets and livestock', href: `${base}/review`, sep: true },
 		{ title: 'Archive tank', sub: 'Hide it from the list; you can restore it', href: `${base}/settings#archive`, sep: true, danger: true }
 	]);
 	const logKinds = [
@@ -86,13 +85,13 @@
 				</button>
 			</div>
 		</div>
-		<!-- phones: the bell; desktop: Get help, Log water test ▾, More ▾ -->
+		<!-- phones: the bell; desktop: Share summary, Log water test ▾, More ▾ -->
 		<button type="button" class="bell hide-desk" aria-label="Alerts{unread ? `, ${unread} unread` : ''}" onclick={() => (ui.alerts = true)}>
 			<Icon name="bell" size={22} />
 			{#if unread}<span class="badge" aria-hidden="true">{unread > 9 ? '9+' : unread}</span>{/if}
 		</button>
 		<div class="actions hide-phone">
-			<a class="btn-text" href="{base}/summary">Get help</a>
+			<a class="btn-text" href="{base}/summary">Share summary</a>
 			<div class="split">
 				<a class="btn btn-primary main" href={logHref('test', tank.id)}>Log water test <kbd>T</kbd></a>
 				<button
@@ -327,9 +326,11 @@
 		font-size: 12px;
 		color: var(--text-muted);
 	}
-	.menu a:hover,
-	.menu button:hover {
-		background: var(--surface);
+	@media (hover: hover) {
+		.menu a:hover,
+		.menu button:hover {
+			background: var(--surface);
+		}
 	}
 	.menu hr {
 		border: none;
@@ -374,8 +375,10 @@
 		font-size: 12px;
 		color: var(--text-muted);
 	}
-	.tabs a:hover {
-		color: var(--accent-text);
+	@media (hover: hover) {
+		.tabs a:hover {
+			color: var(--accent-text);
+		}
 	}
 	.tabs a.active {
 		color: var(--accent-text);

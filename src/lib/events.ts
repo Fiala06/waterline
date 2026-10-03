@@ -12,17 +12,34 @@ export const CATEGORY_LABEL: Record<EventCategory, string> = {
 	equipment: 'Equipment',
 	observation: 'Observation',
 	note: 'Note',
-	feeding: 'Feeding'
+	feeding: 'Feeding',
+	health: 'Health'
 };
 
 /** Category tabs on the log event form, in design order. */
 export const LOG_CATEGORIES: EventCategory[] = [
 	'water_change',
 	'dosing',
+	'feeding',
 	'maintenance',
 	'livestock',
 	'equipment',
-	'observation'
+	'observation',
+	'note',
+	'health'
+];
+
+/** The type row on the log event form: every kind as an equal chip, with its key. */
+export const LOG_TYPES: { category: EventCategory; label: string; key?: string }[] = [
+	{ category: 'water_change', label: 'Water change', key: 'W' },
+	{ category: 'dosing', label: 'Dose', key: 'D' },
+	{ category: 'feeding', label: 'Feeding' },
+	{ category: 'maintenance', label: 'Maintenance' },
+	{ category: 'note', label: 'Note', key: 'N' },
+	{ category: 'observation', label: 'Observation' },
+	{ category: 'livestock', label: 'Livestock / plants' },
+	{ category: 'equipment', label: 'Equipment' },
+	{ category: 'health', label: 'Health' }
 ];
 
 export const WATER_SOURCES = [
@@ -79,6 +96,31 @@ export const RECHECK_OPTIONS = [
 
 export const DOSING_UNITS = ['mL', 'drops', 'g', 'tsp', 'pumps'];
 
+/** What went into a water change: a conditioner or remineraliser and how much. */
+export interface Additive {
+	product: string;
+	amount: number | null;
+	unit: string | null;
+}
+
+export function additivesOf(data: Record<string, unknown>): Additive[] {
+	if (!Array.isArray(data.additives)) return [];
+	return data.additives
+		.filter((a): a is Record<string, unknown> => !!a && typeof a === 'object')
+		.map((a) => ({
+			product: typeof a.product === 'string' ? a.product : '',
+			amount: typeof a.amount === 'number' ? a.amount : null,
+			unit: typeof a.unit === 'string' && a.unit ? a.unit : null
+		}))
+		.filter((a) => a.product);
+}
+
+/** "Prime 2.5 mL", or just the product when no amount was given. */
+export function additiveText(a: Additive): string {
+	const amount = amountText(a.amount, a.unit);
+	return amount ? `${a.product} ${amount}` : a.product;
+}
+
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const str = (v: unknown) => (typeof v === 'string' ? v : v == null ? '' : String(v));
 
@@ -99,6 +141,7 @@ export function eventTitle(e: EventLike, prefs: UnitPrefs): string {
 				parts.push(`${formatNumber(toDisplay(d.volume_l, 'volume', prefs), 1)} ${unitLabel('volume', prefs)}`);
 			const src = WATER_SOURCES.find((s) => s.value === d.source);
 			if (src) parts.push(src.label);
+			for (const a of additivesOf(d)) parts.push(additiveText(a));
 			return parts.join(' · ');
 		}
 		case 'dosing': {
@@ -107,8 +150,17 @@ export function eventTitle(e: EventLike, prefs: UnitPrefs): string {
 			return `Dosed ${product}${amount ? ` · ${amount}` : ''}`;
 		}
 		case 'feeding': {
-			const amount = typeof d.amount === 'number' ? amountText(d.amount, str(d.unit) || null) : null;
-			return `Fed ${str(d.food) || 'food'}${amount ? ` · ${amount}` : ''}`;
+			// "Fed 2 pinches of flakes"; a bare count reads "Fed Algae wafer · 1"; no amount, "Fed flakes"
+			const unit = str(d.unit);
+			const amount = typeof d.amount === 'number' ? amountText(d.amount, unit || null) : null;
+			const food = str(d.food) || 'food';
+			if (!amount) return `Fed ${food}`;
+			return unit ? `Fed ${amount} of ${food}` : `Fed ${food} · ${amount}`;
+		}
+		case 'health': {
+			const name = str(d.name) || str(d.nickname);
+			const what = str(d.title) || (Array.isArray(d.symptoms) ? (d.symptoms as string[]).join(', ') : '') || firstLine(e.note);
+			return [name, what].filter(Boolean).join(' · ') || 'Health';
 		}
 		case 'maintenance': {
 			const actions = Array.isArray(d.actions) ? (d.actions as string[]) : [];
@@ -169,7 +221,7 @@ export function eventIcon(e: EventLike) {
 export function eventKindLabel(e: EventLike): string {
 	if (e.category === 'livestock') return e.data.kind === 'plant' ? 'Plant change' : 'Livestock change';
 	if (e.category === 'note' && e.data.system) return 'Tank';
-	return CATEGORY_LABEL[e.category];
+	return CATEGORY_LABEL[e.category] ?? cap(e.category);
 }
 
 /** Which task kind an event category can complete. */

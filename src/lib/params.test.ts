@@ -23,6 +23,25 @@ describe('defaultParameters presets', () => {
 		expect(keys('reef')).not.toContain('gh');
 	});
 
+	it('adds TDS and conductivity after GH/KH for freshwater, planted and brackish', () => {
+		for (const t of ['freshwater', 'planted', 'brackish'] as const) {
+			const k = keys(t);
+			expect(k.indexOf('tds')).toBe(k.indexOf('kh') + 1);
+			expect(k.indexOf('ec')).toBe(k.indexOf('tds') + 1);
+		}
+		expect(keys('reef')).not.toContain('tds');
+		const tds = defaultParameters(imperial, 'planted').find((p) => p.key === 'tds')!;
+		expect([tds.unit, tds.decimals, tds.min, tds.max]).toEqual(['ppm', 0, 100, 250]);
+		expect(fmtRange(defaultParameters(imperial, 'freshwater').find((p) => p.key === 'ec')!, imperial)).toBe('150–450 µS/cm');
+	});
+
+	it('adds ORP and keeps temperature on reef tanks', () => {
+		const k = keys('reef');
+		expect(k).toEqual(expect.arrayContaining(['orp', 'temp']));
+		expect(k.indexOf('orp')).toBe(k.indexOf('ph') + 1);
+		expect(fmtRange(defaultParameters(imperial, 'reef').find((p) => p.key === 'orp')!, imperial)).toBe('300–450 mV');
+	});
+
 	it('names KH "Alkalinity" on reef tanks', () => {
 		expect(defaultParameters(imperial, 'reef').find((p) => p.key === 'kh')?.name).toBe('Alkalinity');
 	});
@@ -54,8 +73,8 @@ describe('compactName', () => {
 			for (const p of defaultParameters(us, type)) expect(compactName(p).length, `${type} ${p.name}`).toBeLessThanOrEqual(4);
 		}
 		const names = defaultParameters(us, 'planted').map(compactName);
-		expect(names).toEqual(['pH', 'NH₃', 'NO₂', 'NO₃', 'PO₄', 'K', 'Fe', 'CO₂', 'GH', 'KH', 'Temp']);
-		expect(defaultParameters(us, 'reef').map(compactName)).toEqual(['Sal', 'Alk', 'Ca', 'Mg', 'PO₄', 'NO₃', 'NH₃', 'NO₂', 'pH', 'Temp']);
+		expect(names).toEqual(['pH', 'NH₃', 'NO₂', 'NO₃', 'PO₄', 'K', 'Fe', 'CO₂', 'GH', 'KH', 'TDS', 'EC', 'Temp']);
+		expect(defaultParameters(us, 'reef').map(compactName)).toEqual(['Sal', 'Alk', 'Ca', 'Mg', 'PO₄', 'NO₃', 'NH₃', 'NO₂', 'pH', 'ORP', 'Temp']);
 	});
 
 	it("keeps a custom parameter's own name", () => {

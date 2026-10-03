@@ -10,6 +10,8 @@
 	let { data, form } = $props();
 	const a = $derived(data.animal);
 	const list = $derived(`/tanks/${data.tank.id}/livestock`);
+	const here = $derived(`/tanks/${data.tank.id}/livestock/${a.id}`);
+	const logHealth = $derived(`/tanks/${data.tank.id}/health?livestock=${a.id}&from=${encodeURIComponent(here)}`);
 	const KIND: Record<string, string> = { fish: 'Fish', invert: 'Invert', coral: 'Coral' };
 	const title = $derived(a.nickname ?? a.commonName);
 	const one = $derived(a.count === 1 || !!a.nickname);
@@ -70,6 +72,7 @@
 			{#if gone}<span class="tag tag-neutral">Left {a.left}</span>
 			{:else if a.status === 'quarantine'}<span class="tag tag-neutral strong">▲ Quarantine</span>
 			{:else}<span class="in-tank">✓ In tank</span>{/if}
+			{#if data.underTreatment}<span class="tag tag-neutral strong">▲ Under treatment</span>{/if}
 		</div>
 	</div>
 
@@ -151,6 +154,29 @@
 		</div>
 
 		<aside class="side">
+			<section class="history" aria-labelledby="health-h">
+				<div class="rule-row">
+					<h2 id="health-h" class="kicker rule">Health</h2>
+					{#if !gone}<a class="btn-text log-health" href={logHealth}>Log health</a>{/if}
+				</div>
+				{#if data.health.length}
+					<ul class="timeline">
+						{#each data.health as h (h.id)}
+							<li>
+								<a href="/entries/event/{h.id}">
+									<span class="h-top"><b class:open={h.open}>{h.outcome}</b><span class="d">{h.day}</span></span>
+									{#if h.symptoms.length}
+										<span class="h-tags">{#each h.symptoms as s (s)}<span class="tag tag-neutral">{s}</span>{/each}</span>
+									{/if}
+									{#if h.treatment}<span class="h-line">Treatment: {h.treatment}</span>{/if}
+								</a>
+							</li>
+						{/each}
+					</ul>
+				{:else}
+					<p class="none">Nothing logged yet</p>
+				{/if}
+			</section>
 			<section class="history" aria-labelledby="history-h">
 				<h2 id="history-h" class="kicker rule">Count history</h2>
 				{#if data.history.length}
@@ -396,6 +422,57 @@
 		white-space: nowrap;
 		color: var(--text-muted);
 	}
+	/* Health: the heading rule with Log health on the right, then entries */
+	.rule-row {
+		display: flex;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: 10px;
+		border-bottom: 2px solid var(--ink);
+	}
+	.rule-row .rule {
+		border-bottom: none;
+		flex: 1;
+	}
+	.log-health {
+		min-height: 36px;
+		margin-bottom: 2px;
+		font-size: 13px;
+	}
+	.timeline {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.timeline a {
+		padding: 9px 0;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		border-bottom: 1px solid var(--divider);
+		font-size: 14px;
+		color: var(--text);
+	}
+	.h-top {
+		display: flex;
+		justify-content: space-between;
+		gap: 10px;
+	}
+	.h-top b {
+		font-weight: 600;
+	}
+	.h-top b.open {
+		font-weight: 800;
+	}
+	.h-tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px;
+	}
+	.h-line {
+		font-size: 13px;
+		color: var(--text-muted);
+	}
 	.source {
 		display: flex;
 		flex-direction: column;
@@ -411,7 +488,8 @@
 		color: var(--text-muted);
 	}
 	@media (hover: hover) {
-		.history a:hover b {
+		.history a:hover b,
+		.timeline a:hover b {
 			color: var(--accent-text);
 		}
 	}

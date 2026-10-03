@@ -11,6 +11,7 @@ import { getTank, listParams, setArchived, updateTank } from '$lib/server/tanks'
 import { parseReviewEvery, REVIEW_INTERVALS } from '$lib/review';
 import { checkSection, reviewTask, setReviewEvery } from '$lib/server/review';
 import { todayInZone } from '$lib/time';
+import { tankDetails } from '$lib/server/tank-details';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals, params, url }) => {
@@ -42,7 +43,12 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 			glass: tank.glass ?? '',
 			substrate: tank.substrate ?? '',
 			waterSource: tank.waterSource ?? '',
-			photoperiodH: tank.photoperiodH == null ? '' : String(tank.photoperiodH)
+			photoperiodH: tank.photoperiodH == null ? '' : String(tank.photoperiodH),
+			lightsOn: tank.lightsOn ?? '',
+			lightsOff: tank.lightsOff ?? '',
+			co2On: tank.co2On ?? '',
+			co2Off: tank.co2Off ?? '',
+			cycling: tank.cycling
 		},
 		paramSummary: {
 			tracked: tracked.length,
@@ -58,6 +64,8 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 		fromReview: url.searchParams.get('from') === 'review',
 		publicLive: !!db.select().from(publicPages).where(eq(publicPages.tankId, tank.id)).get()?.enabled,
 		today: todayInZone(user.timeZone),
+		// specs, the pinned note, recent notes and routines, shown after the form
+		details: tankDetails(user, tank),
 		volUnit: unitLabel('volume', user),
 		lenUnit: unitLabel('length', user)
 	};

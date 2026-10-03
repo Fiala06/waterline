@@ -31,6 +31,8 @@
 		returnTo={data.returnTo}
 		task={data.task}
 		recentProducts={data.recentProducts}
+		recentAdditives={data.recentAdditives}
+		recentFoods={data.recentFoods}
 		productLinks={data.productLinks}
 		inventory={data.inventory}
 		water={data.water}
