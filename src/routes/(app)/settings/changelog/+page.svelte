@@ -59,7 +59,7 @@
 	</div>
 
 	{#if update}
-		<div class="update" id="update" role="status">
+		<div class="update" id="update">
 			<span class="upd-text"><b>{update.version} is available.</b> You're on {displayVersion(VERSION)}. Update the Docker image to get it (on Unraid, the Docker tab shows update ready); everything in /data is kept.</span>
 			<a class="btn btn-primary" href={update.link} target="_blank" rel="noopener noreferrer">Update now<span aria-hidden="true"> ↗</span></a>
 		</div>

@@ -463,7 +463,7 @@
 		</div>
 
 		<footer class="foot">
-			{#if summary}<p class="summary status-warn" role="status">{summary}</p>{/if}
+			{#if summary}<p class="summary status-warn" aria-live="polite">{summary}</p>{/if}
 			<div class="foot-line">
 				{#if mode === 'new'}
 					<span class="count">{filled} of {params.length} filled{outOfRange ? ` · ${outOfRange} out of range` : ''}</span>

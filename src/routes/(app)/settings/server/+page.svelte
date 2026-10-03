@@ -133,7 +133,7 @@
 				<h3>Google sign-in<SectionLink id="google" label="Google sign-in" /></h3>
 				<p class="sub">People sign in with their Google account. Create an OAuth client (type Web application) in the Google Cloud console and add the redirect URI below.</p>
 			</div>
-			<div class="status" role="status">
+			<div class="status">
 				<b>{data.signIn.google.on ? '● On' : '○ Off'}</b><span>{googleHint}</span>
 			</div>
 			{#if data.signIn.google.fromEnv}
