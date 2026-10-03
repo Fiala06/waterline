@@ -1,4 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
+import { validLivestockCount } from '$lib/livestock';
 import { isDate, todayInZone, zonedToUtc } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
 import { num, optStr, str } from '$lib/server/forms';
@@ -25,7 +26,7 @@ export const actions: Actions = {
 		const kind = str(form, 'kind');
 		const values = { name, scientificName: str(form, 'scientificName'), count: String(count), kind };
 		if (!name) return fail(400, { error: 'Enter the species.', values });
-		if (!Number.isInteger(count) || count < 1 || count > 10000) return fail(400, { error: 'Enter how many, 1 or more.', values });
+		if (!validLivestockCount(count)) return fail(400, { error: 'Enter a whole number from 1 to 10,000.', values });
 		const today = todayInZone(user.timeZone);
 		const picked = optStr(form, 'addedAt');
 		const addedAt = picked && isDate(picked) ? picked : today;

@@ -7,6 +7,11 @@ interface Animal {
 	nickname?: string | null;
 }
 
+/** Keep every livestock entry within the range the UI and imports support. */
+export const MAX_LIVESTOCK_COUNT = 10_000;
+export const validLivestockCount = (count: unknown): count is number =>
+	typeof count === 'number' && Number.isInteger(count) && count >= 1 && count <= MAX_LIVESTOCK_COUNT;
+
 /** One key per species, whatever its entries are called. */
 export const speciesKey = (l: Animal) => (l.scientificName || l.commonName).trim().toLowerCase();
 
