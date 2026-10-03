@@ -1,5 +1,8 @@
 <script lang="ts">
-	// G1 · Tank switcher. Picks a tank; the caller decides what that does.
+	// Switch tank (redesign README → Phone › Switch tank): a sheet with "Your
+	// tanks" over a 2px ink rule, 72px rows with a 48px thumbnail, the name and
+	// spec, and the status at the end; the current one has a surface background
+	// and a 3px accent bar. Picks a tank; the caller decides what that does.
 	import { tankTypeLabel } from '$lib/types';
 	import Sheet from './Sheet.svelte';
 	import TankThumb from './TankThumb.svelte';
@@ -24,13 +27,12 @@
 		currentId: string | null;
 		onpick: (id: string) => void;
 	} = $props();
-
 </script>
 
 <Sheet bind:open label="Switch tank" width={440}>
 	<div class="head">
-		<h2>Switch tank</h2>
-		<a href="/tanks" onclick={() => (open = false)}>Manage</a>
+		<h2>Your tanks</h2>
+		<span class="meta">{tanks.length} active</span>
 	</div>
 	<ul class="list">
 		{#each tanks as t (t.id)}
@@ -45,27 +47,26 @@
 						open = false;
 					}}
 				>
-					<TankThumb cover={t.cover} />
+					<TankThumb cover={t.cover} size={48} />
 					<span class="text">
 						<span class="name">{t.name}</span>
 						<span class="sub">{tankTypeLabel(t.type)}{t.volume ? ` · ${t.volume}` : ''}</span>
 					</span>
-					<span class="right">
-						{#if t.alerts}
-							<span class="pill-bad">{t.alerts} alert{t.alerts === 1 ? '' : 's'}</span>
-						{:else if t.tested}
-							<span class="good">All good</span>
-						{:else}
-							<span class="nodata">No data</span>
-						{/if}
-						{#if t.id === currentId}<span class="viewing">Viewing</span>{/if}
-					</span>
+					{#if t.alerts}
+						<span class="st status-bad">✕ {t.alerts} need{t.alerts === 1 ? 's' : ''} attention</span>
+					{:else if t.tested}
+						<span class="st">✓ All in range</span>
+					{:else}
+						<span class="st">– No data</span>
+					{/if}
 				</button>
 			</li>
 		{/each}
 	</ul>
-	<a class="btn add" href="/tanks/new" onclick={() => (open = false)}>+ Add tank</a>
-	{#if tanks.length > 1}<p class="tip">Tip: swipe left or right on the tank name to switch</p>{/if}
+	<div class="foot">
+		<a class="btn add" href="/tanks/new" onclick={() => (open = false)}>+ Add tank</a>
+		<a class="btn-text all" href="/tanks" onclick={() => (open = false)}>All tanks &amp; archived ›</a>
+	</div>
 </Sheet>
 
 <style>
@@ -73,38 +74,42 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
+		gap: 12px;
+		padding-bottom: 10px;
+		border-bottom: 2px solid var(--ink);
 	}
 	h2 {
 		margin: 0;
 		font-size: 22px;
-		font-weight: 600;
+		font-weight: 800;
 	}
-	.head a {
-		font-size: 15px;
-		font-weight: 600;
-		padding: 10px 0;
+	.meta {
+		font-size: 13px;
+		color: var(--text-muted);
 	}
 	.list {
 		list-style: none;
-		margin: 0;
+		margin: -18px 0 0;
 		padding: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
 	}
 	.row {
 		width: 100%;
+		min-height: 72px;
 		display: flex;
 		align-items: center;
 		gap: 12px;
-		padding: 12px;
-		border-radius: 0;
-		border: 1px solid var(--border);
+		padding: 0;
+		border-bottom: 1px solid var(--divider);
+		border-left: 3px solid transparent;
 		text-align: left;
+		color: var(--text);
 	}
 	.row.current {
-		background: var(--selected);
-		border-color: var(--accent);
+		background: var(--surface);
+		border-left-color: var(--accent);
+		padding: 0 10px;
 	}
 	.text {
 		flex: 1;
@@ -114,55 +119,39 @@
 		min-width: 0;
 	}
 	.name {
-		font-size: 16px;
-		font-weight: 600;
+		font-size: 17px;
+		font-weight: 800;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 	.sub {
 		font-size: 13px;
 		color: var(--text-muted);
 	}
-	.right {
+	.st {
+		flex-shrink: 0;
+		font-size: 12px;
+		font-weight: 800;
+		color: var(--text-muted);
+		white-space: nowrap;
+	}
+	.foot {
 		display: flex;
 		flex-direction: column;
-		align-items: flex-end;
-		gap: 4px;
-	}
-	.pill-bad {
-		font-size: 12px;
-		font-weight: 700;
-		background: var(--bad-bg);
-		color: var(--bad-text);
-		padding: 2px 8px;
-		border-radius: 0;
-	}
-	.good,
-	.nodata {
-		font-size: 12px;
-		font-weight: 600;
-		color: var(--ok);
-	}
-	.nodata {
-		color: var(--text-muted);
-	}
-	.viewing {
-		font-size: 13px;
-		font-weight: 700;
-		color: var(--accent);
+		gap: 8px;
+		margin-top: -4px;
 	}
 	.add {
-		border-style: dashed;
-		color: var(--accent);
+		min-height: 48px;
 	}
-	.tip {
-		margin: -6px 0 0;
-		text-align: center;
-		font-size: 13px;
-		color: var(--text-faint);
+	.all {
+		align-self: flex-start;
+		padding: 0;
 	}
-	/* the swipe is on the phone dashboard's tank name */
-	@media (min-width: 1024px) {
-		.tip {
-			display: none;
+	@media (hover: hover) {
+		.row:not(.current):hover {
+			background: var(--surface);
 		}
 	}
 </style>

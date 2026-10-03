@@ -1,6 +1,8 @@
 <script lang="ts">
-	// G12 · Desktop tank switcher: a dropdown under the header button. Type to
-	// filter, Enter picks the first match, 1–9 pick by position, Esc closes.
+	// Desktop tank dropdown (a popover in the redesign's style: 2px ink border,
+	// shadow-lg). Type to filter, Enter picks the first match, 1–9 pick by
+	// position, Esc closes. The shell's sidebar and ⌘K palette switch tanks now;
+	// this stays for anything that wants a dropdown under a button.
 	import { tankTypeLabel } from '$lib/types';
 	import { tick } from 'svelte';
 	import TankThumb from './TankThumb.svelte';
@@ -68,17 +70,17 @@
 			{#each shown as t (t.id)}
 				<li>
 					<button type="button" class="row" class:current={t.id === currentId} aria-current={t.id === currentId} onclick={() => pick(t.id)}>
-						<TankThumb cover={t.cover} size={32} radius={0} />
+						<TankThumb cover={t.cover} size={32} />
 						<span class="text">
 							<span class="name">{t.name}</span>
 							<span class="sub">{tankTypeLabel(t.type)}{t.volume ? ` · ${t.volume}` : ''}</span>
 						</span>
 						{#if t.alerts}
-							<span class="pill-bad">{t.alerts} alert{t.alerts === 1 ? '' : 's'}</span>
+							<span class="pill-bad">✕ {t.alerts}</span>
 						{:else if t.tested}
-							<span class="good">All good</span>
+							<span class="good">✓ All in range</span>
 						{:else}
-							<span class="nodata">No data</span>
+							<span class="nodata">– No data</span>
 						{/if}
 						{#if tanks.indexOf(t) < 9}<kbd class="num" aria-hidden="true">{tanks.indexOf(t) + 1}</kbd>{/if}
 					</button>
@@ -101,6 +103,7 @@
 		z-index: 30;
 		cursor: default;
 	}
+	/* a popover (redesign): the page colour, a 2px ink border, shadow-lg */
 	.menu {
 		position: absolute;
 		top: calc(100% + 8px);
@@ -108,10 +111,9 @@
 		z-index: 31;
 		width: 360px;
 		padding: 10px;
-		border-radius: 0;
-		background: var(--surface);
-		border: 1px solid var(--border-strong);
-		box-shadow: var(--shadow-modal);
+		background: var(--bg);
+		border: 2px solid var(--ink);
+		box-shadow: var(--shadow-lg);
 		display: flex;
 		flex-direction: column;
 		gap: 6px;
@@ -122,9 +124,8 @@
 		gap: 8px;
 		height: 42px;
 		padding: 0 12px;
-		border-radius: 0;
-		background: var(--bg);
-		border: 1px solid var(--border-strong);
+		background: var(--surface);
+		border: 1px solid var(--divider);
 	}
 	.search:focus-within {
 		border-color: var(--accent);
@@ -139,9 +140,9 @@
 		font-size: 14px;
 	}
 	kbd {
-		font-family: ui-monospace, Menlo, monospace;
+		font: inherit;
 		font-size: 12px;
-		color: var(--text-faint);
+		color: var(--text-muted);
 	}
 	ul {
 		list-style: none;
@@ -149,7 +150,6 @@
 		padding: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 2px;
 		max-height: 60vh;
 		overflow-y: auto;
 	}
@@ -160,15 +160,22 @@
 		align-items: center;
 		gap: 10px;
 		padding: 8px 10px;
-		border-radius: 0;
+		border-bottom: 1px solid var(--divider);
+		border-left: 3px solid transparent;
 		text-align: left;
+		color: var(--text);
+	}
+	li:last-child .row {
+		border-bottom: none;
 	}
 	.row:hover,
 	.row:focus-visible {
-		background: var(--surface-2);
+		background: var(--surface);
 	}
 	.row.current {
-		background: var(--selected);
+		background: var(--surface);
+		border-left-color: var(--accent);
+		font-weight: 800;
 	}
 	.text {
 		flex: 1;
@@ -178,33 +185,26 @@
 	}
 	.name {
 		font-size: 15px;
-		font-weight: 600;
+		font-weight: 700;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 	.sub {
 		font-size: 12px;
+		font-weight: 400;
 		color: var(--text-muted);
 	}
-	.pill-bad {
-		font-size: 12px;
-		font-weight: 700;
-		background: var(--bad-bg);
-		color: var(--bad-text);
-		padding: 2px 7px;
-		border-radius: 0;
-		white-space: nowrap;
-	}
+	.pill-bad,
 	.good,
 	.nodata {
 		font-size: 12px;
-		font-weight: 600;
-		color: var(--ok);
+		font-weight: 800;
 		white-space: nowrap;
-	}
-	.nodata {
 		color: var(--text-muted);
+	}
+	.pill-bad {
+		color: var(--bad);
 	}
 	.num {
 		width: 12px;
@@ -218,12 +218,12 @@
 	.foot {
 		display: flex;
 		justify-content: space-between;
-		border-top: 1px solid var(--border);
+		border-top: 2px solid var(--divider);
 		padding: 4px 4px 0;
 	}
 	.foot a {
 		font-size: 14px;
-		font-weight: 600;
+		font-weight: 800;
 		min-height: 40px;
 		display: flex;
 		align-items: center;

@@ -51,8 +51,11 @@
 		if (now && now !== editing) editing = now;
 	});
 	let editOpen = $state(false);
+	// a row's Trim button opens the sheet with that plant ticked
+	let trimPick = $state<string | null>(null);
 	const close = () => async ({ update }: { update: () => Promise<void> }) => {
 		sheets.add = sheets.trim = editOpen = false;
+		trimPick = null;
 		await update();
 	};
 </script>
@@ -67,38 +70,54 @@
 			<button type="button" class="btn btn-primary" onclick={() => (sheets.add = true)}>Add plant</button>
 			<a class="btn" href="/tanks/{data.tankHead.id}/plants/several">Add several at once</a>
 		</EmptyState>
-	{/if}
-
-	{#each GROUPS as g (g.key)}
-		{@const list = data.plants.filter((p) => g.match.includes(p.position))}
-		{#if list.length}
-			<section>
-				<h2 class="caps">{g.label}</h2>
-				<div class="grid">
-					{#each list as p (p.id)}
-						<button
-							type="button"
-							class="card plant"
-							onclick={() => {
-								editing = p;
-								editOpen = true;
-							}}
-						>
-							{#if p.photo}<img class="thumb" src={p.photo.src} alt="" loading="lazy" />{:else}<span class="thumb photo-placeholder"></span>{/if}
-							<span class="text">
-								<span class="name">{p.name}</span>
-								{#if p.scientific && p.scientific !== p.name}<span class="sci">{p.scientific}</span>{/if}
-								<span class="meta">
-									<span class="status-tag sm tag-{STATUS[p.status].level}">{STATUS[p.status].text}</span>
-									{#if p.trimmed}<span class="when">Trimmed {p.trimmed}</span>{/if}
+	{:else}
+		<div class="table" role="table" aria-label="Plants">
+			<div class="thead" role="row">
+				<span role="columnheader">Plant</span><span role="columnheader">Placement</span><span role="columnheader">Added</span
+				><span role="columnheader">Last trimmed</span><span role="columnheader">Status</span>
+			</div>
+			{#each GROUPS as g (g.key)}
+				{@const list = data.plants.filter((p) => g.match.includes(p.position))}
+				{#if list.length}
+					<section class="group">
+						<h2 class="kicker">{g.label}</h2>
+						{#each list as p (p.id)}
+							<div class="tr" role="row">
+								<div class="pl" role="cell">
+									{#if p.photo}<img class="thumb" src={p.photo.src} alt="" loading="lazy" />{:else}<span class="thumb photo-placeholder"></span>{/if}
+									<span class="text">
+										<button
+											type="button"
+											class="name"
+											onclick={() => {
+												editing = p;
+												editOpen = true;
+											}}>{p.name}</button
+										>
+										{#if p.scientific && p.scientific !== p.name}<span class="sci">{p.scientific}</span>{/if}
+									</span>
+								</div>
+								<span class="d" role="cell">{POSITIONS.find((o) => o.v === p.position)?.l}</span>
+								<span class="d" role="cell">{p.added}</span>
+								<span class="trim" role="cell">
+									<span class="when" class:none={!p.trimmed}>{p.trimmed ?? 'Never'}</span>
+									<button
+										type="button"
+										class="ghost"
+										onclick={() => {
+											trimPick = p.id;
+											sheets.trim = true;
+										}}>Trim</button
+									>
 								</span>
-							</span>
-						</button>
-					{/each}
-				</div>
-			</section>
-		{/if}
-	{/each}
+								<span class="st status-{STATUS[p.status].level}" role="cell">{STATUS[p.status].text}</span>
+							</div>
+						{/each}
+					</section>
+				{/if}
+			{/each}
+		</div>
+	{/if}
 	<!-- below the list, or below the empty box: in the same place on every tab -->
 	<ImportButton href="/tanks/{data.tankHead.id}/import/plants" />
 </div>
@@ -176,7 +195,7 @@
 		<fieldset class="field">
 			<legend class="label">What did you trim?</legend>
 			<div class="chips">
-				{#each data.plants as p (p.id)}<label class="chip"><input type="checkbox" name="plant" value={p.id} />{p.name}</label>{/each}
+				{#each data.plants as p (p.id)}<label class="chip"><input type="checkbox" name="plant" value={p.id} checked={trimPick === p.id} />{p.name}</label>{/each}
 			</div>
 		</fieldset>
 		<div class="field">
@@ -190,49 +209,118 @@
 
 <style>
 	.body {
-		padding: 14px 20px;
+		padding: 16px 20px 24px;
 		display: flex;
 		flex-direction: column;
 		gap: 14px;
 	}
-	section {
+	.ghost {
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		margin: -10px 0;
+		padding: 0 4px;
+		font-size: 13px;
+		font-weight: 800;
+		color: var(--accent);
+		white-space: nowrap;
+	}
+	/* the table: a header over a 2px ink rule, rows with 1px dividers, grouped by placement */
+	.table {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
 	}
-	.caps {
-		margin: 0;
-		font-size: 12px;
-		font-weight: 700;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		color: var(--text-muted);
+	.thead {
+		display: none;
 	}
-	.grid {
-		display: grid;
-		gap: 8px;
-	}
-	/* T7 */
-	.plant {
-		padding: 12px;
+	.group {
 		display: flex;
-		gap: 12px;
-		align-items: center;
-		text-align: left;
-		width: 100%;
+		flex-direction: column;
+	}
+	.group h2 {
+		margin: 0;
+		padding: 14px 0 6px;
+		border-bottom: 2px solid var(--ink);
 		color: var(--text);
 	}
-	.plant:hover {
-		border-color: var(--border-strong);
+	.tr {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		grid-template-areas: 'pl st' 'trim trim';
+		align-items: center;
+		gap: 6px 12px;
+		padding: 10px 0;
+		border-bottom: 1px solid var(--divider);
+	}
+	.d {
+		display: none;
+	}
+	.pl {
+		grid-area: pl;
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		min-width: 0;
 	}
 	.thumb {
-		width: 52px;
-		height: 52px;
-		border-radius: 0;
+		width: 40px;
+		height: 40px;
 		flex-shrink: 0;
 		border: none;
 		object-fit: cover;
-		background: var(--surface-2);
+		background: var(--surface);
+	}
+	.text {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+	}
+	.name {
+		font-size: 15px;
+		font-weight: 600;
+		text-align: left;
+		color: var(--text);
+		overflow-wrap: anywhere;
+	}
+	.name:hover {
+		color: var(--accent);
+	}
+	.sci {
+		font-size: 12px;
+		font-style: italic;
+		color: var(--text-muted);
+	}
+	.trim {
+		grid-area: trim;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0 8px;
+		font-size: 14px;
+		min-width: 0;
+	}
+	.trim .when {
+		min-width: 52px;
+	}
+	.trim .when::before {
+		content: 'Trimmed ';
+		color: var(--text-muted);
+	}
+	.trim .when.none {
+		color: var(--text-muted);
+	}
+	.trim .when.none::before {
+		content: 'Trimmed: ';
+	}
+	.st {
+		grid-area: st;
+		font-size: 13px;
+		font-weight: 800;
+		white-space: nowrap;
+	}
+	.st.status-ok {
+		color: var(--text-muted) !important;
 	}
 	/* the plant's sheet: its photo, the credit a species photo needs, and the keeper's own */
 	.photo-part {
@@ -251,8 +339,7 @@
 		width: 100%;
 		max-height: 260px;
 		object-fit: cover;
-		border-radius: 0;
-		background: var(--surface-2);
+		background: var(--surface);
 	}
 	figcaption {
 		font-size: 12px;
@@ -282,39 +369,6 @@
 		min-height: 44px;
 		color: var(--text-muted);
 	}
-	.text {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		gap: 3px;
-		min-width: 0;
-	}
-	.name,
-	.sci {
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-	.name {
-		font-size: 16px;
-		font-weight: 600;
-	}
-	.sci {
-		font-size: 12px;
-		font-style: italic;
-		color: var(--text-muted);
-	}
-	.meta {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		margin-top: 1px;
-	}
-	.when {
-		font-size: 12px;
-		color: var(--text-faint);
-		white-space: nowrap;
-	}
 	.sheet-form {
 		display: flex;
 		flex-direction: column;
@@ -339,15 +393,65 @@
 	.hint {
 		margin: 0;
 		font-size: 13px;
-		color: var(--text-faint);
+		color: var(--text-muted);
 	}
+	@media (hover: hover) {
+		.ghost:hover {
+			background: color-mix(in srgb, var(--accent) 10%, transparent);
+		}
+	}
+	/* Desktop: `1fr 120px 90px 170px 110px` (the design's Type column has no data yet) */
 	@media (min-width: 1024px) {
 		.body {
-			padding: 24px 32px;
-			max-width: 1100px;
+			padding: 24px 32px 48px;
 		}
-		.grid {
-			grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+		.thead,
+		.tr {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) 120px 90px 170px 110px;
+			grid-template-areas: none;
+			column-gap: 16px;
+			align-items: center;
+		}
+		.thead {
+			padding: 8px 0;
+			border-bottom: 2px solid var(--ink);
+			font-size: 11px;
+			letter-spacing: 0.08em;
+			text-transform: uppercase;
+			color: var(--text-muted);
+		}
+		.group h2 {
+			padding: 12px 0 4px;
+			border-bottom: 1px solid var(--divider);
+		}
+		.pl,
+		.trim,
+		.st {
+			grid-area: auto;
+		}
+		.d {
+			display: block;
+			font-size: 14px;
+			white-space: nowrap;
+		}
+		.name,
+		.sci {
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			max-width: 100%;
+		}
+		.trim .when::before,
+		.trim .when.none::before {
+			content: none;
+		}
+	}
+	@media (min-width: 1024px) and (max-width: 1199px) {
+		.thead,
+		.tr {
+			grid-template-columns: minmax(0, 1fr) 100px 72px 150px 100px;
+			column-gap: 10px;
 		}
 	}
 </style>

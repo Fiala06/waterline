@@ -1,15 +1,18 @@
 <script lang="ts">
+	// History (README → Screens §4): categories with counts, the list grouped
+	// by day, and on desktop a detail pane with the entry's rows, note, photos
+	// and Edit / Delete. Phones get chips and open entries on their own page.
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { hscroll } from '$lib/actions';
 	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import Icon from '$lib/components/Icon.svelte';
 	import ImportButton from '$lib/components/ImportButton.svelte';
 	import { FILTERS, RANGES } from '$lib/history';
 	import { IMPORTS, importForFilter } from '$lib/imports';
 	import { photoUrl } from '$lib/media';
-	import { ui } from '$lib/ui.svelte';
 	import type { ComponentProps } from 'svelte';
 
 	let { data } = $props();
@@ -35,6 +38,16 @@
 	// Past entries from a spreadsheet: the import for the category picked (water tests for All)
 	const importKind = $derived(importForFilter(data.cat ?? 'all'));
 	const importHref = $derived(data.tank ? `/tanks/${data.tank.id}/import/${IMPORTS[importKind].slug}` : null);
+	const emptyText = $derived(
+		data.cat === 'all' ? 'Tests, water changes, dosing and notes you log for this tank show up here.' : 'Try All, or log something in this category.'
+	);
+
+	// the selects submit as they change; with scripts the category keeps the URL clean (no cat=all)
+	const submit = (e: Event) => (e.currentTarget as HTMLSelectElement).form?.requestSubmit();
+	function pickCat(e: Event) {
+		const v = (e.currentTarget as HTMLSelectElement).value;
+		goto(q({ cat: v === 'all' ? null : v, entry: null }), { noScroll: true });
+	}
 
 	// A note's first line is already its title: don't repeat it as the body.
 	function noteBody(note: string | null, title: string) {
@@ -59,43 +72,40 @@
 <svelte:head><title>History · Waterline</title></svelte:head>
 
 <div class="page">
-	<a class="back hide-desk" href="/">‹ Dashboard</a>
-	<div class="head hide-desk">
-		<h1>History</h1>
-		{#if data.tank}<button type="button" class="tank" onclick={() => (ui.tankSwitcher = true)}>{data.tank.name} ▾</button>{/if}
-	</div>
-
 	{#if !data.tank}
 		<div class="none">
 			<EmptyState icon="tank" title="No tanks yet" text="Add your first tank to start logging." href="/tanks/new" label="Add tank" primary />
 		</div>
 	{:else}
-		<div class="layout" class:with-detail={!!data.detail}>
+		<div class="layout">
 			<nav class="cats" aria-label="Category">
-				<div class="cats-inner">
-					<div class="caps hide-phone">Category</div>
-					<div class="filters hscroll" use:hscroll={data.cat}>
-						{#each FILTERS as f (f.key)}
-							<a
-								class="chip filter"
-								class:selected={data.cat === f.key}
-								aria-current={data.cat === f.key ? 'true' : undefined}
-								href={q({ cat: f.key === 'all' ? null : f.key, entry: null })}
-							>
-								<span class="f-label">{'short' in f ? f.short : f.label}</span><span class="f-long">{f.label}</span>
-								<span class="f-count">{count(f.key)}</span>
-							</a>
-						{/each}
-					</div>
+				<span class="caps kicker hide-phone">Category</span>
+				<div class="filters hscroll" use:hscroll={data.cat}>
+					{#each FILTERS as f (f.key)}
+						<a
+							class="chip filter"
+							class:selected={data.cat === f.key}
+							aria-current={data.cat === f.key ? 'true' : undefined}
+							href={q({ cat: f.key === 'all' ? null : f.key, entry: null })}
+						>
+							<span class="f-label">{'short' in f ? f.short : f.label}</span><span class="f-long">{f.label}</span>
+							<span class="f-count">{count(f.key)}</span>
+						</a>
+					{/each}
 				</div>
 			</nav>
 
 			<div class="list">
-				<form class="range" method="GET" action="/history">
-					{#if data.cat !== 'all'}<input type="hidden" name="cat" value={data.cat} />{/if}
-					<label>
+				<form class="toolbar" method="GET" action="/history">
+					<label class="cat-pick">
+						<span class="sr-only">Category</span>
+						<select class="input" name="cat" value={data.cat} onchange={pickCat}>
+							{#each FILTERS as f (f.key)}<option value={f.key} selected={f.key === data.cat}>{f.label} · {count(f.key)}</option>{/each}
+						</select>
+					</label>
+					<label class="range-pick">
 						<span class="sr-only">Date range</span>
-						<select name="range" value={data.range} onchange={(e) => (e.currentTarget.form as HTMLFormElement).requestSubmit()}>
+						<select class="input" name="range" value={data.range} onchange={submit}>
 							{#each RANGES as r (r.key)}<option value={r.key} selected={r.key === data.range}>{r.label}</option>{/each}
 						</select>
 					</label>
@@ -104,26 +114,34 @@
 				</form>
 
 				{#if !data.groups?.length}
-					<EmptyState compact icon={emptyIcon} title="Nothing logged here yet" text="Try a longer date range or another category.">
-						{#if importHref}<ImportButton href={importHref} />{/if}
-					</EmptyState>
+					<div class="empty-list">
+						<div class="hide-desk">
+							<EmptyState compact icon={emptyIcon} title="Nothing logged here yet" text="Try a longer date range or another category.">
+								{#if importHref}<ImportButton href={importHref} />{/if}
+							</EmptyState>
+						</div>
+						<div class="hide-phone empty-desk">
+							<p>No entries in this range.</p>
+							{#if importHref}<ImportButton href={importHref} />{/if}
+						</div>
+					</div>
 				{/if}
 
 				{#each data.groups ?? [] as g (g.day)}
 					<section>
 						<h2 class="day">{g.label}</h2>
-						<div class="card group">
+						<div class="group">
 							{#each g.items as it (it.key)}
-								<a class="row" class:selected={data.selected === it.key} href={it.href} onclick={(e) => open(e, it.key)}>
+								<a class="row" class:selected={data.selected === it.key} aria-current={data.selected === it.key ? 'true' : undefined} href={it.href} onclick={(e) => open(e, it.key)}>
 									<CategoryIcon kind={kind(it.icon)} size={40} />
 									<span class="text">
 										<span class="title">{it.title}</span>
-										<span class="sub">{it.sub}{#if it.bad}{' · '}<span class="status-bad strong">{it.bad}</span>{/if}</span>
+										<span class="sub" class:status-bad={!!it.bad}>{it.sub}{#if it.bad}{' · '}<span class="bad">{it.bad}</span>{/if}</span>
 									</span>
 									{#if it.thumb}
 										<img class="thumb" src={photoUrl(it.thumb)} alt="" loading="lazy" />
 									{:else}
-										<span class="chev" aria-hidden="true">›</span>
+										<span class="chev hide-desk" aria-hidden="true"><Icon name="chevron-right" size={18} /></span>
 									{/if}
 								</a>
 							{/each}
@@ -133,18 +151,19 @@
 				{#if data.groups?.length && importHref}<ImportButton href={importHref} />{/if}
 			</div>
 
-			{#if data.detail}
-				{@const d = data.detail}
-				{@const body = noteBody(d.note, d.title)}
-				{@const confirm = confirmCopy(d)}
-				<aside class="detail" aria-label="Entry detail">
+			<aside class="detail" aria-label="Entry detail">
+				{#if data.detail}
+					{@const d = data.detail}
+					{@const body = noteBody(d.note, d.title)}
+					{@const confirm = confirmCopy(d)}
 					<div class="pane">
 						<div class="d-head">
+							<span class="kicker">{d.kindLabel}</span>
 							<h2 class="d-title">{d.title}</h2>
-							<div class="d-sub">{d.when} · {data.tank.name}{d.edited ? ` · edited ${d.edited}` : ''}</div>
+							<span class="d-sub">{d.when} · {data.tank.name}{d.edited ? ` · edited ${d.edited}` : ''}</span>
 						</div>
 						{#if d.rows.length}
-							<div class="rows">
+							<div class="drows">
 								{#each d.rows as r, i (i)}
 									<div class="drow" class:bad={r.level === 'bad'}>
 										<span class="dl">{r.label}</span>
@@ -160,6 +179,7 @@
 								{#each d.photos as p, i (p.id)}<a href="/photos/{p.id}"><img src={photoUrl(p.id)} alt="Photo {i + 1} of this entry" loading="lazy" /></a>{/each}
 							</div>
 						{/if}
+						<div class="spacer"></div>
 						<div class="actions">
 							{#if d.editable}<a class="btn" href="{d.href}/edit">Edit</a>{/if}
 							<ConfirmDelete
@@ -171,52 +191,43 @@
 							/>
 						</div>
 					</div>
-				</aside>
-			{/if}
+				{:else}
+					<div class="pane">
+						<div class="d-head">
+							<h2 class="d-title">Nothing logged here yet</h2>
+							<span class="d-empty">{emptyText}</span>
+						</div>
+						<div class="spacer"></div>
+						<div class="actions">
+							<a class="btn btn-primary" href="/entries/test/new?tank={data.tank.id}">Log water test</a>
+						</div>
+					</div>
+				{/if}
+			</aside>
 		</div>
 	{/if}
 </div>
 
 <style>
+	/* ── Phone: chips, then the day groups ─────────────────────────────── */
 	.page {
-		padding: 0 20px 24px;
-		display: flex;
-		flex-direction: column;
-		gap: 12px;
-	}
-	/* 11: the links keep 44px tap areas; the text sits where the design puts it */
-	.back {
-		margin-top: -7px;
-	}
-	.head {
-		display: flex;
-		justify-content: space-between;
-		align-items: baseline;
-		gap: 12px;
-		margin-top: -18px;
-	}
-	h1 {
-		margin: 0;
-		font-size: 28px;
-		font-weight: 600;
-	}
-	.tank {
-		font-size: 14px;
-		color: var(--text-muted);
-		min-height: 44px;
-		margin-block: -10px;
+		padding: 12px 20px 24px;
 	}
 	.layout {
 		display: flex;
 		flex-direction: column;
-		gap: 12px;
+		gap: 14px;
 	}
-	/* 11: category chips that scroll sideways, to the screen edge */
 	.filters {
+		gap: 6px;
 		margin-inline: -20px;
 		padding-inline: 20px;
 	}
 	.filter {
+		height: 36px;
+		padding: 0 12px;
+		font-size: 13px;
+		font-weight: 700;
 		color: var(--text);
 	}
 	.filter.selected,
@@ -227,88 +238,96 @@
 	.f-count {
 		display: none;
 	}
+	/* the chosen chip says how many: "All · 42" */
+	.filter.selected .f-count {
+		display: inline;
+	}
+	.filter.selected .f-count::before {
+		content: '· ';
+	}
 	.list {
 		display: flex;
 		flex-direction: column;
-		gap: 16px;
+		gap: 14px;
 		min-width: 0;
 	}
-	.range {
+	.toolbar {
 		display: flex;
-		justify-content: space-between;
+		flex-wrap: wrap;
 		align-items: center;
-		gap: 12px;
+		gap: 8px 12px;
 		font-size: 13px;
 		color: var(--text-muted);
-		/* the 44px select, laid out like the 13px line in 11 */
-		margin-block: -13px -21px;
 	}
-	/* "Last 30 days ▾" */
-	.range select {
-		appearance: none;
-		-webkit-appearance: none;
-		min-height: 44px;
+	.cat-pick {
+		display: none;
+	}
+	.cat-pick .input,
+	.range-pick .input {
+		width: auto;
+	}
+	/* "Last 30 days ▾", as a line of text on phones */
+	.range-pick .input {
+		height: 44px;
 		padding: 0 18px 0 0;
 		border: none;
-		border-radius: 0;
 		background-color: transparent;
-		background-image:
-			linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
-			linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
 		background-position:
 			calc(100% - 6px) 54%,
 			calc(100% - 2px) 54%;
 		background-size: 4px 4px;
-		background-repeat: no-repeat;
 		font-size: 13px;
 		color: var(--text-muted);
-		cursor: pointer;
-		/* the ▾ right after the chosen range, not after the longest one */
 		field-sizing: content;
 	}
-	/* without JS: fits the 44px row */
+	.total {
+		margin-left: auto;
+	}
 	.apply {
 		min-height: 36px;
 		height: 36px;
 		font-size: 14px;
 	}
+	.empty-desk {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		padding-top: 12px;
+		border-top: 2px solid var(--ink);
+	}
+	.empty-desk p {
+		margin: 0;
+		font-size: 14px;
+		color: var(--text-2);
+	}
 	section {
 		display: flex;
 		flex-direction: column;
-		gap: 6px;
 	}
+	/* the day: a kicker over a 2px ink rule */
 	.day {
 		margin: 0;
-		font-size: 13px;
-		font-weight: 600;
+		padding-bottom: 6px;
+		border-bottom: 2px solid var(--ink);
+		font-size: 11px;
+		font-weight: 400;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
 		color: var(--text-muted);
-		letter-spacing: 0.04em;
-	}
-	.group {
-		border-radius: 0;
 	}
 	.row {
 		position: relative;
 		display: flex;
 		gap: 12px;
 		align-items: center;
-		padding: 12px;
+		min-height: 60px;
+		padding: 10px 0;
+		border-bottom: 1px solid var(--divider);
 		color: var(--text);
-	}
-	.row + .row {
-		border-top: 1px solid var(--border);
-	}
-	.row:first-child {
-		border-top-left-radius: 0;
-		border-top-right-radius: 0;
-	}
-	.row:last-child {
-		border-bottom-left-radius: 0;
-		border-bottom-right-radius: 0;
 	}
 	@media (hover: hover) {
 		.row:not(.selected):hover {
-			background: var(--surface-hi);
+			background: var(--surface);
 			color: var(--text);
 		}
 	}
@@ -321,129 +340,79 @@
 	}
 	.title {
 		font-size: 15px;
-		font-weight: 600;
+		font-weight: 700;
 	}
 	.sub {
-		font-size: 13px;
+		font-size: 12px;
 		color: var(--text-muted);
 	}
-	.strong {
-		font-weight: 600;
+	.sub .bad {
+		font-weight: 800;
 	}
 	.thumb {
 		width: 44px;
 		height: 44px;
-		border-radius: 0;
 		object-fit: cover;
 		flex-shrink: 0;
 	}
 	.chev {
-		color: var(--placeholder);
-		font-size: 18px;
+		display: flex;
+		color: var(--neutral-600);
 	}
 	.detail {
 		display: none;
 	}
 
-	/* ── D6: categories | entries | detail pane ──────────────────── */
+	/* ── Desktop: categories | entries | detail pane ───────────────────── */
 	@media (min-width: 1024px) {
 		.page {
-			padding: 0;
-			gap: 0;
+			padding: 0 0 0 32px;
 		}
 		.none {
 			max-width: 624px;
-			padding: 28px 32px;
+			padding: 28px 32px 28px 0;
 		}
 		.layout {
 			display: grid;
-			grid-template-columns: minmax(0, 1fr);
-			grid-template-rows: auto 1fr;
+			grid-template-columns: minmax(0, 1fr) 260px;
 			gap: 0;
-			min-height: calc(100dvh - 72px);
+			min-height: calc(100dvh - 240px);
 		}
-		.layout.with-detail {
-			grid-template-columns: minmax(0, 1fr) clamp(300px, 29.7vw, 380px);
-		}
-		/* narrow desktop: the category chips stay above the list */
+		/* below 1100 the categories become a select in the toolbar */
 		.cats {
-			grid-column: 1;
-			min-width: 0;
-			padding: 18px 24px 2px;
+			display: none;
 		}
-		.filters {
-			margin: 0;
-			padding-inline: 0;
+		.cat-pick {
+			display: block;
 		}
 		.list {
-			grid-column: 1;
-			padding: 16px 24px 32px;
+			padding: 20px 24px 32px 0;
+			gap: 18px;
 		}
-		.detail {
-			grid-column: 2;
-			grid-row: 1 / span 2;
+		.toolbar {
+			gap: 8px 12px;
 		}
-		.range {
-			margin: 0;
-			font-size: 14px;
-		}
-		.range select {
-			height: 40px;
-			min-height: 40px;
-			padding: 0 34px 0 14px;
-			border: 1px solid var(--border-strong);
-			border-radius: 0;
+		.range-pick .input {
+			height: 44px;
+			padding: 0 40px 0 12px;
+			border: 1px solid var(--divider);
+			background-color: var(--surface);
 			background-position:
-				calc(100% - 19px) 52%,
-				calc(100% - 14px) 52%;
+				calc(100% - 21px) 52%,
+				calc(100% - 16px) 52%;
 			background-size: 5px 5px;
-			font-size: 14px;
+			font-size: 15px;
 			color: var(--text);
-		}
-		.range select:hover {
-			background-color: var(--surface-hi);
-		}
-		.day {
-			font-size: 12px;
-			letter-spacing: 0.06em;
-		}
-		.group {
-			border-radius: 0;
+			field-sizing: content;
 		}
 		.row {
-			padding: 10px 12px;
+			padding: 10px 10px 10px 8px;
+			border-left: 3px solid transparent;
+			min-height: 0;
 		}
-		.row:first-child {
-			border-top-left-radius: 0;
-			border-top-right-radius: 0;
-		}
-		.row:last-child {
-			border-bottom-left-radius: 0;
-			border-bottom-right-radius: 0;
-		}
-		/* D6: the entry in the pane, accent border and tint; its icon tile stays visible */
 		.row.selected {
-			z-index: 1;
-			background: var(--selected);
-		}
-		.row.selected::after {
-			content: '';
-			position: absolute;
-			inset: -1px;
-			border: 1px solid var(--accent);
-			border-radius: inherit;
-			pointer-events: none;
-		}
-		.row.selected:first-child::after {
-			border-top-left-radius: 0;
-			border-top-right-radius: 0;
-		}
-		.row.selected:last-child::after {
-			border-bottom-left-radius: 0;
-			border-bottom-right-radius: 0;
-		}
-		.row.selected :global(.icon) {
-			background: var(--surface-2);
+			background: var(--surface);
+			border-left-color: var(--accent);
 		}
 		.thumb {
 			width: 40px;
@@ -452,27 +421,35 @@
 		.detail {
 			display: block;
 			min-width: 0;
-			background: var(--surface-2);
-			border-left: 1px solid var(--border);
+			background: var(--surface);
+			border-left: 2px solid var(--divider);
 		}
 		/* full height; long tests scroll inside, Edit/Delete stay at the bottom */
 		.pane {
 			position: sticky;
 			top: 0;
-			height: calc(100dvh - 72px);
+			height: calc(100dvh - 190px);
 			overflow-y: auto;
-			padding: 22px 22px 0;
+			padding: 20px 20px 0;
 			display: flex;
 			flex-direction: column;
 			gap: 16px;
 		}
-		/* the full window height once the header has scrolled away */
+		/* the full window height once the tank header has scrolled away */
 		@supports (animation-timeline: scroll()) {
 			.pane {
 				animation: pane-fill linear both;
 				animation-timeline: scroll(root);
-				animation-range: 0px 72px;
+				animation-range: 0px 190px;
 			}
+		}
+		@keyframes pane-fill {
+			to {
+				height: 100dvh;
+			}
+		}
+		.spacer {
+			flex: 1;
 		}
 		.d-head {
 			display: flex;
@@ -481,52 +458,50 @@
 		}
 		.d-title {
 			margin: 0;
-			font-size: 20px;
-			font-weight: 600;
+			font-size: 22px;
 			overflow-wrap: anywhere;
 		}
 		.d-sub {
 			font-size: 14px;
 			color: var(--text-muted);
 		}
-		.rows {
+		.d-empty {
+			font-size: 14px;
+			color: var(--text-2);
+			line-height: 1.45;
+		}
+		.drows {
 			flex-shrink: 0;
-			border-radius: 0;
-			background: var(--surface);
-			border: 1px solid var(--border);
-			overflow: hidden;
+			border-top: 2px solid var(--ink);
 		}
 		.drow {
-			display: flex;
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) auto 84px;
+			gap: 12px;
 			align-items: baseline;
-			gap: 10px;
-			padding: 10px 14px;
-			font-size: 15px;
-		}
-		.drow + .drow {
-			border-top: 1px solid var(--border);
+			padding: 8px;
+			border-bottom: 1px solid var(--divider);
+			font-size: 14px;
 		}
 		.drow.bad {
-			background: var(--bad-bg);
+			background: var(--bg);
 		}
 		.dl {
-			flex: 1;
 			min-width: 0;
-			color: var(--text-muted);
+			color: var(--text-2);
 		}
 		.drow.bad .dl {
-			color: var(--bad-text);
+			color: var(--bad);
 		}
 		.dv {
-			font-weight: 600;
+			font-size: 15px;
+			font-weight: 800;
 			white-space: nowrap;
 		}
 		.ds {
-			min-width: 92px;
-			max-width: 50%;
 			text-align: right;
-			font-size: 13px;
-			font-weight: 600;
+			font-size: 12px;
+			font-weight: 800;
 		}
 		.note {
 			margin: 0;
@@ -544,105 +519,105 @@
 			width: 100%;
 			aspect-ratio: 1;
 			object-fit: cover;
-			border-radius: 0;
 			display: block;
 		}
 		.actions {
 			position: sticky;
 			bottom: 0;
-			margin-top: auto;
-			padding: 12px 0 22px;
-			background: var(--surface-2);
+			padding: 12px 0 20px;
+			background: var(--surface);
 			display: flex;
 			gap: 10px;
 		}
 		.actions > :global(.btn) {
 			flex: 1;
-			border-radius: 0;
 		}
 	}
-	/* D6: the category column */
-	@media (min-width: 1200px) {
+	/* the category column (main ≥ 780px) */
+	@media (min-width: 1100px) {
 		.layout {
-			grid-template-columns: clamp(168px, 15.6vw, 200px) minmax(0, 1fr);
-			grid-template-rows: none;
-		}
-		.layout.with-detail {
-			grid-template-columns: clamp(168px, 15.6vw, 200px) minmax(0, 1fr) clamp(300px, 29.7vw, 380px);
-		}
-		.cats,
-		.list,
-		.detail {
-			grid-column: auto;
-			grid-row: auto;
+			grid-template-columns: 150px minmax(0, 1fr) 270px;
 		}
 		.cats {
-			padding: 0;
-			border-right: 1px solid var(--border);
+			display: flex;
+			flex-direction: column;
+			min-width: 0;
+			padding: 24px 12px 32px 0;
+			border-right: 2px solid var(--divider);
 		}
-		.cats-inner {
-			position: sticky;
-			top: 0;
-			padding: 20px 16px;
+		.cat-pick {
+			display: none;
 		}
-		.caps {
-			font-size: 12px;
-			letter-spacing: 0.08em;
-			text-transform: uppercase;
-			color: var(--text-faint);
+		.cats .caps {
 			padding: 0 8px 8px;
 		}
 		.filters {
 			flex-direction: column;
-			gap: 4px;
+			gap: 0;
+			margin: 0;
 			padding: 0;
 			overflow: visible;
+			-webkit-mask-image: none;
+			mask-image: none;
 		}
-		.filter {
-			height: 38px;
-			padding: 0 10px;
+		.filter,
+		.filter.selected,
+		.filter.selected:hover {
+			height: 40px;
+			padding: 0 8px;
 			border: none;
-			border-radius: 0;
 			justify-content: space-between;
+			background: transparent;
 			font-size: 14px;
-			color: var(--text-2);
+			font-weight: 400;
+			color: var(--text);
 		}
 		.filter::after {
 			content: none;
 		}
+		.filter:hover {
+			background: var(--surface);
+		}
 		.filter.selected,
 		.filter.selected:hover {
-			background: var(--selected);
-			color: var(--text);
-			font-weight: 600;
+			background: var(--surface);
+			font-weight: 800;
 		}
 		.f-label {
 			display: none;
 		}
 		.f-long,
-		.f-count {
+		.f-count,
+		.filter.selected .f-count {
 			display: inline;
 		}
 		.f-count {
-			font-size: 13px;
+			font-size: 12px;
 			font-weight: 400;
-			color: var(--text-faint);
-		}
-		.filter.selected .f-count {
 			color: var(--text-muted);
 		}
+		.filter.selected .f-count::before {
+			content: none;
+		}
 		.list {
-			padding: 16px 24px 32px;
+			padding: 20px 24px 32px;
 		}
 	}
-	@media (min-width: 1024px) and (max-width: 1199px) {
-		.caps {
-			display: none;
+	@media (min-width: 1200px) {
+		.layout {
+			grid-template-columns: 160px minmax(352px, 1fr) 300px;
 		}
-	}
-	@keyframes pane-fill {
-		to {
-			height: 100dvh;
+		.cats {
+			padding-right: 16px;
+		}
+		.pane {
+			padding: 24px 24px 0;
+		}
+		.actions {
+			padding-bottom: 24px;
+		}
+		.drow {
+			grid-template-columns: minmax(0, 1fr) auto 96px;
 		}
 	}
 </style>

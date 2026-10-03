@@ -204,15 +204,14 @@
 	}
 	.sub-h {
 		margin: 8px 0 0;
-		font-size: 15px;
-		font-weight: 600;
+		font-size: 17px;
+		font-weight: 800;
 	}
+	/* rows under a 2px ink rule, 1px dividers between them */
 	.group {
 		display: flex;
 		flex-direction: column;
-		border-radius: 0;
-		background: var(--surface);
-		border: 1px solid var(--border);
+		border-top: 2px solid var(--ink);
 	}
 	.row {
 		position: relative;
@@ -220,10 +219,8 @@
 		align-items: center;
 		gap: 12px;
 		min-height: 56px;
-		padding: 12px 16px;
-	}
-	.row + .row {
-		border-top: 1px solid var(--border);
+		padding: 12px 0;
+		border-bottom: 1px solid var(--divider);
 	}
 	.stack {
 		flex-direction: column;
@@ -243,7 +240,8 @@
 		gap: 2px;
 	}
 	.tt {
-		font-size: 16px;
+		font-size: 15px;
+		font-weight: 600;
 		color: var(--text);
 	}
 	.td {
@@ -252,51 +250,50 @@
 		color: var(--text-muted);
 	}
 	.td a {
-		font-weight: 600;
+		font-weight: 700;
 	}
 	.badge {
 		margin-left: 8px;
-		padding: 1px 6px;
+		padding: 2px 8px;
 		border-radius: 0;
-		border: 1px solid var(--border-strong);
-		color: var(--text-muted);
-		font-size: 12px;
+		background: var(--surface);
+		color: var(--text);
+		font-size: 11px;
 		font-weight: 700;
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
+		letter-spacing: 0.02em;
 		vertical-align: 1px;
 	}
 	.btn.sm {
 		flex-shrink: 0;
-		height: 44px;
-		padding: 0 16px;
-		font-size: 15px;
 	}
 	.remove {
 		flex-shrink: 0;
 		min-height: 44px;
-		color: var(--bad);
-		font-weight: 600;
+		color: var(--accent-700);
+		font-weight: 800;
 	}
 	.hint {
 		margin: 0;
 		font-size: 13px;
-		color: var(--text-faint);
+		color: var(--text-muted);
 	}
 	.error-text {
 		margin: 0;
 		font-size: 14px;
 	}
 	.field-l {
-		font-size: 14px;
-		color: var(--text-2);
+		font-size: 13px;
+		color: var(--text-muted);
+	}
+	.input {
+		max-width: 480px;
 	}
 	.self-start {
 		align-self: flex-start;
 		min-height: 44px;
 		padding-left: 0;
 		padding-right: 0;
-		font-weight: 600;
+		font-weight: 800;
 	}
 	.acts {
 		display: flex;
@@ -316,12 +313,5 @@
 	}
 	.test .btn {
 		align-self: flex-start;
-		height: 44px;
-		padding: 0 18px;
-	}
-	@media (min-width: 1024px) {
-		.row {
-			padding: 14px 18px;
-		}
 	}
 </style>

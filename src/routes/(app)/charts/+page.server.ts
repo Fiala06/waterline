@@ -115,7 +115,7 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 		const dec = paramDecimals(param, user);
 		const days = Math.round((Date.parse(b.takenAt) - Date.parse(a.takenAt)) / 86_400_000);
 		const amount = Math.abs(delta) < 10 ** -dec / 2 ? 'No change' : `${delta > 0 ? '+' : '−'}${formatNumber(Math.abs(delta), dec)}`;
-		return `${amount} ${days === 0 ? 'today' : days === 1 ? 'in 1 day' : `in ${days} days`}`;
+		return { amount, over: days === 0 ? 'since the test before' : days === 1 ? 'in 1 day' : `in ${days} days` };
 	})();
 	const stats = values.length
 		? {

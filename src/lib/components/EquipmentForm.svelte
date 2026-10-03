@@ -14,7 +14,8 @@
 		brands = [],
 		prefs,
 		cancelHref,
-		today
+		today,
+		about = null
 	}: {
 		mode: 'new' | 'edit';
 		values: {
@@ -31,7 +32,16 @@
 		cancelHref: string;
 		/** YYYY-MM-DD in the user's time zone */
 		today?: string;
+		/** the detail page (edit): its kicker line, service history and linked task */
+		about?: {
+			kicker: string;
+			serviced: string | null;
+			history: { id: string; title: string; note: string | null; day: string }[];
+			task: { id: string; name: string; line: string } | null;
+		} | null;
 	} = $props();
+	const tankId = $derived(cancelHref.split('/')[2] ?? '');
+	const serviceHref = $derived(`/entries/event/new?tank=${tankId}&category=maintenance&from=${encodeURIComponent(cancelHref)}`);
 
 	let type = $state<EquipmentType>(untrack(() => values.type));
 	let brand = $state(untrack(() => values.brand));
@@ -66,6 +76,13 @@
 		<button class="save-top" disabled={busy}>Save</button>
 	</div>
 
+	{#if about}
+		<div class="about-head hide-phone">
+			<span class="kicker">{about.kicker}{about.serviced ? ` · last serviced ${about.serviced}` : ''}</span>
+			<a class="btn btn-primary" href={serviceHref}>Log service</a>
+		</div>
+	{/if}
+	<div class="cols" class:with-side={!!about}>
 	<div class="body">
 		<fieldset class="field">
 			<legend class="label">Type</legend>
@@ -142,6 +159,30 @@
 		{/if}
 		<p class="hint">Fields adapt to type: heaters get wattage, lights get photoperiod.</p>
 	</div>
+	{#if about}
+		<aside class="side">
+			{#if about.task}
+				<div class="block">
+					<span class="kicker">Linked task</span>
+					<span class="task-name">{about.task.name}</span>
+					<span class="task-line">{about.task.line}</span>
+					<a class="ghost" href="/tasks?edit={about.task.id}">Open in Tasks ›</a>
+				</div>
+			{/if}
+			<div class="log">
+				<span class="kicker rule">Service history · {about.history.length}</span>
+				{#each about.history as h (h.id)}
+					<a class="log-row" href="/entries/event/{h.id}">
+						<span class="log-top"><b>{h.title}</b><span class="log-day">{h.day}</span></span>
+						{#if h.note}<span class="log-note">{h.note}</span>{/if}
+					</a>
+				{/each}
+				{#if !about.history.length}<span class="none">No service logged yet.</span>{/if}
+				<a class="ghost hide-desk" href={serviceHref}>Log service</a>
+			</div>
+		</aside>
+	{/if}
+	</div>
 
 	<div class="foot">
 		{#if mode === 'edit'}
@@ -187,14 +228,22 @@
 	h1 {
 		margin: 0;
 		font-size: 17px;
-		font-weight: 600;
+		font-weight: 800;
 	}
 	.save-top {
 		justify-self: end;
 		color: var(--accent);
-		font-weight: 700;
+		font-weight: 800;
 		font-size: 16px;
 		min-height: 44px;
+	}
+	.about-head {
+		display: none;
+	}
+	.cols {
+		display: flex;
+		flex-direction: column;
+		gap: 20px;
 	}
 	.body {
 		flex: 1;
@@ -228,12 +277,9 @@
 	}
 	/* T3: brands used in other tanks, under both fields */
 	.suggest {
-		border-radius: 0;
-		background: var(--surface);
-		border: 1px solid var(--border-strong);
+		border: 1px solid var(--divider);
 		display: flex;
 		flex-direction: column;
-		overflow: hidden;
 	}
 	.suggest button {
 		min-height: 44px;
@@ -242,24 +288,90 @@
 		font-size: 14px;
 	}
 	.suggest button + button {
-		border-top: 1px solid var(--border);
-	}
-	.suggest button:hover {
-		background: var(--surface-hi);
+		border-top: 1px solid var(--divider);
 	}
 	.task {
 		padding: 12px 14px;
-		border-radius: 0;
 		background: var(--surface);
-		border: 1px solid var(--border);
+		border-left: 3px solid var(--ink);
 		font-size: 14px;
 	}
 	.hint {
 		margin: 0;
 		font-size: 13px;
 		line-height: 1.5;
-		color: var(--text-faint);
-		text-align: center;
+		color: var(--text-muted);
+	}
+	.ghost {
+		align-self: flex-start;
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		padding: 0 4px;
+		font-size: 14px;
+		font-weight: 800;
+		color: var(--accent);
+	}
+	/* the detail page's column: linked task, service history */
+	.side {
+		display: flex;
+		flex-direction: column;
+		gap: 24px;
+		padding: 0 20px;
+	}
+	.block {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		padding-top: 10px;
+		border-top: 2px solid var(--ink);
+	}
+	.task-name {
+		font-size: 16px;
+		font-weight: 800;
+	}
+	.task-line {
+		font-size: 13px;
+		color: var(--text-2);
+	}
+	.log {
+		display: flex;
+		flex-direction: column;
+	}
+	.rule {
+		padding-bottom: 6px;
+		border-bottom: 2px solid var(--ink);
+		color: var(--text);
+	}
+	.log-row {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		padding: 9px 0;
+		border-bottom: 1px solid var(--divider);
+		font-size: 14px;
+		color: var(--text);
+	}
+	.log-top {
+		display: flex;
+		justify-content: space-between;
+		gap: 10px;
+	}
+	.log-top b {
+		font-weight: 600;
+	}
+	.log-day {
+		color: var(--text-muted);
+		white-space: nowrap;
+	}
+	.log-note {
+		font-size: 13px;
+		color: var(--text-2);
+	}
+	.none {
+		padding: 10px 0;
+		font-size: 13px;
+		color: var(--text-muted);
 	}
 	.foot {
 		padding: 8px 20px calc(24px + env(safe-area-inset-bottom));
@@ -267,60 +379,74 @@
 		gap: 10px;
 	}
 	.foot .btn {
-		height: 56px;
-		border-radius: 0;
-		font-size: 17px;
+		height: 52px;
+		font-size: 16px;
 	}
 	.save {
 		flex: 1;
 	}
-	/* Desktop: the form as a centered card (header has the title) */
+	@media (hover: hover) {
+		.suggest button:hover {
+			background: var(--surface);
+		}
+		.ghost:hover {
+			background: color-mix(in srgb, var(--accent) 10%, transparent);
+		}
+		.log-row:hover b {
+			color: var(--accent);
+		}
+	}
+	/* Desktop: a flat form under the shell's title; the detail page gets a 300px column */
 	@media (min-width: 1024px) {
 		.eqform {
 			min-height: 0;
 			max-width: 640px;
-			margin: 28px auto;
-			padding: 24px 28px;
-			background: var(--surface);
-			border: 1px solid var(--border);
-			border-radius: 0;
+			padding: 24px 32px 40px;
 		}
-		.body {
+		.eqform:has(.with-side) {
+			max-width: 1040px;
+		}
+		.about-head {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 16px;
+			padding-bottom: 14px;
+			margin-bottom: 20px;
+			border-bottom: 2px solid var(--divider);
+		}
+		.cols.with-side {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) 300px;
+			gap: 32px;
+			align-items: start;
+		}
+		.body,
+		.side {
 			padding: 0;
 		}
-		/* recessed fields on the card (D13), the date field too; background-color keeps the select's ▾ */
-		.eqform :global(.input),
-		.unit-input,
-		.task {
-			background-color: var(--surface-2);
-			border-color: var(--border-strong);
-		}
-		.eqform :global(.input:focus),
-		.unit-input:focus-within {
-			border-color: var(--accent);
-		}
-		.suggest {
-			background: var(--surface-2);
-		}
-		.hint {
-			text-align: left;
-		}
 		.foot {
-			margin-top: 24px;
-			padding: 20px 0 0;
-			border-top: 1px solid var(--border);
-			justify-content: flex-end;
+			margin-top: 20px;
+			padding: 16px 0 0;
+			border-top: 2px solid var(--divider);
+			justify-content: flex-start;
 			gap: 12px;
 		}
 		.foot .btn {
 			height: 44px;
-			border-radius: 0;
-			font-size: 15px;
+			font-size: 14px;
+		}
+		.foot .hide-phone {
+			order: 2;
+			border: none;
+			color: var(--text-muted);
 		}
 		.remove {
-			margin-right: auto;
+			order: 3;
+			margin-left: auto;
 		}
 		.save {
+			order: 1;
 			flex: none;
 			padding: 0 22px;
 		}
