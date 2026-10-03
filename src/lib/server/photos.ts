@@ -246,6 +246,14 @@ export function tankPhotos(userId: string, tankId: string) {
 		.all();
 }
 
+/** In or out of the tank's timeline (#26). */
+export function setInTimeline(userId: string, photoId: string, on: boolean) {
+	const p = getPhoto(userId, photoId);
+	requireRoleOn(userId, p.tankId, 'log');
+	db.update(photos).set({ inTimeline: on }).where(eq(photos.id, p.id)).run();
+	return p;
+}
+
 export function setCover(userId: string, photoId: string) {
 	const p = getPhoto(userId, photoId);
 	requireRoleOn(userId, p.tankId, 'owner');

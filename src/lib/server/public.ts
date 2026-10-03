@@ -37,6 +37,7 @@ import { latestReadings, series } from './logs';
 import { getPhoto } from './photos';
 import { requireRoleOn } from './members';
 import { getTank, listParams } from './tanks';
+import { timelineEntries } from './timeline';
 import { tankTypeLabel } from '$lib/types';
 
 // ── Server-wide settings ────────────────────────────────────────────────────
@@ -133,6 +134,8 @@ export function displayNameFor(user: User, mode: PublicPage['displayName']) {
 }
 
 const PUBLIC_CATEGORIES = ['water_change', 'dosing', 'maintenance', 'livestock', 'equipment'] as const;
+/** the public timeline shows this many photos at most, the latest */
+const PUBLIC_TIMELINE_MAX = 24;
 
 // Pets' names stay private unless the owner turns on "Pet names and photos":
 // public titles say the species ("Betta moved into the tank"), naming one isn't
@@ -358,6 +361,18 @@ export function publicView(page: PublicPage, tank: Tank, owner: User, ranges: Pu
 		// what it goes without on purpose ("Heater · None"), with the equipment
 		without: page.showEquipment ? tank.withoutEquipment.filter(isWithoutType).map((w) => EQUIPMENT_TYPE_LABEL[w]) : [],
 		activity,
+		// the timeline (#26): the latest photos in date order, with the day and, when readings are on, the nearest test's
+		timeline: page.showTimeline
+			? timelineEntries(tank, prefs, { names, readings: page.showReadings, activity: page.showActivity, categories: PUBLIC_CATEGORIES, limit: PUBLIC_TIMELINE_MAX }).map((e) => ({
+					id: e.id,
+					date: e.date,
+					dayNumber: e.dayNumber,
+					animals: page.showLivestock ? e.animals : 0,
+					plants: page.showLivestock ? e.plants : 0,
+					readings: e.readings,
+					gap: e.gap
+				}))
+			: [],
 		ranges: { chart: chartRange, log: logRange, chartSince: since ? Date.parse(since) : null }
 	};
 }
@@ -389,7 +404,7 @@ export function publicPhoto(page: PublicPage, tank: Tank, photoId: string) {
 	const p = db.select().from(photos).where(and(eq(photos.id, photoId), eq(photos.tankId, tank.id))).get();
 	if (!p) error(404, 'Not found');
 	// the cover and the share image are the owner's own picks
-	const listed = page.showPhotos && (page.showPetNames || !db.select().from(photoLivestock).where(eq(photoLivestock.photoId, photoId)).get());
+	const listed = (page.showPhotos || (page.showTimeline && p.inTimeline)) && (page.showPetNames || !db.select().from(photoLivestock).where(eq(photoLivestock.photoId, photoId)).get());
 	const allowed = listed || photoId === tank.coverPhotoId || photoId === page.ogPhotoId;
 	if (!allowed) error(404, 'Not found');
 	return p;

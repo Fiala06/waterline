@@ -282,7 +282,9 @@ export const photos = sqliteTable('photos', {
 	/** when it was taken: from the photo's details, the date picked on upload, or its entry's date (#42) */
 	takenAt: text('taken_at').notNull(),
 	/** the keeper set the date in the viewer, so it no longer follows the entry's */
-	takenAtSet: integer('taken_at_set', { mode: 'boolean' }).notNull().default(false)
+	takenAtSet: integer('taken_at_set', { mode: 'boolean' }).notNull().default(false),
+	/** in the tank's timeline (#26); off for a close-up that doesn't show the tank changing */
+	inTimeline: integer('in_timeline', { mode: 'boolean' }).notNull().default(true)
 });
 
 
@@ -743,6 +745,8 @@ export const publicPages = sqliteTable(
 		showLivestock: integer('show_livestock', { mode: 'boolean' }).notNull().default(true),
 		showEquipment: integer('show_equipment', { mode: 'boolean' }).notNull().default(true),
 		showDescription: integer('show_description', { mode: 'boolean' }).notNull().default(true),
+		// the timeline (#26): photos in date order with the readings of the moment; follows the photos and readings switches
+		showTimeline: integer('show_timeline', { mode: 'boolean' }).notNull().default(false),
 		// pets' names, and photos tagged with a pet; off: species only, tagged photos hidden
 		showPetNames: integer('show_pet_names', { mode: 'boolean' }).notNull().default(false),
 		description: text('description'),

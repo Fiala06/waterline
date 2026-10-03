@@ -3,7 +3,7 @@ import { eventKindLabel, eventTitle } from '$lib/events';
 import { utcToZoned } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
 import { parseWhen } from '$lib/server/forms';
-import { deletePhoto, getPhoto, setCover, setPhotoDate, tankPhotos } from '$lib/server/photos';
+import { deletePhoto, getPhoto, setCover, setInTimeline, setPhotoDate, tankPhotos } from '$lib/server/photos';
 import { getTank, updateTank } from '$lib/server/tanks';
 import { getLivestock, getPlant, listLivestock, listPlants, photoPets, tagPhoto, updateLivestockDetails, updatePlant } from '$lib/server/specs';
 import { livestockLabel } from '$lib/livestock';
@@ -56,7 +56,7 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 		sharing: pub.allowPublicPages
 			? { share: share ? { id: share.id, includeNote: share.includeNote, includeTank: share.includeTank } : null, base: pub.baseUrl ?? url.origin }
 			: null,
-		photo: { id: photo.id, width: photo.width, height: photo.height, isCover: tank.coverPhotoId === photo.id },
+		photo: { id: photo.id, width: photo.width, height: photo.height, isCover: tank.coverPhotoId === photo.id, inTimeline: photo.inTimeline },
 		tankId: tank.id,
 		position: `${i + 1} of ${all.length}`,
 		prev: i > 0 ? all[i - 1].photo.id : null,
@@ -141,6 +141,13 @@ export const actions: Actions = {
 	unshare: ({ locals, params, cookies }) => {
 		revokeShare(locals.user!.id, params.id);
 		setFlash(cookies, 'Public link turned off');
+		redirect(303, `/photos/${params.id}`);
+	},
+	/** In or out of the tank's timeline (#26): a close-up that doesn't show the tank changing stays out. */
+	timeline: async ({ locals, params, request, cookies }) => {
+		const on = (await request.formData()).get('on') === '1';
+		setInTimeline(locals.user!.id, params.id, on);
+		setFlash(cookies, on ? '✓ In the timeline' : 'Left out of the timeline');
 		redirect(303, `/photos/${params.id}`);
 	},
 	delete: ({ locals, params, cookies }) => {

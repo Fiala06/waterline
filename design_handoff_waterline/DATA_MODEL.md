@@ -70,7 +70,8 @@ events           id, tank_id, category(water_change|dosing|maintenance|livestock
                  --       right on the setup review; prev_checks lets Undo put the checks back)
 photos           id, tank_id, event_id?, test_id?, path, thumb_path, width, height, taken_at
                  (from the photo's details, the day picked on upload, or its entry's date),
-                 taken_at_set (the keeper changed it in the viewer: it no longer follows the entry)
+                 taken_at_set (the keeper changed it in the viewer: it no longer follows the entry),
+                 in_timeline (off: left out of the tank's timeline, e.g. a close-up)
 photo_livestock  photo_id, livestock_id (pets tagged in a photo)
 
 ── Tasks ──────────────────────────────────────────────────────────────────────
@@ -112,6 +113,8 @@ expenses         id, tank_id, date, amount_cents, category(livestock|plants|equi
 ── Sharing ────────────────────────────────────────────────────────────────────
 public_pages     tank_id, enabled, slug, show_readings, show_charts, show_photos,
                  show_activity, show_livestock, show_equipment, show_description,
+                 show_timeline (photos in date order with the day, readings and changes between,
+                 following the readings, pet names, livestock and activity switches),
                  show_pet_names, description?, display_name, indexable, seo_title?,
                  seo_description?, og_photo_id?, og_plain, view_count
 public_page_views tank_id, day, views

@@ -55,6 +55,13 @@
 	{/if}
 {/snippet}
 
+{#snippet timeline(cls: string)}
+	<form method="POST" action="?/timeline" use:enhance={closeMenu}>
+		<input type="hidden" name="on" value={data.photo.inTimeline ? '0' : '1'} />
+		<button class={cls}>{data.photo.inTimeline ? 'Leave out of timeline' : 'Put in timeline'}</button>
+	</form>
+{/snippet}
+
 {#snippet shareCard(where: string)}
 	{#if data.sharing}
 		<div class="share" class:on={!!share}>
@@ -177,6 +184,8 @@
 			<div class="buttons">
 				<a class="btn" href={download} download>Download</a>
 				{@render cover('btn')}
+				{@render timeline('btn')}
+				<a class="btn" href="/timeline?tank={data.tankId}#p-{data.photo.id}">Timeline</a>
 			</div>
 			<button type="button" class="btn-text delete" popovertarget="confirm-photo">Delete photo</button>
 			<ConfirmDelete id="confirm-photo" trigger={false} title="Delete this photo?" body="The photo is removed from its entry. This can't be undone." />
@@ -188,6 +197,8 @@
 	<div class="menu">
 		<a class="row" href={download} download onclick={() => (menu = false)}>Download</a>
 		{@render cover('row')}
+		{@render timeline('row')}
+		<a class="row" href="/timeline?tank={data.tankId}#p-{data.photo.id}" onclick={() => (menu = false)}>Timeline</a>
 	</div>
 	{@render shareCard('sheet')}
 	<div class="sheet-foot">

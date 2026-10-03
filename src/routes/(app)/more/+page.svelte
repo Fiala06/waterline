@@ -19,6 +19,7 @@
 			<h2 id="this-tank" class="caps">This tank</h2>
 			<ul class="rows">
 				<li><a href="/photos{q}"><span>Photos</span><span class="r">{data.counts.photos || ''}</span></a></li>
+				<li><a href="/timeline{q}"><span>Timeline</span><span class="r">Photos over time</span></a></li>
 				<li><a href="{base}/livestock"><span>Livestock</span><span class="r">{data.counts.livestock ? `${data.counts.livestock} animal${data.counts.livestock === 1 ? '' : 's'}` : ''}</span></a></li>
 				<li><a href="{base}/plants"><span>Plants</span><span class="r">{data.counts.plants || ''}</span></a></li>
 				<li><a href="{base}/equipment"><span>Equipment</span><span class="r">{data.counts.equipment || ''}</span></a></li>
