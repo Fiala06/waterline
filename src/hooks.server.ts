@@ -106,6 +106,8 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
 	set('x-frame-options', 'DENY');
 	set('x-content-type-options', 'nosniff');
 	set('referrer-policy', 'same-origin');
+	// the app never uses these browser features (photos come through <input type=file>)
+	set('permissions-policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
 	if (url.protocol === 'https:') set('strict-transport-security', 'max-age=31536000');
 	return res;
 };

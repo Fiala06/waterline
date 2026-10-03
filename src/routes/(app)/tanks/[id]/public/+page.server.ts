@@ -33,6 +33,18 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 
 const on = (form: FormData, k: string) => form.get(k) === 'on';
 
+/** localhost, .local/.internal names and private, loopback or link-local IPs. */
+function internalHost(host: string) {
+	const h = host.replace(/^\[|\]$/g, '').toLowerCase();
+	if (h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.local') || h.endsWith('.internal') || h.endsWith('.lan') || h.endsWith('.home.arpa') || !h.includes('.')) return true;
+	const v4 = h.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+	if (v4) {
+		const [a, b] = [Number(v4[1]), Number(v4[2])];
+		return a === 10 || a === 127 || a === 0 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31) || (a === 169 && b === 254) || (a === 100 && b >= 64 && b <= 127);
+	}
+	return h === '::1' || h.startsWith('fc') || h.startsWith('fd') || h.startsWith('fe80');
+}
+
 export const actions: Actions = {
 	save: async ({ request, locals, params }) => {
 		const user = locals.user!;
@@ -77,6 +89,16 @@ export const actions: Actions = {
 		const fail = (text: string, hint: string) => ({ check: { ok: false, link, text, hint } });
 		if (!s.allowPublicPages) return fail('✕ Public pages are off for this server', 'Turn them on in Server settings › Public pages.');
 		if (!page.enabled) return fail('✕ This page is off', 'Turn it on above and save, then check again.');
+		// only a web address, and never an internal one (the server's own origin aside), so the
+		// check can't be used to poke at the network the server sits in
+		let target: URL;
+		try {
+			target = new URL(link);
+		} catch {
+			return fail('✕ Not a web address', 'The Public site URL in Server settings must start with http:// or https://.');
+		}
+		if (!/^https?:$/.test(target.protocol)) return fail('✕ Not a web address', 'The Public site URL in Server settings must start with http:// or https://.');
+		if (target.origin !== url.origin && internalHost(target.hostname)) return fail('▲ An internal address', `${target.host} is a private or local address, which visitors on the internet can't reach. Set the Public site URL in Server settings to the address they use.`);
 		const ctrl = new AbortController();
 		const timer = setTimeout(() => ctrl.abort(), 8000);
 		try {
