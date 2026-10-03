@@ -1,5 +1,6 @@
 // Event categories: labels, form options and one-line titles for feeds.
 import type { EventCategory } from './types';
+import { healthTitle } from './livestock';
 import { amountText } from './tasks';
 import { formatNumber, toDisplay, unitLabel, type UnitPrefs } from './units';
 import { reviewTitle } from './review';
@@ -157,11 +158,9 @@ export function eventTitle(e: EventLike, prefs: UnitPrefs): string {
 			if (!amount) return `Fed ${food}`;
 			return unit ? `Fed ${amount} of ${food}` : `Fed ${food} · ${amount}`;
 		}
-		case 'health': {
-			const name = str(d.name) || str(d.nickname);
-			const what = str(d.title) || (Array.isArray(d.symptoms) ? (d.symptoms as string[]).join(', ') : '') || firstLine(e.note);
-			return [name, what].filter(Boolean).join(' · ') || 'Health';
-		}
+		case 'health':
+			// "Health · Betta · White spots · treating" (the free text is the note)
+			return healthTitle(d);
 		case 'maintenance': {
 			const actions = Array.isArray(d.actions) ? (d.actions as string[]) : [];
 			const plants = Array.isArray(d.plants) ? (d.plants as string[]) : [];

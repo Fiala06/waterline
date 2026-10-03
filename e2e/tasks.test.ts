@@ -62,7 +62,7 @@ test('snooze sheet picks a date and keeps the schedule', async ({ page }, info) 
 	await page.getByRole('button', { name: 'Save' }).last().click();
 	await expect(page.getByRole('heading', { name: /Overdue · 1/ })).toBeVisible();
 
-	await page.getByRole('button', { name: 'Snooze', exact: true }).click();
+	await page.getByRole('button', { name: 'Snooze', exact: true }).first().click();
 	await expect(page.getByText('Snoozing moves only this occurrence.')).toBeVisible();
 	await page.getByRole('button', { name: /^In 3 days/ }).click();
 	await expect(page.getByRole('status')).toContainText('Snoozed Water change 25% to');

@@ -91,6 +91,7 @@
 			{
 				'/(app)/tanks/[id]/(tabs)': 'Notes & routines',
 				'/(app)/tanks/[id]/equipment/new': 'Add equipment',
+				'/(app)/tanks/[id]/health': 'Log health',
 				'/(app)/tanks/[id]/equipment/[eid]': 'Edit equipment',
 				'/(app)/tanks/[id]/livestock/new': 'Add livestock',
 				'/(app)/tanks/[id]/livestock/several': 'Add several',

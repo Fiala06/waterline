@@ -40,7 +40,7 @@ test('photos, history and charts', async ({ page }, info) => {
 	expect(await img.evaluate((el: HTMLImageElement) => el.naturalWidth)).toBe(640);
 	if (info.project.name === 'phone') await page.getByRole('link', { name: 'More', exact: true }).click();
 	await page.getByRole('button', { name: 'Set as cover' }).click();
-	await expect(page.getByRole('status')).toContainText('✓ Set as tank cover');
+	await expect(page.getByRole('status')).toContainText('✓ Cover set');
 	await page.getByRole('link', { name: 'Next photo' }).click();
 	await expect(page.locator('.pos')).toHaveText('2 of 2');
 
