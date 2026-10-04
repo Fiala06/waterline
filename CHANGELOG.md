@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.12.8 · 2026-10-04
+
 - **Skip a task:** On [Tasks](/tasks), the Snooze menu now ends with Skip this one, which shows when the next one is. It moves a repeating task straight to its next date without marking it done, notes "Skipped" in History, and the toast's Undo puts it back.
 - **The Snooze menu closes properly:** On a computer, closing the Snooze menu on [Tasks](/tasks) (Esc, or clicking beside it) now takes it off the screen; before, it closed but stayed drawn over the page.
 
