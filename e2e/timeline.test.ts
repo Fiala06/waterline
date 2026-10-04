@@ -81,7 +81,8 @@ test('tank timeline: moments, what changed, compare, public', async ({ page, bro
 	await open(page, `/tanks/${tankId}/public`);
 	await page.getByLabel('Share this tank').check({ force: true });
 	await page.getByLabel('URL').fill(slug);
-	await page.getByLabel('Timeline').check({ force: true });
+	// by id: the Photos switch's note mentions the timeline too
+	await page.locator('#pp-showTimeline').check({ force: true });
 	await page.getByRole('button', { name: 'Save' }).first().click();
 	await expect(page.getByText('✓ Public page saved')).toBeVisible();
 	const visitor = await browser.newContext();
