@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.12.7 · 2026-10-04
+
 - **What to do about a reading:** Under each reading out of range on a tank's [Overview](/), Needs attention now says what to do next in a line, like "Change 30–50% of the water with conditioned water, feed lightly and test again tomorrow" for ammonia, with reef wording in a reef.
 - **Any ammonia or nitrite is worth a look:** Ammonia and nitrite should read 0, so a reading above 0 now shows as ▲ Near high on the [Overview](/) and as you log a test, instead of ✓; over their target it's still ✕ High.
 - **A friendlier pH target for new tanks:** New freshwater and planted tanks aim for pH 6.0–7.8, so ordinary tap water around 7.6 no longer reads ✕ High. Existing tanks keep their targets; change them under [Targets](/tanks/current/targets).
