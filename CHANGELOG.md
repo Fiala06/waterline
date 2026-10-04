@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.12.9 · 2026-10-04
+
 - **Your saved products when dosing:** [Log › Dose](/entries/event/new?category=dosing) now offers the products saved under [Settings › Products](/settings/products) as well as the ones you've dosed before, so a new product is there to tap right away, and Manage products › takes you to the list.
 
 ## 1.12.8 · 2026-10-04
