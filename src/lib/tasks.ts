@@ -80,6 +80,22 @@ function nextOccurrence(task: Schedulable, doneOn: string, today: string): strin
 	return next;
 }
 
+/**
+ * Where Skip this one (#71) moves a repeating task: its next occurrence after
+ * the one due, stepped on past today so it isn't due again at once. Null when
+ * there's no next one (a one-off, or the last of a course).
+ */
+export function skipTo(task: Schedulable, today: string): string | null {
+	if (!task.recurring || !task.nextDue) return null;
+	let t = task;
+	let next = nextDueAfterCompletion(t, t.nextDue!, today);
+	for (let i = 0; next && next <= today && i < 1000; i++) {
+		t = { ...t, nextDue: next };
+		next = nextDueAfterCompletion(t, next, today);
+	}
+	return next && next > today ? next : null;
+}
+
 /** Every day a task comes up from its next due date to `endsOn` (inclusive), at most `max` of them. */
 export function occurrencesUntil(task: Schedulable, endsOn: string, max = 1000): string[] {
 	if (!task.nextDue || task.nextDue > endsOn) return [];

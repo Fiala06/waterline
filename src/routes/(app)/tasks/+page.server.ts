@@ -5,7 +5,7 @@ import { str } from '$lib/server/forms';
 import { safeReturn } from '$lib/server/redirect';
 import { listTanks } from '$lib/server/tanks';
 import { routineProducts, taskFormValues, taskType } from '$lib/server/task-form';
-import { completeTask, getTask, listTasks, snoozeTask, undoCompletion } from '$lib/server/tasks';
+import { completeTask, getTask, listTasks, skipTask, snoozeTask, undoCompletion } from '$lib/server/tasks';
 import { effectiveDue } from '$lib/tasks';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -72,6 +72,18 @@ export const actions: Actions = {
 		if (date <= after) error(400, `Pick a date after ${fmtDate(after)}`);
 		const task = snoozeTask(user.id, taskId, date);
 		setFlash(cookies, `Snoozed ${task.name} to ${fmtDate(date)}`);
+		redirect(303, safeReturn(form.get('from'), '/tasks'));
+	},
+	/** Skip this one (#71): on to the next date, with Undo */
+	skip: async ({ request, locals, cookies }) => {
+		const user = locals.user!;
+		const form = await request.formData();
+		const taskId = str(form, 'taskId');
+		if (!taskId) error(400, 'Missing task');
+		const task = skipTask(user.id, taskId, { timeZone: user.timeZone });
+		setFlash(cookies, `Skipped ${task.name} · next ${fmtDate(task.nextDue)}`, {
+			undo: { action: '/tasks?/undo', name: 'completionId', value: task.completionId }
+		});
 		redirect(303, safeReturn(form.get('from'), '/tasks'));
 	},
 	undo: async ({ request, locals, cookies }) => {

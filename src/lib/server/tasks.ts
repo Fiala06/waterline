@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { and, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { addDays, dateInZone, todayInZone } from '$lib/time';
-import { effectiveDue, isRoutine, nextDueAfterCompletion } from '$lib/tasks';
+import { effectiveDue, isRoutine, nextDueAfterCompletion, skipTo } from '$lib/tasks';
 import { db } from './db';
 import { requireRoleOn, visibleTo } from './members';
 import { events, taskCompletions, tanks, tasks, type Tank, type Task } from './db/schema';
@@ -107,6 +107,8 @@ export function undoCompletion(userId: string, completionId: string) {
 			.where(eq(tasks.id, row.task.id))
 			.run();
 		tx.delete(taskCompletions).where(eq(taskCompletions.id, completionId)).run();
+		// a skip (#71): its "Skipped" note leaves History
+		if (row.c.skipped && row.c.eventId) tx.delete(events).where(eq(events.id, row.c.eventId)).run();
 		// the course isn't over after all
 		if (row.task.endsOn && !row.task.nextDue)
 			tx.delete(events).where(and(eq(events.tankId, row.task.tankId), eq(events.category, 'note'), sql`json_extract(${events.data}, '$.system') = 'course_finished' AND json_extract(${events.data}, '$.task_id') = ${row.task.id}`)).run();
@@ -122,6 +124,41 @@ export function undoCompletion(userId: string, completionId: string) {
 		}
 	});
 	return row.task;
+}
+
+/**
+ * Skip this one (#71): the occurrence due is passed over, not done. The task
+ * moves to its next date after today, History gets a "Skipped" note, and a
+ * skipped completion keeps the schedule before it so Undo can restore it.
+ */
+export function skipTask(userId: string, taskId: string, opts: { timeZone: string }) {
+	const task = getTask(userId, taskId);
+	requireRoleOn(userId, task.tankId, 'log');
+	const today = todayInZone(opts.timeZone);
+	const nextDue = skipTo(task, today);
+	if (!nextDue) error(400, 'This task has no next one to skip to');
+	const at = new Date().toISOString();
+	const completion = db.transaction((tx) => {
+		const note = tx
+			.insert(events)
+			.values({
+				tankId: task.tankId,
+				occurredAt: at,
+				category: 'note',
+				note: `Skipped: ${task.name}`,
+				data: { system: 'task_skipped', task_id: task.id, due: effectiveDue(task) }
+			})
+			.returning()
+			.get();
+		const c = tx
+			.insert(taskCompletions)
+			.values({ taskId, completedAt: at, eventId: note.id, prevNextDue: task.nextDue, prevSnoozedUntil: task.snoozedUntil, skipped: true })
+			.returning()
+			.get();
+		tx.update(tasks).set({ nextDue, snoozedUntil: null }).where(eq(tasks.id, taskId)).run();
+		return c;
+	});
+	return { ...task, nextDue, completionId: completion.id };
 }
 
 /** Snooze moves only the current occurrence; the schedule after it stays the same. */

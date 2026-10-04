@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { amountText, courseText, dueInfo, effectiveDue, endsAfterTimes, intervalText, nextDueAfterCompletion, occurrencesUntil, onOrAfterWeekday, parseWeekdays, reminderDue, routineLine, scheduleExamples, snoozeOptions } from './tasks';
+import { amountText, courseText, dueInfo, effectiveDue, endsAfterTimes, intervalText, nextDueAfterCompletion, occurrencesUntil, onOrAfterWeekday, parseWeekdays, reminderDue, routineLine, scheduleExamples, skipTo, snoozeOptions } from './tasks';
 
 const weekly = { recurring: true, intervalDays: 7, scheduleMode: 'completion' as const, nextDue: '2026-09-24' };
 
@@ -196,5 +196,26 @@ describe('a routine’s amount', () => {
 	it('its line: how much, then when', () => {
 		expect(routineLine({ kind: 'dosing', amount: 1, amountUnit: 'pumps', recurring: true, intervalDays: null, scheduleMode: 'weekdays', weekdays: '1,3,5' })).toBe('1 pump · Mon, Wed, Fri');
 		expect(routineLine({ kind: 'feeding', amount: null, amountUnit: null, recurring: true, intervalDays: 1, scheduleMode: 'completion' })).toBe('every day');
+	});
+});
+
+describe('skipTo (#71)', () => {
+	const base = { recurring: true, intervalDays: 7, scheduleMode: 'completion' as const, nextDue: '2026-10-02' };
+	it('moves to the next occurrence after the one due', () => {
+		expect(skipTo(base, '2026-10-04')).toBe('2026-10-09');
+		// not due yet: the one after it
+		expect(skipTo({ ...base, nextDue: '2026-10-06' }, '2026-10-04')).toBe('2026-10-13');
+	});
+	it('steps on past today when far overdue', () => {
+		expect(skipTo({ ...base, nextDue: '2026-09-01' }, '2026-10-04')).toBe('2026-10-06');
+		expect(skipTo({ ...base, scheduleMode: 'fixed', nextDue: '2026-09-01' }, '2026-10-04')).toBe('2026-10-06');
+	});
+	it('goes to the next set day', () => {
+		// Mon and Thu; Oct 5 2026 is a Monday
+		expect(skipTo({ ...base, scheduleMode: 'weekdays', weekdays: '1,4', nextDue: '2026-10-05' }, '2026-10-04')).toBe('2026-10-08');
+	});
+	it('has nothing to skip to for a one-off or the last of a course', () => {
+		expect(skipTo({ ...base, recurring: false }, '2026-10-04')).toBeNull();
+		expect(skipTo({ ...base, endsOn: '2026-10-05' }, '2026-10-04')).toBeNull();
 	});
 });

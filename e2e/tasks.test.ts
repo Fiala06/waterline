@@ -62,6 +62,17 @@ test('snooze sheet picks a date and keeps the schedule', async ({ page }, info) 
 	await page.getByRole('button', { name: 'Save' }).last().click();
 	await expect(page.getByRole('heading', { name: /Overdue · 1/ })).toBeVisible();
 
+	// Esc, and a click beside it, close the menu: it doesn't stay drawn on the page (#72)
+	const menu = page.getByRole('dialog', { name: 'Snooze' });
+	await page.getByRole('button', { name: 'Snooze', exact: true }).first().click();
+	await expect(menu).toBeVisible();
+	await page.keyboard.press('Escape');
+	await expect(menu).toBeHidden();
+	await page.getByRole('button', { name: 'Snooze', exact: true }).first().click();
+	await expect(menu).toBeVisible();
+	await page.mouse.click(5, 5);
+	await expect(menu).toBeHidden();
+
 	await page.getByRole('button', { name: 'Snooze', exact: true }).first().click();
 	await expect(page.getByText('Snoozing moves only this occurrence.')).toBeVisible();
 	await page.getByRole('button', { name: /^In 3 days/ }).click();
@@ -72,4 +83,35 @@ test('snooze sheet picks a date and keeps the schedule', async ({ page }, info) 
 	await open(page, href!);
 	const shown = await dateValue(page, 'nextDue');
 	expect(shown > yesterday).toBe(true);
+});
+
+// #71: Skip this one passes an occurrence over, notes it in History, and can be undone
+test('skip this one moves to the next date, with Undo', async ({ page }, info) => {
+	await newKeeperWithTank(page, `m7k-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, '/tasks');
+	const href = await page.locator('a', { hasText: 'Water change 25%' }).first().getAttribute('href');
+	await open(page, href!);
+	const twoDaysAgo = new Date(Date.now() - 2 * 86_400_000).toISOString().slice(0, 10);
+	await pickDate(page, 'nextDue', twoDaysAgo);
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('heading', { name: /Overdue · 1/ })).toBeVisible();
+
+	const skip = async () => {
+		await page.getByRole('button', { name: 'Snooze', exact: true }).first().click();
+		await expect(page.getByRole('button', { name: /^Skip this one\s*Next one / })).toBeVisible();
+		await page.getByRole('button', { name: /^Skip this one/ }).click();
+		await expect(page.getByRole('status')).toContainText('Skipped Water change 25% · next');
+		await expect(page.getByRole('heading', { name: /Overdue/ })).toHaveCount(0);
+	};
+	await skip();
+	// Undo puts it back where it was
+	await page.getByRole('status').getByRole('button', { name: 'Undo' }).click();
+	await expect(page.getByRole('status')).toContainText('Undid Water change 25%');
+	await expect(page.getByRole('heading', { name: /Overdue · 1/ })).toBeVisible();
+
+	// skipped for real: History says so, once
+	await skip();
+	await open(page, `/history?tank=${tankId}`);
+	await expect(page.getByRole('link', { name: /^Skipped: Water change 25%/ })).toHaveCount(1);
 });

@@ -105,7 +105,8 @@ function lastDone(taskId: string, today: string, tz: string) {
 	const c = db
 		.select()
 		.from(taskCompletions)
-		.where(eq(taskCompletions.taskId, taskId))
+		// a skip (#71) wasn't doing it
+		.where(and(eq(taskCompletions.taskId, taskId), eq(taskCompletions.skipped, false)))
 		.orderBy(desc(taskCompletions.completedAt))
 		.get();
 	if (!c) return null;

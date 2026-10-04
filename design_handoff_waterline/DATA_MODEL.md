@@ -85,7 +85,9 @@ tasks            id, tank_id, name, kind(water_change|test|maintenance|other|dos
                  open_form_on_done, product?, amount?, amount_unit? (a dosing or feeding
                  routine: Done logs the dose or feeding, and Undo removes it), created_at
 task_completions id, task_id, completed_at, event_id?,
-                 prev_next_due?, prev_snoozed_until? (to undo)
+                 prev_next_due?, prev_snoozed_until? (to undo),
+                 skipped (Skip this one: passed over, not done; event_id is its
+                 "Skipped" note in History, removed again by Undo)
 
 ── What's in the tank, and what it costs ──────────────────────────────────────
 equipment        id, tank_id, type(filter|heater|light|co2|pump|skimmer|other), brand?,

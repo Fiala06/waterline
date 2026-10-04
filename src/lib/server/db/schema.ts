@@ -329,7 +329,9 @@ export const taskCompletions = sqliteTable('task_completions', {
 	eventId: text('event_id').references(() => events.id, { onDelete: 'set null' }),
 	// schedule before this completion, so Mark done can be undone
 	prevNextDue: text('prev_next_due'),
-	prevSnoozedUntil: text('prev_snoozed_until')
+	prevSnoozedUntil: text('prev_snoozed_until'),
+	// Skip this one (#71): passed over, not done; its eventId is the "Skipped" note
+	skipped: integer('skipped', { mode: 'boolean' }).notNull().default(false)
 });
 
 export type User = typeof users.$inferSelect;

@@ -6,7 +6,7 @@
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import DateField from './DateField.svelte';
-	import { snoozeOptions } from '$lib/tasks';
+	import { skipTo, snoozeOptions } from '$lib/tasks';
 	import { addDays, fmtDate } from '$lib/time';
 
 	let {
@@ -17,7 +17,18 @@
 		anchor = null
 	}: {
 		open?: boolean;
-		task: { id: string; name: string; due: string } | null;
+		/** the schedule fields let Skip this one say when the next one is (#71) */
+		task: {
+			id: string;
+			name: string;
+			due: string;
+			recurring?: boolean;
+			intervalDays?: number | null;
+			scheduleMode?: 'completion' | 'fixed' | 'weekdays';
+			nextDue?: string | null;
+			weekdays?: string | null;
+			endsOn?: string | null;
+		} | null;
 		tankName: string;
 		today: string;
 		/** where the Snooze ▾ button is: the desktop menu hangs under its right edge */
@@ -42,6 +53,12 @@
 		}
 	});
 	const options = $derived(task ? snoozeOptions(today, task.due) : []);
+	// Skip this one: the next occurrence, for a repeating task that has one
+	const skipDate = $derived(
+		task?.recurring && task.scheduleMode
+			? skipTo({ recurring: true, intervalDays: task.intervalDays ?? null, scheduleMode: task.scheduleMode, nextDue: task.nextDue ?? null, weekdays: task.weekdays, endsOn: task.endsOn }, today)
+			: null
+	);
 	const from = $derived(page.url.pathname + page.url.search);
 	const longDate = (d: string) =>
 		new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
@@ -99,6 +116,13 @@
 					<button type="button" class="opt pick-date" onclick={() => (picking = true)}><span>Pick a date…</span><span aria-hidden="true">›</span></button>
 				{/if}
 			</div>
+			{#if skipDate}
+				<form method="POST" action="/tasks?/skip" class="skip" use:enhance={submitting}>
+					<input type="hidden" name="taskId" value={task.id} />
+					<input type="hidden" name="from" value={from} />
+					<button class="opt skip-btn"><span>Skip this one</span><span class="sub">Next one {longDate(skipDate)}</span></button>
+				</form>
+			{/if}
 			<p class="note">Snoozing moves only this occurrence. The schedule after it stays the same.</p>
 			<button type="button" class="btn cancel" onclick={close}>Cancel</button>
 		</div>
@@ -204,6 +228,22 @@
 	.pick-date-field :global(.input) {
 		flex: 1;
 	}
+	/* below a divider: passes this one over instead of moving it */
+	.skip {
+		border-top: 2px solid var(--divider);
+	}
+	.skip-btn {
+		flex-direction: column;
+		align-items: flex-start;
+		justify-content: center;
+		gap: 2px;
+		padding-block: 6px;
+	}
+	.skip-btn .sub {
+		font-size: 13px;
+		font-weight: 400;
+		color: var(--text-muted);
+	}
 	.note {
 		margin: 0;
 		font-size: 13px;
@@ -220,8 +260,11 @@
 			background: transparent;
 			animation: none;
 		}
-		.snooze.anchored {
+		/* only while open: a closed menu otherwise stayed drawn under the button */
+		.snooze.anchored[open] {
 			display: block;
+		}
+		.snooze.anchored {
 			width: auto;
 			height: auto;
 			position: fixed;
