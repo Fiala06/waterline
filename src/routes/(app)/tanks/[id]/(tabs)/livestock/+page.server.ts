@@ -2,7 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import { EQUIPMENT_TYPE_LABEL, equipmentName, specSummary } from '$lib/equipment';
 import { eventTitle } from '$lib/events';
-import { bySpecies, speciesCount } from '$lib/livestock';
+import { bySpecies, speciesCount, MAX_LIVESTOCK_COUNT } from '$lib/livestock';
 import { dateInZone, fmtDate } from '$lib/time';
 import { db } from '$lib/server/db';
 import { events } from '$lib/server/db/schema';
@@ -84,7 +84,7 @@ export const actions: Actions = {
 		const id = str(form, 'id');
 		const count = num(form, 'count');
 		const reason = str(form, 'reason') as CountReason;
-		if (count == null || count < 0 || !Number.isInteger(count)) return fail(400, { error: 'Enter a whole number.' });
+		if (count == null || count < 0 || count > MAX_LIVESTOCK_COUNT || !Number.isInteger(count)) return fail(400, { error: 'Enter a whole number from 0 to 10,000.' });
 		if (!['loss', 'rehomed', 'recount', 'added'].includes(reason)) return fail(400, { error: 'Choose why the count changed.' });
 		const before = getLivestock(user.id, id);
 		if (before.tankId !== params.id) return fail(404);

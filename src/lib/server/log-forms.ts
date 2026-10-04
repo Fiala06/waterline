@@ -11,6 +11,7 @@ import {
 	OBSERVATION_TAGS,
 	WATER_SOURCES
 } from '$lib/events';
+import { MAX_LIVESTOCK_COUNT } from '$lib/livestock';
 import { displayValue, fmtRange, fmtValue, paramDecimals, paramUnit, storedValue } from '$lib/params';
 import { dueInfo, effectiveDue, nextDueAfterCompletion } from '$lib/tasks';
 import { paramTip } from '$lib/tips';
@@ -237,7 +238,7 @@ export function parseEventData(
 			);
 			if (!action) errors.action = 'Choose added, removed or moved.';
 			if (!name) errors.name = 'Enter the species or plant.';
-			if (count != null && (count < 0 || !Number.isInteger(count))) errors.count = 'Enter a whole number.';
+			if (count != null && (count < 0 || count > MAX_LIVESTOCK_COUNT || !Number.isInteger(count))) errors.count = 'Enter a whole number from 0 to 10,000.';
 			return { data: { action, name, ...(count != null ? { count } : {}), ...(status ? { status } : {}) }, errors };
 		}
 		case 'equipment': {

@@ -45,6 +45,28 @@ test('sensor readings over the API', async ({ page }, info) => {
 	// Settings shows what came in; Revoke cuts it off
 	await open(page, '/settings/sensors');
 	await expect(page.getByText(/Riverbed 40 · 1 reading/)).toBeVisible();
+
+	// On the public page, the sensor's readings are the thin line under the tests (readings on)
+	const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
+	const more = await page.request.post(`/api/v1/tanks/${tankId}/readings`, { headers, data: { readings: [{ parameter: 'temp', value: 25.4, unit: '°C', at: hoursAgo(3) }, { parameter: 'temp', value: 25.6, unit: '°C', at: hoursAgo(2) }] } });
+	expect(more.status()).toBe(200);
+	const earlier = new Date(Date.now() - 5 * 86_400_000).toISOString().slice(0, 10);
+	await open(page, `/entries/test/new?tank=${tankId}&date=${earlier}&time=18:00`);
+	await page.getByLabel('Temperature', { exact: true }).fill('77');
+	await page.getByRole('button', { name: 'Save 1 reading' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Saved 1 reading');
+	const slug = `sensor-${info.project.name}-${Date.now().toString(36)}`;
+	await open(page, `/tanks/${tankId}/public`);
+	await page.getByLabel('Share this tank').check({ force: true });
+	await page.getByLabel('URL').fill(slug);
+	await page.getByRole('button', { name: 'Save' }).first().click();
+	await expect(page.getByText('✓ Public page saved')).toBeVisible();
+	await page.goto(`/t/${slug}`);
+	const chart = page.locator('section.chart');
+	await expect(chart.locator('svg polyline.sensor')).toHaveCount(1);
+	await expect(chart.locator('.legend')).toContainText('Sensor');
+
+	await open(page, '/settings/sensors');
 	await page.getByRole('button', { name: 'Revoke ESPHome' }).click();
 	await page.getByRole('button', { name: 'Revoke', exact: true }).last().click();
 	await expect(page.getByRole('status')).toContainText("ESPHome can't send readings any more");
