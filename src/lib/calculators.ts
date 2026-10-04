@@ -44,6 +44,19 @@ export function waterChangeFraction(from: number, to: number, fresh = 0): number
 	return f > 1 ? null : f;
 }
 
+/**
+ * Where the water change calculator starts "Down to" for a reading (#66): the
+ * target's top when the reading is over it, else its bottom when that's lower
+ * than the reading, else half the reading, so it never opens on a target
+ * above the reading. With no reading, the target's top.
+ */
+export function waterChangeTarget(reading: number | null, min: number | null, max: number | null): number | null {
+	if (reading == null || !(reading > 0)) return max ?? min;
+	if (max != null && reading > max) return max;
+	if (min != null && min > 0 && min < reading) return min;
+	return reading / 2;
+}
+
 /** What a reading becomes after changing `fraction` of the water with water reading `fresh`. */
 export function afterWaterChange(from: number, fraction: number, fresh = 0): number {
 	const f = Math.min(1, Math.max(0, fraction));

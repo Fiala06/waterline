@@ -76,6 +76,11 @@
 		logMenu = false;
 		moreMenu = false;
 	}
+
+	let tabsNav = $state<HTMLElement>();
+	function scrollTabs(dir: 1 | -1) {
+		tabsNav?.scrollBy({ left: dir * tabsNav.clientWidth * 0.6, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+	}
 </script>
 
 <svelte:window
@@ -168,13 +173,19 @@
 	{#if logMenu || moreMenu}
 		<button type="button" class="scrim" tabindex="-1" aria-label="Close menu" onclick={closeMenus}></button>
 	{/if}
-	<nav class="tabs hscroll" class:phone-too={tabsOnPhone} aria-label="Tank sections" use:hscroll={tabs.find((t) => t.active)?.key}>
-		{#each tabs as t (t.key)}
-			<a href={t.href} class:active={t.active} aria-current={t.active ? 'page' : undefined}>
-				{t.label}{#if t.count}<span class="n">{t.count}</span>{/if}
-			</a>
-		{/each}
-	</nav>
+	<!-- on a phone the tabs run off the edge: a ‹ › on the faded side shows there's more, and scrolls to it (#70);
+	     the links themselves stay the way to each tab for the keyboard and screen readers -->
+	<div class="tabs-wrap">
+		<nav class="tabs hscroll" class:phone-too={tabsOnPhone} aria-label="Tank sections" bind:this={tabsNav} use:hscroll={tabs.find((t) => t.active)?.key}>
+			{#each tabs as t (t.key)}
+				<a href={t.href} class:active={t.active} aria-current={t.active ? 'page' : undefined}>
+					{t.label}{#if t.count}<span class="n">{t.count}</span>{/if}
+				</a>
+			{/each}
+		</nav>
+		<button type="button" class="tab-more prev" tabindex="-1" aria-hidden="true" onclick={() => scrollTabs(-1)}>‹</button>
+		<button type="button" class="tab-more next" tabindex="-1" aria-hidden="true" onclick={() => scrollTabs(1)}>›</button>
+	</div>
 </header>
 
 <style>
@@ -377,6 +388,37 @@
 	.tabs.phone-too {
 		display: flex;
 	}
+	.tabs-wrap {
+		position: relative;
+	}
+	/* over the faded edge, only when there's more that way */
+	.tab-more {
+		display: none;
+		position: absolute;
+		top: 12px;
+		width: 36px;
+		height: 44px;
+		align-items: center;
+		justify-content: center;
+		padding: 0 0 8px;
+		border: 0;
+		background: none;
+		color: var(--accent-text);
+		font: inherit;
+		font-size: 22px;
+		font-weight: 800;
+		cursor: pointer;
+	}
+	.tab-more.next {
+		right: -20px;
+	}
+	.tab-more.prev {
+		left: -20px;
+	}
+	.tabs.phone-too:global(:is([data-fade='end'], [data-fade='both'])) ~ .tab-more.next,
+	.tabs.phone-too:global(:is([data-fade='start'], [data-fade='both'])) ~ .tab-more.prev {
+		display: flex;
+	}
 	.tabs a {
 		min-height: 44px;
 		padding: 0 2px 10px;
@@ -415,6 +457,19 @@
 			margin: 24px 0 0;
 			padding: 0;
 			gap: 28px;
+		}
+		.tab-more {
+			top: 24px;
+		}
+		.tab-more.next {
+			right: 0;
+		}
+		.tab-more.prev {
+			left: 0;
+		}
+		.tabs:global(:is([data-fade='end'], [data-fade='both'])) ~ .tab-more.next,
+		.tabs:global(:is([data-fade='start'], [data-fade='both'])) ~ .tab-more.prev {
+			display: flex;
 		}
 		.tabs a {
 			padding-bottom: 12px;

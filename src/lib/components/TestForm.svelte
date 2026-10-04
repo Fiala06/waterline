@@ -36,6 +36,8 @@
 		lastInput?: string | null;
 		/** what the parameter is (ⓘ), for standard ones */
 		tip?: string | null;
+		/** folded under "Show N more" on a new test (#65) */
+		later?: boolean;
 	}
 	let {
 		mode = 'new',
@@ -149,6 +151,10 @@
 			return { ...p, raw, v, st, was, lastValue, lastDate, degrees, drops };
 		})
 	);
+	type Row = (typeof rows)[number];
+	// a new test leads with the basics; the rest wait under "N more parameters" (#65)
+	const shown = $derived(mode === 'new' ? rows.filter((r) => !r.later) : rows);
+	const later = $derived(mode === 'new' ? rows.filter((r) => r.later) : []);
 	const filled = $derived(rows.filter((r) => r.v != null).length);
 
 	// the other log types, with the tank and time this one has (README § 11)
@@ -262,6 +268,89 @@
 	}
 </script>
 
+{#snippet paramRow(r: Row)}
+				<div class="row">
+					<div class="line">
+						<!-- the name is the field's label; the target or "Last 7.0" describes it -->
+						<div class="lbl">
+							<span class="pline"
+								><label class="pname" for="v_{r.id}">{r.name}</label>{#if r.tip}<Tip text={r.tip} label="About {r.name}" />{/if}</span
+							>
+							<span class="last" id="last_{r.id}">
+								{#if mode === 'edit'}
+									{#if r.st}
+										<span class="status-{r.st.level}"
+											>{shortStatus(r)}{#if r.was}{' · '}<span class="was">was {r.was}</span>{/if}</span
+										>
+									{:else if r.was}
+										<span class="was">was {r.was}</span>
+									{:else}
+										{r.rangeText ? `Target ${r.rangeText}` : 'No target'}
+									{/if}
+								{:else}
+									{r.rangeText ? `Target ${r.rangeText}` : 'No target'}
+								{/if}
+							</span>
+						</div>
+						<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+						<div
+							class="box"
+							class:empty={r.v == null}
+							class:warn={mode === 'new' && r.st?.level === 'warn'}
+							class:bad={mode === 'new' && r.st?.level === 'bad'}
+							onclick={focusField}
+						>
+							<input
+								id="v_{r.id}"
+								name="v_{r.id}"
+								inputmode="decimal"
+								autocomplete="off"
+								placeholder="–"
+								value={r.raw}
+								oninput={(e) => clean(r.id, e)}
+								aria-describedby={[`last_${r.id}`, mode === 'new' && r.st ? `s_${r.id}` : ''].filter(Boolean).join(' ')}
+								aria-invalid={r.st?.level === 'bad' || !!fieldErrors[r.id]}
+							/>
+						</div>
+						<div class="flag">
+							{#if r.unit}<span class="unit">{r.unit}</span>{/if}
+							{#if kitState[r.id]?.clock}
+								<span class="clock" role="timer">{kitState[r.id].clock}</span>
+							{:else if kitState[r.id]?.done && r.v == null}
+								<span class="st status-ok" aria-hidden="true">⏱</span>
+							{:else if mode === 'new' && r.st}
+								<span class="st status-{r.st.level}" aria-hidden="true">{r.st.level === 'ok' ? '✓' : statusShort(r.st)}</span>
+							{:else if mode === 'new' && r.last}
+								<span class="lastv">{r.lastValue}</span>
+							{/if}
+						</div>
+					</div>
+					{#if mode === 'new' && r.st}
+						<!-- the flag beside the field is short; the full reading of it, for screen readers -->
+						<div class="msg st-msg status-{r.st.level}" id="s_{r.id}">{statusLong(r.st, r.rangeText)}</div>
+					{/if}
+					{#if fieldErrors[r.id]}<div class="msg status-bad">✕ {fieldErrors[r.id]}</div>{/if}
+					{#if kitFor(r)}
+						{@const kit = kitFor(r)!}
+						<KitRun {kit} paramName={r.name} onstate={(s) => (kitState[r.id] = s)} />
+					{/if}
+					{#if r.drops}
+						{@const d = r.drops}
+						<div class="msg hard-hint drops" aria-live="polite">
+							<span
+								>{d.times10 ? `${r.raw} looks like ${d.drops} drops × 10. ` : 'Counted drops? '}{d.drops}
+								{d.drops === 1 ? 'drop is' : 'drops are'} about {d.ppm} ppm (×&nbsp;17.9).</span
+							>
+							<button type="button" class="btn use-ppm" onclick={() => (draft[r.id] = String(d.ppm))}>Use {d.ppm} ppm</button>
+							<span class="or">Or switch hardness to degrees in <a href="/settings#units">Settings</a>.</span>
+						</div>
+					{:else if r.degrees && r.v == null}
+						<div class="msg hard-hint">1 drop = 1° on API/JBL/Tetra kits.</div>
+					{/if}
+				</div>
+{/snippet}
+
+
 <form
 	method="POST"
 	enctype="multipart/form-data"
@@ -340,87 +429,17 @@
 			{/if}
 
 			<div class="rows">
-				{#each rows as r (r.id)}
-					<div class="row">
-						<div class="line">
-							<!-- the name is the field's label; the target or "Last 7.0" describes it -->
-							<div class="lbl">
-								<span class="pline"
-									><label class="pname" for="v_{r.id}">{r.name}</label>{#if r.tip}<Tip text={r.tip} label="About {r.name}" />{/if}</span
-								>
-								<span class="last" id="last_{r.id}">
-									{#if mode === 'edit'}
-										{#if r.st}
-											<span class="status-{r.st.level}"
-												>{shortStatus(r)}{#if r.was}{' · '}<span class="was">was {r.was}</span>{/if}</span
-											>
-										{:else if r.was}
-											<span class="was">was {r.was}</span>
-										{:else}
-											{r.rangeText ? `Target ${r.rangeText}` : 'No target'}
-										{/if}
-									{:else}
-										{r.rangeText ? `Target ${r.rangeText}` : 'No target'}
-									{/if}
-								</span>
-							</div>
-							<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-							<div
-								class="box"
-								class:empty={r.v == null}
-								class:warn={mode === 'new' && r.st?.level === 'warn'}
-								class:bad={mode === 'new' && r.st?.level === 'bad'}
-								onclick={focusField}
-							>
-								<input
-									id="v_{r.id}"
-									name="v_{r.id}"
-									inputmode="decimal"
-									autocomplete="off"
-									placeholder="–"
-									value={r.raw}
-									oninput={(e) => clean(r.id, e)}
-									aria-describedby={[`last_${r.id}`, mode === 'new' && r.st ? `s_${r.id}` : ''].filter(Boolean).join(' ')}
-									aria-invalid={r.st?.level === 'bad' || !!fieldErrors[r.id]}
-								/>
-							</div>
-							<div class="flag">
-								{#if r.unit}<span class="unit">{r.unit}</span>{/if}
-								{#if kitState[r.id]?.clock}
-									<span class="clock" role="timer">{kitState[r.id].clock}</span>
-								{:else if kitState[r.id]?.done && r.v == null}
-									<span class="st status-ok" aria-hidden="true">⏱</span>
-								{:else if mode === 'new' && r.st}
-									<span class="st status-{r.st.level}" aria-hidden="true">{r.st.level === 'ok' ? '✓' : statusShort(r.st)}</span>
-								{:else if mode === 'new' && r.last}
-									<span class="lastv">{r.lastValue}</span>
-								{/if}
-							</div>
-						</div>
-						{#if mode === 'new' && r.st}
-							<!-- the flag beside the field is short; the full reading of it, for screen readers -->
-							<div class="msg st-msg status-{r.st.level}" id="s_{r.id}">{statusLong(r.st, r.rangeText)}</div>
-						{/if}
-						{#if fieldErrors[r.id]}<div class="msg status-bad">✕ {fieldErrors[r.id]}</div>{/if}
-						{#if kitFor(r)}
-							{@const kit = kitFor(r)!}
-							<KitRun {kit} paramName={r.name} onstate={(s) => (kitState[r.id] = s)} />
-						{/if}
-						{#if r.drops}
-							{@const d = r.drops}
-							<div class="msg hard-hint drops" aria-live="polite">
-								<span
-									>{d.times10 ? `${r.raw} looks like ${d.drops} drops × 10. ` : 'Counted drops? '}{d.drops}
-									{d.drops === 1 ? 'drop is' : 'drops are'} about {d.ppm} ppm (×&nbsp;17.9).</span
-								>
-								<button type="button" class="btn use-ppm" onclick={() => (draft[r.id] = String(d.ppm))}>Use {d.ppm} ppm</button>
-								<span class="or">Or switch hardness to degrees in <a href="/settings#units">Settings</a>.</span>
-							</div>
-						{:else if r.degrees && r.v == null}
-							<div class="msg hard-hint">1 drop = 1° on API/JBL/Tetra kits.</div>
-						{/if}
-					</div>
-				{/each}
+				{#each shown as r (r.id)}{@render paramRow(r)}{/each}
+				{#if later.length}
+					<!-- the ones a beginner's kit doesn't cover, folded (#65); inside, they still post with the form -->
+					<details class="later" open={later.some((r) => r.raw !== '' || fieldErrors[r.id])}>
+						<summary
+							><span class="later-n">{later.length} more parameters</span>
+							<span class="later-names">{later.map((r) => r.name).join(', ')}</span></summary
+						>
+						{#each later as r (r.id)}{@render paramRow(r)}{/each}
+					</details>
+				{/if}
 				{#if mode === 'new' && targetsHref}
 					<a
 						class="add-param"
@@ -806,6 +825,36 @@
 	}
 	.edit-targets {
 		font-weight: 600;
+		color: var(--text-muted);
+	}
+	/* "6 more parameters · Phosphate, Potassium, …": a row like the others, the names muted */
+	.later summary {
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		gap: 2px;
+		min-height: 52px;
+		padding: 6px 0;
+		border-bottom: 1px solid var(--divider);
+		cursor: pointer;
+		list-style: none;
+	}
+	.later summary::-webkit-details-marker {
+		display: none;
+	}
+	.later-n {
+		font-size: 14px;
+		font-weight: 800;
+		color: var(--accent-text);
+	}
+	.later-n::after {
+		content: ' ▾';
+	}
+	.later[open] .later-n::after {
+		content: ' ▴';
+	}
+	.later-names {
+		font-size: 13px;
 		color: var(--text-muted);
 	}
 	.add-param {

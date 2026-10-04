@@ -388,6 +388,30 @@ export function resetParamDefaults(user: User, tankId: string) {
   });
 }
 
+/** The tank is still cycling after all (#68): cycling on, with a "Marked as cycling" note in History. */
+export function markCycling(userId: string, tankId: string) {
+  const tank = getTank(userId, tankId, "owner");
+  if (tank.cycling) return tank;
+  return db.transaction((tx) => {
+    const t = tx
+      .update(tanks)
+      .set({ cycling: true })
+      .where(eq(tanks.id, tankId))
+      .returning()
+      .get();
+    tx.insert(events)
+      .values({
+        tankId,
+        category: "note",
+        occurredAt: new Date().toISOString(),
+        note: "Marked as cycling",
+        data: { system: "cycle_started" },
+      })
+      .run();
+    return t;
+  });
+}
+
 /** The tank is cycled and running: cycling off, with a "Cycle complete" note in History. */
 export function markRunning(userId: string, tankId: string) {
   const tank = getTank(userId, tankId, "owner");

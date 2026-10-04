@@ -14,6 +14,7 @@
 	import WhatsNew from '$lib/components/WhatsNew.svelte';
 	import { compactName, displayValue, fmtRange, fmtValue, paramDecimals, paramUnit, shortName, statusOf } from '$lib/params';
 	import { CYCLING_TEXT, cyclingLevel, isCyclingStatus, statusShort } from '$lib/status';
+	import { nextStep } from '$lib/tips';
 	import Sparkline from '$lib/components/Sparkline.svelte';
 	import { enhance } from '$app/forms';
 	import { dueInfo, intervalText, isRoutine, routineLine } from '$lib/tasks';
@@ -53,6 +54,11 @@
 				unit: paramUnit(p, prefs),
 				level: st.level,
 				statusText: isCyclingStatus(p.key, st, cycling) ? CYCLING_TEXT : statusShort(st),
+				// what to do about it (#62); not for ammonia and nitrite while they're a stage of the cycle
+				next:
+					(st.level === 'bad' || st.level === 'warn') && !isCyclingStatus(p.key, st, cycling)
+						? nextStep(p.key, st.direction, data.tank?.type ?? '')
+						: null,
 				// days since the reading when it's older than its Test every cadence
 				due: data.stale?.[p.id] ?? null,
 				sub: r ? (range ? `Target ${range}` : 'No target') : 'Not tested',
@@ -128,6 +134,20 @@
 
 		{#if data.whatsNew}<div class="news"><WhatsNew {...data.whatsNew} /></div>{/if}
 
+		{#if data.askCycling}
+			<!-- a new tank with ammonia or nitrite over target that isn't marked cycling: it probably is (#68) -->
+			<section class="ask-cycling banner banner-warn" aria-labelledby="ask-cycling-h">
+				<p>
+					<b id="ask-cycling-h">New tank? High ammonia or nitrite is normal while it cycles.</b>
+					Mark it as cycling and they read ▲ Cycling, with the cycle followed here until it’s done.
+				</p>
+				<form method="POST" action="?/markCycling" use:enhance>
+					<input type="hidden" name="tankId" value={data.tank.id} />
+					<button class="btn btn-primary">Mark as cycling</button>
+				</form>
+			</section>
+		{/if}
+
 		{#if data.cycling}
 			<!-- ── Cycling: ammonia, nitrite and nitrate side by side, and where the cycle is ── -->
 			<section class="cycling" aria-labelledby="cycling-h">
@@ -135,6 +155,10 @@
 					<h2 id="cycling-h">Cycling</h2>
 					<a href="/tanks/{data.tank.id}/settings">Setup ›</a>
 				</div>
+				<p class="cycle-about">
+					Bacteria in the filter turn fish waste’s ammonia into nitrite, then nitrite into the far safer nitrate. It
+					takes 4–8 weeks; add fish once ammonia and nitrite both read 0.
+				</p>
 				<div class="cycle-charts">
 					{#each data.cycling.charts as c (c.key)}
 						<a class="cycle-chart" href="/charts{c.id ? `?p=${c.id}` : ''}" title="{c.name} over the last 8 weeks">
@@ -376,6 +400,38 @@
 		display: flex;
 		flex-direction: column;
 		padding: 18px 0 8px;
+	}
+	.cycle-about {
+		margin: 0 0 14px;
+		font-size: 14px;
+		line-height: 1.45;
+		color: var(--text-muted);
+	}
+	.ask-cycling {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		margin: 16px 0 0;
+		font-weight: 400;
+	}
+	.ask-cycling p {
+		margin: 0;
+		line-height: 1.45;
+	}
+	.ask-cycling b {
+		display: block;
+	}
+	.ask-cycling .btn {
+		align-self: flex-start;
+		min-height: 44px;
+	}
+	@media (min-width: 1024px) {
+		.ask-cycling {
+			flex-direction: row;
+			align-items: center;
+			justify-content: space-between;
+			gap: 24px;
+		}
 	}
 	.cycle-charts {
 		display: grid;

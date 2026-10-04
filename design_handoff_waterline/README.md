@@ -121,9 +121,9 @@ Treat the dark files as canonical; Light files are the same layouts with the lig
 ### Parameter status
 For a reading `v` with target `[min, max]` (per tank, user-editable):
 - `✕ out of range` if `v < min` or `v > max` (label `✕ High` / `✕ Low`; form: `✕ Above target 5–20 ppm`).
-- `▲ near limit` if in range and within 10% of `(max − min)` of a bound — **only when `min > 0`** (ammonia/nitrite with min 0 are never "near").
+- `▲ near limit` if in range and within 10% of `(max − min)` of a bound when `min > 0`. When `min = 0` (ammonia/nitrite, shown as `≤ 0.25 ppm`) any reading above 0 is `▲ Near high`: they should read 0.
 - `✓ in range` otherwise; `– No data` if never tested (dashed card, "Not tested").
-Default targets (imperial/dGH): pH 6.5–7.5 · Ammonia 0–0.25 ppm · Nitrite 0–0.25 ppm · Nitrate 5–20 ppm · GH 4–8 dGH (70–140 ppm) · KH 2–5 dKH (35–90 ppm) · Temp 74–80 °F (23–27 °C). Reef defaults should add salinity/alk/Ca/Mg/PO₄ (define with product owner).
+Default targets (imperial/dGH): pH 6.0–7.8 (freshwater and planted) · Ammonia 0–0.25 ppm · Nitrite 0–0.25 ppm · Nitrate 5–20 ppm · GH 4–8 dGH (70–140 ppm) · KH 2–5 dKH (35–90 ppm) · Temp 74–80 °F (23–27 °C). Reef defaults should add salinity/alk/Ca/Mg/PO₄ (define with product owner).
 
 ### Units
 Store metric (L, °C, cm; hardness in dGH internally). Display per user: unit system (imperial/metric) and hardness (dGH/dKH or ppm, independent). Every measurement shows its unit label. 1 dGH = 17.848 ppm.

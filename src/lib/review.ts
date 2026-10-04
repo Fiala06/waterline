@@ -23,6 +23,8 @@ export const REVIEW_INTERVALS = [
 ] as const;
 export const REVIEW_DEFAULT_DAYS = 91;
 export const REVIEW_TASK_NAME = 'Review tank setup';
+/** What the task is for, under its name in Due and Tasks (#69). */
+export const REVIEW_ABOUT = 'Check the tank’s details, equipment, targets and livestock are still right.';
 
 /** A review task's values: first due one interval from today. */
 export function newReviewTask(tankId: string, today: string, days = REVIEW_DEFAULT_DAYS) {

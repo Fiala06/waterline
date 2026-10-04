@@ -6,6 +6,12 @@ test('calculators', async ({ page }, info) => {
 	await newKeeperWithTank(page, `calc-${info.project.name}`);
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
 
+	// a nitrate reading in range, for the water change's starting point
+	await open(page, `/entries/test/new?tank=${tankId}`);
+	await page.getByLabel('Nitrate', { exact: true }).fill('10');
+	await page.getByRole('button', { name: 'Save 1 reading' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Saved 1 reading');
+
 	// A product with its strength, for Dose → ppm
 	await open(page, '/settings/products');
 	const add = page.locator('form#add');
@@ -30,6 +36,11 @@ test('calculators', async ({ page }, info) => {
 	await expect(page.locator('#volume .r-v').nth(1)).toContainText('42.1');
 	await page.getByRole('button', { name: "Save as the tank's water volume" }).click();
 	await expect(page.getByRole('status')).toContainText('✓ Water volume saved · 42.1 gal');
+
+	// Water change starts from the reading, down to the target's bottom: never on an error (#66)
+	await expect(page.locator('#wc-from')).toHaveValue('10');
+	await expect(page.locator('#wc-to')).toHaveValue('5');
+	await expect(page.getByText("✕ A water change can't get there")).toHaveCount(0);
 
 	// Water change: nitrate 40 → 20 is half the water, 21 gal of 42.1
 	await page.locator('#wc-from').fill('40');

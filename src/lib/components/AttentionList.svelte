@@ -23,6 +23,8 @@
 		hi: number | null;
 		/** a sensor's latest reading (#19): "Live 25.4 °C · 2 min ago" */
 		live?: string | null;
+		/** what to do about it, in a line (#62) */
+		next?: string | null;
 	}
 	interface Overdue {
 		id: string;
@@ -68,6 +70,7 @@
 				</span>
 				<span class="spark"><Sparkline values={c.spark} level={c.level} lo={c.lo} hi={c.hi} /></span>
 				<span class="val"><span class="v">{c.value}</span>{#if c.unit}<span class="unit">{c.unit}</span>{/if}</span>
+				{#if c.next}<span class="next">{c.next}</span>{/if}
 			</a>
 		{/each}
 		{#if wc}
@@ -129,7 +132,7 @@
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) 72px 84px;
 		align-items: center;
-		gap: 12px;
+		gap: 6px 12px;
 		min-height: 60px;
 		padding: 12px 0;
 		border-bottom: 1px solid var(--divider);
@@ -166,6 +169,13 @@
 	.sub {
 		font-size: 13px;
 		color: var(--text-muted);
+	}
+	/* what to do: under the whole row, so it reads in one or two lines on a phone */
+	.next {
+		grid-column: 1 / -1;
+		font-size: 13px;
+		line-height: 1.4;
+		color: var(--text);
 	}
 	.spark {
 		height: 22px;

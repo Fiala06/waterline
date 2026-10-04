@@ -34,6 +34,92 @@ export function paramTip(key: string, tankType: string): string | null {
 	return (tankType === 'reef' ? REEF[key] : undefined) ?? PARAMS[key] ?? null;
 }
 
+// What to do about a reading out of range (#62): one plain next step under it
+// in Needs attention, by parameter and direction. Reef wording where it differs.
+type Steps = Partial<Record<'high' | 'low', string>>;
+const NEXT: Record<string, Steps> = {
+	nh3: { high: 'Change 30–50% of the water with conditioned water, feed lightly and test again tomorrow.' },
+	no2: { high: 'Change 30–50% of the water with conditioned water, feed lightly and test again tomorrow.' },
+	no3: {
+		high: 'A bigger water change brings it down; more plants and less food keep it there.',
+		low: 'Plants may go hungry: dose a fertilizer with nitrogen, or change water a little less.'
+	},
+	ph: {
+		high: 'Steady matters more than the number. Skip pH chemicals; check KH and what your tap water reads first.',
+		low: 'Steady matters more than the number. Skip pH chemicals; check KH, which keeps pH from dropping.'
+	},
+	kh: {
+		high: 'Hard tap water is often the cause. Mixing in some RO or rain water brings it down slowly.',
+		low: 'Low KH lets pH drop suddenly. Water changes with tap water, or a little baking soda, raise it.'
+	},
+	gh: {
+		high: 'Hard tap water is often the cause. Mixing in some RO or rain water brings it down slowly.',
+		low: 'Add minerals back: water changes with tap water, or a GH remineralizer for RO water.'
+	},
+	temp: {
+		high: 'Turn the heater down or off, keep the lid open and the room cooler; change it slowly.',
+		low: 'Check the heater is on and big enough for the tank; raise it a degree or two a day.'
+	},
+	po4: {
+		high: 'Feed a little less and change some water; in a planted tank, check the light isn’t on too long.',
+		low: 'Plants may go hungry: dose a fertilizer with phosphate.'
+	},
+	k: { low: 'Dose a fertilizer with potassium.', high: 'Dose less fertilizer until it drops; a water change helps.' },
+	fe: { low: 'Dose an iron or all-in-one fertilizer a little at a time.', high: 'Dose less fertilizer until it drops; a water change helps.' },
+	co2: {
+		high: 'Turn the CO₂ down now and add surface movement: fish gasping at the top is the warning sign.',
+		low: 'Raise the CO₂ a little at a time, a bubble at a time, and give it a day to settle.'
+	},
+	tds: {
+		high: 'Water changes bring it down; with RO water, add less remineralizer.',
+		low: 'Add a little more remineralizer to the new water.'
+	},
+	ec: {
+		high: 'Water changes bring it down; with RO water, add less remineralizer.',
+		low: 'Add a little more remineralizer to the new water.'
+	},
+	ca: {
+		high: 'Pause the calcium dose until it comes down; check the test with a second kit.',
+		low: 'Raise the calcium dose a little at a time, and check magnesium: low magnesium drags it down.'
+	},
+	mg: {
+		high: 'Pause the magnesium dose; water changes bring it down slowly.',
+		low: 'Dose magnesium a little at a time, up to about 100 ppm a day.'
+	},
+	orp: {
+		high: 'Cut back the ozone, if you use it, until it settles.',
+		low: 'Look for something decaying, clean the skimmer and change some water.'
+	},
+	sal: {
+		high: 'Top up evaporated water with fresh water, not salt water, a little at a time.',
+		low: 'Change some water with saltier water, a little at a time.'
+	}
+};
+const REEF_NEXT: Record<string, Steps> = {
+	kh: {
+		high: 'Pause or cut back the alkalinity dose until it comes down.',
+		low: 'Raise the alkalinity dose a little at a time: no more than 1 dKH a day.'
+	},
+	no3: {
+		high: 'Water changes, a little less food and a clean skimmer bring it down.',
+		low: 'Corals like a little: feed a bit more, or cut back what removes it.'
+	},
+	po4: {
+		high: 'Feed a little less, change some water and check the skimmer; a phosphate remover helps.',
+		low: 'Corals like a little: feed a bit more, or cut back what removes it.'
+	},
+	ph: {
+		high: 'Usually follows alkalinity dosing; check alkalinity first.',
+		low: 'Often a stuffy room: more fresh air or a skimmer air line from outside raises it.'
+	}
+};
+
+/** One plain next step for a reading out of range; null for custom parameters. */
+export function nextStep(key: string, direction: 'high' | 'low' | null, tankType: string): string | null {
+	if (!direction) return null;
+	return (tankType === 'reef' ? REEF_NEXT[key]?.[direction] : undefined) ?? NEXT[key]?.[direction] ?? null;
+}
+
 export const TIPS = {
 	nominalVolume: 'The tank’s size as sold, like a 40 gallon tank.',
 	actualVolume:

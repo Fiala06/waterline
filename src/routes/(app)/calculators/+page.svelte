@@ -21,6 +21,7 @@
 		substrateAmount,
 		tankVolume,
 		waterChangeFraction,
+		waterChangeTarget,
 		WATTS_PER_L_PER_C
 	} from '$lib/calculators';
 	import { fmtGrams, fmtVolume, fmtWeight } from '$lib/calculators-format';
@@ -38,14 +39,17 @@
 	const toDkh = (v: number) => toStored(v, 'hardness', u);
 	const fromL = (v: number) => toDisplay(v, 'volume', u);
 
+	// the everyday ones first; the chemistry ones under Advanced, in plain words (#67)
 	const SECTIONS = [
 		{ id: 'volume', label: 'Tank volume' },
 		{ id: 'water-change', label: 'Water change' },
-		{ id: 'dose', label: 'Dose → ppm' },
 		{ id: 'heater', label: 'Heater size' },
-		{ id: 'substrate', label: 'Substrate' },
-		{ id: 'co2', label: 'CO₂ from pH and KH' },
-		{ id: 'remineralize', label: 'GH / KH for RO water' }
+		{ id: 'substrate', label: 'Substrate' }
+	];
+	const ADVANCED = [
+		{ id: 'dose', label: 'Dose → ppm', plain: 'What a fertilizer dose adds' },
+		{ id: 'co2', label: 'CO₂ from pH and KH', plain: 'CO₂ level' },
+		{ id: 'remineralize', label: 'GH / KH for RO water', plain: 'Minerals for RO water' }
 	];
 
 	// ── Tank volume ──
@@ -65,13 +69,20 @@
 	let wcParam = $state(untrack(() => data.readings.no3?.id ?? data.params[0]?.id ?? ''));
 	const wcP = $derived(data.params.find((p) => p.id === wcParam) ?? null);
 	let wcFrom = $state(untrack(() => data.readings.no3?.value ?? data.params[0]?.value ?? ''));
-	let wcTo = $state(untrack(() => data.readings.no3?.max ?? data.params[0]?.max ?? ''));
+	// "Down to" starts below the reading, never on an impossible target (#66)
+	type WcParam = { value: string; min: string; max: string };
+	const downTo = (p: WcParam | null | undefined) => {
+		if (!p) return '';
+		const t = waterChangeTarget(n(p.value), n(p.min), n(p.max));
+		return t == null ? '' : formatNumber(t, 2);
+	};
+	let wcTo = $state(untrack(() => downTo(data.readings.no3 ?? data.params[0])));
 	let wcFresh = $state('0');
 	let wcVolume = $state(untrack(() => data.tank?.actualVolume || data.tank?.nominalVolume || ''));
 	function pickParam() {
 		if (!wcP) return;
 		wcFrom = wcP.value;
-		wcTo = wcP.max;
+		wcTo = downTo(wcP);
 	}
 	const wc = $derived.by(() => {
 		const [from, to, fresh] = [n(wcFrom), n(wcTo), n(wcFresh) ?? 0];
@@ -171,9 +182,12 @@
 	<div class="layout">
 		<nav class="side hide-phone" aria-label="Calculators">
 			{#each SECTIONS as s (s.id)}<a href="#{s.id}">{s.label}</a>{/each}
+			<span class="side-h">Advanced</span>
+			{#each ADVANCED as s (s.id)}<a href="#{s.id}" class="adv">{s.label}<small>{s.plain}</small></a>{/each}
 		</nav>
 		<div class="chips hide-desk" use:hscroll>
 			{#each SECTIONS as s (s.id)}<a class="chip" href="#{s.id}">{s.label}</a>{/each}
+			<a class="chip" href="#advanced">Advanced ›</a>
 		</div>
 
 		<div class="content">
@@ -292,7 +306,66 @@
 				</div>
 			</section>
 
-			<!-- 3 · Dose → ppm -->
+			<!-- 3 · Heater -->
+			<section id="heater" class="sec" aria-labelledby="heater-h">
+				<h2 id="heater-h">Heater size</h2>
+				<p class="lede">From the water volume and how far above the room the tank is kept. About {formatNumber(perVol(WATTS_PER_L_PER_C), 2)} W per {vUnit} for each {data.imperial ? '°F' : '°C'}{data.imperial ? ' × 1.8' : ''}, rounded up to a common size.</p>
+				<div class="grid3">
+					{@render field('h-vol', 'Tank water', hVolume, (v) => (hVolume = v), vUnit)}
+					{@render field('h-room', 'Room, at its coldest', hRoom, (v) => (hRoom = v), data.units.temp)}
+					{@render field('h-target', 'Tank temperature', hTarget, (v) => (hTarget = v), data.units.temp)}
+				</div>
+				<div class="results">
+					<div class="result">
+						<span class="r-k">Needs about</span>
+						<span class="r-v">{heater ? heater.watts : '—'}<small>W</small></span>
+					</div>
+					<div class="result">
+						<span class="r-k">Buy</span>
+						<span class="r-v buy">{heater?.buy ?? '—'}</span>
+						{#if heater && heater.watts > 300}<span class="r-s">Two heaters: when one sticks on, the tank doesn't cook.</span>{/if}
+					</div>
+				</div>
+				<p class="note">Common sizes: {HEATER_SIZES.join(', ')} W. A room that drops at night needs the colder figure.</p>
+			</section>
+
+			<!-- 4 · Substrate -->
+			<section id="substrate" class="sec" aria-labelledby="sub-h">
+				<h2 id="sub-h">Substrate</h2>
+				<p class="lede">How much to buy for the footprint, sloping from the front up to the back.</p>
+				<div class="grid3">
+					{@render field('s-l', 'Length', sl, (v) => (sl = v), lUnit)}
+					{@render field('s-w', 'Width', sw, (v) => (sw = v), lUnit)}
+					<div class="field">
+						<label class="label" for="s-k">Kind</label>
+						<select class="input" id="s-k" bind:value={sKind}>
+							{#each Object.entries(SUBSTRATE_DENSITY) as [k, d] (k)}<option value={k}>{d.label}</option>{/each}
+						</select>
+					</div>
+					{@render field('s-f', 'Depth at the front', sFront, (v) => (sFront = v), lUnit)}
+					{@render field('s-b', 'Depth at the back', sBack, (v) => (sBack = v), lUnit)}
+				</div>
+				<div class="results">
+					<div class="result">
+						<span class="r-k">Volume</span>
+						<span class="r-v">{sub ? fmt(fromL(sub.litres)) : '—'}<small>{vUnit}</small></span>
+						{#if sub}<span class="r-s">{fmt(sub.litres)} L</span>{/if}
+					</div>
+					<div class="result">
+						<span class="r-k">Weight, about</span>
+						<span class="r-v buy">{sub ? fmtWeight(sub.kg, u) : '—'}</span>
+						{#if sub && data.imperial}<span class="r-s">{fmt(sub.kg)} kg</span>{/if}
+					</div>
+				</div>
+			</section>
+
+			<!-- For later: the chemistry ones, under their own heading (#67) -->
+			<div class="group" id="advanced">
+				<h2 class="group-h">Advanced</h2>
+				<p class="lede">For fertilizer dosing, CO₂ and RO water. Most tanks don’t need these at first.</p>
+			</div>
+
+			<!-- 5 · Dose → ppm -->
 			<section id="dose" class="sec" aria-labelledby="dose-h">
 				<h2 id="dose-h">Dose → ppm</h2>
 				<p class="lede">What a dose of a product adds to the water, and the dose for a target. Save a product's strength under <a href="/settings/products">Settings › Products</a> and it's here to pick.</p>
@@ -328,59 +401,6 @@
 						<span class="r-k">For +{dTarget || '—'} ppm, dose</span>
 						<span class="r-v">{fmt(doseFor, 1)}<small>mL</small></span>
 						{#if mgPerMl == null}<span class="r-s">Fill in the strength first.</span>{/if}
-					</div>
-				</div>
-			</section>
-
-			<!-- 4 · Heater -->
-			<section id="heater" class="sec" aria-labelledby="heater-h">
-				<h2 id="heater-h">Heater size</h2>
-				<p class="lede">From the water volume and how far above the room the tank is kept. About {formatNumber(perVol(WATTS_PER_L_PER_C), 2)} W per {vUnit} for each {data.imperial ? '°F' : '°C'}{data.imperial ? ' × 1.8' : ''}, rounded up to a common size.</p>
-				<div class="grid3">
-					{@render field('h-vol', 'Tank water', hVolume, (v) => (hVolume = v), vUnit)}
-					{@render field('h-room', 'Room, at its coldest', hRoom, (v) => (hRoom = v), data.units.temp)}
-					{@render field('h-target', 'Tank temperature', hTarget, (v) => (hTarget = v), data.units.temp)}
-				</div>
-				<div class="results">
-					<div class="result">
-						<span class="r-k">Needs about</span>
-						<span class="r-v">{heater ? heater.watts : '—'}<small>W</small></span>
-					</div>
-					<div class="result">
-						<span class="r-k">Buy</span>
-						<span class="r-v buy">{heater?.buy ?? '—'}</span>
-						{#if heater && heater.watts > 300}<span class="r-s">Two heaters: when one sticks on, the tank doesn't cook.</span>{/if}
-					</div>
-				</div>
-				<p class="note">Common sizes: {HEATER_SIZES.join(', ')} W. A room that drops at night needs the colder figure.</p>
-			</section>
-
-			<!-- 5 · Substrate -->
-			<section id="substrate" class="sec" aria-labelledby="sub-h">
-				<h2 id="sub-h">Substrate</h2>
-				<p class="lede">How much to buy for the footprint, sloping from the front up to the back.</p>
-				<div class="grid3">
-					{@render field('s-l', 'Length', sl, (v) => (sl = v), lUnit)}
-					{@render field('s-w', 'Width', sw, (v) => (sw = v), lUnit)}
-					<div class="field">
-						<label class="label" for="s-k">Kind</label>
-						<select class="input" id="s-k" bind:value={sKind}>
-							{#each Object.entries(SUBSTRATE_DENSITY) as [k, d] (k)}<option value={k}>{d.label}</option>{/each}
-						</select>
-					</div>
-					{@render field('s-f', 'Depth at the front', sFront, (v) => (sFront = v), lUnit)}
-					{@render field('s-b', 'Depth at the back', sBack, (v) => (sBack = v), lUnit)}
-				</div>
-				<div class="results">
-					<div class="result">
-						<span class="r-k">Volume</span>
-						<span class="r-v">{sub ? fmt(fromL(sub.litres)) : '—'}<small>{vUnit}</small></span>
-						{#if sub}<span class="r-s">{fmt(sub.litres)} L</span>{/if}
-					</div>
-					<div class="result">
-						<span class="r-k">Weight, about</span>
-						<span class="r-v buy">{sub ? fmtWeight(sub.kg, u) : '—'}</span>
-						{#if sub && data.imperial}<span class="r-s">{fmt(sub.kg)} kg</span>{/if}
 					</div>
 				</div>
 			</section>
@@ -470,6 +490,21 @@
 	.for .input {
 		flex: 1;
 		max-width: 320px;
+	}
+	.group {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		padding-top: 12px;
+		scroll-margin-top: 16px;
+	}
+	.group-h {
+		margin: 0;
+		font-size: 13px;
+		font-weight: 800;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--text-muted);
 	}
 	.sec {
 		display: flex;
@@ -633,6 +668,27 @@
 			padding: 0 8px;
 			color: var(--text);
 			font-size: 14px;
+		}
+		.side-h {
+			margin-top: 16px;
+			padding: 8px 8px 4px;
+			font-size: 12px;
+			font-weight: 800;
+			letter-spacing: 0.08em;
+			text-transform: uppercase;
+			color: var(--text-muted);
+		}
+		.side a.adv {
+			flex-direction: column;
+			align-items: flex-start;
+			justify-content: center;
+			height: auto;
+			min-height: 44px;
+			padding: 4px 8px;
+		}
+		.side a.adv small {
+			font-size: 12px;
+			color: var(--text-muted);
 		}
 		@media (hover: hover) {
 			.side a:hover {

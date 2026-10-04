@@ -90,6 +90,16 @@ export function statusOf(p: ParamLike, stored: number | null | undefined): Statu
 }
 
 /**
+ * What a beginner's kit or test strip covers (#65): the water test form shows
+ * these first, with the tank's custom parameters and anything tested before;
+ * the rest fold under "Show N more". A reef keeps them all in view.
+ */
+const BASIC_TEST_KEYS = ['ph', 'nh3', 'no2', 'no3', 'gh', 'kh', 'temp', 'sal'];
+export function foldsInTestForm(p: { key: string; isCustom?: boolean | null }, tankType: string, testedBefore: boolean): boolean {
+	return tankType !== 'reef' && !p.isCustom && !testedBefore && !BASIC_TEST_KEYS.includes(p.key);
+}
+
+/**
  * Default parameter set for a tank type. Targets are chosen in the user's own
  * units so they read as round numbers (74–80 °F, not 73.4–80.6 °F).
  * Ranges are common hobby guidance; every one can be edited per tank.
@@ -124,7 +134,7 @@ export function defaultParameters(prefs: UnitPrefs, type: TankType = 'freshwater
 
 	const sets: Record<TankType, ReturnType<typeof p>[]> = {
 		freshwater: [
-			p('ph', 'pH', '', 1, [6.5, 7.5]),
+			p('ph', 'pH', '', 1, [6.0, 7.8]),
 			ammonia,
 			nitrite,
 			p('no3', 'Nitrate', 'ppm', 0, [5, 20]),
@@ -135,7 +145,7 @@ export function defaultParameters(prefs: UnitPrefs, type: TankType = 'freshwater
 			temp([74, 80], [23, 27])
 		],
 		planted: [
-			p('ph', 'pH', '', 1, [6.5, 7.5]),
+			p('ph', 'pH', '', 1, [6.0, 7.8]),
 			ammonia,
 			nitrite,
 			p('no3', 'Nitrate', 'ppm', 0, [5, 20]),

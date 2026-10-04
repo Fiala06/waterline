@@ -11,6 +11,7 @@
 	import SnoozeSheet from '$lib/components/SnoozeSheet.svelte';
 	import TaskForm from '$lib/components/TaskForm.svelte';
 	import { dueInfo, intervalText, isRoutine, routineLine } from '$lib/tasks';
+	import { REVIEW_ABOUT } from '$lib/review';
 
 	let { data } = $props();
 	// a routine's line has its amount too: "1 pump · Mon, Wed, Fri"
@@ -123,6 +124,7 @@
 							<div class="row {s.key}" class:selected={selectedId === t.id} class:extra={folded && i >= LATER_LIMIT}>
 								<a class="rtext t-link" href="/tasks/{t.id}" onclick={(e) => openEdit(e, t.id)}>
 									<span class="name">{t.name}</span>
+									{#if t.kind === 'review'}<span class="about">{REVIEW_ABOUT}</span>{/if}
 									<span class="line">
 										<span class="when {d.level === 'ok' ? 'plain' : `status-${d.level}`}">{dueLabel(t)}</span>
 										<span class="meta">{tankNames[t.tankId]} · {every(t)}</span>
@@ -313,6 +315,10 @@
 	.name {
 		font-size: 15px;
 		font-weight: 600;
+	}
+	.about {
+		font-size: 13px;
+		color: var(--text-muted);
 	}
 	.line {
 		display: flex;

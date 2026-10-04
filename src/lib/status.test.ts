@@ -50,13 +50,14 @@ describe("paramStatus", () => {
     expect(paramStatus(12, nitrate).level).toBe("ok");
   });
 
-  it("never shows near when min is 0", () => {
+  it("shows near high for anything above 0 when min is 0", () => {
     expect(paramStatus(0, ammonia)).toEqual({ level: "ok", direction: null });
     expect(paramStatus(0.25, ammonia)).toEqual({
-      level: "ok",
-      direction: null,
+      level: "warn",
+      direction: "high",
     });
-    expect(paramStatus(0.24, ammonia).level).toBe("ok");
+    expect(paramStatus(0.02, ammonia).level).toBe("warn");
+    expect(paramStatus(1e-12, ammonia).level).toBe("ok");
     expect(paramStatus(0.5, ammonia)).toEqual({
       level: "bad",
       direction: "high",

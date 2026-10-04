@@ -3,7 +3,7 @@ import { redirect } from "@sveltejs/kit";
 import { cyclingStage, staleAfter, type CycleTest } from "$lib/status";
 import { lightingText } from "$lib/equipment";
 import { latestSamples } from "$lib/server/sensors";
-import { fmtValue, paramUnit } from "$lib/params";
+import { fmtValue, paramUnit, statusOf } from "$lib/params";
 import { setFlash } from "$lib/server/flash";
 import {
   MIN_STREAK,
@@ -17,6 +17,7 @@ import { whatsNewCard } from "$lib/changelog";
 import { bySpecies, livestockLabel } from "$lib/livestock";
 import { eventIcon, eventKindLabel, eventTitle } from "$lib/events";
 import {
+  addDays,
   dateInZone,
   daysBetween,
   fmtDate,
@@ -37,7 +38,7 @@ import { testReadings, tests } from "$lib/server/db/schema";
 import { thumbsFor } from "$lib/server/photos";
 import { equipmentName } from "$lib/equipment";
 import { listEquipment, scheduledItems, listLivestock, listPlants } from "$lib/server/specs";
-import { getTank, listParams, markRunning } from "$lib/server/tanks";
+import { getTank, listParams, markCycling, markRunning } from "$lib/server/tanks";
 import { listTasks } from "$lib/server/tasks";
 import type { Actions, PageServerLoad } from "./$types";
 
@@ -197,6 +198,16 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
   const cycleSince = new Date(
     Date.now() - CYCLE_DAYS * 86_400_000,
   ).toISOString();
+  // not marked cycling, but new and with ammonia or nitrite over target: ask (#68)
+  const born = tank.startDate ?? tank.createdAt.slice(0, 10);
+  const askCycling =
+    !tank.cycling &&
+    born >= addDays(today, -CYCLE_DAYS) &&
+    params.some(
+      (p) =>
+        (p.key === "nh3" || p.key === "no2") &&
+        statusOf(p, latest.get(p.id)?.value).level === "bad",
+    );
   const cycling = tank.cycling
     ? {
         ...cyclingStage([...byTest.values()]),
@@ -256,6 +267,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
     cheers: { streak, milestones },
     contents,
     cycling,
+    askCycling,
     stale,
     tank: {
       id: tank.id,
@@ -303,6 +315,12 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 
 export const actions: Actions = {
   // the cycle is done: ammonia and nitrite count as failures again, with a note in History
+  markCycling: async ({ request, locals, cookies }) => {
+    const tankId = String((await request.formData()).get("tankId") ?? "");
+    const tank = markCycling(locals.user!.id, tankId);
+    setFlash(cookies, `✓ ${tank.name} is cycling`);
+    redirect(303, "/");
+  },
   markRunning: async ({ request, locals, cookies }) => {
     const tankId = String((await request.formData()).get("tankId") ?? "");
     const tank = markRunning(locals.user!.id, tankId);

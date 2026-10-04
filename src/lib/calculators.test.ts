@@ -11,7 +11,8 @@ import {
 	strengthMgPerMl,
 	substrateAmount,
 	tankVolume,
-	waterChangeFraction
+	waterChangeFraction,
+	waterChangeTarget
 } from './calculators';
 
 describe('tankVolume', () => {
@@ -118,5 +119,23 @@ describe('remineralize', () => {
 		expect(r.gypsumG).toBe(0);
 		expect(remineralize(100, 0, 0)).toBeNull();
 		expect(remineralize(0, 4, 6)).toBeNull();
+	});
+});
+
+describe('waterChangeTarget', () => {
+	it('never starts above the reading', () => {
+		// nitrate 35 over a 5–20 target: down to the top
+		expect(waterChangeTarget(35, 5, 20)).toBe(20);
+		// nitrate 10 within 5–20: down to the bottom
+		expect(waterChangeTarget(10, 5, 20)).toBe(5);
+		// at or under the bottom, or a min-0 target: half the reading
+		expect(waterChangeTarget(4, 5, 20)).toBe(2);
+		expect(waterChangeTarget(0.2, 0, 0.25)).toBe(0.1);
+		for (const r of [35, 10, 4, 0.2]) expect(waterChangeTarget(r, 5, 20)!).toBeLessThan(r);
+	});
+	it('falls back to the target with no reading', () => {
+		expect(waterChangeTarget(null, 5, 20)).toBe(20);
+		expect(waterChangeTarget(null, 5, null)).toBe(5);
+		expect(waterChangeTarget(null, null, null)).toBe(null);
 	});
 });

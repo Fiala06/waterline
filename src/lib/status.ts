@@ -2,7 +2,8 @@
 //
 // - out of range ("bad") if v < min or v > max
 // - near limit ("warn") if in range and within 10% of (max − min) of a bound,
-//   only when min > 0 (ammonia/nitrite with min 0 are never "near")
+//   when min > 0; when min is 0 (ammonia, nitrite: "≤ 0.25 ppm", should read
+//   0) any reading above 0 is near high (#63)
 // - in range ("ok") otherwise; "none" when there is no reading
 //
 // Status is never color-only: always pair `level` with `statusIcon` + label.
@@ -37,6 +38,8 @@ export function paramStatus(
     return { level: "bad", direction: "low" };
   if (max != null && value > max + EPS)
     return { level: "bad", direction: "high" };
+  if (min === 0 && max != null && max > 0 && value > EPS)
+    return { level: "warn", direction: "high" };
   if (min != null && max != null && min > 0 && max > min) {
     const margin = (max - min) * NEAR_FRACTION;
     if (value - min < margin - EPS) return { level: "warn", direction: "low" };

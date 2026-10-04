@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compactName, defaultParameters, fmtRange, fmtValue, statusOf, storedValue } from './params';
+import { compactName, defaultParameters, fmtRange, fmtValue, foldsInTestForm, statusOf, storedValue } from './params';
 import { TANK_TYPES } from './types';
 import type { UnitPrefs } from './units';
 
@@ -109,5 +109,25 @@ describe('hardness in degrees or ppm', () => {
 			const fromPpm = storedValue(gh, Number(fmtValue(gh, fromDeg, ppm)), ppm);
 			expect(statusOf(gh, fromPpm).level, `${v} dGH`).toBe(statusOf(gh, fromDeg).level);
 		}
+	});
+});
+
+describe('foldsInTestForm (#65)', () => {
+	const imperial = { unitSystem: 'imperial', hardnessUnit: 'dgh' } as const;
+	const folded = (type: 'freshwater' | 'planted' | 'brackish' | 'reef') =>
+		defaultParameters(imperial, type)
+			.filter((p) => foldsInTestForm(p, type, false))
+			.map((p) => p.key);
+
+	it('keeps a beginner kit’s parameters in view and folds the rest', () => {
+		expect(folded('planted')).toEqual(['po4', 'k', 'fe', 'co2', 'tds', 'ec']);
+		expect(folded('freshwater')).toEqual(['tds', 'ec']);
+		expect(folded('brackish')).toEqual(['tds', 'ec']);
+		expect(folded('reef')).toEqual([]);
+	});
+
+	it('never folds one tested before, or a custom one', () => {
+		expect(foldsInTestForm({ key: 'po4' }, 'planted', true)).toBe(false);
+		expect(foldsInTestForm({ key: 'custom_x', isCustom: true }, 'planted', false)).toBe(false);
 	});
 });

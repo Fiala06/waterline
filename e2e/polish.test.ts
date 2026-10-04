@@ -8,16 +8,16 @@ test('editing a test keeps exact readings and shows what they were', async ({ pa
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
 
 	await open(page, `/entries/test/new?tank=${tankId}`);
-	await page.getByLabel('pH', { exact: true }).fill('7.54');
+	await page.getByLabel('pH', { exact: true }).fill('7.84');
 	await page.getByRole('button', { name: 'Save 1 reading' }).click();
 	await expect(page.getByRole('status')).toContainText('1 out of range');
 	await page.getByRole('status').getByRole('link', { name: 'View' }).click();
 	const detail = /\/entries\/test\/[^/]+$/;
 	await expect(page).toHaveURL(detail);
 
-	// 7.54 is over the 7.5 limit, so it isn't rounded to a value that looks in range
+	// 7.84 is over the 7.8 limit, so it isn't rounded to a value that looks in range
 	const ph = page.locator('.row', { hasText: /^pH/ });
-	await expect(ph).toContainText('7.54');
+	await expect(ph).toContainText('7.84');
 	await expect(ph).toContainText('✕ High');
 
 	// only the note changes: the reading stays exactly as logged
@@ -26,7 +26,7 @@ test('editing a test keeps exact readings and shows what they were', async ({ pa
 	await page.getByLabel('Note').fill('after topping off');
 	await page.getByRole('button', { name: 'Save changes' }).click();
 	await expect(page).toHaveURL(detail);
-	await expect(ph).toContainText('7.54');
+	await expect(ph).toContainText('7.84');
 	await expect(ph).toContainText('✕ High');
 
 	// a changed reading remembers the old value
@@ -36,12 +36,12 @@ test('editing a test keeps exact readings and shows what they were', async ({ pa
 	await page.getByRole('button', { name: 'Save changes' }).click();
 	await expect(page).toHaveURL(detail);
 	await expect(ph).toContainText('7.2');
-	await expect(ph).toContainText('was 7.54');
+	await expect(ph).toContainText('was 7.84');
 
 	// the edit screen can delete the entry (G6)
 	await page.getByRole('link', { name: 'Edit' }).click();
 	await page.locator('html[data-ready="true"]').waitFor();
-	await expect(page.getByText('was 7.54')).toBeVisible();
+	await expect(page.getByText('was 7.84')).toBeVisible();
 	await page.getByRole('button', { name: 'Delete entry' }).click();
 	await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click();
 	await expect(page.getByRole('status')).toContainText('Entry deleted');

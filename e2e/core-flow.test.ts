@@ -32,6 +32,10 @@ test('core flow', async ({ page }, info) => {
 	// Log a water test with inline status
 	await page.getByRole('link', { name: 'Log first water test' }).click();
 	await expect(page.getByRole('heading', { name: 'Water test' })).toBeVisible();
+	// the basics first; what a beginner's kit doesn't cover waits folded (#65)
+	await expect(page.getByLabel('Phosphate', { exact: true })).toBeHidden();
+	await page.getByText('6 more parameters').click();
+	await expect(page.getByLabel('Phosphate', { exact: true })).toBeVisible();
 	await page.getByLabel('pH', { exact: true }).fill('6.8');
 	await page.getByLabel('Nitrate', { exact: true }).fill('40');
 	await expect(page.getByText('✕ Above target 5–20 ppm')).toBeVisible();
@@ -46,6 +50,8 @@ test('core flow', async ({ page }, info) => {
 	await expect(attention).toHaveCount(2);
 	await expect(attention.nth(0)).toContainText('Nitrate ✕ High');
 	await expect(attention.nth(0)).toContainText('40');
+	// and what to do about it (#62)
+	await expect(attention.nth(0)).toContainText('A bigger water change brings it down');
 	await expect(attention.nth(1)).toContainText('KH ▲ Near low');
 	const inRange = page.getByRole('region', { name: 'In range' });
 	await expect(inRange).toContainText('✓ 1 of 3');
@@ -56,6 +62,8 @@ test('core flow', async ({ page }, info) => {
 	// for a week, so it says how soon, and its button is a quiet "Done early"
 	const due = page.getByRole('region', { name: 'Due' });
 	await expect(due.getByText(/^In 7 days · every 7 days$/i)).toBeVisible();
+	// the setup review says what it's for (#69)
+	await expect(due).toContainText('Check the tank’s details, equipment, targets and livestock are still right.');
 	await expect(due.getByRole('button', { name: 'Mark done', exact: true })).toHaveCount(0);
 	await due.getByRole('button', { name: 'Mark Water change 25% done early' }).click();
 	await expect(page).toHaveURL(/\/entries\/event\/new\?.*category=water_change/);

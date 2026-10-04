@@ -12,7 +12,7 @@ import {
 	WATER_SOURCES
 } from '$lib/events';
 import { MAX_LIVESTOCK_COUNT } from '$lib/livestock';
-import { displayValue, fmtRange, fmtValue, paramDecimals, paramUnit, storedValue } from '$lib/params';
+import { displayValue, fmtRange, fmtValue, foldsInTestForm, paramDecimals, paramUnit, storedValue } from '$lib/params';
 import { dueInfo, effectiveDue, nextDueAfterCompletion } from '$lib/tasks';
 import { paramTip } from '$lib/tips';
 import { fmtDate, todayInZone, utcToZoned } from '$lib/time';
@@ -49,7 +49,9 @@ export function testFormParams(
 			last: last ? `Last ${lastValue} · ${fmtDate(utcToZoned(last.takenAt, user.timeZone).date)}` : null,
 			// what "Use last readings" types in
 			lastInput: lastValue,
-			tip: p.isCustom ? null : paramTip(p.key, tankType)
+			tip: p.isCustom ? null : paramTip(p.key, tankType),
+			// under "Show N more" on a new test (#65)
+			later: foldsInTestForm(p, tankType, !!last)
 		};
 	});
 }

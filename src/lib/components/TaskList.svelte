@@ -8,6 +8,7 @@
 	import { markDone } from '$lib/splash';
 	import { page } from '$app/state';
 	import { amountText, dueInfo, intervalText } from '$lib/tasks';
+	import { REVIEW_ABOUT } from '$lib/review';
 	import { fmtDate } from '$lib/time';
 
 	interface TaskRow {
@@ -44,6 +45,7 @@
 		<div class="row">
 			<div class="text">
 				<div class="name">{t.name}</div>
+				{#if t.kind === 'review'}<div class="about">{REVIEW_ABOUT}</div>{/if}
 				<div class="due {d.days > 0 ? 'plain' : `status-${d.level}`}">{when}{#if dose}<span class="plain">{` · ${dose}`}</span>{/if}</div>
 			</div>
 			<form method="POST" action="/tasks?/done" use:enhance={markDone}>
@@ -84,6 +86,10 @@
 	.name {
 		font-size: 15px;
 		font-weight: 600;
+	}
+	.about {
+		font-size: 13px;
+		color: var(--text-muted);
 	}
 	.due {
 		font-size: 11px;

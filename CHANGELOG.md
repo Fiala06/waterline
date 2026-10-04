@@ -11,6 +11,16 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **What to do about a reading:** Under each reading out of range on a tank's [Overview](/), Needs attention now says what to do next in a line, like "Change 30–50% of the water with conditioned water, feed lightly and test again tomorrow" for ammonia, with reef wording in a reef.
+- **Any ammonia or nitrite is worth a look:** Ammonia and nitrite should read 0, so a reading above 0 now shows as ▲ Near high on the [Overview](/) and as you log a test, instead of ✓; over their target it's still ✕ High.
+- **A friendlier pH target for new tanks:** New freshwater and planted tanks aim for pH 6.0–7.8, so ordinary tap water around 7.6 no longer reads ✕ High. Existing tanks keep their targets; change them under [Targets](/tanks/current/targets).
+- **A shorter water test:** [Log water test](/entries/test/new) leads with what a starter kit or test strip covers (pH, ammonia, nitrite, nitrate, GH, KH, temperature), plus anything you've tested before; the rest wait under "6 more parameters" until you need them.
+- **The water change calculator starts sensibly:** On [Calculators](/calculators), Water change now starts "Down to" below your latest reading, so it no longer opens on "A water change can't get there".
+- **Everyday calculators first:** [Calculators](/calculators) lead with tank volume, water change, heater size and substrate; dosing, CO₂ and RO water minerals sit under Advanced, each with what it's for in plain words.
+- **Is the new tank cycling?** A tank under 8 weeks old with ammonia or nitrite over target asks on its [Overview](/) whether it's still cycling, with Mark as cycling; a cycling tank's Overview explains the cycle in two lines.
+- **The setup review says what it's for:** "Review tank setup" in Due and [Tasks](/tasks) now reads "Check the tank's details, equipment, targets and livestock are still right."
+- **More tabs, clearly:** On a phone, the tank's tabs show a › (and ‹) where more tabs are off-screen; tap it to scroll to them.
+
 ## 1.12.6 · 2026-10-04
 
 - **The public page shows no photo twice:** With the Timeline on, the [public page](/tanks/current/public)'s Photos keep only the photos the timeline doesn't carry (close-ups taken out of it); the section goes when there are none, so a visitor scrolls past each photo once.
