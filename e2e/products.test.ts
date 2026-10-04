@@ -72,3 +72,21 @@ test('product links work without scripts', async ({ page, browser }, info) => {
 	await expect(plain.getByText('shop.example.com · Cube pack')).toBeVisible();
 	await ctx.close();
 });
+
+// #73: a product saved in Settings › Products is offered when logging a dose, before it's ever dosed
+test('a saved product is offered on Log › Dose', async ({ page }, info) => {
+	await newKeeperWithTank(page, `products-offer-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+
+	await open(page, '/settings/products');
+	await page.locator('#add-name').fill('Thrive S');
+	await page.locator('#add-url').fill('shop.example.com/thrive-s');
+	await page.getByRole('button', { name: 'Add product' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Thrive S saved');
+
+	await open(page, `/entries/event/new?tank=${tankId}&category=dosing`);
+	await expect(page.getByRole('link', { name: 'Manage products ›' })).toHaveAttribute('href', '/settings/products');
+	await page.getByRole('button', { name: 'Thrive S', exact: true }).click();
+	await expect(page.getByLabel('Product', { exact: true })).toHaveValue('Thrive S');
+	await expect(page.getByRole('link', { name: /Reorder Thrive S/ })).toHaveAttribute('href', 'https://shop.example.com/thrive-s');
+});

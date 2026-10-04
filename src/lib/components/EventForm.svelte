@@ -176,15 +176,26 @@
 	const lastDose = $derived(
 		recentProducts.find((r) => r.product.toLowerCase() === product.trim().toLowerCase())
 	);
-	function pickProduct(r: (typeof recentProducts)[number]) {
-		product = r.product;
-		if (typeof r.unit === 'string') dosingUnit = r.unit;
+	// what the Product field offers (#73): recently dosed first, then saved products not dosed yet
+	const productChoices = $derived.by(() => {
+		const seen = new Set<string>();
+		return [...recentProducts.map((r) => r.product), ...productLinks.map((l) => l.name.trim())].filter((n) => {
+			const k = n.toLowerCase();
+			if (!n || seen.has(k)) return false;
+			seen.add(k);
+			return true;
+		});
+	});
+	function pickProduct(name: string) {
+		product = name;
+		const r = recentProducts.find((x) => x.product === name);
+		if (typeof r?.unit === 'string') dosingUnit = r.unit;
 	}
 	const fmtDose = (r: (typeof recentProducts)[number]) =>
 		`Last dosed ${r.amount ?? ''} ${r.unit ?? ''} on ${new Date(r.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone })}.`.replace(/\s+/g, ' ');
 	const savedLink = $derived(productLinks.find((l) => l.name.trim().toLowerCase() === product.trim().toLowerCase()));
 	const doseHint = $derived(
-		[lastDose ? fmtDose(lastDose) : '', recentProducts.length ? 'Recent products are listed first.' : ''].filter(Boolean).join(' ')
+		[lastDose ? fmtDose(lastDose) : '', recentProducts.length && productChoices.length > recentProducts.length ? 'Recent products are listed first.' : ''].filter(Boolean).join(' ')
 	);
 
 	// − 10 + (G3). Adding starts at 1; taking away can't go past what's in the tank.
@@ -368,12 +379,12 @@
 							<label class="label" for="product">Product</label>
 							<input class="input" id="product" name="product" bind:value={product} list="recent-products" maxlength="80" autocomplete="off" placeholder="e.g. All-in-one fertilizer" aria-invalid={!!errors.product} />
 							<datalist id="recent-products">
-								{#each recentProducts as r (r.product)}<option value={r.product}></option>{/each}
+								{#each productChoices as name (name)}<option value={name}></option>{/each}
 							</datalist>
-							{#if recentProducts.length && !product}
+							{#if productChoices.length && !product}
 								<div class="chips">
-									{#each recentProducts as r (r.product)}
-										<button type="button" class="chip" onclick={() => pickProduct(r)}>{r.product}</button>
+									{#each productChoices.slice(0, 8) as name (name)}
+										<button type="button" class="chip" onclick={() => pickProduct(name)}>{name}</button>
 									{/each}
 								</div>
 							{/if}
@@ -393,6 +404,7 @@
 					</div>
 					{#if doseHint}<span class="hint">{doseHint}</span>{/if}
 					{#if mode === 'new'}<a class="hint calc-link" href="/calculators?tank={page.url.searchParams.get('tank') ?? ''}#dose">What does this dose add? Dose → ppm ›</a>{/if}
+					{#if mode === 'new'}<a class="hint calc-link" href="/settings/products">Manage products ›</a>{/if}
 					{#if mode === 'new' && savedLink}
 						<a class="reorder" href={savedLink.url} target="_blank" rel="noopener noreferrer"
 							>Reorder {savedLink.name}<span aria-hidden="true"> ↗</span><span class="sr-only"> (opens in a new tab)</span></a
