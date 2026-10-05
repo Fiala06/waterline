@@ -318,6 +318,7 @@
 					<div class="legend">
 						{#if fmtRange(chosen, prefs)}
 							<span><i class="lg-band"></i>Target {fmtRange(chosen, prefs)}</span>
+							<span><i class="lg-zone"></i>Out of range</span>
 						{/if}
 						{#if data.markers.length}<span><i class="lg-marker"></i>Water change</span>{/if}
 					</div>
@@ -623,6 +624,12 @@
 		width: 16px;
 		height: 10px;
 		background: var(--band);
+	}
+	/* High and Low, either side of the target (#74) */
+	.lg-zone {
+		width: 16px;
+		height: 10px;
+		background: var(--zone-bad);
 	}
 	.lg-marker {
 		width: 10px;

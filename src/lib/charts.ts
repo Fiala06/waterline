@@ -6,3 +6,45 @@ export const CHART_RANGES = [
 	{ key: '1y', label: '1Y', long: '1 year', days: 365 },
 	{ key: 'all', label: 'All', long: 'All', days: 0 }
 ] as const;
+
+/**
+ * The range a parameter's chart draws (#74): the readings, and room past the
+ * target on both sides, so the target is a band and never the whole chart.
+ * - min 0 (ammonia, nitrite): from 0 up to twice the limit, or past the highest reading
+ * - min and max: about half the target's width above and below, down to 0 at most
+ * - only one limit: half of it again past it
+ * - no target: the readings with a little padding
+ * Readings below 0 (a sensor offset) stay in view.
+ */
+export function chartDomain(values: number[], band: { min: number | null; max: number | null }): { lo: number; hi: number } {
+	const vals = values.filter((v) => Number.isFinite(v));
+	const vLo = vals.length ? Math.min(...vals) : null;
+	const vHi = vals.length ? Math.max(...vals) : null;
+	const { min, max } = band;
+	let lo: number;
+	let hi: number;
+	if (min === 0 && max != null && max > 0) {
+		lo = 0;
+		hi = Math.max(max * 2, (vHi ?? 0) * 1.1);
+	} else if (min != null && max != null && max > min) {
+		const span = max - min;
+		lo = Math.min(min - span * 0.45, vLo != null ? vLo - span * 0.1 : Infinity);
+		hi = Math.max(max + span * 0.45, vHi != null ? vHi + span * 0.1 : -Infinity);
+	} else if (max != null && max > 0) {
+		lo = Math.min(0, vLo ?? 0);
+		hi = Math.max(max * 1.5, (vHi ?? 0) * 1.1);
+	} else if (min != null && min > 0) {
+		lo = Math.min(min * 0.5, vLo != null ? vLo - min * 0.1 : Infinity);
+		hi = Math.max(min * 1.5, vHi != null ? vHi + min * 0.1 : -Infinity);
+	} else {
+		if (vLo == null || vHi == null) return { lo: 0, hi: 1 };
+		const pad = vHi > vLo ? (vHi - vLo) * 0.12 : Math.max(1, Math.abs(vHi) * 0.1);
+		lo = vLo - pad;
+		hi = vHi + pad;
+	}
+	// nothing below 0 unless a reading is
+	if (lo < 0 && (vLo == null || vLo >= 0)) lo = 0;
+	if (vLo != null && vLo < lo) lo = vLo;
+	if (!(hi > lo)) hi = lo + 1;
+	return { lo, hi };
+}

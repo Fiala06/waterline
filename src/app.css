@@ -88,6 +88,8 @@
 	--bad-text: #ae1800;
 	--scrim: rgba(45, 43, 43, 0.45);
 	--band: #d7d3d3;
+	/* a chart's High and Low zones (#74): a faint red, under the readings */
+	--zone-bad: #f9e1db;
 	--google-bg: #201e1d;
 	--google-text: #f3f2f2;
 	--toast-bg: #201e1d;
@@ -168,6 +170,8 @@
 	--bad-text: #ff9783;
 	--scrim: rgba(0, 0, 0, 0.6);
 	--band: #3d3a39;
+	/* a chart's High and Low zones (#74): a faint red, under the readings */
+	--zone-bad: #3a140d;
 	--google-bg: #f0eeed;
 	--google-text: #161514;
 	--toast-bg: #f0eeed;
@@ -245,6 +249,8 @@
 		--bad-text: #ff9783;
 		--scrim: rgba(0, 0, 0, 0.6);
 		--band: #3d3a39;
+		/* a chart's High and Low zones (#74): a faint red, under the readings */
+		--zone-bad: #3a140d;
 		--google-bg: #f0eeed;
 		--google-text: #161514;
 		--toast-bg: #f0eeed;

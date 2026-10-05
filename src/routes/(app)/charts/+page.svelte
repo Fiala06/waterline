@@ -135,6 +135,7 @@
 					<div class="legend">
 						{#if c.target}
 							<span><i class="lg-band"></i>Target {c.target}</span>
+							<span><i class="lg-zone"></i>Out of range</span>
 						{/if}
 						{#if c.markers.some((m) => m.kind !== 'dosing')}
 							<span><i class="lg-marker"></i>Water change</span>
@@ -386,6 +387,12 @@
 		width: 16px;
 		height: 10px;
 		background: var(--band);
+	}
+	/* High and Low, either side of the target (#74) */
+	.lg-zone {
+		width: 16px;
+		height: 10px;
+		background: var(--zone-bad);
 	}
 	.lg-marker {
 		width: 10px;

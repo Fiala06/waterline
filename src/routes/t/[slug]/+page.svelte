@@ -161,7 +161,7 @@
 						</div>
 						{#if chart.target || chart.markers.length || chart.sensor.length > 1}
 							<p class="legend">
-								{#if chart.target}<span><i class="swatch" aria-hidden="true"></i>Target band {chart.target}</span>{/if}
+								{#if chart.target}<span><i class="swatch" aria-hidden="true"></i>Target band {chart.target}</span><span><i class="swatch zone" aria-hidden="true"></i>Out of range</span>{/if}
 								{#if chart.markers.length}<span><i class="swatch marker" aria-hidden="true"></i>Water change</span>{/if}
 								{#if chart.sensor.length > 1}<span><i class="swatch sensor" aria-hidden="true"></i>Sensor</span>{/if}
 							</p>
@@ -715,6 +715,9 @@
 		width: 14px;
 		height: 8px;
 		background: var(--band);
+	}
+	.swatch.zone {
+		background: var(--zone-bad);
 	}
 	.swatch.marker {
 		width: 8px;

@@ -50,6 +50,7 @@
 	import { goto } from '$app/navigation';
 	import { paramStatus, statusShort, type StatusLevel } from '$lib/status';
 	import { formatNumber } from '$lib/units';
+	import { chartDomain } from '$lib/charts';
 
 	interface Point {
 		t: number; // ms
@@ -116,21 +117,8 @@
 	const BOTTOM = $derived(full ? 40 : 22);
 	const plotH = $derived(Math.max(1, h - TOP - BOTTOM));
 
-	const domain = $derived.by(() => {
-		const vals = points.map((p) => p.v);
-		for (const s of sensor) vals.push(s.v);
-		if (band.min != null) vals.push(band.min);
-		if (band.max != null) vals.push(band.max);
-		let lo = Math.min(...vals);
-		let hi = Math.max(...vals);
-		if (!Number.isFinite(lo)) return { lo: 0, hi: 1 };
-		if (hi === lo) {
-			hi += 1;
-			lo -= 1;
-		}
-		const pad = (hi - lo) * 0.12;
-		return { lo: lo >= 0 ? Math.max(0, lo - pad) : lo - pad, hi: hi + pad };
-	});
+	// room past the target on both sides, so it's a band and never the whole chart (#74)
+	const domain = $derived(chartDomain([...points.map((p) => p.v), ...sensor.map((s) => s.v)], band));
 
 	// fewer numbers up the side of a short chart
 	const ticks = $derived(niceTicks(domain.lo, domain.hi, plotH < 70 ? 2 : plotH < 200 ? 3 : 4));
@@ -141,10 +129,14 @@
 		return long.length * 6.5 <= plotH ? long : unit || name;
 	});
 	const LEFT = $derived((title ? 18 : 4) + Math.max(1, ...ticks.map((t) => tickText(t).length)) * 7 + 8);
-	const RIGHT = 10;
+	// a full chart names its zones in a gutter on the right (#74)
+	const zoned = $derived(full && (band.min != null || band.max != null));
+	const RIGHT = $derived(zoned ? (width < 480 ? 74 : 92) : 10);
+	// the lowest value sits a little above the axis, so a run of zeros isn't hidden under it
+	const LIFT = 8;
 
 	const x = (t: number) => LEFT + ((t - from) / Math.max(1, to - from)) * (width - LEFT - RIGHT);
-	const y = (v: number) => TOP + (1 - (v - domain.lo) / (domain.hi - domain.lo)) * plotH;
+	const y = (v: number) => TOP + (1 - (v - domain.lo) / (domain.hi - domain.lo)) * (plotH - LIFT);
 
 	const xTicks = $derived.by(() => {
 		const n = Math.max(2, Math.min(5, Math.floor((width - LEFT) / 90)));
@@ -157,6 +149,27 @@
 	const bandBottom = $derived(band.min != null ? y(band.min) : h - BOTTOM);
 	const hasBand = $derived(band.min != null || band.max != null);
 	const baseline = $derived(h - BOTTOM);
+	// "≤ 0.25": 0 is best, anything up to the limit a trace (the ▲ Near status)
+	const zeroBest = $derived(band.min === 0 && band.max != null && band.max > 0);
+	const lowZone = $derived(band.min != null && band.min > 0);
+	const zoneRight = $derived(width - RIGHT + 8);
+	const zoneMid = (top: number, bottom: number) => (top + bottom) / 2;
+	/** The zones' labels, where they fit: [y, title, detail, bad] */
+	const zoneLabels = $derived.by(() => {
+		if (!zoned) return [];
+		const f = (v: number) => formatNumber(v, decimals);
+		const out: { y: number; title: string; sub: string; bad: boolean; room: number }[] = [];
+		if (band.max != null) out.push({ y: zoneMid(TOP, bandTop), title: '✕ High', sub: `over ${f(band.max)}`, bad: true, room: bandTop - TOP });
+		if (zeroBest) {
+			out.push({ y: zoneMid(bandTop, y(0)), title: '▲ Trace', sub: `0–${f(band.max!)}`, bad: false, room: y(0) - bandTop });
+			out.push({ y: y(0), title: '✓ 0 is best', sub: '', bad: false, room: 99 });
+		} else {
+			const range = band.min != null && band.max != null ? `${f(band.min)}–${f(band.max)}` : band.max != null ? `up to ${f(band.max)}` : `${f(band.min!)} or more`;
+			out.push({ y: zoneMid(bandTop, bandBottom), title: '✓ Target', sub: range, bad: false, room: bandBottom - bandTop });
+			if (lowZone) out.push({ y: zoneMid(bandBottom, baseline), title: '✕ Low', sub: `under ${f(band.min!)}`, bad: true, room: baseline - bandBottom });
+		}
+		return out.filter((z) => z.room >= 14);
+	});
 
 	const fmt = (t: number) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone });
 	const dayOf = (t: number) => new Date(t).toLocaleDateString('en-CA', { timeZone });
@@ -294,6 +307,9 @@
 				<text class="axis-title" transform="translate(11 {TOP + plotH / 2}) rotate(-90)" text-anchor="middle">{title}</text>
 			{/if}
 			{#if hasBand}
+				<!-- High and Low as a faint red either side of the target (#74) -->
+				{#if band.max != null && bandTop > TOP}<rect x={LEFT} y={TOP} width={Math.max(0, width - LEFT - RIGHT)} height={bandTop - TOP} fill="var(--zone-bad)"></rect>{/if}
+				{#if lowZone && baseline > bandBottom}<rect x={LEFT} y={bandBottom} width={Math.max(0, width - LEFT - RIGHT)} height={baseline - bandBottom} fill="var(--zone-bad)"></rect>{/if}
 				<rect x={LEFT} y={bandTop} width={Math.max(0, width - LEFT - RIGHT)} height={Math.max(0, bandBottom - bandTop)} fill="var(--band)"></rect>
 			{/if}
 			{#each ticks as t (t)}
@@ -302,11 +318,12 @@
 			{/each}
 			{#if hasBand}
 				{#if band.max != null}<line x1={LEFT} x2={width - RIGHT} y1={bandTop} y2={bandTop} class="band-edge"></line>{/if}
-				{#if band.min != null}<line x1={LEFT} x2={width - RIGHT} y1={bandBottom} y2={bandBottom} class="band-edge"></line>{/if}
-				{#if full}
-					{#if band.max != null}<text x={width - RIGHT - 2} y={bandTop - 4} class="limit" text-anchor="end">max {formatNumber(band.max, decimals)}</text>{/if}
-					{#if band.min != null}<text x={width - RIGHT - 2} y={bandBottom + 12} class="limit" text-anchor="end">min {formatNumber(band.min, decimals)}</text>{/if}
-				{/if}
+				{#if lowZone}<line x1={LEFT} x2={width - RIGHT} y1={bandBottom} y2={bandBottom} class="band-edge"></line>{/if}
+				{#if zeroBest}<line x1={LEFT} x2={width - RIGHT} y1={y(0)} y2={y(0)} class="zero-line"></line>{/if}
+				{#each zoneLabels as z (z.title)}
+					<text x={zoneRight} y={z.y + (z.sub && z.room >= 30 ? -2 : 4)} class="zone" class:bad={z.bad}>{z.title}</text>
+					{#if z.sub && z.room >= 30}<text x={zoneRight} y={z.y + 12} class="zone-sub">{z.sub}</text>{/if}
+				{/each}
 			{/if}
 			{#each markers as m (m.href)}
 				<line
@@ -334,6 +351,10 @@
 			{/if}
 			{#if last}
 				<rect class="last-dot" x={x(last.t) - 5} y={y(last.v) - 5} width="10" height="10" fill={lastLevel === 'ok' ? 'var(--ink)' : 'var(--accent)'}></rect>
+			{/if}
+			{#if full && last && !hot && !pinLatest}
+				<!-- the latest reading's value beside it (#74) -->
+				<text x={x(last.t) - 9} y={y(last.v) - 10 < TOP + 4 ? y(last.v) + 20 : y(last.v) - 10} class="last-value" class:bad={lastLevel === 'bad'} text-anchor="end">{value(last)}</text>
 			{/if}
 			{#if hot}<rect x={x(hot.t) - 6} y={y(hot.v) - 6} width="12" height="12" class="hot"></rect>{/if}
 			<line x1={LEFT} x2={width - RIGHT} y1={baseline} y2={baseline} class="baseline"></line>
@@ -419,14 +440,38 @@
 		stroke: var(--ink);
 		stroke-width: 2;
 	}
+	/* the target's limits, where High and Low begin */
 	.band-edge {
-		stroke: var(--neutral-500);
-		stroke-dasharray: 2 3;
+		stroke: var(--accent);
+		stroke-width: 1;
+		stroke-dasharray: 4 3;
 	}
-	.limit {
+	.zero-line {
+		stroke: var(--ink);
+		stroke-width: 1;
+	}
+	.zone {
+		fill: var(--text);
+		font-size: 12px;
+		font-weight: 800;
+	}
+	.zone.bad {
+		fill: var(--accent-text);
+	}
+	.zone-sub {
 		fill: var(--text-muted);
 		font-size: 11px;
-		font-weight: 700;
+	}
+	.last-value {
+		fill: var(--text);
+		font-size: 12px;
+		font-weight: 800;
+		stroke: var(--bg);
+		stroke-width: 3px;
+		paint-order: stroke;
+	}
+	.last-value.bad {
+		fill: var(--accent-text);
 	}
 	.marker-line {
 		stroke: var(--text-muted);

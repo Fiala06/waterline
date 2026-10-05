@@ -32,17 +32,24 @@ describe('sparkPoints', () => {
 
 describe('sparkPoints with a target band', () => {
 	it('scales to the band as well, so a reading above it sits above the band', () => {
-		// readings 15 then 35, band 5–20: the scale runs 5–35
-		expect(sparkPoints([15, 35], 5, 20)).toBe('0,15.33 100,2');
-		expect(sparkBand([15, 35], 5, 20)).toEqual({ y: 12, height: 10 });
+		// readings 15 then 35, band 5–20: the scale runs 0–36.5, room past the band (#74)
+		expect(sparkPoints([15, 35], 5, 20)).toBe('0,13.78 100,2.82');
+		expect(sparkBand([15, 35], 5, 20)).toEqual({ y: 11.04, height: 8.22 });
 	});
 
 	it('puts one reading at its height against the band, not in the middle', () => {
-		expect(sparkPoints([0.04], 0.05, 0.2)).toBe('0,22 100,22');
+		expect(sparkPoints([0.04], 0.05, 0.2)).toBe('0,19.01 100,19.01');
+		// under the band, which starts above it
+		expect(sparkBand([0.04], 0.05, 0.2)).toEqual({ y: 7.05, height: 11.21 });
 	});
 
 	it('draws a band with only a max from the bottom (ammonia ≤ 0.25)', () => {
-		expect(sparkBand([0, 0, 0.5], null, 0.25)).toEqual({ y: 12, height: 10 });
+		expect(sparkBand([0, 0, 0.5], null, 0.25)).toEqual({ y: 12.91, height: 9.09 });
+	});
+
+	it('keeps ammonia at 0 at the bottom, with the band only half the height (#74)', () => {
+		expect(sparkPoints([0, 0, 0], 0, 0.25)).toBe('0,22 50,22 100,22');
+		expect(sparkBand([0, 0, 0], 0, 0.25)).toEqual({ y: 12, height: 10 });
 	});
 
 	it('draws no band without a target', () => {

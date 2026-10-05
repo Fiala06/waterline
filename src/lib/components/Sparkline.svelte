@@ -1,14 +1,16 @@
 <script module lang="ts">
+	import { chartDomain } from '$lib/charts';
 	const W = 100;
 	const H = 24;
 	/** keeps the 2px stroke inside the box at the highest and lowest reading */
 	const PAD = 2;
 	const round = (n: number) => Math.round(n * 100) / 100;
 
-	/** The range drawn: the series, and the target band when one is given, so both fit. */
+	/** The range drawn: the series' own, or with a target band the chart's (#74), with room past the band. */
 	function scale(values: number[], lo?: number | null, hi?: number | null) {
-		const all = [...values, ...(lo != null ? [lo] : []), ...(hi != null ? [hi] : [])];
-		return { min: Math.min(...all), max: Math.max(...all) };
+		if (lo == null && hi == null) return { min: Math.min(...values), max: Math.max(...values) };
+		const d = chartDomain(values, { min: lo ?? null, max: hi ?? null });
+		return { min: d.lo, max: d.hi };
 	}
 	const yOf = (v: number, min: number, max: number) => round(H - PAD - ((v - min) / (max - min)) * (H - 2 * PAD));
 
