@@ -77,6 +77,10 @@ export interface TankInput {
   lengthCm?: number | null;
   widthCm?: number | null;
   heightCm?: number | null;
+  /** the Tank volume calculator's glass, substrate and gap below the rim (#78) */
+  glassThicknessCm?: number | null;
+  substrateDepthCm?: number | null;
+  rimGapCm?: number | null;
   startDate?: string | null;
   notes?: string | null;
   specBrand?: string | null;

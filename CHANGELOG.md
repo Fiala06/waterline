@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **The volume calculator remembers your measurements:** On [Calculators › Tank volume](/calculators#volume), Save as the tank's water volume now keeps the glass, substrate depth and gap below the rim with the tank, and a changed length, width or height too, so they're all still filled in next time instead of going blank.
+
 ## 1.12.11 · 2026-10-05
 
 - **Charts show only the tank you're on:** A tank's [Charts](/charts) no longer show the same reading from your other tanks under the chart, which was easy to mistake for this tank's. Switch tanks to see theirs.

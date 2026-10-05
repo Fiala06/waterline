@@ -124,6 +124,10 @@ export const tanks = sqliteTable(
 		lengthCm: real('length_cm'),
 		widthCm: real('width_cm'),
 		heightCm: real('height_cm'),
+		// the rest of the Tank volume calculator's measurements (#78), kept for next time
+		glassThicknessCm: real('glass_thickness_cm'),
+		substrateDepthCm: real('substrate_depth_cm'),
+		rimGapCm: real('rim_gap_cm'),
 		startDate: text('start_date'),
 		notes: text('notes'),
 		coverPhotoId: text('cover_photo_id'),

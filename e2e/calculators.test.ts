@@ -36,6 +36,22 @@ test('calculators', async ({ page }, info) => {
 	await expect(page.locator('#volume .r-v').nth(1)).toContainText('42.1');
 	await page.getByRole('button', { name: "Save as the tank's water volume" }).click();
 	await expect(page.getByRole('status')).toContainText('✓ Water volume saved · 42.1 gal');
+	// every measurement is still there after the save, ready for next time (#78)
+	await page.locator('html[data-ready="true"]').waitFor();
+	await expect(page.locator('#v-l')).toHaveValue('36');
+	await expect(page.locator('#v-s')).toHaveValue('2');
+	await expect(page.locator('#v-gap')).toHaveValue('1');
+	// and a changed size is saved too, not only the first one
+	await page.locator('#v-l').fill('48');
+	await page.getByRole('button', { name: "Save as the tank's water volume" }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Water volume saved · 56.1 gal');
+	await page.locator('html[data-ready="true"]').waitFor();
+	await expect(page.locator('#v-l')).toHaveValue('48');
+	await expect(page.locator('#v-s')).toHaveValue('2');
+	await page.locator('#v-l').fill('36');
+	await page.getByRole('button', { name: "Save as the tank's water volume" }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Water volume saved · 42.1 gal');
+	await page.locator('html[data-ready="true"]').waitFor();
 
 	// Water change starts from the reading, down to the target's bottom: never on an error (#66)
 	await expect(page.locator('#wc-from')).toHaveValue('10');

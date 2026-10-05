@@ -56,9 +56,10 @@
 	let vl = $state(untrack(() => data.tank?.length ?? ''));
 	let vw = $state(untrack(() => data.tank?.width ?? ''));
 	let vh = $state(untrack(() => data.tank?.height ?? ''));
-	let glass = $state('');
-	let vSub = $state('');
-	let vGap = $state('');
+	// saved with the volume, so they're here next time (#78)
+	let glass = $state(untrack(() => data.tank?.glass ?? ''));
+	let vSub = $state(untrack(() => data.tank?.substrateDepth ?? ''));
+	let vGap = $state(untrack(() => data.tank?.rimGap ?? ''));
 	const vol = $derived.by(() => {
 		const [L, W, H] = [n(vl), n(vw), n(vh)];
 		if (L == null || W == null || H == null) return null;

@@ -42,6 +42,9 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 					length: disp(tank.lengthCm, 'length'),
 					width: disp(tank.widthCm, 'length'),
 					height: disp(tank.heightCm, 'length'),
+					glass: disp(tank.glassThicknessCm, 'length', 2),
+					substrateDepth: disp(tank.substrateDepthCm, 'length'),
+					rimGap: disp(tank.rimGapCm, 'length'),
 					nominalVolume: disp(tank.nominalVolumeL, 'volume'),
 					actualVolume: disp(tank.actualVolumeL, 'volume'),
 					hasSize: tank.lengthCm != null && tank.widthCm != null && tank.heightCm != null
@@ -59,7 +62,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 };
 
 export const actions: Actions = {
-	/** "Save as the tank's water volume": the volume worked out from the size, kept with the size when the tank had none. */
+	/** "Save as the tank's water volume": the volume worked out from the size, kept with every measurement it came from (#78). */
 	saveVolume: async ({ request, locals, cookies }) => {
 		const user = locals.user!;
 		const form = await request.formData();
@@ -72,8 +75,15 @@ export const actions: Actions = {
 		if (lengthCm == null || widthCm == null || heightCm == null) return fail(400, { error: 'Enter the length, width and height.' });
 		const v = tankVolume({ lengthCm, widthCm, heightCm, glassCm: len('glass') ?? 0, substrateCm: len('substrate') ?? 0, gapCm: len('gap') ?? 0 });
 		if (!v || v.waterL <= 0) return fail(400, { error: 'That size leaves no room for water.' });
-		const sizeMissing = tank.lengthCm == null && tank.widthCm == null && tank.heightCm == null;
-		updateTank(user.id, tank.id, { actualVolumeL: v.waterL, ...(sizeMissing ? { lengthCm, widthCm, heightCm } : {}) });
+		updateTank(user.id, tank.id, {
+			actualVolumeL: v.waterL,
+			lengthCm,
+			widthCm,
+			heightCm,
+			glassThicknessCm: len('glass'),
+			substrateDepthCm: len('substrate'),
+			rimGapCm: len('gap')
+		});
 		createEvent(user.id, tank.id, { category: 'note', occurredAt: new Date().toISOString(), note: null, data: { system: 'volume_set', volumeL: v.waterL } }, { timeZone: user.timeZone });
 		setFlash(cookies, `✓ Water volume saved · ${fmtVolume(v.waterL, user)}`, { view: `/tanks/${tank.id}/settings` });
 		redirect(303, `/calculators?tank=${tank.id}#volume`);
