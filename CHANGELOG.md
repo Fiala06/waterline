@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.12.10 · 2026-10-05
+
 - **Charts show what's good, high and low:** Every chart on [Charts](/charts), the Overview's Trends and the public page now leaves room above and below the target and tints high and low a faint red, so the target is always a band you can see. On Charts the zones are named at the right edge (✕ High, ✓ Target, ✕ Low) with the latest value beside its point, and ammonia and nitrite get a “✓ 0 is best” line, with ▲ Trace up to their limit. Readings at 0 now sit just above the bottom axis instead of hidden under it.
 
 ## 1.12.9 · 2026-10-04
