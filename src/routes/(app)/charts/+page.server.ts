@@ -7,7 +7,7 @@ import { formatNumber } from '$lib/units';
 import { db } from '$lib/server/db';
 import { tests } from '$lib/server/db/schema';
 import { eventsSince, latestReadings, series } from '$lib/server/logs';
-import { getTank, listParams, listTanks } from '$lib/server/tanks';
+import { getTank, listParams } from '$lib/server/tanks';
 import { tankNotes } from '$lib/server/trends';
 import { latestSamples, sampleSeries } from '$lib/server/sensors';
 import { fmtWhen } from '$lib/time';
@@ -81,34 +81,6 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 		};
 	});
 
-	// Compare: the same parameter in the keeper's other tanks, over the same range
-	const same = (o: (typeof params)[number]) => o.key === param.key && (param.key !== 'custom' || o.name.trim().toLowerCase() === param.name.trim().toLowerCase());
-	const others = listTanks(user.id)
-		.filter((t) => t.id !== tank.id)
-		.flatMap((t) => {
-			const o = listParams(t.id, { all: true }).find(same);
-			const last = o && latestReadings(t.id).get(o.id);
-			if (!o || !last) return [];
-			const st = statusOf(o, last.value);
-			return [
-				{
-					tankId: t.id,
-					tankName: t.name,
-					paramId: o.id,
-					latest: `${fmtValue(o, last.value, user)}${paramUnit(o, user) ? ` ${paramUnit(o, user)}` : ''}`,
-					level: st.level,
-					status: statusShort(st),
-					points: series(t.id, o.id, since).map((r) => ({ t: Date.parse(r.takenAt), v: displayValue(o, r.value, user) })),
-					band: {
-						min: o.min == null ? null : displayValue(o, o.min, user),
-						max: o.max == null ? null : displayValue(o, o.max, user)
-					},
-					target: fmtRange(o, user),
-					decimals: paramDecimals(o, user)
-				}
-			];
-		});
-
 	const values = raw.map((r) => r.value);
 	const inRange = values.filter((v) => statusOf(param, v).level !== 'bad').length;
 	const lastValue = values.at(-1);
@@ -165,8 +137,7 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 			to: now,
 			markers,
 			stats,
-			insight: insight ? { text: insight.text, warn: insight.warn, up: insight.direction === 'up' } : null,
-			others
+			insight: insight ? { text: insight.text, warn: insight.warn, up: insight.direction === 'up' } : null
 		}
 	};
 };

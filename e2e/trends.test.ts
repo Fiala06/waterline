@@ -70,7 +70,7 @@ test('the dashboard points out a drift between water changes', async ({ page }, 
 	await expect(page.getByLabel('The summary')).toContainText('- KH drifts down about 2 dKH a week between water changes');
 });
 
-test('Charts compares a parameter with the other tanks', async ({ page }, info) => {
+test("Charts shows only the tank you're on, not your other tanks", async ({ page }, info) => {
 	await newKeeperWithTank(page, `compare-${info.project.name}`);
 	const first = new URL(page.url()).searchParams.get('tank')!;
 	const log = async (tank: string, nitrate: string) => {
@@ -89,11 +89,10 @@ test('Charts compares a parameter with the other tanks', async ({ page }, info) 
 	const second = new URL(page.url()).searchParams.get('tank')!;
 	await log(second, '30');
 
-	// Nitrate, the one parameter with a reading, is the chart it opens on
+	// Nitrate, the one parameter with a reading, is the chart it opens on, and
+	// the other tank's nitrate isn't shown under it, where it read as this tank's (#77)
 	await open(page, `/charts?tank=${first}`);
-	const compare = page.getByRole('region', { name: 'Nitrate in your other tanks' });
-	await expect(compare).toBeVisible();
-	await expect(compare.getByRole('link', { name: 'Shrimp 10' })).toBeVisible();
-	await expect(compare).toContainText('30 ppm');
-	await expect(compare).toContainText('✕ High');
+	await expect(page.getByRole('heading', { name: 'Nitrate' })).toBeVisible();
+	await expect(page.getByText('in your other tanks')).toHaveCount(0);
+	await expect(page.getByText('30 ppm')).toHaveCount(0);
 });

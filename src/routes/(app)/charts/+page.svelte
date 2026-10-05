@@ -198,41 +198,6 @@
 				{/if}
 			</div>
 
-			{#if c.others.length}
-				<section class="compare" aria-labelledby="compare-h">
-					<h2 id="compare-h">{c.name} in your other tanks</h2>
-					<div class="cmp-grid">
-						{#each c.others as o (o.tankId)}
-							<div class="cmp">
-								<div class="cmp-head">
-									<a class="cmp-tank" href="/charts?tank={o.tankId}&p={o.paramId}&r={data.range}">{o.tankName}</a>
-									<span class="cmp-latest"><span class="num">{o.latest}</span> <span class="status-{o.level} cmp-st">{o.status}</span></span>
-								</div>
-								{#if o.points.length >= 2}
-									<div class="cmp-chart">
-										<TrendChart
-											fit
-											points={o.points}
-											band={o.band}
-											from={c.from}
-											to={c.to}
-											lastLevel={o.level}
-											label="{c.name} in {o.tankName}"
-											name={c.name}
-											unit={c.unit}
-											decimals={o.decimals}
-											timeZone={data.user.timeZone}
-										/>
-									</div>
-								{:else}
-									<p class="cmp-none">Fewer than 2 readings in this range</p>
-								{/if}
-								{#if o.target}<p class="cmp-target">Target {o.target}</p>{/if}
-							</div>
-						{/each}
-					</div>
-				</section>
-			{/if}
 		</div>
 	{/if}
 </div>
@@ -452,61 +417,6 @@
 		color: var(--text-muted);
 		white-space: nowrap;
 	}
-	.compare {
-		order: 7;
-		display: flex;
-		flex-direction: column;
-		gap: 10px;
-		min-width: 0;
-	}
-	.compare h2 {
-		margin: 8px 0 0;
-		font-size: 17px;
-	}
-	.cmp-grid {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr);
-		gap: 16px;
-	}
-	.cmp {
-		border-top: 2px solid var(--ink);
-		padding: 10px 0;
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
-		min-width: 0;
-	}
-	.cmp-head {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: 12px;
-	}
-	.cmp-tank {
-		font-weight: 800;
-		color: var(--text);
-		min-height: 44px;
-		display: inline-flex;
-		align-items: center;
-		margin: -12px 0;
-	}
-	.cmp-latest {
-		font-size: 15px;
-		font-weight: 800;
-		white-space: nowrap;
-	}
-	.cmp-st {
-		font-size: 12px;
-	}
-	.cmp-chart {
-		height: 160px;
-	}
-	.cmp-none,
-	.cmp-target {
-		margin: 0;
-		font-size: 12px;
-		color: var(--text-muted);
-	}
 	.pop-day {
 		font-size: 11px;
 		letter-spacing: 0.08em;
@@ -542,7 +452,7 @@
 			grid-template-rows: auto 1fr;
 			grid-template-areas:
 				'plist centre side'
-				'plist compare side';
+				'plist . side';
 			gap: 0;
 			min-height: calc(100dvh - 240px);
 		}
@@ -556,10 +466,6 @@
 			grid-area: centre;
 			gap: 14px;
 			padding: 24px 24px 20px;
-		}
-		.compare {
-			grid-area: compare;
-			padding: 0 24px 32px;
 		}
 		.side {
 			grid-area: side;
@@ -669,17 +575,7 @@
 		.events {
 			order: 0;
 		}
-		.compare h2 {
-			font-size: 20px;
-		}
 		/* big enough to read: one other tank takes the row, more share it */
-		.cmp-grid {
-			grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-			gap: 24px;
-		}
-		.cmp-chart {
-			height: 200px;
-		}
 	}
 	/* Narrower desktop (up to a 1440px window): stats and events move under the chart, side by side,
 	   so the chart gets the width instead of a tall, thin column */
@@ -690,7 +586,7 @@
 			grid-template-areas:
 				'plist centre'
 				'plist side'
-				'plist compare';
+				'plist .';
 		}
 		.plist {
 			padding-right: 12px;
@@ -706,9 +602,6 @@
 		}
 		.chart-box {
 			height: clamp(320px, calc(100dvh - 460px), 480px);
-		}
-		.compare {
-			padding-top: 8px;
 		}
 	}
 </style>
