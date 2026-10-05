@@ -1,7 +1,7 @@
 // "Summary for an AI assistant": one tank as Markdown to paste into a chat
 // assistant with a question. Written to be read, in the keeper's units and
 // time zone, and without account details. Waterline sends it nowhere.
-import { EQUIPMENT_TYPE_LABEL, equipmentName, isWithoutType, scheduleLabel, specSummary } from '$lib/equipment';
+import { EQUIPMENT_TYPE_LABEL, equipmentName, hoursText, isWithoutType, periodsText, scheduleLabel, specSummary, tankLighting } from '$lib/equipment';
 import { fmtMoney } from '$lib/money';
 import { latestSamples } from './sensors';
 import { listWishes } from './wishes';
@@ -15,7 +15,7 @@ import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { EVENT_CATEGORIES, type User } from './db/schema';
 import { tankNotes } from './trends';
 import { eventsSince, latestReadings, testsSince } from './logs';
-import { listEquipment, listLivestock, listPar, listPlants } from './specs';
+import { listEquipment, listLivestock, listPar, listPlants, scheduledItems } from './specs';
 import { careLine, tankTargets, tankWarnings } from '$lib/care';
 import { CARE_SOURCE, careFor, speciesCareOn } from './species-care';
 import { getTank, listParams } from './tanks';
@@ -78,6 +78,9 @@ export function tankSummary(user: User, tankId: string, days: number, now = new 
 
 	// ── The tank ────────────────────────────────────────────────────────────
 	const volume = t.nominalVolumeL != null ? vol(t.nominalVolumeL) : null;
+	// lights and CO₂: the schedule on the light (or CO₂ item), else the times on Setup (#76)
+	const lighting = tankLighting(t, scheduledItems(t.id));
+	const daily = (hours: number | null) => (hours != null ? ` (${hoursText(hours)} a day)` : '');
 	const facts: [string, string | null][] = [
 		['Type', t.cycling ? `${tankTypeLabel(t.type)} · Cycling` : tankTypeLabel(t.type)],
 		['Volume', volume && t.actualVolumeL != null ? `${volume} (${vol(t.actualVolumeL)} of water)` : volume],
@@ -86,7 +89,16 @@ export function tankSummary(user: User, tankId: string, days: number, now = new 
 		['Tank', [t.specBrand, t.specModel].filter(Boolean).join(' ') || null],
 		['Substrate', t.substrate],
 		['Water source', t.waterSource ? (SOURCES[t.waterSource] ?? t.waterSource) : null],
-		['Light', t.photoperiodH != null ? `${formatNumber(t.photoperiodH, 1)} h a day` : null],
+		['Glass', t.glass],
+		[
+			'Lights',
+			lighting.lights
+				? `${periodsText(lighting.lights.schedule)}${daily(lighting.lights.hours)}`
+				: t.photoperiodH != null
+					? `${formatNumber(t.photoperiodH, 1)} h a day`
+					: null
+		],
+		['CO₂', lighting.co2 ? `${periodsText(lighting.co2.schedule)}${daily(lighting.co2.hours)}` : null],
 		['Goes without', t.withoutEquipment.filter(isWithoutType).map((w) => EQUIPMENT_TYPE_LABEL[w]).join(', ') || null],
 		['Archived', t.archivedAt ? fmtDateLong(day(t.archivedAt)) : null],
 		['Notes', t.notes]

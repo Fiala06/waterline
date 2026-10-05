@@ -31,6 +31,15 @@ test('summary for an AI assistant', async ({ page, context }, info) => {
 	await page.getByRole('button', { name: 'Add to wish list' }).click();
 	await expect(page.getByRole('status')).toContainText('on the wish list');
 
+	// light and CO₂ times on Setup (#76)
+	await open(page, `/tanks/${tankId}/settings`);
+	await page.getByLabel('Lights on', { exact: true }).fill('10:00');
+	await page.getByLabel('Lights off', { exact: true }).fill('18:00');
+	await page.getByLabel('CO₂ on', { exact: true }).fill('09:00');
+	await page.getByLabel('CO₂ off', { exact: true }).fill('17:00');
+	await page.getByRole('button', { name: 'Save changes' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Tank saved');
+
 	// From the tank's Overview
 	await open(page, `/tanks/${tankId}`);
 	await page.getByRole('link', { name: /Copy a summary of this tank/ }).click();
@@ -38,6 +47,8 @@ test('summary for an AI assistant', async ({ page, context }, info) => {
 	const pre = page.getByLabel('The summary');
 	const text = (await pre.textContent())!;
 	expect(text).toContain('# Riverbed 40: aquarium summary from Waterline');
+	expect(text).toContain('- Lights: 10:00–18:00 (8 h a day)');
+	expect(text).toContain('- CO₂: 09:00–17:00 (8 h a day)');
 	expect(text).toContain('covering the last 90 days. Units: °F, gal (US), in');
 	expect(text).toMatch(/\| Nitrate \| 5–20 ppm \| 40 ppm on \d{4}-\d{2}-\d{2} \| High, above target \| 40 \|/);
 	expect(text).toContain('| Cloudy \\| green tint |'); // a note can't break the table
