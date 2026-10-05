@@ -6,6 +6,8 @@
 	import ImportButton from '$lib/components/ImportButton.svelte';
 	import Sheet from '$lib/components/Sheet.svelte';
 	import SpeciesInput from '$lib/components/SpeciesInput.svelte';
+	import SortHeader from '$lib/components/SortHeader.svelte';
+	import SortMenu from '$lib/components/SortMenu.svelte';
 	let { data, form } = $props();
 
 	const GROUPS = [
@@ -71,17 +73,29 @@
 			<a class="btn" href="/tanks/{data.tankHead.id}/plants/several">Add several at once</a>
 		</EmptyState>
 	{:else}
+		<!-- phones hide the headers: the same sorts as a menu (#79) -->
+		<SortMenu
+			class="hide-desk sort-phone"
+			sort={data.sort}
+			first="By placement"
+			options={[
+				{ key: 'plant', dir: 'asc', label: 'Plant A–Z' },
+				{ key: 'added', dir: 'desc', label: 'Newest added' },
+				{ key: 'trimmed', dir: 'desc', label: 'Trimmed most recently' },
+				{ key: 'trimmed', dir: 'asc', label: 'Trimmed longest ago' },
+				{ key: 'status', dir: 'desc', label: 'Needs a look first' }
+			]}
+		/>
 		<div class="table" class:no-added={!data.showAdded} role="table" aria-label="Plants">
 			<div class="thead" role="row" aria-rowindex="1">
-				<span role="columnheader">Plant</span><span role="columnheader">Placement</span>{#if data.showAdded}<span role="columnheader">Added</span
-					>{/if}<span role="columnheader">Last trimmed</span><span role="columnheader">Status</span>
+				<SortHeader key="plant" label="Plant" sort={data.sort} /><SortHeader key="placement" label="Placement" sort={data.sort} />{#if data.showAdded}<SortHeader
+						key="added"
+						label="Added"
+						sort={data.sort}
+						first="desc"
+					/>{/if}<SortHeader key="trimmed" label="Last trimmed" sort={data.sort} first="desc" /><SortHeader key="status" label="Status" sort={data.sort} />
 			</div>
-			{#each GROUPS as g (g.key)}
-				{@const list = data.plants.filter((p) => g.match.includes(p.position))}
-				{#if list.length}
-					<div class="group" role="rowgroup">
-						<div class="group-head" role="row"><span class="kicker" role="cell" aria-colspan={data.showAdded ? 5 : 4}><h2>{g.label}</h2></span></div>
-						{#each list as p (p.id)}
+			{#snippet plantRow(p: (typeof data.plants)[number])}
 							<div class="tr" role="row">
 								<div class="pl" role="cell">
 									<!-- the plant opens its sheet (status, placement, photo) -->
@@ -115,10 +129,23 @@
 								</span>
 								<span class="st status-{STATUS[p.status].level}" role="cell">{STATUS[p.status].text}</span>
 							</div>
-						{/each}
-					</div>
-				{/if}
-			{/each}
+			{/snippet}
+			{#if data.sort}
+				<!-- sorted by a column (#79): one list; the placement groups are the order otherwise -->
+				<div class="group" role="rowgroup">
+					{#each data.plants as p (p.id)}{@render plantRow(p)}{/each}
+				</div>
+			{:else}
+				{#each GROUPS as g (g.key)}
+					{@const list = data.plants.filter((p) => g.match.includes(p.position))}
+					{#if list.length}
+						<div class="group" role="rowgroup">
+							<div class="group-head" role="row"><span class="kicker" role="cell" aria-colspan={data.showAdded ? 5 : 4}><h2>{g.label}</h2></span></div>
+							{#each list as p (p.id)}{@render plantRow(p)}{/each}
+						</div>
+					{/if}
+				{/each}
+			{/if}
 		</div>
 	{/if}
 	<!-- below the list, or below the empty box: in the same place on every tab -->

@@ -23,6 +23,10 @@ import { tasks } from "$lib/server/db/schema";
 import { listEquipment } from "$lib/server/specs";
 import { and, eq, isNotNull } from "drizzle-orm";
 import type { Actions, PageServerLoad } from "./$types";
+import { readSort, sortRows } from "$lib/sort";
+
+/** What a keeper can sort equipment by (#79) */
+const SORTS = ["type", "name", "installed", "serviced"] as const;
 
 const since = (d: string | null) =>
   d
@@ -33,7 +37,7 @@ const since = (d: string | null) =>
       })
     : null;
 
-export const load: PageServerLoad = ({ locals, params }) => {
+export const load: PageServerLoad = ({ locals, params, url }) => {
   const user = locals.user!;
   const today = todayInZone(user.timeZone);
   const openTasks = db
@@ -67,7 +71,10 @@ export const load: PageServerLoad = ({ locals, params }) => {
       notes: e.notes,
     };
   };
-  const current = listEquipment(user.id, params.id);
+  const sort = readSort(url, SORTS);
+  const current = sortRows(listEquipment(user.id, params.id), sort, (e, k) =>
+    k === "type" ? EQUIPMENT_TYPE_LABEL[e.type] : k === "name" ? equipmentName(e) : k === "installed" ? e.installedAt : e.lastServicedAt,
+  );
   const items = current.map(view);
   const tank = getTank(user.id, params.id);
   const without = tank.withoutEquipment;
@@ -95,6 +102,7 @@ export const load: PageServerLoad = ({ locals, params }) => {
       ? `${items.length} item${items.length === 1 ? "" : "s"}`
       : "",
     items,
+    sort,
     past: listEquipment(user.id, params.id, { removed: true }).map(view),
     // Goes without: "No heater" and the like, for the kinds the tank has none of
     withoutOptions: WITHOUT_TYPES.filter(

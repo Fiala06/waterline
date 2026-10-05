@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SortMenu from '$lib/components/SortMenu.svelte';
 	// Photos (README → Screens §5): a month-grouped grid under 2px ink rules,
 	// with Upload in the toolbar. The shell carries the tank name and tabs.
 	import { onMount, tick, untrack } from 'svelte';
@@ -85,6 +86,15 @@
 		</div>
 	{/if}
 
+	{#if data.months.length}
+		<SortMenu
+			sort={data.sort}
+			id="photo-sort"
+			label="Show"
+			first="Newest first"
+			options={[{ key: 'date', dir: 'asc', label: 'Oldest first' }]}
+		/>
+	{/if}
 	{#each data.months as m (m.key)}
 		<section>
 			<h2><span>{m.label}</span><span class="n">{m.photos.length}</span></h2>

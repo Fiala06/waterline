@@ -2,7 +2,11 @@ import { fmtMoney } from '$lib/money';
 import { fmtDateLong, todayInZone } from '$lib/time';
 import { CATEGORY_LABEL, listExpenses, spendingSummary, spentThisYear, type ExpenseCategory } from '$lib/server/expenses';
 import { listTanks } from '$lib/server/tanks';
+import { readSort, sortRows } from '$lib/sort';
 import type { PageServerLoad } from './$types';
+
+/** What a keeper can sort expenses by (#79) */
+const SORTS = ['date', 'amount', 'category'] as const;
 
 export const load: PageServerLoad = ({ locals, params, url }) => {
 	const user = locals.user!;
@@ -15,7 +19,9 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 	const cat = url.searchParams.get('cat');
 	const month = url.searchParams.get('month');
 	const filter = cat && cat in CATEGORY_LABEL ? { kind: 'cat' as const, key: cat, label: CATEGORY_LABEL[cat as ExpenseCategory] } : month && /^\d{4}-\d{2}$/.test(month) ? { kind: 'month' as const, key: month, label: s.months.find((m) => m.key === month)?.label ?? month } : null;
-	const shown = rows.filter((e) => (filter?.kind === 'cat' ? e.category === filter.key : filter?.kind === 'month' ? e.date.startsWith(filter.key) : true));
+	const sort = readSort(url, SORTS);
+	const filtered = rows.filter((e) => (filter?.kind === 'cat' ? e.category === filter.key : filter?.kind === 'month' ? e.date.startsWith(filter.key) : true));
+	const shown = sortRows(filtered, sort, (e, k) => (k === 'date' ? e.date : k === 'amount' ? e.amountCents : CATEGORY_LABEL[e.category]));
 	return {
 		year: today.slice(0, 4),
 		totals: { month: money(s.month), year: money(s.year), all: money(s.all) },
@@ -25,6 +31,7 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 		allTanks: listTanks(user.id).length > 1 ? money(spentThisYear(user.id, today.slice(0, 4))) : null,
 		filter,
 		total: rows.length,
+		sort,
 		expenses: shown.map((e) => ({
 			id: e.id,
 			what: e.what,

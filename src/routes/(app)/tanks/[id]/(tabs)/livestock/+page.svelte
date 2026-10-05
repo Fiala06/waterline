@@ -5,6 +5,8 @@
 	import { invalidateAll } from '$app/navigation';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ImportButton from '$lib/components/ImportButton.svelte';
+	import SortHeader from '$lib/components/SortHeader.svelte';
+	import SortMenu from '$lib/components/SortMenu.svelte';
 	let { data, form } = $props();
 	// species photos still on their way from Wikimedia: look again in a moment, a few times
 	let tries = 0;
@@ -85,10 +87,28 @@
 			</EmptyState>
 			{#if data.past.length}{@render past()}{/if}
 		{:else}
+			<!-- phones hide the headers: the same sorts as a menu (#79) -->
+			<SortMenu
+				class="hide-desk sort-phone"
+				sort={data.sort}
+				options={[
+					{ key: 'species', dir: 'asc', label: 'Species A–Z' },
+					{ key: 'added', dir: 'desc', label: 'Newest added' },
+					{ key: 'added', dir: 'asc', label: 'Oldest added' },
+					{ key: 'count', dir: 'desc', label: 'Most animals' },
+					{ key: 'count', dir: 'asc', label: 'Fewest animals' },
+					{ key: 'type', dir: 'asc', label: 'Type' },
+					{ key: 'status', dir: 'desc', label: 'Quarantine first' }
+				]}
+			/>
 			<div class="table" role="table" aria-label="Livestock">
 				<div class="thead" role="row">
-					<span role="columnheader">Species</span><span role="columnheader">Type</span><span role="columnheader">Added</span
-					><span role="columnheader">Status</span><span role="columnheader" class="r">Count</span>
+					<SortHeader key="species" label="Species" sort={data.sort} /><SortHeader key="type" label="Type" sort={data.sort} /><SortHeader
+						key="added"
+						label="Added"
+						sort={data.sort}
+						first="desc"
+					/><SortHeader key="status" label="Status" sort={data.sort} /><SortHeader key="count" label="Count" sort={data.sort} first="desc" class="r" />
 				</div>
 				{#each data.items as l (l.id)}
 					{@const next = pending[l.id]}
@@ -585,7 +605,7 @@
 			text-transform: uppercase;
 			color: var(--text-muted);
 		}
-		.r {
+		.thead :global(.r) {
 			text-align: right;
 		}
 		.tr.pending {
@@ -648,7 +668,7 @@
 			grid-template-columns: minmax(0, 1fr) 52px 64px 110px 112px;
 			column-gap: 10px;
 		}
-		.thead .r {
+		.thead :global(.r) {
 			white-space: nowrap;
 		}
 		/* the status column is narrow here: "Move in" goes under the tag */

@@ -14,12 +14,16 @@ import { speciesPhotos } from '$lib/server/stock-photos';
 import { tankTargets, tankWarnings } from '$lib/care';
 import { CARE_SOURCE, careFor, speciesCareOn } from '$lib/server/species-care';
 import { listParams } from '$lib/server/tanks';
+import { readSort, sortRows } from '$lib/sort';
 import type { Actions, PageServerLoad } from './$types';
 
 const month = (d: string | null) =>
 	d ? new Date(d.slice(0, 10) + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' }) : '—';
 
-export const load: PageServerLoad = ({ locals, params }) => {
+/** The columns a keeper can sort by (#79) */
+const SORTS = ['species', 'type', 'added', 'status', 'count'] as const;
+
+export const load: PageServerLoad = ({ locals, params, url }) => {
 	const user = locals.user!;
 	const view = (l: ReturnType<typeof listLivestock>[number]) => ({
 		id: l.id,
@@ -30,7 +34,8 @@ export const load: PageServerLoad = ({ locals, params }) => {
 		kind: l.kind,
 		count: l.count,
 		status: l.status,
-		added: month(l.addedAt)
+		added: month(l.addedAt),
+		addedAt: l.addedAt
 	});
 	const recent = db
 		.select()
@@ -45,7 +50,12 @@ export const load: PageServerLoad = ({ locals, params }) => {
 	const photos = speciesPhotos(rows.map((l) => ({ photoId: l.photoId, scientific: l.scientificName, common: l.commonName })));
 	// ▲ on a row whose latest health entry is still watching or treating
 	const treating = underTreatmentIn(params.id);
-	const items = rows.map((l, i) => ({ ...view(l), photo: photos.list[i]?.src ?? null, health: treating.has(l.id) }));
+	const sort = readSort(url, SORTS);
+	const items = sortRows(
+		rows.map((l, i) => ({ ...view(l), photo: photos.list[i]?.src ?? null, health: treating.has(l.id) })),
+		sort,
+		(l, k) => (k === 'species' ? (l.nickname ?? l.name) : k === 'type' ? l.kind : k === 'added' ? l.addedAt : k === 'status' ? l.status : l.count)
+	);
 	const animals = items.reduce((n, l) => n + l.count, 0);
 	const species = speciesCount(rows);
 	// worth checking (#20): targets against each species' ranges, group sizes, known conflicts
@@ -63,6 +73,7 @@ export const load: PageServerLoad = ({ locals, params }) => {
 		// the tab's toolbar: "23 animals · 4 species"
 		toolbarText: items.length ? `${animals} animal${animals === 1 ? '' : 's'} · ${species} species` : '',
 		items,
+		sort,
 		photosPending: photos.pending,
 		past: bySpecies(listLivestock(user.id, params.id, { removed: true })).map(view),
 		animals,

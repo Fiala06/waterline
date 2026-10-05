@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SortMenu from '$lib/components/SortMenu.svelte';
 	// Spending (#7): this month, this year and all time, this year by category,
 	// the last 12 months, and each expense (with its receipt, #8). A category or
 	// month bar is a link that filters the list (?cat=, ?month=), so it works without JS.
@@ -74,6 +75,19 @@
 			<h2 id="list-h" class="kicker rule">Expenses · {data.expenses.length}{data.filter ? ` of ${data.total}` : ''}</h2>
 			{#if data.filter}
 				<p class="showing">Showing: {data.filter.label} · <a href="{base}/spending">clear</a></p>
+			{/if}
+			{#if data.expenses.length > 1}
+				<SortMenu
+					sort={data.sort}
+					id="expense-sort"
+					first="Newest first"
+					options={[
+						{ key: 'date', dir: 'asc', label: 'Oldest first' },
+						{ key: 'amount', dir: 'desc', label: 'Most expensive' },
+						{ key: 'amount', dir: 'asc', label: 'Least expensive' },
+						{ key: 'category', dir: 'asc', label: 'Category' }
+					]}
+				/>
 			{/if}
 			{#if !data.expenses.length}
 				<p class="none">Nothing in {data.filter?.label}.</p>

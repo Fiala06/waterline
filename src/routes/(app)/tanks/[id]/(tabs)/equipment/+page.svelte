@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SortMenu from '$lib/components/SortMenu.svelte';
 	// Equipment (README → Screens §7): cards with a 2px ink top rule, the type as a
 	// kicker, the name, spec tags, a meta line and Log service / Details.
 	import { enhance } from '$app/forms';
@@ -31,6 +32,18 @@
 		</section>
 	{/if}
 	{#if data.items.length}
+		<SortMenu
+			sort={data.sort}
+			id="equipment-sort"
+			options={[
+				{ key: 'type', dir: 'asc', label: 'Type' },
+				{ key: 'name', dir: 'asc', label: 'Name A–Z' },
+				{ key: 'installed', dir: 'desc', label: 'Newest installed' },
+				{ key: 'installed', dir: 'asc', label: 'Oldest installed' },
+				{ key: 'serviced', dir: 'asc', label: 'Serviced longest ago' },
+				{ key: 'serviced', dir: 'desc', label: 'Serviced most recently' }
+			]}
+		/>
 		<div class="grid">
 			{#each data.items as e (e.id)}
 				<article class="card eq-card">

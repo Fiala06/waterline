@@ -5,16 +5,21 @@ import { str } from '$lib/server/forms';
 import { createEvent } from '$lib/server/logs';
 import { datePhotos, photoDate, photoFiles, photoHints, preparePhotos, storePhotos, tankPhotos } from '$lib/server/photos';
 import { getTank } from '$lib/server/tanks';
+import { readSort } from '$lib/sort';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals, parent }) => {
+export const load: PageServerLoad = async ({ locals, parent, url }) => {
 	const user = locals.user!;
 	const { currentTankId } = await parent();
 	const today = todayInZone(user.timeZone);
-	if (!currentTankId) return { tank: null, months: [], today };
+	// newest first, or oldest first from Sort by (#79); still grouped by month
+	const sort = readSort(url, ['date'] as const);
+	if (!currentTankId) return { tank: null, months: [], today, sort };
 	const tank = getTank(user.id, currentTankId);
 	const months: { key: string; label: string; photos: { id: string; day: string }[] }[] = [];
-	for (const { photo } of tankPhotos(user.id, tank.id)) {
+	const list = tankPhotos(user.id, tank.id);
+	if (sort?.dir === 'asc') list.reverse();
+	for (const { photo } of list) {
 		const date = dateInZone(photo.takenAt, user.timeZone);
 		const key = date.slice(0, 7);
 		let m = months.at(-1);
@@ -28,7 +33,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		}
 		m.photos.push({ id: photo.id, day: fmtDate(date) });
 	}
-	return { tank: { id: tank.id, name: tank.name }, months, today };
+	return { tank: { id: tank.id, name: tank.name }, months, today, sort };
 };
 
 export const actions: Actions = {

@@ -57,7 +57,7 @@ test('equipment, livestock and plants', async ({ page }, info) => {
 	await page.locator('dialog[open] label', { hasText: /Java fern/i }).click();
 	await page.getByRole('button', { name: 'Log trim' }).last().click();
 	await expect(page.getByRole('status')).toContainText('✓ Trim logged · 1 plant');
-	await expect(page.getByText(/Trimmed/)).toBeVisible();
+	await expect(page.locator('.when', { hasText: /^Trimmed / })).toBeVisible();
 
 	// Overview summarises everything; history has the changes
 	await open(page, base);

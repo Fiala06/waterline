@@ -6,15 +6,24 @@ import { optStr, str } from '$lib/server/forms';
 import { checkPhotoFiles, photoFiles, datePhotos, preparePhotos, storePhotos } from '$lib/server/photos';
 import { addPlant, getPlant, listPlants, logTrim, removePlant, updatePlant } from '$lib/server/specs';
 import { speciesPhotos, stockPhotosOn } from '$lib/server/stock-photos';
+import { readSort, sortRows } from '$lib/sort';
 import type { Actions, PageServerLoad } from './$types';
 
 const POSITIONS = ['background', 'midground', 'foreground', 'epiphyte', 'floating'] as const;
 const STATUSES = ['thriving', 'melting', 'algae', 'other'] as const;
+/** The columns a keeper can sort by (#79), and the order placement and status sort in */
+const SORTS = ['plant', 'placement', 'added', 'trimmed', 'status'] as const;
+const PLACEMENT_RANK: Record<string, number> = { floating: 0, background: 1, midground: 2, epiphyte: 3, foreground: 4 };
+const STATUS_RANK: Record<string, number> = { thriving: 0, other: 1, melting: 2, algae: 3 };
+
 const pick = <T extends string>(v: string, list: readonly T[], d: T): T => (list.includes(v as T) ? (v as T) : d);
 
-export const load: PageServerLoad = ({ locals, params }) => {
+export const load: PageServerLoad = ({ locals, params, url }) => {
 	const user = locals.user!;
-	const list = listPlants(user.id, params.id);
+	const sort = readSort(url, SORTS);
+	const list = sortRows(listPlants(user.id, params.id), sort, (p, k) =>
+		k === 'plant' ? p.name : k === 'placement' ? PLACEMENT_RANK[p.position] : k === 'added' ? p.createdAt : k === 'trimmed' ? p.lastTrimmedAt : STATUS_RANK[p.status]
+	);
 	// the keeper's own photo, else a species photo from Wikimedia Commons (some come in the background)
 	const photos = speciesPhotos(list.map((p) => ({ photoId: p.photoId, scientific: p.scientificName, common: p.name })));
 	return {
@@ -33,6 +42,7 @@ export const load: PageServerLoad = ({ locals, params }) => {
 			photo: photos.list[i],
 			ownPhoto: !!p.photoId
 		})),
+		sort,
 		photosPending: photos.pending,
 		stockPhotos: stockPhotosOn()
 	};
