@@ -53,9 +53,12 @@ test('core flow', async ({ page }, info) => {
 	// and what to do about it (#62)
 	await expect(attention.nth(0)).toContainText('A bigger water change brings it down');
 	await expect(attention.nth(1)).toContainText('KH ▲ Near low');
-	const inRange = page.getByRole('region', { name: 'In range' });
-	await expect(inRange).toContainText('✓ 1 of 3');
+	// Tank parameters lists all three, the ones needing attention too, with their status (#75)
+	const inRange = page.getByRole('region', { name: 'Tank parameters' });
+	await expect(inRange).toContainText('✓ 1 of 3 in range');
 	await expect(inRange.getByRole('link', { name: /pH\s*6\.8/ })).toHaveAttribute('href', /\/charts\?p=/);
+	await expect(inRange.getByRole('link', { name: /Nitrate\s*✕ High\s*40/ })).toBeVisible();
+	await expect(inRange.getByRole('link', { name: /KH\s*▲ Near low\s*2/ })).toBeVisible();
 	await expect(inRange.getByText(/^Not tested: .*Ammonia.*CO₂/)).toBeVisible();
 
 	// Complete a task: the water change reminder opens its log form. It isn't due

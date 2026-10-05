@@ -76,7 +76,8 @@
 	const hasReadings = $derived(cards.some((c) => c.value != null));
 	// what needs attention (out of range, then near a limit), what's fine, what's never been tested
 	const attention = $derived([...cards.filter((c) => c.level === 'bad'), ...cards.filter((c) => c.level === 'warn')]);
-	const inRange = $derived(cards.filter((c) => c.level === 'ok'));
+	// Tank parameters: every tested one, the ones in Needs attention too (#75)
+	const tested = $derived(cards.filter((c) => c.level !== 'none'));
 	const untested = $derived(cards.filter((c) => c.level === 'none').map((c) => c.fullName));
 	// "Due a test: KH (23 days), GH (40 days)", longest first
 	const dueTests = $derived(cards.filter((c) => c.due != null).map((c) => ({ name: c.fullName, days: c.due! })).sort((a, b) => b.days - a.days));
@@ -233,9 +234,9 @@
 			<!-- ── In range (span 2) ────────────────────────────────────── -->
 			<div class="cell main">
 				{#if hasReadings}
-					<InRangeList items={inRange} {untested} total={cards.length - untested.length} streak={calm ? data.cheers.streak : null} due={dueTests} testHref="/entries/test/new?tank={data.tank.id}" />
+					<InRangeList items={tested} {untested} total={cards.length - untested.length} streak={calm ? data.cheers.streak : null} due={dueTests} testHref="/entries/test/new?tank={data.tank.id}" />
 				{:else}
-					<div class="section-head"><h2>In range</h2><span class="meta">No readings yet</span></div>
+					<div class="section-head"><h2>Tank parameters</h2><span class="meta">No readings yet</span></div>
 				{/if}
 			</div>
 

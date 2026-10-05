@@ -1,8 +1,10 @@
 <script lang="ts">
-	// Overview › In range (redesign README → Screens §2): the readings that are
-	// fine as a 4-column grid of plain ✓ readings under a 2px ink rule (3 columns
-	// when narrow, 2 on phones), each opening its chart; the header counts them
-	// ("✓ 8 of 11"); then a line for those never tested.
+	import type { StatusLevel } from '$lib/status';
+	// Overview › Tank parameters (redesign README → Screens §2, "In range"):
+	// every tested parameter's latest reading as a 4-column grid under a 2px ink
+	// rule (3 columns when narrow, 2 on phones), each opening its chart. The ones
+	// in Needs attention stay here too, with their status (#75); the header counts
+	// those in range ("✓ 8 of 11 in range"); then a line for those never tested.
 	interface Item {
 		id: string;
 		label: string;
@@ -14,6 +16,9 @@
 		due?: number | null;
 		/** a sensor's latest reading (#19) */
 		live?: string | null;
+		level: StatusLevel;
+		/** "✓ OK", "▲ Near low", "✕ High", "▲ Cycling" */
+		statusText: string;
 	}
 	let {
 		items,
@@ -32,16 +37,17 @@
 		due?: { name: string; days: number }[];
 		testHref?: string;
 	} = $props();
+	const okCount = $derived(items.filter((c) => c.level === 'ok').length);
 </script>
 
 <section class="in-range" aria-labelledby="in-range-h">
 	<div class="section-head">
-		<h2 id="in-range-h">In range</h2>
+		<h2 id="in-range-h">Tank parameters</h2>
 		<span class="count">
 			{#if total === 0}
 				<span class="meta">No readings yet</span>
 			{:else}
-				<span class="status-ok">{items.length === total ? `✓ All ${total} in range` : `✓ ${items.length} of ${total}`}</span>
+				<span class="status-ok">{okCount === total ? `✓ All ${total} in range` : `✓ ${okCount} of ${total} in range`}</span>
 				<span class="dot" aria-hidden="true">·</span><a href="/charts">Charts</a>
 			{/if}
 		</span>
@@ -50,9 +56,12 @@
 		<ul class="grid">
 			{#each items as c (c.id)}
 				<li>
-					<a href="/charts?p={c.id}" title="{c.fullName} · {c.due != null ? `✓ OK · ▲ due a test, ${c.due} days ago` : '✓ OK'}">
-						<span class="k"><span class="ok status-ok" aria-hidden="true">✓</span>{c.label}</span>
-						<span class="v">{c.value}{#if c.unit}<span class="u">{c.unit}</span>{/if}</span>
+					<a href="/charts?p={c.id}" title="{c.fullName} · {c.statusText}{c.due != null ? ` · ▲ due a test, ${c.due} days ago` : ''}">
+						<span class="k"
+							>{#if c.level === 'ok'}<span class="ok status-ok" aria-hidden="true">✓</span>{c.label}{:else}{c.label}
+								<span class="st status-{c.level}">{c.statusText}</span>{/if}</span
+						>
+						<span class="v" class:off={c.level === 'bad'}>{c.value}{#if c.unit}<span class="u">{c.unit}</span>{/if}</span>
 						{#if c.due != null}<span class="due"><span class="status-warn" aria-hidden="true">▲</span> – {c.due} days ago · due</span>{/if}
 						{#if c.live}<span class="due live">● {c.live}</span>{/if}
 					</a>
@@ -121,6 +130,14 @@
 	}
 	.ok {
 		margin-right: 4px;
+	}
+	/* out of range or near a limit: the status word beside the name, as in Needs attention */
+	.st {
+		margin-left: 4px;
+		font-weight: 800;
+	}
+	.v.off {
+		color: var(--accent-text);
 	}
 	.v {
 		font-size: 19px;

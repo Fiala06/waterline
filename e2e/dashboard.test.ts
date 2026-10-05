@@ -14,7 +14,7 @@ test('dashboard (refresh 1c): the hero, and nothing needing attention when all i
 	await page.getByRole('button', { name: 'Save 1 reading' }).click();
 	await expect(page.getByRole('status')).toContainText('✓ Saved 1 reading');
 	await expect(page.getByRole('region', { name: 'Needs attention' })).toHaveCount(0);
-	const inRange = page.getByRole('region', { name: 'In range' });
+	const inRange = page.getByRole('region', { name: 'Tank parameters' });
 	await expect(inRange).toContainText('✓ All 1 in range');
 	await expect(inRange.getByRole('link', { name: /pH\s*7/ })).toBeVisible();
 });
