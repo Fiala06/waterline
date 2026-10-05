@@ -430,6 +430,17 @@
 					<span class="lbl">Tasks</span>
 					{#if data.overdueCount}<span class="tag tag-accent lbl">{data.overdueCount} overdue</span>{/if}
 				</a>
+				<!-- Calculators (#80): for the tank you're on -->
+				<a
+					href="/calculators{current ? `?tank=${current.id}` : ''}"
+					class="link"
+					class:active={path.startsWith('/calculators')}
+					aria-current={path.startsWith('/calculators') ? 'page' : undefined}
+					title="Calculators"
+				>
+					<span class="ic"><Icon name="calculator" /></span>
+					<span class="lbl">Calculators</span>
+				</a>
 				<a href="/settings" class="link" class:active={path.startsWith('/settings')} aria-current={path.startsWith('/settings') ? 'page' : undefined} title="Settings">
 					<span class="ic"><Icon name="settings" /></span>
 					<span class="lbl">Settings</span>

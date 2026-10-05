@@ -25,6 +25,12 @@ test('calculators', async ({ page }, info) => {
 	await expect(page.getByRole('status')).toContainText('✓ Nitrate booster saved');
 	await expect(page.getByText('0.4 ppm of nitrate per mL in 10 gal')).toBeVisible();
 
+	// on a computer the sidebar links to it, for the tank you're on (#80)
+	if (info.project.name === 'desktop') {
+		await open(page, `/?tank=${tankId}`);
+		await page.getByRole('navigation', { name: 'App' }).getByRole('link', { name: 'Calculators' }).click();
+		await expect(page).toHaveURL(`/calculators?tank=${tankId}`);
+	}
 	await open(page, `/calculators?tank=${tankId}`);
 	// Tank volume: 36 × 18 × 18 in, 2 in of substrate, 1 in below the rim → 50.5 gal gross, 42.1 gal of water
 	await page.locator('#v-l').fill('36');
