@@ -11,10 +11,10 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.12.11 · 2026-10-05
+
 - **Charts show only the tank you're on:** A tank's [Charts](/charts) no longer show the same reading from your other tanks under the chart, which was easy to mistake for this tank's. Switch tanks to see theirs.
-
 - **Light and CO₂ times in the summary:** [Share summary](/tanks/current/summary) now lists when the lights and CO₂ are on ("Lights: 10:00–18:00 (8 h a day)", "CO₂: 09:00–17:00"), from the light's schedule or the times on the tank's Setup, along with the glass; before, it only gave the photoperiod.
-
 - **Every reading under Tank parameters:** On a tank's [Overview](/), the section that was In range is now Tank parameters and lists every parameter you test, so the full picture is in one place. A reading that also sits in Needs attention stays here too, with its status beside the name ("Nitrate ✕ High", "KH ▲ Near low"); the header still counts how many are in range.
 
 ## 1.12.10 · 2026-10-05
