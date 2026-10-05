@@ -11,10 +11,10 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.12.12 · 2026-10-05
+
 - **Calculators in the sidebar:** On a computer, [Calculators](/calculators) now has its own link in the sidebar, under Tasks, opening the calculators for the tank you're on.
-
 - **Sort your lists:** On a tank's [Livestock](/tanks/current/livestock) and [Plants](/tanks/current/plants), tap a column heading to sort by it, and again to turn the order round (▲ / ▼ shows which way). On a phone, and on [Equipment](/tanks/current/equipment), [Spending](/tanks/current/spending)'s expenses and [Photos](/photos), a Sort by menu does the same: newest or oldest, most or fewest, A–Z and more. Each visit starts in the usual order.
-
 - **The volume calculator remembers your measurements:** On [Calculators › Tank volume](/calculators#volume), Save as the tank's water volume now keeps the glass, substrate depth and gap below the rim with the tank, and a changed length, width or height too, so they're all still filled in next time instead of going blank.
 
 ## 1.12.11 · 2026-10-05
