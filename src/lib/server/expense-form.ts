@@ -57,7 +57,7 @@ export async function finishExpense(form: FormData, user: User, expenseId: strin
 			redirect(303, `/tanks/${tankId}/spending/${expenseId}`);
 		}
 	} else if (form.get('removeReceipt') === 'on') {
-		removeReceipt(user.id, expenseId);
+		await removeReceipt(user.id, expenseId);
 	}
 	setFlash(cookies, message);
 	redirect(303, `/tanks/${tankId}/spending`);

@@ -79,6 +79,8 @@ test('offline data stays with one person, and can be removed from the device', a
 	// once queued, the form closes to the dashboard on its own: wait for that before going elsewhere
 	await page.waitForURL((u) => u.pathname === '/' && u.searchParams.get('tank') === tankId);
 	await expect(page.getByText('Offline · 1 entry waiting')).toBeVisible();
+	// the app goes on to the dashboard after saving; let it get there first
+	await page.waitForURL((u) => u.pathname === '/');
 	await page.goto('/settings');
 	await expect(page.getByText('Offline data on this device')).toBeVisible();
 	await page.getByRole('button', { name: 'Remove offline data' }).click();

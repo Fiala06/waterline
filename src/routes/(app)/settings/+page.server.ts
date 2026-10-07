@@ -90,12 +90,12 @@ export const actions: Actions = {
 	},
 	googlePhoto: async ({ locals, cookies }) => {
 		if (!locals.user!.avatarAt) return fail(400, { photoError: "There's no Google photo for this account." });
-		setAvatarChoice(locals.user!.id, 'google');
+		await setAvatarChoice(locals.user!.id, 'google');
 		setFlash(cookies, '✓ Using your Google photo');
 		redirect(303, '/settings#profile');
 	},
 	removePhoto: async ({ locals, cookies }) => {
-		setAvatarChoice(locals.user!.id, 'none');
+		await setAvatarChoice(locals.user!.id, 'none');
 		setFlash(cookies, '✓ Photo removed');
 		redirect(303, '/settings#profile');
 	},

@@ -7,7 +7,7 @@
 // fetched by the browser. The admin turns it off in Server settings. STOCK_PHOTO_WIKI / STOCK_PHOTO_COMMONS
 // point it at a stand-in in tests.
 import { createHash } from 'node:crypto';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { count, desc, eq, inArray, ne } from 'drizzle-orm';
 import sharp from 'sharp';
@@ -184,9 +184,9 @@ export async function fetchStockPhoto(name: string, fetcher: typeof fetch = fetc
 			.resize(480, 480, { fit: 'inside', withoutEnlargement: true })
 			.jpeg({ quality: 78, mozjpeg: true })
 			.toBuffer({ resolveWithObject: true });
-		mkdirSync(stockDir(), { recursive: true });
+		await mkdir(stockDir(), { recursive: true });
 		const saved = stockFile(name);
-		writeFileSync(join(stockDir(), saved), out.data);
+		await writeFile(join(stockDir(), saved), out.data);
 		return {
 			status: 'ok',
 			file: saved,

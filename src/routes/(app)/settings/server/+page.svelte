@@ -951,6 +951,10 @@
 		color: var(--text-muted);
 		overflow-wrap: anywhere;
 	}
+	/* a link in a muted line is too near its colour to tell apart without an underline (#107) */
+	.td a {
+		text-decoration: underline;
+	}
 	.choice .radio {
 		width: 20px;
 		height: 20px;

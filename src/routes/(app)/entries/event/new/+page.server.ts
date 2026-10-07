@@ -103,7 +103,7 @@ export const actions: Actions = {
 			const r = handleLinkedLivestock(user, tank, form, when.at);
 			if (r && 'errors' in r) return fail(400, { errors: r.errors, values, error: null });
 			if (r) {
-				if (r.eventId) storePhotos(tank.id, prepared, { eventId: r.eventId, takenAt: when.at });
+				if (r.eventId) await storePhotos(tank.id, prepared, { eventId: r.eventId, takenAt: when.at });
 				setFlash(cookies, r.message, r.eventId ? { view: `/entries/event/${r.eventId}` } : {});
 				redirect(303, `/?tank=${tank.id}`);
 			}
@@ -121,7 +121,7 @@ export const actions: Actions = {
 			if ('error' in prepared) return fail(400, { errors: {}, values, error: prepared.error });
 			const reasons = form.getAll('reasons').map(String).filter((r) => EQUIPMENT_REASONS.includes(r));
 			const r = removeEquipment(user.id, eqItem.id, { at: when.at, note: optStr(form, 'note'), clientId, reasons });
-			storePhotos(tank.id, prepared, { eventId: r.event.id, takenAt: when.at });
+			await storePhotos(tank.id, prepared, { eventId: r.event.id, takenAt: when.at });
 			setFlash(cookies, `${equipmentName(eqItem)} removed${r.tasksRemoved ? ' with its reminder' : ''}`);
 			redirect(303, `/?tank=${tank.id}`);
 		}
@@ -154,7 +154,7 @@ export const actions: Actions = {
 			{ completeTaskId, timeZone: user.timeZone }
 		);
 
-		if (!duplicate) storePhotos(tank.id, prepared, { eventId: event.id, takenAt: when.at });
+		if (!duplicate) await storePhotos(tank.id, prepared, { eventId: event.id, takenAt: when.at });
 		if (!duplicate && eqItem && category === 'maintenance') markServiced(user.id, eqItem.id, when.at);
 
 		if (!duplicate && typeof data.recheck_at === 'string') {

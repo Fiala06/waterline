@@ -186,6 +186,14 @@ npm run test:e2e   # Playwright, on a phone and a desktop viewport: the core flo
 
 The first time, install the Playwright browser with `npx playwright install chromium` (or point the tests at a Chromium already on the machine with `PW_CHROMIUM=/path/to/chrome`). The core flow (`e2e/core-flow.test.ts`) is sign in → setup → create tank → log test → dashboard → complete task. `AUDIT=1 npx playwright test e2e/audit.test.ts --project=desktop` also checks every screen, at phone and desktop sizes in both themes, for accessibility problems, small tap targets and overflow, and writes what it finds to `test-results/audit.json`.
 
+**Accessibility.** `e2e/a11y.test.ts` runs axe (WCAG 2.2 AA) on every push, over the screens people use most: sign-in and setup, the dashboard, logging a test or a note, History, Charts, tank settings and sharing, Photos, Tasks, Settings and Server settings, and the public tank page, with Quick add, Alerts and the keyboard shortcuts open, on a phone and a desktop, in light and dark. A serious or critical finding fails the build, naming the screen, the rule and the element. `A11Y_SURVEY=1 npx playwright test e2e/a11y.test.ts` lists every finding instead. An exception goes in the test's `EXCEPT` list, for one rule on one element, with the reason.
+
+axe can't judge everything, so before a release with new screens, also check by hand:
+- **Keyboard only:** every control is reached with Tab in reading order, with a visible focus outline; Esc closes dialogs and returns focus to what opened them; nothing traps focus.
+- **Screen reader** (VoiceOver on iPhone or Mac, TalkBack on Android): headings and landmarks make sense out of context; every button and field says what it is; statuses read as words (`✓ OK`, `✕ High`), not colours; the toast after saving is announced.
+- **Phone:** tap targets at least 44 px; nothing scrolls sideways at 320 px wide or with the text size turned up to 200%; the numeric keypad opens for readings.
+- **Motion and colour:** with *Reduce motion* on, nothing slides or animates needlessly; the status of a reading is clear in grayscale.
+
 ## Releases
 
 Each release is a section of [`CHANGELOG.md`](CHANGELOG.md), written for the people who use the app: the app shows it under **Settings › What's new** (the newest three releases open, older ones folded by version), and the first names once on the dashboard after an update. To release, bump `version` in `package.json` and add a `## <version> · <date>` section with a few lines, each starting with its name in bold and linking the page it's on (see the top of the changelog); a unit test fails if the two don't match. The *update available* note admins see comes from the changelog on `main`.

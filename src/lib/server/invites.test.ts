@@ -72,7 +72,7 @@ describe('invitations (#27)', () => {
 });
 
 describe('people (#27)', () => {
-	it('keeps at least one admin, signs out everywhere and removes a person with their invitation', () => {
+	it('keeps at least one admin, signs out everywhere and removes a person with their invitation', async () => {
 		setMode('invited');
 		const owner = upsertUser({ email: 'owner@example.com', name: 'Owner', googleSub: 'g-o' });
 		expect(owner.isAdmin).toBe(true);
@@ -88,8 +88,8 @@ describe('people (#27)', () => {
 		const before = Date.now();
 		expect(Date.parse(signOutEverywhere(owner, helper.id).sessionsRevokedAt!)).toBeGreaterThanOrEqual(before - 1000);
 
-		expect(() => removePerson(owner, owner.id)).toThrow();
-		removePerson(owner, helper.id);
+		await expect(removePerson(owner, owner.id)).rejects.toThrow();
+		await removePerson(owner, helper.id);
 		expect(db.select().from(users).where(eq(users.id, helper.id)).get()).toBeUndefined();
 		expect(db.select().from(invites).where(eq(invites.id, invite.id)).get()?.revokedAt).toBeTruthy();
 		expect(isEmailAllowed('helper@example.com')).toBe(false);

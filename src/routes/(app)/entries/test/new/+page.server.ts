@@ -79,7 +79,7 @@ export const actions: Actions = {
 			{ completeTaskId: optStr(form, 'completeTask', 64), timeZone: user.timeZone }
 		);
 		if (!result.duplicate) {
-			storePhotos(tank.id, prepared, { testId: result.test.id, takenAt: when.at });
+			await storePhotos(tank.id, prepared, { testId: result.test.id, takenAt: when.at });
 			// E4 goes out in the background; a mail problem never blocks saving.
 			if (result.outOfRange) alertOutOfRange(user, tank.id, result.test.id).catch((e) => logger.error('email', "The out-of-range alert didn't send", { userId: user.id, error: e }));
 		}
