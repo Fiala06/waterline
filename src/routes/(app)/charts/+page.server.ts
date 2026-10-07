@@ -74,7 +74,7 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 	// Events on the timeline (#88: each overlay kind on its own switch on the page),
 	// with the reading just before and after each one.
 	const equipmentType = equipmentTypeLookup(listEquipment(user.id, tank.id).map((i) => ({ id: i.id, name: equipmentName(i), type: i.type })));
-	const evs = eventsSince(tank.id, ['water_change', 'dosing', 'maintenance', 'equipment'], new Date(from).toISOString());
+	const evs = eventsSince(tank.id, ['water_change', 'dosing', 'maintenance', 'equipment', 'observation'], new Date(from).toISOString());
 	const fv = (stored: number) => fmtValue(param, stored, user);
 	const markers = evs.flatMap((e) => {
 		const kind = overlayKind(e, equipmentType);

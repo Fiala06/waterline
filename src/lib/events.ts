@@ -1,6 +1,7 @@
 // Event categories: labels, form options and one-line titles for feeds.
 import type { EventCategory } from './types';
 import { healthTitle } from './livestock';
+import { algaeTitle, plantHealthTitle } from './plants';
 import { amountText } from './tasks';
 import { formatNumber, toDisplay, unitLabel, type UnitPrefs } from './units';
 import { reviewTitle } from './review';
@@ -199,6 +200,9 @@ export function eventTitle(e: EventLike, prefs: UnitPrefs): string {
 			return `${action} ${str(d.item) || 'equipment'}`;
 		}
 		case 'observation': {
+			// a plant's health (#85) or algae on the tank (#86): their own titles
+			if (d.kind === 'plant') return plantHealthTitle(d);
+			if (d.kind === 'algae') return algaeTitle(d);
 			const tags = Array.isArray(d.tags) ? (d.tags as string[]) : [];
 			return tags.length ? tags.join(', ') : firstLine(e.note) || 'Observation';
 		}
@@ -220,12 +224,14 @@ function firstLine(s: string | null) {
 
 /** The category icon for an entry: plant changes are logged as livestock, but show a plant. */
 export function eventIcon(e: EventLike) {
-	return e.category === 'livestock' && e.data.kind === 'plant' ? ('plant' as const) : e.category;
+	if (e.data.kind === 'plant' && (e.category === 'livestock' || e.category === 'observation')) return 'plant' as const;
+	return e.category;
 }
 
 /** Category word shown under a feed title ("Sep 17 · Water change"). */
 export function eventKindLabel(e: EventLike): string {
 	if (e.category === 'livestock') return e.data.kind === 'plant' ? 'Plant change' : 'Livestock change';
+	if (e.category === 'observation') return e.data.kind === 'plant' ? 'Plant health' : e.data.kind === 'algae' ? 'Algae' : 'Observation';
 	if (e.category === 'note' && e.data.system) return 'Tank';
 	return CATEGORY_LABEL[e.category] ?? cap(e.category);
 }

@@ -5,6 +5,8 @@ import { setFlash } from '$lib/server/flash';
 import { optStr, str } from '$lib/server/forms';
 import { checkPhotoFiles, photoFiles, datePhotos, preparePhotos, storePhotos } from '$lib/server/photos';
 import { addPlant, getPlant, listPlants, logTrim, removePlant, updatePlant } from '$lib/server/specs';
+import { plantHealthEvents } from '$lib/server/log-plants';
+import { plantObservationText } from '$lib/plants';
 import { speciesPhotos, stockPhotosOn } from '$lib/server/stock-photos';
 import { readSort, sortRows } from '$lib/sort';
 import type { Actions, PageServerLoad } from './$types';
@@ -26,7 +28,18 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 	);
 	// the keeper's own photo, else a species photo from Wikimedia Commons (some come in the background)
 	const photos = speciesPhotos(list.map((p) => ({ photoId: p.photoId, scientific: p.scientificName, common: p.name })));
+	// each plant's health journal (#85), newest first, for its sheet
+	const health = new Map<string, { id: string; text: string; when: string; note: string | null }[]>();
+	for (const e of plantHealthEvents(params.id, undefined, 300)) {
+		const ids = Array.isArray(e.data.plant_ids) ? (e.data.plant_ids as string[]) : [];
+		for (const id of ids) {
+			const mine = health.get(id) ?? [];
+			if (mine.length < 8) mine.push({ id: e.id, text: plantObservationText(e.data.observation), when: fmtDate(dateInZone(e.occurredAt, user.timeZone)), note: e.note });
+			health.set(id, mine);
+		}
+	}
 	return {
+		tankId: params.id,
 		// the tab's toolbar: "6 plants"
 		toolbarText: list.length ? `${list.length} plant${list.length === 1 ? '' : 's'}` : '',
 		// the Added column says something only when the dates differ (an import gives them all one day)
@@ -40,7 +53,8 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 			trimmed: p.lastTrimmedAt ? fmtDate(dateInZone(p.lastTrimmedAt, user.timeZone)) : null,
 			added: fmtDate(dateInZone(p.createdAt, user.timeZone)),
 			photo: photos.list[i],
-			ownPhoto: !!p.photoId
+			ownPhoto: !!p.photoId,
+			health: health.get(p.id) ?? []
 		})),
 		sort,
 		photosPending: photos.pending,

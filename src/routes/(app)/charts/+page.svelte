@@ -415,6 +415,11 @@
 		background: none;
 		border: 2px solid var(--neutral-600);
 	}
+	.lg-mk.algae {
+		background: none;
+		border: 2px solid var(--neutral-600);
+		transform: rotate(45deg) scale(0.8);
+	}
 	.lg-toggle[aria-pressed='false'] {
 		color: var(--text-muted);
 		text-decoration: line-through;

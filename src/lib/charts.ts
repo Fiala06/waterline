@@ -52,14 +52,15 @@ export function chartDomain(values: number[], band: { min: number | null; max: n
 // Event overlays on Charts (#88): which tank events draw a marker, each kind
 // on its own switch. Water changes show by default; the rest are opt-in so a
 // beginner's chart stays clear.
-export type OverlayKind = 'water_change' | 'dosing' | 'co2' | 'light' | 'trim' | 'maintenance';
+export type OverlayKind = 'water_change' | 'dosing' | 'co2' | 'light' | 'trim' | 'maintenance' | 'algae';
 export const OVERLAYS: { kind: OverlayKind; label: string; default: boolean }[] = [
 	{ kind: 'water_change', label: 'Water change', default: true },
 	{ kind: 'dosing', label: 'Dosing', default: false },
 	{ kind: 'co2', label: 'CO₂ change', default: false },
 	{ kind: 'light', label: 'Light change', default: false },
 	{ kind: 'trim', label: 'Plant trim', default: false },
-	{ kind: 'maintenance', label: 'Maintenance', default: false }
+	{ kind: 'maintenance', label: 'Maintenance', default: false },
+	{ kind: 'algae', label: 'Algae', default: false }
 ];
 export const OVERLAY_LABEL = Object.fromEntries(OVERLAYS.map((o) => [o.kind, o.label])) as Record<OverlayKind, string>;
 export const DEFAULT_OVERLAYS = Object.fromEntries(OVERLAYS.map((o) => [o.kind, o.default])) as Record<OverlayKind, boolean>;
@@ -93,6 +94,9 @@ export function overlayKind(e: { category: string; data: Record<string, unknown>
 			const type = equipmentType(e.data.equipment_id, e.data.item);
 			return type === 'co2' ? 'co2' : type === 'light' ? 'light' : null;
 		}
+		case 'observation':
+			// algae logged on the tank (#86); other observations stay off the chart
+			return e.data.kind === 'algae' ? 'algae' : null;
 		default:
 			return null;
 	}

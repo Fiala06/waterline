@@ -49,6 +49,7 @@ describe('event overlays (#88)', () => {
 		expect(overlayKind({ category: 'equipment', data: { action: 'schedule', equipment_id: 'e1', item: 'Chihiros WRGB' } }, type)).toBe('light');
 		expect(overlayKind({ category: 'equipment', data: { action: 'adjusted', equipment_id: 'e2', item: 'CO₂ Art regulator' } }, type)).toBe('co2');
 		expect(overlayKind({ category: 'equipment', data: { action: 'replaced', equipment_id: 'e3', item: 'Eheim 2217' } }, type)).toBeNull();
+		expect(overlayKind({ category: 'observation', data: { kind: 'algae', algae: 'Black beard', severity: 'moderate' } }, type)).toBe('algae');
 		for (const category of ['feeding', 'note', 'observation', 'livestock', 'health']) expect(overlayKind({ category, data: {} }, type)).toBeNull();
 	});
 

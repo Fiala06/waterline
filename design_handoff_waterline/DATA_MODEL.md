@@ -69,6 +69,11 @@ events           id, tank_id, category(water_change|dosing|maintenance|livestock
                  -- equipment {action: schedule, equipment_id, item, schedule, was} (its periods changed)
                  -- equipment {action: par, par_id, item: "PAR", spot, value} (a PAR reading)
                  -- observation {tags:[...], recheck_at?}
+                 -- observation {kind: plant, plant_ids, plants:[names], observation: thriving|
+                 --              new_growth|melting|yellowing|pinholes|algae|stunted|removed|other,
+                 --              tags:[]} (a plant's health journal; sets the plant's status)
+                 -- observation {kind: algae, algae, severity: light|moderate|heavy, area?,
+                 --              tags:["Algae"]} (algae on the tank)
                  -- note {system: tank_created|tank_archived|tank_restored} (the tank's own)
                  -- note {system: setup_reviewed, changed:[parts], prev_checks} (All still
                  --       right on the setup review; prev_checks lets Undo put the checks back)

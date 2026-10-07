@@ -70,7 +70,10 @@
 		{ category: 'livestock', label: 'Livestock / plants' },
 		{ category: 'equipment', label: 'Equipment' },
 		{ category: 'observation', label: 'Observation' },
-		{ category: 'health', label: 'Health' }
+		{ category: 'health', label: 'Health' },
+		// a plant's health (#85) and algae (#86) have their own pages
+		{ category: 'plant', label: 'Plant health', to: (t: string) => `/tanks/${t}/plants/health` },
+		{ category: 'observation', label: 'Algae', to: (t: string) => `/tanks/${t}/algae` }
 	] as const;
 
 	// "Now · Sep 28, 8:14 AM": when the sheet opened, in the keeper's time zone
@@ -163,8 +166,8 @@
 		<section class="more" aria-labelledby="qa-more">
 			<h3 class="more-label" id="qa-more">More</h3>
 			<div class="tiles">
-				{#each more as m (m.category)}
-					<a class="tile" class:hide-desk={'phone' in m} href={href('/entries/event/new', { category: m.category })} onclick={() => (open = false)}>
+				{#each more as m (m.label)}
+					<a class="tile" class:hide-desk={'phone' in m} href={'to' in m ? m.to(tankId ?? '') : href('/entries/event/new', { category: m.category })} onclick={() => (open = false)}>
 						<CategoryIcon kind={m.category} size={32} />
 						<span>{m.label}</span>
 					</a>

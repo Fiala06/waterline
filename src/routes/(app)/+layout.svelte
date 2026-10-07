@@ -97,6 +97,8 @@
 				'/(app)/tanks/[id]/(tabs)': 'Notes & routines',
 				'/(app)/tanks/[id]/equipment/new': 'Add equipment',
 				'/(app)/tanks/[id]/health': 'Log health',
+				'/(app)/tanks/[id]/plants/health': 'Log plant health',
+				'/(app)/tanks/[id]/algae': 'Log algae',
 				'/(app)/tanks/[id]/equipment/[eid]': 'Edit equipment',
 				'/(app)/tanks/[id]/livestock/new': 'Add livestock',
 				'/(app)/tanks/[id]/livestock/several': 'Add several',

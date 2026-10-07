@@ -44,6 +44,9 @@
 					{#if h.role === 'owner'}<a class="btn btn-primary" href="{base}/spending/new">+ Add expense</a>{/if}
 				{:else if sub === 'plants'}
 					<a class="btn" href="{base}/wishlist">Wish list</a>
+					<!-- on phones Quick add (Log) has Algae and Plant health, and a plant's sheet has Log health -->
+					<a class="btn hide-phone" href="{base}/algae">Algae</a>
+					{#if plantCount}<a class="btn hide-phone" href="{base}/plants/health">Health</a>{/if}
 					{#if plantCount}<button type="button" class="btn" onclick={() => (plantSheets.trim = true)}>Log trim</button>{/if}
 					<a class="btn" href="{base}/plants/several">Add several</a>
 					<button type="button" class="btn btn-primary" onclick={() => (plantSheets.add = true)}>+ Add plant</button>

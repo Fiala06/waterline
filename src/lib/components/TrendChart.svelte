@@ -492,7 +492,8 @@
 	.marker-line.co2,
 	.marker-line.light,
 	.marker-line.trim,
-	.marker-line.maintenance {
+	.marker-line.maintenance,
+	.marker-line.algae {
 		stroke-dasharray: 1 3;
 	}
 	.marker-line.chosen {
@@ -621,6 +622,12 @@
 	.marker.maintenance::before {
 		background: none;
 		border: 2px solid var(--neutral-600);
+	}
+	/* algae: a hollow diamond */
+	.marker.algae::before {
+		background: none;
+		border: 2px solid var(--neutral-600);
+		transform: rotate(45deg) scale(0.8);
 	}
 	/* the reading line draws itself in, then the latest reading pops up */
 	.trace {

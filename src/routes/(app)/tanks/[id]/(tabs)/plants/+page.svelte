@@ -197,6 +197,25 @@
 				</form>
 				<p class="hint">Or open one in Photos and choose Use as the photo for {editing.name}.</p>
 			</div>
+			<!-- its health journal (#85): what it's been doing, newest first -->
+			<section class="plant-health" aria-label="Health">
+				<div class="ph-head">
+					<span class="label">Health</span>
+					<a class="ghost" href="/tanks/{data.tankId}/plants/health?plant={editing.id}&from={encodeURIComponent(`/tanks/${data.tankId}/plants`)}">Log health ›</a>
+				</div>
+				{#if editing.health.length}
+					<ul class="ph-list">
+						{#each editing.health as h (h.id)}
+							<li>
+								<a href="/entries/event/{h.id}"><span class="ph-text">{h.text}</span><span class="ph-when">{h.when}</span></a>
+								{#if h.note}<span class="ph-note">{h.note}</span>{/if}
+							</li>
+						{/each}
+					</ul>
+				{:else}
+					<p class="hint ph-none">Nothing noted yet. Log what it's doing as it settles in, melts or grows.</p>
+				{/if}
+			</section>
 			<form method="POST" action="?/update" class="sheet-form" use:enhance={close}>
 				<input type="hidden" name="id" value={editing.id} />
 				<fieldset class="field">
@@ -405,6 +424,53 @@
 	.remove-photo {
 		min-height: 44px;
 		color: var(--text-muted);
+	}
+	.plant-health {
+		padding: 0 20px 14px;
+	}
+	.ph-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		padding-bottom: 6px;
+		border-bottom: 2px solid var(--ink);
+	}
+	.ph-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	.ph-list li {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		padding: 8px 0;
+		border-bottom: 1px solid var(--divider);
+	}
+	.ph-list a {
+		display: flex;
+		justify-content: space-between;
+		gap: 12px;
+		min-height: 28px;
+		align-items: center;
+		color: inherit;
+		text-decoration: none;
+		font-weight: 700;
+		font-size: 14px;
+	}
+	.ph-when {
+		font-size: 12px;
+		font-weight: 400;
+		color: var(--text-muted);
+		white-space: nowrap;
+	}
+	.ph-note {
+		font-size: 13px;
+		color: var(--text-muted);
+	}
+	.ph-none {
+		margin: 8px 0 0;
 	}
 	.sheet-form {
 		display: flex;
