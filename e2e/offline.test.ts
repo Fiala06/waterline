@@ -62,13 +62,13 @@ test('offline data stays with one person, and can be removed from the device', a
 	await page.evaluate(async () => (await navigator.serviceWorker.ready).active!.postMessage({ type: 'user', id: 'someone-else' }));
 	await expect.poll(pages).toBe(0);
 
-	// Settings › Data: Remove, asking first while an entry waits to sync.
-	// The switch above took the last copies, and the first page this person opens
-	// again switches the owner back, which clears once more (that page included),
-	// so let that settle before opening the pages the rest relies on offline.
+	// Settings › Data: Remove, asking first while an entry waits to sync
+	// (opened again online: the switch above took the last copies). The first load says who's
+	// signed in, which clears what "someone-else" left; wait for that before keeping pages again
 	await open(page, `/?tank=${tankId}`);
-	const owner = () => page.evaluate(async () => (await (await caches.open('owner-v1')).match('/owner'))?.text() ?? null);
-	await expect.poll(owner).not.toBe('someone-else');
+	await expect
+		.poll(() => page.evaluate(async () => (await (await caches.open('owner-v1')).match('/owner'))?.text()))
+		.not.toBe('someone-else');
 	await open(page, '/settings');
 	await open(page, `/?tank=${tankId}`);
 	await open(page, `/entries/test/new?tank=${tankId}`);

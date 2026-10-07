@@ -181,10 +181,11 @@ Each person can let an AI assistant, like Claude or ChatGPT, read their tanks, a
 ```bash
 npm run check      # types + Svelte
 npm test           # unit tests: units, status, trends, time zones, imports, money, email, MCP and more
-npm run test:e2e   # Playwright, on a phone and a desktop viewport: the core flow and each feature
+npm run test:e2e   # Playwright on Chromium, at a phone and a desktop size: the core flow and each feature
+npm run test:e2e:browsers  # the essentials on an iPhone and desktop Safari (WebKit) and Firefox
 ```
 
-The first time, install the Playwright browser with `npx playwright install chromium` (or point the tests at a Chromium already on the machine with `PW_CHROMIUM=/path/to/chrome`). The core flow (`e2e/core-flow.test.ts`) is sign in → setup → create tank → log test → dashboard → complete task. `AUDIT=1 npx playwright test e2e/audit.test.ts --project=desktop` also checks every screen, at phone and desktop sizes in both themes, for accessibility problems, small tap targets and overflow, and writes what it finds to `test-results/audit.json`.
+The first time, install the Playwright browser with `npx playwright install chromium` (and `webkit firefox` for the other engines) (or point the tests at a Chromium already on the machine with `PW_CHROMIUM=/path/to/chrome`). The core flow (`e2e/core-flow.test.ts`) is sign in → setup → create tank → log test → dashboard → complete task. `AUDIT=1 npx playwright test e2e/audit.test.ts --project=desktop` also checks every screen, at phone and desktop sizes in both themes, for accessibility problems, small tap targets and overflow, and writes what it finds to `test-results/audit.json`.
 
 **Accessibility.** `e2e/a11y.test.ts` runs axe (WCAG 2.2 AA) on every push, over the screens people use most: sign-in and setup, the dashboard, logging a test or a note, History, Charts, tank settings and sharing, Photos, Tasks, Settings and Server settings, and the public tank page, with Quick add, Alerts and the keyboard shortcuts open, on a phone and a desktop, in light and dark. A serious or critical finding fails the build, naming the screen, the rule and the element. `A11Y_SURVEY=1 npx playwright test e2e/a11y.test.ts` lists every finding instead. An exception goes in the test's `EXCEPT` list, for one rule on one element, with the reason.
 
