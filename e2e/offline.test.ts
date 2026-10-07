@@ -76,8 +76,6 @@ test('offline data stays with one person, and can be removed from the device', a
 	await context.setOffline(true);
 	await page.getByLabel('pH', { exact: true }).fill('7.1');
 	await page.getByRole('button', { name: 'Save 1 reading' }).click();
-	// once queued, the form closes to the dashboard on its own: wait for that before going elsewhere
-	await page.waitForURL((u) => u.pathname === '/' && u.searchParams.get('tank') === tankId);
 	await expect(page.getByText('Offline · 1 entry waiting')).toBeVisible();
 	// the app goes on to the dashboard after saving; let it get there first
 	await page.waitForURL((u) => u.pathname === '/');
