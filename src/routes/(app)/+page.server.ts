@@ -1,7 +1,7 @@
 import { and, count, desc, eq, inArray, lte, sql } from "drizzle-orm";
 import { redirect } from "@sveltejs/kit";
 import { cyclingStage, staleAfter, type CycleTest } from "$lib/status";
-import { lightingText } from "$lib/equipment";
+import { lightingText, tankLighting } from "$lib/equipment";
 import { displaySamples, latestSamples, sampleSeries } from "$lib/server/sensors";
 import { fmtValue, paramUnit, statusOf } from "$lib/params";
 import { setFlash } from "$lib/server/flash";
@@ -38,7 +38,8 @@ import { testReadings, tests } from "$lib/server/db/schema";
 import { thumbsFor } from "$lib/server/photos";
 import { equipmentName } from "$lib/equipment";
 import { listEquipment, scheduledItems, listLivestock, listPlants } from "$lib/server/specs";
-import { getTank, listParams, markCycling, markRunning } from "$lib/server/tanks";
+import { getTank, listParams, markCycling, markRunning, setChecklist } from "$lib/server/tanks";
+import { checklistSteps, showChecklist } from "$lib/checklist";
 import { listTasks } from "$lib/server/tasks";
 import type { Actions, PageServerLoad } from "./$types";
 
@@ -51,7 +52,7 @@ const CYCLE_DAYS = 56;
 
 export const load: PageServerLoad = async ({ locals, parent }) => {
   const user = locals.user!;
-  const { currentTankId } = await parent();
+  const { currentTankId, counts } = await parent();
   if (!currentTankId) return { tank: null };
 
   const tank = getTank(user.id, currentTankId);
@@ -265,8 +266,30 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
   // each with its feature's page when the line links one
   const whatsNew = whatsNewCard(user.seenVersion);
 
+  // getting started (#82): what to do after making the tank, while it's new
+  const facts = {
+    tankId: tank.id,
+    type: tank.type,
+    cycling: tank.cycling,
+    createdAt: tank.createdAt,
+    state: tank.checklist,
+    tests: testCount,
+    livestock: counts.livestock,
+    plants: counts.plants,
+    photos: counts.photos,
+    lights: !!tankLighting(tank, scheduledItems(tank.id)).lights || tank.withoutEquipment.includes("light"),
+    waterChangeTaskId: wcTask?.id ?? null,
+  };
+  const checklist = showChecklist(facts)
+    ? (() => {
+        const steps = checklistSteps(facts);
+        return { steps, done: steps.filter((s) => s.done).length, cycling: tank.cycling, allDone: steps.every((s) => s.done) };
+      })()
+    : null;
+
   return {
     whatsNew,
+    checklist,
     cheers: { streak, milestones },
     contents,
     cycling,
@@ -317,6 +340,13 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 };
 
 export const actions: Actions = {
+  // the getting-started checklist has done its job (#82)
+  hideChecklist: async ({ request, locals, cookies }) => {
+    const tankId = String((await request.formData()).get("tankId") ?? "");
+    setChecklist(locals.user!.id, tankId, "hidden");
+    setFlash(cookies, "✓ Checklist hidden · Tank setup brings it back");
+    redirect(303, "/");
+  },
   // the cycle is done: ammonia and nitrite count as failures again, with a note in History
   markCycling: async ({ request, locals, cookies }) => {
     const tankId = String((await request.formData()).get("tankId") ?? "");

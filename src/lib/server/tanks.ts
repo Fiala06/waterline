@@ -408,6 +408,12 @@ export function resetParamDefaults(user: User, tankId: string) {
 }
 
 /** The tank is still cycling after all (#68): cycling on, with a "Marked as cycling" note in History. */
+/** The getting-started checklist (#82): hidden from the dashboard, or shown there again from Tank setup. */
+export function setChecklist(userId: string, tankId: string, state: "hidden" | "shown") {
+  getTank(userId, tankId, "owner");
+  db.update(tanks).set({ checklist: state }).where(eq(tanks.id, tankId)).run();
+}
+
 export function markCycling(userId: string, tankId: string) {
   const tank = getTank(userId, tankId, "owner");
   if (tank.cycling) return tank;

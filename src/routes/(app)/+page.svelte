@@ -180,6 +180,38 @@
 			</section>
 		{/if}
 
+		{#if data.checklist}
+			{@const c = data.checklist}
+			<!-- ── Getting started (#82): what to do after making the tank, ticked off from its data ── -->
+			<section class="start" aria-labelledby="start-h">
+				<div class="section-head">
+					<h2 id="start-h">Getting started</h2>
+					<span class="meta">{c.done} of {c.steps.length} done</span>
+				</div>
+				{#if c.allDone}
+					<p class="start-about"><b>✓ All set up.</b> From here it's logging: tests, water changes and the odd photo.</p>
+				{:else if c.cycling}
+					<p class="start-about">The tank is cycling: test ammonia, nitrite and nitrate every few days and log each one, so the cycle above shows where it is.</p>
+				{/if}
+				<ol class="steps">
+					{#each c.steps as s (s.key)}
+						<li class:done={s.done}>
+							<a href={s.href}>
+								<span class="step-status" class:status-ok={s.done}><span aria-hidden="true">{s.done ? '✓' : '–'}</span> {s.done ? 'Done' : 'To do'}</span>
+								<span class="step-text"><span class="step-title">{s.title}</span><span class="step-detail">{s.detail}</span></span>
+								<span class="chev" aria-hidden="true">›</span>
+							</a>
+						</li>
+					{/each}
+				</ol>
+				<form class="start-foot" method="POST" action="?/hideChecklist" use:enhance>
+					<input type="hidden" name="tankId" value={data.tank.id} />
+					<button class="btn" class:btn-primary={c.allDone}>{c.allDone ? 'Done' : 'Hide checklist'}</button>
+					<span class="hint">Tank setup brings it back.</span>
+				</form>
+			</section>
+		{/if}
+
 		<div class="grid">
 			<!-- ── Needs attention (span 2) ─────────────────────────────── -->
 			<div class="cell main first">
@@ -404,6 +436,83 @@
 		display: flex;
 		flex-direction: column;
 		padding: 18px 0 8px;
+	}
+	/* Getting started (#82): a heading, then the steps as rows with 1px dividers */
+	.start {
+		display: flex;
+		flex-direction: column;
+		padding: 18px 0 8px;
+	}
+	.start-about {
+		margin: 0 0 6px;
+		font-size: 14px;
+		line-height: 1.45;
+		color: var(--text-muted);
+	}
+	.start-about b {
+		color: var(--text);
+	}
+	.steps {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	.steps li {
+		border-bottom: 1px solid var(--divider);
+	}
+	.steps a {
+		display: grid;
+		grid-template-columns: 64px minmax(0, 1fr) 16px;
+		align-items: center;
+		column-gap: 12px;
+		min-height: 44px;
+		padding: 10px 0;
+		color: inherit;
+		text-decoration: none;
+	}
+	.step-status {
+		font-size: 12px;
+		font-weight: 800;
+		color: var(--text-muted);
+	}
+	.step-status.status-ok {
+		color: var(--ok-text, var(--text));
+	}
+	.step-text {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		min-width: 0;
+	}
+	.step-title {
+		font-size: 15px;
+		font-weight: 700;
+	}
+	.done .step-title {
+		font-weight: 400;
+		color: var(--text-muted);
+	}
+	.step-detail {
+		font-size: 13px;
+		line-height: 1.4;
+		color: var(--text-muted);
+	}
+	.done .step-detail {
+		display: none;
+	}
+	.steps .chev {
+		color: var(--text-faint);
+		font-size: 18px;
+	}
+	.start-foot {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		padding: 12px 0 4px;
+	}
+	.start-foot .hint {
+		font-size: 13px;
+		color: var(--text-muted);
 	}
 	.cycle-about {
 		margin: 0 0 14px;

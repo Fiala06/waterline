@@ -235,7 +235,7 @@
 			</div>
 			<!-- set on the light's or CO₂ item's schedule (#25): shown here, changed on the item -->
 			{#if data.lighting.lights}
-				<div class="field sched">
+				<div class="field sched" id="lights">
 					<span class="label">Lights on / off</span>
 					<input type="hidden" name="lightsOn" value={lightsOn} />
 					<input type="hidden" name="lightsOff" value={lightsOff} />
@@ -244,7 +244,7 @@
 					<a class="hint sched-link" href="/tanks/{data.tank.id}/equipment/{data.lighting.lights.item.id}">Set on {data.lighting.lights.item.name} ›</a>
 				</div>
 			{:else}
-				<fieldset class="field sched">
+				<fieldset class="field sched" id="lights">
 					<legend class="label">Lights on / off</legend>
 					<div class="times">
 						<input class="input" type="time" name="lightsOn" aria-label="Lights on" bind:value={lightsOn} aria-invalid={!!errors.lightsOn} />
@@ -348,12 +348,34 @@
 	tone="warn"
 />
 
+<!-- the getting-started checklist (#82): hidden from the dashboard, back from here -->
+{#if !data.tank.archived}
+	<form class="start-again" method="POST" action="?/showChecklist" use:enhance>
+		<div class="section-head"><h2>Getting started</h2></div>
+		<p class="hint">The checklist for a new tank: first test, livestock, plants, lights, a photo. It leaves the dashboard once hidden or once the tank has settled in.</p>
+		<button class="btn">Show it on the dashboard</button>
+	</form>
+{/if}
+
 <!-- Specs, notes and routines (the same sections as Notes & routines), after the form -->
 <div class="details-more" id="details-more">
 	<TankDetailsSections tankId={data.tank.id} tankName={data.tank.name} details={data.details} editHref="#specBrand" from="/tanks/{data.tank.id}/settings" />
 </div>
 
 <style>
+	.start-again {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		align-items: flex-start;
+		margin: 0 20px;
+	}
+	.start-again .hint {
+		margin: 0;
+		font-size: 14px;
+		line-height: 1.45;
+		color: var(--text-muted);
+	}
 	.wrap {
 		padding: 20px 20px calc(24px + env(safe-area-inset-bottom));
 		display: flex;

@@ -147,6 +147,8 @@ export const tanks = sqliteTable(
 		co2Off: text('co2_off'),
 		// a new tank cycling: ammonia and nitrite are stages, not failures, until it's running
 		cycling: integer('cycling', { mode: 'boolean' }).notNull().default(false),
+		/** the getting-started checklist on the dashboard (#82): hidden by its owner, or shown again from Tank setup; null decides by age */
+		checklist: text('checklist', { enum: ['hidden', 'shown'] }),
 		/** the setup review (#30): when each part was last checked, e.g. {"details": "2026-10-02T…Z"} */
 		/** equipment the tank goes without on purpose ("No heater"): filter | heater | light | co2 */
 		withoutEquipment: text('without_equipment', { mode: 'json' }).$type<string[]>().notNull().default([]),

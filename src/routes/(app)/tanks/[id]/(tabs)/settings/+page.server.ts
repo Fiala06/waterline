@@ -8,7 +8,7 @@ import { dateInZone, fmtDate } from '$lib/time';
 import { db } from '$lib/server/db';
 import { publicPages } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
-import { getTank, listParams, setArchived, updateTank } from '$lib/server/tanks';
+import { getTank, listParams, setArchived, setChecklist, updateTank } from '$lib/server/tanks';
 import { parseReviewEvery, REVIEW_INTERVALS } from '$lib/review';
 import { checkSection, reviewTask, setReviewEvery } from '$lib/server/review';
 import { todayInZone } from '$lib/time';
@@ -85,6 +85,12 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 };
 
 export const actions: Actions = {
+	// the getting-started checklist, back on the dashboard (#82)
+	showChecklist: async ({ locals, params, cookies }) => {
+		setChecklist(locals.user!.id, params.id, 'shown');
+		setFlash(cookies, '✓ The checklist is back on the dashboard');
+		redirect(303, `/?tank=${params.id}`);
+	},
 	save: async ({ request, locals, params, cookies }) => {
 		const user = locals.user!;
 		const form = await request.formData();

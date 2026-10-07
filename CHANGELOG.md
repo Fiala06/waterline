@@ -11,6 +11,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Getting started with a new tank:** The [dashboard](/) of a new tank now lists what to do next (the first water test, livestock, plants, the light schedule, the water-change reminder, a photo), ticks each off as you do it, and talks a cycling tank through the cycle. Hide it when you've seen enough; Tank setup brings it back.
 - **Parameters grouped by purpose:** [Parameters & targets](/tanks/current/targets) now lists a tank's parameters under Core, Water chemistry, Plant nutrients, CO₂ and Custom, and says beside each whether it's recommended for every tank of that kind, optional, or advanced, so the planted preset no longer reads as a list you must test in full.
 - **When to test each parameter:** The ⓘ beside a parameter on [Parameters & targets](/tanks/current/targets) and on the water test now also says when a test is worth doing for your kind of tank, and the optional ones say Optional beside their default, so you can see which tests matter weekly and which can wait.
 - **Tank setup, by name:** The tank's Setup tab, the Setup list beside its pages, More › Setup & targets on phones and the ⌘K entry now say Tank setup, so a tank's own settings read apart from your [account settings](/settings) and the server's.
