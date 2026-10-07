@@ -4,6 +4,7 @@ import {
   asc,
   count,
   eq,
+  inArray,
   isNotNull,
   isNull,
   max,
@@ -203,6 +204,20 @@ export function listParams(
     )
     .orderBy(asc(tankParameters.sort))
     .all();
+}
+
+/** The tracked parameters of several tanks at once, each in its order (#105: one query, not one a tank). */
+export function listParamsFor(tankIds: string[]): Map<string, TankParameter[]> {
+  const out = new Map<string, TankParameter[]>(tankIds.map((id) => [id, []]));
+  if (!tankIds.length) return out;
+  const rows = db
+    .select()
+    .from(tankParameters)
+    .where(and(inArray(tankParameters.tankId, tankIds), eq(tankParameters.tracked, true)))
+    .orderBy(asc(tankParameters.sort))
+    .all();
+  for (const r of rows) out.get(r.tankId)?.push(r);
+  return out;
 }
 
 export function updateParams(

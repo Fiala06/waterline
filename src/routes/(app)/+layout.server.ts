@@ -5,14 +5,14 @@ import { statusOf } from '$lib/params';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { fmtValue, shortName } from '$lib/params';
 import { listEquipment, listLivestock, listPlants } from '$lib/server/specs';
-import { listMembers } from '$lib/server/members';
+import { listMembers, rolesOn } from '$lib/server/members';
 import { db } from '$lib/server/db';
 import { photos, wishes } from '$lib/server/db/schema';
 import { and, count, eq, isNull } from 'drizzle-orm';
 import { displayVersion, VERSION } from '$lib/changelog';
 import { takeFlash } from '$lib/server/flash';
-import { latestReadings, latestTest } from '$lib/server/logs';
-import { listParams, listTanks, roleOn } from '$lib/server/tanks';
+import { latestReadingsFor, latestTest } from '$lib/server/logs';
+import { listParamsFor, listTanks } from '$lib/server/tanks';
 import { shownAvatar } from '$lib/server/avatar-image';
 import { alertsSeen } from '$lib/server/users';
 import { listTasks } from '$lib/server/tasks';
@@ -48,10 +48,15 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 		}
 	}
 
+	// every tank's parameters, latest readings and this person's role, in a query each (#105)
+	const ids = tanks.map((t) => t.id);
+	const paramsOf = listParamsFor(ids);
+	const latestOf = latestReadingsFor(ids);
+	const roles = rolesOn(user.id, tanks);
 	const summaries = tanks.map((t) => {
-		const latest = latestReadings(t.id);
+		const latest = latestOf.get(t.id)!;
 		let outOfRange = 0;
-		for (const p of listParams(t.id)) {
+		for (const p of paramsOf.get(t.id)!) {
 			const r = latest.get(p.id);
 			const st = statusOf(p, r?.value);
 			if (st.level !== 'bad' || !r) continue;
@@ -75,7 +80,7 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 					: null,
 			startDate: t.startDate,
 			// shared with this person (#22): what they may do, and whose it is
-			role: roleOn(user.id, t),
+			role: roles.get(t.id) ?? 'view',
 			cover: t.coverPhotoId,
 			coverPos: coverPosition(t.coverX, t.coverY),
 			alerts: outOfRange + (overdueByTank.get(t.id) ?? 0),

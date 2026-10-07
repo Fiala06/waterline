@@ -148,19 +148,27 @@ export function deleteTest(userId: string, testId: string) {
  * until one has it, and only for parameters with any reading at all.
  */
 export function latestReadings(tankId: string) {
-	const rows = latestReadingsQuery(tankId).all();
-	return new Map<string, { value: number; takenAt: string }>(rows.map((r) => [r.parameterId, { value: r.value, takenAt: r.takenAt }]));
+	return latestReadingsFor([tankId]).get(tankId)!;
+}
+
+/** The same for several tanks in one query (#105): tank id → parameter id → reading. */
+export function latestReadingsFor(tankIds: string[]) {
+	const out = new Map<string, Map<string, { value: number; takenAt: string }>>(tankIds.map((id) => [id, new Map()]));
+	if (!tankIds.length) return out;
+	for (const r of latestReadingsQuery(tankIds).all()) out.get(r.tankId)?.set(r.parameterId, { value: r.value, takenAt: r.takenAt });
+	return out;
 }
 
 /** The query behind latestReadings, apart so a test can read its plan. */
-export function latestReadingsQuery(tankId: string) {
+export function latestReadingsQuery(tankIds: string | string[]) {
+	const ids = typeof tankIds === 'string' ? [tankIds] : tankIds;
 	const newest = sql`(select t.id from tests t where t.tank_id = ${tankParameters.tankId} and exists (select 1 from test_readings r where r.test_id = t.id and r.parameter_id = ${tankParameters.id}) order by t.taken_at desc limit 1)`;
 	return db
-		.select({ parameterId: testReadings.parameterId, value: testReadings.value, takenAt: tests.takenAt })
+		.select({ tankId: tankParameters.tankId, parameterId: testReadings.parameterId, value: testReadings.value, takenAt: tests.takenAt })
 		.from(tankParameters)
 		.innerJoin(tests, eq(tests.id, newest))
 		.innerJoin(testReadings, and(eq(testReadings.testId, tests.id), eq(testReadings.parameterId, tankParameters.id)))
-		.where(and(eq(tankParameters.tankId, tankId), sql`exists (select 1 from test_readings r where r.parameter_id = ${tankParameters.id})`));
+		.where(and(inArray(tankParameters.tankId, ids), sql`exists (select 1 from test_readings r where r.parameter_id = ${tankParameters.id})`));
 }
 
 export function latestTest(tankId: string) {
