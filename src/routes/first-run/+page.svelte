@@ -43,8 +43,8 @@
 		<div class="pair">
 			<div class="field">
 				<label class="label" for="password">Password</label>
-				<input class="input" id="password" name="password" type="password" autocomplete="new-password" minlength="8" required aria-invalid={!!errors.password} aria-describedby="pw-hint" />
-				<span class="hint" id="pw-hint">At least 8 characters.</span>
+				<input class="input" id="password" name="password" type="password" autocomplete="new-password" minlength="12" required aria-invalid={!!errors.password} aria-describedby="pw-hint" />
+				<span class="hint" id="pw-hint">At least 12 characters. A few words with spaces between them works well.</span>
 				{#if errors.password}<span class="error-text">✕ {errors.password}</span>{/if}
 			</div>
 			<div class="field">

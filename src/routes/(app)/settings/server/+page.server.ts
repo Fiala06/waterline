@@ -20,6 +20,7 @@ import { logCounts, logger } from '$lib/server/log';
 import { lookAgain, stockPhotosOn, stockPhotoStatus, TEST_SPECIES } from '$lib/server/stock-photos';
 import { careStatus, downloadCare } from '$lib/server/species-care';
 import { listInvites } from '$lib/server/invites';
+import { passwordProblem } from '$lib/server/password-policy';
 
 function requireAdmin(locals: App.Locals) {
 	if (!locals.user?.isAdmin) error(404, 'Not found');
@@ -215,8 +216,7 @@ export const actions: Actions = {
 		const errors: Record<string, string> = {};
 		if (!USERNAME.test(username)) errors.username = 'Use letters, numbers, dots, dashes or underscores.';
 		if (!password && !s.localAdminPasswordHash) errors.password = 'Choose a password.';
-		else if (password && password.length < 8) errors.password = 'Use at least 8 characters.';
-		else if (password.length > 1024) errors.password = 'Use at most 1024 characters.';
+		else if (password && passwordProblem(password, [username, s.adminEmail ?? ''])) errors.password = passwordProblem(password, [username, s.adminEmail ?? ''])!;
 		else if (password && password !== String(form.get('confirm') ?? '')) errors.confirm = "The passwords don't match.";
 		if (Object.keys(errors).length) return fail(400, { localErrors: errors });
 		setSettings({ localAdminUsername: username, ...(password ? { localAdminPasswordHash: hashPassword(password) } : {}) });

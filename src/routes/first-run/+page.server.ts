@@ -5,6 +5,7 @@ import { logger } from '$lib/server/log';
 import { clearLoginFailures, loginBlockedMinutes, recordLoginFailure } from '$lib/server/rate-limit';
 import { codeMatches, finishSetup, setupCode, setupNeeded } from '$lib/server/setup';
 import type { Actions, PageServerLoad } from './$types';
+import { passwordProblem } from '$lib/server/password-policy';
 
 // A new server's first page: the setup code from the log, then the admin login.
 export const load: PageServerLoad = () => {
@@ -30,8 +31,8 @@ export const actions: Actions = {
 		const password = String(form.get('password') ?? '');
 		const errors: Record<string, string> = {};
 		if (!/^[\w.@-]{1,40}$/.test(username)) errors.username = 'Use letters, numbers, dots, dashes or underscores.';
-		if (password.length < 8) errors.password = 'Use at least 8 characters.';
-		else if (password.length > 1024) errors.password = 'Use at most 1024 characters.';
+		const weak = passwordProblem(password, [username]);
+		if (weak) errors.password = weak;
 		else if (password !== String(form.get('confirm') ?? '')) errors.confirm = "The passwords don't match.";
 		// the right code stays in the form while the rest is fixed
 		if (Object.keys(errors).length) return fail(400, { values: { ...values, code: str(form, 'code') }, errors });

@@ -31,6 +31,8 @@ function fail(message) {
 
 const password = process.argv[2] ?? (await askTwice());
 if (!password) fail('The password is empty.');
+// the same minimum the app asks for (#102): characters, not bytes
+if ([...password].length < 12) fail('Use at least 12 characters. A few words with spaces between them works well.');
 const salt = randomBytes(16);
 const hash = scryptSync(password, salt, 64);
 console.log(`scrypt:${salt.toString('base64')}:${hash.toString('base64')}`);

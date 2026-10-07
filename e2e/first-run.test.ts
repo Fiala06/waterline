@@ -66,14 +66,17 @@ test('a new server asks for the setup code from its log, then the admin login', 
 	expect(log).toContain(code);
 	expect(existsSync(`${dir}/keys.json`)).toBe(true);
 
-	await fillSetup(page, 'WRON-GCOD', 'a-good-password');
+	await fillSetup(page, 'WRON-GCOD', 'brine shrimp at dawn');
 	await expect(page.getByText("That isn't the setup code. Copy it from the server's log.")).toBeVisible();
-	// (a short password doesn't get past the browser: the field needs 8 characters)
-	await fillSetup(page, code.toLowerCase().replace('-', ''), 'a-good-password', 'a-typo-password');
+	// (a short password doesn't get past the browser: the field needs 12 characters)
+	// one everybody tries first is refused, with how to choose a better one (#102)
+	await fillSetup(page, code.toLowerCase().replace('-', ''), 'qwerty123456');
+	await expect(page.getByText("That password is one people try first. Choose something only you'd think of, like a few unrelated words.")).toBeVisible();
+	await fillSetup(page, code.toLowerCase().replace('-', ''), 'brine shrimp at dawn', 'a-typo-password');
 	await expect(page.getByText("The passwords don't match.")).toBeVisible();
 	await expect(page.getByLabel('Setup code')).toHaveValue(code.toLowerCase().replace('-', ''));
-	await page.getByLabel('Password', { exact: true }).fill('a-good-password');
-	await page.getByLabel('Password again').fill('a-good-password');
+	await page.getByLabel('Password', { exact: true }).fill('brine shrimp at dawn');
+	await page.getByLabel('Password again').fill('brine shrimp at dawn');
 	await page.getByRole('button', { name: 'Create admin login' }).click();
 
 	// signed in as the admin, on to the account's own setup; the code is gone
@@ -87,7 +90,7 @@ test('a new server asks for the setup code from its log, then the admin login', 
 test('the admin sets up sign-in and the server in the app', async ({ page }) => {
 	await page.goto(at('/signin?local'));
 	await page.getByPlaceholder('Admin username').fill('admin');
-	await page.getByPlaceholder('Password').fill('a-good-password');
+	await page.getByPlaceholder('Password').fill('brine shrimp at dawn');
 	await page.getByRole('button', { name: 'Local admin login' }).click();
 	await page.getByRole('button', { name: 'Continue to first tank' }).click();
 	await page.getByLabel('Tank name').fill('Riverbed 40');
@@ -127,8 +130,8 @@ test('the admin sets up sign-in and the server in the app', async ({ page }) => 
 	await expect(status).toContainText('✓ Sign-in settings saved');
 
 	// the local admin's password, changed
-	await page.getByLabel('New password').fill('a-newer-password');
-	await page.getByLabel('Password again').fill('a-newer-password');
+	await page.getByLabel('New password').fill('kelp forest by noon');
+	await page.getByLabel('Password again').fill('kelp forest by noon');
 	await page.locator('form', { has: page.getByLabel('New password') }).getByRole('button', { name: 'Save' }).click();
 	await expect(status).toContainText('✓ Local admin login saved');
 
@@ -153,11 +156,11 @@ test('the admin sets up sign-in and the server in the app', async ({ page }) => 
 	await page.goto(at('/signin?local'));
 	await expect(page.getByRole('button', { name: 'Sign in with Google' })).toBeVisible();
 	await page.getByPlaceholder('Admin username').fill('admin');
-	await page.getByPlaceholder('Password').fill('a-good-password');
+	await page.getByPlaceholder('Password').fill('brine shrimp at dawn');
 	await page.getByRole('button', { name: 'Local admin login' }).click();
 	await expect(page.getByRole('alert')).toContainText('Wrong username or password.');
 	await page.getByPlaceholder('Admin username').fill('admin');
-	await page.getByPlaceholder('Password').fill('a-newer-password');
+	await page.getByPlaceholder('Password').fill('kelp forest by noon');
 	await page.getByRole('button', { name: 'Local admin login' }).click();
 	await expect(page).toHaveURL(at('/'));
 	// the same account as before the admin's Google account was set, tank and all

@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **A stronger admin password:** Setting the local admin's password on [Server settings](/settings/server) or at first run now needs at least 12 characters and refuses ones people try first, like a keyboard run or the username with a few digits. A few unrelated words with spaces works well; a password already set keeps working.
+
 - **Sensor readings stored together:** A sensor's batch of readings is now stored in one go, so it's quicker and two batches arriving at once can never both store a reading for the same minute.
 
 - **No stale pages after an update:** Pages Waterline keeps for offline use now belong to the version that made them, so after an update the app never opens on an old version's page; the old copies are cleared when the new version starts.
