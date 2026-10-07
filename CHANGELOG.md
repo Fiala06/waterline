@@ -11,6 +11,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Checked on iPhone and Firefox too:** Every release is now tested on an iPhone's Safari and on Firefox as well as Chrome and Android: signing in, logging a test, Quick add, photos, the charts, the date picker and the public page.
 - **Clearer links in Server settings:** The FishBase and license links in [Server settings](/settings/server) are now underlined, so they stand out from the text around them without relying on colour. Every release is now checked for accessibility problems on a phone and a computer, in light and dark.
 - **Photos and receipts saved safely:** Saving photos, receipts and profile pictures no longer holds up other people's pages while the files are written, and a save that fails part-way leaves nothing half done: the photos all go in or none do, and a replaced receipt is kept until its new one is in place. Removing someone from [People](/settings/server/people) now also clears their receipts and profile pictures from the server.
 - **Photos found faster:** A tank's [Photos](/photos), its Timeline and the photos on History's entries are now looked up directly, so they stay quick as a tank collects years of pictures.

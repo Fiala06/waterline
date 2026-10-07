@@ -61,12 +61,38 @@ jobs:
 
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npx playwright test --shard=${{ matrix.shard }}/3
+      - run: npx playwright test --project=desktop --project=phone --shard=${{ matrix.shard }}/3
 
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report-${{ matrix.shard }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+
+  # The essentials on an iPhone and desktop Safari (WebKit) and Firefox (#104);
+  # the full suite above is Chromium's.
+  browsers:
+    name: Smoke tests (iPhone, Safari, Firefox)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npx playwright install --with-deps webkit firefox
+      - run: npm run test:e2e:browsers
+
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report-browsers
           path: |
             playwright-report/
             test-results/
@@ -145,7 +171,7 @@ jobs:
   # from the build's cache) is pushed to ghcr.io.
   publish:
     name: Publish image
-    needs: [check, e2e, docker]
+    needs: [check, e2e, browsers, docker]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.docker.outputs.new == 'true'
     runs-on: ubuntu-latest
     permissions:
