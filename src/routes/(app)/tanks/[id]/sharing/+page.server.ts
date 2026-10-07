@@ -9,7 +9,7 @@ import { createInvite, validEmail } from '$lib/server/invites';
 import { logger } from '$lib/server/log';
 import { emailConfigured, getServerSettings, MailError, sendMail } from '$lib/server/mail';
 import { shareEmail } from '$lib/server/mail/templates';
-import { getMember, inviteMember, listMembers, MEMBER_INVITE_DAYS, removeMember, resendMember, restoreMember, setMemberRole } from '$lib/server/members';
+import { getMember, hasAccess, inviteMember, listMembers, MEMBER_INVITE_DAYS, removeMember, resendMember, restoreMember, setMemberRole } from '$lib/server/members';
 import { signupRules } from '$lib/server/sign-in';
 import { getTank, updateTank } from '$lib/server/tanks';
 import { getUser, isEmailAllowed } from '$lib/server/users';
@@ -73,7 +73,7 @@ export const actions: Actions = {
 		const role = parseRole(str(form, 'role'));
 		if (!validEmail(email)) return fail(400, { inviteError: 'Enter an email address.', email, role });
 		if (email === user.email) return fail(400, { inviteError: "That's you.", email, role });
-		if (listMembers(tank.id).some((m) => m.member.email === email && m.state === 'accepted')) return fail(400, { inviteError: `${email} already has access.`, email, role });
+		if (hasAccess(tank.id, email)) return fail(400, { inviteError: `${email} already has access.`, email, role });
 		const { member, token } = inviteMember(tank, email, role, user.id);
 		const origin = (env.ORIGIN || url.origin).replace(/\/+$/, '');
 		const inviter = user.displayName || user.email;

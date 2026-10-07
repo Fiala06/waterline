@@ -6,7 +6,7 @@
 // fills in the member's user id, and from then the tank is in their list.
 import { error } from '@sveltejs/kit';
 import { createHash, randomBytes } from 'node:crypto';
-import { and, desc, eq, inArray, isNotNull, isNull, or, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql, type SQL } from 'drizzle-orm';
 import { db } from './db';
 import { tankMembers, tanks, users, type Tank, type TankMember, type TankRole } from './db/schema';
 
@@ -27,15 +27,36 @@ const memberTankIds = (userId: string) =>
 /** A where clause: tanks this person owns or is a member of. Goes where `eq(tanks.userId, userId)` used to. */
 export const visibleTo = (userId: string): SQL => or(eq(tanks.userId, userId), inArray(tanks.id, memberTankIds(userId)))!;
 
+/**
+ * A person's one active membership of a tank (#117: the tank_members_active
+ * index allows no second; were there two, the higher role, then the first accepted).
+ */
+function activeMembership(tankId: string, userId: string): TankMember | undefined {
+	return db
+		.select()
+		.from(tankMembers)
+		.where(and(eq(tankMembers.tankId, tankId), eq(tankMembers.userId, userId), isNotNull(tankMembers.acceptedAt), isNull(tankMembers.revokedAt)))
+		.orderBy(sql`case ${tankMembers.role} when 'log' then 0 else 1 end`, asc(tankMembers.acceptedAt), asc(tankMembers.id))
+		.limit(1)
+		.get();
+}
+
 /** This person's role on a tank, or null when it isn't theirs to see. */
 export function tankRole(userId: string, tank: Pick<Tank, 'id' | 'userId'>): Role | null {
 	if (tank.userId === userId) return 'owner';
-	const m = db
-		.select({ role: tankMembers.role })
+	return activeMembership(tank.id, userId)?.role ?? null;
+}
+
+/** Whether this address (or the account behind it) already has access to the tank. */
+export function hasAccess(tankId: string, email: string): boolean {
+	const e = norm(email);
+	const user = db.select({ id: users.id }).from(users).where(eq(users.email, e)).get();
+	if (user && activeMembership(tankId, user.id)) return true;
+	return !!db
+		.select({ id: tankMembers.id })
 		.from(tankMembers)
-		.where(and(eq(tankMembers.tankId, tank.id), eq(tankMembers.userId, userId), isNotNull(tankMembers.acceptedAt), isNull(tankMembers.revokedAt)))
+		.where(and(eq(tankMembers.tankId, tankId), eq(tankMembers.email, e), isNotNull(tankMembers.acceptedAt), isNull(tankMembers.revokedAt)))
 		.get();
-	return m?.role ?? null;
 }
 
 export const roleAllows = (role: Role | null, need: Role) => role != null && RANK[role] >= RANK[need];
@@ -111,6 +132,8 @@ export function inviteMember(tank: Tank, email: string, role: TankRole, invitedB
 	const e = norm(email);
 	const owner = db.select({ email: users.email }).from(users).where(eq(users.id, tank.userId)).get();
 	if (owner && owner.email === e) error(400, "That's the tank's owner.");
+	// one active membership each (#117): their role is changed in the list, not by inviting again
+	if (hasAccess(tank.id, e)) error(400, `${e} already has access.`);
 	db.update(tankMembers).set({ revokedAt: now() }).where(and(eq(tankMembers.tankId, tank.id), eq(tankMembers.email, e), isNull(tankMembers.acceptedAt), isNull(tankMembers.revokedAt))).run();
 	const existing = db.select({ id: users.id }).from(users).where(eq(users.email, e)).get();
 	const token = randomBytes(24).toString('base64url');
@@ -153,7 +176,17 @@ export function acceptMemberInvites(email: string, userId: string): TankMember[]
 		.where(and(eq(tankMembers.email, e), isNull(tankMembers.acceptedAt), isNull(tankMembers.revokedAt)))
 		.all()
 		.filter((m) => m.expiresAt >= at);
-	for (const m of pending) db.update(tankMembers).set({ acceptedAt: at, userId }).where(eq(tankMembers.id, m.id)).run();
+	db.transaction((tx) => {
+		for (const m of pending) {
+			const current = activeMembership(m.tankId, userId);
+			const tank = tx.select({ userId: tanks.userId }).from(tanks).where(eq(tanks.id, m.tankId)).get();
+			if (current || tank?.userId === userId) {
+				// already in (another address of theirs was invited first), or their own tank: one membership, the higher role
+				if (current && RANK[m.role] > RANK[current.role]) tx.update(tankMembers).set({ role: m.role }).where(eq(tankMembers.id, current.id)).run();
+				tx.update(tankMembers).set({ revokedAt: at, userId }).where(eq(tankMembers.id, m.id)).run();
+			} else tx.update(tankMembers).set({ acceptedAt: at, userId }).where(eq(tankMembers.id, m.id)).run();
+		}
+	});
 	return pending;
 }
 
@@ -174,15 +207,34 @@ export function removeMember(tankId: string, id: string): TankMember {
 	return db.update(tankMembers).set({ revokedAt: now() }).where(eq(tankMembers.id, id)).returning().get();
 }
 
-/** Undo of Remove: the same row comes back as it was. */
+/**
+ * Undo of Remove: the same row comes back as it was, unless they've been
+ * invited again since (#117); then that newer access or invitation stands,
+ * and is what's returned.
+ */
 export function restoreMember(tankId: string, id: string): TankMember {
-	getMember(tankId, id);
-	return db.update(tankMembers).set({ revokedAt: null }).where(eq(tankMembers.id, id)).returning().get();
+	const m = getMember(tankId, id);
+	if (!m.revokedAt) return m;
+	return db.transaction((tx) => {
+		const newer = m.acceptedAt
+			? m.userId
+				? activeMembership(tankId, m.userId)
+				: undefined
+			: tx
+					.select()
+					.from(tankMembers)
+					.where(and(eq(tankMembers.tankId, tankId), eq(tankMembers.email, m.email), isNull(tankMembers.revokedAt)))
+					.get();
+		if (newer) return newer;
+		return tx.update(tankMembers).set({ revokedAt: null }).where(eq(tankMembers.id, id)).returning().get();
+	});
 }
 
-/** Resend a pending or expired invite: a fresh link and another 7 days. */
+/** Resend a pending or expired invite: a fresh link and another 7 days. Not for someone who's in, or was removed (#117). */
 export function resendMember(tank: Tank, id: string, invitedBy: string) {
 	const old = getMember(tank.id, id);
+	const state = memberState(old);
+	if (state !== 'pending' && state !== 'expired') error(400, state === 'accepted' ? `${old.email} already has access.` : `Invite ${old.email} again instead.`);
 	return inviteMember(tank, old.email, old.role, invitedBy);
 }
 

@@ -125,7 +125,9 @@ public_page_views tank_id, day, views
 tank_members     id, tank_id, email, user_id? (once accepted), role(log|view), token_hash,
                  invited_by?, created_at, expires_at (7 days), accepted_at?, revoked_at?
                  (people a tank is shared with: "log" logs tests, water changes, dosing, notes,
-                 photos and tasks done; "view" is read-only; only the owner changes setup)
+                 photos and tasks done; "view" is read-only; only the owner changes setup;
+                 one active row (accepted, not revoked) per tank and user_id, unique; removed
+                 and expired rows stay as history)
 photo_shares     id (slug), photo_id, include_note, include_tank, created_at, revoked_at?
 
 ── Data in and out ────────────────────────────────────────────────────────────

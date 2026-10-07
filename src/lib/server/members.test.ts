@@ -82,3 +82,84 @@ describe('sharing a tank (#22)', () => {
 		expect(listTanks(helper.id)).toHaveLength(0);
 	});
 });
+
+describe('one active membership per person and tank (#117)', async () => {
+	const { readFileSync } = await import('node:fs');
+	const { and, eq, isNotNull, isNull } = await import('drizzle-orm');
+	const { db } = await import('./db');
+	const { tankMembers } = await import('./db/schema');
+	const { getMember, resendMember, restoreMember } = await import('./members');
+	const keeper = upsertUser({ email: 'keeper@example.com', name: 'Keeper', googleSub: 'g-keeper' });
+	const friend = upsertUser({ email: 'friend@example.com', name: 'Friend', googleSub: 'g-friend' });
+	const t2 = createTank(keeper, { name: 'Reef 90', type: 'reef', nominalVolumeL: 340 });
+	const active = (userId: string) =>
+		db
+			.select()
+			.from(tankMembers)
+			.where(and(eq(tankMembers.tankId, t2.id), eq(tankMembers.userId, userId), isNotNull(tankMembers.acceptedAt), isNull(tankMembers.revokedAt)))
+			.all();
+
+	it('inviting or resending someone who is in does not add a second membership', () => {
+		const { member } = inviteMember(t2, 'friend@example.com', 'view', keeper.id);
+		expect(() => inviteMember(t2, 'FRIEND@example.com', 'log', keeper.id)).toThrow();
+		expect(() => resendMember(t2, member.id, keeper.id)).toThrow();
+		expect(active(friend.id)).toHaveLength(1);
+		expect(tankRole(friend.id, t2)).toBe('view');
+	});
+
+	it('a removed member can’t be resent; Undo after inviting again keeps the newer access', () => {
+		const [m] = active(friend.id);
+		removeMember(t2.id, m.id);
+		expect(() => resendMember(t2, m.id, keeper.id)).toThrow();
+		const { member: again } = inviteMember(t2, 'friend@example.com', 'log', keeper.id);
+		// Undo of the old Remove: the new membership stands, no second row comes back
+		expect(restoreMember(t2.id, m.id).id).toBe(again.id);
+		expect(getMember(t2.id, m.id).revokedAt).toBeTruthy();
+		expect(active(friend.id).map((r) => r.id)).toEqual([again.id]);
+		expect(tankRole(friend.id, t2)).toBe('log');
+		// Undo with nothing newer still brings the same row back
+		removeMember(t2.id, again.id);
+		expect(restoreMember(t2.id, again.id).revokedAt).toBeNull();
+		expect(active(friend.id)).toHaveLength(1);
+	});
+
+	it('Undo of a cancelled invitation gives way to a newer one for the same address', () => {
+		const { member: first } = inviteMember(t2, 'later@example.com', 'view', keeper.id);
+		removeMember(t2.id, first.id);
+		const { member: second } = inviteMember(t2, 'later@example.com', 'log', keeper.id);
+		expect(restoreMember(t2.id, first.id).id).toBe(second.id);
+		expect(listMembers(t2.id).filter((r) => r.member.email === 'later@example.com')).toHaveLength(1);
+	});
+
+	it('accepting an invitation to a tank they are already in keeps one membership, with the higher role', () => {
+		// invited at an old address of theirs before it was theirs, then the account got the tank another way
+		const pal = upsertUser({ email: 'pal@example.com', name: 'Pal', googleSub: 'g-pal' });
+		inviteMember(t2, 'pal@example.com', 'view', keeper.id);
+		const { token } = inviteMember(t2, 'pal.old@example.com', 'log', keeper.id);
+		expect(token).toBeTruthy();
+		acceptMemberInvites('pal.old@example.com', pal.id);
+		expect(active(pal.id)).toHaveLength(1);
+		expect(tankRole(pal.id, t2)).toBe('log');
+	});
+
+	it('the database refuses a second active membership', () => {
+		const [m] = active(friend.id);
+		expect(() => db.insert(tankMembers).values({ ...m, id: undefined, tokenHash: 'dup' }).run()).toThrow(/UNIQUE/);
+	});
+
+	it('the migration settles duplicates made before: the first stays, with the higher role', () => {
+		db.$client.exec('drop index tank_members_active');
+		const [m] = active(friend.id);
+		const later = (s: number) => new Date(Date.parse(m.acceptedAt!) + s * 1000).toISOString();
+		db.update(tankMembers).set({ role: 'view' }).where(eq(tankMembers.id, m.id)).run();
+		db.insert(tankMembers).values({ ...m, id: undefined, role: 'log', tokenHash: 'dup1', acceptedAt: later(5) }).run();
+		db.insert(tankMembers).values({ ...m, id: undefined, role: 'view', tokenHash: 'dup2', acceptedAt: later(9) }).run();
+		expect(active(friend.id)).toHaveLength(3);
+		// whatever the rows, the role is decided the same way: the higher one
+		expect(tankRole(friend.id, t2)).toBe('log');
+		const sql = readFileSync(new URL('../../../drizzle/0043_one_active_membership.sql', import.meta.url), 'utf8');
+		for (const stmt of sql.split('--> statement-breakpoint')) db.$client.exec(stmt);
+		expect(active(friend.id).map((r) => ({ id: r.id, role: r.role }))).toEqual([{ id: m.id, role: 'log' }]);
+		expect(tankRole(friend.id, t2)).toBe('log');
+	});
+});

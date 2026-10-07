@@ -185,7 +185,15 @@ export const tankMembers = sqliteTable(
 		acceptedAt: text('accepted_at'),
 		revokedAt: text('revoked_at')
 	},
-	(t) => [index('tank_members_tank').on(t.tankId), index('tank_members_user').on(t.userId), uniqueIndex('tank_members_token').on(t.tokenHash)]
+	(t) => [
+		index('tank_members_tank').on(t.tankId),
+		index('tank_members_user').on(t.userId),
+		uniqueIndex('tank_members_token').on(t.tokenHash),
+		// one active membership per person and tank (#117); removed and expired rows stay as history
+		uniqueIndex('tank_members_active')
+			.on(t.tankId, t.userId)
+			.where(sql`${t.acceptedAt} is not null and ${t.revokedAt} is null`)
+	]
 );
 export type TankMember = typeof tankMembers.$inferSelect;
 
