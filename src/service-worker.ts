@@ -14,6 +14,8 @@ const SHELL = `shell-${version}`;
 // never answers with the last version's HTML or __data.json
 const PAGES = `pages-${version}`;
 const MEDIA = 'media-v1';
+// whose pages and photos are kept (#108)
+const OWNER = 'owner-v1';
 const ASSETS = [...build, ...files];
 
 // Never cache: sign-in, email links, downloads, test hooks.
@@ -49,13 +51,24 @@ sw.addEventListener('activate', (event) => {
 	);
 });
 
-// The page asks us to forget cached pages on sign-out.
+/** Forget everything kept for the signed-in person: their pages, photos, and whose they were. */
+const clearUserCaches = () =>
+	caches.keys().then((keys) => Promise.all(keys.filter((k) => k.startsWith('pages-') || k === MEDIA || k === OWNER).map((k) => caches.delete(k))));
+
+// Whose pages these are (#108): the app says who's signed in on each load, and
+// if it's someone else, the last person's pages and photos go before any are shown.
+async function setOwner(id: string) {
+	const cache = await caches.open(OWNER);
+	const was = await (await cache.match('/owner'))?.text();
+	if (was === id) return;
+	if (was !== undefined) await clearUserCaches();
+	await (await caches.open(OWNER)).put('/owner', new Response(id));
+}
+
 sw.addEventListener('message', (event) => {
-	if (event.data === 'clear-user-cache') {
-		event.waitUntil(
-			caches.keys().then((keys) => Promise.all(keys.filter((k) => k.startsWith('pages-') || k === MEDIA).map((k) => caches.delete(k))))
-		);
-	}
+	// sign-out, or Remove offline data in Settings
+	if (event.data === 'clear-user-cache') event.waitUntil(clearUserCaches());
+	else if (event.data?.type === 'user' && typeof event.data.id === 'string') event.waitUntil(setOwner(event.data.id));
 });
 
 sw.addEventListener('fetch', (event) => {
@@ -92,8 +105,10 @@ async function networkFirst(req: Request) {
 	const cache = await caches.open(PAGES);
 	try {
 		const res = await fetch(req);
+		// Signed out, or the session was revoked (#108): what's kept for them goes on the first contact
+		if (res.redirected && new URL(res.url).pathname.startsWith('/signin')) await clearUserCaches();
 		// Only keep real pages, not redirects to sign-in or errors.
-		if (res.ok && !res.redirected && res.type === 'basic') cache.put(req, res.clone());
+		else if (res.ok && !res.redirected && res.type === 'basic') cache.put(req, res.clone());
 		return res;
 	} catch {
 		const hit = await cache.match(req, { ignoreVary: true });

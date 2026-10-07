@@ -39,3 +39,60 @@ test('logging offline saves on the device and syncs later', async ({ page, conte
 	// Exactly one row: replays can't duplicate it (clientId dedupe)
 	await expect(page.locator('a.row', { hasText: 'Water test · 2 readings' })).toHaveCount(1);
 });
+
+// #108: what's kept on the device for offline use belongs to one person, and can be removed.
+test('offline data stays with one person, and can be removed from the device', async ({ page, context }, info) => {
+	await newKeeperWithTank(page, `forget-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await page.evaluate(() => navigator.serviceWorker.ready);
+	await open(page, `/?tank=${tankId}`);
+	await open(page, `/entries/test/new?tank=${tankId}`);
+	const pages = () => page.evaluate(async () => (await Promise.all((await caches.keys()).filter((k) => k.startsWith('pages-')).map(async (k) => (await (await caches.open(k)).keys()).length))).reduce((a, b) => a + b, 0));
+	await expect.poll(pages).toBeGreaterThan(0);
+
+	// a queued entry syncs only as the person who logged it
+	const origin = new URL(page.url()).origin;
+	const foreign = await page.request.post(`/entries/test/new?tank=${tankId}`, {
+		headers: { origin, 'x-sveltekit-action': 'true', 'x-waterline-sync': '1', 'x-waterline-user': 'someone-else' },
+		multipart: { date: '2026-01-01', time: '09:00' }
+	});
+	expect(foreign.status()).toBe(409);
+
+	// someone else signed in on this device: the last person's pages go
+	await page.evaluate(async () => (await navigator.serviceWorker.ready).active!.postMessage({ type: 'user', id: 'someone-else' }));
+	await expect.poll(pages).toBe(0);
+
+	// Settings › Data: Remove, asking first while an entry waits to sync
+	// (opened again online: the switch above took the last copies)
+	await open(page, '/settings');
+	await open(page, `/?tank=${tankId}`);
+	await open(page, `/entries/test/new?tank=${tankId}`);
+	await context.setOffline(true);
+	await page.getByLabel('pH', { exact: true }).fill('7.1');
+	await page.getByRole('button', { name: 'Save 1 reading' }).click();
+	await expect(page.getByText('Offline · 1 entry waiting')).toBeVisible();
+	await page.goto('/settings');
+	await expect(page.getByText('Offline data on this device')).toBeVisible();
+	await page.getByRole('button', { name: 'Remove offline data' }).click();
+	await expect(page.getByText("▲ 1 entry hasn't synced yet and will be lost.")).toBeVisible();
+	await page.getByRole('button', { name: 'Remove anyway offline data' }).click();
+	await expect(page.getByRole('status').filter({ hasText: 'Offline data removed' })).toBeVisible();
+	expect(await pages()).toBe(0);
+	await context.setOffline(false);
+	await expect(page.getByText(/entry waiting/)).toHaveCount(0);
+});
+
+test('a session ended elsewhere clears the pages kept for it on the next visit', async ({ page, context }, info) => {
+	await newKeeperWithTank(page, `revoked-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await page.evaluate(() => navigator.serviceWorker.ready);
+	await open(page, `/?tank=${tankId}`);
+	await open(page, '/history');
+	const pages = () => page.evaluate(async () => (await Promise.all((await caches.keys()).filter((k) => k.startsWith('pages-')).map(async (k) => (await (await caches.open(k)).keys()).length))).reduce((a, b) => a + b, 0));
+	await expect.poll(pages).toBeGreaterThan(0);
+	// the server no longer knows this session
+	await context.clearCookies();
+	await page.goto('/history');
+	await expect(page).toHaveURL(/\/signin/);
+	await expect.poll(pages).toBe(0);
+});

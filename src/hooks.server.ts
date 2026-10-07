@@ -1,4 +1,4 @@
-import { redirect, type Handle, type HandleServerError, type ServerInit } from '@sveltejs/kit';
+import { json, redirect, type Handle, type HandleServerError, type ServerInit } from '@sveltejs/kit';
 import { randomBytes } from 'node:crypto';
 import { building } from '$app/environment';
 import { startScheduler } from '$lib/server/scheduler';
@@ -154,6 +154,12 @@ const appHandle: Handle = async ({ event, resolve }) => {
 	}
 	if (user && !user.setupDone && !path.startsWith('/setup') && !isPublic(path)) {
 		redirect(303, '/setup');
+	}
+	// An entry queued offline syncs only as the person who logged it (#108): if this device is now
+	// signed in as someone else, it waits for them rather than being saved to the wrong account
+	const queuedBy = event.request.headers.get('x-waterline-user');
+	if (queuedBy && event.request.headers.get('x-waterline-sync') === '1' && queuedBy !== user?.id) {
+		return json({ type: 'error', error: { message: 'Logged by another account' } }, { status: 409 });
 	}
 	if (user && path === '/signin') redirect(303, '/');
 

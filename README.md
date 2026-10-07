@@ -104,6 +104,8 @@ GitHub Actions also publishes ready-built images (linux/amd64), so you don't hav
 
 To keep it on your network without a domain, set `ORIGIN` to the plain address, e.g. `http://192.168.1.50:3000`, and sign in with the local admin login you create on first start. Google won't accept a plain-HTTP address, and browsers turn off offline logging and the install prompt; everything else works.
 
+**What stays on a phone or computer.** So it works at the tank without signal, the app keeps the pages and photos you've opened, and entries logged offline until they sync, on that device. It's one person's at a time: signing out clears the pages and photos, another account signing in on the device replaces them, and a session signed out from Server settings › People (or no longer allowed) clears them the next time the device reaches the server. An entry waiting to sync is saved only for the person who logged it. *Settings › Data › Offline data on this device › Remove* clears all of it, entries still waiting to sync included. A device that stays offline can't hear about a sign-out until it's back online, so on a shared or lost device, use Remove (or sign out) when you can.
+
 Everything else is set in the app. These are the environment variables left, for the few things the server needs before it starts, or that you may want outside the app:
 
 | Variable | Needed | What it does |

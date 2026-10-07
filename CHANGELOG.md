@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Offline data on this device:** [Settings › Data](/settings#data) now says what Waterline keeps on your phone or computer so it works without signal, and Remove clears it, warning first if entries are still waiting to sync. What's kept belongs to one person: another account signing in on the device, or a session signed out from the server, clears the pages and photos, and an entry logged offline only ever syncs to the account that logged it.
+
 ## 1.12.13 · 2026-10-07
 
 - **Shared tanks keep to each person's role:** On a tank shared with you, viewing no longer lets you log a trim on [Plants](/tanks/current/plants), and only the owner can move or change the tank's expenses on [Spending](/tanks/current/spending) or tick off its [Wish list](/tanks/current/wishlist) with Add to tank.

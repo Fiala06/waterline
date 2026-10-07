@@ -218,6 +218,8 @@
 		listenForInstall();
 		ui.online = navigator.onLine;
 		ui.userId = data.user.id;
+		// the service worker keeps pages for one person at a time (#108)
+		navigator.serviceWorker?.ready.then((r) => r.active?.postMessage({ type: 'user', id: data.user.id })).catch(() => {});
 		loadNav();
 		try {
 			const t = sessionStorage.getItem('wl_toast');
