@@ -102,10 +102,9 @@
 	const calm = $derived(!cards.some((c) => c.level === 'bad') && !overdue.length && !(wcDue && (wcDue.days > wcDue.goal)));
 	const allClear = $derived(hasReadings && !attention.length && !wcDue && !overdue.length);
 
-	// Trends: parameters with at least one reading in the window; pick one.
-	const trendable = $derived(
-		(data.params ?? []).filter((p) => (data.trends?.find((t) => t.parameterId === p.id)?.points.length ?? 0) > 0)
-	);
+	// Trends: parameters with a reading, or a sensor's samples (#130), in the window; pick one.
+	const trendOf = (id: string) => data.trends?.find((t) => t.parameterId === id);
+	const trendable = $derived((data.params ?? []).filter((p) => (trendOf(p.id)?.points.length ?? 0) > 0 || (trendOf(p.id)?.sensor.length ?? 0) >= 2));
 	let selected = $state<string | null>(null);
 	const chosen = $derived(
 		trendable.find((p) => p.id === selected) ??
@@ -114,12 +113,13 @@
 	);
 	const chosenPoints = $derived(
 		chosen
-			? (data.trends?.find((t) => t.parameterId === chosen.id)?.points ?? []).map((pt) => ({
+			? (trendOf(chosen.id)?.points ?? []).map((pt) => ({
 					t: pt.t,
 					v: displayValue(chosen, pt.value, prefs)
 				}))
 			: []
 	);
+	const chosenSensor = $derived(chosen ? (trendOf(chosen.id)?.sensor ?? []) : []);
 </script>
 
 <svelte:head><title>{data.tank ? `${data.tank.name} · Waterline` : 'Waterline'}</title></svelte:head>
@@ -298,10 +298,11 @@
 						{/each}
 					</div>
 				{/if}
-				{#if chosen && chosenPoints.length >= 2}
+				{#if chosen && (chosenPoints.length >= 2 || chosenSensor.length >= 2)}
 					<div class="chart-box"><div class="chart-fill"><TrendChart
 						fit
 						points={chosenPoints}
+						sensor={chosenSensor}
 						band={{
 							min: chosen.min == null ? null : displayValue(chosen, chosen.min, prefs),
 							max: chosen.max == null ? null : displayValue(chosen, chosen.max, prefs)
@@ -321,6 +322,7 @@
 							<span><i class="lg-band"></i>Target {fmtRange(chosen, prefs)}</span>
 							<span><i class="lg-zone"></i>Out of range</span>
 						{/if}
+						{#if chosenSensor.length >= 2}<span><i class="lg-sensor"></i>Sensor</span>{/if}
 						{#if data.markers.length}<span><i class="lg-marker"></i>Water change</span>{/if}
 					</div>
 				{:else}
@@ -636,6 +638,12 @@
 		width: 10px;
 		height: 10px;
 		background: var(--ink);
+	}
+	/* a sensor's thin line (#19) */
+	.lg-sensor {
+		width: 16px;
+		height: 0;
+		border-top: 1.5px solid var(--neutral-600);
 	}
 	/* Recent: a small icon, the title and its line, each row a link */
 	.feed {

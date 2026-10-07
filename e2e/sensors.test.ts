@@ -105,6 +105,12 @@ test('a sensor charts without a hand-logged test', async ({ page }, info) => {
 	await expect(page.locator('.stat').filter({ hasText: 'Latest' })).toHaveCount(0);
 	await expect(page.getByText('Charts appear after your second test.')).toHaveCount(0);
 
+	// the dashboard's trend draws from the sensor too
+	await open(page, `/?tank=${tankId}`);
+	await expect(page.locator('svg polyline.sensor')).toHaveCount(1);
+	await expect(page.locator('.legend')).toContainText('Sensor');
+	await expect(page.getByText('Charts appear after your second test.')).toHaveCount(0);
+
 	// samples outside the range are the range's doing, not a missing test
 	await open(page, `/charts?tank=${tankId}&r=2w`);
 	await expect(page.getByText('Fewer than 2 readings in this range')).toBeVisible();

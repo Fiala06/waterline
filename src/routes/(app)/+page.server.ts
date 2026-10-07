@@ -2,7 +2,7 @@ import { and, count, desc, eq, inArray, lte, sql } from "drizzle-orm";
 import { redirect } from "@sveltejs/kit";
 import { cyclingStage, staleAfter, type CycleTest } from "$lib/status";
 import { lightingText } from "$lib/equipment";
-import { latestSamples } from "$lib/server/sensors";
+import { displaySamples, latestSamples, sampleSeries } from "$lib/server/sensors";
 import { fmtValue, paramUnit, statusOf } from "$lib/params";
 import { setFlash } from "$lib/server/flash";
 import {
@@ -92,12 +92,15 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
   }
 
   const since = new Date(Date.now() - TREND_DAYS * 86_400_000).toISOString();
+  // the latest reading from a sensor per parameter (#19), and its line under the trend (#130)
+  const live = latestSamples(tank.id);
   const trends = params.map((p) => ({
     parameterId: p.id,
     points: series(tank.id, p.id, since).map((r) => ({
       t: Date.parse(r.takenAt),
       value: r.value,
     })),
+    sensor: live.has(p.id) ? displaySamples(sampleSeries(tank.id, p.id, since), p, user) : [],
   }));
   const markers = eventsSince(tank.id, ["water_change"], since).map((e) => ({
     t: Date.parse(e.occurredAt),
@@ -279,9 +282,9 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
     },
     params,
     latest: Object.fromEntries(latest),
-    // the latest reading from a sensor per parameter (#19): "Live 25.4 °C · 2 min ago"
+    // "Live 25.4 °C · 2 min ago"
     live: Object.fromEntries(
-      [...latestSamples(tank.id)].map(([id, s]) => {
+      [...live].map(([id, s]) => {
         const p = params.find((x) => x.id === id);
         return [
           id,
