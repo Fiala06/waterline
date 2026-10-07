@@ -85,7 +85,7 @@ export const actions: Actions = {
 		if (tooBig) return fail(400, { error: tooBig });
 		const prepared = await preparePhotos(files);
 		if ('error' in prepared) return fail(400, { error: prepared.error });
-		const [photo] = storePhotos(params.id, datePhotos(prepared, locals.user!.timeZone), { takenAt: new Date().toISOString() });
+		const [photo] = await storePhotos(params.id, datePhotos(prepared, locals.user!.timeZone), { takenAt: new Date().toISOString() });
 		updatePlant(locals.user!.id, id, { photoId: photo.id });
 		setFlash(cookies, '✓ Photo saved');
 		redirect(303, `/tanks/${params.id}/plants`);

@@ -59,8 +59,8 @@ export const actions: Actions = {
 		if ('error' in prepared) return fail(400, { errors, values, error: prepared.error });
 		// keep fields the form doesn't edit (e.g. recheck_at)
 		updateEvent(user.id, e.id, { occurredAt: when.at, note: optStr(form, 'note'), data: { ...e.data, ...data } });
-		deleteEntryPhotos(user.id, form.getAll('removePhoto').map(String), { eventId: e.id });
-		storePhotos(e.tankId, prepared, { eventId: e.id, takenAt: when.at });
+		await deleteEntryPhotos(user.id, form.getAll('removePhoto').map(String), { eventId: e.id });
+		await storePhotos(e.tankId, prepared, { eventId: e.id, takenAt: when.at });
 		setFlash(cookies, '✓ Changes saved');
 		redirect(303, `/entries/event/${e.id}`);
 	}

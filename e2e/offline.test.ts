@@ -71,6 +71,8 @@ test('offline data stays with one person, and can be removed from the device', a
 	await page.getByLabel('pH', { exact: true }).fill('7.1');
 	await page.getByRole('button', { name: 'Save 1 reading' }).click();
 	await expect(page.getByText('Offline · 1 entry waiting')).toBeVisible();
+	// the app goes on to the dashboard after saving; let it get there first
+	await page.waitForURL((u) => u.pathname === '/');
 	await page.goto('/settings');
 	await expect(page.getByText('Offline data on this device')).toBeVisible();
 	await page.getByRole('button', { name: 'Remove offline data' }).click();

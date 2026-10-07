@@ -94,7 +94,7 @@ export const actions: Actions = {
 		const prepared = cover instanceof File && cover.size ? await preparePhotos([cover]) : [];
 		if ('error' in prepared) return fail(400, { errors: { cover: prepared.error } });
 		updateTank(user.id, params.id, values);
-		const [photo] = storePhotos(params.id, datePhotos(prepared, user.timeZone), { takenAt: new Date().toISOString() });
+		const [photo] = await storePhotos(params.id, datePhotos(prepared, user.timeZone), { takenAt: new Date().toISOString() });
 		if (photo) setCover(user.id, photo.id);
 		// or one of the tank's own photos, picked under Choose from photos (an upload wins)
 		const chosen = String(form.get('coverPhotoId') ?? '');

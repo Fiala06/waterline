@@ -87,6 +87,8 @@ test('a daily feeding routine: done from the dashboard, the feeding is in Histor
 	await open(page, `${entry}/edit`);
 	await page.getByLabel('Amount').fill('3');
 	await page.getByRole('button', { name: 'Save changes' }).click();
+	// saved once it leaves the edit page; History opened sooner can beat the save
+	await page.waitForURL((u) => !u.pathname.endsWith('/edit'));
 	await open(page, `/history?tank=${tankId}&cat=feeding&range=all`);
 	await expect(page.getByRole('link', { name: 'Fed 3 pinches of Micro pellets' })).toBeVisible();
 });

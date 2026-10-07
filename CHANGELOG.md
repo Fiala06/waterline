@@ -11,6 +11,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Photos and receipts saved safely:** Saving photos, receipts and profile pictures no longer holds up other people's pages while the files are written, and a save that fails part-way leaves nothing half done: the photos all go in or none do, and a replaced receipt is kept until its new one is in place. Removing someone from [People](/settings/server/people) now also clears their receipts and profile pictures from the server.
 - **Photos found faster:** A tank's [Photos](/photos), its Timeline and the photos on History's entries are now looked up directly, so they stay quick as a tank collects years of pictures.
 - **Sensor charts keep the spikes:** On [Charts](/charts), a sensor's line now has a faint band showing the lowest and highest readings behind each point, so a brief spike still shows on a 90-day or yearly chart instead of being averaged away. Long ranges also open many times faster.
 - **Quicker with many tanks:** Every page now gathers the sidebar's tanks, their alerts and your role on each in the same few steps however many tanks you have, so a long [tank list](/tanks) no longer slows each page down.

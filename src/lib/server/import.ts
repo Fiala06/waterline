@@ -384,8 +384,10 @@ export function undoImport(userId: string, importId: string) {
 			removed = db.delete(plants).where(eq(plants.importId, imp.id)).run().changes;
 		} else if (imp.kind === 'expenses') {
 			// imported expenses have no receipt yet; one added since goes with it
-			for (const x of db.select().from(expenses).where(eq(expenses.importId, imp.id)).all()) if (x.receiptPath) deleteExpenseReceipt(x.receiptPath);
+			const receipts = db.select({ path: expenses.receiptPath }).from(expenses).where(eq(expenses.importId, imp.id)).all();
 			removed = db.delete(expenses).where(eq(expenses.importId, imp.id)).run().changes;
+			// the rows first, then their files (#118), without holding up the undo
+			for (const { path } of receipts) if (path) void deleteExpenseReceipt(path);
 		} else if (imp.kind === 'equipment') {
 			const ids = db.select({ id: equipment.id }).from(equipment).where(eq(equipment.importId, imp.id)).all().map((r) => r.id);
 			if (ids.length) db.delete(tasks).where(inArray(tasks.equipmentId, ids)).run();

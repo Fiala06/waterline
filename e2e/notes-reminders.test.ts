@@ -21,7 +21,8 @@ test("a tank's notes: pinned, then the latest dated ones, added from its page", 
 	// the tank's notes field is the pinned note
 	await open(page, `/tanks/${tankId}/settings`);
 	await page.locator('textarea#notes').fill('Aquasoil, CO₂ on a timer');
-	await page.getByRole('button', { name: 'Save changes' }).click();
+	// saved once its post is answered; the tank's page opened sooner can beat the save
+	await Promise.all([page.waitForResponse((r) => r.request().method() === 'POST'), page.getByRole('button', { name: 'Save changes' }).click()]);
 	await open(page, `/tanks/${tankId}`);
 	await expect(notes.locator('.pinned')).toContainText('Aquasoil, CO₂ on a timer');
 });

@@ -49,8 +49,8 @@ export const actions: Actions = {
 		const prepared = await preparePhotos(photoFiles(form));
 		if ('error' in prepared) return fail(400, { errors, values, error: prepared.error });
 		updateTest(user.id, params.id, { takenAt: when.at, note: optStr(form, 'note'), readings });
-		deleteEntryPhotos(user.id, form.getAll('removePhoto').map(String), { testId: test.id });
-		storePhotos(test.tankId, prepared, { testId: test.id, takenAt: when.at });
+		await deleteEntryPhotos(user.id, form.getAll('removePhoto').map(String), { testId: test.id });
+		await storePhotos(test.tankId, prepared, { testId: test.id, takenAt: when.at });
 		setFlash(cookies, '✓ Changes saved');
 		redirect(303, `/entries/test/${params.id}`);
 	}

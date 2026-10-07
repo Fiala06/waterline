@@ -3,13 +3,14 @@
 // DATA_DIR/receipts and shown only to its owner.
 import { error } from '@sveltejs/kit';
 import { and, desc, eq, inArray } from 'drizzle-orm';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import sharp from 'sharp';
 import { addDays } from '$lib/time';
 import { db } from './db';
 import { requireRoleOn, visibleTo } from './members';
 import { expenses, tanks, type Expense } from './db/schema';
+import { removeFiles, writeThen } from './files';
 import { dataDir } from './instance';
 import { getTank } from './tanks';
 
@@ -53,27 +54,32 @@ export function addExpense(userId: string, tankId: string, input: ExpenseInput, 
 }
 
 /** An expense's details; moving it to another of the keeper's tanks keeps its receipt. */
-export function updateExpense(userId: string, id: string, input: ExpenseInput & { tankId: string }) {
+export async function updateExpense(userId: string, id: string, input: ExpenseInput & { tankId: string }) {
 	const before = getExpense(userId, id);
 	// the owner's, on the tank it's on and the one it goes to (#106)
 	requireRoleOn(userId, before.tankId, 'owner');
 	getTank(userId, input.tankId, 'owner');
-	let receiptPath = before.receiptPath;
-	if (receiptPath && input.tankId !== before.tankId) {
-		const moved = receiptFile(input.tankId, before.id, before.receiptType!);
-		mkdirSync(dirname(fullPath(moved)), { recursive: true });
-		writeFileSync(fullPath(moved), readFileSync(fullPath(receiptPath)));
-		rmSync(fullPath(receiptPath), { force: true });
-		receiptPath = moved;
+	const save = (receiptPath: string | null) => db.update(expenses).set({ ...input, receiptPath }).where(eq(expenses.id, id)).returning().get();
+	if (!before.receiptPath || input.tankId === before.tankId) return save(before.receiptPath);
+	// to another tank: a copy in its folder, the row, then the old file (#118)
+	let data: Buffer;
+	try {
+		data = await readFile(fullPath(before.receiptPath));
+	} catch {
+		// the file was already gone: the expense moves without it
+		return save(null);
 	}
-	return db.update(expenses).set({ ...input, receiptPath }).where(eq(expenses.id, id)).returning().get();
+	const moved = receiptFile(input.tankId, before.id, before.receiptType!);
+	const row = await writeThen([[fullPath(moved), data]], () => save(moved));
+	await removeFiles([fullPath(before.receiptPath)], 'server');
+	return row;
 }
 
-export function deleteExpense(userId: string, id: string) {
+export async function deleteExpense(userId: string, id: string) {
 	const e = getExpense(userId, id);
 	requireRoleOn(userId, e.tankId, 'owner');
-	if (e.receiptPath) rmSync(fullPath(e.receiptPath), { force: true });
 	db.delete(expenses).where(eq(expenses.id, id)).run();
+	if (e.receiptPath) await removeFiles([fullPath(e.receiptPath)], 'server');
 	return e;
 }
 
@@ -126,13 +132,19 @@ export function spentThisYear(userId: string, year: string) {
 export const MAX_RECEIPT_BYTES = 10 * 1024 * 1024;
 const root = () => join(dataDir(), 'receipts');
 const fullPath = (p: string) => join(root(), p);
-const receiptFile = (tankId: string, expenseId: string, type: string) => join(tankId, `${expenseId}.${type === 'application/pdf' ? 'pdf' : 'jpg'}`);
+// a new name for each file (#118), so a replacement never writes over the one the row still points at
+const receiptFile = (tankId: string, expenseId: string, type: string) =>
+	join(tankId, `${expenseId}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}.${type === 'application/pdf' ? 'pdf' : 'jpg'}`);
 
 /** A receipt's file, for the owner's page. */
-export function receiptOf(userId: string, id: string) {
+export async function receiptOf(userId: string, id: string) {
 	const e = getExpense(userId, id);
 	if (!e.receiptPath || !e.receiptType) error(404, 'No receipt');
-	return { body: readFileSync(fullPath(e.receiptPath)), type: e.receiptType, expense: e };
+	try {
+		return { body: await readFile(fullPath(e.receiptPath)), type: e.receiptType, expense: e };
+	} catch {
+		error(404, 'Receipt file missing');
+	}
 }
 
 /** Attach (or replace) a receipt: a photo, kept as a JPEG without its metadata, or a PDF. */
@@ -158,23 +170,22 @@ export async function attachReceipt(userId: string, id: string, file: File): Pro
 		}
 		type = 'image/jpeg';
 	}
+	// the new file, the row, then the old file (#118)
 	const path = receiptFile(e.tankId, e.id, type);
-	if (e.receiptPath && e.receiptPath !== path) rmSync(fullPath(e.receiptPath), { force: true });
-	mkdirSync(dirname(fullPath(path)), { recursive: true });
-	writeFileSync(fullPath(path), body);
-	db.update(expenses).set({ receiptPath: path, receiptType: type }).where(eq(expenses.id, e.id)).run();
+	await writeThen([[fullPath(path), body]], () => db.update(expenses).set({ receiptPath: path, receiptType: type }).where(eq(expenses.id, e.id)).run());
+	if (e.receiptPath) await removeFiles([fullPath(e.receiptPath)], 'server');
 	return null;
 }
 
-export function removeReceipt(userId: string, id: string) {
+export async function removeReceipt(userId: string, id: string) {
 	const e = getExpense(userId, id);
 	requireRoleOn(userId, e.tankId, 'owner');
-	if (e.receiptPath) rmSync(fullPath(e.receiptPath), { force: true });
 	db.update(expenses).set({ receiptPath: null, receiptType: null }).where(eq(expenses.id, e.id)).run();
+	if (e.receiptPath) await removeFiles([fullPath(e.receiptPath)], 'server');
 }
 
 /** For the backup: where a receipt's file is. */
 export const receiptFilePath = (p: string) => fullPath(p);
 
 /** Remove a receipt's file (an expense's import undone). */
-export const deleteExpenseReceipt = (path: string) => rmSync(fullPath(path), { force: true });
+export const deleteExpenseReceipt = (path: string) => removeFiles([fullPath(path)], 'import');

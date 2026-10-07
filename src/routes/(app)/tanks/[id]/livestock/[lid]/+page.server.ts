@@ -126,7 +126,7 @@ export const actions: Actions = {
 		const prepared = await preparePhotos(files);
 		if ('error' in prepared) return fail(400, { photoError: prepared.error });
 		// one of the tank's photos, so it's in Photos and the backup too
-		const [photo] = storePhotos(l.tankId, datePhotos(prepared, user.timeZone), { takenAt: new Date().toISOString() });
+		const [photo] = await storePhotos(l.tankId, datePhotos(prepared, user.timeZone), { takenAt: new Date().toISOString() });
 		updateLivestockDetails(user.id, l.id, { photoId: photo.id });
 		setFlash(cookies, '✓ Photo saved');
 		redirect(303, back(params.id, l.id));

@@ -25,11 +25,11 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const read = readExpenseForm(form, user, e.tankId);
 		if (!read.input) return fail(400, { errors: read.errors, values: read.values });
-		updateExpense(user.id, e.id, read.input);
+		await updateExpense(user.id, e.id, read.input);
 		return finishExpense(form, user, e.id, read.input.tankId, cookies, '✓ Expense saved');
 	},
-	delete: ({ locals, params, cookies }) => {
-		const e = deleteExpense(locals.user!.id, params.eid);
+	delete: async ({ locals, params, cookies }) => {
+		const e = await deleteExpense(locals.user!.id, params.eid);
 		setFlash(cookies, 'Expense deleted');
 		redirect(303, `/tanks/${e.tankId}/spending`);
 	}

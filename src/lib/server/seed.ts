@@ -69,7 +69,7 @@ ${stems}${fish}<path d="M0 1080 Q 400 1030 800 1070 T 1600 1060 V1200 H0 Z" fill
 async function photoFor(tankId: string, i: number, hue: 'green' | 'blue' | 'teal', link: { eventId?: string; testId?: string; takenAt: string }) {
 	const prepared = await preparePhotos([await fakePhoto(i, hue)]);
 	if ('error' in prepared) throw new Error(prepared.error);
-	return storePhotos(tankId, prepared, link)[0];
+	return (await storePhotos(tankId, prepared, link))[0];
 }
 
 function removeDemo() {
