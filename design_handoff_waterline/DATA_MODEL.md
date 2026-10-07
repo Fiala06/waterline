@@ -187,4 +187,4 @@ logs             id, created_at, level(error|warn|info|debug), area, message, de
 
 Everything that belongs to a tank is deleted with it, and everything that belongs to a user with them. `import_id` ties rows to the import that added them, so an import is undone in one step.
 
-Indexes: `tests(tank_id, taken_at)`, `test_readings(parameter_id)`, `sensor_readings(tank_id, parameter_id, at)`, `events(tank_id, occurred_at)`, `tasks(next_due)`, `expenses(tank_id, date)`, `public_pages(slug)`, `assistant_tokens(token_hash)`, `assistant_tokens(refresh_hash)`, plus one per `tank_id` or `user_id` foreign key.
+Indexes: `tests(tank_id, taken_at)`, `test_readings(parameter_id)`, `sensor_readings(tank_id, parameter_id, at)`, `events(tank_id, occurred_at)`, `photos(tank_id, taken_at, id)`, `photos(event_id)`, `photos(test_id)`, `tasks(next_due)`, `expenses(tank_id, date)`, `public_pages(slug)`, `assistant_tokens(token_hash)`, `assistant_tokens(refresh_hash)`, plus one per `tank_id` or `user_id` foreign key.
