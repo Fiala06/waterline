@@ -1,7 +1,7 @@
 // People on the server (#27): everyone with an account, for Server settings ›
 // People, and what an admin can do about them.
 import { error } from '@sveltejs/kit';
-import { and, count, eq, isNotNull, ne } from 'drizzle-orm';
+import { and, count, eq, inArray, isNotNull, ne } from 'drizzle-orm';
 import { rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { env } from '$env/dynamic/private';
@@ -68,8 +68,7 @@ export function signOutEverywhere(by: User, userId: string): User {
 /** What goes with a person: their tanks and photos, for the confirmation. */
 export function personFootprint(userId: string) {
 	const ids = db.select({ id: tanks.id }).from(tanks).where(eq(tanks.userId, userId)).all().map((t) => t.id);
-	let photoCount = 0;
-	for (const id of ids) photoCount += db.select({ n: count() }).from(photos).where(eq(photos.tankId, id)).get()?.n ?? 0;
+	const photoCount = ids.length ? (db.select({ n: count() }).from(photos).where(inArray(photos.tankId, ids)).get()?.n ?? 0) : 0;
 	return { tanks: ids.length, photos: photoCount, tankIds: ids };
 }
 

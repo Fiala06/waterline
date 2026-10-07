@@ -177,6 +177,8 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 	const tasks = listTasks(user.id)
 		.filter((r) => notified(r.task.tankId, 'remind'))
 		.map((r) => ({ ...r.task, tankName: r.tankName }));
+	// each tank's tasks, grouped once for the digest
+	const tasksIn = Map.groupBy(tasks, (t) => t.tankId);
 	// a routine (daily feeding, a dose on set days) is reminded on the day, not days ahead,
 	// and a missed one isn't an alert: it shows as overdue in the app, and the next one comes
 	const leadFor = (t: { kind: string }) => (isRoutine(t.kind) ? 0 : prefs.leadDays);
@@ -236,8 +238,7 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 	const tanksOut: Pending[] = [];
 	const summary = { overdue: 0, due: 0, outOfRange: 0 };
 	for (const tank of listTanks(user.id)) {
-		const mine = tasks
-			.filter((t) => t.tankId === tank.id)
+		const mine = (tasksIn.get(tank.id) ?? [])
 			.map((t) => ({ t, d: dueInfo(t.due, today) }))
 			.filter(({ t, d }) => (d.days < 0 ? prefs.overdueAlerts : prefs.taskReminders && d.days <= (isRoutine(t.kind) ? 0 : horizon)));
 		const readings = prefs.outOfRangeAlerts && notified(tank.id, 'alert') ? badReadings(tank.id, user) : [];

@@ -11,6 +11,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Quicker behind the scenes:** A backup with years of tests and tasks is put together in fewer steps, the daily digest sorts each tank's tasks once, and an admin's preview of removing someone counts their photos in one go. Nothing changes in what you see.
 - **Charts from a sensor alone:** A parameter only a probe reports, like temperature from a controller, now shows its chart on [Charts](/charts) with the sensor's line and Live value, without waiting for two hand-logged tests. When the chart is empty, it now says whether a longer range would show readings.
 - **Sensor charts keep the spikes:** On [Charts](/charts), a sensor's line now has a faint band showing the lowest and highest readings behind each point, so a brief spike still shows on a 90-day or yearly chart instead of being averaged away. Long ranges also open many times faster.
 - **Quicker with many tanks:** Every page now gathers the sidebar's tanks, their alerts and your role on each in the same few steps however many tanks you have, so a long [tank list](/tanks) no longer slows each page down.
