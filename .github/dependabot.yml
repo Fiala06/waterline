@@ -17,6 +17,15 @@ updates:
       development:
         dependency-type: development
         update-types: [minor, patch]
+    ignore:
+      # waiting on the tools around them (#129):
+      # Auth.js supports SvelteKit 1-2 only, adapter-node 6 needs SvelteKit 3, svelte-check refuses TypeScript 7
+      - dependency-name: '@sveltejs/kit'
+        update-types: [version-update:semver-major]
+      - dependency-name: '@sveltejs/adapter-node'
+        update-types: [version-update:semver-major]
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: github-actions
     directory: /
