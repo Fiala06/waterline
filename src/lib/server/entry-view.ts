@@ -19,6 +19,9 @@ import type { User } from './db/schema';
 import { getEvent, getTest } from './logs';
 import { entryPhotos } from './photos';
 import { getTank, listParams } from './tanks';
+import { ALGAE_CHECKS, PLANT_SYMPTOM_CHECKS, resolveChecks, type Check } from '$lib/symptoms';
+import { isAlgaeType, isPlantObservation, PLANT_OBSERVATIONS } from '$lib/plants';
+import { symptomFacts } from './symptoms';
 
 /**
  * Whether the event form can edit this entry. System notes and automatic
@@ -46,6 +49,8 @@ export interface EntryView {
 	copy?: string;
 	editable: boolean;
 	href: string;
+	/** Worth checking (#95): for an algae or plant-symptom observation, what the tank's records say */
+	checks?: { title: string; lead: string; checks: Check[] } | null;
 }
 
 export function testView(user: User, id: string): EntryView {
@@ -145,6 +150,26 @@ export function eventView(user: User, id: string): EntryView {
 		rows,
 		photos: entryPhotos({ eventId: e.id }).map((p) => ({ id: p.id })),
 		editable: eventEditable(e),
-		href: `/entries/event/${e.id}`
+		href: `/entries/event/${e.id}`,
+		checks: observationChecks(user, e)
 	};
+}
+
+/** For an algae entry, or a plant symptom: the checks for that kind, with what the tank's records say. */
+function observationChecks(user: User, e: { tankId: string; category: string; data: Record<string, unknown> }) {
+	if (e.category !== 'observation') return null;
+	const d = e.data;
+	let spec: { lead: string; checks: Parameters<typeof resolveChecks>[0] } | undefined;
+	let title = '';
+	if (d.kind === 'algae' && isAlgaeType(d.algae)) {
+		spec = ALGAE_CHECKS[d.algae];
+		title = `${d.algae} algae noted.`;
+	} else if (d.kind === 'plant' && isPlantObservation(d.observation)) {
+		spec = PLANT_SYMPTOM_CHECKS[d.observation];
+		const names = Array.isArray(d.plants) ? (d.plants as string[]) : [];
+		title = `${names.length ? names.join(', ') : 'Plants'}: ${PLANT_OBSERVATIONS.find((o) => o.value === d.observation)?.label.toLowerCase()} noted.`;
+	}
+	if (!spec) return null;
+	const facts = symptomFacts(user, getTank(user.id, e.tankId));
+	return { title, lead: spec.lead, checks: resolveChecks(spec.checks, facts) };
 }

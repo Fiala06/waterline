@@ -1,4 +1,5 @@
 <script lang="ts">
+	import WorthChecking from '$lib/components/WorthChecking.svelte';
 	// History (README → Screens §4): categories with counts, the list grouped
 	// by day, and on desktop a detail pane with the entry's rows, note, photos
 	// and Edit / Delete. Phones get chips and open entries on their own page.
@@ -190,6 +191,7 @@
 								{#each d.photos as p, i (p.id)}<a href="/photos/{p.id}"><img src={photoUrl(p.id)} alt="Photo {i + 1} of this entry" loading="lazy" /></a>{/each}
 							</div>
 						{/if}
+						{#if d.checks}<WorthChecking title={d.checks.title} lead={d.checks.lead} checks={d.checks.checks} />{/if}
 						<div class="spacer"></div>
 						<div class="actions">
 							{#if d.copy}<CopyReadings text={d.copy} />{/if}

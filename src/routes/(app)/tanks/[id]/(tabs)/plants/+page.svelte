@@ -1,4 +1,5 @@
 <script lang="ts">
+	import WorthChecking from '$lib/components/WorthChecking.svelte';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { getContext, onDestroy } from 'svelte';
@@ -214,6 +215,10 @@
 					</ul>
 				{:else}
 					<p class="hint ph-none">Nothing noted yet. Log what it's doing as it settles in, melts or grows.</p>
+				{/if}
+				{#if editing.checks}
+					<!-- Worth checking (#95): for its latest symptom, what the tank's records say -->
+					<WorthChecking title={editing.checks.title} lead={editing.checks.lead} checks={editing.checks.checks} />
 				{/if}
 			</section>
 			<form method="POST" action="?/update" class="sheet-form" use:enhance={close}>

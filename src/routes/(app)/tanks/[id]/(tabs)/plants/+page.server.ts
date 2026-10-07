@@ -6,7 +6,9 @@ import { optStr, str } from '$lib/server/forms';
 import { checkPhotoFiles, photoFiles, datePhotos, preparePhotos, storePhotos } from '$lib/server/photos';
 import { addPlant, getPlant, listPlants, logTrim, removePlant, updatePlant } from '$lib/server/specs';
 import { plantHealthEvents } from '$lib/server/log-plants';
-import { plantObservationText } from '$lib/plants';
+import { isPlantObservation, plantObservationText, PLANT_OBSERVATIONS } from '$lib/plants';
+import { PLANT_SYMPTOM_CHECKS, resolveChecks } from '$lib/symptoms';
+import { symptomFacts } from '$lib/server/symptoms';
 import { speciesPhotos, stockPhotosOn } from '$lib/server/stock-photos';
 import { readSort, sortRows } from '$lib/sort';
 import type { Actions, PageServerLoad } from './$types';
@@ -30,14 +32,26 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 	const photos = speciesPhotos(list.map((p) => ({ photoId: p.photoId, scientific: p.scientificName, common: p.name })));
 	// each plant's health journal (#85), newest first, for its sheet
 	const health = new Map<string, { id: string; text: string; when: string; note: string | null }[]>();
+	// and the latest observation of each, for Worth checking (#95) when it's a symptom
+	const latestObs = new Map<string, string>();
 	for (const e of plantHealthEvents(params.id, undefined, 300)) {
 		const ids = Array.isArray(e.data.plant_ids) ? (e.data.plant_ids as string[]) : [];
 		for (const id of ids) {
 			const mine = health.get(id) ?? [];
 			if (mine.length < 8) mine.push({ id: e.id, text: plantObservationText(e.data.observation), when: fmtDate(dateInZone(e.occurredAt, user.timeZone)), note: e.note });
 			health.set(id, mine);
+			if (!latestObs.has(id) && isPlantObservation(e.data.observation)) latestObs.set(id, e.data.observation);
 		}
 	}
+	const tank = getTank(user.id, params.id);
+	const facts = latestObs.size ? symptomFacts(user, tank) : null;
+	const checksFor = (plant: { id: string; name: string }) => {
+		const obs = latestObs.get(plant.id);
+		const spec = obs && isPlantObservation(obs) ? PLANT_SYMPTOM_CHECKS[obs] : undefined;
+		if (!spec || !facts) return null;
+		const label = PLANT_OBSERVATIONS.find((o) => o.value === obs)?.label.toLowerCase() ?? obs;
+		return { title: `${plant.name}: ${label} noted.`, lead: spec.lead, checks: resolveChecks(spec.checks, facts) };
+	};
 	return {
 		tankId: params.id,
 		// the tab's toolbar: "6 plants"
@@ -54,7 +68,8 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 			added: fmtDate(dateInZone(p.createdAt, user.timeZone)),
 			photo: photos.list[i],
 			ownPhoto: !!p.photoId,
-			health: health.get(p.id) ?? []
+			health: health.get(p.id) ?? [],
+			checks: checksFor(p)
 		})),
 		sort,
 		photosPending: photos.pending,

@@ -22,7 +22,8 @@ export function plantHealthEvents(tankId: string, plantId?: string, limit = 50) 
 				plantId ? sql`EXISTS (SELECT 1 FROM json_each(json_extract(${events.data}, '$.plant_ids')) WHERE value = ${plantId})` : undefined
 			)
 		)
-		.orderBy(desc(events.occurredAt), desc(events.id))
+		// two entries in the same minute: the one logged last is the latest
+		.orderBy(desc(events.occurredAt), desc(sql`${events}.rowid`))
 		.limit(limit)
 		.all();
 }

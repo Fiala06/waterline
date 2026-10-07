@@ -21,7 +21,8 @@
 		photos = [],
 		backHref,
 		editHref,
-		actions
+		actions,
+		extra
 	}: {
 		title: string;
 		when: string;
@@ -32,6 +33,8 @@
 		backHref: string;
 		editHref: string;
 		actions: Snippet;
+		/** anything under the photos, before Edit / Delete (Worth checking on an observation, #95) */
+		extra?: Snippet;
 	} = $props();
 
 	// "‹ History", "‹ Overview": the back link names where it goes.
@@ -84,6 +87,7 @@
 			{/each}
 		</div>
 	{/if}
+	{#if extra}{@render extra()}{/if}
 	<div class="actions">
 		{#if editHref}<a class="btn edit" href={editHref}>Edit</a>{/if}
 		{@render actions()}
