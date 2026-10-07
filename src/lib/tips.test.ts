@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defaultParameters } from './params';
-import { nextStep, paramTip } from './tips';
+import { nextStep, paramTip, whenToTest } from './tips';
 
 const prefs = { unitSystem: 'imperial', hardnessUnit: 'dgh' } as const;
 
@@ -20,6 +20,36 @@ describe('paramTip', () => {
 
 	it('has nothing to say about a custom parameter', () => {
 		expect(paramTip('custom:silicate', 'freshwater')).toBeNull();
+	});
+});
+
+describe('whenToTest (#91)', () => {
+	it('says when to test every parameter of every tank type', () => {
+		for (const type of ['freshwater', 'planted', 'brackish', 'reef'] as const) {
+			for (const p of defaultParameters(prefs, type)) expect(whenToTest(p.key, type)?.text, `${type} ${p.key}`).toBeTruthy();
+		}
+	});
+
+	it('marks the optional ones as optional, in words and in kind', () => {
+		for (const type of ['freshwater', 'planted', 'brackish', 'reef'] as const) {
+			for (const p of defaultParameters(prefs, type)) {
+				const w = whenToTest(p.key, type)!;
+				expect(/^Optional/.test(w.text), `${type} ${p.key}: "${w.text}"`).toBe(w.optional);
+			}
+		}
+		expect(whenToTest('fe', 'planted')?.optional).toBe(true);
+		expect(whenToTest('kh', 'freshwater')?.optional).toBe(true);
+		expect(whenToTest('no3', 'freshwater')?.optional).toBe(false);
+		expect(whenToTest('nh3', 'reef')?.optional).toBe(false);
+	});
+
+	it('reads by tank type, and has nothing to say about a custom parameter', () => {
+		expect(whenToTest('kh', 'reef')?.text).toMatch(/alkalinity/);
+		expect(whenToTest('kh', 'planted')?.text).toMatch(/CO₂/);
+		expect(whenToTest('kh', 'planted')?.optional).toBe(false);
+		expect(whenToTest('po4', 'planted')?.optional).toBe(false);
+		expect(whenToTest('po4', 'freshwater')?.optional).toBe(true);
+		expect(whenToTest('custom:silicate', 'freshwater')).toBeNull();
 	});
 });
 

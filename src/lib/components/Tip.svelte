@@ -3,7 +3,7 @@
 	// or click to open, hover with a mouse; tap outside or Esc closes. A native
 	// popover, so it works without scripts (in the middle of the screen); with
 	// them it sits by its button. Screen readers hear the text on the button.
-	let { text, label }: { text: string; /** "About KH" */ label: string } = $props();
+	let { text, label, when = null }: { text: string; /** "About KH" */ label: string; /** when a test is worth doing (#91), under the explanation */ when?: string | null } = $props();
 	const id = $props.id();
 	let btn = $state<HTMLButtonElement>();
 	let pop = $state<HTMLElement>();
@@ -68,7 +68,9 @@
 	onmouseenter={enter}
 	onmouseleave={leave}
 	onclick={click}><span aria-hidden="true">i</span></button
-><span {id} popover class="tip-pop" bind:this={pop} onbeforetoggle={before} ontoggle={place}>{text}</span>
+><span {id} popover class="tip-pop" bind:this={pop} onbeforetoggle={before} ontoggle={place}
+	>{text}{#if when}<span class="when"><b>When to test</b>{when}</span>{/if}</span
+>
 
 <style>
 	.tip {
@@ -123,5 +125,20 @@
 		white-space: normal;
 		text-transform: none;
 		letter-spacing: normal;
+	}
+	.when {
+		display: block;
+		margin-top: 8px;
+		padding-top: 8px;
+		border-top: 1px solid var(--divider);
+	}
+	.when b {
+		display: block;
+		margin-bottom: 2px;
+		font-size: 11px;
+		font-weight: 800;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: var(--text-muted);
 	}
 </style>

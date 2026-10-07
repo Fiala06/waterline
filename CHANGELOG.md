@@ -11,6 +11,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **When to test each parameter:** The ⓘ beside a parameter on [Parameters & targets](/tanks/current/targets) and on the water test now also says when a test is worth doing for your kind of tank, and the optional ones say Optional beside their default, so you can see which tests matter weekly and which can wait.
 - **Tank setup, by name:** The tank's Setup tab, the Setup list beside its pages, More › Setup & targets on phones and the ⌘K entry now say Tank setup, so a tank's own settings read apart from your [account settings](/settings) and the server's.
 - **Shortcuts on the installed app:** Once Waterline is added to your Home Screen or installed on a computer, pressing and holding its icon (or right-clicking it) offers Log water test, Log water change, [Tasks](/tasks) and [Photos](/photos) straight away, and the install sheet shows what the app looks like before you add it.
 

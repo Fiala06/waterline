@@ -1,5 +1,5 @@
 import { fail, redirect } from "@sveltejs/kit";
-import { paramTip } from "$lib/tips";
+import { paramTip, whenToTest } from "$lib/tips";
 import { parseTestEvery } from "$lib/status";
 import {
   defaultParameters,
@@ -45,6 +45,7 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
         unit: paramUnit(p, user),
         isCustom: p.isCustom,
         tip: p.isCustom ? null : paramTip(p.key, tank.type),
+        when: p.isCustom ? null : whenToTest(p.key, tank.type),
         readings: counts.get(p.id) ?? 0,
         tracked: p.tracked,
         testEvery: p.testEveryDays == null ? "" : String(p.testEveryDays),

@@ -36,6 +36,8 @@
 		lastInput?: string | null;
 		/** what the parameter is (ⓘ), for standard ones */
 		tip?: string | null;
+		/** when a test is worth doing (#91) */
+		when?: string | null;
 		/** folded under "Show N more" on a new test (#65) */
 		later?: boolean;
 	}
@@ -274,7 +276,7 @@
 						<!-- the name is the field's label; the target or "Last 7.0" describes it -->
 						<div class="lbl">
 							<span class="pline"
-								><label class="pname" for="v_{r.id}">{r.name}</label>{#if r.tip}<Tip text={r.tip} label="About {r.name}" />{/if}</span
+								><label class="pname" for="v_{r.id}">{r.name}</label>{#if r.tip}<Tip text={r.tip} when={r.when} label="About {r.name}" />{/if}</span
 							>
 							<span class="last" id="last_{r.id}">
 								{#if mode === 'edit'}

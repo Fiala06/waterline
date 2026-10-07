@@ -14,7 +14,7 @@ import {
 import { MAX_LIVESTOCK_COUNT } from '$lib/livestock';
 import { displayValue, fmtRange, fmtValue, foldsInTestForm, paramDecimals, paramUnit, storedValue } from '$lib/params';
 import { dueInfo, effectiveDue, nextDueAfterCompletion } from '$lib/tasks';
-import { paramTip } from '$lib/tips';
+import { paramTip, whenToTest } from '$lib/tips';
 import { fmtDate, todayInZone, utcToZoned } from '$lib/time';
 import { formatNumber, parseNumber, toDisplay, toStored, unitLabel } from '$lib/units';
 import { EVENT_CATEGORIES, type EventCategory, type Tank, type TankParameter, type User } from './db/schema';
@@ -50,6 +50,7 @@ export function testFormParams(
 			// what "Use last readings" types in
 			lastInput: lastValue,
 			tip: p.isCustom ? null : paramTip(p.key, tankType),
+			when: p.isCustom ? null : (whenToTest(p.key, tankType)?.text ?? null),
 			// under "Show N more" on a new test (#65)
 			later: foldsInTestForm(p, tankType, !!last)
 		};

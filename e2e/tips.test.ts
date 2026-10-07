@@ -21,6 +21,12 @@ test('tips explain parameters and less obvious fields', async ({ page }, info) =
 	await open(page, `/tanks/${tankId}/targets`);
 	await page.getByRole('button', { name: 'About Nitrite' }).click();
 	await expect(page.getByText(/stops their blood carrying oxygen/)).toBeVisible();
+	// and when to test it (#91); the optional ones say so beside their default
+	await expect(page.locator('.tip-pop:popover-open')).toContainText('When to test');
+	await expect(page.locator('.tip-pop:popover-open')).toContainText(/while a tank cycles/);
+	await page.keyboard.press('Escape');
+	await expect(page.locator('.prow', { hasText: 'Iron' }).getByText(/· Optional$/)).toBeVisible();
+	await expect(page.locator('.prow', { hasText: 'Nitrate' }).getByText(/· Optional$/)).toHaveCount(0);
 
 	// Tank settings: the two volumes
 	await open(page, `/tanks/${tankId}/settings`);

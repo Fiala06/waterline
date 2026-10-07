@@ -43,8 +43,8 @@
 				<div class="prow" class:off={!tracked[r.id]}>
 					<div class="p-head">
 						<div class="p-name">
-							<span class="nm-line"><span class="nm">{r.name}</span>{#if r.tip}<Tip text={r.tip} label="About {r.name}" />{/if}</span>
-							<span class="faint sm">{tracked[r.id] ? r.defaultText : 'Not tracked · hidden from tests'}</span>
+							<span class="nm-line"><span class="nm">{r.name}</span>{#if r.tip}<Tip text={r.tip} when={r.when?.text} label="About {r.name}" />{/if}</span>
+							<span class="faint sm">{tracked[r.id] ? `${r.defaultText}${r.when?.optional ? ' · Optional' : ''}` : 'Not tracked · hidden from tests'}</span>
 						</div>
 						<label class="switch" aria-label="Track {r.name}">
 							<input
