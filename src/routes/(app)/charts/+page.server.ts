@@ -13,6 +13,7 @@ import { displaySamples, latestSamples, sampleCount, sampleSeries } from '$lib/s
 import { fmtWhen } from '$lib/time';
 import { CHART_RANGES, equipmentTypeLookup, overlayKind } from '$lib/charts';
 import { equipmentName } from '$lib/equipment';
+import { whatChanged } from '$lib/what-changed';
 import { listEquipment } from '$lib/server/specs';
 import type { PageServerLoad } from './$types';
 
@@ -74,7 +75,8 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 	// Events on the timeline (#88: each overlay kind on its own switch on the page),
 	// with the reading just before and after each one.
 	const equipmentType = equipmentTypeLookup(listEquipment(user.id, tank.id).map((i) => ({ id: i.id, name: equipmentName(i), type: i.type })));
-	const evs = eventsSince(tank.id, ['water_change', 'dosing', 'maintenance', 'equipment', 'observation'], new Date(from).toISOString());
+	// (feeding and livestock changes aren't drawn, but belong in What changed? below)
+	const evs = eventsSince(tank.id, ['water_change', 'dosing', 'maintenance', 'equipment', 'observation', 'feeding', 'livestock'], new Date(from).toISOString());
 	const fv = (stored: number) => fmtValue(param, stored, user);
 	const markers = evs.flatMap((e) => {
 		const kind = overlayKind(e, equipmentType);
@@ -125,6 +127,13 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 		: null;
 	// What stands out (a run, a pace, a pattern), as the dashboard tells it
 	const insight = tankNotes(tank.id, user).find((n) => n.parameterId === param.id) ?? null;
+	// What changed? (#89): the latest move worth a word, and what was logged in that stretch
+	const changed = whatChanged(
+		param,
+		raw.map((r) => ({ t: Date.parse(r.takenAt), value: r.value })),
+		evs.map((e) => ({ id: e.id, t: Date.parse(e.occurredAt), title: eventTitle(e, user) })),
+		user
+	);
 
 	return {
 		tank: { id: tank.id, name: tank.name },
@@ -150,7 +159,15 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 			to: now,
 			markers,
 			stats,
-			insight: insight ? { text: insight.text, warn: insight.warn, up: insight.direction === 'up' } : null
+			insight: insight ? { text: insight.text, warn: insight.warn, up: insight.direction === 'up' } : null,
+			changed: changed
+				? {
+						headline: changed.headline,
+						up: changed.direction === 'up',
+						days: changed.days,
+						events: changed.events.map((e) => ({ href: `/entries/event/${e.id}`, title: e.title, day: fmtDate(dateInZone(new Date(e.t).toISOString(), user.timeZone)) }))
+					}
+				: null
 		}
 	};
 };

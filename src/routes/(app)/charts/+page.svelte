@@ -8,6 +8,7 @@
 	import { hscroll } from '$lib/actions';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import TrendChart from '$lib/components/TrendChart.svelte';
+	import { WHAT_CHANGED_NOTE } from '$lib/what-changed';
 	import { browser } from '$app/environment';
 	import { CHART_RANGES, DEFAULT_OVERLAYS, OVERLAYS, OVERLAY_LABEL, type OverlayKind } from '$lib/charts';
 
@@ -208,6 +209,24 @@
 						{/if}
 					</div>
 				{/if}
+				{#if c.changed}
+					<!-- What changed? (#89): the latest move, and what was logged in the same stretch; facts, not a cause -->
+					<section class="changed" aria-labelledby="changed-h">
+						<h2 class="kicker" id="changed-h">What changed?</h2>
+						<p class="headline"><b aria-hidden="true">{c.changed.up ? '↗' : '↘'}</b><span>{c.changed.headline}</span></p>
+						{#if c.changed.events.length}
+							<p class="lead">Logged in that time:</p>
+							<ul>
+								{#each c.changed.events as e (e.href)}
+									<li><a href={e.href}><span class="e-title">{e.title}</span><span class="e-day">{e.day}</span></a></li>
+								{/each}
+							</ul>
+							<p class="note">{WHAT_CHANGED_NOTE}</p>
+						{:else}
+							<p class="note">Nothing else was logged in {c.changed.days === 1 ? 'that day' : 'those days'}.</p>
+						{/if}
+					</section>
+				{/if}
 				{#if markers.length}
 					<div class="events">
 						<h2 class="kicker">Events in range · {markers.length}</h2>
@@ -358,6 +377,55 @@
 	}
 	.insight.warn b {
 		color: var(--bad);
+	}
+	/* What changed?: a kicker, the move in a line, the entries of that stretch, the caveat */
+	.changed {
+		order: 4;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		padding: 12px 0;
+		border-bottom: 1px solid var(--divider);
+		font-size: 13px;
+		line-height: 1.45;
+		color: var(--text-2);
+	}
+	.changed .headline {
+		margin: 0;
+		display: flex;
+		gap: 10px;
+		color: var(--text);
+		font-weight: 600;
+	}
+	.changed .headline b {
+		flex-shrink: 0;
+	}
+	.changed .lead,
+	.changed .note {
+		margin: 0;
+	}
+	.changed .note {
+		font-size: 12px;
+		color: var(--text-muted);
+	}
+	.changed ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	.changed li {
+		border-top: 1px solid var(--divider);
+	}
+	.changed li a {
+		display: flex;
+		justify-content: space-between;
+		gap: 12px;
+		min-height: 44px;
+		align-items: center;
+		color: var(--text);
+	}
+	.changed li a:hover .e-title {
+		text-decoration: underline;
 	}
 	.legend {
 		order: 5;
@@ -641,8 +709,12 @@
 			font-size: 20px;
 			white-space: normal;
 		}
-		.events {
+		.events,
+		.changed {
 			order: 0;
+		}
+		.changed {
+			border-bottom: none;
 		}
 		/* big enough to read: one other tank takes the row, more share it */
 	}
