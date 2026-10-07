@@ -10,7 +10,9 @@ import { build, files, version } from '$service-worker';
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
 const SHELL = `shell-${version}`;
-const PAGES = 'pages-v1';
+// pages and their data belong to the version that drew them (#114): an update
+// never answers with the last version's HTML or __data.json
+const PAGES = `pages-${version}`;
 const MEDIA = 'media-v1';
 const ASSETS = [...build, ...files];
 
@@ -41,7 +43,8 @@ sw.addEventListener('activate', (event) => {
 	event.waitUntil(
 		caches
 			.keys()
-			.then((keys) => Promise.all(keys.filter((k) => k.startsWith('shell-') && k !== SHELL).map((k) => caches.delete(k))))
+			// the last version's shell and pages go (pages-v1 included, from before #114); photos stay
+			.then((keys) => Promise.all(keys.filter((k) => (k.startsWith('shell-') && k !== SHELL) || (k.startsWith('pages-') && k !== PAGES)).map((k) => caches.delete(k))))
 			.then(() => sw.clients.claim())
 	);
 });
@@ -49,7 +52,9 @@ sw.addEventListener('activate', (event) => {
 // The page asks us to forget cached pages on sign-out.
 sw.addEventListener('message', (event) => {
 	if (event.data === 'clear-user-cache') {
-		event.waitUntil(Promise.all([caches.delete(PAGES), caches.delete(MEDIA)]));
+		event.waitUntil(
+			caches.keys().then((keys) => Promise.all(keys.filter((k) => k.startsWith('pages-') || k === MEDIA).map((k) => caches.delete(k))))
+		);
 	}
 });
 

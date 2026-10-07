@@ -19,6 +19,10 @@ test('logging offline saves on the device and syncs later', async ({ page, conte
 	await page.evaluate(() => navigator.serviceWorker.ready);
 	await open(page, `/?tank=${tankId}`);
 	await open(page, `/entries/test/new?tank=${tankId}`);
+	// pages are cached under this version's name, so an update never serves the last one's (#114)
+	const names = await page.evaluate(() => caches.keys());
+	expect(names.some((n) => n.startsWith('pages-') && n !== 'pages-v1')).toBe(true);
+	expect(names).not.toContain('pages-v1');
 
 	await context.setOffline(true);
 	await page.getByLabel('Nitrate', { exact: true }).fill('15');
