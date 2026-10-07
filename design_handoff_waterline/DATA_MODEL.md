@@ -139,7 +139,8 @@ assistant_tokens id, user_id, name, token_hash (SHA-256), hint (last 4), kind(as
                  may only add readings), tank_ids JSON,
                  created_at, last_used_at? (read-only access for an AI assistant);
                  connected by signing in: client_id?, expires_at?, refresh_hash?,
-                 refresh_expires_at?
+                 refresh_expires_at?, prev_refresh_hash? (the refresh token it replaced:
+                 a second use of it is refused as a replay and logged)
 oauth_clients    id (client_id), name, redirect_uris JSON, secret_hash?, created_at
                  (apps that registered to connect by signing in)
 calendar_feeds   token (the secret in /cal/<token>.ics), user_id (one each), created_at,

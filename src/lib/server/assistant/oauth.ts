@@ -8,6 +8,7 @@ import { and, eq, isNotNull, isNull, lt, notExists, or } from 'drizzle-orm';
 import { db } from '../db';
 import { assistantTokens, oauthClients, oauthCodes, type OAuthClient } from '../db/schema';
 import { hash, newToken, ownTanks } from './tokens';
+import { logger } from '../log';
 
 export const SCOPE = 'read';
 const ACCESS_TTL_S = 3600;
@@ -228,24 +229,41 @@ export function exchangeCode(client: OAuthClient, form: URLSearchParams, origin:
 	return tokenResponse(access, refresh);
 }
 
-/** grant_type=refresh_token: new access and refresh tokens for the same connection; the old refresh token stops working. */
+/**
+ * grant_type=refresh_token: new access and refresh tokens for the same
+ * connection; the old refresh token stops working. A refresh token is spent
+ * at most once (#100): the rotation only goes through while the row still
+ * holds it, so of two refreshes with the same token one wins and the other
+ * gets invalid_grant. A token that was already rotated away is a replay:
+ * refused and logged (without the token), and the connection keeps working
+ * for whoever holds the current one.
+ */
 export function refreshTokens(client: OAuthClient, form: URLSearchParams, now = Date.now()) {
 	const refresh = form.get('refresh_token') ?? '';
-	const row = refresh ? db.select().from(assistantTokens).where(eq(assistantTokens.refreshHash, hash(refresh))).get() : undefined;
-	if (!row || row.clientId !== client.id) throw new OAuthError('invalid_grant', 'Unknown refresh token: connect again.');
+	const spent = refresh ? hash(refresh) : '';
+	const row = spent ? db.select().from(assistantTokens).where(eq(assistantTokens.refreshHash, spent)).get() : undefined;
+	if (!row || row.clientId !== client.id) {
+		const replayed = spent ? db.select({ id: assistantTokens.id, userId: assistantTokens.userId }).from(assistantTokens).where(eq(assistantTokens.prevRefreshHash, spent)).get() : undefined;
+		if (replayed) logger.warn('assistant', 'A refresh token that was already used was used again', { userId: replayed.userId, connection: replayed.id, client: client.id });
+		throw new OAuthError('invalid_grant', 'Unknown refresh token: connect again.');
+	}
 	if (!row.refreshExpiresAt || row.refreshExpiresAt <= iso(now)) throw new OAuthError('invalid_grant', 'The refresh token has expired: connect again.');
 	const access = newToken();
 	const next = newToken('wlr_');
-	db.update(assistantTokens)
+	const swapped = db
+		.update(assistantTokens)
 		.set({
 			tokenHash: hash(access),
 			hint: access.slice(-4),
 			expiresAt: iso(now + ACCESS_TTL_S * 1000),
 			refreshHash: hash(next),
-			refreshExpiresAt: iso(now + REFRESH_TTL_DAYS * 86_400_000)
+			refreshExpiresAt: iso(now + REFRESH_TTL_DAYS * 86_400_000),
+			prevRefreshHash: spent
 		})
-		.where(eq(assistantTokens.id, row.id))
+		// compare and swap: only while this refresh token is still the current one
+		.where(and(eq(assistantTokens.id, row.id), eq(assistantTokens.refreshHash, spent)))
 		.run();
+	if (swapped.changes !== 1) throw new OAuthError('invalid_grant', 'Unknown refresh token: connect again.');
 	return tokenResponse(access, next);
 }
 

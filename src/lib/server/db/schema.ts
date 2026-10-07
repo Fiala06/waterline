@@ -820,7 +820,9 @@ export const assistantTokens = sqliteTable(
 		clientId: text('client_id').references(() => oauthClients.id, { onDelete: 'cascade' }),
 		expiresAt: text('expires_at'),
 		refreshHash: text('refresh_hash'),
-		refreshExpiresAt: text('refresh_expires_at')
+		refreshExpiresAt: text('refresh_expires_at'),
+		// the refresh token this one replaced (hashed): spent, so a second use of it is a replay (#100)
+		prevRefreshHash: text('prev_refresh_hash')
 	},
 	(t) => [
 		uniqueIndex('assistant_tokens_hash').on(t.tokenHash),

@@ -1,0 +1,1 @@
+ALTER TABLE `assistant_tokens` ADD `prev_refresh_hash` text;
