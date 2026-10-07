@@ -8,6 +8,15 @@ test('manifest and icons are served', async ({ request }) => {
 	expect(m).toMatchObject({ name: 'Waterline', display: 'standalone', background_color: '#161514', theme_color: '#161514' });
 	expect(m.icons.map((i: { purpose: string }) => i.purpose)).toContain('maskable');
 	for (const i of m.icons) expect((await request.get(i.src)).headers()['content-type']).toBe('image/png');
+	// installed-app polish (#111): a stable identity, shortcuts to safe pages, screenshots for the install sheet
+	expect(m.id).toBe('/');
+	expect(m.shortcuts.map((s: { name: string }) => s.name)).toEqual(['Log water test', 'Log water change', 'Tasks', 'Photos']);
+	for (const s of m.shortcuts) {
+		expect(s.url.startsWith('/')).toBe(true);
+		for (const i of s.icons) expect((await request.get(i.src)).headers()['content-type']).toBe('image/png');
+	}
+	expect(m.screenshots.map((s: { form_factor: string }) => s.form_factor)).toEqual(expect.arrayContaining(['narrow', 'wide']));
+	for (const s of m.screenshots) expect((await request.get(s.src)).headers()['content-type']).toBe('image/png');
 	expect((await request.get('/service-worker.js')).ok()).toBe(true);
 });
 

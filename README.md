@@ -35,7 +35,7 @@
   </picture>
 </p>
 
-Each server is yours: people sign in with Google (or the local admin login) and see only their own tanks. It works in any browser and installs as an app on phones, with offline logging that syncs later. What's changed, release by release, is in [`CHANGELOG.md`](CHANGELOG.md); ideas and planned work are [GitHub issues](https://github.com/Fiala06/waterline/issues).
+Each server is yours: people sign in with Google (or the local admin login) and see only their own tanks. It works in any browser and installs as an app on phones and computers, with offline logging that syncs later and shortcuts on its icon to log a test or a water change. What's changed, release by release, is in [`CHANGELOG.md`](CHANGELOG.md); ideas and planned work are [GitHub issues](https://github.com/Fiala06/waterline/issues).
 
 ## What it does
 

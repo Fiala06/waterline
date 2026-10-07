@@ -9,6 +9,10 @@ How to write a line:
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
+## Unreleased
+
+- **Shortcuts on the installed app:** Once Waterline is added to your Home Screen or installed on a computer, pressing and holding its icon (or right-clicking it) offers Log water test, Log water change, [Tasks](/tasks) and [Photos](/photos) straight away, and the install sheet shows what the app looks like before you add it.
+
 ## 1.12.14 · 2026-10-07
 
 - **Quicker behind the scenes:** A backup with years of tests and tasks is put together in fewer steps, the daily digest sorts each tank's tasks once, and an admin's preview of removing someone counts their photos in one go. Nothing changes in what you see.
