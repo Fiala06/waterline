@@ -213,6 +213,19 @@ export function displaySamples(points: SamplePoint[], p: ParamLike, prefs: UnitP
 	}));
 }
 
+/**
+ * How many samples a parameter has at all, counted up to `upTo`: an empty
+ * chart says to try a longer range when the probe has data elsewhere (#130).
+ */
+export function sampleCount(tankId: string, parameterId: string, upTo = 2): number {
+	const row = db.get<{ n: number }>(sql`
+		select count(*) as n from (
+			select 1 from ${sensorReadings}
+			where ${sensorReadings.tankId} = ${tankId} and ${sensorReadings.parameterId} = ${parameterId}
+			limit ${upTo})`);
+	return row?.n ?? 0;
+}
+
 /** How many samples a tank has, and since when, for the Sensors page. */
 export function sampleCounts(tankId: string): { count: number; first: string | null; sources: string[] } {
 	const row = db.select({ n: sql<number>`count(*)`, first: sql<string | null>`min(${sensorReadings.at})` }).from(sensorReadings).where(eq(sensorReadings.tankId, tankId)).get();

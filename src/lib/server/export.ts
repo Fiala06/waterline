@@ -103,7 +103,12 @@ const progress = (id: string, pct: number, text: string) =>
 
 function dataFor(user: User, list: Tank[]) {
 	const ids = list.map((t) => t.id);
-	const byTank = <T extends { tankId: string }>(rows: T[]) => (id: string) => rows.filter((r) => r.tankId === id);
+	// child rows grouped once, so a tank (or a test, or a task) finds its own in one step
+	const grouped = <T, K>(rows: T[], key: (r: T) => K) => {
+		const m = Map.groupBy(rows, key);
+		return (k: K) => m.get(k) ?? [];
+	};
+	const byTank = <T extends { tankId: string }>(rows: T[]) => grouped(rows, (r) => r.tankId);
 	const params = byTank(db.select().from(tankParameters).where(inArray(tankParameters.tankId, ids)).orderBy(asc(tankParameters.sort)).all());
 	const allTests = db.select().from(tests).where(inArray(tests.tankId, ids)).orderBy(asc(tests.takenAt)).all();
 	const testIds = allTests.map((t) => t.id);
@@ -123,7 +128,23 @@ function dataFor(user: User, list: Tank[]) {
 		petsIn.set(t.photoId, [...(petsIn.get(t.photoId) ?? []), t.livestockId]);
 	}
 	const allExpenses = db.select().from(expenses).where(inArray(expenses.tankId, ids)).orderBy(asc(expenses.date)).all();
-	return { params, allTests, readings, allEvents, allTasks, completions, allPhotos, petsIn, allEquipment, allLivestock, allPlants, allExpenses };
+	return {
+		params,
+		allTests,
+		testsIn: byTank(allTests),
+		readingsOf: grouped(readings, (r) => r.testId),
+		allEvents,
+		tasksIn: byTank(allTasks),
+		completionsOf: grouped(completions, (c) => c.taskId),
+		allPhotos,
+		photosIn: byTank(allPhotos),
+		petsIn,
+		allEquipment,
+		allLivestock,
+		allPlants,
+		expensesIn: byTank(allExpenses),
+		allExpenses
+	};
 }
 
 async function build(id: string, user: User, list: Tank[], format: 'zip' | 'csv') {
@@ -180,36 +201,28 @@ async function build(id: string, user: User, list: Tank[], format: 'zip' | 'csv'
 			...t,
 			userId: undefined,
 			parameters: d.params(t.id).map((p) => ({ ...p, tankId: undefined })),
-			tests: d.allTests
-				.filter((x) => x.tankId === t.id)
-				.map((x) => ({
-					...x,
-					tankId: undefined,
-					readings: d.readings.filter((r) => r.testId === x.id).map((r) => ({ parameterId: r.parameterId, value: r.value }))
-				})),
+			tests: d.testsIn(t.id).map((x) => ({
+				...x,
+				tankId: undefined,
+				readings: d.readingsOf(x.id).map((r) => ({ parameterId: r.parameterId, value: r.value }))
+			})),
 			events: d.allEvents(t.id).map((e) => ({ ...e, tankId: undefined })),
 			equipment: d.allEquipment(t.id).map((e) => ({ ...e, tankId: undefined })),
 			livestock: d.allLivestock(t.id).map((l) => ({ ...l, tankId: undefined })),
 			plants: d.allPlants(t.id).map((p) => ({ ...p, tankId: undefined })),
-			tasks: d.allTasks
-				.filter((k) => k.tankId === t.id)
-				.map((k) => ({ ...k, tankId: undefined, completions: d.completions.filter((c) => c.taskId === k.id) })),
-			photos: d.allPhotos
-				.filter((p) => p.tankId === t.id)
-				.map((p) => ({
-					id: p.id,
-					eventId: p.eventId,
-					testId: p.testId,
-					takenAt: p.takenAt,
-					width: p.width,
-					height: p.height,
-					file: `photos/${p.path}`,
-					livestock: d.petsIn.get(p.id) ?? []
-				})),
+			tasks: d.tasksIn(t.id).map((k) => ({ ...k, tankId: undefined, completions: d.completionsOf(k.id) })),
+			photos: d.photosIn(t.id).map((p) => ({
+				id: p.id,
+				eventId: p.eventId,
+				testId: p.testId,
+				takenAt: p.takenAt,
+				width: p.width,
+				height: p.height,
+				file: `photos/${p.path}`,
+				livestock: d.petsIn.get(p.id) ?? []
+			})),
 			// in hundredths of the currency the keeper chose
-			expenses: d.allExpenses
-				.filter((e) => e.tankId === t.id)
-				.map(({ receiptPath, tankId: _, ...e }) => ({ ...e, currency: user.currency, receipt: receiptPath ? `receipts/${receiptPath}` : null }))
+			expenses: d.expensesIn(t.id).map(({ receiptPath, tankId: _, ...e }) => ({ ...e, currency: user.currency, receipt: receiptPath ? `receipts/${receiptPath}` : null }))
 		}))
 	};
 	zip.addBuffer(Buffer.from(JSON.stringify(json, null, 2)), 'waterline.json');
@@ -293,7 +306,7 @@ export function testsCsv(user: User, list: Tank[], d: ReturnType<typeof dataFor>
 	for (const t of d.allTests) {
 		const byParam = new Map(d.params(t.tankId).map((p) => [p.id, p]));
 		const values = new Map<string, string>();
-		for (const r of d.readings.filter((x) => x.testId === t.id)) {
+		for (const r of d.readingsOf(t.id)) {
 			const p = byParam.get(r.parameterId);
 			if (!p) continue;
 			const key = p.isCustom ? `custom:${p.name.toLowerCase()}:${p.unit}` : p.key;

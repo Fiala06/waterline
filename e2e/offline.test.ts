@@ -72,6 +72,7 @@ test('offline data stays with one person, and can be removed from the device', a
 	await open(page, '/settings');
 	await open(page, `/?tank=${tankId}`);
 	await open(page, `/entries/test/new?tank=${tankId}`);
+	await expect.poll(pages).toBeGreaterThanOrEqual(3);
 	await context.setOffline(true);
 	await page.getByLabel('pH', { exact: true }).fill('7.1');
 	await page.getByRole('button', { name: 'Save 1 reading' }).click();

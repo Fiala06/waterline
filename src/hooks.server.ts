@@ -146,8 +146,9 @@ const appHandle: Handle = async ({ event, resolve }) => {
 	const path = event.url.pathname;
 	const user = event.locals.user;
 	// Signed-out visitors to / see the public home page when the admin turned it on.
-	if (!user && path === '/' && publicSettings().publicHomeEnabled && publicSettings().allowPublicPages) {
-		redirect(303, '/public');
+	if (!user && path === '/') {
+		const pub = publicSettings();
+		if (pub.publicHomeEnabled && pub.allowPublicPages) redirect(303, '/public');
 	}
 	if (!user && !isPublic(path)) {
 		redirect(303, `/signin${path === '/' ? '' : `?redirectTo=${encodeURIComponent(path + event.url.search)}`}`);

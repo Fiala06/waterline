@@ -72,3 +72,46 @@ test('sensor readings over the API', async ({ page }, info) => {
 	await expect(page.getByRole('status')).toContainText("ESPHome can't send readings any more");
 	expect((await page.request.post(`/api/v1/tanks/${tankId}/readings`, { headers, data: { parameter: 'temp', value: 25 } })).status()).toBe(401);
 });
+
+// #130: a parameter only a probe reports still gets its chart; before, Charts
+// waited for two hand-logged tests however many samples there were.
+test('a sensor charts without a hand-logged test', async ({ page }, info) => {
+	await newKeeperWithTank(page, `probe-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+
+	await open(page, `/charts?tank=${tankId}`);
+	await expect(page.getByText('Charts appear after your second test.')).toBeVisible();
+
+	await open(page, '/settings/sensors');
+	await page.getByLabel('Device').fill('Probe');
+	await page.getByRole('button', { name: 'Create sensor token' }).click();
+	const token = (await page.locator('#made-token').textContent())!.trim();
+	const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
+	// a day of hourly samples, 20 days back: inside the 30-day range, outside 2 weeks
+	const at = (h: number) => new Date(Date.now() - 20 * 86_400_000 + h * 3_600_000).toISOString();
+	const day = await page.request.post(`/api/v1/tanks/${tankId}/readings`, {
+		headers,
+		data: { readings: Array.from({ length: 24 }, (_, i) => ({ parameter: 'temp', value: 25 + (i % 4) / 10, unit: '°C', at: at(i) })) }
+	});
+	expect(day.status()).toBe(200);
+
+	// the sensor's line, its legend and the Live value, with no test stats to go with them
+	await open(page, `/charts?tank=${tankId}`);
+	const chart = page.locator('.chart-card');
+	await expect(chart.locator('svg polyline.sensor')).toHaveCount(1);
+	await expect(chart.locator('svg polyline.trace')).toHaveAttribute('points', '');
+	await expect(page.locator('.legend')).toContainText('Sensor');
+	await expect(page.locator('.stat.live')).toContainText('Probe');
+	await expect(page.locator('.stat').filter({ hasText: 'Latest' })).toHaveCount(0);
+	await expect(page.getByText('Charts appear after your second test.')).toHaveCount(0);
+
+	// the dashboard's trend draws from the sensor too
+	await open(page, `/?tank=${tankId}`);
+	await expect(page.locator('svg polyline.sensor')).toHaveCount(1);
+	await expect(page.locator('.legend')).toContainText('Sensor');
+	await expect(page.getByText('Charts appear after your second test.')).toHaveCount(0);
+
+	// samples outside the range are the range's doing, not a missing test
+	await open(page, `/charts?tank=${tankId}&r=2w`);
+	await expect(page.getByText('Fewer than 2 readings in this range')).toBeVisible();
+});

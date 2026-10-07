@@ -97,7 +97,7 @@
 					</form>
 				</div>
 
-				{#if c.points.length >= 2}
+				{#if c.points.length >= 2 || c.sensor.length >= 2}
 					<div class="chart-card">
 						<div class="chart-box">
 							<div class="chart-fill">
@@ -137,6 +137,9 @@
 							<span><i class="lg-band"></i>Target {c.target}</span>
 							<span><i class="lg-zone"></i>Out of range</span>
 						{/if}
+						{#if c.sensor.length >= 2}
+							<span><i class="lg-sensor"></i>Sensor</span>
+						{/if}
 						{#if c.markers.some((m) => m.kind !== 'dosing')}
 							<span><i class="lg-marker"></i>Water change</span>
 						{/if}
@@ -165,21 +168,26 @@
 			</div>
 
 			<div class="side">
-				{#if c.stats}
-					{@const s = c.stats}
+				<!-- the tests' stats; Live stands alone when a sensor is all there is (#130) -->
+				{#if c.stats || c.live}
 					<div class="stats">
-						<div class="stat latest hide-phone">
-							<span class="sl">Latest</span>
-							<span class="sv num status-{s.latestLevel}">{s.latest}{c.unit ? ` ${c.unit}` : ''}</span>
-							<span class="st status-{s.latestLevel}">{s.latestStatus}</span>
-						</div>
+						{#if c.stats}
+							<div class="stat latest hide-phone">
+								<span class="sl">Latest</span>
+								<span class="sv num status-{c.stats.latestLevel}">{c.stats.latest}{c.unit ? ` ${c.unit}` : ''}</span>
+								<span class="st status-{c.stats.latestLevel}">{c.stats.latestStatus}</span>
+							</div>
+						{/if}
 						{#if c.live}
 							<div class="stat live"><span class="sl">● Live</span><span class="sv num status-{c.live.level}">{c.live.value}{c.unit ? ` ${c.unit}` : ''}</span><span class="st">{c.live.at} · {c.live.source}</span></div>
 						{/if}
-						<div class="stat"><span class="sl">Average</span><span class="sv num">{s.average}</span></div>
-						<div class="stat"><span class="sl">Range</span><span class="sv num">{s.range}</span></div>
-						<div class="stat"><span class="sl">In target</span><span class="sv num">{s.inTarget}</span><span class="st">{s.inRangePct} in range</span></div>
-						<div class="stat"><span class="sl">Change</span><span class="sv num">{s.change?.amount ?? '–'}</span>{#if s.change}<span class="st">{s.change.over}</span>{/if}</div>
+						{#if c.stats}
+							{@const s = c.stats}
+							<div class="stat"><span class="sl">Average</span><span class="sv num">{s.average}</span></div>
+							<div class="stat"><span class="sl">Range</span><span class="sv num">{s.range}</span></div>
+							<div class="stat"><span class="sl">In target</span><span class="sv num">{s.inTarget}</span><span class="st">{s.inRangePct} in range</span></div>
+							<div class="stat"><span class="sl">Change</span><span class="sv num">{s.change?.amount ?? '–'}</span>{#if s.change}<span class="st">{s.change.over}</span>{/if}</div>
+						{/if}
 					</div>
 				{/if}
 				{#if markers.length}
@@ -363,6 +371,12 @@
 		width: 10px;
 		height: 10px;
 		background: var(--ink);
+	}
+	/* a sensor's thin line (#19) */
+	.lg-sensor {
+		width: 16px;
+		height: 0;
+		border-top: 1.5px solid var(--neutral-600);
 	}
 	.lg-toggle {
 		display: flex;
