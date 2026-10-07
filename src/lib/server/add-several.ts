@@ -1,6 +1,7 @@
 // Add several (bulk add): livestock or plants picked from the species list,
 // each with its count or place, saved in one go. It's saved as an import with
 // no file, so the toast's Undo (and Recent imports) take the whole lot back.
+import { parseSeveralList } from '$lib/several';
 import { todayInZone } from '$lib/time';
 import type { User } from './db/schema';
 import { applyImport } from './import';
@@ -10,17 +11,13 @@ import { exactSpecies } from './species';
 export type SeveralList = 'livestock' | 'plants';
 
 /**
- * Without scripts: one per line, "6 Neon tetra", "Java fern" or "3× Otocinclus".
- * Names the species list knows get their scientific name and kind.
+ * Without scripts: one per line, read as the page reads it ("6 Neon tetra",
+ * "Java fern", "Otocinclus x 5", "Amano shrimp, 3"). Names the species list
+ * knows get their scientific name and kind.
  */
 export function linesToValues(list: SeveralList, text: string, water: 'fresh' | 'marine' | null, opts: { status: 'in_tank' | 'quarantine'; added: string }) {
 	const out: (LivestockValue | PlantValue)[] = [];
-	for (const raw of text.split(/\r?\n/)) {
-		const line = raw.trim();
-		if (!line) continue;
-		const m = /^(\d{1,5})\s*[x×]?\s+(.+)$/i.exec(line);
-		const count = m ? Number(m[1]) : 1;
-		const name = (m ? m[2] : line).trim().slice(0, 80);
+	for (const { name, count } of parseSeveralList(text)) {
 		const known = exactSpecies(name, water);
 		const sp = known?.species ?? null;
 		if (list === 'plants') out.push({ name, scientific: sp?.s ?? null, position: 'midground', status: 'thriving', added: opts.added });

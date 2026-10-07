@@ -7,6 +7,7 @@
 	import { enhance } from '$app/forms';
 	import { onMount, untrack } from 'svelte';
 	import DateField from './DateField.svelte';
+	import { parseSeveralList, severalSaveLabel } from '$lib/several';
 
 	type Kind = 'fish' | 'invert' | 'coral';
 	type Position = 'background' | 'midground' | 'foreground' | 'epiphyte' | 'floating';
@@ -117,23 +118,8 @@
 	}
 	const exact = $derived(results.some((r) => [r.s, ...r.c].some((n) => n.toLowerCase() === q.trim().toLowerCase())));
 
-	// Paste a list: how each line reads (`6 Neon tetra`, `Otocinclus x 5`, `Amano shrimp, 3`)
-	function parseLine(line: string): { name: string; count: number } | null {
-		const t = line.trim().replace(/\s+/g, ' ');
-		if (!t) return null;
-		let m = t.match(/^(\d+)\s*[x×]?\s+(.+)$/i);
-		if (m) return { name: m[2].trim(), count: Number(m[1]) };
-		m = t.match(/^(.+?)\s*(?:[x×]\s*|,\s*)(\d+)$/i);
-		if (m) return { name: m[1].trim(), count: Number(m[2]) };
-		return { name: t, count: 1 };
-	}
-	const parsed = $derived(
-		paste
-			.split('\n')
-			.map(parseLine)
-			.filter((p): p is { name: string; count: number } => !!p)
-			.map((p) => ({ ...p, name: p.name.slice(0, 80), count: Math.max(1, Math.min(999, p.count || 1)) }))
-	);
+	// Paste a list: how each line reads (`6 Neon tetra`, `Otocinclus x 5`, `Amano shrimp, 3`), as the server reads it too
+	const parsed = $derived(parseSeveralList(paste));
 	// from the preview into rows, each one a name of your own (the datalist can still match it)
 	function toRows() {
 		for (const p of parsed) addCustom(p.name, p.count);
@@ -152,15 +138,7 @@
 	const animals = $derived(
 		usingPaste ? parsed.reduce((n, p) => n + p.count, 0) : picked.reduce((n, p) => n + Math.max(1, Math.round(Number(p.count) || 1)), 0)
 	);
-	const saveLabel = $derived(
-		!js
-			? 'Add them'
-			: plants
-				? `Add ${items || ''} plant${items === 1 ? '' : 's'}`.replace('  ', ' ')
-				: items
-					? `Add ${animals} animal${animals === 1 ? '' : 's'} · ${items} species`
-					: 'Add species'
-	);
+	const saveLabel = $derived(severalSaveLabel(js, plants, items, animals));
 	let busy = $state(false);
 </script>
 

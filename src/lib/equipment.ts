@@ -7,6 +7,7 @@ import {
   unitLabel,
   type UnitPrefs,
 } from "./units";
+import { isTime } from "./time";
 
 export type EquipmentType =
   | "filter"
@@ -304,6 +305,10 @@ export interface Period {
   on: string; // HH:MM
   off: string; // HH:MM; earlier than `on` runs across midnight
 }
+/** A period that can be saved: an on and an off time, not the same (#120: the form's preview and the server agree). */
+export const isCompletePeriod = (p: Period) =>
+  isTime(p.on) && isTime(p.off) && p.on !== p.off;
+
 export interface Schedule {
   periods: Period[];
   /** lights: minutes to ramp up at the start and down at the end of each period */

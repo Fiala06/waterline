@@ -5,7 +5,7 @@
 	import DateField from '$lib/components/DateField.svelte';
 	import { untrack } from 'svelte';
 	import DayTimeline from '$lib/components/DayTimeline.svelte';
-	import { DEFAULT_SERVICE, EQUIPMENT_TYPE_LABEL, EQUIPMENT_TYPES, hoursText, MAX_PERIODS, RAMP_OPTIONS, SERVICE_CADENCES, SPEC_FIELDS, scheduleTotalHours, serviceVerb, specUnit, type EquipmentType } from '$lib/equipment';
+	import { DEFAULT_SERVICE, EQUIPMENT_TYPE_LABEL, EQUIPMENT_TYPES, hoursText, isCompletePeriod, MAX_PERIODS, RAMP_OPTIONS, SERVICE_CADENCES, SPEC_FIELDS, scheduleTotalHours, serviceVerb, specUnit, type EquipmentType } from '$lib/equipment';
 	import type { UnitPrefs } from '$lib/units';
 
 	let {
@@ -64,7 +64,7 @@
 	let runs = $state(untrack(() => values.runs));
 	let periods = $state<{ on: string; off: string }[]>(untrack(() => (values.periods.length ? values.periods.map((p) => ({ ...p })) : [{ on: '08:00', off: '16:00' }])));
 	let rampMin = $state(untrack(() => values.rampMin));
-	const complete = $derived(periods.filter((p) => /^\d\d:\d\d$/.test(p.on) && /^\d\d:\d\d$/.test(p.off) && p.on !== p.off));
+	const complete = $derived(periods.filter(isCompletePeriod));
 	const preview = $derived(runs === 'schedule' && complete.length ? { periods: complete, rampMin: type === 'light' ? Number(rampMin) || null : null } : null);
 	const previewHours = $derived(scheduleTotalHours(preview));
 	// a new item's reminder follows its type (a filter monthly) until it's chosen by hand

@@ -14,6 +14,14 @@ describe('linesToValues (Add several without scripts)', () => {
 		]);
 	});
 
+	it('reads a count after the name too, as the page does (#120)', () => {
+		const v = linesToValues('livestock', 'Otocinclus x 5\nAmano shrimp, 3', 'fresh', { status: 'in_tank', added: '2026-09-28' });
+		expect(v.map((x) => [x.name, (x as { count: number }).count])).toEqual([
+			['Otocinclus', 5],
+			['Amano shrimp', 3]
+		]);
+	});
+
 	it('plants go in the midground, thriving', () => {
 		expect(linesToValues('plants', 'Java fern', 'fresh', { status: 'in_tank', added: '2026-09-28' })).toEqual([
 			expect.objectContaining({ name: 'Java fern', position: 'midground', status: 'thriving' })
