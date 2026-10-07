@@ -167,7 +167,13 @@ stock_photos     name (the scientific name looked up), status(ok|none|failed), f
                  fetched_at (species photos from Wikimedia Commons, kept in DATA_DIR/stock)
 sensor_readings  id, tank_id, parameter_id, value (stored units), at, source (the token's name),
                  token_id? (readings from probes and controllers, apart from tests: one a minute
-                 per parameter, kept a year, averaged for charts, never an alert by themselves)
+                 per parameter, kept a year, never an alert by themselves; charts show each span's
+                 average with its lowest and highest)
+sensor_hours     tank_id, parameter_id, hour ('YYYY-MM-DDTHH', UTC), n, total, lo, hi
+                 (each hour of sensor samples in sum, primary key tank+parameter+hour; kept by
+                 triggers on sensor_readings: a sample adds to its hour, a deleted one takes away,
+                 and the hour goes with its last sample; lo/hi stay until then. Charts with spans
+                 of an hour or more read these instead of the samples)
 wishes           id, tank_id, kind(fish|invert|coral|plant|equipment), name, scientific_name?,
                  count, equipment_type?, note?, price_cents?, url?, created_at, added_at?
                  (the wish list; Add to tank writes the livestock, plant or equipment row,

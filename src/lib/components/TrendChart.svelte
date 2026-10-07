@@ -105,7 +105,7 @@
 		/** Keep a small tooltip on the latest reading while nothing is pointed at (phones). */
 		pinLatest?: boolean;
 		/** readings from a sensor (#19), drawn as a thin neutral line under the tests */
-		sensor?: { t: number; v: number }[];
+		sensor?: { t: number; v: number; lo?: number; hi?: number }[];
 	} = $props();
 
 	let el = $state<HTMLDivElement>();
@@ -118,7 +118,14 @@
 	const plotH = $derived(Math.max(1, h - TOP - BOTTOM));
 
 	// room past the target on both sides, so it's a band and never the whole chart (#74)
-	const domain = $derived(chartDomain([...points.map((p) => p.v), ...sensor.map((s) => s.v)], band));
+	// a sensor's lowest and highest count too, so a spike stays on the chart (#103)
+	const domain = $derived(chartDomain([...points.map((p) => p.v), ...sensor.flatMap((s) => [s.v, s.lo ?? s.v, s.hi ?? s.v])], band));
+	// the spread of each span of sensor samples, as a faint band behind its line
+	const sensorBand = $derived(
+		sensor.length > 1 && sensor.some((s) => s.lo != null && s.hi != null && s.hi > s.lo)
+			? [...sensor.map((s) => `${x(s.t)},${y(s.hi ?? s.v)}`), ...[...sensor].reverse().map((s) => `${x(s.t)},${y(s.lo ?? s.v)}`)].join(' ')
+			: null
+	);
 
 	// fewer numbers up the side of a short chart
 	const ticks = $derived(niceTicks(domain.lo, domain.hi, plotH < 70 ? 2 : plotH < 200 ? 3 : 4));
@@ -338,6 +345,9 @@
 			{/each}
 			{#if hot}<line x1={x(hot.t)} x2={x(hot.t)} y1={TOP - 4} y2={baseline} class="guide"></line>{/if}
 			{#if pinned}<line x1={x(pinned.t)} x2={x(pinned.t)} y1={TOP - 4} y2={baseline} class="guide"></line>{/if}
+			{#if sensorBand}
+				<polygon class="sensor-band" points={sensorBand} fill="var(--neutral-600)" fill-opacity="0.16" stroke="none"></polygon>
+			{/if}
 			{#if sensor.length > 1}
 				<polyline class="sensor" points={sensor.map((p) => `${x(p.t)},${y(p.v)}`).join(' ')} fill="none" stroke="var(--neutral-600)" stroke-width="1.25" stroke-linejoin="round"></polyline>
 			{/if}

@@ -2,9 +2,10 @@
 // with a sensor token. Samples are stored metric in their own table, at most
 // one a minute per parameter, and never raise an out-of-range alert on their own.
 import { and, eq, gte, lt, or, sql } from 'drizzle-orm';
-import { fToC, ppmToDgh } from '$lib/units';
+import { displayValue, type ParamLike } from '$lib/params';
+import { fToC, ppmToDgh, type UnitPrefs } from '$lib/units';
 import { db } from './db';
-import { sensorReadings, tankParameters, type TankParameter } from './db/schema';
+import { sensorHours, sensorReadings, tankParameters, type TankParameter } from './db/schema';
 
 /** Samples closer together than this are dropped (a probe every second is noise, not data). */
 export const MIN_GAP_MS = 60_000;
@@ -126,37 +127,90 @@ export function latestSamplesQuery(tankId: string) {
 		.where(eq(tankParameters.tankId, tankId));
 }
 
+/** A point on a sensor chart: the average of its span, and the span's lowest and highest (#103). */
+export interface SamplePoint {
+	t: number;
+	v: number;
+	lo?: number;
+	hi?: number;
+}
+
 /**
- * Samples for a chart since an instant, oldest first, averaged into at most
- * `buckets` spans so a probe every minute draws as a line, not a wall.
+ * Samples for a chart since an instant, oldest first, as at most `buckets`
+ * points so a probe every minute draws as a line, not a wall. SQLite does the
+ * bucketing (#103): equal spans from the first sample to `until`, each the
+ * average with its lowest and highest, so a spike shows however long the range.
+ * Spans of an hour or more read sensor_hours (60 times fewer rows); shorter
+ * ones the samples, each span a range on the sensor index.
  */
-export function sampleSeries(tankId: string, parameterId: string, since: string, buckets = 240, until = Date.now()): { t: number; v: number }[] {
-	const rows = db
-		.select({ value: sensorReadings.value, at: sensorReadings.at })
-		.from(sensorReadings)
-		.where(and(eq(sensorReadings.tankId, tankId), eq(sensorReadings.parameterId, parameterId), gte(sensorReadings.at, since)))
-		.orderBy(sensorReadings.at)
-		.all();
-	if (rows.length <= buckets) return rows.map((r) => ({ t: Date.parse(r.at), v: r.value }));
-	const from = Date.parse(rows[0].at);
-	const span = Math.max(1, (until - from) / buckets);
-	const out: { t: number; v: number }[] = [];
-	let i = 0;
-	while (i < rows.length) {
-		const start = Date.parse(rows[i].at);
-		const end = start + span;
-		let sum = 0;
-		let n = 0;
-		let tsum = 0;
-		while (i < rows.length && Date.parse(rows[i].at) < end) {
-			sum += rows[i].value;
-			tsum += Date.parse(rows[i].at);
-			n++;
-			i++;
-		}
-		out.push({ t: Math.round(tsum / n), v: sum / n });
+export function sampleSeries(tankId: string, parameterId: string, since: string, buckets = 240, until = Date.now()): SamplePoint[] {
+	const where = and(eq(sensorReadings.tankId, tankId), eq(sensorReadings.parameterId, parameterId), gte(sensorReadings.at, since));
+	// the first sample is one step on the index; how many there are, from their hours
+	const head = db.select({ first: sql<string | null>`min(${sensorReadings.at})` }).from(sensorReadings).where(where).get();
+	if (!head?.first) return [];
+	const many = db
+		.select({ n: sql<number>`coalesce(sum(${sensorHours.n}), 0)` })
+		.from(sensorHours)
+		.where(and(eq(sensorHours.tankId, tankId), eq(sensorHours.parameterId, parameterId), gte(sensorHours.hour, head.first.slice(0, 13))))
+		.get()!.n;
+	if (many <= buckets) {
+		return db
+			.select({ value: sensorReadings.value, at: sensorReadings.at })
+			.from(sensorReadings)
+			.where(where)
+			.orderBy(sensorReadings.at)
+			.all()
+			.map((r) => ({ t: Date.parse(r.at), v: r.value }));
 	}
-	return out;
+	const from = Date.parse(head.first);
+	const span = Math.max(1, (until - from) / buckets);
+	if (span >= HOUR_MS) return hourSeries(tankId, parameterId, from, span, buckets);
+	// the edges as stored times; the last span runs on to any sample after `until`
+	const edge = (i: number) => new Date(from + i * span).toISOString();
+	const spans = sql.join(
+		Array.from({ length: buckets }, (_, i) => sql`select ${i} as i, ${i === 0 ? head.first : edge(i)} as lo, ${i === buckets - 1 ? '9999' : edge(i + 1)} as hi`),
+		sql` union all `
+	);
+	const rows = db.all<{ lo: string; hi: string; v: number; min: number; max: number }>(sql`
+		with spans as (${spans})
+		select min(r.at) as lo, max(r.at) as hi, avg(r.value) as v, min(r.value) as min, max(r.value) as max
+		from spans s join ${sensorReadings} r on r.tank_id = ${tankId} and r.parameter_id = ${parameterId} and r.at >= s.lo and r.at < s.hi
+		group by s.i order by s.i`);
+	return rows.map((r) => ({ t: Math.round((Date.parse(r.lo) + Date.parse(r.hi)) / 2), v: r.v, lo: r.min, hi: r.max }));
+}
+
+const HOUR_MS = 3_600_000;
+/** 'YYYY-MM-DDTHH', the UTC hour sensor_hours files a time under. */
+const hourKey = (ms: number) => new Date(Math.floor(ms / HOUR_MS) * HOUR_MS).toISOString().slice(0, 13);
+
+/** The same from whole hours: each span the hours that start in it. */
+function hourSeries(tankId: string, parameterId: string, from: number, span: number, buckets: number): SamplePoint[] {
+	const edge = (i: number) => hourKey(from + i * span);
+	const spans = sql.join(
+		Array.from({ length: buckets }, (_, i) => sql`select ${i} as i, ${edge(i)} as lo, ${i === buckets - 1 ? '9999' : edge(i + 1)} as hi`),
+		sql` union all `
+	);
+	const rows = db.all<{ first: string; last: string; n: number; total: number; lo: number; hi: number }>(sql`
+		with spans as (${spans})
+		select min(h.hour) as first, max(h.hour) as last, sum(h.n) as n, sum(h.total) as total, min(h.lo) as lo, max(h.hi) as hi
+		from spans s join ${sensorHours} h on h.tank_id = ${tankId} and h.parameter_id = ${parameterId} and h.hour >= s.lo and h.hour < s.hi
+		group by s.i order by s.i`);
+	return rows.map((r) => ({
+		// the middle of its hours
+		t: Math.round((Date.parse(`${r.first}:00:00Z`) + Date.parse(`${r.last}:00:00Z`) + HOUR_MS) / 2),
+		v: r.total / r.n,
+		lo: r.lo,
+		hi: r.hi
+	}));
+}
+
+/** Chart points in the person's units, the span's lowest and highest with them. */
+export function displaySamples(points: SamplePoint[], p: ParamLike, prefs: UnitPrefs): SamplePoint[] {
+	return points.map((s) => ({
+		t: s.t,
+		v: displayValue(p, s.v, prefs),
+		...(s.lo != null && s.hi != null ? { lo: displayValue(p, s.lo, prefs), hi: displayValue(p, s.hi, prefs) } : {})
+	}));
 }
 
 /** How many samples a tank has, and since when, for the Sensors page. */

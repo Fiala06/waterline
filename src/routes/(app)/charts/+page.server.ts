@@ -9,7 +9,7 @@ import { tests } from '$lib/server/db/schema';
 import { eventsSince, latestReadings, series } from '$lib/server/logs';
 import { getTank, listParams } from '$lib/server/tanks';
 import { tankNotes } from '$lib/server/trends';
-import { latestSamples, sampleSeries } from '$lib/server/sensors';
+import { displaySamples, latestSamples, sampleSeries } from '$lib/server/sensors';
 import { fmtWhen } from '$lib/time';
 import { CHART_RANGES } from '$lib/charts';
 import type { PageServerLoad } from './$types';
@@ -41,7 +41,7 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 
 	const raw = series(tank.id, param.id, since);
 	// readings from a sensor (#19): a thin line under the tests, and the latest as Live
-	const sensor = sampleSeries(tank.id, param.id, since).map((s) => ({ t: s.t, v: displayValue(param, s.v, user) }));
+	const sensor = displaySamples(sampleSeries(tank.id, param.id, since), param, user);
 	const liveSample = latestSamples(tank.id).get(param.id);
 	const live = liveSample
 		? { value: fmtValue(param, liveSample.value, user), level: statusOf(param, liveSample.value).level, status: statusShort(statusOf(param, liveSample.value)), at: fmtWhen(liveSample.at, user.timeZone), source: liveSample.source }

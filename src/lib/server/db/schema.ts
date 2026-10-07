@@ -866,6 +866,26 @@ export const sensorReadings = sqliteTable(
 );
 export type SensorReading = typeof sensorReadings.$inferSelect;
 
+/**
+ * Each hour of sensor samples in sum (#103), so a chart over weeks or a year
+ * reads hours, not minutes. Kept by triggers on sensor_readings (see the
+ * migration), so every write counts; an hour goes when its last sample does.
+ * `hour` is the samples' UTC hour, 'YYYY-MM-DDTHH'.
+ */
+export const sensorHours = sqliteTable(
+	'sensor_hours',
+	{
+		tankId: text('tank_id').notNull(),
+		parameterId: text('parameter_id').notNull(),
+		hour: text('hour').notNull(),
+		n: integer('n').notNull(),
+		total: real('total').notNull(),
+		lo: real('lo').notNull(),
+		hi: real('hi').notNull()
+	},
+	(t) => [primaryKey({ columns: [t.tankId, t.parameterId, t.hour] })]
+);
+
 /** Apps that registered themselves to connect by signing in (OAuth dynamic client registration). */
 export const oauthClients = sqliteTable('oauth_clients', {
 	id: text('id').primaryKey(), // the client_id
