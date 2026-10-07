@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **A quicker timeline:** A tank's [Timeline](/timeline) and its public page now read only what they show, so they open as quickly for a tank kept for years as for a new one.
+
 - **A quicker dashboard with years of readings:** The [dashboard](/) and tank pages now find each parameter's latest test and sensor reading directly, so they stay quick however much history a tank builds up, even with a sensor reporting every minute.
 
 - **A stronger admin password:** Setting the local admin's password on [Server settings](/settings/server) or at first run now needs at least 12 characters and refuses ones people try first, like a keyboard run or the username with a few digits. A few unrelated words with spaces works well; a password already set keeps working.

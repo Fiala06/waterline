@@ -2,7 +2,7 @@
 // stats of that moment (the nearest water test, the running day, what lived
 // in it), and what happened between one photo and the next. The public page
 // uses the same with its switches applied.
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, inArray, lte, notExists, sql } from 'drizzle-orm';
 import { fmtValue, paramUnit, shortName, statusOf } from '$lib/params';
 import { statusShort } from '$lib/status';
 import { gapLabel, gapSummary, nearestTest, readingChanges } from '$lib/timeline';
@@ -49,6 +49,26 @@ export interface TimelineOptions {
 	limit?: number;
 }
 
+/** How far nearestTest looks from a photo, in days. */
+const NEAR_DAYS = 14;
+
+/**
+ * How many were there on a day, for days asked in order: each counts from its
+ * first day until (not on) its last. One pass over the changes for all the days.
+ */
+function sweep(spans: { from: string; to: string | null; n: number }[]) {
+	const changes = spans
+		.filter((s) => s.to == null || s.to > s.from)
+		.flatMap((s) => (s.to == null ? [{ day: s.from, n: s.n }] : [{ day: s.from, n: s.n }, { day: s.to, n: -s.n }]))
+		.sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
+	let i = 0;
+	let total = 0;
+	return (day: string) => {
+		while (i < changes.length && changes[i].day <= day) total += changes[i++].n;
+		return total;
+	};
+}
+
 const withoutPetNames = <E extends { data: Record<string, unknown> }>(e: E): E => ({ ...e, data: { ...e.data, nickname: null, previous: null } });
 
 /** The timeline, oldest first. Anyone who can see the tank may build it; the caller checks. */
@@ -57,29 +77,29 @@ export function timelineEntries(tank: Tank, prefs: UnitPrefs & { timeZone: strin
 	const names = opts.names ?? true;
 	const showReadings = opts.readings ?? true;
 	const showActivity = opts.activity ?? true;
-	let list = db
-		.select()
-		.from(photos)
-		.where(and(eq(photos.tankId, tank.id), eq(photos.inTimeline, true)))
-		.orderBy(asc(photos.takenAt), asc(photos.id))
-		.all();
-	if (!names) {
-		const tagged = new Set(
-			db
-				.select({ id: photoLivestock.photoId })
-				.from(photoLivestock)
-				.where(inArray(photoLivestock.photoId, list.map((p) => p.id)))
-				.all()
-				.map((r) => r.id)
-		);
-		list = list.filter((p) => !tagged.has(p.id));
-	}
-	if (opts.limit && list.length > opts.limit) list = list.slice(-opts.limit);
+	// only the photos shown (#115): the newest `limit`, without tagged ones when pets' names are hidden
+	const shown = and(
+		eq(photos.tankId, tank.id),
+		eq(photos.inTimeline, true),
+		names ? undefined : notExists(db.select({ x: sql`1` }).from(photoLivestock).where(eq(photoLivestock.photoId, photos.id)))
+	);
+	const list = opts.limit
+		? db.select().from(photos).where(shown).orderBy(desc(photos.takenAt), desc(photos.id)).limit(opts.limit).all().reverse()
+		: db.select().from(photos).where(shown).orderBy(asc(photos.takenAt), asc(photos.id)).all();
 	if (!list.length) return [];
+	const first = list[0].takenAt;
+	const last = list.at(-1)!.takenAt;
 
 	const params = listParams(tank.id);
 	const byParam = new Map(params.map((p) => [p.id, p]));
-	const allTests = db.select().from(tests).where(eq(tests.tankId, tank.id)).orderBy(asc(tests.takenAt)).all();
+	// the tests that can speak for these photos: nearestTest looks 14 days either side (a day more, to be safe)
+	const near = (at: string, days: number) => new Date(Date.parse(at) + days * 86_400_000).toISOString();
+	const allTests = db
+		.select()
+		.from(tests)
+		.where(and(eq(tests.tankId, tank.id), gte(tests.takenAt, near(first, -(NEAR_DAYS + 1))), lte(tests.takenAt, near(last, NEAR_DAYS + 1))))
+		.orderBy(asc(tests.takenAt))
+		.all();
 	const readingRows = allTests.length
 		? db
 				.select()
@@ -99,30 +119,50 @@ export function timelineEntries(tank: Tank, prefs: UnitPrefs & { timeZone: strin
 		m.set(r.parameterId, r.value);
 		readingsOf.set(r.testId, m);
 	}
+	// what happened between the first photo shown and the last
 	const allEvents = db
 		.select()
 		.from(events)
-		.where(and(eq(events.tankId, tank.id), opts.categories ? inArray(events.category, [...opts.categories] as EventCategory[]) : undefined))
+		.where(
+			and(
+				eq(events.tankId, tank.id),
+				gt(events.occurredAt, first),
+				lte(events.occurredAt, last),
+				opts.categories ? inArray(events.category, [...opts.categories] as EventCategory[]) : undefined
+			)
+		)
 		.orderBy(asc(events.occurredAt))
 		.all()
 		.filter((e) => names || !(e.category === 'livestock' && e.data.action === 'named'))
 		.map((e) => (names ? e : withoutPetNames(e)));
 
-	// what lived in it on a day: added on or before, not yet removed (counts as they are now)
-	const animals = db.select().from(livestock).where(eq(livestock.tankId, tank.id)).all();
-	const greens = db.select().from(plants).where(eq(plants.tankId, tank.id)).all();
+	// what lived in it on a day: added on or before, not yet removed (counts as they are now),
+	// swept once along the photos' days rather than counted afresh for each
 	const from = (addedAt: string | null, createdAt: string) => addedAt ?? dateInZone(createdAt, tz);
 	const to = (removedAt: string | null) => (removedAt ? dateInZone(removedAt, tz) : null);
-	const animalsOn = (day: string) =>
-		animals.filter((l) => from(l.addedAt, l.createdAt) <= day && (to(l.removedAt) == null || to(l.removedAt)! > day)).reduce((n, l) => n + l.count, 0);
-	const plantsOn = (day: string) => greens.filter((p) => dateInZone(p.createdAt, tz) <= day && (to(p.removedAt) == null || to(p.removedAt)! > day)).length;
+	const animalsOn = sweep(
+		db
+			.select()
+			.from(livestock)
+			.where(eq(livestock.tankId, tank.id))
+			.all()
+			.map((l) => ({ from: from(l.addedAt, l.createdAt), to: to(l.removedAt), n: l.count }))
+	);
+	const plantsOn = sweep(
+		db
+			.select()
+			.from(plants)
+			.where(eq(plants.tankId, tank.id))
+			.all()
+			.map((p) => ({ from: dateInZone(p.createdAt, tz), to: to(p.removedAt), n: 1 }))
+	);
 
 	const out: TimelineEntry[] = [];
 	let prev: { takenAt: string; day: string; test: number | null } | null = null;
 	let ei = 0;
 	for (const p of list) {
 		const day = dateInZone(p.takenAt, tz);
-		const ti = nearestTest(allTests, p.takenAt);
+		const ti = nearestTest(allTests, p.takenAt, NEAR_DAYS);
 		const test = ti != null ? allTests[ti] : null;
 		const values = test ? (readingsOf.get(test.id) ?? new Map<string, number>()) : null;
 		const readings: MomentReading[] | null =
