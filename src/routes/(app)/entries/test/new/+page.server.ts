@@ -9,6 +9,7 @@ import { alertOutOfRange } from '$lib/server/notifications';
 import { getTank, listParams, reusableCustomParams } from '$lib/server/tanks';
 import { getTask } from '$lib/server/tasks';
 import { kitsByParam } from '$lib/server/kits';
+import { safeReturn } from '$lib/server/redirect';
 import type { Actions, PageServerLoad } from './$types';
 import { logger } from '$lib/server/log';
 
@@ -24,9 +25,12 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 	const tank = getTank(user.id, tankId, 'log');
 	const date = url.searchParams.get('date');
 	const time = url.searchParams.get('time');
+	// back to where it was opened from (a maintenance routine's run page, #92)
+	const returnTo = safeReturn(url.searchParams.get('from'), '') || null;
 	const params = testFormParams(listParams(tank.id), latestReadings(tank.id), user, tank.type);
 	return {
 		tank: { id: tank.id, name: tank.name },
+		returnTo,
 		params,
 		// "Use last readings" without scripts: the form comes back filled in
 		filled:
@@ -98,6 +102,6 @@ export const actions: Actions = {
 			`✓ Saved ${n} reading${n === 1 ? '' : 's'}${wc ? ' + water change' : ''}${result.outOfRange ? ` · ${result.outOfRange} out of range` : ''}`,
 			{ view: `/entries/test/${result.test.id}` }
 		);
-		redirect(303, `/?tank=${tank.id}`);
+		redirect(303, safeReturn(form.get('from'), `/?tank=${tank.id}`));
 	}
 };

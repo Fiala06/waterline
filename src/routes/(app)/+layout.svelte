@@ -111,6 +111,8 @@
 				'/(app)/tanks/[id]/public': 'Public page',
 				'/(app)/tanks/[id]/sharing': 'Sharing',
 				'/(app)/tanks/[id]/wishlist': 'Wish list',
+				'/(app)/tanks/[id]/routines': 'Maintenance routines',
+				'/(app)/tanks/[id]/routines/[rid]/run': 'Run routine',
 				'/(app)/tanks/[id]/summary': 'Share summary'
 			} as Record<string, string | undefined>
 		)[id];
@@ -556,9 +558,10 @@
 	lastTest={data.quick.lastTest}
 	wcDue={data.quick.wcDue}
 	favorites={data.favorites}
+	routines={data.routines}
 />
 <TankSwitcher bind:open={ui.tankSwitcher} tanks={data.tanks} currentId={data.currentTankId} onpick={pickTank} />
-<CommandPalette bind:open={ui.palette} tanks={data.tanks} currentTankId={data.currentTankId} favorites={data.favorites} onpick={pickTank} />
+<CommandPalette bind:open={ui.palette} tanks={data.tanks} currentTankId={data.currentTankId} favorites={data.favorites} routines={data.routines} onpick={pickTank} />
 <ShortcutsSheet bind:open={ui.keys} />
 <AlertsPanel bind:open={ui.alerts} {alerts} onread={markRead} />
 

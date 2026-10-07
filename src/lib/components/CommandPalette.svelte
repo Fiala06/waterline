@@ -32,6 +32,7 @@
 		tanks,
 		currentTankId,
 		favorites = [],
+		routines = [],
 		onpick
 	}: {
 		open?: boolean;
@@ -39,6 +40,8 @@
 		currentTankId: string | null;
 		/** Quick log favorites (#93): for this tank or every tank, each opening its form filled in */
 		favorites?: (FavoriteLike & { id: string; label: string; tankId: string | null; sub: string | null })[];
+		/** maintenance routines (#92) with steps, to run */
+		routines?: { id: string; tankId: string; name: string; steps: number }[];
 		/** open a tank (keeps the page when it's about a tank) */
 		onpick: (id: string) => void;
 	} = $props();
@@ -75,6 +78,10 @@
 			for (const f of favorites) {
 				if (f.tankId && f.tankId !== current.id) continue;
 				list.push({ group: 'Actions', title: `★ ${f.label}`, sub: [current.name, f.sub].filter(Boolean).join(' · '), run: go(favoriteHref(f, current.id)) });
+			}
+			for (const r of routines) {
+				if (r.tankId !== current.id) continue;
+				list.push({ group: 'Actions', title: `Run ${r.name}`, sub: `${current.name} · ${r.steps} step${r.steps === 1 ? '' : 's'}`, run: go(`${base}/routines/${r.id}/run`) });
 			}
 			list.push(
 				{ group: 'Actions', title: 'Log water test', sub: current.name, key: 'T', run: go(logHref('test', current.id)) },

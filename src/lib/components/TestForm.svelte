@@ -50,6 +50,7 @@
 		initialWhen = null,
 		timeZone,
 		closeHref,
+		returnTo = null,
 		task = null,
 		error = null,
 		fieldErrors = {},
@@ -72,6 +73,8 @@
 		initialWhen?: When | null;
 		timeZone: string;
 		closeHref: string;
+		/** where Save goes back to when the form was opened from somewhere (a routine's run page, #92) */
+		returnTo?: string | null;
 		task?: { id: string; label: string; sub?: string; checked: boolean } | null;
 		error?: string | null;
 		fieldErrors?: Record<string, string>;
@@ -368,6 +371,7 @@
 	})}
 	use:logDraft={{ key: mode === 'new' ? draftKey : null, onrestore, watch: when }}
 >
+	{#if returnTo}<input type="hidden" name="from" value={returnTo} />{/if}
 	<input type="hidden" name="clientId" value={clientId} />
 	<input type="hidden" name="date" value={when?.date ?? ''} />
 	<input type="hidden" name="time" value={when?.time ?? ''} />

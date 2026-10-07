@@ -567,6 +567,31 @@ export const dashboardPrefs = sqliteTable(
 
 export type DashboardPrefs = typeof dashboardPrefs.$inferSelect;
 
+// ── Maintenance routines (#92): a named sequence of log steps, run in order ──
+
+/**
+ * "Sunday maintenance": steps like a 40% water change, a dose, a trim, a test,
+ * each a log form filled in (the same kinds and fields as a Quick log favorite).
+ * Running one walks the steps; each logged step is an ordinary History entry.
+ */
+export const maintenanceRoutines = sqliteTable(
+	'maintenance_routines',
+	{
+		id: id(),
+		tankId: text('tank_id')
+			.notNull()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		name: text('name').notNull(),
+		// [{ kind, label, fields }], in order
+		steps: text('steps', { mode: 'json' }).$type<{ kind: string; label: string; fields: Record<string, string | string[]> }[]>().notNull().default([]),
+		position: integer('position').notNull().default(0),
+		createdAt: createdAt()
+	},
+	(t) => [index('maintenance_routines_tank').on(t.tankId)]
+);
+
+export type MaintenanceRoutine = typeof maintenanceRoutines.$inferSelect;
+
 /**
  * Test kits (#21): the steps of a test and its waits, per parameter, so the
  * water test form can run them with a timer. Account-wide, like products.

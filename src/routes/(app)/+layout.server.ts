@@ -17,6 +17,7 @@ import { shownAvatar } from '$lib/server/avatar-image';
 import { alertsSeen } from '$lib/server/users';
 import { listTasks } from '$lib/server/tasks';
 import { listFavorites } from '$lib/server/favorites';
+import { listRoutinesFor } from '$lib/server/routines';
 import { favoriteSub } from '$lib/favorites';
 import { availableUpdate, projectPage } from '$lib/server/updates';
 import type { LayoutServerLoad } from './$types';
@@ -139,6 +140,8 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 		counts,
 		// Quick log favorites (#93): the keeper's pinned entries, for the tank chosen on Quick add
 		favorites: listFavorites(user.id).map((f) => ({ id: f.id, label: f.label, kind: f.kind, tankId: f.tankId, fields: f.fields, sub: favoriteSub(f.kind, f.fields, unitLabel('volume', user)) })),
+		// maintenance routines (#92), to run from Quick add and ⌘K
+		routines: listRoutinesFor(user.id).filter((r) => r.steps.length).map((r) => ({ id: r.id, tankId: r.tankId, name: r.name, steps: r.steps.length })),
 		quick: {
 			lastTest: lastTest ? `Last test ${fmtWhen(lastTest.takenAt, user.timeZone).replace(/^Today/, 'today').replace(/^Yesterday/, 'yesterday')}` : 'No tests yet',
 			lastTestAt: lastTest?.takenAt ?? null,

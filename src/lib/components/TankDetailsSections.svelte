@@ -89,6 +89,8 @@
 	<div class="acts">
 		<a class="btn" href={newRoutine('dosing')}>Add dosing</a>
 		<a class="btn" href={newRoutine('feeding')}>Add feeding</a>
+		<!-- maintenance routines (#92): a sequence of log steps, run in order -->
+		<a class="btn" href="/tanks/{tankId}/routines">Maintenance routines{details.maintenanceRoutines ? ` · ${details.maintenanceRoutines}` : ''}</a>
 	</div>
 </section>
 

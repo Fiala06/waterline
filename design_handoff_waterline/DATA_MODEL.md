@@ -125,6 +125,9 @@ quick_favorites  id, user_id, tank_id? (null: every tank), label, kind(test|wate
 dashboard_prefs  id, user_id, tank_id, trend_param_id?, priority JSON [parameter ids listed first],
                  hidden JSON [trends|recent|inTank|growing|live], created_at; unique (user_id, tank_id)
                  (a keeper's choices for a tank's dashboard; no row means the defaults)
+maintenance_routines id, tank_id, name, steps JSON [{kind(test|water_change|dosing|feeding|
+                 maintenance|note), label, fields}], position, created_at (a named sequence of log
+                 steps, run one at a time; each logged step is an events/tests row like any other)
 expenses         id, tank_id, date, amount_cents, category(livestock|plants|equipment|
                  consumables|other), what, note?, product_id?, receipt_path?,
                  receipt_type?(image/jpeg|application/pdf), import_id?, created_at

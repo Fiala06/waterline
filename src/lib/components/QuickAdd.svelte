@@ -28,7 +28,8 @@
 		timeZone,
 		lastTest,
 		wcDue,
-		favorites = []
+		favorites = [],
+		routines = []
 	}: {
 		open?: boolean;
 		tanks: TankSummary[];
@@ -38,6 +39,8 @@
 		wcDue: DueInfo | null;
 		/** Quick log favorites (#93): pinned entries, each opening its form filled in; for one tank or every tank */
 		favorites?: (FavoriteLike & { id: string; label: string; tankId: string | null; sub: string | null })[];
+		/** maintenance routines (#92) with steps, to run */
+		routines?: { id: string; tankId: string; name: string; steps: number }[];
 	} = $props();
 
 	let tankId = $state<string | null>(null);
@@ -56,6 +59,7 @@
 	const tank = $derived(tanks.find((t) => t.id === tankId));
 	// the favorites for the tank chosen here, and the ones for every tank
 	const pinned = $derived(favorites.filter((f) => !f.tankId || f.tankId === tankId));
+	const runnable = $derived(routines.filter((r) => r.tankId === tankId));
 
 	function href(path: string, params: Record<string, string> = {}) {
 		const q = new URLSearchParams(params);
@@ -145,6 +149,29 @@
 								<span class="t">
 									<span class="title">{f.label}</span>
 									{#if f.sub}<span class="sub">{f.sub}</span>{/if}
+								</span>
+							</a>
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{/if}
+
+		{#if runnable.length}
+			<!-- maintenance routines (#92): the tank's sequences, each a Run -->
+			<section class="favs" aria-labelledby="qa-routines">
+				<div class="more-label favs-head">
+					<h3 id="qa-routines">Routines</h3>
+					<a href="/tanks/{tankId}/routines" onclick={() => (open = false)}>Edit<span class="sr-only"> routines</span> ›</a>
+				</div>
+				<ul class="fav-list">
+					{#each runnable as r (r.id)}
+						<li>
+							<a class="fav" href="/tanks/{r.tankId}/routines/{r.id}/run" onclick={() => (open = false)}>
+								<CategoryIcon kind="maintenance" size={36} />
+								<span class="t">
+									<span class="title">Run {r.name}</span>
+									<span class="sub">{r.steps} step{r.steps === 1 ? '' : 's'}</span>
 								</span>
 							</a>
 						</li>
