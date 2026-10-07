@@ -1,0 +1,34 @@
+# Updates for what Waterline is built from (#101): npm packages, the GitHub
+# Actions in .github/workflows, and the Docker base image. Weekly, grouped so a
+# week's routine updates come as one pull request each; security updates come
+# on their own as soon as there's an advisory.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      production:
+        dependency-type: production
+        update-types: [minor, patch]
+      development:
+        dependency-type: development
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ['*']
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday

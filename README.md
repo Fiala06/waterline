@@ -188,7 +188,7 @@ The first time, install the Playwright browser with `npx playwright install chro
 
 Each release is a section of [`CHANGELOG.md`](CHANGELOG.md), written for the people who use the app: the app shows it under **Settings › What's new** (the newest three releases open, older ones folded by version), and the first names once on the dashboard after an update. To release, bump `version` in `package.json` and add a `## <version> · <date>` section with a few lines, each starting with its name in bold and linking the page it's on (see the top of the changelog); a unit test fails if the two don't match. The *update available* note admins see comes from the changelog on `main`.
 
-There's one branch, `main`. Every push (and pull request) runs the checks and tests, and builds the Docker image to make sure it still builds; changes wait under `## Unreleased` in the changelog. When `main` reaches a version that hasn't been released yet, the workflow ([`ci.yml`](.github/workflows/ci.yml)) publishes that build as `:latest`, `:<version>` and `:<major>.<minor>`, tags it `v<version>`, and makes a [GitHub release](https://github.com/Fiala06/waterline/releases) with the version's changelog section as its notes. Ideas and planned work are [issues](https://github.com/Fiala06/waterline/issues), grouped into a milestone for the next release; a commit that finishes one says `Closes #N`, and the issue closes when it reaches `main`.
+There's one branch, `main`. Every push (and pull request) runs the checks and tests, and builds the Docker image to make sure it still builds; changes wait under `## Unreleased` in the changelog. When `main` reaches a version that hasn't been released yet, the workflow ([`ci.yml`](.github/workflows/ci.yml)) publishes that build as `:latest`, `:<version>` and `:<major>.<minor>`, tags it `v<version>`, and makes a [GitHub release](https://github.com/Fiala06/waterline/releases) with the version's changelog section as its notes and the image's SBOM. Before that, the image is scanned for known vulnerabilities, and CodeQL, dependency review and a production `npm audit` run beside the tests: see [`SECURITY.md`](SECURITY.md) for what blocks a release and how to record an exception. Ideas and planned work are [issues](https://github.com/Fiala06/waterline/issues), grouped into a milestone for the next release; a commit that finishes one says `Closes #N`, and the issue closes when it reaches `main`.
 
 ## Stack
 
@@ -205,6 +205,7 @@ SvelteKit 2 (Svelte 5, adapter-node) · TypeScript · Drizzle ORM + better-sqlit
 | [`DATA_MODEL.md`](design_handoff_waterline/DATA_MODEL.md) | The database tables |
 | [`BUILD_PLAN.md`](design_handoff_waterline/BUILD_PLAN.md) | The order the first version was built in |
 | [`design-brief.md`](design-brief.md) | The original brief the design answered |
+| [`SECURITY.md`](SECURITY.md) | Reporting a vulnerability, and the security checks in CI |
 | [`SPECIES_SOURCES.md`](src/lib/server/data/SPECIES_SOURCES.md) | Where the bundled species list comes from, and its license |
 
 ## License

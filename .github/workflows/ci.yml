@@ -6,6 +6,9 @@
 # with that version's section of CHANGELOG.md. So :latest is always a release,
 # and the version a server shows is the one it runs.
 #
+# The image is scanned for known vulnerabilities before anything is pushed,
+# and a release carries its SBOM (see SECURITY.md; more checks in security.yml).
+#
 # For speed: the end-to-end tests run on three machines at once, and the image
 # is built while the tests run. Publishing waits for every test, then pushes
 # the same build from the cache.
@@ -101,8 +104,42 @@ jobs:
           context: .
           platforms: linux/amd64
           push: false
+          load: true
+          tags: waterline:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # The image as it will ship, scanned with Grype (#101): a high or critical
+      # vulnerability that has a fix fails here, so it can't be published.
+      # Ones that can't reach Waterline are listed with why in .grype.yaml.
+      # Third-party actions are pinned to a commit, not a movable tag.
+      - name: Scan the image
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
+        with:
+          image: waterline:ci
+          fail-build: true
+          severity-cutoff: high
+          only-fixed: true
+          output-format: table
+          config: .grype.yaml
+
+      # A release's bill of materials (SPDX), attached to its GitHub release
+      - name: SBOM
+        if: steps.version.outputs.new == 'true'
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          image: waterline:ci
+          format: spdx-json
+          output-file: waterline-sbom.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      - uses: actions/upload-artifact@v7
+        if: steps.version.outputs.new == 'true'
+        with:
+          name: sbom
+          path: waterline-sbom.spdx.json
+          retention-days: 7
 
   # A release: once every check and test has passed, the same image (all of it
   # from the build's cache) is pushed to ghcr.io.
@@ -143,6 +180,9 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
+          # the SBOM and build provenance travel with the image in the registry
+          sbom: true
+          provenance: mode=max
 
   release:
     name: GitHub release
@@ -168,8 +208,14 @@ jobs:
           echo "" >> notes.md
           echo "Docker image: \`ghcr.io/fiala06/waterline:$VERSION\`" >> notes.md
 
+      - uses: actions/download-artifact@v7
+        with:
+          name: sbom
+
       - name: Tag and release
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.docker.outputs.version }}
-        run: gh release create "v$VERSION" --target "$GITHUB_SHA" --title "$VERSION" --notes-file notes.md
+        run: |
+          mv waterline-sbom.spdx.json "waterline-$VERSION-sbom.spdx.json"
+          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "$VERSION" --notes-file notes.md "waterline-$VERSION-sbom.spdx.json"

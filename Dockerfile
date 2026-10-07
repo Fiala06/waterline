@@ -21,6 +21,11 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/build ./build
 COPY --from=build /app/drizzle ./drizzle
 COPY --from=build /app/scripts/hash-password.mjs ./scripts/
+# Debian's security fixes since the base image was made; and no npm, npx or
+# corepack, which the server never runs (fewer packages to carry advisories, #101).
+RUN apt-get update && apt-get upgrade -y --no-install-recommends && rm -rf /var/lib/apt/lists/* \
+	&& rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+		/usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 # `hash-password` in the container console prints a LOCAL_ADMIN_PASSWORD_HASH value.
 RUN printf '#!/bin/sh\nexec node /app/scripts/hash-password.mjs "$@"\n' > /usr/local/bin/hash-password \
 	&& chmod +x /usr/local/bin/hash-password \

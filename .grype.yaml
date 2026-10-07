@@ -1,0 +1,11 @@
+# Grype, the image scan in CI (#101; see SECURITY.md). A high or critical
+# vulnerability with a fix available fails the build, so a release can't
+# publish with it. When one can't reach Waterline, list it here with why and
+# when to look again, rather than lowering the bar:
+#
+# ignore:
+#   - vulnerability: CVE-2026-12345
+#     package:
+#       name: libexample
+#     # why: only reachable through the example CLI, which the image never runs; look again 2027-01-01
+ignore: []

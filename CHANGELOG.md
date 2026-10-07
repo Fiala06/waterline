@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Security updates:** The part of Waterline that reads your photos, and another it's built with, have been updated to fix known vulnerabilities, and each release is now checked for known vulnerabilities before it's published. How it works is in [SECURITY.md](https://github.com/Fiala06/waterline/blob/main/SECURITY.md).
+
 - **A quicker timeline:** A tank's [Timeline](/timeline) and its public page now read only what they show, so they open as quickly for a tank kept for years as for a new one.
 
 - **A quicker dashboard with years of readings:** The [dashboard](/) and tank pages now find each parameter's latest test and sensor reading directly, so they stay quick however much history a tank builds up, even with a sensor reporting every minute.
