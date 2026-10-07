@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Nothing lost joining the admin's accounts:** When the admin's Google account from before 1.8.3 is joined to the local admin's account, it now brings everything with it: saved test kits and access to tanks other keepers share (keeping the higher role) as well as tanks, products and devices, and History still shows who logged each entry. Before, test kits and shared-tank access were deleted.
+
 ## 1.12.12 · 2026-10-05
 
 - **Calculators in the sidebar:** On a computer, [Calculators](/calculators) now has its own link in the sidebar, under Tasks, opening the calculators for the tank you're on.

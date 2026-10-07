@@ -1,7 +1,26 @@
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, isNull, notInArray } from 'drizzle-orm';
 import { VERSION } from '$lib/changelog';
 import { db } from './db';
-import { assistantTokens, calendarFeeds, exports, imports, notificationPrefs, products, pushSubscriptions, tanks, users, type User } from './db/schema';
+import {
+	assistantTokens,
+	calendarFeeds,
+	emailLog,
+	events,
+	exports,
+	imports,
+	invites,
+	logs,
+	notificationPrefs,
+	oauthCodes,
+	products,
+	pushSubscriptions,
+	tankMembers,
+	tanks,
+	testKits,
+	tests,
+	users,
+	type User
+} from './db/schema';
 import { inviteAllows } from './invites';
 import { logger } from './log';
 import { getServerSettings } from './mail';
@@ -38,21 +57,103 @@ export function googleAccountConflict(email: string, googleSub: string): boolean
 }
 
 /**
+ * What happens to each column that points at an account when two accounts
+ * become one (#112). Every such column is listed (a test reads the schema and
+ * fails when one is missing), so a new table can't be lost to the delete's
+ * cascade by being forgotten here.
+ * - move: the joining account's rows become the kept account's
+ * - merge: moved, settling what both have (see joinAccounts)
+ * - drop: discarded on purpose
+ */
+export const USER_LINKS = {
+	'tanks.user_id': 'move',
+	'products.user_id': 'move',
+	'test_kits.user_id': 'move',
+	'imports.user_id': 'move',
+	'exports.user_id': 'move',
+	'assistant_tokens.user_id': 'move',
+	'push_subscriptions.user_id': 'move',
+	// who logged an entry or test on a shared tank, and the server log's account: no foreign key, kept attributed
+	'events.logged_by': 'move',
+	'tests.logged_by': 'move',
+	'logs.user_id': 'move',
+	// who sent or accepted an invitation: history, kept attributed
+	'invites.invited_by': 'move',
+	'invites.accepted_user_id': 'move',
+	'tank_members.invited_by': 'move',
+	// access to other keepers' tanks: one active membership per tank, the higher role; none on a tank they now own
+	'tank_members.user_id': 'merge',
+	// one calendar feed each: the kept account's, or the other's when it has none
+	'calendar_feeds.user_id': 'merge',
+	// the kept account's notification settings, or the other's when it has none
+	'notification_prefs.user_id': 'merge',
+	// what's been emailed, so nothing goes twice: the other's, where the kept account hasn't the same
+	'email_log.user_id': 'merge',
+	// sign-in codes for an AI assistant live for minutes and are used once: that sign-in starts again
+	'oauth_codes.user_id': 'drop'
+} as const;
+
+const RANK = { view: 0, log: 1 } as const;
+
+/**
  * One account from two: the admin's Google account was used before 1.8.3
  * and made a new one, away from the local admin's tanks. The local admin's
- * account stays (its tanks, settings and History); what the new one has
- * (tanks, saved products, devices, assistant tokens) moves into it, and the
- * new one's Google sign-in and address with them.
+ * account stays (its tanks, settings and History); everything the new one
+ * has moves into it as USER_LINKS says, in one transaction, and the new
+ * one's Google sign-in and address with them.
  */
 function joinAccounts(keep: User, from: User): User {
 	const joined = db.transaction((tx) => {
-		for (const t of [tanks, products, imports, exports, assistantTokens, pushSubscriptions]) {
+		const at = new Date().toISOString();
+		const moved = (t: typeof tanks | typeof products | typeof testKits | typeof imports | typeof exports | typeof assistantTokens | typeof pushSubscriptions | typeof logs) =>
 			tx.update(t).set({ userId: keep.id }).where(eq(t.userId, from.id)).run();
+		for (const t of [tanks, products, testKits, imports, exports, assistantTokens, pushSubscriptions, logs]) moved(t);
+		tx.update(events).set({ loggedBy: keep.id }).where(eq(events.loggedBy, from.id)).run();
+		tx.update(tests).set({ loggedBy: keep.id }).where(eq(tests.loggedBy, from.id)).run();
+		tx.update(invites).set({ invitedBy: keep.id }).where(eq(invites.invitedBy, from.id)).run();
+		tx.update(invites).set({ acceptedUserId: keep.id }).where(eq(invites.acceptedUserId, from.id)).run();
+		tx.update(tankMembers).set({ invitedBy: keep.id }).where(eq(tankMembers.invitedBy, from.id)).run();
+
+		// memberships: the kept account owns every tank either owned, and has one active membership per other tank
+		const owned = new Set(tx.select({ id: tanks.id }).from(tanks).where(eq(tanks.userId, keep.id)).all().map((t) => t.id));
+		const active = (m: { acceptedAt: string | null; revokedAt: string | null }) => !!m.acceptedAt && !m.revokedAt;
+		for (const m of tx.select().from(tankMembers).where(eq(tankMembers.userId, from.id)).all()) {
+			const patch: Partial<typeof tankMembers.$inferInsert> = { userId: keep.id };
+			if (active(m)) {
+				const theirs = tx
+					.select()
+					.from(tankMembers)
+					.where(and(eq(tankMembers.tankId, m.tankId), eq(tankMembers.userId, keep.id), isNotNull(tankMembers.acceptedAt), isNull(tankMembers.revokedAt)))
+					.get();
+				if (owned.has(m.tankId)) patch.revokedAt = at;
+				else if (theirs) {
+					// one active membership: the kept one, with the higher of the two roles
+					if (RANK[m.role] > RANK[theirs.role]) tx.update(tankMembers).set({ role: m.role }).where(eq(tankMembers.id, theirs.id)).run();
+					patch.revokedAt = at;
+				}
+			}
+			tx.update(tankMembers).set(patch).where(eq(tankMembers.id, m.id)).run();
 		}
-		// one calendar feed each: the kept account's, or the other's when it has none
+		// and none left on a tank the kept account owns
+		if (owned.size)
+			tx.update(tankMembers)
+				.set({ revokedAt: at })
+				.where(and(eq(tankMembers.userId, keep.id), inArray(tankMembers.tankId, [...owned]), isNotNull(tankMembers.acceptedAt), isNull(tankMembers.revokedAt)))
+				.run();
+
 		if (!tx.select({ t: calendarFeeds.token }).from(calendarFeeds).where(eq(calendarFeeds.userId, keep.id)).get()) {
 			tx.update(calendarFeeds).set({ userId: keep.id }).where(eq(calendarFeeds.userId, from.id)).run();
 		}
+		if (!tx.select({ u: notificationPrefs.userId }).from(notificationPrefs).where(eq(notificationPrefs.userId, keep.id)).get()) {
+			tx.update(notificationPrefs).set({ userId: keep.id }).where(eq(notificationPrefs.userId, from.id)).run();
+		}
+		const sent = tx.select({ key: emailLog.key }).from(emailLog).where(eq(emailLog.userId, keep.id)).all().map((r) => r.key);
+		tx.update(emailLog)
+			.set({ userId: keep.id })
+			.where(sent.length ? and(eq(emailLog.userId, from.id), notInArray(emailLog.key, sent)) : eq(emailLog.userId, from.id))
+			.run();
+		tx.delete(oauthCodes).where(eq(oauthCodes.userId, from.id)).run();
+
 		tx.delete(users).where(eq(users.id, from.id)).run();
 		return tx
 			.update(users)
