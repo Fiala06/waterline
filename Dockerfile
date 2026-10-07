@@ -1,5 +1,5 @@
 # Waterline: one image, one volume (/data).
-FROM node:22-bookworm-slim AS build
+FROM node:25-bookworm-slim AS build
 WORKDIR /app
 # Build tools only in case better-sqlite3 has no prebuilt binary for this platform.
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
@@ -9,7 +9,7 @@ RUN npm ci
 COPY . .
 RUN npm run build && npm prune --omit=dev
 
-FROM node:22-bookworm-slim
+FROM node:25-bookworm-slim
 WORKDIR /app
 ENV NODE_ENV=production \
 	PORT=3000 \
