@@ -54,4 +54,39 @@ describe('sensor readings (#19)', () => {
 		expect(authenticateSensor(`Bearer ${read}`)).toBeNull();
 		expect(authenticateAssistant(`Bearer ${read}`)?.token.kind).toBe('assistant');
 	});
+
+	it('stores a full request of 100 readings in one go, and settles nearby ones in its order (#113)', () => {
+		const t0 = Date.parse('2026-10-05T00:00:00Z');
+		const hundred = Array.from({ length: 100 }, (_, i) => ({ parameter: 'temp', value: 24 + i / 100, at: new Date(t0 + i * 61_000).toISOString() }));
+		const r = recordSamples(tank.id, hundred, 'probe', null, t0 + 200 * 60_000);
+		expect(r.every((x) => x.ok && x.stored)).toBe(true);
+		// the same again: all within a minute of a stored one
+		expect(recordSamples(tank.id, hundred, 'probe', null, t0 + 200 * 60_000).every((x) => x.ok && !x.stored)).toBe(true);
+		// in one request, the first of two readings 20 s apart is kept, the next refused, a later one kept
+		const t1 = Date.parse('2026-10-06T00:00:00Z');
+		const mixed = recordSamples(
+			tank.id,
+			[
+				{ parameter: 'temp', value: 25, at: new Date(t1).toISOString() },
+				{ parameter: 'Temperature', value: 26, at: new Date(t1 + 20_000).toISOString() },
+				{ parameter: 'nope', value: 1 },
+				{ parameter: 'temp', value: 27, at: new Date(t1 + 61_000).toISOString() }
+			],
+			'probe',
+			null,
+			t1 + 5 * 60_000
+		);
+		expect(mixed.map((x) => (x.ok ? x.stored : 'error'))).toEqual([true, false, 'error', true]);
+	});
+
+	it('looks and stores inside one write transaction, so two requests never both find the same gap (#113)', async () => {
+		const { db } = await import('./db');
+		const spy = vi.spyOn(db, 'transaction');
+		const at = '2026-10-07T00:00:00.000Z';
+		recordSamples(tank.id, [{ parameter: 'temp', value: 25, at }], 'probe', null, Date.parse(at) + 60_000);
+		// BEGIN IMMEDIATE: the write lock is held before the gap check, so a second writer waits for it
+		expect(spy).toHaveBeenCalledTimes(1);
+		expect(spy.mock.calls[0][1]).toEqual({ behavior: 'immediate' });
+		spy.mockRestore();
+	});
 });

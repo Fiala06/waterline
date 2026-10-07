@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Sensor readings stored together:** A sensor's batch of readings is now stored in one go, so it's quicker and two batches arriving at once can never both store a reading for the same minute.
+
 - **No stale pages after an update:** Pages Waterline keeps for offline use now belong to the version that made them, so after an update the app never opens on an old version's page; the old copies are cleared when the new version starts.
 
 - **AI assistant sign-ins renew safely:** An AI assistant connected through sign-in can renew its access with each refresh token once only; a second use is refused and noted in the server's [Logs](/settings/server/logs), and the connection carries on for the one holding the newest token.

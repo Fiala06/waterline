@@ -1,7 +1,7 @@
 // Readings from sensors and controllers (#19): POST /api/v1/tanks/<id>/readings
 // with a sensor token. Samples are stored metric in their own table, at most
 // one a minute per parameter, and never raise an out-of-range alert on their own.
-import { and, desc, eq, gte, lt, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, lt, or, sql } from 'drizzle-orm';
 import { fToC, ppmToDgh } from '$lib/units';
 import { db } from './db';
 import { sensorReadings, tankParameters, type TankParameter } from './db/schema';
@@ -60,7 +60,11 @@ export function recordSamples(tankId: string, samples: SampleIn[], source: strin
 		const n = name.toLowerCase();
 		return params.find((p) => p.key === n) ?? params.find((p) => p.name.toLowerCase() === n);
 	};
-	return samples.map((s) => {
+	const label = (p: TankParameter) => (p.key === 'custom' ? p.name : p.key);
+
+	// 1. every reading checked and converted first, so a bad one never stops the rest (#113)
+	type Ok = { p: TankParameter; t: number; value: number };
+	const checked: (Ok | SampleResult)[] = samples.map((s) => {
 		const p = find(s.parameter);
 		if (!p) return { ok: false, parameter: s.parameter, error: `No parameter "${s.parameter}" on this tank. It has: ${params.map((x) => `${x.key === 'custom' ? x.name : x.key} (${x.name})`).join(', ')}.` };
 		const t = s.at ? Date.parse(s.at) : now;
@@ -68,16 +72,41 @@ export function recordSamples(tankId: string, samples: SampleIn[], source: strin
 		if (t < now - KEEP_DAYS * 86_400_000) return { ok: false, parameter: s.parameter, error: `"at" is more than ${KEEP_DAYS} days ago.` };
 		const value = toStoredSample(p, s.value, s.unit);
 		if (!Number.isFinite(value)) return { ok: false, parameter: s.parameter, error: 'Not a number.' };
-		const at = new Date(t).toISOString();
-		const last = db
-			.select({ at: sensorReadings.at })
-			.from(sensorReadings)
-			.where(and(eq(sensorReadings.tankId, tankId), eq(sensorReadings.parameterId, p.id), gte(sensorReadings.at, new Date(t - MIN_GAP_MS).toISOString()), lt(sensorReadings.at, new Date(t + MIN_GAP_MS).toISOString())))
-			.get();
-		if (last) return { ok: true, parameter: p.key === 'custom' ? p.name : p.key, stored: false, value };
-		db.insert(sensorReadings).values({ tankId, parameterId: p.id, value, at, source: source.slice(0, 60), tokenId }).run();
-		return { ok: true, parameter: p.key === 'custom' ? p.name : p.key, stored: true, value };
+		return { p, t, value };
 	});
+	const valid = checked.filter((c): c is Ok => 'p' in c);
+	if (!valid.length) return checked as SampleResult[];
+
+	// 2. stored in one write transaction, taken before reading (BEGIN IMMEDIATE), so a
+	// second request waits for this one instead of reading the same gaps
+	return db.transaction(
+		(tx) => {
+			// the stored samples near any incoming one, in a single query
+			const near = (p: TankParameter, t: number) =>
+				and(eq(sensorReadings.parameterId, p.id), gte(sensorReadings.at, new Date(t - MIN_GAP_MS).toISOString()), lt(sensorReadings.at, new Date(t + MIN_GAP_MS).toISOString()));
+			const taken = new Map<string, number[]>();
+			for (const r of tx
+				.select({ parameterId: sensorReadings.parameterId, at: sensorReadings.at })
+				.from(sensorReadings)
+				.where(and(eq(sensorReadings.tankId, tankId), or(...valid.map((v) => near(v.p, v.t)))))
+				.all())
+				(taken.get(r.parameterId) ?? taken.set(r.parameterId, []).get(r.parameterId)!).push(Date.parse(r.at));
+
+			// the rolling one-a-minute rule, against what's stored and what this request already kept, in its order
+			const rows: (typeof sensorReadings.$inferInsert)[] = [];
+			const results = checked.map((c): SampleResult => {
+				if (!('p' in c)) return c;
+				const times = taken.get(c.p.id) ?? taken.set(c.p.id, []).get(c.p.id)!;
+				if (times.some((e) => e >= c.t - MIN_GAP_MS && e < c.t + MIN_GAP_MS)) return { ok: true, parameter: label(c.p), stored: false, value: c.value };
+				times.push(c.t);
+				rows.push({ tankId, parameterId: c.p.id, value: c.value, at: new Date(c.t).toISOString(), source: source.slice(0, 60), tokenId });
+				return { ok: true, parameter: label(c.p), stored: true, value: c.value };
+			});
+			if (rows.length) tx.insert(sensorReadings).values(rows).run();
+			return results;
+		},
+		{ behavior: 'immediate' }
+	);
 }
 
 /** The newest sample per parameter of a tank, with when and from what. */
