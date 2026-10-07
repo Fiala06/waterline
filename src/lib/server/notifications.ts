@@ -3,7 +3,7 @@
 // zone, and the email log makes every send happen at most once. Email and push
 // have their own switches per kind; push is one notice at a time, whatever the
 // email delivery (digests are email only), and doesn't need email set up.
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, isNull, lt } from 'drizzle-orm';
 import { env } from '$env/dynamic/private';
 import { fmtRange, fmtValue, paramUnit, shortName, statusOf } from '$lib/params';
 import { dueInfo, intervalText, isRoutine } from '$lib/tasks';
@@ -333,10 +333,10 @@ export async function alertOutOfRange(user: User, tankId: string, testId: string
 		.select({ value: testReadings.value, takenAt: tests.takenAt })
 		.from(testReadings)
 		.innerJoin(tests, eq(tests.id, testReadings.testId))
-		.where(and(eq(tests.tankId, tankId), eq(testReadings.parameterId, p.id)))
+		.where(and(eq(tests.tankId, tankId), eq(testReadings.parameterId, p.id), lt(tests.takenAt, test.takenAt)))
 		.orderBy(desc(tests.takenAt))
-		.all()
-		.find((x) => x.takenAt < test.takenAt);
+		.limit(1)
+		.get();
 	const wc = lastEventOf(tankId, 'water_change');
 	const today = todayInZone(user.timeZone);
 	const wcDays = wc ? daysBetween(dateInZone(wc.occurredAt, user.timeZone), today) : null;

@@ -1,6 +1,6 @@
 // Water tests and events: create, read, edit, delete, and the activity feed.
 import { error } from '@sveltejs/kit';
-import { and, desc, eq, gte, inArray } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 import { additivesOf } from '$lib/events';
 import { statusOf } from '$lib/params';
 import { db } from './db';
@@ -142,18 +142,25 @@ export function deleteTest(userId: string, testId: string) {
 	return test;
 }
 
-/** Latest reading per parameter (from the most recent test that has that parameter). */
+/**
+ * Latest reading per parameter (from the most recent test that has that
+ * parameter). One lookup per parameter (#116): the tank's tests newest first
+ * until one has it, and only for parameters with any reading at all.
+ */
 export function latestReadings(tankId: string) {
-	const rows = db
+	const rows = latestReadingsQuery(tankId).all();
+	return new Map<string, { value: number; takenAt: string }>(rows.map((r) => [r.parameterId, { value: r.value, takenAt: r.takenAt }]));
+}
+
+/** The query behind latestReadings, apart so a test can read its plan. */
+export function latestReadingsQuery(tankId: string) {
+	const newest = sql`(select t.id from tests t where t.tank_id = ${tankParameters.tankId} and exists (select 1 from test_readings r where r.test_id = t.id and r.parameter_id = ${tankParameters.id}) order by t.taken_at desc limit 1)`;
+	return db
 		.select({ parameterId: testReadings.parameterId, value: testReadings.value, takenAt: tests.takenAt })
-		.from(testReadings)
-		.innerJoin(tests, eq(tests.id, testReadings.testId))
-		.where(eq(tests.tankId, tankId))
-		.orderBy(desc(tests.takenAt))
-		.all();
-	const latest = new Map<string, { value: number; takenAt: string }>();
-	for (const r of rows) if (!latest.has(r.parameterId)) latest.set(r.parameterId, r);
-	return latest;
+		.from(tankParameters)
+		.innerJoin(tests, eq(tests.id, newest))
+		.innerJoin(testReadings, and(eq(testReadings.testId, tests.id), eq(testReadings.parameterId, tankParameters.id)))
+		.where(and(eq(tankParameters.tankId, tankId), sql`exists (select 1 from test_readings r where r.parameter_id = ${tankParameters.id})`));
 }
 
 export function latestTest(tankId: string) {
@@ -169,11 +176,10 @@ export function testsSince(tankId: string, since: string) {
 		.orderBy(tests.takenAt)
 		.all();
 	const ids = list.map((t) => t.id);
-	const rows = ids.length ? db.select().from(testReadings).where(inArray(testReadings.testId, ids)).all() : [];
-	return list.map((test) => ({
-		test,
-		readings: new Map(rows.filter((r) => r.testId === test.id).map((r) => [r.parameterId, r.value]))
-	}));
+	// grouped in one pass (#116), not filtered once per test
+	const byTest = new Map<string, Map<string, number>>(ids.map((id) => [id, new Map()]));
+	if (ids.length) for (const r of db.select().from(testReadings).where(inArray(testReadings.testId, ids)).all()) byTest.get(r.testId)?.set(r.parameterId, r.value);
+	return list.map((test) => ({ test, readings: byTest.get(test.id)! }));
 }
 
 /** Readings for one parameter since an instant, oldest first. */

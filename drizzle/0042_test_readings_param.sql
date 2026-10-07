@@ -1,0 +1,1 @@
+CREATE INDEX `test_readings_param` ON `test_readings` (`parameter_id`);

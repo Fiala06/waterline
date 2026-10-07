@@ -245,7 +245,8 @@ export const testReadings = sqliteTable(
 		// the value before the last edit, for "was 40" (G6)
 		prevValue: real('prev_value')
 	},
-	(t) => [primaryKey({ columns: [t.testId, t.parameterId] })]
+	// by parameter: whether one has readings at all (latest readings, #116), and deleting a parameter
+	(t) => [primaryKey({ columns: [t.testId, t.parameterId] }), index('test_readings_param').on(t.parameterId)]
 );
 
 

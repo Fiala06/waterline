@@ -1,7 +1,7 @@
 // Readings from sensors and controllers (#19): POST /api/v1/tanks/<id>/readings
 // with a sensor token. Samples are stored metric in their own table, at most
 // one a minute per parameter, and never raise an out-of-range alert on their own.
-import { and, desc, eq, gte, lt, or, sql } from 'drizzle-orm';
+import { and, eq, gte, lt, or, sql } from 'drizzle-orm';
 import { fToC, ppmToDgh } from '$lib/units';
 import { db } from './db';
 import { sensorReadings, tankParameters, type TankParameter } from './db/schema';
@@ -111,15 +111,19 @@ export function recordSamples(tankId: string, samples: SampleIn[], source: strin
 
 /** The newest sample per parameter of a tank, with when and from what. */
 export function latestSamples(tankId: string): Map<string, { value: number; at: string; source: string }> {
-	const rows = db
+	return new Map(latestSamplesQuery(tankId).all().map((r) => [r.parameterId, r]));
+}
+
+/** The query behind latestSamples, apart so a test can read its plan. */
+export function latestSamplesQuery(tankId: string) {
+	// one indexed lookup per parameter (#99): the newest row from the end of
+	// sensor_readings_tank_param_at, however many a year of samples there are
+	const newest = sql`(select r.id from sensor_readings r where r.tank_id = ${tankParameters.tankId} and r.parameter_id = ${tankParameters.id} order by r.at desc limit 1)`;
+	return db
 		.select({ parameterId: sensorReadings.parameterId, value: sensorReadings.value, at: sensorReadings.at, source: sensorReadings.source })
-		.from(sensorReadings)
-		.where(eq(sensorReadings.tankId, tankId))
-		.orderBy(desc(sensorReadings.at))
-		.all();
-	const out = new Map<string, { value: number; at: string; source: string }>();
-	for (const r of rows) if (!out.has(r.parameterId)) out.set(r.parameterId, r);
-	return out;
+		.from(tankParameters)
+		.innerJoin(sensorReadings, eq(sensorReadings.id, newest))
+		.where(eq(tankParameters.tankId, tankId));
 }
 
 /**
