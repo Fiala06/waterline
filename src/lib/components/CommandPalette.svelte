@@ -5,6 +5,7 @@
 	import { tick } from 'svelte';
 	import { tankTypeLabel } from '$lib/types';
 	import { dropFocus, logHref, ui } from '$lib/ui.svelte';
+	import { favoriteHref, type FavoriteLike } from '$lib/favorites';
 	import Icon from './Icon.svelte';
 	import TankThumb from './TankThumb.svelte';
 
@@ -30,11 +31,14 @@
 		open = $bindable(false),
 		tanks,
 		currentTankId,
+		favorites = [],
 		onpick
 	}: {
 		open?: boolean;
 		tanks: TankSummary[];
 		currentTankId: string | null;
+		/** Quick log favorites (#93): for this tank or every tank, each opening its form filled in */
+		favorites?: (FavoriteLike & { id: string; label: string; tankId: string | null; sub: string | null })[];
 		/** open a tank (keeps the page when it's about a tank) */
 		onpick: (id: string) => void;
 	} = $props();
@@ -68,6 +72,10 @@
 				['Tank setup', `${base}/settings`, 'G S']
 			];
 			for (const [title, href, key] of tabs) list.push({ group: 'Go to', title, sub: current.name, key, run: go(href) });
+			for (const f of favorites) {
+				if (f.tankId && f.tankId !== current.id) continue;
+				list.push({ group: 'Actions', title: `★ ${f.label}`, sub: [current.name, f.sub].filter(Boolean).join(' · '), run: go(favoriteHref(f, current.id)) });
+			}
 			list.push(
 				{ group: 'Actions', title: 'Log water test', sub: current.name, key: 'T', run: go(logHref('test', current.id)) },
 				{ group: 'Actions', title: 'Log water change', sub: current.name, key: 'W', run: go(logHref('water_change', current.id)) },

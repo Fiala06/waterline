@@ -22,6 +22,7 @@ import {
 	photoLivestock,
 	photos,
 	products,
+	quickFavorites,
 	tankParameters,
 	tanks,
 	taskCompletions,
@@ -195,7 +196,13 @@ async function build(id: string, user: User, list: Tank[], format: 'zip' | 'csv'
 				.from(products)
 				.where(eq(products.userId, user.id))
 				.all()
-				.map((p) => ({ ...p, userId: undefined }))
+				.map((p) => ({ ...p, userId: undefined })),
+			favorites: db
+				.select()
+				.from(quickFavorites)
+				.where(eq(quickFavorites.userId, user.id))
+				.all()
+				.map((f) => ({ ...f, userId: undefined }))
 		},
 		tanks: list.map((t) => ({
 			...t,

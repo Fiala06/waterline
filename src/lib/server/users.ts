@@ -13,6 +13,7 @@ import {
 	notificationPrefs,
 	oauthCodes,
 	products,
+	quickFavorites,
 	pushSubscriptions,
 	tankMembers,
 	tanks,
@@ -68,6 +69,7 @@ export function googleAccountConflict(email: string, googleSub: string): boolean
 export const USER_LINKS = {
 	'tanks.user_id': 'move',
 	'products.user_id': 'move',
+	'quick_favorites.user_id': 'move',
 	'test_kits.user_id': 'move',
 	'imports.user_id': 'move',
 	'exports.user_id': 'move',
@@ -105,9 +107,9 @@ const RANK = { view: 0, log: 1 } as const;
 function joinAccounts(keep: User, from: User): User {
 	const joined = db.transaction((tx) => {
 		const at = new Date().toISOString();
-		const moved = (t: typeof tanks | typeof products | typeof testKits | typeof imports | typeof exports | typeof assistantTokens | typeof pushSubscriptions | typeof logs) =>
+		const moved = (t: typeof tanks | typeof products | typeof quickFavorites | typeof testKits | typeof imports | typeof exports | typeof assistantTokens | typeof pushSubscriptions | typeof logs) =>
 			tx.update(t).set({ userId: keep.id }).where(eq(t.userId, from.id)).run();
-		for (const t of [tanks, products, testKits, imports, exports, assistantTokens, pushSubscriptions, logs]) moved(t);
+		for (const t of [tanks, products, quickFavorites, testKits, imports, exports, assistantTokens, pushSubscriptions, logs]) moved(t);
 		tx.update(events).set({ loggedBy: keep.id }).where(eq(events.loggedBy, from.id)).run();
 		tx.update(tests).set({ loggedBy: keep.id }).where(eq(tests.loggedBy, from.id)).run();
 		tx.update(invites).set({ invitedBy: keep.id }).where(eq(invites.invitedBy, from.id)).run();

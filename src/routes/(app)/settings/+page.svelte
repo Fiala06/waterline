@@ -364,6 +364,10 @@
 		<section id="products" class="sec" aria-labelledby="products-h">
 			<h2 id="products-h">Products<SectionLink id="products" label="Products" /></h2>
 			<div class="rows">
+				<a class="row link" href="/settings/favorites">
+					<span class="ttext"><span class="tt">Quick log favorites</span><span class="td">Your usual entries, like a 40% water change or a dose, one tap from Log</span></span>
+					{#if data.favorites}<span class="v">{data.favorites}</span>{/if}<span class="chev" aria-hidden="true">›</span>
+				</a>
 				<a class="row link" href="/settings/products">
 					<span class="ttext"><span class="tt">Saved product links</span><span class="td">Fertilizers, conditioner and food you buy again, one tap to reorder</span></span>
 					{#if data.products}<span class="v">{data.products}</span>{/if}<span class="chev" aria-hidden="true">›</span>

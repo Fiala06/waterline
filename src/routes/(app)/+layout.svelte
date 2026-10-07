@@ -555,9 +555,10 @@
 	timeZone={data.user.timeZone}
 	lastTest={data.quick.lastTest}
 	wcDue={data.quick.wcDue}
+	favorites={data.favorites}
 />
 <TankSwitcher bind:open={ui.tankSwitcher} tanks={data.tanks} currentId={data.currentTankId} onpick={pickTank} />
-<CommandPalette bind:open={ui.palette} tanks={data.tanks} currentTankId={data.currentTankId} onpick={pickTank} />
+<CommandPalette bind:open={ui.palette} tanks={data.tanks} currentTankId={data.currentTankId} favorites={data.favorites} onpick={pickTank} />
 <ShortcutsSheet bind:open={ui.keys} />
 <AlertsPanel bind:open={ui.alerts} {alerts} onread={markRead} />
 

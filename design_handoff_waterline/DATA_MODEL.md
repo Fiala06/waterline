@@ -117,6 +117,11 @@ test_kits        id, user_id, name, param_key (ph|nh3|no2|no3|gh|kh|temp or cust
                  created_at
 products         id, user_id, name, url, note?, strength_mg_per_ml?, strength_of? (its strength for
                  the Dose → ppm calculator: mg per mL of what it adds), created_at (saved reorder links)
+quick_favorites  id, user_id, tank_id? (null: every tank), label, kind(test|water_change|dosing|
+                 feeding|maintenance|note), fields JSON (what the form opens with, as typed:
+                 amountMode, amount, source, product, unit, food, actions[]), position, created_at
+                 (Quick log favorites: pinned on Quick add, one tap to a form filled in, never saved
+                 on its own)
 expenses         id, tank_id, date, amount_cents, category(livestock|plants|equipment|
                  consumables|other), what, note?, product_id?, receipt_path?,
                  receipt_type?(image/jpeg|application/pdf), import_id?, created_at

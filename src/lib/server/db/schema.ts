@@ -504,6 +504,37 @@ export const products = sqliteTable(
 
 export type Product = typeof products.$inferSelect;
 
+// ── Quick log favorites (#93): the keeper's usual entries, one tap from Log ──
+
+export const FAVORITE_KINDS = ['test', 'water_change', 'dosing', 'feeding', 'maintenance', 'note'] as const;
+
+/**
+ * A pinned entry on Quick add: "40% water change", "Dose Thrive 5 mL". Opening
+ * one takes the keeper to that log form, filled in from `fields`; nothing is
+ * saved until they do. For one tank, or every tank when tank_id is null.
+ */
+export const quickFavorites = sqliteTable(
+	'quick_favorites',
+	{
+		id: id(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		tankId: text('tank_id').references(() => tanks.id, { onDelete: 'cascade' }),
+		label: text('label').notNull(),
+		kind: text('kind', { enum: FAVORITE_KINDS }).notNull(),
+		// what the form opens with, as typed into it (a water change's amount in the
+		// keeper's unit when amountMode is volume): amountMode, amount, source,
+		// product, unit, food, actions[]
+		fields: text('fields', { mode: 'json' }).$type<Record<string, string | string[]>>().notNull().default({}),
+		position: integer('position').notNull().default(0),
+		createdAt: createdAt()
+	},
+	(t) => [index('quick_favorites_user').on(t.userId)]
+);
+
+export type QuickFavorite = typeof quickFavorites.$inferSelect;
+
 /**
  * Test kits (#21): the steps of a test and its waits, per parameter, so the
  * water test form can run them with a timer. Account-wide, like products.

@@ -38,8 +38,17 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 	const time = url.searchParams.get('time');
 	// back to where it was opened from ("Add note" on a tank's Overview)
 	const returnTo = safeReturn(url.searchParams.get('from'), '') || null;
+	// a Quick log favorite (#93) opens the form filled in from the address; nothing is saved until Save
+	const prefill: Record<string, string | string[]> = {};
+	for (const k of ['amountMode', 'amount', 'source', 'product', 'unit', 'food']) {
+		const v = url.searchParams.get(k);
+		if (v) prefill[k] = v.slice(0, 80);
+	}
+	const actions = url.searchParams.getAll('actions');
+	if (actions.length) prefill.actions = actions.slice(0, 12).map((a) => a.slice(0, 80));
 	return {
 		returnTo,
+		prefill,
 		tank: { id: tank.id, name: tank.name },
 		category,
 		context: eventFormContext(tank, user),

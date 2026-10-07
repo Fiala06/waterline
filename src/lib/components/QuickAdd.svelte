@@ -12,6 +12,7 @@
 	import TankSwitcher from './TankSwitcher.svelte';
 	import { whenLabel, type When } from '$lib/time';
 	import type { DueInfo } from '$lib/tasks';
+	import { favoriteHref, type FavoriteLike } from '$lib/favorites';
 
 	interface TankSummary {
 		id: string;
@@ -26,7 +27,8 @@
 		currentTankId,
 		timeZone,
 		lastTest,
-		wcDue
+		wcDue,
+		favorites = []
 	}: {
 		open?: boolean;
 		tanks: TankSummary[];
@@ -34,6 +36,8 @@
 		timeZone: string;
 		lastTest: string;
 		wcDue: DueInfo | null;
+		/** Quick log favorites (#93): pinned entries, each opening its form filled in; for one tank or every tank */
+		favorites?: (FavoriteLike & { id: string; label: string; tankId: string | null; sub: string | null })[];
 	} = $props();
 
 	let tankId = $state<string | null>(null);
@@ -50,6 +54,8 @@
 	});
 
 	const tank = $derived(tanks.find((t) => t.id === tankId));
+	// the favorites for the tank chosen here, and the ones for every tank
+	const pinned = $derived(favorites.filter((f) => !f.tankId || f.tankId === tankId));
 
 	function href(path: string, params: Record<string, string> = {}) {
 		const q = new URLSearchParams(params);
@@ -124,6 +130,29 @@
 			</button>
 		</div>
 
+		{#if pinned.length}
+			<!-- Quick log favorites (#93): the keeper's usual entries, one tap to the form filled in -->
+			<section class="favs" aria-labelledby="qa-favs">
+				<div class="more-label favs-head">
+					<h3 id="qa-favs">Favorites</h3>
+					<a href="/settings/favorites" onclick={() => (open = false)}>Edit<span class="sr-only"> favorites</span> ›</a>
+				</div>
+				<ul class="fav-list">
+					{#each pinned as f (f.id)}
+						<li>
+							<a class="fav" href={favoriteHref(f, tankId, when)} onclick={() => (open = false)}>
+								<CategoryIcon kind={f.kind} size={36} />
+								<span class="t">
+									<span class="title">{f.label}</span>
+									{#if f.sub}<span class="sub">{f.sub}</span>{/if}
+								</span>
+							</a>
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{/if}
+
 		<!-- phones: three wide rows (04); the desktop's Log ▾ menu already has these -->
 		<div class="big hide-desk">
 			<a class="choice primary" href={href('/entries/test/new')} onclick={() => (open = false)}>
@@ -178,6 +207,9 @@
 				</a>
 			</div>
 		</section>
+		{#if !pinned.length}
+			<p class="pin"><a href="/settings/favorites" onclick={() => (open = false)}>Pin what you log most as favorites ›</a></p>
+		{/if}
 		<p class="hint">Press + anywhere to open, then T, W or N.</p>
 	{/if}
 </Sheet>
@@ -313,6 +345,62 @@
 	.tile:hover {
 		color: var(--text);
 		border-color: var(--ink);
+	}
+	/* favorites: a heading like More's, then a row per favorite (icon, name, what it opens with) */
+	.favs {
+		display: flex;
+		flex-direction: column;
+		gap: 0;
+	}
+	.favs-head {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		gap: 12px;
+	}
+	.favs-head h3 {
+		margin: 0;
+		font: inherit;
+	}
+	.favs-head a {
+		font-size: 12px;
+		font-weight: 800;
+		letter-spacing: 0;
+		text-transform: none;
+		color: var(--accent-text);
+	}
+	.fav-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	.fav-list li {
+		border-bottom: 1px solid var(--divider);
+	}
+	.fav {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		min-height: 56px;
+		padding: 6px 0;
+		color: var(--text);
+	}
+	.fav:hover {
+		color: var(--text);
+	}
+	.fav:hover .title {
+		text-decoration: underline;
+	}
+	.fav .title {
+		font-size: 15px;
+	}
+	.pin {
+		margin: 0;
+		font-size: 13px;
+	}
+	.pin a {
+		color: var(--accent-text);
+		font-weight: 800;
 	}
 	.hint {
 		display: none;

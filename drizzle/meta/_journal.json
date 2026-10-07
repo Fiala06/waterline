@@ -330,6 +330,13 @@
       "when": 1791403926685,
       "tag": "0046_tank_checklist",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "6",
+      "when": 1791409467306,
+      "tag": "0047_quick_favorites",
+      "breakpoints": true
     }
   ]
 }

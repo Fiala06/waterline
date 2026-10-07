@@ -13,6 +13,7 @@ import { parseTopicUrl } from '$lib/server/push/ntfy';
 import { listSubscriptions, removeSubscription, vapidKeys } from '$lib/server/push/webpush';
 import { encrypt } from '$lib/server/secrets';
 import { listProducts } from '$lib/server/products';
+import { listFavorites } from '$lib/server/favorites';
 import { listKits } from '$lib/server/kits';
 import { listAssistantTokens } from '$lib/server/assistant/tokens';
 import { getFeed, makeFeed, removeFeed } from '$lib/server/calendar';
@@ -52,6 +53,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
 		},
 		emailReady: emailConfigured(),
 		products: listProducts(locals.user!.id).length,
+		favorites: listFavorites(locals.user!.id).length,
 		kits: listKits(locals.user!.id).length,
 		sensors: listAssistantTokens(locals.user!.id, 'sensor').length,
 		assistants: listAssistantTokens(locals.user!.id).length,
