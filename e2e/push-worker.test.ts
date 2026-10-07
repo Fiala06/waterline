@@ -13,10 +13,13 @@ test('a pushed reminder shows as a notification with Mark done and Snooze', asyn
 	await page.evaluate(() => navigator.serviceWorker.ready);
 
 	const cdp = await context.newCDPSession(page);
+	// navigator.serviceWorker.ready resolves as soon as the worker starts activating, and DevTools
+	// delivers a push only once: under load one sent mid-activation was lost now and then. So wait
+	// for an activated version (running or not; a push wakes a stopped one)
 	const registration = new Promise<string>((resolve) =>
-		cdp.on('ServiceWorker.workerRegistrationUpdated', ({ registrations }) => {
-			const r = registrations.find((x: { isDeleted: boolean }) => !x.isDeleted);
-			if (r) resolve(r.registrationId);
+		cdp.on('ServiceWorker.workerVersionUpdated', ({ versions }) => {
+			const v = versions.find((x: { status: string }) => x.status === 'activated');
+			if (v) resolve(v.registrationId);
 		})
 	);
 	await cdp.send('ServiceWorker.enable');

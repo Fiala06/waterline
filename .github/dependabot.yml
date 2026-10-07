@@ -32,3 +32,7 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    ignore:
+      # Node's odd-numbered majors are short-lived "Current" releases; the image stays on an LTS (even) one
+      - dependency-name: node
+        versions: ['>= 23, < 24', '>= 25, < 26', '>= 27, < 28', '>= 29, < 30']
