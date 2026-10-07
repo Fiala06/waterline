@@ -31,9 +31,9 @@ test('share a tank with someone', async ({ page, browser }, info) => {
 	await expect(theirs).toHaveURL(new RegExp(`tank=${tankId}`));
 	await theirs.goto(`/tanks`);
 	await expect(theirs.getByText(/Shared by .* · can log/)).toBeVisible();
-	// no Setup tab, and setup pages are the owner's
+	// no Tank setup tab, and setup pages are the owner's
 	await theirs.goto(`/?tank=${tankId}`);
-	await expect(theirs.getByRole('link', { name: 'Setup' })).toHaveCount(0);
+	await expect(theirs.getByRole('link', { name: 'Tank setup' })).toHaveCount(0);
 	const refused = await theirs.request.get(`/tanks/${tankId}/settings`);
 	expect(refused.status()).toBe(403);
 	// logging works

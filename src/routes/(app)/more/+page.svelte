@@ -25,7 +25,7 @@
 				<li><a href="{base}/equipment"><span>Equipment</span><span class="r">{data.counts.equipment || ''}</span></a></li>
 				<li><a href="{base}/spending"><span>Spending</span><span class="r"></span></a></li>
 				<li><a href="{base}/wishlist"><span>Wish list</span><span class="r">{data.counts.wishes ? `${data.counts.wishes} planned` : ''}</span></a></li>
-				<li><a href="{base}/settings"><span>Setup & targets</span><span class="r"></span></a></li>
+				<li><a href="{base}/settings"><span>Tank setup & targets</span><span class="r"></span></a></li>
 				<li><a href="{base}/summary"><span>Share or get help</span><span class="r">Public page, summary</span></a></li>
 			</ul>
 		</section>

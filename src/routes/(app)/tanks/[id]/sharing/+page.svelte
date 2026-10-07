@@ -30,7 +30,7 @@
 
 <div class="page">
 	<div class="phead hide-desk">
-		<a class="back sub-back" href="/tanks/{data.tank.id}/settings">‹ Setup</a>
+		<a class="back sub-back" href="/tanks/{data.tank.id}/settings">‹ Tank setup</a>
 		<h1 class="title">Sharing</h1>
 	</div>
 	<p class="lede">Let someone help look after {data.tank.name}: a partner, a classroom helper, a fish-sitter. They see the tank beside their own. Only you can change setup and targets, or archive the tank.</p>

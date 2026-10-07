@@ -57,7 +57,7 @@
 				? [
 						{
 							key: 'setup',
-							label: 'Setup',
+							label: 'Tank setup',
 							href: `${base}/settings`,
 							// Notes & routines (/tanks/[id]) is a Setup page too
 							active: under('settings') || under('targets') || under('public') || under('review') || under('remind') || under('import') || under('sharing') || routeId === '/(app)/tanks/[id]/(tabs)'
@@ -504,8 +504,8 @@
 		<main id="main" tabindex="-1" class:with-bar={showBar} class:setup={setupTab} aria-busy={slow}>
 			{#if setupTab && current}
 				<div class="setup-grid">
-					<nav class="setup-nav hide-phone" aria-label="Setup">
-						<span class="caps">Setup</span>
+					<nav class="setup-nav hide-phone" aria-label="Tank setup">
+						<span class="caps">Tank setup</span>
 						{#each [
 							{ href: `/tanks/${current.id}/settings`, label: 'Details', on: routeId.endsWith('/(tabs)/settings') },
 							{ href: `/tanks/${current.id}/targets`, label: 'Parameters & targets', on: routeId.endsWith('/targets') },

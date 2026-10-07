@@ -36,12 +36,12 @@ test("What's new links to each feature, and a tank's page opens for the tank you
 test('the dashboard opens the tank settings, and a 2.5 gal tank says 2.5 gal', async ({ page }, info) => {
 	await newKeeperWithTank(page, `dash-settings-${info.project.name}`);
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
-	// the Setup tab on a computer; More › Setup & targets on a phone
+	// the Tank setup tab on a computer; More › Tank setup & targets on a phone
 	if (info.project.name === 'phone') {
 		await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'More' }).click();
-		await page.getByRole('link', { name: 'Setup & targets' }).click();
+		await page.getByRole('link', { name: 'Tank setup & targets' }).click();
 	} else {
-		await page.getByRole('navigation', { name: 'Tank sections' }).getByRole('link', { name: 'Setup' }).click();
+		await page.getByRole('navigation', { name: 'Tank sections' }).getByRole('link', { name: 'Tank setup' }).click();
 	}
 	await expect(page).toHaveURL(`/tanks/${tankId}/settings`);
 	await page.getByRole('textbox', { name: 'Nominal volume' }).fill('2.5');

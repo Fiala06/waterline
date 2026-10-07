@@ -65,7 +65,7 @@
 				['Plants', `${base}/plants`, ''],
 				['Equipment', `${base}/equipment`, 'G E'],
 				['Spending', `${base}/spending`, ''],
-				['Setup', `${base}/settings`, 'G S']
+				['Tank setup', `${base}/settings`, 'G S']
 			];
 			for (const [title, href, key] of tabs) list.push({ group: 'Go to', title, sub: current.name, key, run: go(href) });
 			list.push(

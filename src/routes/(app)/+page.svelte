@@ -154,7 +154,7 @@
 			<section class="cycling" aria-labelledby="cycling-h">
 				<div class="section-head">
 					<h2 id="cycling-h">Cycling</h2>
-					<a href="/tanks/{data.tank.id}/settings">Setup ›</a>
+					<a href="/tanks/{data.tank.id}/settings">Tank setup ›</a>
 				</div>
 				<p class="cycle-about">
 					Bacteria in the filter turn fish waste’s ammonia into nitrite, then nitrite into the far safer nitrate. It
