@@ -14,7 +14,7 @@
 	import WhatsNew from '$lib/components/WhatsNew.svelte';
 	import { compactName, displayValue, fmtRange, fmtValue, paramDecimals, paramUnit, shortName, statusOf } from '$lib/params';
 	import { CYCLING_TEXT, cyclingLevel, isCyclingStatus, statusShort } from '$lib/status';
-	import { nextStep } from '$lib/tips';
+	import { guidance } from '$lib/tips';
 	import Sparkline from '$lib/components/Sparkline.svelte';
 	import { enhance } from '$app/forms';
 	import { dueInfo, intervalText, isRoutine, routineLine } from '$lib/tasks';
@@ -54,10 +54,11 @@
 				unit: paramUnit(p, prefs),
 				level: st.level,
 				statusText: isCyclingStatus(p.key, st, cycling) ? CYCLING_TEXT : statusShort(st),
-				// what to do about it (#62); not for ammonia and nitrite while they're a stage of the cycle
+				// what to do about it (#62), worded for this tank with its calculator filled in (#90);
+				// not for ammonia and nitrite while they're a stage of the cycle
 				next:
-					(st.level === 'bad' || st.level === 'warn') && !isCyclingStatus(p.key, st, cycling)
-						? nextStep(p.key, st.direction, data.tank?.type ?? '')
+					(st.level === 'bad' || st.level === 'warn') && !isCyclingStatus(p.key, st, cycling) && data.tank
+						? guidance(p.key, st.direction, { tankId: data.tank.id, tankType: data.tank.type, waterSource: data.tank.waterSource, co2: data.tank.co2, shrimp: data.tank.shrimp })
 						: null,
 				// days since the reading when it's older than its Test every cadence
 				due: data.stale?.[p.id] ?? null,

@@ -325,6 +325,10 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
       nominalVolumeL: tank.nominalVolumeL,
       startDate: tank.startDate,
       cycling: tank.cycling,
+      // for tank-aware guidance (#90): the water source, whether CO₂ is injected, shrimp in the tank
+      waterSource: tank.waterSource,
+      co2: tankLighting(tank, scheduledItems(tank.id)).co2 ? true : tank.withoutEquipment.includes("co2") ? false : null,
+      shrimp: inTank.some((l) => /shrimp|caridina/i.test(`${l.commonName} ${l.scientificName ?? ""}`)),
     },
     params,
     latest: Object.fromEntries(latest),

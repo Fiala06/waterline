@@ -67,9 +67,11 @@
 	});
 
 	// ── Water change ──
-	let wcParam = $state(untrack(() => data.readings.no3?.id ?? data.params[0]?.id ?? ''));
+	// the reading asked for in the address (#90), else nitrate, else the first with a reading or target
+	const wcStart = untrack(() => data.params.find((p) => p.id === data.pick) ?? data.readings.no3 ?? data.params[0] ?? null);
+	let wcParam = $state(wcStart?.id ?? '');
 	const wcP = $derived(data.params.find((p) => p.id === wcParam) ?? null);
-	let wcFrom = $state(untrack(() => data.readings.no3?.value ?? data.params[0]?.value ?? ''));
+	let wcFrom = $state(wcStart?.value ?? '');
 	// "Down to" starts below the reading, never on an impossible target (#66)
 	type WcParam = { value: string; min: string; max: string };
 	const downTo = (p: WcParam | null | undefined) => {
@@ -77,7 +79,7 @@
 		const t = waterChangeTarget(n(p.value), n(p.min), n(p.max));
 		return t == null ? '' : formatNumber(t, 2);
 	};
-	let wcTo = $state(untrack(() => downTo(data.readings.no3 ?? data.params[0])));
+	let wcTo = $state(downTo(wcStart));
 	let wcFresh = $state('0');
 	let wcVolume = $state(untrack(() => data.tank?.actualVolume || data.tank?.nominalVolume || ''));
 	function pickParam() {

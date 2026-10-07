@@ -168,6 +168,84 @@ export function nextStep(key: string, direction: 'high' | 'low' | null, tankType
 	return (tankType === 'reef' ? REEF_NEXT[key]?.[direction] : undefined) ?? NEXT[key]?.[direction] ?? null;
 }
 
+// Tank-aware guidance (#90): the same next step, worded for what the app
+// knows about the tank (its water source, whether CO₂ is injected, shrimp in
+// it), with the calculator that does the sums filled in. Falls back to the
+// generic step when the tank's details aren't set.
+export interface GuidanceContext {
+	tankId: string;
+	tankType: string;
+	/** Tank setup › Water source: tap | rodi | mix | well; null when not set */
+	waterSource: string | null;
+	/** CO₂ injection: true when a CO₂ schedule or unit is set, false for "No CO₂", null when unknown */
+	co2: boolean | null;
+	/** shrimp in the tank, which mind sudden changes most */
+	shrimp: boolean;
+}
+export interface Guidance {
+	text: string;
+	/** the calculator (or page) that does the sums, filled in from the tank */
+	link: { label: string; href: string } | null;
+}
+
+const ro = (source: string | null) => source === 'rodi' || source === 'mix';
+const SLOW_FOR_SHRIMP = ' Shrimp mind sudden changes most: move it over days, not hours.';
+
+/** What to do about a reading out of range, for this tank; null for custom parameters or no direction. */
+export function guidance(key: string, direction: 'high' | 'low' | null, ctx: GuidanceContext): Guidance | null {
+	const generic = nextStep(key, direction, ctx.tankType);
+	if (!direction || !generic) return null;
+	const calc = (hash: string, label: string, params: Record<string, string> = {}) => ({
+		label,
+		href: `/calculators?${new URLSearchParams({ tank: ctx.tankId, ...params })}#${hash}`
+	});
+	const waterChange = calc('water-change', 'Work out the water change ›', { param: key });
+	const remineralize = calc('remineralize', 'GH / KH for RO water ›');
+	const co2Calc = calc('co2', 'Estimate CO₂ from pH and KH ›');
+	const reef = ctx.tankType === 'reef';
+	const slow = ctx.shrimp ? SLOW_FOR_SHRIMP : '';
+
+	// brought down by a water change: the calculator says how much
+	if (direction === 'high' && ['no3', 'po4', 'tds', 'ec', 'k', 'fe'].includes(key)) {
+		if ((key === 'tds' || key === 'ec') && ro(ctx.waterSource)) return { text: 'Water changes bring it down, and add less remineralizer to the new RO water.', link: remineralize };
+		return { text: generic, link: waterChange };
+	}
+
+	if ((key === 'gh' || key === 'kh') && !reef) {
+		if (direction === 'low') {
+			if (ro(ctx.waterSource)) {
+				const co2 = key === 'kh' && ctx.co2 ? ' With CO₂ injected, KH also decides how far pH drops, so keep it above about 2 dKH.' : '';
+				return { text: `Your new water is RO: add a little more ${key === 'kh' ? 'KH' : 'GH'} remineralizer to it.${co2}${slow}`, link: remineralize };
+			}
+			if (ctx.waterSource === 'tap' || ctx.waterSource === 'well') {
+				return key === 'kh'
+					? { text: `Your ${ctx.waterSource} water usually brings some KH: check what it reads. If it's low too, a little baking soda raises it slowly.${slow}`, link: null }
+					: { text: `Check what your ${ctx.waterSource} water reads. If it's soft too, a GH remineralizer in the new water adds minerals back.${slow}`, link: null };
+			}
+			return { text: generic + slow, link: null };
+		}
+		if (ro(ctx.waterSource)) return { text: `Add less ${key === 'kh' ? 'KH' : 'GH'} remineralizer to the new water; it comes down with each change.${slow}`, link: remineralize };
+		return { text: generic + slow, link: null };
+	}
+
+	if (key === 'co2') {
+		if (ctx.co2 === false) {
+			return direction === 'low'
+				? { text: 'This tank has no CO₂ injection, so a low reading is normal: plants grow slower, and the fish are fine. Nothing to do unless you add CO₂.', link: null }
+				: { text: 'Without CO₂ injection a high reading is unusual: check the test, and add surface movement if fish gasp at the top.', link: co2Calc };
+		}
+		return { text: generic, link: co2Calc };
+	}
+
+	if (key === 'ph' && !reef && ctx.co2) {
+		return direction === 'low'
+			? { text: 'With CO₂ injected, pH drops while it runs: compare readings from the same time of day, and keep KH above about 2 dKH so it can’t crash.', link: co2Calc }
+			: { text: 'pH climbs after the CO₂ goes off; a reading from the same time each day tells more. Skip pH chemicals.', link: co2Calc };
+	}
+
+	return { text: generic, link: null };
+}
+
 export const TIPS = {
 	nominalVolume: 'The tank’s size as sold, like a 40 gallon tank.',
 	actualVolume:

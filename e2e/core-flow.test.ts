@@ -46,7 +46,7 @@ test('core flow', async ({ page }, info) => {
 	// Dashboard shows statuses
 	await expect(page.getByRole('status')).toContainText('✓ Saved 3 readings · 1 out of range');
 	// needs attention: out of range, then near a limit; then what's fine, and what's untested
-	const attention = page.getByRole('region', { name: 'Needs attention' }).locator('a.row');
+	const attention = page.getByRole('region', { name: 'Needs attention' }).locator('.item');
 	await expect(attention).toHaveCount(2);
 	await expect(attention.nth(0)).toContainText('Nitrate ✕ High');
 	await expect(attention.nth(0)).toContainText('40');

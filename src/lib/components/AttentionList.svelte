@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Guidance } from '$lib/tips';
 	// Overview › Needs attention (redesign README → Screens §2): rows of
 	// `minmax(0,1fr) 150px 120px` under a 2px ink rule. Out-of-range readings,
 	// then near-limit ones, each with its recent readings over the target band
@@ -23,8 +24,8 @@
 		hi: number | null;
 		/** a sensor's latest reading (#19): "Live 25.4 °C · 2 min ago" */
 		live?: string | null;
-		/** what to do about it, in a line (#62) */
-		next?: string | null;
+		/** what to do about it, in a line (#62), with the calculator that does the sums (#90) */
+		next?: Guidance | null;
 	}
 	interface Overdue {
 		id: string;
@@ -63,15 +64,23 @@
 	</div>
 	<div class="rows">
 		{#each items as c (c.id)}
-			<a class="row param" href="/charts?p={c.id}">
-				<span class="text">
-					<span class="title"><span class="name">{c.fullName}</span> <span class="status status-{c.level}">{c.statusText}</span></span>
-					<span class="sub">{c.range ? `Target ${c.range}` : 'No target'}{#if c.live}{' · '}<span class="live">● {c.live}</span>{/if}</span>
-				</span>
-				<span class="spark"><Sparkline values={c.spark} level={c.level} lo={c.lo} hi={c.hi} /></span>
-				<span class="val"><span class="v">{c.value}</span>{#if c.unit}<span class="unit">{c.unit}</span>{/if}</span>
-				{#if c.next}<span class="next">{c.next}</span>{/if}
-			</a>
+			<!-- the reading's row opens its chart; what to do sits under it, with the calculator that does the sums -->
+			<div class="item">
+				<a class="row param" href="/charts?p={c.id}">
+					<span class="text">
+						<span class="title"><span class="name">{c.fullName}</span> <span class="status status-{c.level}">{c.statusText}</span></span>
+						<span class="sub">{c.range ? `Target ${c.range}` : 'No target'}{#if c.live}{' · '}<span class="live">● {c.live}</span>{/if}</span>
+					</span>
+					<span class="spark"><Sparkline values={c.spark} level={c.level} lo={c.lo} hi={c.hi} /></span>
+					<span class="val"><span class="v">{c.value}</span>{#if c.unit}<span class="unit">{c.unit}</span>{/if}</span>
+				</a>
+				{#if c.next}
+					<p class="next">
+						{c.next.text}
+						{#if c.next.link}<a class="act" href={c.next.link.href}>{c.next.link.label}<span class="sr-only"> for {c.fullName}</span></a>{/if}
+					</p>
+				{/if}
+			</div>
 		{/each}
 		{#if wc}
 			<div class="row wc">
@@ -170,12 +179,29 @@
 		font-size: 13px;
 		color: var(--text-muted);
 	}
+	/* the reading's row and what to do about it share one divider */
+	.item {
+		border-bottom: 1px solid var(--divider);
+	}
+	.item .row {
+		border-bottom: none;
+	}
 	/* what to do: under the whole row, so it reads in one or two lines on a phone */
 	.next {
-		grid-column: 1 / -1;
+		margin: -6px 0 0;
+		padding-bottom: 12px;
 		font-size: 13px;
 		line-height: 1.4;
 		color: var(--text);
+	}
+	.next .act {
+		display: inline-block;
+		min-height: 44px;
+		line-height: 44px;
+		margin: -14px 0 -16px;
+		font-weight: 800;
+		color: var(--accent-text);
+		white-space: nowrap;
 	}
 	.spark {
 		height: 22px;

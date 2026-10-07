@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defaultParameters } from './params';
-import { nextStep, paramTip, whenToTest } from './tips';
+import { guidance, nextStep, paramTip, whenToTest } from './tips';
 
 const prefs = { unitSystem: 'imperial', hardnessUnit: 'dgh' } as const;
 
@@ -70,5 +70,56 @@ describe('nextStep', () => {
 		expect(nextStep('nh3', 'high', 'reef')).toMatch(/water change|water/);
 		expect(nextStep('custom', 'high', 'planted')).toBeNull();
 		expect(nextStep('nh3', null, 'planted')).toBeNull();
+	});
+});
+
+describe('guidance (#90)', () => {
+	const ctx = (over: Partial<Parameters<typeof guidance>[2]> = {}) => ({ tankId: 't1', tankType: 'planted', waterSource: null, co2: null, shrimp: false, ...over });
+
+	it('fills in the water change calculator for what a water change brings down', () => {
+		const g = guidance('no3', 'high', ctx())!;
+		expect(g.text).toMatch(/bigger water change/);
+		expect(g.link).toEqual({ label: 'Work out the water change ›', href: '/calculators?tank=t1&param=no3#water-change' });
+		expect(guidance('po4', 'high', ctx())!.link?.href).toContain('param=po4#water-change');
+		// not for ammonia: the target is 0, and the step is the same anyway
+		expect(guidance('nh3', 'high', ctx())!.link).toBeNull();
+	});
+
+	it('knows the tank is on RO water', () => {
+		const kh = guidance('kh', 'low', ctx({ waterSource: 'rodi' }))!;
+		expect(kh.text).toMatch(/^Your new water is RO: add a little more KH remineralizer/);
+		expect(kh.text).not.toMatch(/CO₂/);
+		expect(kh.link).toEqual({ label: 'GH / KH for RO water ›', href: '/calculators?tank=t1#remineralize' });
+		expect(guidance('kh', 'low', ctx({ waterSource: 'mix', co2: true }))!.text).toMatch(/With CO₂ injected, KH also decides/);
+		expect(guidance('gh', 'high', ctx({ waterSource: 'rodi' }))!.text).toMatch(/Add less GH remineralizer/);
+		expect(guidance('tds', 'high', ctx({ waterSource: 'rodi' }))!.link?.href).toContain('#remineralize');
+		// tap water: check it first, no chemistry by default
+		expect(guidance('kh', 'low', ctx({ waterSource: 'tap' }))!.text).toMatch(/^Your tap water usually brings some KH/);
+		expect(guidance('gh', 'low', ctx({ waterSource: 'well' }))!.text).toMatch(/^Check what your well water reads/);
+		// nothing known: the generic step
+		expect(guidance('kh', 'low', ctx())!.text).toBe(nextStep('kh', 'low', 'planted'));
+		// a reef's alkalinity keeps its own wording
+		expect(guidance('kh', 'low', ctx({ tankType: 'reef', waterSource: 'rodi' }))!.text).toMatch(/alkalinity dose/);
+	});
+
+	it('asks for slow changes when shrimp live in the tank', () => {
+		expect(guidance('gh', 'low', ctx({ shrimp: true }))!.text).toMatch(/Shrimp mind sudden changes most/);
+		expect(guidance('gh', 'low', ctx({ shrimp: false }))!.text).not.toMatch(/Shrimp/);
+	});
+
+	it('reads CO₂ and pH by whether CO₂ is injected', () => {
+		expect(guidance('co2', 'low', ctx({ co2: false }))!.text).toMatch(/no CO₂ injection, so a low reading is normal/);
+		expect(guidance('co2', 'low', ctx({ co2: false }))!.link).toBeNull();
+		expect(guidance('co2', 'low', ctx({ co2: true }))).toEqual({ text: nextStep('co2', 'low', 'planted'), link: { label: 'Estimate CO₂ from pH and KH ›', href: '/calculators?tank=t1#co2' } });
+		expect(guidance('co2', 'high', ctx())!.link?.href).toContain('#co2');
+		expect(guidance('ph', 'low', ctx({ co2: true }))!.text).toMatch(/^With CO₂ injected, pH drops while it runs/);
+		expect(guidance('ph', 'high', ctx({ co2: true }))!.text).toMatch(/after the CO₂ goes off/);
+		expect(guidance('ph', 'low', ctx({ co2: false }))!.text).toBe(nextStep('ph', 'low', 'planted'));
+		expect(guidance('ph', 'low', ctx({ tankType: 'reef', co2: true }))!.text).toMatch(/stuffy room/);
+	});
+
+	it('has nothing for custom parameters or no direction', () => {
+		expect(guidance('custom:x', 'high', ctx())).toBeNull();
+		expect(guidance('no3', null, ctx())).toBeNull();
 	});
 });
