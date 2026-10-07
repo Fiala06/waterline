@@ -11,7 +11,9 @@ import { getTank, listParams } from '$lib/server/tanks';
 import { tankNotes } from '$lib/server/trends';
 import { displaySamples, latestSamples, sampleCount, sampleSeries } from '$lib/server/sensors';
 import { fmtWhen } from '$lib/time';
-import { CHART_RANGES } from '$lib/charts';
+import { CHART_RANGES, equipmentTypeLookup, overlayKind } from '$lib/charts';
+import { equipmentName } from '$lib/equipment';
+import { listEquipment } from '$lib/server/specs';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, parent, url }) => {
@@ -69,21 +71,27 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 	const allTime = enough || !range.days ? Math.max(points.length, sensor.length) : Math.max(series(tank.id, param.id, '0000').length, sampleCount(tank.id, param.id));
 	const from = range.days ? now - range.days * 86_400_000 : (points[0]?.t ?? sensor[0]?.t ?? now - 30 * 86_400_000);
 
-	// Events on the timeline, with the reading just before and after each one.
-	const evs = eventsSince(tank.id, ['water_change', 'dosing'], new Date(from).toISOString());
+	// Events on the timeline (#88: each overlay kind on its own switch on the page),
+	// with the reading just before and after each one.
+	const equipmentType = equipmentTypeLookup(listEquipment(user.id, tank.id).map((i) => ({ id: i.id, name: equipmentName(i), type: i.type })));
+	const evs = eventsSince(tank.id, ['water_change', 'dosing', 'maintenance', 'equipment'], new Date(from).toISOString());
 	const fv = (stored: number) => fmtValue(param, stored, user);
-	const markers = evs.map((e) => {
+	const markers = evs.flatMap((e) => {
+		const kind = overlayKind(e, equipmentType);
+		if (!kind) return [];
 		const t = Date.parse(e.occurredAt);
 		const before = [...raw].reverse().find((r) => Date.parse(r.takenAt) <= t);
 		const after = raw.find((r) => Date.parse(r.takenAt) > t);
-		return {
-			t,
-			href: `/entries/event/${e.id}`,
-			kind: e.category === 'dosing' ? ('dosing' as const) : ('water_change' as const),
-			label: eventTitle(e, user),
-			day: fmtDate(dateInZone(e.occurredAt, user.timeZone)),
-			change: before && after ? `${param.name} ${fv(before.value)} → ${fv(after.value)}${paramUnit(param, user) ? ' ' + paramUnit(param, user) : ''}` : null
-		};
+		return [
+			{
+				t,
+				href: `/entries/event/${e.id}`,
+				kind,
+				label: eventTitle(e, user),
+				day: fmtDate(dateInZone(e.occurredAt, user.timeZone)),
+				change: before && after ? `${param.name} ${fv(before.value)} → ${fv(after.value)}${paramUnit(param, user) ? ' ' + paramUnit(param, user) : ''}` : null
+			}
+		];
 	});
 
 	const values = raw.map((r) => r.value);

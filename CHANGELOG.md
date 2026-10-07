@@ -11,6 +11,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Choose what's marked on a chart:** On [Charts](/charts), the legend now has a switch for each kind of event in range (water changes, dosing, CO₂ changes, light changes, plant trims, other maintenance), each with its own mark, so you can line a trend up with what you did to the tank. Water changes show by default; your choice is remembered on the device.
 - **Getting started with a new tank:** The [dashboard](/) of a new tank now lists what to do next (the first water test, livestock, plants, the light schedule, the water-change reminder, a photo), ticks each off as you do it, and talks a cycling tank through the cycle. Hide it when you've seen enough; Tank setup brings it back.
 - **Parameters grouped by purpose:** [Parameters & targets](/tanks/current/targets) now lists a tank's parameters under Core, Water chemistry, Plant nutrients, CO₂ and Custom, and says beside each whether it's recommended for every tank of that kind, optional, or advanced, so the planted preset no longer reads as a list you must test in full.
 - **When to test each parameter:** The ⓘ beside a parameter on [Parameters & targets](/tanks/current/targets) and on the water test now also says when a test is worth doing for your kind of tank, and the optional ones say Optional beside their default, so you can see which tests matter weekly and which can wait.

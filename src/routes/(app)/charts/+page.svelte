@@ -8,13 +8,26 @@
 	import { hscroll } from '$lib/actions';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import TrendChart from '$lib/components/TrendChart.svelte';
-	import { CHART_RANGES } from '$lib/charts';
+	import { browser } from '$app/environment';
+	import { CHART_RANGES, DEFAULT_OVERLAYS, OVERLAYS, OVERLAY_LABEL, type OverlayKind } from '$lib/charts';
 
 	let { data } = $props();
 	let selected = $state<string | null>(null);
-	// Dosing can be several times a week, so its markers are opt-in.
-	let showDosing = $state(false);
-	const markers = $derived((data.chart?.markers ?? []).filter((m) => showDosing || m.kind !== 'dosing'));
+	// Event overlays (#88): water changes by default, the rest opt-in (dosing can be
+	// several times a week), each on its own switch; the choice is kept on this device.
+	const OVERLAY_KEY = 'wl_chart_overlays';
+	let shown = $state<Record<OverlayKind, boolean>>({ ...DEFAULT_OVERLAYS });
+	const toggle = (kind: OverlayKind) => {
+		shown = { ...shown, [kind]: !shown[kind] };
+		try {
+			localStorage.setItem(OVERLAY_KEY, JSON.stringify(shown));
+		} catch {
+			/* storage blocked */
+		}
+	};
+	// the kinds with an event in range, in legend order
+	const kindsInRange = $derived(OVERLAYS.filter((o) => data.chart?.markers.some((m) => m.kind === o.kind)));
+	const markers = $derived((data.chart?.markers ?? []).filter((m) => shown[m.kind as OverlayKind]));
 
 	const q = (patch: Record<string, string>) => {
 		const u = new URLSearchParams(page.url.searchParams);
@@ -26,7 +39,6 @@
 	const submit = (e: Event) => (e.currentTarget as HTMLInputElement | HTMLSelectElement).form?.requestSubmit();
 
 	const chosen = $derived(data.chart?.markers.find((m) => m.href === selected) ?? null);
-	const hasDosing = $derived(data.chart?.markers.some((m) => m.kind === 'dosing'));
 	// "ppm · target 5–20"; pH has no unit, so just "target 6.5–7.5"
 	const subtitle = $derived(
 		[data.chart?.unit, data.chart?.targetBare && `target ${data.chart.targetBare}`].filter(Boolean).join(' · ')
@@ -41,6 +53,14 @@
 	// the tooltip stays on the latest reading on phones
 	let phone = $state(false);
 	onMount(() => {
+		if (browser) {
+			try {
+				const kept = JSON.parse(localStorage.getItem(OVERLAY_KEY) ?? 'null');
+				if (kept && typeof kept === 'object') shown = { ...shown, ...Object.fromEntries(OVERLAYS.filter((o) => typeof kept[o.kind] === 'boolean').map((o) => [o.kind, kept[o.kind]])) };
+			} catch {
+				/* storage blocked or junk */
+			}
+		}
 		const mq = matchMedia('(max-width: 1023px)');
 		const sync = () => (phone = mq.matches);
 		sync();
@@ -123,7 +143,7 @@
 								>
 									{#snippet popover(m)}
 										{@const full = c.markers.find((x) => x.href === m.href)}
-										<div class="pop-day">{full?.day} · {m.kind === 'dosing' ? 'Dosing' : 'Water change'}</div>
+										<div class="pop-day">{full?.day} · {OVERLAY_LABEL[m.kind as OverlayKind] ?? 'Event'}</div>
 										<div class="pop-title">{m.label.replace(/^Water change · /, '')}</div>
 										{#if full?.change}<div class="pop-change">{full.change}</div>{/if}
 										<a class="pop-link" href={m.href}>View entry ›</a>
@@ -140,14 +160,12 @@
 						{#if c.sensor.length >= 2}
 							<span><i class="lg-sensor"></i>Sensor</span>
 						{/if}
-						{#if c.markers.some((m) => m.kind !== 'dosing')}
-							<span><i class="lg-marker"></i>Water change</span>
-						{/if}
-						{#if hasDosing}
-							<button type="button" class="lg-toggle" aria-pressed={showDosing} onclick={() => (showDosing = !showDosing)}>
-								<span aria-hidden="true">◆</span>{showDosing ? 'Hide dosing' : 'Show dosing'}
+						<!-- the event overlays with something in range, each a switch (#88) -->
+						{#each kindsInRange as o (o.kind)}
+							<button type="button" class="lg-toggle" aria-pressed={shown[o.kind]} onclick={() => toggle(o.kind)}>
+								<i class="lg-mk {o.kind}" aria-hidden="true"></i>{o.label}
 							</button>
-						{/if}
+						{/each}
 					</div>
 				{:else}
 					<div class="chart-empty">
@@ -367,10 +385,42 @@
 		height: 10px;
 		background: var(--zone-bad);
 	}
-	.lg-marker {
+	/* the overlays' glyphs, as the chart draws them (#88) */
+	.lg-mk {
+		position: relative;
+		display: inline-block;
 		width: 10px;
 		height: 10px;
+		box-sizing: border-box;
 		background: var(--ink);
+	}
+	.lg-mk.dosing {
+		transform: rotate(45deg) scale(0.8);
+		background: var(--neutral-600);
+	}
+	.lg-mk.co2 {
+		height: 4px;
+		background: var(--neutral-600);
+	}
+	.lg-mk.light {
+		background: var(--neutral-600);
+		clip-path: polygon(50% 0, 100% 100%, 0 100%);
+	}
+	.lg-mk.trim {
+		background:
+			linear-gradient(45deg, transparent 38%, var(--neutral-600) 38% 62%, transparent 62%),
+			linear-gradient(-45deg, transparent 38%, var(--neutral-600) 38% 62%, transparent 62%);
+	}
+	.lg-mk.maintenance {
+		background: none;
+		border: 2px solid var(--neutral-600);
+	}
+	.lg-toggle[aria-pressed='false'] {
+		color: var(--text-muted);
+		text-decoration: line-through;
+	}
+	.lg-toggle[aria-pressed='false'] .lg-mk {
+		opacity: 0.35;
 	}
 	/* a sensor's thin line (#19) */
 	.lg-sensor {

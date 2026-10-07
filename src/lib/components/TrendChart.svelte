@@ -1,9 +1,11 @@
 <script lang="ts" module>
+	import type { OverlayKind } from '$lib/charts';
 	export interface Marker {
 		t: number;
 		label: string;
 		href: string;
-		kind?: 'water_change' | 'dosing' | 'other';
+		/** which event overlay it belongs to (#88): each draws its own glyph */
+		kind?: OverlayKind | 'other';
 	}
 
 	/** About `count` round values across lo…hi, for the side axis; never fewer than two. */
@@ -338,8 +340,7 @@
 					x2={x(m.t)}
 					y1={TOP - 10}
 					y2={baseline}
-					class="marker-line"
-					class:dosing={m.kind === 'dosing'}
+					class="marker-line {m.kind ?? ''}"
 					class:chosen={m.href === selected}
 				></line>
 			{/each}
@@ -399,8 +400,7 @@
 		{#if onselect}
 			<button
 				type="button"
-				class="marker"
-				class:dosing={m.kind === 'dosing'}
+				class="marker {m.kind ?? ''}"
 				class:chosen={m.href === selected}
 				style:left="{x(m.t)}px"
 				style:top="{TOP - 10}px"
@@ -410,7 +410,7 @@
 				onclick={() => onselect(m)}
 			></button>
 		{:else}
-			<a class="marker" class:dosing={m.kind === 'dosing'} href={m.href} style:left="{x(m.t)}px" style:top="{TOP - 10}px" style:--tap="{tapWidth[i]}px" title={m.label} aria-label="{m.label}, {fmt(m.t)}"></a>
+			<a class="marker {m.kind ?? ''}" href={m.href} style:left="{x(m.t)}px" style:top="{TOP - 10}px" style:--tap="{tapWidth[i]}px" title={m.label} aria-label="{m.label}, {fmt(m.t)}"></a>
 		{/if}
 	{/each}
 	{#if chosen && popover}
@@ -488,7 +488,11 @@
 		stroke-opacity: 0.6;
 		stroke-dasharray: 3 3;
 	}
-	.marker-line.dosing {
+	.marker-line.dosing,
+	.marker-line.co2,
+	.marker-line.light,
+	.marker-line.trim,
+	.marker-line.maintenance {
 		stroke-dasharray: 1 3;
 	}
 	.marker-line.chosen {
@@ -594,10 +598,29 @@
 		box-sizing: border-box;
 		background: var(--ink);
 	}
-	/* a dose is a diamond */
+	/* each overlay its own glyph (#88): a dose is a diamond, CO₂ a bar, a light a triangle,
+	   a trim a cross, other maintenance a hollow square; all in the neutral, the water change in ink */
 	.marker.dosing::before {
 		transform: rotate(45deg) scale(0.8);
 		background: var(--neutral-600);
+	}
+	.marker.co2::before {
+		top: 20px;
+		height: 4px;
+		background: var(--neutral-600);
+	}
+	.marker.light::before {
+		background: var(--neutral-600);
+		clip-path: polygon(50% 0, 100% 100%, 0 100%);
+	}
+	.marker.trim::before {
+		background:
+			linear-gradient(45deg, transparent 38%, var(--neutral-600) 38% 62%, transparent 62%),
+			linear-gradient(-45deg, transparent 38%, var(--neutral-600) 38% 62%, transparent 62%);
+	}
+	.marker.maintenance::before {
+		background: none;
+		border: 2px solid var(--neutral-600);
 	}
 	/* the reading line draws itself in, then the latest reading pops up */
 	.trace {
