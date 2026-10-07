@@ -11,6 +11,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Charts from a sensor alone:** A parameter only a probe reports, like temperature from a controller, now shows its chart on [Charts](/charts) with the sensor's line and Live value, without waiting for two hand-logged tests. When the chart is empty, it now says whether a longer range would show readings.
 - **Sensor charts keep the spikes:** On [Charts](/charts), a sensor's line now has a faint band showing the lowest and highest readings behind each point, so a brief spike still shows on a 90-day or yearly chart instead of being averaged away. Long ranges also open many times faster.
 - **Quicker with many tanks:** Every page now gathers the sidebar's tanks, their alerts and your role on each in the same few steps however many tanks you have, so a long [tank list](/tanks) no longer slows each page down.
 - **Offline data on this device:** [Settings › Data](/settings#data) now says what Waterline keeps on your phone or computer so it works without signal, and Remove clears it, warning first if entries are still waiting to sync. What's kept belongs to one person: another account signing in on the device, or a session signed out from the server, clears the pages and photos, and an entry logged offline only ever syncs to the account that logged it.

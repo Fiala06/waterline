@@ -9,7 +9,7 @@ const dir = mkdtempSync(join(tmpdir(), 'wl-series-'));
 vi.mock('$env/dynamic/private', () => ({ env: { DATA_DIR: dir } }));
 const { db } = await import('./db');
 const { sensorReadings } = await import('./db/schema');
-const { displaySamples, sampleSeries } = await import('./sensors');
+const { displaySamples, sampleCount, sampleSeries } = await import('./sensors');
 const { createTank, listParams } = await import('./tanks');
 const { upsertUser } = await import('./users');
 
@@ -106,6 +106,15 @@ describe('sensor chart points (#103)', () => {
 		expect(pts).toHaveLength(60);
 		expect(pts[0]).toEqual({ t: end - 60 * MIN, v: 24 });
 		expect(sampleSeries(tank.id, temp.id, new Date(end + DAY).toISOString(), 240, end)).toEqual([]);
+	});
+
+	it('counts a parameter\'s samples up to a limit, for an empty chart\'s wording (#130)', () => {
+		const end = Date.parse('2026-10-02T00:00:00Z');
+		const { tank, temp } = probe(1 / 24, end, () => 24);
+		expect(sampleCount(tank.id, temp.id)).toBe(2);
+		expect(sampleCount(tank.id, temp.id, 100)).toBe(60);
+		const other = listParams(tank.id).find((p) => p.key !== 'temp')!;
+		expect(sampleCount(tank.id, other.id)).toBe(0);
 	});
 
 	it('reads hours or samples through their indexes, never a whole table', () => {
