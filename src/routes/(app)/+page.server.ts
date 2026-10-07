@@ -38,7 +38,7 @@ import { testReadings, tests } from "$lib/server/db/schema";
 import { thumbsFor } from "$lib/server/photos";
 import { equipmentName } from "$lib/equipment";
 import { listEquipment, scheduledItems, listLivestock, listPlants } from "$lib/server/specs";
-import { getTank, listParams, markCycling, markRunning, setChecklist } from "$lib/server/tanks";
+import { getTank, listParams, markCycling, markRunning, roleOn, setChecklist } from "$lib/server/tanks";
 import { checklistSteps, showChecklist } from "$lib/checklist";
 import { listTasks } from "$lib/server/tasks";
 import type { Actions, PageServerLoad } from "./$types";
@@ -280,7 +280,8 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
     lights: !!tankLighting(tank, scheduledItems(tank.id)).lights || tank.withoutEquipment.includes("light"),
     waterChangeTaskId: wcTask?.id ?? null,
   };
-  const checklist = showChecklist(facts)
+  // the owner's to work through and to hide; someone the tank is shared with sees the tank as it is
+  const checklist = roleOn(user.id, tank) === "owner" && showChecklist(facts)
     ? (() => {
         const steps = checklistSteps(facts);
         return { steps, done: steps.filter((s) => s.done).length, cycling: tank.cycling, allDone: steps.every((s) => s.done) };
