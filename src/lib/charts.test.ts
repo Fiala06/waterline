@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chartDomain, equipmentTypeLookup, overlayKind } from './charts';
+import { chartDomain, equipmentTypeLookup, overlayKind, parseCompare } from './charts';
 
 describe('chartDomain (#74)', () => {
 	it('gives ammonia at 0 room up to twice its limit', () => {
@@ -59,5 +59,15 @@ describe('event overlays (#88)', () => {
 		expect(type(undefined, 'Old LED light')).toBe('light');
 		expect(type(undefined, 'CO2 diffuser')).toBe('co2');
 		expect(type(undefined, 'Heater')).toBeNull();
+	});
+});
+
+describe('parseCompare (#87)', () => {
+	it('keeps known parameters other than the main one, at most two, in order, once each', () => {
+		expect(parseCompare('b,c', ['a', 'b', 'c', 'd'], 'a')).toEqual(['b', 'c']);
+		expect(parseCompare('a,b,b,x,c,d', ['a', 'b', 'c', 'd'], 'a')).toEqual(['b', 'c']);
+		expect(parseCompare(' b , d', ['a', 'b', 'c', 'd'], 'a')).toEqual(['b', 'd']);
+		expect(parseCompare(null, ['a'], 'a')).toEqual([]);
+		expect(parseCompare('', ['a'], 'a')).toEqual([]);
 	});
 });

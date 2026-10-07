@@ -101,3 +101,19 @@ export function overlayKind(e: { category: string; data: Record<string, unknown>
 			return null;
 	}
 }
+
+// Comparing parameters (#87): up to two more on the same chart, each on its
+// own scale (a dashed line, the first with an axis on the right), named in
+// the address as ?c=id,id so a comparison can be shared.
+export const MAX_COMPARE = 2;
+
+/** The parameters to draw beside the main one: known ids, not the main one, no repeats, at most MAX_COMPARE. */
+export function parseCompare(raw: string | null, ids: string[], primary: string): string[] {
+	if (!raw) return [];
+	const out: string[] = [];
+	for (const id of raw.split(',').map((s) => s.trim())) {
+		if (id && id !== primary && ids.includes(id) && !out.includes(id)) out.push(id);
+		if (out.length >= MAX_COMPARE) break;
+	}
+	return out;
+}

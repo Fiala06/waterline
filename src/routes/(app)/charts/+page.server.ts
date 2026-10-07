@@ -11,7 +11,7 @@ import { getTank, listParams } from '$lib/server/tanks';
 import { tankNotes } from '$lib/server/trends';
 import { displaySamples, latestSamples, sampleCount, sampleSeries } from '$lib/server/sensors';
 import { fmtWhen } from '$lib/time';
-import { CHART_RANGES, equipmentTypeLookup, overlayKind } from '$lib/charts';
+import { CHART_RANGES, equipmentTypeLookup, overlayKind, parseCompare } from '$lib/charts';
 import { equipmentName } from '$lib/equipment';
 import { whatChanged } from '$lib/what-changed';
 import { listEquipment } from '$lib/server/specs';
@@ -45,6 +45,17 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 	if (!param) return { tank: { id: tank.id, name: tank.name }, range: range.key, list, chart: null };
 
 	const raw = series(tank.id, param.id, since);
+	// compared parameters (#87): up to two more, each on its own scale, from ?c=id,id
+	const compare = parseCompare(url.searchParams.getAll('c').join(','), params.map((p) => p.id), param.id).map((id) => {
+		const cp = params.find((p) => p.id === id)!;
+		return {
+			id: cp.id,
+			name: cp.name,
+			unit: paramUnit(cp, user),
+			decimals: paramDecimals(cp, user),
+			points: series(tank.id, cp.id, since).map((r) => ({ t: Date.parse(r.takenAt), v: displayValue(cp, r.value, user) }))
+		};
+	});
 	// readings from a sensor (#19): a thin line under the tests, and the latest as Live
 	const sensor = displaySamples(sampleSeries(tank.id, param.id, since), param, user);
 	const liveSample = live.get(param.id);
@@ -153,6 +164,7 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 			},
 			points,
 			sensor,
+			compare,
 			live: liveStat,
 			allTime,
 			from,

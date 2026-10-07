@@ -60,6 +60,14 @@
 		/** the test this reading belongs to: a click opens it */
 		href?: string;
 	}
+	/** Another parameter drawn beside the readings (#87), on its own scale. */
+	interface CompareSeries {
+		id: string;
+		name: string;
+		unit: string;
+		decimals: number;
+		points: Point[];
+	}
 	let {
 		points,
 		band,
@@ -80,7 +88,8 @@
 		popover,
 		fit = false,
 		pinLatest = false,
-		sensor = []
+		sensor = [],
+		compare = []
 	}: {
 		points: Point[];
 		band: { min: number | null; max: number | null };
@@ -108,6 +117,8 @@
 		pinLatest?: boolean;
 		/** readings from a sensor (#19), drawn as a thin neutral line under the tests */
 		sensor?: { t: number; v: number; lo?: number; hi?: number }[];
+		/** up to two more parameters (#87): dashed lines on their own scales, the first with an axis on the right */
+		compare?: CompareSeries[];
 	} = $props();
 
 	let el = $state<HTMLDivElement>();
@@ -138,14 +149,30 @@
 		return long.length * 6.5 <= plotH ? long : unit || name;
 	});
 	const LEFT = $derived((title ? 18 : 4) + Math.max(1, ...ticks.map((t) => tickText(t).length)) * 7 + 8);
-	// a full chart names its zones in a gutter on the right (#74)
-	const zoned = $derived(full && (band.min != null || band.max != null));
-	const RIGHT = $derived(zoned ? (width < 480 ? 74 : 92) : 10);
+	// a full chart names its zones in a gutter on the right (#74); when comparing,
+	// the first compared parameter's axis takes that side instead (the band and the legend still say the target)
+	const zoned = $derived(full && (band.min != null || band.max != null) && !compare.length);
+	// each compared parameter's own scale, so a pH line and a nitrate line share the plot
+	const scales = $derived(
+		compare.map((c) => {
+			const d = chartDomain(c.points.map((p) => p.v), { min: null, max: null });
+			return { ...c, domain: d, ticks: niceTicks(d.lo, d.hi, plotH < 200 ? 3 : 4) };
+		})
+	);
+	const axis2 = $derived(full && scales.length ? scales[0] : null);
+	const axis2Title = $derived(axis2 ? (axis2.unit ? `${axis2.name} (${axis2.unit})` : axis2.name) : '');
+	const RIGHT = $derived(axis2 ? Math.max(1, ...axis2.ticks.map((t) => String(t).length)) * 7 + 8 + (axis2Title.length * 6.5 <= plotH ? 18 : 6) : zoned ? (width < 480 ? 74 : 92) : 10);
 	// the lowest value sits a little above the axis, so a run of zeros isn't hidden under it
 	const LIFT = 8;
 
 	const x = (t: number) => LEFT + ((t - from) / Math.max(1, to - from)) * (width - LEFT - RIGHT);
 	const y = (v: number) => TOP + (1 - (v - domain.lo) / (domain.hi - domain.lo)) * (plotH - LIFT);
+	const y2 = (v: number, d: { lo: number; hi: number }) => TOP + (1 - (v - d.lo) / (d.hi - d.lo)) * (plotH - LIFT);
+	/** a compared parameter's reading from the same test as `p` (the same instant), for the readout */
+	const alongside = (p: Point) => scales.flatMap((c) => {
+		const m = c.points.find((q) => q.t === p.t);
+		return m ? [`${c.name} ${formatNumber(m.v, c.decimals)}${c.unit ? ` ${c.unit}` : ''}`] : [];
+	});
 
 	const xTicks = $derived.by(() => {
 		const n = Math.max(2, Math.min(5, Math.floor((width - LEFT) / 90)));
@@ -352,6 +379,22 @@
 			{#if sensor.length > 1}
 				<polyline class="sensor" points={sensor.map((p) => `${x(p.t)},${y(p.v)}`).join(' ')} fill="none" stroke="var(--neutral-600)" stroke-width="1.25" stroke-linejoin="round"></polyline>
 			{/if}
+			{#each scales as c, i (c.id)}
+				<polyline class="compare c{i + 1}" points={c.points.map((p) => `${x(p.t).toFixed(1)},${y2(p.v, c.domain).toFixed(1)}`).join(' ')} fill="none" stroke-linejoin="round"></polyline>
+				{#if full}
+					{#each c.points as p (p.t)}
+						<rect class="compare-dot c{i + 1}" x={x(p.t) - 2.5} y={y2(p.v, c.domain) - 2.5} width="5" height="5"></rect>
+					{/each}
+				{/if}
+			{/each}
+			{#if axis2}
+				{#each axis2.ticks as t (t)}
+					<text x={width - RIGHT + 6} y={y2(t, axis2.domain) + 4} class="axis axis2">{t}</text>
+				{/each}
+				{#if axis2Title.length * 6.5 <= plotH}
+					<text class="axis-title axis2" transform="translate({width - 6} {TOP + plotH / 2}) rotate(90)" text-anchor="middle">{axis2Title}</text>
+				{/if}
+			{/if}
 			<polyline class="trace" pathLength="1" points={line} fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"></polyline>
 			{#if full}
 				{#each points as p, i (i)}
@@ -387,6 +430,7 @@
 				<span class="r-kicker">{active === points.length - 1 ? 'Latest test' : 'Water test'}</span>
 				<span class="r-value status-{level(hot)}">{value(hot)}</span>
 				<span class="r-when">{when(hot.t)}{status(hot) ? ` · ${status(hot)}` : ''}</span>
+				{#each alongside(hot) as line (line)}<span class="r-also">{line}</span>{/each}
 				{#if hot.href}<a class="r-link" href={hot.href}>Open this test ›</a>{/if}
 			</div>
 		{:else if pinned}
@@ -506,6 +550,26 @@
 		fill: var(--text-muted);
 		font-size: 12px;
 	}
+	/* compared parameters (#87): dashed for the first, dotted for the second, never the accent (that means status) */
+	.compare {
+		stroke: var(--text-2);
+		stroke-width: 1.5;
+	}
+	.compare.c1 {
+		stroke-dasharray: 6 4;
+	}
+	.compare.c2 {
+		stroke-dasharray: 1.5 3.5;
+		stroke-linecap: round;
+	}
+	.compare-dot {
+		fill: var(--bg);
+		stroke: var(--text-2);
+		stroke-width: 1.25;
+	}
+	.axis2 {
+		fill: var(--text-2);
+	}
 	.axis-title {
 		fill: var(--text-2);
 		font-size: 12px;
@@ -542,6 +606,11 @@
 		text-transform: uppercase;
 		color: var(--text-muted);
 		white-space: nowrap;
+	}
+	.r-also {
+		display: block;
+		font-size: 12px;
+		color: var(--text-2);
 	}
 	.r-value {
 		font-size: 18px;

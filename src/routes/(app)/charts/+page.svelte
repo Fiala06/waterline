@@ -10,7 +10,7 @@
 	import TrendChart from '$lib/components/TrendChart.svelte';
 	import { WHAT_CHANGED_NOTE } from '$lib/what-changed';
 	import { browser } from '$app/environment';
-	import { CHART_RANGES, DEFAULT_OVERLAYS, OVERLAYS, OVERLAY_LABEL, type OverlayKind } from '$lib/charts';
+	import { CHART_RANGES, DEFAULT_OVERLAYS, MAX_COMPARE, OVERLAYS, OVERLAY_LABEL, type OverlayKind } from '$lib/charts';
 
 	let { data } = $props();
 	let selected = $state<string | null>(null);
@@ -40,6 +40,17 @@
 	const submit = (e: Event) => (e.currentTarget as HTMLInputElement | HTMLSelectElement).form?.requestSubmit();
 
 	const chosen = $derived(data.chart?.markers.find((m) => m.href === selected) ?? null);
+	// Comparing (#87): the parameters drawn beside this one, and the address without one of them
+	const compared = $derived((data.chart?.compare ?? []).map((c) => c.id));
+	const without = (id: string) => {
+		const u = new URLSearchParams(page.url.searchParams);
+		const rest = compared.filter((x) => x !== id);
+		if (rest.length) u.set('c', rest.join(','));
+		else u.delete('c');
+		return `/charts?${u}`;
+	};
+	// the ones not drawn yet; a drawn one comes off by its chip's ×
+	const compareOptions = $derived((data.list ?? []).filter((p) => p.id !== data.chart?.paramId && !compared.includes(p.id)));
 	// "ppm · target 5–20"; pH has no unit, so just "target 6.5–7.5"
 	const subtitle = $derived(
 		[data.chart?.unit, data.chart?.targetBare && `target ${data.chart.targetBare}`].filter(Boolean).join(' · ')
@@ -103,6 +114,30 @@
 						{#if subtitle || phoneSubtitle}
 							<span class="c-sub"><span class="hide-phone">{subtitle}</span><span class="hide-desk">{phoneSubtitle}</span></span>
 						{/if}
+						<!-- compared parameters (#87): each a chip with its ×, and Compare… to add up to two -->
+						{#each c.compare as cp (cp.id)}
+							<a class="chip cmp" href={without(cp.id)} data-sveltekit-noscroll aria-label="Stop comparing with {cp.name}">vs {cp.name} <span aria-hidden="true">×</span></a>
+						{/each}
+						{#if compareOptions.length && c.compare.length < MAX_COMPARE}
+							<details class="compare">
+								<summary class="chip">Compare… <span class="caret" aria-hidden="true">▾</span></summary>
+								<!-- the boxes post c=id&c=id after the ones already drawn, so the first picked keeps the axis; the server takes them all, up to two -->
+								<form class="compare-menu" method="GET" action="/charts" data-sveltekit-noscroll data-sveltekit-keepfocus>
+									{#each keep('c') as [k, v], i (i)}<input type="hidden" name={k} value={v} />{/each}
+									{#each compared as id (id)}<input type="hidden" name="c" value={id} />{/each}
+									<fieldset>
+										<legend>Compare with up to {MAX_COMPARE}, each on its own scale</legend>
+										{#each compareOptions as p (p.id)}
+											<label class="option">
+												<input type="checkbox" name="c" value={p.id} onchange={submit} />
+												<span>{p.name}</span>{#if p.unit}<span class="opt-unit">{p.unit}</span>{/if}
+											</label>
+										{/each}
+									</fieldset>
+									<noscript><button class="btn">Compare</button></noscript>
+								</form>
+							</details>
+						{/if}
 					</div>
 					<form class="range-form" method="GET" action="/charts" data-sveltekit-noscroll data-sveltekit-keepfocus>
 						{#each keep('r') as [k, v], i (i)}<input type="hidden" name={k} value={v} />{/each}
@@ -128,6 +163,7 @@
 									height={260}
 									points={c.points}
 									sensor={c.sensor}
+									compare={c.compare}
 									band={c.band}
 									{markers}
 									from={c.from}
@@ -161,6 +197,9 @@
 						{#if c.sensor.length >= 2}
 							<span><i class="lg-sensor"></i>Sensor</span>
 						{/if}
+						{#each c.compare as cp, i (cp.id)}
+							<span><i class="lg-cmp c{i + 1}"></i>{cp.name}{cp.unit ? ` (${cp.unit})` : ''} · own scale{i === 0 ? ', right' : ''}</span>
+						{/each}
 						<!-- the event overlays with something in range, each a switch (#88) -->
 						{#each kindsInRange as o (o.kind)}
 							<button type="button" class="lg-toggle" aria-pressed={shown[o.kind]} onclick={() => toggle(o.kind)}>
@@ -496,6 +535,73 @@
 		opacity: 0.35;
 	}
 	/* a sensor's thin line (#19) */
+	/* a compared parameter's line: dashed, then dotted, in text-2 */
+	.lg-cmp {
+		display: inline-block;
+		width: 18px;
+		height: 0;
+		border-top: 2px dashed var(--text-2);
+		margin-right: 6px;
+		vertical-align: middle;
+	}
+	.lg-cmp.c2 {
+		border-top-style: dotted;
+	}
+	/* "vs pH ×" and Compare…: chips beside the title */
+	.cmp {
+		height: 28px;
+		padding: 0 10px;
+		font-size: 13px;
+		font-weight: 700;
+		color: var(--text);
+	}
+	.compare {
+		position: relative;
+	}
+	.compare summary {
+		height: 28px;
+		padding: 0 10px;
+		font-size: 13px;
+		list-style: none;
+		cursor: pointer;
+	}
+	.compare summary::-webkit-details-marker {
+		display: none;
+	}
+	.compare-menu {
+		position: absolute;
+		z-index: 5;
+		left: 0;
+		top: calc(100% + 6px);
+		min-width: 240px;
+		padding: 10px 12px 12px;
+		background: var(--bg);
+		border: 2px solid var(--ink);
+		box-shadow: var(--shadow-lg);
+	}
+	.compare-menu fieldset {
+		margin: 0;
+		padding: 0;
+		border: 0;
+		display: flex;
+		flex-direction: column;
+	}
+	.compare-menu legend {
+		padding: 0 0 6px;
+		font-size: 11px;
+		font-weight: 800;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--text-muted);
+	}
+	.compare-menu .option {
+		min-height: 40px;
+	}
+	.opt-unit {
+		margin-left: auto;
+		font-size: 12px;
+		color: var(--text-muted);
+	}
 	.lg-sensor {
 		width: 16px;
 		height: 0;
