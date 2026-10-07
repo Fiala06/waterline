@@ -298,7 +298,10 @@ export const photos = sqliteTable('photos', {
 	takenAtSet: integer('taken_at_set', { mode: 'boolean' }).notNull().default(false),
 	/** in the tank's timeline (#26); off for a close-up that doesn't show the tank changing */
 	inTimeline: integer('in_timeline', { mode: 'boolean' }).notNull().default(true)
-});
+},
+	// a tank's photos by date (Photos, Timeline, public page, the assistant), and an entry's (#119)
+	(t) => [index('photos_tank_taken').on(t.tankId, t.takenAt, t.id), index('photos_event').on(t.eventId), index('photos_test').on(t.testId)]
+);
 
 
 export const tasks = sqliteTable(
