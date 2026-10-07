@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Shared tanks keep to each person's role:** On a tank shared with you, viewing no longer lets you log a trim on [Plants](/tanks/current/plants), and only the owner can move or change the tank's expenses on [Spending](/tanks/current/spending) or tick off its [Wish list](/tanks/current/wishlist) with Add to tank.
+
 - **Sharing keeps one place per person:** On a tank's [Sharing](/tanks/current/sharing), someone who already has access can't be invited or sent an invitation again, and Undo after removing someone you've since invited again keeps the newer invitation. Before, either could give one person two places on a tank, with whichever role came first; any doubles are now settled to one, with the higher role.
 
 - **Security updates:** The part of Waterline that reads your photos, and another it's built with, have been updated to fix known vulnerabilities, and each release is now checked for known vulnerabilities before it's published. How it works is in [SECURITY.md](https://github.com/Fiala06/waterline/blob/main/SECURITY.md).

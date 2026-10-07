@@ -109,6 +109,8 @@ export function restoreWish(userId: string, tankId: string, id: string): Wish | 
  * wish's price (or the amount given). The wish stays, marked added.
  */
 export function addWishToTank(user: User, tankId: string, id: string, opts: { spend: boolean; amountCents?: number | null }) {
+	// the wish list is the owner's, like adding and deleting wishes (#106); checked before anything is added
+	getTank(user.id, tankId, 'owner');
 	const w = getWish(user.id, tankId, id);
 	if (w.addedAt) error(400, 'Already added.');
 	const today = todayInZone(user.timeZone);

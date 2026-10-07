@@ -760,6 +760,8 @@ export function logTrim(
   plantIds: string[],
   note: string | null,
 ) {
+  // a trim is logged, so "view" can't (#106)
+  requireRoleOn(userId, tankId, "log");
   const mine = listPlants(userId, tankId).filter((p) =>
     plantIds.includes(p.id),
   );

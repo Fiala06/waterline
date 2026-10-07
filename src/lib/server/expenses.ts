@@ -55,6 +55,8 @@ export function addExpense(userId: string, tankId: string, input: ExpenseInput, 
 /** An expense's details; moving it to another of the keeper's tanks keeps its receipt. */
 export function updateExpense(userId: string, id: string, input: ExpenseInput & { tankId: string }) {
 	const before = getExpense(userId, id);
+	// the owner's, on the tank it's on and the one it goes to (#106)
+	requireRoleOn(userId, before.tankId, 'owner');
 	getTank(userId, input.tankId, 'owner');
 	let receiptPath = before.receiptPath;
 	if (receiptPath && input.tankId !== before.tankId) {
