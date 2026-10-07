@@ -122,6 +122,9 @@ quick_favorites  id, user_id, tank_id? (null: every tank), label, kind(test|wate
                  amountMode, amount, source, product, unit, food, actions[]), position, created_at
                  (Quick log favorites: pinned on Quick add, one tap to a form filled in, never saved
                  on its own)
+dashboard_prefs  id, user_id, tank_id, trend_param_id?, priority JSON [parameter ids listed first],
+                 hidden JSON [trends|recent|inTank|growing|live], created_at; unique (user_id, tank_id)
+                 (a keeper's choices for a tank's dashboard; no row means the defaults)
 expenses         id, tank_id, date, amount_cents, category(livestock|plants|equipment|
                  consumables|other), what, note?, product_id?, receipt_path?,
                  receipt_type?(image/jpeg|application/pdf), import_id?, created_at

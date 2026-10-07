@@ -337,6 +337,13 @@
       "when": 1791409467306,
       "tag": "0047_quick_favorites",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "6",
+      "when": 1791412615270,
+      "tag": "0048_dashboard_prefs",
+      "breakpoints": true
     }
   ]
 }

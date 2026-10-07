@@ -41,6 +41,8 @@ import { listEquipment, scheduledItems, listLivestock, listPlants } from "$lib/s
 import { getTank, listParams, markCycling, markRunning, roleOn, setChecklist } from "$lib/server/tanks";
 import { checklistSteps, showChecklist } from "$lib/checklist";
 import { growingRows } from "$lib/growing";
+import { dashboardChoices, resetDashboardChoices, saveDashboardChoices } from "$lib/server/dashboard-prefs";
+import { parseChoices } from "$lib/dashboard";
 import { intervalText } from "$lib/tasks";
 import { listTasks } from "$lib/server/tasks";
 import type { Actions, PageServerLoad } from "./$types";
@@ -313,6 +315,8 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
     whatsNew,
     checklist,
     growing,
+    // the keeper's choices for this dashboard (#94): what Trends opens on, what's listed first, what's hidden
+    choices: dashboardChoices(user.id, tank.id),
     cheers: { streak, milestones },
     contents,
     cycling,
@@ -367,6 +371,22 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 };
 
 export const actions: Actions = {
+  // Customize (#94): a few choices per tank, kept on the account; Reset forgets them
+  customize: async ({ request, locals, cookies }) => {
+    const user = locals.user!;
+    const form = await request.formData();
+    const tank = getTank(user.id, String(form.get("tankId") ?? ""));
+    saveDashboardChoices(user.id, tank.id, parseChoices(form, listParams(tank.id, { all: true }).map((p) => p.id)));
+    setFlash(cookies, "✓ Dashboard saved");
+    redirect(303, `/?tank=${tank.id}`);
+  },
+  resetDashboard: async ({ request, locals, cookies }) => {
+    const user = locals.user!;
+    const tank = getTank(user.id, String((await request.formData()).get("tankId") ?? ""));
+    resetDashboardChoices(user.id, tank.id);
+    setFlash(cookies, "✓ Dashboard back to its defaults");
+    redirect(303, `/?tank=${tank.id}`);
+  },
   // the getting-started checklist has done its job (#82)
   hideChecklist: async ({ request, locals, cookies }) => {
     const tankId = String((await request.formData()).get("tankId") ?? "");

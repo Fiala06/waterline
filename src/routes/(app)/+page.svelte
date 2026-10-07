@@ -15,6 +15,7 @@
 	import { compactName, displayValue, fmtRange, fmtValue, paramDecimals, paramUnit, shortName, statusOf } from '$lib/params';
 	import { CYCLING_TEXT, cyclingLevel, isCyclingStatus, statusShort } from '$lib/status';
 	import { guidance } from '$lib/tips';
+	import { customized, DASHBOARD_SECTIONS, DEFAULT_CHOICES, MAX_PRIORITY, prioritize } from '$lib/dashboard';
 	import Sparkline from '$lib/components/Sparkline.svelte';
 	import { enhance } from '$app/forms';
 	import { dueInfo, intervalText, isRoutine, routineLine } from '$lib/tasks';
@@ -26,6 +27,9 @@
 
 	let { data } = $props();
 	const prefs = $derived(data.user);
+	// the keeper's choices for this dashboard (#94); nothing chosen is the dashboard as it comes
+	const choices = $derived(data.choices ?? DEFAULT_CHOICES);
+	const hidden = $derived(choices.hidden);
 
 	/** "Rotala, Ludwigia, Java fern +3" */
 	const preview = (items: string[], n = 3) => items.slice(0, n).join(', ') + (items.length > n ? ` +${items.length - n}` : '');
@@ -39,7 +43,7 @@
 	}
 
 	const cards = $derived(
-		(data.params ?? []).map((p) => {
+		prioritize(data.params ?? [], choices.priority).map((p) => {
 			const r = data.latest?.[p.id];
 			// while the tank is cycling, high ammonia and nitrite are a stage, not a failure
 			const cycling = !!data.tank?.cycling;
@@ -64,7 +68,7 @@
 				due: data.stale?.[p.id] ?? null,
 				sub: r ? (range ? `Target ${range}` : 'No target') : 'Not tested',
 				// a sensor's latest reading (#19)
-				live: data.live?.[p.id] || null,
+				live: hidden.includes('live') ? null : data.live?.[p.id] || null,
 				range: r ? range : '',
 				spark: data.sparks?.[p.id] ?? [],
 				// the target band behind its line (stored units, as the readings)
@@ -109,6 +113,7 @@
 	let selected = $state<string | null>(null);
 	const chosen = $derived(
 		trendable.find((p) => p.id === selected) ??
+			trendable.find((p) => p.id === choices.trendParamId) ??
 			trendable.find((p) => statusOf(p, data.latest?.[p.id]?.value).level === 'bad') ??
 			trendable[0]
 	);
@@ -274,6 +279,7 @@
 			</div>
 
 			<!-- ── Recent (column 3) ────────────────────────────────────── -->
+			{#if !hidden.includes('recent')}
 			<section class="cell side recent" aria-labelledby="recent-h">
 				<div class="section-head">
 					<h2 id="recent-h">Recent</h2>
@@ -318,7 +324,10 @@
 				</ul>
 			</section>
 
+			{/if}
+
 			<!-- ── Trends (span 2) ──────────────────────────────────────── -->
+			{#if !hidden.includes('trends')}
 			<section class="cell main trends" aria-labelledby="trends-h">
 				<div class="section-head">
 					<h2 id="trends-h">Trends <span class="meta">· Last 4 weeks</span></h2>
@@ -384,7 +393,10 @@
 				{/if}
 			</section>
 
+			{/if}
+
 			<!-- ── In the tank (column 3) ───────────────────────────────── -->
+			{#if !hidden.includes('inTank')}
 			<section class="cell side in-tank" aria-labelledby="in-tank-h">
 				<div class="section-head">
 					<h2 id="in-tank-h">In the tank</h2>
@@ -404,7 +416,7 @@
 							<span class="chev" aria-hidden="true">›</span>
 						</a>
 					{/each}
-					{#if data.growing?.length}
+					{#if data.growing?.length && !hidden.includes('growing')}
 						<!-- a planted tank's growing setup (#97): light, CO₂, fertilizer, substrate -->
 						{#each data.growing as g, i (`${g.key}:${i}`)}
 							<a class="c-row growing" href={g.href}>
@@ -426,11 +438,137 @@
 					{/if}
 				</div>
 			</section>
+			{/if}
 		</div>
+
+		<!-- Customize (#94): a few light choices, kept on the account; Reset brings the defaults back -->
+		<details class="customize">
+			<summary><span class="sq" aria-hidden="true">⚙</span>Customize this dashboard{customized(choices) ? ' · changed' : ''}</summary>
+			<form method="POST" action="?/customize" class="cz" use:enhance>
+				<input type="hidden" name="tankId" value={data.tank.id} />
+				<div class="field">
+					<label class="label" for="cz-trend">Trends opens on</label>
+					<select class="input" id="cz-trend" name="trend">
+						<option value="" selected={!choices.trendParamId}>Automatic · what’s out of range, else the first with readings</option>
+						{#each data.params ?? [] as p (p.id)}<option value={p.id} selected={choices.trendParamId === p.id}>{p.name}</option>{/each}
+					</select>
+				</div>
+				<fieldset class="field">
+					<legend class="label">Listed first in Tank parameters · up to {MAX_PRIORITY}, in their usual order</legend>
+					<div class="chips cz-chips">
+						{#each data.params ?? [] as p (p.id)}
+							<label class="chip pick"><input type="checkbox" name="priority" value={p.id} checked={choices.priority.includes(p.id)} />{shortName(p)}</label>
+						{/each}
+					</div>
+				</fieldset>
+				<fieldset class="field">
+					<legend class="label">Show</legend>
+					<div class="cz-show">
+						{#each DASHBOARD_SECTIONS as sec (sec.key)}
+							{#if sec.planted && data.tank.type !== 'planted'}
+								<input type="hidden" name="show" value={sec.key} />
+							{:else}
+								<label class="cz-row"><input type="checkbox" name="show" value={sec.key} checked={!hidden.includes(sec.key)} /><span class="o-text"><span class="o-t">{sec.label}</span><span class="o-s">{sec.sub}</span></span></label>
+							{/if}
+						{/each}
+					</div>
+				</fieldset>
+				<div class="cz-acts">
+					{#if customized(choices)}<button class="btn" formaction="?/resetDashboard">Reset to defaults</button>{/if}
+					<button class="btn btn-primary">Save</button>
+				</div>
+			</form>
+		</details>
 	</div>
 {/if}
 
 <style>
+	/* Customize: folded away under the grid; a small form when open */
+	.customize {
+		margin-top: 28px;
+		border-top: 1px solid var(--divider);
+	}
+	.customize summary {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		min-height: 44px;
+		font-size: 13px;
+		font-weight: 800;
+		color: var(--text-muted);
+		cursor: pointer;
+		list-style: none;
+	}
+	.customize summary::-webkit-details-marker {
+		display: none;
+	}
+	.customize summary .sq {
+		font-size: 15px;
+	}
+	.customize[open] summary {
+		color: var(--text);
+	}
+	.cz {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+		padding: 4px 0 8px;
+		max-width: 640px;
+	}
+	.cz fieldset {
+		margin: 0;
+		padding: 0;
+		border: 0;
+		min-width: 0;
+	}
+	.cz-chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+	/* each part a row with its box: ticked means shown */
+	.cz-show {
+		display: flex;
+		flex-direction: column;
+		border-top: 2px solid var(--ink);
+	}
+	.cz-row {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		min-height: 48px;
+		padding: 6px 0;
+		border-bottom: 1px solid var(--divider);
+		cursor: pointer;
+	}
+	.cz-row input {
+		width: 20px;
+		height: 20px;
+		margin: 0;
+		flex-shrink: 0;
+		accent-color: var(--accent);
+	}
+	.o-text {
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+	}
+	.o-t {
+		font-weight: 700;
+	}
+	.o-s {
+		font-size: 12px;
+		color: var(--text-muted);
+	}
+	.cz-acts {
+		display: flex;
+		gap: 10px;
+		justify-content: flex-end;
+	}
+	.cz-acts .btn {
+		min-height: 44px;
+	}
+
 	.page {
 		padding: 4px 20px 24px;
 		display: flex;

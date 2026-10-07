@@ -535,6 +535,38 @@ export const quickFavorites = sqliteTable(
 
 export type QuickFavorite = typeof quickFavorites.$inferSelect;
 
+// ── Dashboard personalization (#94): light touches, per keeper and tank ──────
+
+export const DASHBOARD_SECTIONS = ['trends', 'recent', 'inTank', 'growing', 'live'] as const;
+
+/**
+ * What a keeper changed about a tank's dashboard: the parameter Trends opens
+ * on, the parameters listed first, and the parts hidden. Nothing here means
+ * the defaults; on the account, so every device agrees.
+ */
+export const dashboardPrefs = sqliteTable(
+	'dashboard_prefs',
+	{
+		id: id(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		tankId: text('tank_id')
+			.notNull()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		// Trends opens on this parameter; null: the one out of range, else the first with readings
+		trendParamId: text('trend_param_id'),
+		// parameter ids listed first in Tank parameters, in this order (at most 3)
+		priority: text('priority', { mode: 'json' }).$type<string[]>().notNull().default([]),
+		// sections and extras hidden: trends | recent | inTank | growing | live
+		hidden: text('hidden', { mode: 'json' }).$type<string[]>().notNull().default([]),
+		createdAt: createdAt()
+	},
+	(t) => [uniqueIndex('dashboard_prefs_user_tank').on(t.userId, t.tankId)]
+);
+
+export type DashboardPrefs = typeof dashboardPrefs.$inferSelect;
+
 /**
  * Test kits (#21): the steps of a test and its waits, per parameter, so the
  * water test form can run them with a timer. Account-wide, like products.
