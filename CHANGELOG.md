@@ -11,24 +11,17 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.12.13 · 2026-10-07
+
 - **Shared tanks keep to each person's role:** On a tank shared with you, viewing no longer lets you log a trim on [Plants](/tanks/current/plants), and only the owner can move or change the tank's expenses on [Spending](/tanks/current/spending) or tick off its [Wish list](/tanks/current/wishlist) with Add to tank.
-
 - **Sharing keeps one place per person:** On a tank's [Sharing](/tanks/current/sharing), someone who already has access can't be invited or sent an invitation again, and Undo after removing someone you've since invited again keeps the newer invitation. Before, either could give one person two places on a tank, with whichever role came first; any doubles are now settled to one, with the higher role.
-
 - **Security updates:** The part of Waterline that reads your photos, and another it's built with, have been updated to fix known vulnerabilities, and each release is now checked for known vulnerabilities before it's published. How it works is in [SECURITY.md](https://github.com/Fiala06/waterline/blob/main/SECURITY.md).
-
 - **A quicker timeline:** A tank's [Timeline](/timeline) and its public page now read only what they show, so they open as quickly for a tank kept for years as for a new one.
-
 - **A quicker dashboard with years of readings:** The [dashboard](/) and tank pages now find each parameter's latest test and sensor reading directly, so they stay quick however much history a tank builds up, even with a sensor reporting every minute.
-
 - **A stronger admin password:** Setting the local admin's password on [Server settings](/settings/server) or at first run now needs at least 12 characters and refuses ones people try first, like a keyboard run or the username with a few digits. A few unrelated words with spaces works well; a password already set keeps working.
-
 - **Sensor readings stored together:** A sensor's batch of readings is now stored in one go, so it's quicker and two batches arriving at once can never both store a reading for the same minute.
-
 - **No stale pages after an update:** Pages Waterline keeps for offline use now belong to the version that made them, so after an update the app never opens on an old version's page; the old copies are cleared when the new version starts.
-
 - **AI assistant sign-ins renew safely:** An AI assistant connected through sign-in can renew its access with each refresh token once only; a second use is refused and noted in the server's [Logs](/settings/server/logs), and the connection carries on for the one holding the newest token.
-
 - **Nothing lost joining the admin's accounts:** When the admin's Google account from before 1.8.3 is joined to the local admin's account, it now brings everything with it: saved test kits and access to tanks other keepers share (keeping the higher role) as well as tanks, products and devices, and History still shows who logged each entry. Before, test kits and shared-tank access were deleted.
 
 ## 1.12.12 · 2026-10-05
