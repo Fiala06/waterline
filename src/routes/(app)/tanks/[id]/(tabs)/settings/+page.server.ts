@@ -9,6 +9,9 @@ import { db } from '$lib/server/db';
 import { publicPages } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { getTank, listParams, setArchived, setChecklist, updateTank } from '$lib/server/tanks';
+import { listTasks } from '$lib/server/tasks';
+import { intervalText } from '$lib/tasks';
+import { doseText, nextDoseText } from '$lib/growing';
 import { parseReviewEvery, REVIEW_INTERVALS } from '$lib/review';
 import { checkSection, reviewTask, setReviewEvery } from '$lib/server/review';
 import { todayInZone } from '$lib/time';
@@ -63,6 +66,13 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 			const from = (x: typeof l.lights) => (x?.item ? { text: periodsText(x.schedule), hours: x.hours, item: { id: x.item.id, name: x.item.name } } : null);
 			return { lights: from(l.lights), co2: from(l.co2) };
 		})(),
+		// a planted tank's fertilizer routines (#96), listed with its growing setup
+		dosing:
+			tank.type === 'planted'
+				? listTasks(user.id, tank.id)
+						.filter((r) => r.task.kind === 'dosing')
+						.map((r) => ({ id: r.task.id, text: doseText({ ...r.task, title: r.task.name }), interval: intervalText(r.task), next: nextDoseText(r.task.due, todayInZone(user.timeZone)) }))
+				: [],
 		paramSummary: {
 			tracked: tracked.length,
 			custom: all.filter((p) => p.isCustom).length,

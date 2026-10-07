@@ -40,6 +40,8 @@ import { equipmentName } from "$lib/equipment";
 import { listEquipment, scheduledItems, listLivestock, listPlants } from "$lib/server/specs";
 import { getTank, listParams, markCycling, markRunning, roleOn, setChecklist } from "$lib/server/tanks";
 import { checklistSteps, showChecklist } from "$lib/checklist";
+import { growingRows } from "$lib/growing";
+import { intervalText } from "$lib/tasks";
 import { listTasks } from "$lib/server/tasks";
 import type { Actions, PageServerLoad } from "./$types";
 
@@ -288,9 +290,29 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
       })()
     : null;
 
+  // a planted tank's growing setup (#97): light, CO₂, fertilizer and substrate, each leading to where it's set
+  const growing =
+    tank.type === "planted"
+      ? (() => {
+          const l = tankLighting(tank, scheduledItems(tank.id));
+          const part = (x: typeof l.lights) => (x ? { schedule: x.schedule, hours: x.hours, itemId: x.item?.id ?? null } : null);
+          return growingRows({
+            tankId: tank.id,
+            lights: part(l.lights),
+            co2: part(l.co2),
+            substrate: tank.substrate,
+            dosing: tasks
+              .filter((t) => t.kind === "dosing")
+              .map((t) => ({ id: t.id, title: t.name, product: t.product, amount: t.amount, amountUnit: t.amountUnit, nextDue: t.due, interval: intervalText(t) })),
+            today,
+          });
+        })()
+      : [];
+
   return {
     whatsNew,
     checklist,
+    growing,
     cheers: { streak, milestones },
     contents,
     cycling,

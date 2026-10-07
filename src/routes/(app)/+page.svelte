@@ -403,7 +403,18 @@
 							<span class="chev" aria-hidden="true">›</span>
 						</a>
 					{/each}
-					{#if data.contents.schedule}
+					{#if data.growing?.length}
+						<!-- a planted tank's growing setup (#97): light, CO₂, fertilizer, substrate -->
+						{#each data.growing as g, i (`${g.key}:${i}`)}
+							<a class="c-row growing" href={g.href}>
+								<span class="f-text">
+									<span class="f-title">{g.title}</span>
+									<span class="f-sub">{g.text}</span>
+								</span>
+								<span class="chev" aria-hidden="true">›</span>
+							</a>
+						{/each}
+					{:else if data.contents.schedule}
 						<a class="c-row" href="/tanks/{data.tank.id}/settings">
 							<span class="f-text">
 								<span class="f-title">Schedule</span>
@@ -829,6 +840,10 @@
 	}
 	.c-row .f-sub {
 		font-size: 13px;
+	}
+	.c-row.growing {
+		min-height: 48px;
+		padding: 6px 0;
 	}
 	@media (hover: hover) {
 		.c-row:hover {
