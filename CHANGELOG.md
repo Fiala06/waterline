@@ -9,7 +9,7 @@ How to write a line:
 
 A release heading is `## <version> · <date>`, with the version in `package.json` (a test checks the newest release matches it). Anything under another heading, like `## Unreleased`, isn't shown.
 
-## Unreleased
+## 1.12.14 · 2026-10-07
 
 - **Quicker behind the scenes:** A backup with years of tests and tasks is put together in fewer steps, the daily digest sorts each tank's tasks once, and an admin's preview of removing someone counts their photos in one go. Nothing changes in what you see.
 - **Charts from a sensor alone:** A parameter only a probe reports, like temperature from a controller, now shows its chart on [Charts](/charts) and in the [dashboard](/)'s trend with the sensor's line and Live value, without waiting for two hand-logged tests. When the chart is empty, it now says whether a longer range would show readings.
