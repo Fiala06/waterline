@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compactName, defaultParameters, fmtRange, fmtValue, foldsInTestForm, statusOf, storedValue } from './params';
+import { compactName, defaultParameters, fmtRange, fmtValue, foldsInTestForm, paramGroup, paramLevel, statusOf, storedValue } from './params';
 import { TANK_TYPES } from './types';
 import type { UnitPrefs } from './units';
 
@@ -63,6 +63,39 @@ describe('defaultParameters presets', () => {
 			expect(new Set(ps.map((p) => p.key)).size).toBe(ps.length);
 			expect(ps.map((p) => p.sort)).toEqual(ps.map((_, i) => i));
 		}
+	});
+});
+
+describe('groups and levels (#83)', () => {
+	it('puts every preset parameter in a group with a level, and a custom one under Custom', () => {
+		for (const type of TANK_TYPES) {
+			for (const p of defaultParameters(imperial, type)) {
+				expect(paramGroup(p, type), `${type} ${p.key}`).not.toBe('custom');
+				expect(paramLevel(p, type), `${type} ${p.key}`).not.toBeNull();
+			}
+		}
+		const custom = { key: 'custom:strontium', isCustom: true };
+		expect(paramGroup(custom, 'reef')).toBe('custom');
+		expect(paramLevel(custom, 'reef')).toBeNull();
+	});
+
+	it('reads a reef by its own chemistry', () => {
+		expect(paramGroup({ key: 'po4' }, 'reef')).toBe('core');
+		expect(paramGroup({ key: 'po4' }, 'planted')).toBe('nutrients');
+		expect(paramGroup({ key: 'kh' }, 'reef')).toBe('core');
+		expect(paramGroup({ key: 'kh' }, 'freshwater')).toBe('chemistry');
+		expect(paramLevel({ key: 'ph' }, 'reef')).toBe('optional');
+		expect(paramLevel({ key: 'ph' }, 'freshwater')).toBe('recommended');
+	});
+
+	it('recommends the basics, leaves the rest optional, and calls fertilizer and probe readings advanced', () => {
+		expect(paramLevel({ key: 'no3' }, 'freshwater')).toBe('recommended');
+		expect(paramLevel({ key: 'gh' }, 'freshwater')).toBe('optional');
+		expect(paramLevel({ key: 'po4' }, 'freshwater')).toBe('optional');
+		expect(paramLevel({ key: 'po4' }, 'planted')).toBe('recommended');
+		expect(paramLevel({ key: 'co2' }, 'planted')).toBe('optional');
+		expect(paramLevel({ key: 'sal' }, 'brackish')).toBe('recommended');
+		for (const key of ['k', 'fe', 'ec', 'orp']) expect(paramLevel({ key }, 'planted'), key).toBe('advanced');
 	});
 });
 

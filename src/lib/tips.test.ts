@@ -46,7 +46,7 @@ describe('whenToTest (#91)', () => {
 	it('reads by tank type, and has nothing to say about a custom parameter', () => {
 		expect(whenToTest('kh', 'reef')?.text).toMatch(/alkalinity/);
 		expect(whenToTest('kh', 'planted')?.text).toMatch(/CO₂/);
-		expect(whenToTest('kh', 'planted')?.optional).toBe(false);
+		expect(whenToTest('kh', 'planted')?.optional).toBe(true);
 		expect(whenToTest('po4', 'planted')?.optional).toBe(false);
 		expect(whenToTest('po4', 'freshwater')?.optional).toBe(true);
 		expect(whenToTest('custom:silicate', 'freshwater')).toBeNull();

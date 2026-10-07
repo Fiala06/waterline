@@ -1,5 +1,6 @@
 // Short explanations behind the ⓘ next to parameters and less obvious fields
 // Plain hobby guidance; each tank's own targets still rule.
+import { paramLevel } from './params';
 
 const PARAMS: Record<string, string> = {
 	ph: 'How acidic or alkaline the water is, from 0 to 14. Most fish do well across a range; keeping it steady matters more than a perfect number.',
@@ -38,45 +39,47 @@ export function paramTip(key: string, tankType: string): string | null {
 // "Optional" first, so a beginner sees which matter weekly and which can wait.
 export interface WhenToTest {
 	text: string;
-	/** a test most keepers of this tank type can skip */
+	/** a test most keepers of this tank type can skip: not Recommended on Parameters & targets (#83) */
 	optional: boolean;
 }
-const w = (text: string, optional = false): WhenToTest => ({ text, optional });
-const WHEN: Record<string, WhenToTest> = {
+const w = (text: string): string => text;
+const WHEN: Record<string, string> = {
 	ph: w('Weekly while a tank is new, then when something changes: new fish, a different water source, or another reading that looks off. Steady matters more than often.'),
 	nh3: w("Every day or two while a tank cycles or after adding fish, and any time fish look unwell. In a settled tank, weekly or when something's wrong."),
 	no2: w("Every day or two while a tank cycles or after adding fish, and any time fish look unwell. In a settled tank, weekly or when something's wrong."),
 	no3: w('Weekly, or just before a water change: it shows whether your changes are big and often enough.'),
-	gh: w('Optional for most tanks: when setting up, after changing your water source, and if shrimp or plants struggle. Tap water rarely changes.', true),
-	kh: w('Optional unless pH drifts: when setting up, after changing your water source, with CO₂ injection, or whenever pH drops for no clear reason.', true),
+	gh: w('Optional for most tanks: when setting up, after changing your water source, and if shrimp or plants struggle. Tap water rarely changes.'),
+	kh: w('Optional unless pH drifts: when setting up, after changing your water source, with CO₂ injection, or whenever pH drops for no clear reason.'),
 	temp: w('A glance at the thermometer each day; log it when it drifts, in a heatwave, or after a heater change.'),
-	po4: w('Optional unless you dose fertilizer or are fighting algae: weekly then, alongside nitrate.', true),
-	k: w('Optional: mainly for fertilizer management in a heavily planted tank, or when older leaves show pinholes.', true),
-	fe: w('Optional: useful mainly for fertilizer management in heavily planted tanks. A weekly check if you dose iron on its own.', true),
-	tds: w('Optional for most tanks. Shrimp keepers and anyone remineralising RO water check it with each water change, some daily.', true),
-	ec: w('Optional: the same job as TDS with a different meter. Check it with each water change if you remineralise RO water.', true),
-	orp: w('Optional: a probe reads it all day, so log it when it moves. A sudden drop is what matters, not the number.', true),
-	co2: w('With injected CO₂, watch the drop checker daily and log a reading when you change the rate. Without injection, skip it.'),
+	po4: w('Optional unless you dose fertilizer or are fighting algae: weekly then, alongside nitrate.'),
+	k: w('Optional: mainly for fertilizer management in a heavily planted tank, or when older leaves show pinholes.'),
+	fe: w('Optional: useful mainly for fertilizer management in heavily planted tanks. A weekly check if you dose iron on its own.'),
+	tds: w('Optional for most tanks. Shrimp keepers and anyone remineralising RO water check it with each water change, some daily.'),
+	ec: w('Optional: the same job as TDS with a different meter. Check it with each water change if you remineralise RO water.'),
+	orp: w('Optional: a probe reads it all day, so log it when it moves. A sudden drop is what matters, not the number.'),
+	co2: w('Optional unless you inject CO₂: then watch the drop checker daily, and log a reading when you change the rate.'),
 	sal: w('With each water change and top-up: evaporation leaves the salt behind, so it creeps up between them.'),
 	ca: w('Weekly in a reef with stony corals, and after changing a dose; monthly in a soft-coral tank.'),
 	mg: w("Every 2–4 weeks: it moves slowly. Check it when calcium or alkalinity won't hold.")
 };
-const WHEN_PLANTED: Record<string, WhenToTest> = {
-	po4: w('Weekly if you dose fertilizer, alongside nitrate, so the two stay in step. Optional in a low-tech tank with no dosing.'),
-	kh: w('When setting up, after changing your water source, and weekly if you inject CO₂: KH decides how far the CO₂ pushes pH down.')
+const WHEN_PLANTED: Record<string, string> = {
+	po4: w('Weekly if you dose fertilizer, alongside nitrate, so the two stay in step; in a low-tech tank with no dosing, now and then.'),
+	kh: w('Optional unless you inject CO₂: then weekly, since KH decides how far the CO₂ pushes pH down; and when setting up or changing your water source.')
 };
-const WHEN_REEF: Record<string, WhenToTest> = {
+const WHEN_REEF: Record<string, string> = {
 	kh: w('Two or three times a week when dosing, weekly otherwise: alkalinity moves fastest, and corals mind swings most.'),
 	po4: w('Weekly, with nitrate: corals like a little, algae likes more.'),
 	no3: w('Weekly, with phosphate: corals like a little, algae likes more.'),
 	sal: w('Weekly, and before mixing new salt water: evaporation leaves the salt behind. Daily if nothing tops the tank up for you.'),
-	ph: w('Optional with a probe: it swings between day and night, so the trend matters more than one reading. Without one, weekly.', true)
+	ph: w('Optional with a probe: it swings between day and night, so the trend matters more than one reading. Without one, weekly.')
 };
 
 /** When a standard parameter is worth testing, for the tank's type; null for custom ones. */
 export function whenToTest(key: string, tankType: string): WhenToTest | null {
 	const byType = tankType === 'reef' ? WHEN_REEF : tankType === 'planted' ? WHEN_PLANTED : undefined;
-	return byType?.[key] ?? WHEN[key] ?? null;
+	const text = byType?.[key] ?? WHEN[key];
+	if (!text) return null;
+	return { text, optional: paramLevel({ key }, tankType) !== 'recommended' };
 }
 
 // What to do about a reading out of range (#62): one plain next step under it

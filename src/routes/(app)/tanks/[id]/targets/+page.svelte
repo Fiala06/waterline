@@ -5,6 +5,7 @@
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import CustomParamSheet from '$lib/components/CustomParamSheet.svelte';
 	import { TEST_CADENCES } from '$lib/status';
+	import { LEVEL_LABEL, PARAM_GROUPS } from '$lib/params';
 
 	let { data, form } = $props();
 	const errors = $derived((form?.errors ?? {}) as Record<string, string>);
@@ -30,7 +31,7 @@
 		<p class="intro">
 			Set your own range for each parameter. Readings outside it show
 			<span class="status-bad strong">✕ out of range</span>; readings within 10% of a limit show
-			<span class="status-warn strong">▲ near limit</span>. Untracked parameters are hidden from tests and charts. Test every says how often to test one: a reading older than that is due on the dashboard.
+			<span class="status-warn strong">▲ near limit</span>. Untracked parameters are hidden from tests and charts. Test every says how often to test one: a reading older than that is due on the dashboard. Recommended ones are the tests for every tank of this kind; optional and advanced ones are for particular ways of keeping it.
 		</p>
 	</div>
 
@@ -39,12 +40,17 @@
 		<div class="rows">
 			<!-- desktop: one table like D4 -->
 			<div class="thead" aria-hidden="true"><span>Parameter</span><span>Min</span><span>Max</span><span>Unit</span><span>Test every</span><span>Track</span></div>
-			{#each data.rows as r (r.id)}
+			{#each PARAM_GROUPS as g (g.key)}
+			{@const rows = data.rows.filter((r) => r.group === g.key)}
+			{#if rows.length}
+			<!-- grouped by purpose (#83): Core, Water chemistry, Plant nutrients, CO₂, Custom -->
+			<h2 class="ghead caps">{g.label}</h2>
+			{#each rows as r (r.id)}
 				<div class="prow" class:off={!tracked[r.id]}>
 					<div class="p-head">
 						<div class="p-name">
 							<span class="nm-line"><span class="nm">{r.name}</span>{#if r.tip}<Tip text={r.tip} when={r.when?.text} label="About {r.name}" />{/if}</span>
-							<span class="faint sm">{tracked[r.id] ? `${r.defaultText}${r.when?.optional ? ' · Optional' : ''}` : 'Not tracked · hidden from tests'}</span>
+							<span class="faint sm">{tracked[r.id] ? `${r.defaultText}${r.level ? ` · ${LEVEL_LABEL[r.level]}` : ''}` : 'Not tracked · hidden from tests'}</span>
 						</div>
 						<label class="switch" aria-label="Track {r.name}">
 							<input
@@ -79,6 +85,8 @@
 						<button type="button" class="remove" popovertarget="confirm-rm-{r.id}">Remove {r.name}</button>
 					{/if}
 				</div>
+			{/each}
+			{/if}
 			{/each}
 		</div>
 
@@ -149,6 +157,20 @@
 		flex-direction: column;
 		gap: 10px;
 		border-bottom: 1px solid var(--divider);
+	}
+	/* a group: its name, then a 2px rule over its rows; the first sits on the list's own rule */
+	.ghead {
+		margin: 18px 0 0;
+		padding: 0 0 6px;
+		border-bottom: 2px solid var(--ink);
+		font-size: 11px;
+		font-weight: 800;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--text-muted);
+	}
+	.ghead:first-of-type {
+		margin-top: 10px;
 	}
 	.prow.off .p-name,
 	.prow.off .range {
@@ -284,6 +306,9 @@
 		}
 		.rows {
 			border-top: none;
+		}
+		.ghead {
+			margin-top: 14px;
 		}
 		.thead,
 		.prow {

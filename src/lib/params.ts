@@ -188,6 +188,47 @@ export function defaultParameters(prefs: UnitPrefs, type: TankType = 'freshwater
 	return [...sets[type]].map((x, i) => ({ ...x, sort: i, tracked: true, isCustom: false }));
 }
 
+// Parameters & targets groups them by purpose (#83), so a beginner can tell the
+// tests everyone does from the ones for a particular way of keeping a tank.
+export type ParamGroup = 'core' | 'chemistry' | 'nutrients' | 'co2' | 'custom';
+export const PARAM_GROUPS: { key: ParamGroup; label: string }[] = [
+	{ key: 'core', label: 'Core' },
+	{ key: 'chemistry', label: 'Water chemistry' },
+	{ key: 'nutrients', label: 'Plant nutrients' },
+	{ key: 'co2', label: 'CO₂' },
+	{ key: 'custom', label: 'Custom' }
+];
+const CORE = ['ph', 'nh3', 'no2', 'no3', 'temp'];
+// a reef's own chemistry is what it runs on: the salt, the trinity and both nutrients
+const REEF_CORE = [...CORE, 'sal', 'kh', 'ca', 'mg', 'po4'];
+const CHEMISTRY = ['gh', 'kh', 'tds', 'ec', 'sal', 'orp', 'ca', 'mg'];
+const NUTRIENTS = ['po4', 'k', 'fe'];
+
+/** Which group a parameter sits under, for the tank's type. */
+export function paramGroup(p: { key: string; isCustom?: boolean | null }, tankType: string): ParamGroup {
+	if (p.isCustom) return 'custom';
+	if ((tankType === 'reef' ? REEF_CORE : CORE).includes(p.key)) return 'core';
+	if (p.key === 'co2') return 'co2';
+	if (NUTRIENTS.includes(p.key)) return 'nutrients';
+	if (CHEMISTRY.includes(p.key)) return 'chemistry';
+	return 'chemistry';
+}
+
+/** Recommended for everyone with this kind of tank, optional for most, or advanced; null for a custom one. */
+export type ParamLevel = 'recommended' | 'optional' | 'advanced';
+export const LEVEL_LABEL: Record<ParamLevel, string> = { recommended: 'Recommended', optional: 'Optional', advanced: 'Advanced' };
+const ADVANCED = ['k', 'fe', 'ec', 'orp'];
+export function paramLevel(p: { key: string; isCustom?: boolean | null }, tankType: string): ParamLevel | null {
+	if (p.isCustom) return null;
+	if (ADVANCED.includes(p.key)) return 'advanced';
+	if (paramGroup(p, tankType) === 'core') return tankType === 'reef' && p.key === 'ph' ? 'optional' : 'recommended';
+	// planted tanks that dose fertilizer keep phosphate in step with nitrate
+	if (tankType === 'planted' && p.key === 'po4') return 'recommended';
+	// brackish water is its own salt mix: salinity is the point
+	if (tankType === 'brackish' && p.key === 'sal') return 'recommended';
+	return 'optional';
+}
+
 /** Short name used on dashboard cards (design uses "Temp"). */
 export function shortName(p: ParamLike): string {
 	return p.key === 'temp' ? 'Temp' : p.name;

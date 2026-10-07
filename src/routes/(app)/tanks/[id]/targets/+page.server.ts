@@ -1,13 +1,7 @@
 import { fail, redirect } from "@sveltejs/kit";
 import { paramTip, whenToTest } from "$lib/tips";
 import { parseTestEvery } from "$lib/status";
-import {
-  defaultParameters,
-  fmtTarget,
-  paramDecimals,
-  paramUnit,
-  storedValue,
-} from "$lib/params";
+import { defaultParameters, fmtTarget, paramDecimals, paramGroup, paramLevel, paramUnit, storedValue } from "$lib/params";
 import { setFlash } from "$lib/server/flash";
 import { num, str } from "$lib/server/forms";
 import {
@@ -46,6 +40,8 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
         isCustom: p.isCustom,
         tip: p.isCustom ? null : paramTip(p.key, tank.type),
         when: p.isCustom ? null : whenToTest(p.key, tank.type),
+        group: paramGroup(p, tank.type),
+        level: paramLevel(p, tank.type),
         readings: counts.get(p.id) ?? 0,
         tracked: p.tracked,
         testEvery: p.testEveryDays == null ? "" : String(p.testEveryDays),

@@ -25,8 +25,9 @@ test('tips explain parameters and less obvious fields', async ({ page }, info) =
 	await expect(page.locator('.tip-pop:popover-open')).toContainText('When to test');
 	await expect(page.locator('.tip-pop:popover-open')).toContainText(/while a tank cycles/);
 	await page.keyboard.press('Escape');
-	await expect(page.locator('.prow', { hasText: 'Iron' }).getByText(/· Optional$/)).toBeVisible();
-	await expect(page.locator('.prow', { hasText: 'Nitrate' }).getByText(/· Optional$/)).toHaveCount(0);
+	const row = (name: string) => page.locator('.prow', { has: page.locator('.nm', { hasText: new RegExp(`^${name}$`) }) });
+	await expect(row('Iron').getByText(/· Advanced$/)).toBeVisible();
+	await expect(row('Nitrate').getByText(/· Recommended$/)).toBeVisible();
 
 	// Tank settings: the two volumes
 	await open(page, `/tanks/${tankId}/settings`);
