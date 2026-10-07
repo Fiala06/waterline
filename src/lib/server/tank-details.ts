@@ -1,4 +1,5 @@
 import { and, desc, eq as is, sql } from 'drizzle-orm';
+import { listRoutines } from './routines';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { dateInZone, fmtDateLong, todayInZone } from '$lib/time';
 import { dueInfo, isRoutine, routineLine } from '$lib/tasks';
@@ -41,6 +42,8 @@ export function tankDetails(user: User, t: Tank) {
 			.all()
 			.filter((n) => n.note)
 			.map((n) => ({ id: n.id, day: fmtDateLong(dateInZone(n.at, user.timeZone)), text: n.note! })),
+		// maintenance routines (#92): how many, for the way in beside Add dosing
+		maintenanceRoutines: listRoutines(t.id).length,
 		// dosing and feeding routines (#17), soonest first
 		routines: listTasks(user.id, t.id)
 			.filter((r) => isRoutine(r.task.kind))

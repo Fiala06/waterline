@@ -14,7 +14,8 @@
 		values={form?.values ?? data.filled ?? {}}
 		initialWhen={data.when}
 		timeZone={data.user.timeZone}
-		closeHref="/?tank={data.tank.id}"
+		closeHref={data.returnTo ?? `/?tank=${data.tank.id}`}
+		returnTo={data.returnTo}
 		task={data.task}
 		error={form?.error}
 		fieldErrors={form?.errors}
