@@ -25,6 +25,17 @@ The jobs run with read-only permissions, plus only what each needs (CodeQL uploa
 
 Turn on **secret scanning** and **push protection** in the repository's Settings › Code security; they aren't workflow steps.
 
+## Pinned versions
+
+What builds a release is fixed, not whatever a tag points to that day (#109):
+
+- **GitHub Actions** are pinned to a full commit, with the release beside it: `actions/checkout@3d3c42e… # v7.0.1`.
+- **The Docker base image** is pinned to a digest: `node:22-bookworm-slim@sha256:c3de60b…`, in both stages of the Dockerfile.
+
+[Dependabot](.github/dependabot.yml) keeps them current: each week it opens a pull request when an action has a new release (the commit and the comment change together) or when `node:22-bookworm-slim` is rebuilt with fixes (a new digest). CI runs on it like any other change, the image scan included; merge it once it's green. Node's odd-numbered versions, which are short-lived, aren't offered.
+
+To pin a new action by hand, look up the commit its release tag points to (`git ls-remote --tags https://github.com/<owner>/<action>`, the `^{}` line for an annotated tag) and write it with the version as a comment.
+
 ## When a finding can't be fixed yet
 
 Don't lower the bar; record the exception where the check reads it, with the reason and a date to look again:
