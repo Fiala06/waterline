@@ -16,7 +16,8 @@ test('Charts lists what was logged while a reading moved', async ({ page }, info
 		[6, '10'],
 		[0, '7']
 	] as const) {
-		await open(page, `/entries/test/new?tank=${tankId}&date=${daysAgo(n)}&time=09:00`);
+		// today's is logged now: 09:00 today is still to come early in the day
+		await open(page, `/entries/test/new?tank=${tankId}${n ? `&date=${daysAgo(n)}&time=09:00` : ''}`);
 		await page.getByLabel('Nitrate', { exact: true }).fill(v);
 		await page.getByRole('button', { name: 'Save 1 reading' }).click();
 		await expect(page.getByRole('status')).toContainText('✓ Saved 1 reading');

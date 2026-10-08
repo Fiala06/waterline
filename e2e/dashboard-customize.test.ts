@@ -8,7 +8,8 @@ test('a keeper picks what Trends opens on, what is listed first and what is show
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
 	const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
 	for (const n of [3, 0]) {
-		await open(page, `/entries/test/new?tank=${tankId}&date=${daysAgo(n)}&time=09:00`);
+		// today's is logged now: 09:00 today is still to come early in the day
+		await open(page, `/entries/test/new?tank=${tankId}${n ? `&date=${daysAgo(n)}&time=09:00` : ''}`);
 		await page.getByLabel('pH', { exact: true }).fill('7.0');
 		await page.getByLabel('KH', { exact: true }).fill('4');
 		await page.getByLabel('Nitrate', { exact: true }).fill('10');
