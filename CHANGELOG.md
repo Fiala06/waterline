@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.13.1 · 2026-10-08
+
 - **Planted tanks, low-tech or CO₂.** Adding a planted tank now asks how it's grown (low-tech, CO₂ injected, or not sure) and what water fills it. Low-tech and not-sure tanks start with the tests that matter for them, the basics and phosphate; a CO₂-injected tank also tracks CO₂, potassium and iron, with CO₂ in view on the water test. Anything left off waits in [Parameters & targets](/tanks/current/targets) to turn on, and the choice can be changed under Growing setup in [Tank setup](/tanks/current/settings#growing) without touching your parameters.
 - **Even buttons on a water test.** On a computer, Copy at the foot of a water test in [History](/history) is now the same size as Edit and Delete beside it.
 
