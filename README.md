@@ -17,13 +17,13 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/desktop-dashboard-dark.png">
-  <img src="docs/screenshots/desktop-dashboard-light.png" alt="The dashboard on a computer: the tank's photo and name, what needs attention with each reading's recent line, the readings in range, tasks due and recent activity">
+  <img src="docs/screenshots/desktop-dashboard-light.png" alt="The dashboard on a computer: the tank's photo and name, what needs attention with each reading's recent line and what to do about it, tasks due, the tank's parameters and recent activity">
 </picture>
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/phone-dashboard-dark.png">
-    <img src="docs/screenshots/phone-dashboard-light.png" alt="The dashboard on a phone: two readings out of range, one near its limit and the overdue water change under Needs attention, then the readings in range" width="260">
+    <img src="docs/screenshots/phone-dashboard-light.png" alt="The dashboard on a phone: nitrate out of range, iron and KH near their limits and the overdue water change under Needs attention, each with what to do next, then what's due" width="260">
   </picture>
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/phone-log-test-dark.png">
@@ -31,7 +31,7 @@
   </picture>
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/phone-charts-dark.png">
-    <img src="docs/screenshots/phone-charts-light.png" alt="Charts: nitrate over a month against its target band, with water changes marked" width="260">
+    <img src="docs/screenshots/phone-charts-light.png" alt="Charts: nitrate over 30 days against its target band, with water changes marked and the average, range and change below" width="260">
   </picture>
 </p>
 
@@ -188,7 +188,7 @@ npm run test:perf  # performance budgets for the main pages (seeds the demo acco
 node scripts/bundle-size.mjs  # after a build: the gzipped JavaScript against its budget
 ```
 
-The first time, install the Playwright browser with `npx playwright install chromium` (and `webkit firefox` for the other engines) (or point the tests at a Chromium already on the machine with `PW_CHROMIUM=/path/to/chrome`). The core flow (`e2e/core-flow.test.ts`) is sign in → setup → create tank → log test → dashboard → complete task. `AUDIT=1 npx playwright test e2e/audit.test.ts --project=desktop` also checks every screen, at phone and desktop sizes in both themes, for accessibility problems, small tap targets and overflow, and writes what it finds to `test-results/audit.json`.
+The first time, install the Playwright browser with `npx playwright install chromium` (and `webkit firefox` for the other engines) (or point the tests at a Chromium already on the machine with `PW_CHROMIUM=/path/to/chrome`). The core flow (`e2e/core-flow.test.ts`) is sign in → setup → create tank → log test → dashboard → complete task. `SCREENSHOTS=1 npx playwright test e2e/readme-screenshots.test.ts --project=desktop` retakes the screenshots at the top of this README from the demo account, in both themes. `AUDIT=1 npx playwright test e2e/audit.test.ts --project=desktop` also checks every screen, at phone and desktop sizes in both themes, for accessibility problems, small tap targets and overflow, and writes what it finds to `test-results/audit.json`.
 
 **Accessibility.** `e2e/a11y.test.ts` runs axe (WCAG 2.2 AA) on every push, over the screens people use most: sign-in and setup, the dashboard, logging a test or a note, History, Charts, tank settings and sharing, Photos, Tasks, Settings and Server settings, and the public tank page, with Quick add, Alerts and the keyboard shortcuts open, on a phone and a desktop, in light and dark. A serious or critical finding fails the build, naming the screen, the rule and the element. `A11Y_SURVEY=1 npx playwright test e2e/a11y.test.ts` lists every finding instead. An exception goes in the test's `EXCEPT` list, for one rule on one element, with the reason.
 
