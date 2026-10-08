@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Planted tanks, low-tech or CO₂.** Adding a planted tank now asks how it's grown (low-tech, CO₂ injected, or not sure) and what water fills it. Low-tech and not-sure tanks start with the tests that matter for them, the basics and phosphate; a CO₂-injected tank also tracks CO₂, potassium and iron, with CO₂ in view on the water test. Anything left off waits in [Parameters & targets](/tanks/current/targets) to turn on, and the choice can be changed under Growing setup in [Tank setup](/tanks/current/settings#growing) without touching your parameters.
+
 ## 1.13.0 · 2026-10-07
 
 - **Maintenance routines.** Your usual sequence as one routine, like Sunday maintenance: a 40% water change, a dose, a trim, a test. Build it a step at a time (or from your Quick log favorites) under [Maintenance routines](/tanks/current/routines) on the tank's Notes & routines page, then Run walks you through the steps one at a time, each opening its form filled in and coming back for the next, with Skip for any step; every step you log is an ordinary entry in History. Run from Quick add or ⌘K too.

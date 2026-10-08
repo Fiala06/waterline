@@ -355,7 +355,7 @@
 					<!-- the ones a beginner's kit doesn't cover, folded (#65); inside, they still post with the form -->
 					<details class="later" open={later.some((r) => r.raw !== '' || fieldErrors[r.id])}>
 						<summary
-							><span class="later-n">{later.length} more parameters</span>
+							><span class="later-n">{later.length} more parameter{later.length === 1 ? '' : 's'}</span>
 							<span class="later-names">{later.map((r) => r.name).join(', ')}</span></summary
 						>
 						{#each later as r (r.id)}{@render paramRow(r)}{/each}

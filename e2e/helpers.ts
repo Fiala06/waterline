@@ -10,7 +10,8 @@ export async function open(page: Page, url: string) {
 }
 
 /** Sign in with the mock Google login, finish setup and create a tank. Returns the email used. */
-export async function newKeeperWithTank(page: Page, tag: string, type: 'Freshwater' | 'Planted' | 'Reef' = 'Planted') {
+/** A new keeper with one tank; a planted one is grown as `grown` says (#81: Not sure, the default, starts with the basics). */
+export async function newKeeperWithTank(page: Page, tag: string, type: 'Freshwater' | 'Planted' | 'Reef' = 'Planted', grown?: 'Low-tech' | 'CO₂ injected' | 'Not sure') {
 	const email = `${tag}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}@example.com`;
 	await open(page, '/signin');
 	await page.getByPlaceholder('Email').fill(email);
@@ -18,6 +19,7 @@ export async function newKeeperWithTank(page: Page, tag: string, type: 'Freshwat
 	await page.getByRole('button', { name: 'Continue to first tank' }).click();
 	await page.getByLabel('Tank name').fill('Riverbed 40');
 	await page.locator('label', { hasText: type }).click();
+	if (grown) await page.getByRole('group', { name: 'How is it grown?' }).locator('label', { hasText: grown }).click();
 	await page.getByLabel('Volume').fill('40');
 	await page.getByRole('button', { name: 'Create tank' }).click();
 	await expect(page.getByRole('heading', { name: 'No readings yet' })).toBeVisible();

@@ -1,6 +1,18 @@
 // Enums shared by the database schema and the UI (kept out of $lib/server).
 export const TANK_TYPES = ['freshwater', 'planted', 'brackish', 'reef'] as const;
 export type TankType = (typeof TANK_TYPES)[number];
+/**
+ * How a planted tank is grown (#81): low-tech (no injected CO₂), CO₂ injected,
+ * or not sure yet. It decides which parameters a new tank tracks; every one
+ * stays in Parameters & targets to turn on by hand.
+ */
+export const GROWING_STYLES = ['low_tech', 'co2', 'simple'] as const;
+export type GrowingStyle = (typeof GROWING_STYLES)[number];
+export const GROWING_STYLE_LABEL: Record<GrowingStyle, string> = {
+	low_tech: 'Low-tech',
+	co2: 'CO₂ injected',
+	simple: 'Not sure'
+};
 
 /** "Freshwater", "Planted"… for any tank type string. */
 export const tankTypeLabel = (type: string) => type.charAt(0).toUpperCase() + type.slice(1);

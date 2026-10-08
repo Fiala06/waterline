@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { newKeeperWithTank, open } from './helpers';
 
 test('tips explain parameters and less obvious fields', async ({ page }, info) => {
-	await newKeeperWithTank(page, `tips-${info.project.name}`);
+	await newKeeperWithTank(page, `tips-${info.project.name}`, 'Planted', 'CO₂ injected');
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
 
 	// Water test: an ⓘ beside the name; the field is still named by it

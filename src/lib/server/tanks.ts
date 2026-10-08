@@ -28,6 +28,7 @@ import {
   type TankType,
   type User,
 } from "./db/schema";
+import type { GrowingStyle } from "$lib/types";
 
 /** The tanks this person owns, and those shared with them (#22); `own` keeps it to their own. */
 export function listTanks(
@@ -89,6 +90,8 @@ export interface TankInput {
   glass?: string | null;
   substrate?: string | null;
   waterSource?: string | null;
+  /** a planted tank's growing style (#81) */
+  growingStyle?: GrowingStyle | null;
   photoperiodH?: number | null;
   /** the lighting and CO₂ schedule, "HH:MM" */
   lightsOn?: string | null;
@@ -115,12 +118,17 @@ export function createTank(user: User, input: TankInput): Tank {
   return db.transaction((tx) => {
     const tank = tx
       .insert(tanks)
-      .values({ ...input, userId: user.id })
+      .values({
+        ...input,
+        // low-tech means no injected CO₂ on purpose, so guidance doesn't ask about it (#81)
+        ...(input.growingStyle === "low_tech" ? { withoutEquipment: ["co2"] } : {}),
+        userId: user.id,
+      })
       .returning()
       .get();
     tx.insert(tankParameters)
       .values(
-        defaultParameters(user, input.type).map((p) => ({
+        defaultParameters(user, input.type, input.growingStyle).map((p) => ({
           ...p,
           tankId: tank.id,
         })),
@@ -146,7 +154,11 @@ export function createTank(user: User, input: TankInput): Tank {
         tankId: tank.id,
         category: "note",
         occurredAt: new Date().toISOString(),
-        data: { system: "tank_created", type: input.type },
+        data: {
+          system: "tank_created",
+          type: input.type,
+          ...(input.growingStyle ? { growingStyle: input.growingStyle } : {}),
+        },
       })
       .run();
     return tank;
@@ -370,7 +382,7 @@ export function deleteCustomParam(
  */
 export function resetParamDefaults(user: User, tankId: string) {
   const tank = getTank(user.id, tankId, "owner");
-  const preset = defaultParameters(user, tank.type);
+  const preset = defaultParameters(user, tank.type, tank.growingStyle);
   const existing = new Map(
     listParams(tankId, { all: true })
       .filter((p) => !p.isCustom)
@@ -385,7 +397,7 @@ export function resetParamDefaults(user: User, tankId: string) {
             name: d.name,
             min: d.min,
             max: d.max,
-            tracked: true,
+            tracked: d.tracked,
             decimals: d.decimals,
             sort: d.sort,
           })

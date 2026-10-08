@@ -9,7 +9,7 @@ import {
 	type Quantity,
 	type UnitPrefs
 } from './units';
-import type { TankType } from './types';
+import type { GrowingStyle, TankType } from './types';
 
 /** Minimal shape of a tank_parameters row that display logic needs. */
 export interface ParamLike {
@@ -95,16 +95,30 @@ export function statusOf(p: ParamLike, stored: number | null | undefined): Statu
  * the rest fold under "Show N more". A reef keeps them all in view.
  */
 const BASIC_TEST_KEYS = ['ph', 'nh3', 'no2', 'no3', 'gh', 'kh', 'temp', 'sal'];
-export function foldsInTestForm(p: { key: string; isCustom?: boolean | null }, tankType: string, testedBefore: boolean): boolean {
+export function foldsInTestForm(p: { key: string; isCustom?: boolean | null }, tankType: string, testedBefore: boolean, growingStyle?: GrowingStyle | null): boolean {
+	// with CO₂ injected, its reading is one of the tests that matter (#81)
+	if (growingStyle === 'co2' && p.key === 'co2') return false;
 	return tankType !== 'reef' && !p.isCustom && !testedBefore && !BASIC_TEST_KEYS.includes(p.key);
 }
 
 /**
- * Default parameter set for a tank type. Targets are chosen in the user's own
+ * What a low-tech or keep-it-simple planted tank leaves untracked at first
+ * (#81): injected CO₂, the advanced nutrients and the meters. They stay in
+ * Parameters & targets, ready to turn on.
+ */
+const SIMPLE_PLANTED_UNTRACKED = ['co2', 'k', 'fe', 'tds', 'ec'];
+export function trackedByDefault(key: string, type: TankType, growingStyle?: GrowingStyle | null): boolean {
+	if (type !== 'planted' || !growingStyle || growingStyle === 'co2') return true;
+	return !SIMPLE_PLANTED_UNTRACKED.includes(key);
+}
+
+/**
+ * Default parameter set for a tank type (and, for a planted tank, how it's
+ * grown: see trackedByDefault). Targets are chosen in the user's own
  * units so they read as round numbers (74–80 °F, not 73.4–80.6 °F).
  * Ranges are common hobby guidance; every one can be edited per tank.
  */
-export function defaultParameters(prefs: UnitPrefs, type: TankType = 'freshwater') {
+export function defaultParameters(prefs: UnitPrefs, type: TankType = 'freshwater', growingStyle?: GrowingStyle | null) {
 	const imperial = prefs.unitSystem === 'imperial';
 	const ppm = prefs.hardnessUnit === 'ppm';
 	const hard = (dgh: [number, number], ppmRange: [number, number]) =>
@@ -185,7 +199,7 @@ export function defaultParameters(prefs: UnitPrefs, type: TankType = 'freshwater
 			temp([76, 79], [24.5, 26])
 		]
 	};
-	return [...sets[type]].map((x, i) => ({ ...x, sort: i, tracked: true, isCustom: false }));
+	return [...sets[type]].map((x, i) => ({ ...x, sort: i, tracked: trackedByDefault(x.key, type, growingStyle), isCustom: false }));
 }
 
 // Parameters & targets groups them by purpose (#83), so a beginner can tell the
