@@ -184,6 +184,8 @@ npm run check      # types + Svelte
 npm test           # unit tests: units, status, trends, time zones, imports, money, email, MCP and more
 npm run test:e2e   # Playwright on Chromium, at a phone and a desktop size: the core flow and each feature
 npm run test:e2e:browsers  # the essentials on an iPhone and desktop Safari (WebKit) and Firefox
+npm run test:perf  # performance budgets for the main pages (seeds the demo account)
+node scripts/bundle-size.mjs  # after a build: the gzipped JavaScript against its budget
 ```
 
 The first time, install the Playwright browser with `npx playwright install chromium` (and `webkit firefox` for the other engines) (or point the tests at a Chromium already on the machine with `PW_CHROMIUM=/path/to/chrome`). The core flow (`e2e/core-flow.test.ts`) is sign in → setup → create tank → log test → dashboard → complete task. `AUDIT=1 npx playwright test e2e/audit.test.ts --project=desktop` also checks every screen, at phone and desktop sizes in both themes, for accessibility problems, small tap targets and overflow, and writes what it finds to `test-results/audit.json`.
@@ -195,6 +197,8 @@ axe can't judge everything, so before a release with new screens, also check by 
 - **Screen reader** (VoiceOver on iPhone or Mac, TalkBack on Android): headings and landmarks make sense out of context; every button and field says what it is; statuses read as words (`✓ OK`, `✕ High`), not colours; the toast after saving is announced.
 - **Phone:** tap targets at least 44 px; nothing scrolls sideways at 320 px wide or with the text size turned up to 200%; the numeric keypad opens for readings.
 - **Motion and colour:** with *Reduce motion* on, nothing slides or animates needlessly; the status of a reading is clear in grayscale.
+
+**Performance.** `e2e/perf.test.ts` loads the pages people use most (sign-in, the dashboard, Charts, History, Photos and the public tank page) with the demo account's months of data, three times each in a fresh Chrome, and takes the middle run: largest contentful paint, layout shift, time to the server's first byte, and the JavaScript and whole page downloaded. It also times a tap on Quick add until its dialog is painted. `scripts/bundle-size.mjs` adds up the app's JavaScript, gzipped, and its largest file. The budgets are in [`e2e/perf-budgets.json`](e2e/perf-budgets.json): over `warn` is flagged ▲ in the report, over `fail` fails the build. CI runs both on every push and writes the table into the run's summary (and `test-results/perf.json`). When a page grows on purpose, raise its budget in the same commit and say why.
 
 ## Releases
 

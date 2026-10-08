@@ -95,6 +95,34 @@ jobs:
             test-results/
           retention-days: 14
 
+  # Performance budgets (#110): the main pages' load time, layout shift, server
+  # response and size, a tap on Quick add, and the gzipped JavaScript bundle,
+  # against e2e/perf-budgets.json. The numbers go in the run's summary.
+  perf:
+    name: Performance budgets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # builds the app (Playwright's web server), then measures the pages
+      - run: npm run test:perf
+      - run: node scripts/bundle-size.mjs
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: perf-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+
   # Built alongside the tests, on every push, so a broken image shows before a
   # release. Nothing is pushed here.
   docker:
@@ -166,7 +194,7 @@ jobs:
   # from the build's cache) is pushed to ghcr.io.
   publish:
     name: Publish image
-    needs: [check, e2e, browsers, docker]
+    needs: [check, e2e, browsers, perf, docker]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.docker.outputs.new == 'true'
     runs-on: ubuntu-latest
     permissions:

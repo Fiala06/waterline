@@ -21,7 +21,7 @@ Every push and pull request runs these beside the tests. A failing check stops a
 
 Moderate and low findings don't block; they're fixed with the regular updates.
 
-The jobs run with read-only permissions, plus only what each needs (CodeQL uploads its results, dependency review comments on its pull request, publishing writes the package, the release writes the tag). Third-party actions are pinned to a commit rather than a tag that could be moved.
+The jobs run with read-only permissions, plus only what each needs (CodeQL uploads its results, dependency review comments on its pull request, publishing writes the package, the release writes the tag). Every action, GitHub's own included, is pinned to a commit rather than a tag that could be moved (see below).
 
 Turn on **secret scanning** and **push protection** in the repository's Settings › Code security; they aren't workflow steps.
 
