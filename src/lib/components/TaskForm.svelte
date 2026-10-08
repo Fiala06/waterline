@@ -689,9 +689,14 @@
 	.compact .c-text small {
 		font-size: 12px;
 	}
+	/* Save and Delete stay in view at the foot of the pane, however long the form scrolls */
 	.compact .foot {
-		margin-top: auto;
-		padding: 14px 0 0;
+		position: sticky;
+		bottom: 0;
+		z-index: 1;
+		margin: auto -24px -28px;
+		padding: 14px 24px 20px;
+		background: var(--surface);
 		border-top: 2px solid var(--divider);
 		flex-direction: row;
 		align-items: center;

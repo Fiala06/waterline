@@ -439,11 +439,10 @@
 			background: var(--surface);
 			border-left: 2px solid var(--divider);
 		}
+		/* scrolls with the page (not a box of its own), so the form's Save row can pin to the window's foot */
 		.pane-inner {
 			position: sticky;
 			top: 0;
-			height: 100dvh;
-			overflow-y: auto;
 			padding: 28px 24px;
 			display: flex;
 			flex-direction: column;
