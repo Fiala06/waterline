@@ -10,6 +10,7 @@
 	import { fmtDate } from '$lib/time';
 	import TankDetailsSections from '$lib/components/TankDetailsSections.svelte';
 	import { hoursText, scheduleHours } from '$lib/equipment';
+	import { GROWING_STYLE_LABEL } from '$lib/types';
 	let { data, form } = $props();
 	// the lighting and CO₂ schedule; with both lights times set the photoperiod is the hours between
 	let lightsOn = $state(untrack(() => data.tank.lightsOn));
@@ -232,6 +233,15 @@
 			{#if data.tank.type === 'planted'}
 				<!-- what a planted tank grows on (#96): light, CO₂, fertilizer and substrate together -->
 				<div class="section-head growing" id="growing"><h2>Growing setup</h2></div>
+				<div class="field">
+					<label class="label" for="growingStyle">How it's grown</label>
+					<select class="input" id="growingStyle" name="growingStyle">
+						{#each [['', '—'], ...Object.entries(GROWING_STYLE_LABEL)] as [v, l] (v)}
+							<option value={v} selected={(data.tank.growingStyle ?? '') === v}>{l}</option>
+						{/each}
+					</select>
+					<span class="hint">Changing it leaves the parameters as they are: turn CO₂ or the nutrients on or off in <a href="/tanks/{data.tank.id}/targets">Parameters &amp; targets</a>.</span>
+				</div>
 			{/if}
 			<div class="field">
 				<label class="label" for="substrate">Substrate</label>
@@ -384,6 +394,7 @@
 <style>
 	/* Growing setup (#96): a heading inside the form, then its fields */
 	.section-head.growing {
+		grid-column: 1 / -1;
 		margin-top: 8px;
 	}
 	.dosing {

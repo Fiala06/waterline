@@ -32,7 +32,9 @@ tanks            id, user_id, name, type(freshwater|planted|brackish|reef),
                  calculator's other measurements, kept for next time),
                  start_date?, notes?, cover_photo_id?, cover_x, cover_y (the cover's focus, 0–100,
                  50 50 the middle), spec_brand?, spec_model?, glass?,
-                 substrate?, water_source?, photoperiod_h? (the hours between lights_on and
+                 substrate?, water_source?, growing_style?(low_tech|co2|simple) (a planted
+                 tank's: chosen on Add tank, it decides which parameters start tracked; changing
+                 it later leaves them alone), photoperiod_h? (the hours between lights_on and
                  lights_off when both are set), lights_on?, lights_off?, co2_on?, co2_off?
                  ("HH:MM": the lighting and CO₂ schedule), cycling (still cycling: ammonia and
                  nitrite above target show as ▲ Cycling, the dashboard follows the cycle, and

@@ -24,8 +24,10 @@
 		RECHECK_OPTIONS
 	} from '$lib/events';
 	import { FEED_UNITS } from '$lib/tasks';
-	import { exifToWhen, fmtWhenShort, type ExifDate } from '$lib/exif';
-	import { todayInZone, whenLabel, type When } from '$lib/time';
+	import { fmtWhenShort, type ExifDate } from '$lib/exif';
+	import { whenLabel, type When } from '$lib/time';
+	import { entryHref, photoOtherDay, splitTask } from './entry-form';
+	import { doseHint as hintFor, eventSaveLabel, eventTitle, lastDoseOf, livestockPreview, productChoices as choicesOf, stepCount } from './event-form';
 	import type { EventCategory } from '$lib/types';
 
 	let {
@@ -128,15 +130,7 @@
 
 	// A photo taken on another day than the entry (#42): offer its date, without changing the entry by itself.
 	let photoDates = $state<(ExifDate | null)[]>([]);
-	const photoWhen = $derived.by(() => {
-		const day = when?.date ?? todayInZone(timeZone);
-		for (const d of photoDates) {
-			if (!d) continue;
-			const w = exifToWhen(d, timeZone);
-			if (w.date !== day) return w;
-		}
-		return null;
-	});
+	const photoWhen = $derived(photoOtherDay(photoDates, when, timeZone));
 
 	// An entry that was left before it was saved comes back, with Discard.
 	let restored = $state<{ discard: () => Promise<void> } | null>(null);
@@ -173,41 +167,22 @@
 	// Dosing
 	let product = $state(v('product'));
 	let dosingUnit = $state(v('unit') || 'mL');
-	const lastDose = $derived(
-		recentProducts.find((r) => r.product.toLowerCase() === product.trim().toLowerCase())
-	);
+	const lastDose = $derived(lastDoseOf(recentProducts, product));
 	// what the Product field offers (#73): recently dosed first, then saved products not dosed yet
-	const productChoices = $derived.by(() => {
-		const seen = new Set<string>();
-		return [...recentProducts.map((r) => r.product), ...productLinks.map((l) => l.name.trim())].filter((n) => {
-			const k = n.toLowerCase();
-			if (!n || seen.has(k)) return false;
-			seen.add(k);
-			return true;
-		});
-	});
+	const productChoices = $derived(choicesOf(recentProducts, productLinks));
 	function pickProduct(name: string) {
 		product = name;
 		const r = recentProducts.find((x) => x.product === name);
 		if (typeof r?.unit === 'string') dosingUnit = r.unit;
 	}
-	const fmtDose = (r: (typeof recentProducts)[number]) =>
-		`Last dosed ${r.amount ?? ''} ${r.unit ?? ''} on ${new Date(r.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone })}.`.replace(/\s+/g, ' ');
 	const savedLink = $derived(productLinks.find((l) => l.name.trim().toLowerCase() === product.trim().toLowerCase()));
-	const doseHint = $derived(
-		[lastDose ? fmtDose(lastDose) : '', recentProducts.length && productChoices.length > recentProducts.length ? 'Recent products are listed first.' : ''].filter(Boolean).join(' ')
-	);
+	const doseHint = $derived(hintFor(recentProducts, product, productChoices.length, timeZone));
 
 	// − 10 + (G3). Adding starts at 1; taking away can't go past what's in the tank.
 	const countMin = $derived(linked ? 1 : 0);
 	const countMax = $derived(linked && lsAction === 'removed' ? (targetAnimal?.count ?? null) : null);
 	const countN = $derived(parseInt(count, 10));
-	function step(d: number) {
-		let n = (Number.isNaN(countN) ? (d > 0 ? countMin - 1 : countMin + 1) : countN) + d;
-		n = Math.max(countMin, n);
-		if (countMax != null) n = Math.min(countMax, n);
-		count = String(n);
-	}
+	const step = (d: number) => (count = stepCount(count, d, countMin, countMax));
 
 	// The species field is its own component: read what it holds after each change.
 	function readSpecies() {
@@ -226,63 +201,19 @@
 	});
 
 	// G3: "Livestock tab: Ember tetra 0 → 10 · 41 animals total"
-	const preview = $derived.by(() => {
-		if (!linked || !inventory) return null;
-		const n = parseInt(count, 10);
-		if (!(n > 0)) return null;
-		const total = inventory.livestock.reduce((s, l) => s + l.count, 0);
-		if (lsAction === 'added' && lsKind !== 'plant' && species.name) {
-			// the same species with the same status adds to that row (addLivestock)
-			const same = inventory.livestock.find(
-				(l) =>
-					(l.status ?? 'in_tank') === lsStatus &&
-					(species.scientific && l.scientific ? l.scientific === species.scientific : l.name.toLowerCase() === species.name.toLowerCase())
-			);
-			const from = same?.count ?? 0;
-			return { name: same?.name ?? species.name, from, to: from + n, total: total + n };
-		}
-		if (lsAction === 'removed' && targetAnimal && n <= targetAnimal.count) {
-			return { name: targetAnimal.name, from: targetAnimal.count, to: targetAnimal.count - n, total: total - n };
-		}
-		return null;
-	});
+	const preview = $derived(
+		linked && inventory
+			? livestockPreview(inventory.livestock, { action: lsAction, kind: lsKind, status: lsStatus, count, species, target: targetAnimal })
+			: null
+	);
 
 	// "Also mark the reminder “Water change 25%” done", with where it stands on its own line
-	const taskText = $derived(task ? { main: task.label, next: task.sub ?? '' } : null);
+	const taskText = $derived(splitTask(task));
 
-	const saveLabel = $derived(
-		mode === 'edit'
-			? 'Save changes'
-			: {
-					water_change: 'Save water change',
-					dosing: 'Save dosing',
-					feeding: 'Save feeding',
-					maintenance: 'Save maintenance',
-					livestock: 'Save change',
-					equipment: 'Save equipment change',
-					observation: 'Save observation',
-					note: 'Save note',
-					health: 'Save health entry'
-				}[category]
-	);
-	const title = $derived(
-		mode === 'edit'
-			? `Edit ${CATEGORY_LABEL[category].toLowerCase()}`
-			: category === 'note'
-				? 'Add note or photo'
-				: category === 'dosing'
-					? 'Log a dose'
-					: `Log ${CATEGORY_LABEL[category].toLowerCase()}`
-	);
+	const saveLabel = $derived(eventSaveLabel(mode, category));
+	const title = $derived(eventTitle(mode, category));
 	// the types at the top (README § 11): Test, then every kind of entry as an equal chip
-	const testHref = $derived.by(() => {
-		const q = new URLSearchParams();
-		for (const k of ['tank', 'date', 'time']) {
-			const v = page.url.searchParams.get(k);
-			if (v) q.set(k, v);
-		}
-		return `/entries/test/new?${q}`;
-	});
+	const testHref = $derived(entryHref(page.url.searchParams, '/entries/test/new'));
 
 	// Notes start one line tall (14, G2) and grow with what's typed.
 	function autosize(el: HTMLTextAreaElement) {

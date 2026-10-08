@@ -12,6 +12,7 @@ import {
 	WATER_SOURCES
 } from '$lib/events';
 import { MAX_LIVESTOCK_COUNT } from '$lib/livestock';
+import type { GrowingStyle } from '$lib/types';
 import { displayValue, fmtRange, fmtValue, foldsInTestForm, paramDecimals, paramUnit, storedValue } from '$lib/params';
 import { dueInfo, effectiveDue, nextDueAfterCompletion } from '$lib/tasks';
 import { paramTip, whenToTest } from '$lib/tips';
@@ -31,7 +32,8 @@ export function testFormParams(
 	params: TankParameter[],
 	latest: Map<string, { value: number; takenAt: string }>,
 	user: User,
-	tankType: string
+	tankType: string,
+	growingStyle?: GrowingStyle | null
 ) {
 	return params.map((p) => {
 		const last = latest.get(p.id);
@@ -52,7 +54,7 @@ export function testFormParams(
 			tip: p.isCustom ? null : paramTip(p.key, tankType),
 			when: p.isCustom ? null : (whenToTest(p.key, tankType)?.text ?? null),
 			// under "Show N more" on a new test (#65)
-			later: foldsInTestForm(p, tankType, !!last)
+			later: foldsInTestForm(p, tankType, !!last, growingStyle)
 		};
 	});
 }

@@ -21,9 +21,20 @@ Every push and pull request runs these beside the tests. A failing check stops a
 
 Moderate and low findings don't block; they're fixed with the regular updates.
 
-The jobs run with read-only permissions, plus only what each needs (CodeQL uploads its results, dependency review comments on its pull request, publishing writes the package, the release writes the tag). Third-party actions are pinned to a commit rather than a tag that could be moved.
+The jobs run with read-only permissions, plus only what each needs (CodeQL uploads its results, dependency review comments on its pull request, publishing writes the package, the release writes the tag). Every action, GitHub's own included, is pinned to a commit rather than a tag that could be moved (see below).
 
 Turn on **secret scanning** and **push protection** in the repository's Settings › Code security; they aren't workflow steps.
+
+## Pinned versions
+
+What builds a release is fixed, not whatever a tag points to that day (#109):
+
+- **GitHub Actions** are pinned to a full commit, with the release beside it: `actions/checkout@3d3c42e… # v7.0.1`.
+- **The Docker base image** is pinned to a digest: `node:22-bookworm-slim@sha256:c3de60b…`, in both stages of the Dockerfile.
+
+[Dependabot](.github/dependabot.yml) keeps them current: each week it opens a pull request when an action has a new release (the commit and the comment change together) or when `node:22-bookworm-slim` is rebuilt with fixes (a new digest). CI runs on it like any other change, the image scan included; merge it once it's green. Node's odd-numbered versions, which are short-lived, aren't offered.
+
+To pin a new action by hand, look up the commit its release tag points to (`git ls-remote --tags https://github.com/<owner>/<action>`, the `^{}` line for an annotated tag) and write it with the version as a comment.
 
 ## When a finding can't be fixed yet
 

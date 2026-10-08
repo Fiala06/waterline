@@ -53,6 +53,7 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 			glass: tank.glass ?? '',
 			substrate: tank.substrate ?? '',
 			waterSource: tank.waterSource ?? '',
+			growingStyle: tank.growingStyle ?? '',
 			photoperiodH: tank.photoperiodH == null ? '' : String(tank.photoperiodH),
 			lightsOn: tank.lightsOn ?? '',
 			lightsOff: tank.lightsOff ?? '',

@@ -12,6 +12,14 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 ## Unreleased
 
 - **Save in view on Tasks.** On a computer, the Edit task pane's Save and Delete now stay at the foot of the window while the form scrolls, instead of waiting below the fold on [Tasks](/tasks).
+
+## 1.13.1 · 2026-10-08
+
+- **Planted tanks, low-tech or CO₂.** Adding a planted tank now asks how it's grown (low-tech, CO₂ injected, or not sure) and what water fills it. Low-tech and not-sure tanks start with the tests that matter for them, the basics and phosphate; a CO₂-injected tank also tracks CO₂, potassium and iron, with CO₂ in view on the water test. Anything left off waits in [Parameters & targets](/tanks/current/targets) to turn on, and the choice can be changed under Growing setup in [Tank setup](/tanks/current/settings#growing) without touching your parameters.
+- **Even buttons on a water test.** On a computer, Copy at the foot of a water test in [History](/history) is now the same size as Edit and Delete beside it.
+
+## 1.13.0 · 2026-10-07
+
 - **Maintenance routines.** Your usual sequence as one routine, like Sunday maintenance: a 40% water change, a dose, a trim, a test. Build it a step at a time (or from your Quick log favorites) under [Maintenance routines](/tanks/current/routines) on the tank's Notes & routines page, then Run walks you through the steps one at a time, each opening its form filled in and coming back for the next, with Skip for any step; every step you log is an ordinary entry in History. Run from Quick add or ⌘K too.
 - **Customize this dashboard.** At the foot of a tank's [dashboard](/), a few light choices kept on your account for that tank: which parameter Trends opens on, up to three parameters listed first in Tank parameters, and whether Trends, Recent, In the tank, the growing setup rows or live sensor readings are shown. Nothing changes until you choose, and Reset to defaults brings the dashboard back as it comes.
 - **Compare parameters on one chart.** On [Charts](/charts), Compare… beside the parameter's name draws up to two more on the same chart (nitrate with phosphate, pH with CO₂, GH with KH), each on its own scale: a dashed line with its own axis on the right, a dotted one for the third, and the legend names each with its unit. The target band stays the main parameter's, the tooltip shows the other readings from the same test, and the comparison is in the address so it can be shared. A chip with × takes one off again.
@@ -28,6 +36,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 - **When to test each parameter:** The ⓘ beside a parameter on [Parameters & targets](/tanks/current/targets) and on the water test now also says when a test is worth doing for your kind of tank, and the optional ones say Optional beside their default, so you can see which tests matter weekly and which can wait.
 - **Tank setup, by name:** The tank's Setup tab, the Setup list beside its pages, More › Setup & targets on phones and the ⌘K entry now say Tank setup, so a tank's own settings read apart from your [account settings](/settings) and the server's.
 - **Shortcuts on the installed app:** Once Waterline is added to your Home Screen or installed on a computer, pressing and holding its icon (or right-clicking it) offers Log water test, Log water change, [Tasks](/tasks) and [Photos](/photos) straight away, and the install sheet shows what the app looks like before you add it.
+- **Add several reads every list the same way:** On [Livestock](/tanks/current/livestock) › Add several, a pasted line like `Otocinclus x 5` or `Amano shrimp, 3` now adds 5 and 3 even when the page runs without scripts; before, only `5 Otocinclus` was counted there, and the rest was taken as one fish's name.
 
 ## 1.12.14 · 2026-10-07
 

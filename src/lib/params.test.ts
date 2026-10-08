@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compactName, defaultParameters, fmtRange, fmtValue, foldsInTestForm, paramGroup, paramLevel, statusOf, storedValue } from './params';
+import { compactName, defaultParameters, fmtRange, fmtValue, foldsInTestForm, paramGroup, paramLevel, statusOf, storedValue, trackedByDefault } from './params';
 import { TANK_TYPES } from './types';
 import type { UnitPrefs } from './units';
 
@@ -15,6 +15,29 @@ describe('defaultParameters presets', () => {
 	it('adds nutrients and CO₂ for planted tanks', () => {
 		expect(keys('planted')).toEqual(expect.arrayContaining(['po4', 'k', 'fe', 'co2', 'gh', 'kh']));
 		expect(keys('freshwater')).not.toContain('co2');
+	});
+
+	it('a planted tank tracks what its growing style needs, and keeps the rest (#81)', () => {
+		const tracked = (style?: 'low_tech' | 'co2' | 'simple' | null) =>
+			defaultParameters(imperial, 'planted', style).filter((p) => p.tracked).map((p) => p.key);
+		const all = keys('planted');
+		// every style has every parameter, so any can be turned on later
+		for (const style of ['low_tech', 'co2', 'simple'] as const) expect(defaultParameters(imperial, 'planted', style).map((p) => p.key)).toEqual(all);
+		// CO₂ injected, and a tank whose style was never chosen, track the lot
+		expect(tracked('co2')).toEqual(all);
+		expect(tracked(null)).toEqual(all);
+		// low-tech and not sure: the basics and phosphate, not CO₂, the advanced nutrients or the meters
+		for (const style of ['low_tech', 'simple'] as const) {
+			expect(tracked(style)).toEqual(['ph', 'nh3', 'no2', 'no3', 'po4', 'gh', 'kh', 'temp']);
+		}
+	});
+
+	it('a growing style only changes planted tanks', () => {
+		for (const t of ['freshwater', 'brackish', 'reef'] as const) {
+			expect(defaultParameters(imperial, t, 'low_tech').every((p) => p.tracked)).toBe(true);
+		}
+		expect(trackedByDefault('co2', 'planted', 'low_tech')).toBe(false);
+		expect(trackedByDefault('co2', 'planted', 'co2')).toBe(true);
 	});
 
 	it('adds salinity for brackish and reef', () => {
@@ -146,6 +169,13 @@ describe('hardness in degrees or ppm', () => {
 });
 
 describe('foldsInTestForm (#65)', () => {
+	it('keeps CO₂ in view when it is injected (#81)', () => {
+		expect(foldsInTestForm({ key: 'co2' }, 'planted', false)).toBe(true);
+		expect(foldsInTestForm({ key: 'co2' }, 'planted', false, 'low_tech')).toBe(true);
+		expect(foldsInTestForm({ key: 'co2' }, 'planted', false, 'co2')).toBe(false);
+		expect(foldsInTestForm({ key: 'k' }, 'planted', false, 'co2')).toBe(true);
+	});
+
 	const imperial = { unitSystem: 'imperial', hardnessUnit: 'dgh' } as const;
 	const folded = (type: 'freshwater' | 'planted' | 'brackish' | 'reef') =>
 		defaultParameters(imperial, type)

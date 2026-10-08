@@ -34,7 +34,7 @@ test('core flow', async ({ page }, info) => {
 	await expect(page.getByRole('heading', { name: 'Water test' })).toBeVisible();
 	// the basics first; what a beginner's kit doesn't cover waits folded (#65)
 	await expect(page.getByLabel('Phosphate', { exact: true })).toBeHidden();
-	await page.getByText('6 more parameters').click();
+	await page.getByText('1 more parameter', { exact: true }).click();
 	await expect(page.getByLabel('Phosphate', { exact: true })).toBeVisible();
 	await page.getByLabel('pH', { exact: true }).fill('6.8');
 	await page.getByLabel('Nitrate', { exact: true }).fill('40');
@@ -59,7 +59,9 @@ test('core flow', async ({ page }, info) => {
 	await expect(inRange.getByRole('link', { name: /pH\s*6\.8/ })).toHaveAttribute('href', /\/charts\?p=/);
 	await expect(inRange.getByRole('link', { name: /Nitrate\s*✕ High\s*40/ })).toBeVisible();
 	await expect(inRange.getByRole('link', { name: /KH\s*▲ Near low\s*2/ })).toBeVisible();
-	await expect(inRange.getByText(/^Not tested: .*Ammonia.*CO₂/)).toBeVisible();
+	// a not-sure planted tank (#81): the basics and phosphate, not CO₂
+	await expect(inRange.getByText(/^Not tested: .*Ammonia.*Phosphate/)).toBeVisible();
+	await expect(inRange.getByText(/^Not tested: .*CO₂/)).toHaveCount(0);
 
 	// Complete a task: the water change reminder opens its log form. It isn't due
 	// for a week, so it says how soon, and its button is a quiet "Done early"

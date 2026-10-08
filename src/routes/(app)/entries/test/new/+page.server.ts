@@ -27,7 +27,7 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 	const time = url.searchParams.get('time');
 	// back to where it was opened from (a maintenance routine's run page, #92)
 	const returnTo = safeReturn(url.searchParams.get('from'), '') || null;
-	const params = testFormParams(listParams(tank.id), latestReadings(tank.id), user, tank.type);
+	const params = testFormParams(listParams(tank.id), latestReadings(tank.id), user, tank.type, tank.growingStyle);
 	return {
 		tank: { id: tank.id, name: tank.name },
 		returnTo,

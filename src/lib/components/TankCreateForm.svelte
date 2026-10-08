@@ -22,6 +22,19 @@
 		{ value: 'brackish', label: 'Brackish' },
 		{ value: 'reef', label: 'Reef' }
 	];
+	// a planted tank (#81): how it's grown decides which parameters it starts with
+	const styles = [
+		{ value: 'low_tech', label: 'Low-tech', text: 'No injected CO₂: easy plants, moderate light.' },
+		{ value: 'co2', label: 'CO₂ injected', text: 'CO₂, the plant nutrients and KH are tracked from the start.' },
+		{ value: 'simple', label: 'Not sure', text: 'Keep it simple: the basics now, more whenever you like.' }
+	];
+	const waters = [
+		{ value: 'tap', label: 'Tap' },
+		{ value: 'rodi', label: 'RO/RODI' },
+		{ value: 'mix', label: 'Mixed' },
+		{ value: 'well', label: 'Well' },
+		{ value: '', label: 'Not sure' }
+	];
 	let busy = $state(false);
 </script>
 
@@ -63,6 +76,29 @@
 			</div>
 			{#if errors.type}<span class="error-text">✕ {errors.type}</span>{/if}
 		</fieldset>
+		<!-- shown for a planted tank (hidden by CSS otherwise, so it works without JavaScript) -->
+		<fieldset class="field planted-only">
+			<legend class="label">How is it grown?</legend>
+			<div class="options styles">
+				{#each styles as s (s.value)}
+					<label class="option style">
+						<input type="radio" name="growingStyle" value={s.value} defaultChecked={(values.growingStyle ?? 'simple') === s.value} />
+						<span class="style-name">{s.label}</span>
+						<span class="style-text">{s.text}</span>
+					</label>
+				{/each}
+			</div>
+		</fieldset>
+		<fieldset class="field planted-only">
+			<legend class="label">Water</legend>
+			<div class="options waters">
+				{#each waters as w (w.value)}
+					<label class="option">
+						<input type="radio" name="waterSource" value={w.value} defaultChecked={(values.waterSource ?? '') === w.value} />{w.label}
+					</label>
+				{/each}
+			</div>
+		</fieldset>
 		<div class="field">
 			<label class="label" for="nominalVolume">Volume</label>
 			<div class="unit-input">
@@ -77,6 +113,9 @@
 		</label>
 		<p class="hint">
 			Default parameters and a weekly water-change reminder are added. You can change them later in tank settings.
+		</p>
+		<p class="hint planted-only">
+			Low-tech and Not sure leave CO₂, potassium, iron, TDS and conductivity off; turn any of them on in Parameters &amp; targets.
 		</p>
 	</div>
 	<div class="foot">
@@ -110,6 +149,29 @@
 	.two {
 		grid-template-columns: 1fr 1fr;
 	}
+	/* a planted tank's questions: hidden for other types (shown where :has isn't supported) */
+	.tank-form:has(input[name='type']:checked):not(:has(input[name='type'][value='planted']:checked)) .planted-only {
+		display: none;
+	}
+	.styles {
+		grid-template-columns: 1fr;
+	}
+	.option.style {
+		flex-direction: column;
+		align-items: flex-start;
+		justify-content: center;
+		gap: 2px;
+		padding: 10px 14px;
+		text-align: left;
+	}
+	.style-text {
+		font-size: 13px;
+		font-weight: 400;
+		line-height: 1.4;
+	}
+	.waters {
+		grid-template-columns: repeat(3, 1fr);
+	}
 	.hint {
 		margin: 0;
 		font-size: 13px;
@@ -139,6 +201,12 @@
 		}
 		.paged .two {
 			grid-template-columns: repeat(4, 1fr);
+		}
+		.paged .styles {
+			grid-template-columns: repeat(3, 1fr);
+		}
+		.paged .waters {
+			grid-template-columns: repeat(5, 1fr);
 		}
 		.paged .foot {
 			margin-top: 20px;

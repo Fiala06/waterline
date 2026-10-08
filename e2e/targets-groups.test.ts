@@ -8,7 +8,7 @@ const row = (page: Page, name: string) => page.locator('.prow', { has: page.loca
 const groupOf = (page: Page, name: string) => row(page, name).locator('xpath=preceding-sibling::h2[1]');
 
 test('parameters are grouped by purpose, with a level beside each', async ({ page }, info) => {
-	await newKeeperWithTank(page, `groups-${info.project.name}`); // planted
+	await newKeeperWithTank(page, `groups-${info.project.name}`, 'Planted', 'CO₂ injected'); // every planted parameter tracked
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
 	await open(page, `/tanks/${tankId}/targets`);
 	const headings = page.locator('.rows .ghead');

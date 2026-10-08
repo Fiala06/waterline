@@ -1,4 +1,5 @@
 import { and, desc, eq as is, sql } from 'drizzle-orm';
+import { GROWING_STYLE_LABEL } from '$lib/types';
 import { listRoutines } from './routines';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { dateInZone, fmtDateLong, todayInZone } from '$lib/time';
@@ -28,6 +29,7 @@ export function tankDetails(user: User, t: Tank) {
 			['Glass', t.glass],
 			['Substrate', t.substrate],
 			['Water source', t.waterSource ? SOURCES[t.waterSource] : null],
+			['Grown', t.growingStyle ? GROWING_STYLE_LABEL[t.growingStyle] : null],
 			['Photoperiod', t.photoperiodH != null ? `${t.photoperiodH} h` : null]
 		].filter(([, v]) => v) as [string, string][],
 		today,

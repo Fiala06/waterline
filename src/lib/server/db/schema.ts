@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { EVENT_CATEGORIES, IMPORT_KINDS, TANK_TYPES, TASK_KINDS } from '../../types';
+import { EVENT_CATEGORIES, GROWING_STYLES, IMPORT_KINDS, TANK_TYPES, TASK_KINDS } from '../../types';
 import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 // All measurements are stored metric (L, °C, cm, hardness in dGH).
@@ -139,6 +139,8 @@ export const tanks = sqliteTable(
 		glass: text('glass'),
 		substrate: text('substrate'),
 		waterSource: text('water_source'),
+		/** a planted tank's growing style (#81): low_tech | co2 | simple; null when never chosen */
+		growingStyle: text('growing_style', { enum: GROWING_STYLES }),
 		photoperiodH: real('photoperiod_h'),
 		// the lighting and CO₂ schedule, "08:00"–"16:00" (planted keepers time CO₂ against the lights)
 		lightsOn: text('lights_on'),

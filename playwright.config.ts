@@ -30,11 +30,13 @@ export default defineConfig({
 	// and Firefox (#104): npm run test:e2e:browsers, after
 	// npx playwright install webkit firefox.
 	projects: [
-		{ name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 }, ...chromium } },
-		{ name: 'phone', use: { ...devices['Pixel 7'], ...chromium } },
+		{ name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 }, ...chromium }, testIgnore: 'perf.test.ts' },
+		{ name: 'phone', use: { ...devices['Pixel 7'], ...chromium }, testIgnore: 'perf.test.ts' },
 		{ name: 'iphone', use: { ...devices['iPhone 15'] }, testMatch: 'smoke.test.ts' },
 		{ name: 'safari', use: { ...devices['Desktop Safari'], viewport: { width: 1280, height: 900 } }, testMatch: 'smoke.test.ts' },
-		{ name: 'firefox', use: { ...devices['Desktop Firefox'], viewport: { width: 1280, height: 900 } }, testMatch: 'smoke.test.ts' }
+		{ name: 'firefox', use: { ...devices['Desktop Firefox'], viewport: { width: 1280, height: 900 } }, testMatch: 'smoke.test.ts' },
+		// performance budgets (#110), on their own: npm run test:perf
+		{ name: 'perf', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 }, ...chromium }, testMatch: 'perf.test.ts' }
 	],
 	webServer: {
 		command: `rm -rf .e2e-data && npm run build && node build`,

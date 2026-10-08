@@ -17,13 +17,13 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/desktop-dashboard-dark.png">
-  <img src="docs/screenshots/desktop-dashboard-light.png" alt="The dashboard on a computer: the tank's photo and name, what needs attention with each reading's recent line, the readings in range, tasks due and recent activity">
+  <img src="docs/screenshots/desktop-dashboard-light.png" alt="The dashboard on a computer: the tank's photo and name, what needs attention with each reading's recent line and what to do about it, tasks due, the tank's parameters and recent activity">
 </picture>
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/phone-dashboard-dark.png">
-    <img src="docs/screenshots/phone-dashboard-light.png" alt="The dashboard on a phone: two readings out of range, one near its limit and the overdue water change under Needs attention, then the readings in range" width="260">
+    <img src="docs/screenshots/phone-dashboard-light.png" alt="The dashboard on a phone: nitrate out of range, iron and KH near their limits and the overdue water change under Needs attention, each with what to do next, then what's due" width="260">
   </picture>
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/phone-log-test-dark.png">
@@ -31,7 +31,7 @@
   </picture>
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/phone-charts-dark.png">
-    <img src="docs/screenshots/phone-charts-light.png" alt="Charts: nitrate over a month against its target band, with water changes marked" width="260">
+    <img src="docs/screenshots/phone-charts-light.png" alt="Charts: nitrate over 30 days against its target band, with water changes marked and the average, range and change below" width="260">
   </picture>
 </p>
 
@@ -50,7 +50,7 @@ Each server is yours: people sign in with Google (or the local admin login) and 
 - **Timeline:** a tank's photos in date order with the day since setup, the stock and the nearest test's readings at each, what changed between two photos, and a before-and-after compare with a slider; optionally on the public page.
 - **Wish list:** per tank, the fish, plants and equipment you plan to add, with how many, a note, a price and a link; Add to tank moves one into Livestock, Plants or Equipment with its History entry and can log the purchase in Spending.
 - **Calculators:** tank volume from its size (saved as the tank's water volume), how much water to change to bring a reading down, what a dose of a product adds in ppm and the dose for a target (from a strength saved with the product), heater size, substrate, CO₂ from pH and KH, and the salts to remineralize RO water, all in your units and filled in from the tank.
-- **Parameters your way:** presets for freshwater, planted, brackish and reef tanks, grouped by purpose and marked recommended, optional or advanced, your own targets and custom parameters, imperial or metric, and hardness in dGH or ppm.
+- **Parameters your way:** presets for freshwater, planted, brackish and reef tanks (a planted tank asks how it's grown: low-tech and not-sure tanks start with the basics, CO₂-injected ones with CO₂ and the nutrients too), grouped by purpose and marked recommended, optional or advanced, your own targets and custom parameters, imperial or metric, and hardness in dGH or ppm.
 - **Share it, if you like:** share a tank with someone by email so they can log care to it (tests, water changes, dosing, notes, photos, tasks done) or only view it; History says who logged each entry, and reminders go to everyone who can log or only to you. Or an opt-in public page per tank, with share images and search settings, and share links for single photos. Private notes, tasks and exact times are never public.
 - **Your data:** a full backup (ZIP with photos) or a CSV of water tests, imports from spreadsheets (undone in one step), a summary to paste into an AI assistant, or [read-only access for one](#ai-assistants-mcp) over MCP.
 - **Easy to run:** one Docker container and one data folder. The admin sets up sign-in, email (Mailgun or any SMTP server) and public pages in the app, with logs for troubleshooting and a note when a new version is out. People join by invitation (an email with an Accept link, or a link to copy), and Server settings › People lists everyone with Make admin, Sign out everywhere and Remove.
@@ -184,9 +184,11 @@ npm run check      # types + Svelte
 npm test           # unit tests: units, status, trends, time zones, imports, money, email, MCP and more
 npm run test:e2e   # Playwright on Chromium, at a phone and a desktop size: the core flow and each feature
 npm run test:e2e:browsers  # the essentials on an iPhone and desktop Safari (WebKit) and Firefox
+npm run test:perf  # performance budgets for the main pages (seeds the demo account)
+node scripts/bundle-size.mjs  # after a build: the gzipped JavaScript against its budget
 ```
 
-The first time, install the Playwright browser with `npx playwright install chromium` (and `webkit firefox` for the other engines) (or point the tests at a Chromium already on the machine with `PW_CHROMIUM=/path/to/chrome`). The core flow (`e2e/core-flow.test.ts`) is sign in → setup → create tank → log test → dashboard → complete task. `AUDIT=1 npx playwright test e2e/audit.test.ts --project=desktop` also checks every screen, at phone and desktop sizes in both themes, for accessibility problems, small tap targets and overflow, and writes what it finds to `test-results/audit.json`.
+The first time, install the Playwright browser with `npx playwright install chromium` (and `webkit firefox` for the other engines) (or point the tests at a Chromium already on the machine with `PW_CHROMIUM=/path/to/chrome`). The core flow (`e2e/core-flow.test.ts`) is sign in → setup → create tank → log test → dashboard → complete task. `SCREENSHOTS=1 npx playwright test e2e/readme-screenshots.test.ts --project=desktop` retakes the screenshots at the top of this README from the demo account, in both themes. `AUDIT=1 npx playwright test e2e/audit.test.ts --project=desktop` also checks every screen, at phone and desktop sizes in both themes, for accessibility problems, small tap targets and overflow, and writes what it finds to `test-results/audit.json`.
 
 **Accessibility.** `e2e/a11y.test.ts` runs axe (WCAG 2.2 AA) on every push, over the screens people use most: sign-in and setup, the dashboard, logging a test or a note, History, Charts, tank settings and sharing, Photos, Tasks, Settings and Server settings, and the public tank page, with Quick add, Alerts and the keyboard shortcuts open, on a phone and a desktop, in light and dark. A serious or critical finding fails the build, naming the screen, the rule and the element. `A11Y_SURVEY=1 npx playwright test e2e/a11y.test.ts` lists every finding instead. An exception goes in the test's `EXCEPT` list, for one rule on one element, with the reason.
 
@@ -195,6 +197,8 @@ axe can't judge everything, so before a release with new screens, also check by 
 - **Screen reader** (VoiceOver on iPhone or Mac, TalkBack on Android): headings and landmarks make sense out of context; every button and field says what it is; statuses read as words (`✓ OK`, `✕ High`), not colours; the toast after saving is announced.
 - **Phone:** tap targets at least 44 px; nothing scrolls sideways at 320 px wide or with the text size turned up to 200%; the numeric keypad opens for readings.
 - **Motion and colour:** with *Reduce motion* on, nothing slides or animates needlessly; the status of a reading is clear in grayscale.
+
+**Performance.** `e2e/perf.test.ts` loads the pages people use most (sign-in, the dashboard, Charts, History, Photos and the public tank page) with the demo account's months of data, three times each in a fresh Chrome, and takes the middle run: largest contentful paint, layout shift, time to the server's first byte, and the JavaScript and whole page downloaded. It also times a tap on Quick add until its dialog is painted. `scripts/bundle-size.mjs` adds up the app's JavaScript, gzipped, and its largest file. The budgets are in [`e2e/perf-budgets.json`](e2e/perf-budgets.json): over `warn` is flagged ▲ in the report, over `fail` fails the build. CI runs both on every push and writes the table into the run's summary (and `test-results/perf.json`). When a page grows on purpose, raise its budget in the same commit and say why.
 
 ## Releases
 

@@ -115,3 +115,15 @@ describe('schedules on equipment (#25)', async () => {
 		expect(tankLighting({ lightsOn: null, lightsOff: null, co2On: null, co2Off: null, photoperiodH: 7 }, []).photoperiodH).toBe(7);
 	});
 });
+
+describe('a light period the form previews and the server saves (#120)', () => {
+	it('needs two real times that differ', async () => {
+		const { isCompletePeriod } = await import('./equipment');
+		expect(isCompletePeriod({ on: '08:00', off: '16:00' })).toBe(true);
+		expect(isCompletePeriod({ on: '22:00', off: '06:00' })).toBe(true);
+		expect(isCompletePeriod({ on: '08:00', off: '08:00' })).toBe(false);
+		expect(isCompletePeriod({ on: '25:00', off: '06:00' })).toBe(false);
+		expect(isCompletePeriod({ on: '8:00', off: '16:00' })).toBe(false);
+		expect(isCompletePeriod({ on: '', off: '16:00' })).toBe(false);
+	});
+});

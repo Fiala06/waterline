@@ -104,7 +104,7 @@ const event = (user: User, tank: Tank, offset: number, time: string, category: P
 // ── Riverbed 40: planted ────────────────────────────────────────────────────
 
 async function seedPlanted(user: User) {
-	const tank = createTank(user, { name: 'Riverbed 40', type: 'planted', nominalVolumeL: 151.4, actualVolumeL: 128.7, lengthCm: 91.4, widthCm: 45.7, heightCm: 40.6, startDate: day(-DAYS - 20), notes: 'Aquasoil, CO₂ 1 bps on a timer. Canister filter, 8 h photoperiod.' });
+	const tank = createTank(user, { name: 'Riverbed 40', type: 'planted', growingStyle: 'co2', nominalVolumeL: 151.4, actualVolumeL: 128.7, lengthCm: 91.4, widthCm: 45.7, heightCm: 40.6, startDate: day(-DAYS - 20), notes: 'Aquasoil, CO₂ 1 bps on a timer. Canister filter, 8 h photoperiod.' });
 	updateTank(user.id, tank.id, { specBrand: 'Aqualine', specModel: '90P', glass: 'Low-iron, rimless', substrate: 'Aquasoil, 3 in', waterSource: 'rodi', photoperiodH: 8 });
 	backdateCreated(tank, at(-DAYS - 20, '10:00'));
 

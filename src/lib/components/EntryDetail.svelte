@@ -175,10 +175,9 @@
 		gap: 10px;
 		padding-top: 6px;
 	}
-	/* Only the row's own buttons: the confirm dialog inside keeps its 44px buttons (7.10). */
-	.actions > .edit,
-	.actions > :global(.copy),
-	.actions > :global(.btn-danger) {
+	/* Only the row's own buttons (Edit, Copy, Delete…), all one size: the confirm
+	   dialog inside keeps its 44px buttons (7.10). */
+	.actions > :global(.btn) {
 		flex: 1;
 		height: 50px;
 		font-size: 15px;
@@ -189,8 +188,7 @@
 			max-width: 640px;
 			padding: 20px 32px 32px;
 		}
-		.actions > .edit,
-		.actions > :global(.btn-danger) {
+		.actions > :global(.btn) {
 			height: 44px;
 			font-size: 14px;
 		}
