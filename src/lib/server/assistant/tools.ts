@@ -24,20 +24,9 @@ import { tankTargets, tankWarnings } from '$lib/care';
 import { CARE_SOURCE, careFor, speciesCareOn } from '../species-care';
 import type { AssistantAccess } from './tokens';
 
-/** A problem the assistant can fix (a wrong id, a tank it can't see): shown to it as the tool's result. */
-export class ToolError extends Error {}
-
-export type ToolResult = { kind: 'json'; data: unknown } | { kind: 'text'; text: string } | { kind: 'image'; data: Buffer; mimeType: string; caption: string };
-
-type Args = Record<string, unknown>;
-
-interface Tool {
-	name: string;
-	title: string;
-	description: string;
-	inputSchema: { type: 'object'; properties: Record<string, unknown>; required?: string[] };
-	run: (access: AssistantAccess, args: Args) => ToolResult | Promise<ToolResult>;
-}
+export { ToolError, type ToolResult } from './tool-types';
+import { ToolError, type Args, type Tool } from './tool-types';
+import { TABLE_TOOLS } from './table-tools';
 
 const tankIdArg = { type: 'string', description: 'The tank, an id from list_tanks.' };
 const daysArg = (fallback: number, max: number) => ({
@@ -434,9 +423,9 @@ export async function photoImage(photo: typeof photos.$inferSelect, size: 'small
 	}
 }
 
-export const TOOLS: Tool[] = [listTanksTool, summaryTool, readingsTool, historyTool, livestockTool, trendsTool, listPhotosTool, photoTool];
+export const TOOLS: Tool[] = [listTanksTool, summaryTool, readingsTool, historyTool, livestockTool, trendsTool, listPhotosTool, photoTool, ...TABLE_TOOLS];
 
-export async function runTool(access: AssistantAccess, name: string, args: Args): Promise<ToolResult> {
+export async function runTool(access: AssistantAccess, name: string, args: Args): Promise<import('./tool-types').ToolResult> {
 	const tool = TOOLS.find((t) => t.name === name);
 	if (!tool) throw new ToolError(`No tool "${name}".`);
 	return tool.run(access, args ?? {});

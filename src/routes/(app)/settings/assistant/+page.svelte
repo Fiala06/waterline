@@ -215,6 +215,10 @@
 			Also <span class="mono">/tanks/&lt;id&gt;/summary</span>, <span class="mono">readings</span>, <span class="mono">history</span>,
 			<span class="mono">livestock</span>, <span class="mono">trends</span> and <span class="mono">photos</span>, and <span class="mono">/photos/&lt;id&gt;</span>.
 		</p>
+		<p class="small">
+			Tables across all your tanks, for a dashboard or a spreadsheet: <span class="mono">/overview</span>, <span class="mono">/readings</span>,
+			<span class="mono">/water-changes</span>, <span class="mono">/tasks</span> and <span class="mono">/spending</span>. Add <span class="mono">?format=csv</span> for a CSV.
+		</p>
 	</section>
 </div>
 

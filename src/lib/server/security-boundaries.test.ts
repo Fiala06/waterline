@@ -437,6 +437,12 @@ describe('tokens: each kind opens only its own door, for only its own tanks', ()
 		for (const tool of ['get_tank_summary', 'get_readings', 'get_history', 'get_livestock', 'get_trends', 'list_photos']) {
 			await expect(runTool(access, tool, { tank_id: U.id }), tool).rejects.toBeInstanceOf(ToolError);
 		}
+		// the tables: asked for U, refused; asked for every tank, only T's rows
+		for (const tool of ['get_overview', 'get_reading_rows', 'get_water_changes', 'get_tasks', 'get_spending']) {
+			await expect(runTool(access, tool, { tank_id: U.id }), tool).rejects.toBeInstanceOf(ToolError);
+			const all = JSON.stringify(await runTool(access, tool, { days: 3650 }));
+			expect(all, tool).not.toContain(U.id);
+		}
 		expect(() => photoFor(access, photoU.id)).toThrow(ToolError);
 		expect(photoFor(access, photo.id).photo.id).toBe(photo.id);
 	});

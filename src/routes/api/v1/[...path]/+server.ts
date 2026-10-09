@@ -7,6 +7,7 @@ import { logger } from '$lib/server/log';
 import { parseSamples, recordSamples } from '$lib/server/sensors';
 import { bearerChallenge } from '$lib/server/assistant/discovery';
 import { photoFor, photoImage, runTool, ToolError } from '$lib/server/assistant/tools';
+import { toCsv } from '$lib/server/assistant/table-tools';
 import type { RequestHandler } from './$types';
 
 /** /tanks/<id>/<what> → the tool that answers it. */
@@ -16,8 +17,32 @@ const TANK_TOOLS: Record<string, string> = {
 	history: 'get_history',
 	livestock: 'get_livestock',
 	trends: 'get_trends',
-	photos: 'list_photos'
+	photos: 'list_photos',
+	'reading-rows': 'get_reading_rows',
+	'water-changes': 'get_water_changes',
+	tasks: 'get_tasks',
+	spending: 'get_spending'
 };
+
+/** /<what> → a table across every tank the token may read (narrowed by ?tank_id=), as JSON rows or ?format=csv. */
+const TABLES: Record<string, string> = {
+	overview: 'get_overview',
+	readings: 'get_reading_rows',
+	'water-changes': 'get_water_changes',
+	tasks: 'get_tasks',
+	spending: 'get_spending'
+};
+
+/** A table's rows as a CSV download, when ?format=csv asks for one. */
+function tableResponse(data: unknown, format: string | undefined, name: string, headers: Record<string, string>) {
+	const t = data as { columns?: string[]; rows?: Record<string, unknown>[] } | null;
+	if (format === 'csv' && t?.columns && t.rows) {
+		return new Response(toCsv(t.columns, t.rows), {
+			headers: { ...headers, 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="waterline-${name}.csv"` }
+		});
+	}
+	return json(data, { headers });
+}
 
 export const GET: RequestHandler = async ({ request, params, url }) => {
 	const auth = request.headers.get('authorization');
@@ -36,10 +61,14 @@ export const GET: RequestHandler = async ({ request, params, url }) => {
 			const r = await runTool(access, 'list_tanks', {});
 			return json(r.kind === 'json' ? r.data : null, { headers });
 		}
+		if (parts.length === 1 && TABLES[parts[0]]) {
+			const r = await runTool(access, TABLES[parts[0]], q);
+			return tableResponse(r.kind === 'json' ? r.data : null, q.format, parts[0], headers);
+		}
 		if (parts.length === 3 && parts[0] === 'tanks' && TANK_TOOLS[parts[2]]) {
 			const r = await runTool(access, TANK_TOOLS[parts[2]], { ...q, tank_id: parts[1], include_removed: q.include_removed === 'true' });
 			if (r.kind === 'text') return new Response(r.text, { headers: { ...headers, 'content-type': 'text/markdown; charset=utf-8' } });
-			return json(r.kind === 'json' ? r.data : null, { headers });
+			return tableResponse(r.kind === 'json' ? r.data : null, q.format, parts[2], headers);
 		}
 		if (parts.length === 2 && parts[0] === 'photos') {
 			const { photo } = photoFor(access, parts[1]);
