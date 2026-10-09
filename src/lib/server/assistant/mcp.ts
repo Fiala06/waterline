@@ -11,7 +11,8 @@ export const PROTOCOL_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26', '202
 
 const INSTRUCTIONS =
 	"Waterline is the keeper's aquarium log. You can read the tanks they shared with you: water test readings against their targets, History (water changes, dosing, maintenance, notes and more), livestock and plants, trends and photos. " +
-	"You can't change anything. Start with list_tanks, then get_tank_summary for the whole picture of a tank. Values are in the keeper's units and times in their time zone.";
+	"You can't change anything. Start with list_tanks, then get_tank_summary for the whole picture of a tank. Values are in the keeper's units and times in their time zone. " +
+	'For charts, dashboards and spreadsheets, get_overview, get_reading_rows, get_water_changes, get_tasks and get_spending give flat rows across every tank.';
 
 interface JsonRpcMessage {
 	jsonrpc?: unknown;
