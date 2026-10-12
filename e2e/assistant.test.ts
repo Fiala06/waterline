@@ -76,6 +76,10 @@ test('an AI assistant: a token from Settings reads the tank over MCP and the API
 	const csv = await page.request.get('/api/v1/readings?format=csv', { headers: { authorization: `Bearer ${token}` } });
 	expect(csv.headers()['content-type']).toContain('text/csv');
 	expect((await csv.text()).split('\r\n')[0]).toBe('tank,tank_id,date,time,parameter,key,value,unit,target_min,target_max,status');
+	// only a table has a CSV: the grouped readings say so instead of answering JSON
+	const notCsv = await page.request.get(`/api/v1/tanks/${tankId}/readings?format=csv`, { headers: { authorization: `Bearer ${token}` } });
+	expect(notCsv.status()).toBe(400);
+	expect((await notCsv.json()).error).toContain("readings isn't a table");
 
 	// a path that isn't a tool is just not found, even one Object has a property for
 	for (const path of ['/api/v1/constructor', `/api/v1/tanks/${tankId}/__proto__`]) {

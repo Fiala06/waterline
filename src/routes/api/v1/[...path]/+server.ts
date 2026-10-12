@@ -7,7 +7,7 @@ import { logger } from '$lib/server/log';
 import { parseSamples, recordSamples } from '$lib/server/sensors';
 import { bearerChallenge } from '$lib/server/assistant/discovery';
 import { photoFor, photoImage, runTool, ToolError } from '$lib/server/assistant/tools';
-import { toCsv } from '$lib/server/assistant/table-tools';
+import { TABLE_TOOLS, toCsv } from '$lib/server/assistant/table-tools';
 import type { RequestHandler } from './$types';
 
 // Maps, not objects, so a path like /api/v1/constructor finds nothing rather than Object's own.
@@ -34,10 +34,15 @@ const TABLES = new Map([
 	['spending', 'get_spending']
 ]);
 
+/** The tools whose result is a table, so ?format=csv has rows to give. */
+const IS_TABLE = new Set(TABLE_TOOLS.map((t) => t.name));
+const NOT_A_TABLE = (what: string) => `${what} isn't a table, so it has no CSV. The tables are overview, reading-rows, water-changes, tasks and spending.`;
+
 /** A table's rows as a CSV download, when ?format=csv asks for one. */
 function tableResponse(data: unknown, format: string | undefined, name: string, headers: Record<string, string>) {
 	const t = data as { columns?: string[]; rows?: Record<string, unknown>[] } | null;
-	if (format === 'csv' && t?.columns && t.rows) {
+	if (format === 'csv') {
+		if (!t?.columns || !t.rows) return json({ error: NOT_A_TABLE(name) }, { status: 400, headers });
 		return new Response(toCsv(t.columns, t.rows), {
 			headers: { ...headers, 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="waterline-${name}.csv"` }
 		});
@@ -69,6 +74,8 @@ export const GET: RequestHandler = async ({ request, params, url }) => {
 		}
 		const tool = parts.length === 3 && parts[0] === 'tanks' ? TANK_TOOLS.get(parts[2]) : undefined;
 		if (tool) {
+			// said before the tool runs, so a Markdown summary doesn't come back as if it were a CSV
+			if (q.format === 'csv' && !IS_TABLE.has(tool)) return json({ error: NOT_A_TABLE(parts[2]) }, { status: 400, headers });
 			const r = await runTool(access, tool, { ...q, tank_id: parts[1], include_removed: q.include_removed === 'true' });
 			if (r.kind === 'text') return new Response(r.text, { headers: { ...headers, 'content-type': 'text/markdown; charset=utf-8' } });
 			return tableResponse(r.kind === 'json' ? r.data : null, q.format, parts[2], headers);
