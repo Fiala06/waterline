@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.13.2 · 2026-10-12
+
 - **Your data as tables.** An AI assistant you've connected in [Settings › AI assistant](/settings/assistant) can now read your tanks as ready-made tables: every tank at a glance (last test, days since the last water change, readings out of range, tasks overdue), every reading with its target and status, water changes with their percent and volume, open tasks with how many days until each is due, and spending. They make dashboards and charts easy to build, across all your tanks at once, and the same tables come as CSV from the JSON API for a spreadsheet.
 - **A blank "days" means the usual window.** An assistant or script asking the JSON API or MCP for readings or history with `days` left blank now gets the usual 90 or 30 days back, instead of only the last day.
 - **Save in view on Tasks.** On a computer, the Edit task pane's Save and Delete now stay at the foot of the window while the form scrolls, instead of waiting below the fold on [Tasks](/tasks).
