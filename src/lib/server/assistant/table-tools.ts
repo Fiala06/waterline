@@ -3,7 +3,7 @@
 // reading, water change, task, expense or tank, across every tank the token may
 // read unless a tank_id narrows it. Values are in the keeper's units, dates and
 // times in their time zone, so a row reads the same as the app shows it.
-import { and, asc, desc, eq, gte, inArray } from 'drizzle-orm';
+import { and, count, desc, eq, gte, inArray } from 'drizzle-orm';
 import { WATER_SOURCES, additivesOf, additiveText } from '$lib/events';
 import { paramUnit, statusOf } from '$lib/params';
 import { effectiveDue } from '$lib/tasks';
@@ -16,7 +16,7 @@ import { latestReadingsFor } from '../logs';
 import { listLivestock, listPlants } from '../specs';
 import { getTank, listParamsFor } from '../tanks';
 import type { AssistantAccess } from './tokens';
-import { days, daysArg, shown, sinceDays, ToolError, type Args, type Tool } from './tool-types';
+import { days, daysArg, shown, sinceDays, whole, ToolError, type Args, type Tool } from './tool-types';
 
 const optionalTankArg = { type: 'string', description: 'Only this tank, an id from list_tanks. Every tank shared with you if left out.' };
 
@@ -57,18 +57,22 @@ const table = (columns: string[], rows: Record<string, unknown>[], extra: Record
 // ── Readings ────────────────────────────────────────────────────────────────
 
 const READING_COLUMNS = ['tank', 'tank_id', 'date', 'time', 'parameter', 'key', 'value', 'unit', 'target_min', 'target_max', 'status'];
+/** Rows a call gives at most: years of daily tests across tanks run to tens of thousands, more than one answer should carry. */
+const READING_LIMIT = { fallback: 1000, max: 5000 };
 
 export const readingRowsTool: Tool = {
 	name: 'get_reading_rows',
 	title: 'Readings as rows',
 	description:
-		"Water test readings as a flat table, one row per reading, oldest first: tank, date, time, parameter, value, unit, the parameter's target range and the reading's status (OK, Near, High, Low). Across every tank unless tank_id is given. Made for charts and spreadsheets; get_readings groups the same readings by parameter.",
+		`Water test readings as a flat table, one row per reading, newest first: tank, date, time, parameter, value, unit, the parameter's target range and the reading's status (OK, Near, High, Low). Across every tank unless tank_id is given. At most limit rows (${READING_LIMIT.fallback} if left out, up to ${READING_LIMIT.max}); total says how many the window holds, so ask again with offset for the rest. Made for charts and spreadsheets; get_readings groups the same readings by parameter.`,
 	inputSchema: {
 		type: 'object',
 		properties: {
 			tank_id: optionalTankArg,
 			parameter: { type: 'string', description: 'Only this parameter, by name or key, e.g. "Nitrate", "no3", "pH". All if left out.' },
-			days: daysArg(90, 3650)
+			days: daysArg(90, 3650),
+			limit: { type: 'integer', minimum: 1, maximum: READING_LIMIT.max, description: `At most this many rows, ${READING_LIMIT.fallback} if left out.` },
+			offset: { type: 'integer', minimum: 0, description: 'Skip this many rows first, for the next page. 0 if left out.' }
 		}
 	},
 	run: (access, args) => {
@@ -76,21 +80,28 @@ export const readingRowsTool: Tool = {
 		const list = tanksFor(access, args);
 		const want = typeof args.parameter === 'string' ? args.parameter.trim().toLowerCase() : '';
 		const since = sinceDays(days(args, 90, 3650));
+		const limit = whole(args.limit, READING_LIMIT.fallback, 1, READING_LIMIT.max);
+		const offset = whole(args.offset, 0, 0, Number.MAX_SAFE_INTEGER);
 		const paramsBy = listParamsFor(list.map((t) => t.id));
 		const params = new Map<string, { p: TankParameter; tank: Tank }>();
 		for (const t of list)
 			for (const p of paramsBy.get(t.id) ?? []) if (!want || p.name.toLowerCase() === want || p.key === want) params.set(p.id, { p, tank: t });
 		if (want && !params.size) throw new ToolError(`No tank here tracks "${args.parameter}".`);
 		const ids = [...params.keys()];
-		const rows = ids.length
-			? db
-					.select({ takenAt: tests.takenAt, parameterId: testReadings.parameterId, value: testReadings.value })
-					.from(testReadings)
-					.innerJoin(tests, eq(tests.id, testReadings.testId))
-					.where(and(inArray(testReadings.parameterId, ids), gte(tests.takenAt, since)))
-					.orderBy(asc(tests.takenAt))
-					.all()
-			: [];
+		const inWindow = and(inArray(testReadings.parameterId, ids), gte(tests.takenAt, since));
+		const total = ids.length ? db.select({ n: count() }).from(testReadings).innerJoin(tests, eq(tests.id, testReadings.testId)).where(inWindow).get()!.n : 0;
+		const rows =
+			ids.length && offset < total
+				? db
+						.select({ takenAt: tests.takenAt, parameterId: testReadings.parameterId, value: testReadings.value })
+						.from(testReadings)
+						.innerJoin(tests, eq(tests.id, testReadings.testId))
+						.where(inWindow)
+						.orderBy(desc(tests.takenAt), desc(tests.id))
+						.limit(limit)
+						.offset(offset)
+						.all()
+				: [];
 		return table(
 			READING_COLUMNS,
 			rows.map((r) => {
@@ -107,7 +118,8 @@ export const readingRowsTool: Tool = {
 					target_max: bound(p, p.max, user),
 					status: statusWord(p, r.value)
 				};
-			})
+			}),
+			{ total, limit, offset }
 		);
 	}
 };

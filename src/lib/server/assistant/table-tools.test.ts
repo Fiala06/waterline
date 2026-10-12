@@ -40,7 +40,7 @@ addExpense(user.id, betta.id, { date: today, amountCents: 1299, category: 'consu
 addExpense(user.id, bowl.id, { date: addDays(today, -2), amountCents: 500, category: 'plants', what: 'Moss', note: null });
 
 const access = { user, token: {}, tankIds: new Set([betta.id, bowl.id]) } as never;
-type Table = { columns: string[]; rows: Record<string, unknown>[] };
+type Table = { columns: string[]; rows: Record<string, unknown>[]; total?: number };
 const rowsOf = async (tool: string, args: Record<string, unknown> = {}) => {
 	const r = await runTool(access, tool, args);
 	if (r.kind !== 'json') throw new Error('expected json');
@@ -55,13 +55,27 @@ describe('reading rows', () => {
 		const no3 = t.rows.find((r) => r.key === 'no3')!;
 		expect(no3).toMatchObject({ tank: 'Betta Tank', parameter: 'Nitrate', value: 40, unit: 'ppm', status: 'High' });
 		expect(t.rows.find((r) => r.key === 'temp')).toMatchObject({ value: 77, unit: '°F' });
-		// oldest first
-		expect(t.rows.at(-1)!.tank).toBe('Shrimp Bowl');
+		// newest first
+		expect(t.rows[0].tank).toBe('Shrimp Bowl');
+		expect(t.total).toBe(4);
+	});
+
+	it('gives at most limit rows, the newest, and the rest from offset', async () => {
+		const first = await rowsOf('get_reading_rows', { limit: 3 });
+		expect(first.rows).toHaveLength(3);
+		expect(first).toMatchObject({ total: 4, limit: 3, offset: 0 });
+		expect(first.rows[0].tank).toBe('Shrimp Bowl');
+		const rest = await rowsOf('get_reading_rows', { limit: 3, offset: '3' });
+		expect(rest.rows).toHaveLength(1);
+		expect(rest.rows[0].tank).toBe('Betta Tank');
+		expect((await rowsOf('get_reading_rows', { offset: 99 })).rows).toEqual([]);
+		// the API's query strings are strings; a blank one is "left out"
+		expect((await rowsOf('get_reading_rows', { limit: '' })).rows).toHaveLength(4);
 	});
 
 	it('narrows to one tank or one parameter', async () => {
 		expect((await rowsOf('get_reading_rows', { tank_id: bowl.id })).rows).toHaveLength(1);
-		expect((await rowsOf('get_reading_rows', { parameter: 'pH' })).rows.map((r) => r.tank)).toEqual(['Betta Tank', 'Shrimp Bowl']);
+		expect((await rowsOf('get_reading_rows', { parameter: 'pH' })).rows.map((r) => r.tank)).toEqual(['Shrimp Bowl', 'Betta Tank']);
 	});
 });
 
