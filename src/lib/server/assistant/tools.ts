@@ -25,23 +25,10 @@ import { CARE_SOURCE, careFor, speciesCareOn } from '../species-care';
 import type { AssistantAccess } from './tokens';
 
 export { ToolError, type ToolResult } from './tool-types';
-import { ToolError, type Args, type Tool } from './tool-types';
+import { days, daysArg, shown, sinceDays, ToolError, type Args, type Tool } from './tool-types';
 import { TABLE_TOOLS } from './table-tools';
 
 const tankIdArg = { type: 'string', description: 'The tank, an id from list_tanks.' };
-const daysArg = (fallback: number, max: number) => ({
-	type: 'integer',
-	minimum: 1,
-	maximum: max,
-	description: `How many days back, up to ${max}. ${fallback} if left out.`
-});
-
-/** A whole number of days in range, or the fallback. */
-function days(args: Args, fallback: number, max: number) {
-	const n = Number(args.days ?? fallback);
-	return Number.isFinite(n) ? Math.min(max, Math.max(1, Math.round(n))) : fallback;
-}
-
 /** A tank this token may read. */
 function tankFor(access: AssistantAccess, args: Args): Tank {
 	const id = typeof args.tank_id === 'string' ? args.tank_id : '';
@@ -54,8 +41,6 @@ const local = (instant: string, user: User) => {
 	const z = utcToZoned(instant, user.timeZone);
 	return `${z.date} ${z.time}`;
 };
-const sinceDays = (n: number, now = Date.now()) => new Date(now - n * 86_400_000).toISOString();
-
 function tankFacts(t: Tank, user: User) {
 	const vol = (l: number | null) => (l == null ? null : `${formatNumber(toDisplay(l, 'volume', user), 1)} ${unitLabel('volume', user)}`);
 	return {
@@ -139,7 +124,6 @@ const readingsTool: Tool = {
 		const latest = latestReadings(t.id);
 		const live = latestSamples(t.id);
 		const since = sinceDays(n);
-		const shown = (p: (typeof all)[number], v: number) => Number(displayValue(p, v, user).toFixed(Math.max(paramDecimals(p, user), 2)));
 		return {
 			kind: 'json',
 			data: {
@@ -152,10 +136,10 @@ const readingsTool: Tool = {
 						key: p.key,
 						unit: paramUnit(p, user),
 						target: fmtRange(p, user) || null,
-						latest: l ? { at: local(l.takenAt, user), value: shown(p, l.value), status: statusShort(statusOf(p, l.value)) } : null,
+						latest: l ? { at: local(l.takenAt, user), value: shown(p, l.value, user), status: statusShort(statusOf(p, l.value)) } : null,
 						// the newest reading from a sensor or controller (#19), apart from the hand-logged tests
-						sensor: live.has(p.id) ? { at: local(live.get(p.id)!.at, user), value: shown(p, live.get(p.id)!.value), source: live.get(p.id)!.source } : null,
-						readings: series(t.id, p.id, since).map((r) => ({ at: local(r.takenAt, user), value: shown(p, r.value) }))
+						sensor: live.has(p.id) ? { at: local(live.get(p.id)!.at, user), value: shown(p, live.get(p.id)!.value, user), source: live.get(p.id)!.source } : null,
+						readings: series(t.id, p.id, since).map((r) => ({ at: local(r.takenAt, user), value: shown(p, r.value, user) }))
 					};
 				})
 			}

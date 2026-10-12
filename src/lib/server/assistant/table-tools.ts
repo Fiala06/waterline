@@ -5,7 +5,7 @@
 // times in their time zone, so a row reads the same as the app shows it.
 import { and, asc, desc, eq, gte, inArray } from 'drizzle-orm';
 import { WATER_SOURCES, additivesOf, additiveText } from '$lib/events';
-import { displayValue, paramDecimals, paramUnit, statusOf } from '$lib/params';
+import { paramUnit, statusOf } from '$lib/params';
 import { effectiveDue } from '$lib/tasks';
 import { daysBetween, todayInZone, utcToZoned } from '$lib/time';
 import { toDisplay, unitLabel } from '$lib/units';
@@ -16,21 +16,9 @@ import { latestReadingsFor } from '../logs';
 import { listLivestock, listPlants } from '../specs';
 import { getTank, listParamsFor } from '../tanks';
 import type { AssistantAccess } from './tokens';
-import { ToolError, type Tool, type Args } from './tool-types';
+import { days, daysArg, shown, sinceDays, ToolError, type Args, type Tool } from './tool-types';
 
 const optionalTankArg = { type: 'string', description: 'Only this tank, an id from list_tanks. Every tank shared with you if left out.' };
-const daysArg = (fallback: number, max: number) => ({
-	type: 'integer',
-	minimum: 1,
-	maximum: max,
-	description: `How many days back, up to ${max}. ${fallback} if left out.`
-});
-
-function days(args: Args, fallback: number, max: number) {
-	const n = Number(args.days ?? fallback);
-	return Number.isFinite(n) ? Math.min(max, Math.max(1, Math.round(n))) : fallback;
-}
-const sinceDays = (n: number, now = Date.now()) => new Date(now - n * 86_400_000).toISOString();
 
 /** The tanks a table covers: the one asked for, or every tank the token may read (archived ones last). */
 export function tanksFor(access: AssistantAccess, args: Args): Tank[] {
@@ -51,7 +39,6 @@ function when(instant: string, user: User) {
 }
 
 const round = (n: number, d: number) => Number(n.toFixed(d));
-const shown = (p: TankParameter, v: number, user: User) => round(displayValue(p, v, user), Math.max(paramDecimals(p, user), 2));
 const bound = (p: TankParameter, v: number | null, user: User) => (v == null ? null : shown(p, v, user));
 
 const LEVEL_WORD = { ok: 'OK', warn: 'Near', none: 'No data' } as const;
