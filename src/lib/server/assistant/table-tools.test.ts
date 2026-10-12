@@ -37,6 +37,7 @@ const today = todayInZone(user.timeZone);
 createTask(user.id, betta.id, { name: 'Water change', kind: 'water_change', recurring: true, intervalDays: 7, scheduleMode: 'completion', nextDue: addDays(today, -2), openFormOnDone: false });
 createTask(user.id, bowl.id, { name: 'Clean filter', kind: 'maintenance', recurring: true, intervalDays: 30, scheduleMode: 'completion', nextDue: addDays(today, 3), openFormOnDone: false });
 addExpense(user.id, betta.id, { date: today, amountCents: 1299, category: 'consumables', what: 'Seachem Prime', note: null });
+addExpense(user.id, bowl.id, { date: addDays(today, -2), amountCents: 500, category: 'plants', what: 'Moss', note: null });
 
 const access = { user, token: {}, tankIds: new Set([betta.id, bowl.id]) } as never;
 type Table = { columns: string[]; rows: Record<string, unknown>[] };
@@ -93,7 +94,15 @@ describe('tasks', () => {
 describe('spending', () => {
 	it('gives amounts in the keeper’s currency', async () => {
 		const t = await rowsOf('get_spending');
-		expect(t.rows).toEqual([expect.objectContaining({ tank: 'Betta Tank', amount: 12.99, currency: 'USD', what: 'Seachem Prime' })]);
+		expect(t.rows).toEqual([
+			expect.objectContaining({ tank: 'Betta Tank', amount: 12.99, currency: 'USD', what: 'Seachem Prime' }),
+			expect.objectContaining({ tank: 'Shrimp Bowl', amount: 5, what: 'Moss' })
+		]);
+	});
+
+	it('counts the days back from the keeper’s today, not UTC’s', async () => {
+		expect((await rowsOf('get_spending', { days: 1 })).rows.map((r) => r.what)).toEqual(['Seachem Prime']);
+		expect((await rowsOf('get_spending', { days: 2 })).rows.map((r) => r.what)).toEqual(['Seachem Prime', 'Moss']);
 	});
 });
 

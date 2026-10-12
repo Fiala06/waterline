@@ -7,7 +7,7 @@ import { and, asc, desc, eq, gte, inArray } from 'drizzle-orm';
 import { WATER_SOURCES, additivesOf, additiveText } from '$lib/events';
 import { paramUnit, statusOf } from '$lib/params';
 import { effectiveDue } from '$lib/tasks';
-import { daysBetween, todayInZone, utcToZoned } from '$lib/time';
+import { addDays, daysBetween, todayInZone, utcToZoned } from '$lib/time';
 import { toDisplay, unitLabel } from '$lib/units';
 import { tankTypeLabel } from '$lib/types';
 import { db } from '../db';
@@ -219,7 +219,8 @@ export const spendingTool: Tool = {
 		const { user } = access;
 		const list = tanksFor(access, args);
 		const byId = new Map(list.map((t) => [t.id, t]));
-		const since = sinceDays(days(args, 3650, 3650)).slice(0, 10);
+		// expenses are dated, not timed: count the days back from the keeper's today
+		const since = addDays(todayInZone(user.timeZone), -days(args, 3650, 3650));
 		const rows = db
 			.select()
 			.from(expenses)
