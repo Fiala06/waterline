@@ -25,7 +25,7 @@ import { CARE_SOURCE, careFor, speciesCareOn } from '../species-care';
 import type { AssistantAccess } from './tokens';
 
 export { ToolError, type ToolResult } from './tool-types';
-import { days, daysArg, shown, sinceDays, ToolError, type Args, type Tool } from './tool-types';
+import { days, daysArg, shown, sinceDays, ToolError, type Args, type Tool, type ToolResult } from './tool-types';
 import { TABLE_TOOLS } from './table-tools';
 
 const tankIdArg = { type: 'string', description: 'The tank, an id from list_tanks.' };
@@ -409,7 +409,7 @@ export async function photoImage(photo: typeof photos.$inferSelect, size: 'small
 
 export const TOOLS: Tool[] = [listTanksTool, summaryTool, readingsTool, historyTool, livestockTool, trendsTool, listPhotosTool, photoTool, ...TABLE_TOOLS];
 
-export async function runTool(access: AssistantAccess, name: string, args: Args): Promise<import('./tool-types').ToolResult> {
+export async function runTool(access: AssistantAccess, name: string, args: Args): Promise<ToolResult> {
 	const tool = TOOLS.find((t) => t.name === name);
 	if (!tool) throw new ToolError(`No tool "${name}".`);
 	return tool.run(access, args ?? {});
