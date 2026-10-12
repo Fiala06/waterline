@@ -14,6 +14,7 @@ const { createTank, listParams, setArchived } = await import('../tanks');
 const { createEvent, createTest } = await import('../logs');
 const { createTask } = await import('../tasks');
 const { addExpense } = await import('../expenses');
+const { addLivestock, addPlant, changeCount } = await import('../specs');
 const { runTool } = await import('./tools');
 const { dueWord, toCsv } = await import('./table-tools');
 const { todayInZone, addDays } = await import('$lib/time');
@@ -38,6 +39,13 @@ createTask(user.id, betta.id, { name: 'Water change', kind: 'water_change', recu
 createTask(user.id, bowl.id, { name: 'Clean filter', kind: 'maintenance', recurring: true, intervalDays: 30, scheduleMode: 'completion', nextDue: addDays(today, 3), openFormOnDone: false });
 addExpense(user.id, betta.id, { date: today, amountCents: 1299, category: 'consumables', what: 'Seachem Prime', note: null });
 addExpense(user.id, bowl.id, { date: addDays(today, -2), amountCents: 500, category: 'plants', what: 'Moss', note: null });
+// five otos and a betta in the tank, a tetra that left; two plants
+const stock = (name: string, count: number) => addLivestock(user.id, betta.id, { kind: 'fish', commonName: name, scientificName: null, count, status: 'in_tank', addedAt: null, source: null });
+stock('Otocinclus', 5);
+stock('Betta', 1);
+changeCount(user.id, stock('Neon tetra', 3).row.id, 0, 'rehomed');
+addPlant(user.id, betta.id, { name: 'Java fern', scientificName: null, position: 'midground', status: 'thriving' });
+addPlant(user.id, betta.id, { name: 'Anubias', scientificName: null, position: 'epiphyte', status: 'thriving' });
 
 const access = { user, token: {}, tankIds: new Set([betta.id, bowl.id]) } as never;
 type Table = { columns: string[]; rows: Record<string, unknown>[]; total?: number };
@@ -134,11 +142,13 @@ describe('overview', () => {
 	it('sums up each tank in a row', async () => {
 		const t = await rowsOf('get_overview');
 		const b = t.rows.find((r) => r.tank === 'Betta Tank')!;
-		expect(b).toMatchObject({ readings_out: 1, out_of_range: 'Nitrate high', tasks_overdue: 1, tasks_due_7_days: 1 });
+		expect(b).toMatchObject({ readings_out: 1, out_of_range: 'Nitrate high', tasks_overdue: 1, tasks_due_7_days: 1, livestock: 6, plants: 2 });
+		expect(b.last_tested).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+		expect(b.days_since_test).toBeGreaterThanOrEqual(1);
 		expect(b.readings_ok).toBeGreaterThanOrEqual(1);
 		expect(b.days_since_water_change).toBeGreaterThanOrEqual(1);
 		const s = t.rows.find((r) => r.tank === 'Shrimp Bowl')!;
-		expect(s).toMatchObject({ readings_out: 0, tasks_overdue: 0, tasks_due_7_days: 2 });
+		expect(s).toMatchObject({ readings_out: 0, tasks_overdue: 0, tasks_due_7_days: 2, livestock: 0, plants: 0 });
 	});
 });
 

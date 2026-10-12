@@ -3,7 +3,7 @@
 // reading, water change, task, expense or tank, across every tank the token may
 // read unless a tank_id narrows it. Values are in the keeper's units, dates and
 // times in their time zone, so a row reads the same as the app shows it.
-import { and, count, desc, eq, gte, inArray } from 'drizzle-orm';
+import { and, count, desc, eq, gte, inArray, isNull, max, sql } from 'drizzle-orm';
 import { WATER_SOURCES, additivesOf, additiveText } from '$lib/events';
 import { paramUnit, statusOf } from '$lib/params';
 import { effectiveDue } from '$lib/tasks';
@@ -11,10 +11,9 @@ import { addDays, daysBetween, todayInZone, utcToZoned } from '$lib/time';
 import { toDisplay, unitLabel } from '$lib/units';
 import { tankTypeLabel } from '$lib/types';
 import { db } from '../db';
-import { events, expenses, tasks, testReadings, tests, type Tank, type TankParameter, type User } from '../db/schema';
+import { events, expenses, livestock, plants, tasks, testReadings, tests, type Tank, type TankParameter, type User } from '../db/schema';
 import { latestReadingsFor } from '../logs';
-import { listLivestock, listPlants } from '../specs';
-import { getTank, listParamsFor } from '../tanks';
+import { getTank, listParamsFor, listTanks } from '../tanks';
 import type { AssistantAccess } from './tokens';
 import { days, daysArg, shown, sinceDays, whole, ToolError, type Args, type Tool } from './tool-types';
 
@@ -30,8 +29,9 @@ export function tanksFor(access: AssistantAccess, args: Args): Tank[] {
 		if (!access.tankIds.has(id)) throw new ToolError(`No tank ${id} is shared with this assistant. Call list_tanks for the ones that are.`);
 		return [getTank(access.user.id, id)];
 	}
-	return [...access.tankIds]
-		.map((t) => getTank(access.user.id, t))
+	// the token's tanks are the keeper's own, so two lists (open, archived) hold them all: no query per tank
+	return [...listTanks(access.user.id), ...listTanks(access.user.id, { archived: true })]
+		.filter((t) => access.tankIds.has(t.id))
 		.sort((a, b) => Number(!!a.archivedAt) - Number(!!b.archivedAt) || a.name.localeCompare(b.name));
 }
 
@@ -297,15 +297,32 @@ export const overviewTool: Tool = {
 		const today = todayInZone(user.timeZone);
 		const paramsBy = listParamsFor(ids);
 		const latest = latestReadingsFor(ids);
-		const lastTest = (id: string) => db.select({ at: tests.takenAt }).from(tests).where(eq(tests.tankId, id)).orderBy(desc(tests.takenAt)).limit(1).get()?.at ?? null;
-		const lastChange = (id: string) =>
-			db
-				.select({ at: events.occurredAt })
-				.from(events)
-				.where(and(eq(events.tankId, id), eq(events.category, 'water_change')))
-				.orderBy(desc(events.occurredAt))
-				.limit(1)
-				.get()?.at ?? null;
+		// one grouped query each across every tank, not one a tank (#133)
+		const byTank = <T>(rows: { tankId: string; v: T }[]) => new Map(rows.map((r) => [r.tankId, r.v]));
+		const lastTest = ids.length ? byTank(db.select({ tankId: tests.tankId, v: max(tests.takenAt) }).from(tests).where(inArray(tests.tankId, ids)).groupBy(tests.tankId).all()) : new Map<string, string | null>();
+		const lastChange = ids.length
+			? byTank(
+					db
+						.select({ tankId: events.tankId, v: max(events.occurredAt) })
+						.from(events)
+						.where(and(inArray(events.tankId, ids), eq(events.category, 'water_change')))
+						.groupBy(events.tankId)
+						.all()
+				)
+			: new Map<string, string | null>();
+		const animals = ids.length
+			? byTank(
+					db
+						.select({ tankId: livestock.tankId, v: sql<number>`coalesce(sum(${livestock.count}), 0)` })
+						.from(livestock)
+						.where(and(inArray(livestock.tankId, ids), isNull(livestock.removedAt)))
+						.groupBy(livestock.tankId)
+						.all()
+				)
+			: new Map<string, number>();
+		const planted = ids.length
+			? byTank(db.select({ tankId: plants.tankId, v: count() }).from(plants).where(and(inArray(plants.tankId, ids), isNull(plants.removedAt))).groupBy(plants.tankId).all())
+			: new Map<string, number>();
 		const openTasks = ids.length ? db.select().from(tasks).where(inArray(tasks.tankId, ids)).all() : [];
 		const ago = (at: string | null) => (at ? daysBetween(when(at, user).date, today) : null);
 		return table(
@@ -327,8 +344,8 @@ export const overviewTool: Tool = {
 							.map((x) => effectiveDue(x))
 							.filter((d): d is string => !!d)
 							.map((d) => daysBetween(today, d));
-				const tested = lastTest(t.id);
-				const changed = lastChange(t.id);
+				const tested = lastTest.get(t.id) ?? null;
+				const changed = lastChange.get(t.id) ?? null;
 				const water = t.actualVolumeL ?? t.nominalVolumeL;
 				return {
 					tank: t.name,
@@ -347,8 +364,8 @@ export const overviewTool: Tool = {
 					out_of_range: counts.out.join(', ') || null,
 					tasks_overdue: due.filter((n) => n < 0).length,
 					tasks_due_7_days: due.filter((n) => n >= 0 && n <= 7).length,
-					livestock: listLivestock(user.id, t.id).reduce((n, l) => n + (l.count ?? 1), 0),
-					plants: listPlants(user.id, t.id).length
+					livestock: animals.get(t.id) ?? 0,
+					plants: planted.get(t.id) ?? 0
 				};
 			}),
 			{ today }
