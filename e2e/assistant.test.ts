@@ -73,7 +73,7 @@ test('an AI assistant: a token from Settings reads the tank over MCP and the API
 	expect(rows.structuredContent.rows).toEqual([expect.objectContaining({ tank: 'Riverbed 40', parameter: 'Nitrate', value: 10, unit: 'ppm' })]);
 	const overview = await page.request.get('/api/v1/overview', { headers: { authorization: `Bearer ${token}` } });
 	expect((await overview.json()).rows[0]).toMatchObject({ tank: 'Riverbed 40', last_tested: expect.any(String) });
-	const csv = await page.request.get('/api/v1/readings?format=csv', { headers: { authorization: `Bearer ${token}` } });
+	const csv = await page.request.get('/api/v1/reading-rows?format=csv', { headers: { authorization: `Bearer ${token}` } });
 	expect(csv.headers()['content-type']).toContain('text/csv');
 	expect((await csv.text()).split('\r\n')[0]).toBe('tank,tank_id,date,time,parameter,key,value,unit,target_min,target_max,status');
 	// only a table has a CSV: the grouped readings say so instead of answering JSON

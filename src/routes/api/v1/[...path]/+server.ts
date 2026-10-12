@@ -26,9 +26,10 @@ const TANK_TOOLS = new Map([
 ]);
 
 /** /<what> → a table across every tank the token may read (narrowed by ?tank_id=), as JSON rows or ?format=csv. */
+// Named as under /tanks/<id>/, so reading-rows is the flat table at both levels and readings the grouped read.
 const TABLES = new Map([
 	['overview', 'get_overview'],
-	['readings', 'get_reading_rows'],
+	['reading-rows', 'get_reading_rows'],
 	['water-changes', 'get_water_changes'],
 	['tasks', 'get_tasks'],
 	['spending', 'get_spending']
