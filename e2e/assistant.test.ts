@@ -77,6 +77,13 @@ test('an AI assistant: a token from Settings reads the tank over MCP and the API
 	expect(csv.headers()['content-type']).toContain('text/csv');
 	expect((await csv.text()).split('\r\n')[0]).toBe('tank,tank_id,date,time,parameter,key,value,unit,target_min,target_max,status');
 
+	// a path that isn't a tool is just not found, even one Object has a property for
+	for (const path of ['/api/v1/constructor', `/api/v1/tanks/${tankId}/__proto__`]) {
+		const res = await page.request.get(path, { headers: { authorization: `Bearer ${token}` } });
+		expect(res.status(), path).toBe(404);
+		expect(await res.json(), path).toEqual({ error: 'Not found' });
+	}
+
 	// used, then revoked: refused
 	await open(page, '/settings/assistant');
 	await expect(page.getByRole('region', { name: 'Connected' }).getByRole('listitem').filter({ hasText: 'Claude' })).toContainText('Last used Today');

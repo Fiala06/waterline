@@ -10,28 +10,29 @@ import { photoFor, photoImage, runTool, ToolError } from '$lib/server/assistant/
 import { toCsv } from '$lib/server/assistant/table-tools';
 import type { RequestHandler } from './$types';
 
+// Maps, not objects, so a path like /api/v1/constructor finds nothing rather than Object's own.
 /** /tanks/<id>/<what> → the tool that answers it. */
-const TANK_TOOLS: Record<string, string> = {
-	summary: 'get_tank_summary',
-	readings: 'get_readings',
-	history: 'get_history',
-	livestock: 'get_livestock',
-	trends: 'get_trends',
-	photos: 'list_photos',
-	'reading-rows': 'get_reading_rows',
-	'water-changes': 'get_water_changes',
-	tasks: 'get_tasks',
-	spending: 'get_spending'
-};
+const TANK_TOOLS = new Map([
+	['summary', 'get_tank_summary'],
+	['readings', 'get_readings'],
+	['history', 'get_history'],
+	['livestock', 'get_livestock'],
+	['trends', 'get_trends'],
+	['photos', 'list_photos'],
+	['reading-rows', 'get_reading_rows'],
+	['water-changes', 'get_water_changes'],
+	['tasks', 'get_tasks'],
+	['spending', 'get_spending']
+]);
 
 /** /<what> → a table across every tank the token may read (narrowed by ?tank_id=), as JSON rows or ?format=csv. */
-const TABLES: Record<string, string> = {
-	overview: 'get_overview',
-	readings: 'get_reading_rows',
-	'water-changes': 'get_water_changes',
-	tasks: 'get_tasks',
-	spending: 'get_spending'
-};
+const TABLES = new Map([
+	['overview', 'get_overview'],
+	['readings', 'get_reading_rows'],
+	['water-changes', 'get_water_changes'],
+	['tasks', 'get_tasks'],
+	['spending', 'get_spending']
+]);
 
 /** A table's rows as a CSV download, when ?format=csv asks for one. */
 function tableResponse(data: unknown, format: string | undefined, name: string, headers: Record<string, string>) {
@@ -61,12 +62,14 @@ export const GET: RequestHandler = async ({ request, params, url }) => {
 			const r = await runTool(access, 'list_tanks', {});
 			return json(r.kind === 'json' ? r.data : null, { headers });
 		}
-		if (parts.length === 1 && TABLES[parts[0]]) {
-			const r = await runTool(access, TABLES[parts[0]], q);
+		const table = parts.length === 1 ? TABLES.get(parts[0]) : undefined;
+		if (table) {
+			const r = await runTool(access, table, q);
 			return tableResponse(r.kind === 'json' ? r.data : null, q.format, parts[0], headers);
 		}
-		if (parts.length === 3 && parts[0] === 'tanks' && TANK_TOOLS[parts[2]]) {
-			const r = await runTool(access, TANK_TOOLS[parts[2]], { ...q, tank_id: parts[1], include_removed: q.include_removed === 'true' });
+		const tool = parts.length === 3 && parts[0] === 'tanks' ? TANK_TOOLS.get(parts[2]) : undefined;
+		if (tool) {
+			const r = await runTool(access, tool, { ...q, tank_id: parts[1], include_removed: q.include_removed === 'true' });
 			if (r.kind === 'text') return new Response(r.text, { headers: { ...headers, 'content-type': 'text/markdown; charset=utf-8' } });
 			return tableResponse(r.kind === 'json' ? r.data : null, q.format, parts[2], headers);
 		}
