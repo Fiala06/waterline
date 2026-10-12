@@ -30,9 +30,16 @@ export const daysArg = (fallback: number, max: number) => ({
 });
 
 /** A whole number of days in range, or the fallback. */
-export function days(args: Args, fallback: number, max: number) {
-	const n = Number(args.days ?? fallback);
-	return Number.isFinite(n) ? Math.min(max, Math.max(1, Math.round(n))) : fallback;
+export const days = (args: Args, fallback: number, max: number) => whole(args.days, fallback, 1, max);
+
+/**
+ * A whole number between min and max, or the fallback when nothing was given:
+ * a blank query value (`?days=`) or a word is "left out", not 0 or 1.
+ */
+export function whole(raw: unknown, fallback: number, min: number, max: number) {
+	if (raw == null || raw === '') return fallback;
+	const n = Number(raw);
+	return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.round(n))) : fallback;
 }
 
 /** The instant n days ago, as stored (ISO, UTC). */
