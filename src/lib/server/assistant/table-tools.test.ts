@@ -10,7 +10,7 @@ const { db } = await import('../db');
 const { users } = await import('../db/schema');
 const { eq } = await import('drizzle-orm');
 const { upsertUser } = await import('../users');
-const { createTank, listParams } = await import('../tanks');
+const { createTank, listParams, setArchived } = await import('../tanks');
 const { createEvent, createTest } = await import('../logs');
 const { createTask } = await import('../tasks');
 const { addExpense } = await import('../expenses');
@@ -84,6 +84,16 @@ describe('tasks', () => {
 		]);
 		const due = t.rows.map((r) => r.days_until_due as number);
 		expect(due).toEqual([...due].sort((a, b) => a - b));
+	});
+
+	it('says an archived tank’s tasks are paused when asked for it, and leaves it out of the whole', async () => {
+		const shelf = createTank(user, { name: 'Shelf Tank', type: 'freshwater', nominalVolumeL: 20 });
+		createTask(user.id, shelf.id, { name: 'Dust it', kind: 'maintenance', recurring: false, intervalDays: null, scheduleMode: 'completion', nextDue: today, openFormOnDone: false });
+		setArchived(user.id, shelf.id, true);
+		const all = { user, token: {}, tankIds: new Set([betta.id, bowl.id, shelf.id]) } as never;
+		await expect(runTool(all, 'get_tasks', { tank_id: shelf.id })).rejects.toThrow('Shelf Tank is archived, so its tasks are paused.');
+		const whole = (await runTool(all, 'get_tasks', {})) as { data: Table };
+		expect(whole.data.rows.map((r) => r.tank)).not.toContain('Shelf Tank');
 	});
 
 	it('names how due a task is', () => {

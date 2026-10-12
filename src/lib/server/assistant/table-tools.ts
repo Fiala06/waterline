@@ -20,9 +20,12 @@ import { days, daysArg, shown, sinceDays, ToolError, type Args, type Tool } from
 
 const optionalTankArg = { type: 'string', description: 'Only this tank, an id from list_tanks. Every tank shared with you if left out.' };
 
+/** The tank_id argument, or '' when none was given. */
+const askedTank = (args: Args) => (typeof args.tank_id === 'string' ? args.tank_id.trim() : '');
+
 /** The tanks a table covers: the one asked for, or every tank the token may read (archived ones last). */
 export function tanksFor(access: AssistantAccess, args: Args): Tank[] {
-	const id = typeof args.tank_id === 'string' ? args.tank_id.trim() : '';
+	const id = askedTank(args);
 	if (id) {
 		if (!access.tankIds.has(id)) throw new ToolError(`No tank ${id} is shared with this assistant. Call list_tanks for the ones that are.`);
 		return [getTank(access.user.id, id)];
@@ -175,7 +178,10 @@ export const tasksTool: Tool = {
 	inputSchema: { type: 'object', properties: { tank_id: optionalTankArg } },
 	run: (access, args) => {
 		const { user } = access;
-		const list = tanksFor(access, args).filter((t) => !t.archivedAt);
+		const asked = tanksFor(access, args);
+		// an archived tank's tasks are paused: say so when it was asked for by name, leave it out of the whole
+		if (askedTank(args) && asked[0]?.archivedAt) throw new ToolError(`${asked[0].name} is archived, so its tasks are paused.`);
+		const list = asked.filter((t) => !t.archivedAt);
 		const byId = new Map(list.map((t) => [t.id, t]));
 		const today = todayInZone(user.timeZone);
 		const rows = list.length ? db.select().from(tasks).where(inArray(tasks.tankId, [...byId.keys()])).all() : [];
