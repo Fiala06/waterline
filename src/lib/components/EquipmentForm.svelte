@@ -49,6 +49,8 @@
 			serviced: string | null;
 			history: { id: string; title: string; note: string | null; day: string }[];
 			task: { id: string; name: string; line: string; due: { text: string; level: 'ok' | 'warn' | 'bad' } | null } | null;
+			/** what it cost (#148): the expenses linked to it, and where to add one */
+			cost: { total: string; rows: { id: string; what: string; day: string; amount: string; receipt: boolean }[]; addHref: string };
 		} | null;
 		/** a new item from the scanner (#147): its barcode, and the listing the lookup found, if any */
 		scanned?: { code: string; title: string | null; source: string | null } | null;
@@ -279,6 +281,18 @@
 				{/each}
 				{#if !about.history.length}<span class="none">No service logged yet.</span>{/if}
 				<a class="ghost hide-desk" href={serviceHref}>Log service</a>
+			</div>
+			<!-- what it cost (#148): the expenses linked to this item -->
+			<div class="log">
+				<span class="kicker rule">Cost{about.cost.rows.length ? ` · ${about.cost.total}` : ''}</span>
+				{#each about.cost.rows as x (x.id)}
+					<a class="log-row" href="/tanks/{tankId}/spending/{x.id}">
+						<span class="log-top"><b>{x.what}</b><span class="log-day num">{x.amount}</span></span>
+						<span class="log-note">{x.day}{x.receipt ? ' · Receipt' : ''}</span>
+					</a>
+				{/each}
+				{#if !about.cost.rows.length}<span class="none">No expense linked yet.</span>{/if}
+				<a class="ghost" href={about.cost.addHref}>Add expense ›</a>
 			</div>
 		</aside>
 	{/if}

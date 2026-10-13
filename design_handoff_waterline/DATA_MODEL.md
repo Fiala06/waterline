@@ -132,7 +132,8 @@ maintenance_routines id, tank_id, name, steps JSON [{kind(test|water_change|dosi
                  maintenance|note), label, fields}], position, created_at (a named sequence of log
                  steps, run one at a time; each logged step is an events/tests row like any other)
 expenses         id, tank_id, date, amount_cents, category(livestock|plants|equipment|
-                 consumables|other), what, note?, product_id?, receipt_path?,
+                 consumables|other), what, note?, product_id?, equipment_id? (the item it
+                 was for), receipt_path?,
                  receipt_type?(image/jpeg|application/pdf), import_id?, created_at
 
 ── Sharing ────────────────────────────────────────────────────────────────────

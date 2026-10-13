@@ -13,7 +13,7 @@ export const load: PageServerLoad = ({ locals, params }) => {
 	return {
 		...expensePage(user),
 		tankId: e.tankId,
-		values: { amount: moneyInput(e.amountCents), what: e.what, category: e.category, date: e.date, note: e.note ?? '', tankId: e.tankId, productId: e.productId ?? '' },
+		values: { amount: moneyInput(e.amountCents), what: e.what, category: e.category, date: e.date, note: e.note ?? '', tankId: e.tankId, productId: e.productId ?? '', equipmentId: e.equipmentId ?? '' },
 		receipt: e.receiptType ? { href: `/receipts/${e.id}`, type: e.receiptType } : null
 	};
 };

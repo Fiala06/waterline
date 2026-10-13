@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **What a piece of equipment cost.** An expense on [Spending](/tanks/current/spending) can now say which item it was for, and the item's page under [Equipment](/tanks/current/equipment) lists those expenses with their total, each opening the expense and its receipt, with Add expense right there to log the purchase with the item filled in. The Item line of an equipment entry in [History](/history) opens the item too.
+
 ## 1.13.3 · 2026-10-13
 
 - **Scan a barcode to add equipment.** On a tank's [Equipment](/tanks/current/equipment) tab, Scan barcode points your phone's camera at the barcode on a new filter's, heater's or light's box and looks it up: Add to tank opens the Add equipment form with the brand, model and type filled in, and the barcode stays with the item, so scanning the same box again finds it instead of adding it twice. Without a camera, or on a page without scripts, take a photo of the barcode or type the number under it. The lookup asks Open Products Facts and UPCitemdb from the server, once per barcode; admins can turn it off under [Server settings › Features](/settings/server#barcode-lookup), and scanning still finds what's already added.

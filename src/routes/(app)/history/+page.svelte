@@ -179,7 +179,7 @@
 								{#each d.rows as r, i (i)}
 									<div class="drow" class:bad={r.level === 'bad'}>
 										<span class="dl">{r.label}</span>
-										<span class="dv num">{r.value}</span>
+										{#if r.href}<a class="dv num" href={r.href}>{r.value} ›</a>{:else}<span class="dv num">{r.value}</span>{/if}
 										{#if r.statusText}<span class="ds status-{r.level}">{r.statusText}</span>{/if}
 									</div>
 								{/each}
@@ -559,6 +559,10 @@
 			font-size: 15px;
 			font-weight: 800;
 			white-space: nowrap;
+		}
+		/* a value that leads somewhere, like an equipment item's page (#148) */
+		a.dv {
+			color: var(--accent-text);
 		}
 		.ds {
 			text-align: right;

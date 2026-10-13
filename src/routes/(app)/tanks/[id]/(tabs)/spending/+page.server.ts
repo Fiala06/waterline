@@ -1,6 +1,6 @@
 import { fmtMoney } from '$lib/money';
 import { fmtDateLong, todayInZone } from '$lib/time';
-import { CATEGORY_LABEL, listExpenses, spendingSummary, spentThisYear, type ExpenseCategory } from '$lib/server/expenses';
+import { CATEGORY_LABEL, equipmentNames, listExpenses, spendingSummary, spentThisYear, type ExpenseCategory } from '$lib/server/expenses';
 import { listTanks } from '$lib/server/tanks';
 import { readSort, sortRows } from '$lib/sort';
 import type { PageServerLoad } from './$types';
@@ -22,6 +22,12 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 	const sort = readSort(url, SORTS);
 	const filtered = rows.filter((e) => (filter?.kind === 'cat' ? e.category === filter.key : filter?.kind === 'month' ? e.date.startsWith(filter.key) : true));
 	const shown = sortRows(filtered, sort, (e, k) => (k === 'date' ? e.date : k === 'amount' ? e.amountCents : CATEGORY_LABEL[e.category]));
+	// the item an expense was for (#148), when its name says more than "What for" already does
+	const items = equipmentNames([params.id]);
+	const itemOf = (e: { equipmentId: string | null; what: string }) => {
+		const name = e.equipmentId ? items.get(e.equipmentId) : null;
+		return name && name.trim().toLowerCase() !== e.what.trim().toLowerCase() ? name : null;
+	};
 	return {
 		year: today.slice(0, 4),
 		totals: { month: money(s.month), year: money(s.year), all: money(s.all) },
@@ -38,6 +44,7 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 			amount: money(e.amountCents),
 			category: CATEGORY_LABEL[e.category],
 			day: fmtDateLong(e.date),
+			item: itemOf(e),
 			receipt: e.receiptType
 		}))
 	};

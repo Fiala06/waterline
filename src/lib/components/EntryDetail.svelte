@@ -11,6 +11,8 @@
 		value: string;
 		statusText?: string;
 		level?: string;
+		/** where the value leads, like an equipment item's page */
+		href?: string;
 	}
 	let {
 		title,
@@ -68,7 +70,7 @@
 			{#each rows as r, i (i)}
 				<div class="row" class:bad={r.level === 'bad'}>
 					<span class="label">{r.label}</span>
-					<span class="value num">{r.value}</span>
+					{#if r.href}<a class="value num" href={r.href}>{r.value} ›</a>{:else}<span class="value num">{r.value}</span>{/if}
 					{#if r.statusText}<span class="st status-{r.level}">{r.statusText}</span>{/if}
 				</div>
 			{/each}
@@ -141,6 +143,12 @@
 		font-size: 16px;
 		font-weight: 800;
 		white-space: nowrap;
+	}
+	a.value {
+		color: var(--accent-text);
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
 	}
 	.st {
 		text-align: right;
