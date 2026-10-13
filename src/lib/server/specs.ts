@@ -99,6 +99,8 @@ export interface EquipmentInput {
   notes: string | null;
   /** when it runs (#25); null or left out: all day */
   schedule?: Schedule | null;
+  /** the product barcode it was scanned from (#147); left out: unchanged */
+  barcode?: string | null;
 }
 
 /** The items of a tank that run on a schedule, for its lighting and the day timeline. */

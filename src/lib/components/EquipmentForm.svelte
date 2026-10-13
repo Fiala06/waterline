@@ -16,13 +16,16 @@
 		prefs,
 		cancelHref,
 		today,
-		about = null
+		about = null,
+		scanned = null
 	}: {
 		mode: 'new' | 'edit';
 		values: {
 			type: EquipmentType;
 			brand: string;
 			model: string;
+			/** the product barcode it was scanned from (#147), kept with it */
+			barcode: string;
 			installedAt: string;
 			notes: string;
 			specs: Record<string, string>;
@@ -47,8 +50,18 @@
 			history: { id: string; title: string; note: string | null; day: string }[];
 			task: { id: string; name: string; line: string; due: { text: string; level: 'ok' | 'warn' | 'bad' } | null } | null;
 		} | null;
+		/** a new item from the scanner (#147): its barcode, and the listing the lookup found, if any */
+		scanned?: { code: string; title: string | null; source: string | null } | null;
 	} = $props();
 	const tankId = $derived(cancelHref.split('/')[2] ?? '');
+	// "Scanned 0015561104470: Fluval 407 Performance Canister Filter · UPCitemdb"
+	const scannedLine = $derived(
+		!scanned
+			? ''
+			: scanned.title
+				? `Scanned ${scanned.code}: ${scanned.title}${scanned.source ? ` · ${scanned.source}` : ''}`
+				: `Scanned ${scanned.code}: nothing found for it, so type its brand and model. The barcode stays with the item.`
+	);
 	const serviceHref = $derived(`/entries/event/new?tank=${tankId}&category=maintenance&from=${encodeURIComponent(cancelHref)}`);
 
 	let type = $state<EquipmentType>(untrack(() => values.type));
@@ -106,6 +119,7 @@
 	{/if}
 	<div class="cols" class:with-side={!!about}>
 	<div class="body">
+		<input type="hidden" name="barcode" value={values.barcode} />
 		<fieldset class="field">
 			<legend class="label">Type</legend>
 			<div class="chips">
@@ -136,6 +150,13 @@
 				</div>
 			{/if}
 			{#if errors.brand}<span class="error-text">✕ {errors.brand}</span>{/if}
+			{#if scanned}
+				<p class="hint scanned">{scannedLine}</p>
+			{:else if mode === 'new'}
+				<p class="hint">Have the box? <a href="{cancelHref}/scan">Scan its barcode ›</a></p>
+			{:else if values.barcode}
+				<p class="hint">Barcode {values.barcode}</p>
+			{/if}
 		</div>
 
 		{#if fields.length}
@@ -344,6 +365,15 @@
 		display: flex;
 		flex-direction: column;
 		gap: 8px;
+	}
+	.brand .hint {
+		margin: 0;
+		font-size: 13px;
+		color: var(--text-muted);
+	}
+	.brand .hint a {
+		color: var(--accent-text);
+		text-decoration: underline;
 	}
 	.pair,
 	.specs {

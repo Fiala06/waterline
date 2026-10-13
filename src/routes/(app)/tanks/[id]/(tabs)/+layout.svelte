@@ -34,7 +34,7 @@
 			<div class="acts">
 				{#if sub === 'equipment'}
 					<a class="btn" href="{base}/wishlist">Wish list</a>
-					{#if h.role === 'owner'}<a class="btn btn-primary" href="{base}/equipment/new">+ Add equipment</a>{/if}
+					{#if h.role === 'owner'}<a class="btn" href="{base}/equipment/scan">Scan barcode</a><a class="btn btn-primary" href="{base}/equipment/new">+ Add equipment</a>{/if}
 				{:else if sub === 'livestock'}
 					<a class="btn" href="{base}/wishlist">Wish list</a>
 					<a class="btn" href="{base}/health">Health</a>

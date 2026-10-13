@@ -15,13 +15,14 @@ export default defineConfig({
 			// (a cross-site POST from mail providers) can be allowed.
 			csrf: { trustedOrigins: ['*'] },
 			// Content Security Policy: scripts only from here (SvelteKit's own inline ones get a
-			// nonce) and Google's tag when GA4 is on; styles may be inline (Svelte sets style
-			// attributes); images from here, previews (blob:) and GA's beacons; nothing framed.
+			// nonce) and Google's tag when GA4 is on, plus WebAssembly from here (the barcode
+			// reader, #147); styles may be inline (Svelte sets style attributes); images from
+			// here, previews (blob:) and GA's beacons; nothing framed.
 			csp: {
 				mode: 'auto',
 				directives: {
 					'default-src': ['self'],
-					'script-src': ['self', 'https://www.googletagmanager.com'],
+					'script-src': ['self', 'wasm-unsafe-eval', 'https://www.googletagmanager.com'],
 					'style-src': ['self', 'unsafe-inline'],
 					'img-src': ['self', 'data:', 'blob:', 'https://*.google-analytics.com', 'https://www.googletagmanager.com'],
 					'connect-src': ['self', 'https://*.google-analytics.com', 'https://*.analytics.google.com', 'https://www.googletagmanager.com'],

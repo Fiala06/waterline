@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Scan a barcode to add equipment.** On a tank's [Equipment](/tanks/current/equipment) tab, Scan barcode points your phone's camera at the barcode on a new filter's, heater's or light's box and looks it up: Add to tank opens the Add equipment form with the brand, model and type filled in, and the barcode stays with the item, so scanning the same box again finds it instead of adding it twice. Without a camera, or on a page without scripts, take a photo of the barcode or type the number under it. The lookup asks Open Products Facts and UPCitemdb from the server, once per barcode; admins can turn it off under [Server settings › Features](/settings/server#barcode-lookup), and scanning still finds what's already added.
+
 ## 1.13.2 · 2026-10-12
 
 - **Your data as tables.** An AI assistant you've connected in [Settings › AI assistant](/settings/assistant) can now read your tanks as ready-made tables: every tank at a glance (last test, days since the last water change, readings out of range, tasks overdue), every reading with its target and status, water changes with their percent and volume, open tasks with how many days until each is due, and spending. They make dashboards and charts easy to build, across all your tanks at once, and the same tables come as CSV from the JSON API for a spreadsheet.

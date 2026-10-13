@@ -15,6 +15,7 @@ import {
   type Schedule,
   type SpecField,
 } from "$lib/equipment";
+import { normalizeBarcode } from "$lib/barcode";
 import { addDays, dateInZone, isDate, isTime, todayInZone } from "$lib/time";
 import { formatNumber } from "$lib/units";
 import { and, eq, isNotNull } from "drizzle-orm";
@@ -112,6 +113,8 @@ export function equipmentFormValues(e: Equipment | null, user: User) {
     type,
     brand: e?.brand ?? "",
     model: e?.model ?? "",
+    // the product barcode it was scanned from (#147), kept with it
+    barcode: e?.barcode ?? "",
     installedAt: e?.installedAt ?? todayInZone(user.timeZone),
     notes: e?.notes ?? "",
     specs,
@@ -204,6 +207,8 @@ function parse(form: FormData, user: User, before: Equipment | null) {
     installedAt,
     notes: optStr(form, "notes"),
     ...(schedule !== undefined ? { schedule } : {}),
+    // a form without the field (an older page, an import) leaves the barcode as it is
+    ...(form.has("barcode") ? { barcode: normalizeBarcode(str(form, "barcode")) } : {}),
   };
   if (!input.brand && !input.model) errors.brand = "Enter a brand or model.";
   const serviceEvery = str(form, "serviceEvery");

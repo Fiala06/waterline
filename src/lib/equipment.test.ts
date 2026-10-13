@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  brandAndModel,
+  guessEquipmentType,
   parseServiceCadence,
   scheduleHours,
   scheduleText,
@@ -126,4 +128,27 @@ describe('a light period the form previews and the server saves (#120)', () => {
 		expect(isCompletePeriod({ on: '8:00', off: '16:00' })).toBe(false);
 		expect(isCompletePeriod({ on: '', off: '16:00' })).toBe(false);
 	});
+});
+
+describe("from a product barcode (#147)", () => {
+  it("guesses the type from the listing's words", () => {
+    expect(guessEquipmentType("Fluval 407 Performance Canister Filter, Aquarium Filter for up to 100 Gallons")).toBe("filter");
+    expect(guessEquipmentType("Pet Supplies > Fish Supplies > Aquarium Heaters Tidewell 200 W")).toBe("heater");
+    expect(guessEquipmentType("Hygger 24W Full Spectrum Aquarium LED Light")).toBe("light");
+    expect(guessEquipmentType("Fluval CO2 Kit with Regulator")).toBe("co2");
+    expect(guessEquipmentType("Sicce Syncra Silent 1.5 Return Pump")).toBe("pump");
+    expect(guessEquipmentType("Tetra Whisper Air Pump for Aquarium Filters")).toBe("filter");
+    expect(guessEquipmentType("Reef Octopus Classic 110 Protein Skimmer with pump")).toBe("skimmer");
+    expect(guessEquipmentType("Seachem Prime 500 mL")).toBe("other");
+  });
+  it("splits a listing's name into brand and model", () => {
+    expect(brandAndModel("Fluval 407 Performance Canister Filter, Aquarium Filter for up to 100 Gallons", "FLUVAL")).toEqual({ brand: "Fluval", model: "407 Performance Canister Filter" });
+    expect(brandAndModel("Tetra Whisper IQ 30 Power Filter - 10 gal", "Tetra")).toEqual({ brand: "Tetra", model: "Whisper IQ 30 Power Filter" });
+    expect(brandAndModel("Eheim Jager 150 W Heater with Thermostat (TruTemp)", null)).toEqual({ brand: "Eheim", model: "Jager 150 W Heater" });
+    expect(brandAndModel("Aquarium heater 200 W", null)).toEqual({ brand: "", model: "Aquarium heater 200 W" });
+    expect(brandAndModel("Canister Filter 407 by Fluval", "Fluval")).toEqual({ brand: "Fluval", model: "Canister Filter 407 by Fluval" });
+    expect(brandAndModel("Fluval", "Fluval")).toEqual({ brand: "Fluval", model: "" });
+    expect(brandAndModel("API Freshwater Master Test Kit", "API")).toEqual({ brand: "API", model: "Freshwater Master Test Kit" });
+    expect(brandAndModel("  Hygger   24W  LED Light | Full spectrum ", "")).toEqual({ brand: "Hygger", model: "24W LED Light" });
+  });
 });

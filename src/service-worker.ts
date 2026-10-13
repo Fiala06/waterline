@@ -16,8 +16,9 @@ const PAGES = `pages-${version}`;
 const MEDIA = 'media-v1';
 // whose pages and photos are kept (#108)
 const OWNER = 'owner-v1';
-// the install screenshots are for the browser's install sheet, not for offline use
-const ASSETS = [...build, ...files.filter((f) => !f.startsWith('/screenshots/'))];
+// the install screenshots are for the browser's install sheet, not for offline use;
+// the barcode reader's WebAssembly (1 MB, #147) is fetched when the scanner page needs it
+const ASSETS = [...build.filter((f) => !f.endsWith('.wasm')), ...files.filter((f) => !f.startsWith('/screenshots/'))];
 
 // Never cache: sign-in, email links, downloads, test hooks.
 const NO_CACHE = [

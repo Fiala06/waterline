@@ -96,6 +96,7 @@
 			{
 				'/(app)/tanks/[id]/(tabs)': 'Notes & routines',
 				'/(app)/tanks/[id]/equipment/new': 'Add equipment',
+				'/(app)/tanks/[id]/equipment/scan': 'Scan a barcode',
 				'/(app)/tanks/[id]/health': 'Log health',
 				'/(app)/tanks/[id]/plants/health': 'Log plant health',
 				'/(app)/tanks/[id]/algae': 'Log algae',

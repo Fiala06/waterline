@@ -104,7 +104,8 @@ task_completions id, task_id, completed_at, event_id?,
 equipment        id, tank_id, type(filter|heater|light|co2|pump|skimmer|other), brand?,
                  model?, specs JSON, schedule? JSON ({periods:[{on,off}], rampMin?}: when it
                  runs; null runs all day; a light's sets the tank's lights times and photoperiod),
-                 installed_at?, last_serviced_at?, notes?, removed_at?, import_id?, created_at
+                 installed_at?, last_serviced_at?, notes?, removed_at?, barcode? (the product
+                 barcode it was scanned from, as a GTIN), import_id?, created_at
 par_readings     id, tank_id, spot, x, y (0–100 across and front to back), value (µmol/m²/s),
                  note?, measured_at, created_at
 livestock        id, tank_id, kind(fish|invert|coral), common_name, scientific_name?,
@@ -180,11 +181,16 @@ server_settings  singleton: email_provider?(mailgun|smtp), mailgun_api_key_enc?,
                  allow_public_pages, public_home_enabled, public_base_url?, ga4_id?,
                  consent_banner, search_console_tag?, scheduled_emails, update_check,
                  log_level(warn|info), log_debug_until?, stock_photos, species_care (care ranges
-                 from FishBase, downloaded by the server into DATA_DIR/species-care.json), vapid_public_key?,
-                 vapid_private_key_enc? (Web Push keys, made on first use)
+                 from FishBase, downloaded by the server into DATA_DIR/species-care.json),
+                 barcode_lookup (what a scanned barcode is, asked by the server of Open Products
+                 Facts and UPCitemdb), vapid_public_key?, vapid_private_key_enc? (Web Push keys,
+                 made on first use)
 stock_photos     name (the scientific name looked up), status(ok|none|failed), file?,
                  width?, height?, author?, license?, license_url?, page_url?, reason?,
                  fetched_at (species photos from Wikimedia Commons, kept in DATA_DIR/stock)
+barcode_lookups  code (the GTIN scanned), status(ok|none|failed), title?, brand?, category?,
+                 source?(Open Products Facts|UPCitemdb), source_url?, reason?, fetched_at (what a
+                 product barcode is, asked once by the server when equipment is scanned, and kept)
 sensor_readings  id, tank_id, parameter_id, value (stored units), at, source (the token's name),
                  token_id? (readings from probes and controllers, apart from tests: one a minute
                  per parameter, kept a year, never an alert by themselves; charts show each span's

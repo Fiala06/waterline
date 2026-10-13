@@ -69,6 +69,7 @@ test('accessibility of representative screens', async ({ page, browser }, info) 
 		['History', '/history?range=all'],
 		['Charts', `/charts?tank=${tankId}`],
 		['Tank settings', `/tanks/${tankId}/settings`],
+		['Scan a barcode', `/tanks/${tankId}/equipment/scan`],
 		['Sharing', `/tanks/${tankId}/sharing`],
 		['Photos', '/photos'],
 		['A photo', photo],

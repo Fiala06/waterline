@@ -402,6 +402,8 @@ export const serverSettings = sqliteTable('server_settings', {
 	stockPhotos: integer('stock_photos', { mode: 'boolean' }).notNull().default(true),
 	// species care ranges from FishBase (#20), downloaded by this server into DATA_DIR, never bundled (CC BY-NC)
 	speciesCare: integer('species_care', { mode: 'boolean' }).notNull().default(true),
+	// what a scanned barcode is (#147), asked by this server of Open Products Facts and UPCitemdb
+	barcodeLookup: integer('barcode_lookup', { mode: 'boolean' }).notNull().default(true),
 	// what the log keeps: errors and warnings, or also what the server did;
 	// everything (debug) only until log_debug_until, while troubleshooting
 	logLevel: text('log_level', { enum: ['warn', 'info'] }).notNull().default('warn'),
@@ -690,10 +692,12 @@ export const equipment = sqliteTable(
 		lastServicedAt: text('last_serviced_at'),
 		notes: text('notes'),
 		removedAt: text('removed_at'),
+		/** the product barcode it was scanned from (#147), as a GTIN: EAN-13 (a UPC-A with a 0 in front), EAN-8 or GTIN-14 */
+		barcode: text('barcode'),
 		importId: text('import_id'),
 		createdAt: createdAt()
 	},
-	(t) => [index('equipment_tank').on(t.tankId)]
+	(t) => [index('equipment_tank').on(t.tankId), index('equipment_barcode').on(t.barcode)]
 );
 
 export const livestock = sqliteTable(
@@ -779,6 +783,29 @@ export const stockPhotos = sqliteTable('stock_photos', {
 	reason: text('reason'),
 	fetchedAt: text('fetched_at').notNull()
 });
+
+/**
+ * What a product barcode is (#147): asked once by this server of the product
+ * databases when a keeper scans it to add equipment, and kept, whatever the
+ * answer, so the same box is never asked about twice.
+ */
+export const barcodeLookups = sqliteTable('barcode_lookups', {
+	/** the GTIN as the scanner page makes it: EAN-13, EAN-8 or GTIN-14 */
+	code: text('code').primaryKey(),
+	status: text('status', { enum: ['ok', 'none', 'failed'] }).notNull(),
+	/** the product's name as listed: "Fluval 407 Performance Canister Filter, Aquarium Filter for up to 100 Gallons" */
+	title: text('title'),
+	brand: text('brand'),
+	/** the listing's category, where there is one: "Pet Supplies > Fish Supplies > Aquarium Filters" */
+	category: text('category'),
+	/** which database answered: "Open Products Facts", "UPCitemdb" */
+	source: text('source'),
+	sourceUrl: text('source_url'),
+	/** why there's nothing: "Not in Open Products Facts or UPCitemdb", "UPCitemdb answered 503" */
+	reason: text('reason'),
+	fetchedAt: text('fetched_at').notNull()
+});
+export type BarcodeLookup = typeof barcodeLookups.$inferSelect;
 
 /** PAR readings (#25) at spots in a reef tank, a simple map of the light over it. */
 export const parReadings = sqliteTable(
