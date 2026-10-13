@@ -25,7 +25,11 @@
 		}
 	}
 	const token = $derived(created?.token ?? '<your token>');
-	const tankId = $derived(created?.tankId || data.tanks[0]?.id || '<tank id>');
+	// the tank the examples carry: one picked here (while the token it was picked beside is
+	// still the one shown), else the token just made's first tank, else the server's choice
+	let picked = $state<{ token: string | null; tankId: string } | null>(null);
+	const tankId = $derived((picked?.token === (created?.id ?? null) ? picked?.tankId : null) || created?.tankId || data.exampleTank || '<tank id>');
+	const tankName = $derived(data.tanks.find((t) => t.id === tankId)?.name ?? null);
 	const curl = $derived(`curl -X POST ${data.apiUrl}/tanks/${tankId}/readings \\
   -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" \\
   -d '{"parameter":"temp","value":25.4,"unit":"°C"}'`);
@@ -165,6 +169,29 @@ sensor:
 		<p class="small">
 			POST JSON to <code class="mono">{data.apiUrl}/tanks/&lt;tank id&gt;/readings</code> with the token as <code class="mono">Authorization: Bearer</code>. One reading, or <code class="mono">{'{"readings": [...]}'}</code> for several. Each has <code class="mono">parameter</code> (temp, ph, nh3, no2, no3, gh, kh, or a parameter's name), <code class="mono">value</code>, and optionally <code class="mono">unit</code> (°F and ppm are converted) and <code class="mono">at</code> (ISO 8601; now when left out). The tank id is in the address of its pages.
 		</p>
+		{#if tankName}
+			<div class="for">
+				<span class="label" id="for-h">Examples for</span>
+				{#if data.tanks.length > 1}
+					<div class="chips" role="group" aria-labelledby="for-h">
+						{#each data.tanks as t (t.id)}
+							<a
+								class="chip"
+								class:selected={t.id === tankId}
+								aria-current={t.id === tankId ? 'true' : undefined}
+								href="?for={t.id}"
+								onclick={(e) => {
+									e.preventDefault();
+									picked = { token: created?.id ?? null, tankId: t.id };
+								}}>{t.name}</a
+							>
+						{/each}
+					</div>
+				{:else}
+					<span class="for-name">{tankName}</span>
+				{/if}
+			</div>
+		{/if}
 		{@render copyField('how-curl', 'curl', curl, true)}
 		<details>
 			<summary>Home Assistant</summary>
@@ -246,6 +273,16 @@ sensor:
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
+	}
+	/* which tank's id the examples carry: a chip per tank, or the one tank's name */
+	.for {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+	.for-name {
+		font-size: 14px;
+		font-weight: 800;
 	}
 	.copy {
 		min-height: 32px;

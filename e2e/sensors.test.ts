@@ -20,6 +20,8 @@ test('sensor readings over the API', async ({ page }, info) => {
 	await expect(page.getByText("Copy it now: it's shown only this once.")).toBeVisible();
 	const token = (await page.locator('#made-token').textContent())!.trim();
 	expect(token).toMatch(/^wls_[\w-]{40,}$/);
+	// the examples carry this token's tank
+	await expect(page.locator('#how-curl')).toContainText(tankId);
 
 	// it may add readings, in °F too, and nothing else
 	const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
@@ -123,4 +125,43 @@ test('a sensor charts without a hand-logged test', async ({ page }, info) => {
 	// samples outside the range are the range's doing, not a missing test
 	await open(page, `/charts?tank=${tankId}&r=2w`);
 	await expect(page.getByText('Fewer than 2 readings in this range')).toBeVisible();
+});
+
+// The examples carry the tank a token writes to, not the first tank in the
+// list, which sent readings to the wrong tank when the token was for another.
+test('the examples are for the tank the token writes to', async ({ page }, info) => {
+	await newKeeperWithTank(page, `example-${info.project.name}`);
+	const first = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, '/tanks/new');
+	await page.getByLabel('Tank name').fill('Shrimp 10');
+	await page.locator('label', { hasText: 'Freshwater' }).click();
+	await page.getByLabel('Volume').fill('10');
+	await page.getByRole('button', { name: 'Create tank' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Tank created');
+	const second = new URL(page.url()).searchParams.get('tank')!;
+
+	// no token yet: the first tank, and a chip per tank to switch
+	await open(page, '/settings/sensors');
+	const how = page.locator('.how');
+	await expect(page.locator('#how-curl')).toContainText(first);
+	await expect(how.getByRole('link', { name: 'Riverbed 40' })).toHaveAttribute('aria-current', 'true');
+
+	// a token for the second tank alone: the examples follow it, now and on a later visit
+	await page.getByLabel('Device').fill('Apex');
+	await page.getByRole('checkbox', { name: 'Riverbed 40' }).uncheck({ force: true });
+	await page.getByRole('checkbox', { name: 'Shrimp 10' }).check({ force: true });
+	await page.getByRole('button', { name: 'Create sensor token' }).click();
+	await expect(page.getByText("Copy it now: it's shown only this once.")).toBeVisible();
+	await expect(page.locator('#how-curl')).toContainText(second);
+	await open(page, '/settings/sensors');
+	await expect(page.locator('#how-curl')).toContainText(second);
+	await expect(page.locator('#how-ha')).toContainText(second);
+	await expect(how.getByRole('link', { name: 'Shrimp 10' })).toHaveAttribute('aria-current', 'true');
+
+	// switching the chip switches every example
+	await how.getByRole('link', { name: 'Riverbed 40' }).click();
+	await expect(page.locator('#how-curl')).toContainText(first);
+	await expect(page.locator('#how-ha')).toContainText(first);
+	await expect(page.locator('#how-esp')).toContainText(first);
+	await expect(page.locator('#how-curl')).not.toContainText(second);
 });

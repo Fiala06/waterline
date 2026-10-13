@@ -16,17 +16,25 @@ export const load: PageServerLoad = ({ locals, url }) => {
 	const user = locals.user!;
 	const tanks = listTanks(user.id, { own: true }).map((t) => ({ id: t.id, name: t.name }));
 	const names = new Map(tanks.map((t) => [t.id, t.name]));
+	// newest first
+	const tokens = listAssistantTokens(user.id, 'sensor').map((t) => ({
+		id: t.id,
+		name: t.name,
+		hint: t.hint,
+		createdAt: t.createdAt,
+		lastUsedAt: t.lastUsedAt,
+		tankIds: t.tankIds.filter((id) => names.has(id)),
+		tankNames: t.tankIds.flatMap((id) => names.get(id) ?? [])
+	}));
+	// the tank the examples carry: the one asked for (?for=), else the newest token's
+	// first tank, else the first tank; the first in the list alone sent readings to the
+	// wrong tank when the token was for another
+	const asked = url.searchParams.get('for');
+	const exampleTank = tanks.find((t) => t.id === asked)?.id ?? tokens.find((t) => t.tankIds.length)?.tankIds[0] ?? tanks[0]?.id ?? null;
 	return {
 		tanks,
-		tokens: listAssistantTokens(user.id, 'sensor').map((t) => ({
-			id: t.id,
-			name: t.name,
-			hint: t.hint,
-			createdAt: t.createdAt,
-			lastUsedAt: t.lastUsedAt,
-			tankIds: t.tankIds.filter((id) => names.has(id)),
-			tankNames: t.tankIds.flatMap((id) => names.get(id) ?? [])
-		})),
+		tokens,
+		exampleTank,
 		// what each tank has heard from its sensors: the latest sample per parameter
 		incoming: tanks.map((t) => {
 			const latest = latestSamples(t.id);

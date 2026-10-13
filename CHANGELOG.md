@@ -11,6 +11,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Examples for the right tank.** On [Settings › Sensors](/settings/sensors), the curl, Home Assistant and ESPHome examples now carry the id of the tank your newest sensor token writes to, instead of the first tank in the list, and a row of tank names above them switches the examples to another tank. Before, copying an example for a token made for a second tank sent its readings to the wrong tank.
 - **Live, or Last.** A sensor's reading on the [dashboard](/), in a tank's parameters and on [Charts](/charts) now reads "● Live" in ink only while the sensor keeps reporting: within half an hour, or three times its usual gap for one that reports more slowly. Once it has gone quiet, the reading turns into a muted "○ Last 74 °F · Yesterday, 3:11 PM", so a probe that has stopped is easy to spot. A sensor's very first reading now shows as a dot on the chart instead of waiting for the second.
 
 ## 1.13.3 · 2026-10-13
