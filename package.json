@@ -23,7 +23,7 @@
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "^4.13.0",
-		"@playwright/test": "^1.63.0",
+		"@playwright/test": "^1.64.0",
 		"@sveltejs/adapter-node": "^5.5.7",
 		"@sveltejs/kit": "^2.63.0",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
@@ -32,11 +32,11 @@
 		"@types/web-push": "^3.6.4",
 		"@types/yazl": "^3.3.1",
 		"drizzle-kit": "^0.31.11",
-		"hyparquet-writer": "^0.16.10",
-		"svelte": "^5.56.1",
+		"hyparquet-writer": "^0.16.11",
+		"svelte": "^5.57.2",
 		"svelte-check": "^4.6.0",
 		"typescript": "^6.0.3",
-		"vite": "^8.3.2",
+		"vite": "^8.3.4",
 		"vitest": "^5.0.3"
 	},
 	"dependencies": {
