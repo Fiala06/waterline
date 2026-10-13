@@ -23,7 +23,7 @@
 		lo: number | null;
 		hi: number | null;
 		/** a sensor's latest reading (#19): "Live 25.4 °C · 2 min ago" */
-		live?: string | null;
+		live?: { text: string; fresh: boolean } | null;
 		/** what to do about it, in a line (#62), with the calculator that does the sums (#90) */
 		next?: Guidance | null;
 	}
@@ -69,7 +69,7 @@
 				<a class="row param" href="/charts?p={c.id}">
 					<span class="text">
 						<span class="title"><span class="name">{c.fullName}</span> <span class="status status-{c.level}">{c.statusText}</span></span>
-						<span class="sub">{c.range ? `Target ${c.range}` : 'No target'}{#if c.live}{' · '}<span class="live">● {c.live}</span>{/if}</span>
+						<span class="sub">{c.range ? `Target ${c.range}` : 'No target'}{#if c.live}{' · '}<span class="live" class:fresh={c.live.fresh}>{c.live.fresh ? '●' : '○'} {c.live.text}</span>{/if}</span>
 					</span>
 					<span class="spark"><Sparkline values={c.spark} level={c.level} lo={c.lo} hi={c.hi} /></span>
 					<span class="val"><span class="v">{c.value}</span>{#if c.unit}<span class="unit">{c.unit}</span>{/if}</span>
@@ -178,6 +178,11 @@
 	.sub {
 		font-size: 13px;
 		color: var(--text-muted);
+	}
+	/* a sensor still reporting reads "● Live" in ink; one gone quiet stays muted, as "○ Last" */
+	.live.fresh {
+		color: var(--text);
+		font-weight: 600;
 	}
 	/* the reading's row and what to do about it share one divider */
 	.item {

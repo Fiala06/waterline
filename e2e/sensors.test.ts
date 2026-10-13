@@ -38,6 +38,7 @@ test('sensor readings over the API', async ({ page }, info) => {
 	await open(page, `/?tank=${tankId}`);
 	await expect(page.getByText(/● Live 77 °F/).first()).toBeVisible();
 	await open(page, `/charts?tank=${tankId}`);
+	await expect(page.locator('.stat.live')).toContainText('● Live');
 	await expect(page.locator('.stat.live')).toContainText('77 °F');
 	await expect(page.locator('.stat.live')).toContainText('ESPHome');
 	await expect(page.locator('.stat').filter({ hasText: 'Latest' })).toContainText('78');
@@ -46,15 +47,21 @@ test('sensor readings over the API', async ({ page }, info) => {
 	await open(page, '/settings/sensors');
 	await expect(page.getByText(/Riverbed 40 · 1 reading/)).toBeVisible();
 
-	// On the public page, the sensor's readings are the thin line under the tests (readings on)
-	const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
-	const more = await page.request.post(`/api/v1/tanks/${tankId}/readings`, { headers, data: { readings: [{ parameter: 'temp', value: 25.4, unit: '°C', at: hoursAgo(3) }, { parameter: 'temp', value: 25.6, unit: '°C', at: hoursAgo(2) }] } });
-	expect(more.status()).toBe(200);
+	// A second hand-logged test, so the chart draws: the sensor's one reading is a dot on it, not yet a line
 	const earlier = new Date(Date.now() - 5 * 86_400_000).toISOString().slice(0, 10);
 	await open(page, `/entries/test/new?tank=${tankId}&date=${earlier}&time=18:00`);
 	await page.getByLabel('Temperature', { exact: true }).fill('77');
 	await page.getByRole('button', { name: 'Save 1 reading' }).click();
 	await expect(page.getByRole('status')).toContainText('✓ Saved 1 reading');
+	await open(page, `/charts?tank=${tankId}`);
+	await expect(page.locator('.chart-card svg rect.sensor-dot')).toHaveCount(1);
+	await expect(page.locator('.chart-card svg polyline.sensor')).toHaveCount(0);
+	await expect(page.locator('.legend')).toContainText('Sensor');
+
+	// On the public page, the sensor's readings are the thin line under the tests (readings on)
+	const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
+	const more = await page.request.post(`/api/v1/tanks/${tankId}/readings`, { headers, data: { readings: [{ parameter: 'temp', value: 25.4, unit: '°C', at: hoursAgo(3) }, { parameter: 'temp', value: 25.6, unit: '°C', at: hoursAgo(2) }] } });
+	expect(more.status()).toBe(200);
 	const slug = `sensor-${info.project.name}-${Date.now().toString(36)}`;
 	await open(page, `/tanks/${tankId}/public`);
 	await page.getByLabel('Share this tank').check({ force: true });
@@ -102,6 +109,8 @@ test('a sensor charts without a hand-logged test', async ({ page }, info) => {
 	await expect(chart.locator('svg polyline.trace')).toHaveAttribute('points', '');
 	await expect(page.locator('.legend')).toContainText('Sensor');
 	await expect(page.locator('.stat.live')).toContainText('Probe');
+	// twenty days of silence: Last, not Live
+	await expect(page.locator('.stat.live')).toContainText('○ Last');
 	await expect(page.locator('.stat').filter({ hasText: 'Latest' })).toHaveCount(0);
 	await expect(page.getByText('Charts appear after your second test.')).toHaveCount(0);
 

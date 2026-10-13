@@ -309,6 +309,9 @@
 			{/if}
 			{#if sensor.length > 1}
 				<polyline class="sensor" points={sensor.map((p) => `${x(p.t)},${y(p.v)}`).join(' ')} fill="none" stroke="var(--neutral-600)" stroke-width="1.25" stroke-linejoin="round"></polyline>
+			{:else if sensor.length === 1}
+				<!-- a sensor's first reading, before there's a line to draw -->
+				<rect class="sensor-dot" x={x(sensor[0].t) - 2.5} y={y(sensor[0].v) - 2.5} width="5" height="5" fill="var(--neutral-600)"></rect>
 			{/if}
 			{#each scales as c, i (c.id)}
 				<polyline class="compare c{i + 1}" points={c.points.map((p) => `${x(p.t).toFixed(1)},${y2(p.v, c.domain).toFixed(1)}`).join(' ')} fill="none" stroke-linejoin="round"></polyline>

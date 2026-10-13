@@ -2,7 +2,7 @@ import { and, count, desc, eq, inArray, lte, sql } from "drizzle-orm";
 import { redirect } from "@sveltejs/kit";
 import { cyclingStage, staleAfter, type CycleTest } from "$lib/status";
 import { lightingText, tankLighting } from "$lib/equipment";
-import { displaySamples, latestSamples, sampleSeries } from "$lib/server/sensors";
+import { displaySamples, isLive, latestSamples, sampleSeries } from "$lib/server/sensors";
 import { fmtValue, paramUnit, statusOf } from "$lib/params";
 import { setFlash } from "$lib/server/flash";
 import {
@@ -336,15 +336,19 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
     },
     params,
     latest: Object.fromEntries(latest),
-    // "Live 25.4 °C · 2 min ago"
+    // "Live 25.4 °C · 3:11 PM" while the sensor keeps reporting; "Last 25.4 °C · Yesterday, 3:11 PM" once it's gone quiet
     live: Object.fromEntries(
       [...live].map(([id, s]) => {
         const p = params.find((x) => x.id === id);
+        if (!p) return [id, null];
+        const fresh = isLive(s.at, s.prevAt);
+        const unit = paramUnit(p, user);
         return [
           id,
-          p
-            ? `Live ${fmtValue(p, s.value, user)}${paramUnit(p, user) ? ` ${paramUnit(p, user)}` : ""} · ${fmtWhen(s.at, tz).replace(/^Today, /, "")}`
-            : "",
+          {
+            fresh,
+            text: `${fresh ? "Live" : "Last"} ${fmtValue(p, s.value, user)}${unit ? ` ${unit}` : ""} · ${fmtWhen(s.at, tz).replace(/^Today, /, "")}`,
+          },
         ];
       }),
     ),

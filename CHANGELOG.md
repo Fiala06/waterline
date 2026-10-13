@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Live, or Last.** A sensor's reading on the [dashboard](/), in a tank's parameters and on [Charts](/charts) now reads "● Live" in ink only while the sensor keeps reporting: within half an hour, or three times its usual gap for one that reports more slowly. Once it has gone quiet, the reading turns into a muted "○ Last 74 °F · Yesterday, 3:11 PM", so a probe that has stopped is easy to spot. A sensor's very first reading now shows as a dot on the chart instead of waiting for the second.
+
 ## 1.13.3 · 2026-10-13
 
 - **Scan a barcode to add equipment.** On a tank's [Equipment](/tanks/current/equipment) tab, Scan barcode points your phone's camera at the barcode on a new filter's, heater's or light's box and looks it up: Add to tank opens the Add equipment form with the brand, model and type filled in, and the barcode stays with the item, so scanning the same box again finds it instead of adding it twice. Without a camera, or on a page without scripts, take a photo of the barcode or type the number under it. The lookup asks Open Products Facts and UPCitemdb from the server, once per barcode; admins can turn it off under [Server settings › Features](/settings/server#barcode-lookup), and scanning still finds what's already added.

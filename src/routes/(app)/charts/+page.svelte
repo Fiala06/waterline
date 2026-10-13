@@ -194,7 +194,7 @@
 							<span><i class="lg-band"></i>Target {c.target}</span>
 							<span><i class="lg-zone"></i>Out of range</span>
 						{/if}
-						{#if c.sensor.length >= 2}
+						{#if c.sensor.length >= 1}
 							<span><i class="lg-sensor"></i>Sensor</span>
 						{/if}
 						{#each c.compare as cp, i (cp.id)}
@@ -237,7 +237,7 @@
 							</div>
 						{/if}
 						{#if c.live}
-							<div class="stat live"><span class="sl">● Live</span><span class="sv num status-{c.live.level}">{c.live.value}{c.unit ? ` ${c.unit}` : ''}</span><span class="st">{c.live.at} · {c.live.source}</span></div>
+							<div class="stat live" class:fresh={c.live.fresh}><span class="sl">{c.live.fresh ? '● Live' : '○ Last'}</span><span class="sv num status-{c.live.level}">{c.live.value}{c.unit ? ` ${c.unit}` : ''}</span><span class="st">{c.live.at} · {c.live.source}</span></div>
 						{/if}
 						{#if c.stats}
 							{@const s = c.stats}
@@ -387,6 +387,11 @@
 	.sl {
 		font-size: 12px;
 		color: var(--text-muted);
+	}
+	/* a sensor still reporting reads "● Live" in ink; one gone quiet stays muted, as "○ Last" */
+	.stat.live.fresh .sl {
+		color: var(--text);
+		font-weight: 600;
 	}
 	.sv {
 		font-size: 18px;

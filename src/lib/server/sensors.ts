@@ -110,9 +110,20 @@ export function recordSamples(tankId: string, samples: SampleIn[], source: strin
 	);
 }
 
-/** The newest sample per parameter of a tank, with when and from what. */
-export function latestSamples(tankId: string): Map<string, { value: number; at: string; source: string }> {
+/** The newest sample per parameter of a tank, with when and from what, and when the one before it came. */
+export function latestSamples(tankId: string): Map<string, { value: number; at: string; source: string; prevAt: string | null }> {
 	return new Map(latestSamplesQuery(tankId).all().map((r) => [r.parameterId, r]));
+}
+
+/** A sensor is live for half an hour after a reading, or three times its own gap between readings when it reports more slowly. */
+export const LIVE_MIN_MS = 30 * 60_000;
+export const LIVE_GAPS = 3;
+
+/** Whether a sensor's latest reading, at `at` with the one before at `prevAt`, still counts as Live; after that it's Last. */
+export function isLive(at: string, prevAt: string | null | undefined, now = Date.now()): boolean {
+	const t = Date.parse(at);
+	const gap = prevAt ? Math.max(0, t - Date.parse(prevAt)) : 0;
+	return now - t <= Math.max(LIVE_MIN_MS, LIVE_GAPS * gap);
 }
 
 /** The query behind latestSamples, apart so a test can read its plan. */
@@ -120,8 +131,10 @@ export function latestSamplesQuery(tankId: string) {
 	// one indexed lookup per parameter (#99): the newest row from the end of
 	// sensor_readings_tank_param_at, however many a year of samples there are
 	const newest = sql`(select r.id from sensor_readings r where r.tank_id = ${tankParameters.tankId} and r.parameter_id = ${tankParameters.id} order by r.at desc limit 1)`;
+	// and when the one before it came: how often the sensor reports, for its Live window
+	const previous = sql<string | null>`(select r.at from sensor_readings r where r.tank_id = ${tankParameters.tankId} and r.parameter_id = ${tankParameters.id} and r.at < ${sensorReadings.at} order by r.at desc limit 1)`;
 	return db
-		.select({ parameterId: sensorReadings.parameterId, value: sensorReadings.value, at: sensorReadings.at, source: sensorReadings.source })
+		.select({ parameterId: sensorReadings.parameterId, value: sensorReadings.value, at: sensorReadings.at, source: sensorReadings.source, prevAt: previous })
 		.from(tankParameters)
 		.innerJoin(sensorReadings, eq(sensorReadings.id, newest))
 		.where(eq(tankParameters.tankId, tankId));

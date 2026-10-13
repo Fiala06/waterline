@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 const dir = mkdtempSync(join(tmpdir(), 'wl-sensors-'));
 vi.mock('$env/dynamic/private', () => ({ env: { DATA_DIR: dir } }));
-const { latestSamples, parseSamples, pruneSamples, recordSamples, sampleSeries, toStoredSample } = await import('./sensors');
+const { isLive, latestSamples, parseSamples, pruneSamples, recordSamples, sampleSeries, toStoredSample } = await import('./sensors');
 const { createTank, listParams } = await import('./tanks');
 const { upsertUser } = await import('./users');
 const { authenticateAssistant, authenticateSensor, createAssistantToken } = await import('./assistant/tokens');
@@ -33,9 +33,25 @@ describe('sensor readings (#19)', () => {
 		const t0 = Date.parse('2026-10-03T10:00:00Z');
 		const r = recordSamples(tank.id, [{ parameter: 'temp', value: 77, unit: '°F', at: '2026-10-03T10:00:00Z' }, { parameter: 'Temperature', value: 25.5, at: '2026-10-03T10:00:30Z' }, { parameter: 'temp', value: 25.6, at: '2026-10-03T10:02:00Z' }, { parameter: 'salinity', value: 1 }], 'ESPHome', null, t0 + 3 * 60_000);
 		expect(r.map((x) => (x.ok ? x.stored : x.error.slice(0, 12)))).toEqual([true, false, true, 'No parameter']);
-		expect(latestSamples(tank.id).get(temp.id)).toMatchObject({ value: 25.6, source: 'ESPHome' });
+		expect(latestSamples(tank.id).get(temp.id)).toMatchObject({ value: 25.6, source: 'ESPHome', at: '2026-10-03T10:02:00.000Z', prevAt: '2026-10-03T10:00:00.000Z' });
 		expect(recordSamples(tank.id, [{ parameter: 'temp', value: 1, at: '2027-01-01T00:00:00Z' }], 'x', null, t0)[0]).toMatchObject({ ok: false });
 	});
+	it('is Live for half an hour after a reading, or three times the sensor\'s own gap, then Last', () => {
+		const at = '2026-10-03T10:00:00Z';
+		const t = Date.parse(at);
+		const min = 60_000;
+		// a first reading, or a quick sensor: the half-hour floor
+		expect(isLive(at, null, t + 29 * min)).toBe(true);
+		expect(isLive(at, null, t + 31 * min)).toBe(false);
+		expect(isLive(at, '2026-10-03T09:59:00Z', t + 29 * min)).toBe(true);
+		expect(isLive(at, '2026-10-03T09:59:00Z', t + 31 * min)).toBe(false);
+		// an hourly one stays Live for three hours
+		expect(isLive(at, '2026-10-03T09:00:00Z', t + 179 * min)).toBe(true);
+		expect(isLive(at, '2026-10-03T09:00:00Z', t + 181 * min)).toBe(false);
+		// a reading that's somehow before the previous one gets the floor, not a negative window
+		expect(isLive(at, '2026-10-03T11:00:00Z', t + 29 * min)).toBe(true);
+	});
+
 	it('averages a dense series into buckets', () => {
 		const t0 = Date.parse('2026-10-04T00:00:00Z');
 		recordSamples(tank.id, Array.from({ length: 600 }, (_, i) => ({ parameter: 'temp', value: 20 + (i % 10), at: new Date(t0 + i * 60_000).toISOString() })), 'probe', null, t0 + 700 * 60_000);

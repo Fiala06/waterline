@@ -15,7 +15,7 @@
 		/** days since the reading, when it's older than its Test every cadence */
 		due?: number | null;
 		/** a sensor's latest reading (#19) */
-		live?: string | null;
+		live?: { text: string; fresh: boolean } | null;
 		level: StatusLevel;
 		/** "✓ OK", "▲ Near low", "✕ High", "▲ Cycling" */
 		statusText: string;
@@ -63,7 +63,7 @@
 						>
 						<span class="v" class:off={c.level === 'bad'}>{c.value}{#if c.unit}<span class="u">{c.unit}</span>{/if}</span>
 						{#if c.due != null}<span class="due"><span class="status-warn" aria-hidden="true">▲</span> – {c.due} days ago · due</span>{/if}
-						{#if c.live}<span class="due live">● {c.live}</span>{/if}
+						{#if c.live}<span class="due live" class:fresh={c.live.fresh}>{c.live.fresh ? '●' : '○'} {c.live.text}</span>{/if}
 					</a>
 				</li>
 			{/each}
@@ -175,6 +175,11 @@
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
+	}
+	/* a sensor still reporting reads "● Live" in ink; one gone quiet stays muted, as "○ Last" */
+	.live.fresh {
+		color: var(--text);
+		font-weight: 600;
 	}
 	.due-line {
 		margin: 12px 0 0;

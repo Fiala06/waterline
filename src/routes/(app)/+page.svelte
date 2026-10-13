@@ -364,7 +364,7 @@
 							<span><i class="lg-band"></i>Target {fmtRange(chosen, prefs)}</span>
 							<span><i class="lg-zone"></i>Out of range</span>
 						{/if}
-						{#if chosenSensor.length >= 2}<span><i class="lg-sensor"></i>Sensor</span>{/if}
+						{#if chosenSensor.length >= 1}<span><i class="lg-sensor"></i>Sensor</span>{/if}
 						{#if data.markers.length}<span><i class="lg-marker"></i>Water change</span>{/if}
 					</div>
 				{:else}

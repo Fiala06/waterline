@@ -159,11 +159,11 @@
 								</TrendChart>
 							</div>
 						</div>
-						{#if chart.target || chart.markers.length || chart.sensor.length > 1}
+						{#if chart.target || chart.markers.length || chart.sensor.length > 0}
 							<p class="legend">
 								{#if chart.target}<span><i class="swatch" aria-hidden="true"></i>Target band {chart.target}</span><span><i class="swatch zone" aria-hidden="true"></i>Out of range</span>{/if}
 								{#if chart.markers.length}<span><i class="swatch marker" aria-hidden="true"></i>Water change</span>{/if}
-								{#if chart.sensor.length > 1}<span><i class="swatch sensor" aria-hidden="true"></i>Sensor</span>{/if}
+								{#if chart.sensor.length > 0}<span><i class="swatch sensor" aria-hidden="true"></i>Sensor</span>{/if}
 							</p>
 						{/if}
 					</div>

@@ -9,7 +9,7 @@ import { tests } from '$lib/server/db/schema';
 import { eventsSince, latestReadings, series } from '$lib/server/logs';
 import { getTank, listParams } from '$lib/server/tanks';
 import { tankNotes } from '$lib/server/trends';
-import { displaySamples, latestSamples, sampleCount, sampleSeries } from '$lib/server/sensors';
+import { displaySamples, isLive, latestSamples, sampleCount, sampleSeries } from '$lib/server/sensors';
 import { fmtWhen } from '$lib/time';
 import { CHART_RANGES, equipmentTypeLookup, overlayKind, parseCompare } from '$lib/charts';
 import { equipmentName } from '$lib/equipment';
@@ -60,7 +60,15 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 	const sensor = displaySamples(sampleSeries(tank.id, param.id, since), param, user);
 	const liveSample = live.get(param.id);
 	const liveStat = liveSample
-		? { value: fmtValue(param, liveSample.value, user), level: statusOf(param, liveSample.value).level, status: statusShort(statusOf(param, liveSample.value)), at: fmtWhen(liveSample.at, user.timeZone), source: liveSample.source }
+		? {
+				value: fmtValue(param, liveSample.value, user),
+				level: statusOf(param, liveSample.value).level,
+				status: statusShort(statusOf(param, liveSample.value)),
+				at: fmtWhen(liveSample.at, user.timeZone),
+				source: liveSample.source,
+				// Live while the sensor keeps reporting, Last once it's gone quiet
+				fresh: isLive(liveSample.at, liveSample.prevAt)
+			}
 		: null;
 	// a click on a reading opens its test in History: the test taken at that instant
 	const testAt = new Map(
