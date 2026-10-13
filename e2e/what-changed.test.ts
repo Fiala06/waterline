@@ -8,6 +8,9 @@ test('Charts lists what was logged while a reading moved', async ({ page }, info
 	await newKeeperWithTank(page, `what-changed-${info.project.name}`);
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
 	const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
+	// the earlier readings at this time of day, so each gap is a whole number of days whatever the hour
+	// the test runs: "over 12 days" is rounded from the hours between the readings
+	const timeNow = new Date().toISOString().slice(11, 16);
 
 	// nitrate up, then down over 12 days; a dose before the fall, a water change and a trim during it
 	for (const [n, v] of [
@@ -16,8 +19,8 @@ test('Charts lists what was logged while a reading moved', async ({ page }, info
 		[6, '10'],
 		[0, '7']
 	] as const) {
-		// today's is logged now: 09:00 today is still to come early in the day
-		await open(page, `/entries/test/new?tank=${tankId}${n ? `&date=${daysAgo(n)}&time=09:00` : ''}`);
+		// today's is logged now
+		await open(page, `/entries/test/new?tank=${tankId}${n ? `&date=${daysAgo(n)}&time=${timeNow}` : ''}`);
 		await page.getByLabel('Nitrate', { exact: true }).fill(v);
 		await page.getByRole('button', { name: 'Save 1 reading' }).click();
 		await expect(page.getByRole('status')).toContainText('✓ Saved 1 reading');
