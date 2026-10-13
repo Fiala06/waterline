@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.13.4 · 2026-10-13
+
 - **What a piece of equipment cost.** An expense on [Spending](/tanks/current/spending) can now say which item it was for, and the item's page under [Equipment](/tanks/current/equipment) lists those expenses with their total, each opening the expense and its receipt, with Add expense right there to log the purchase with the item filled in. The Item line of an equipment entry in [History](/history) opens the item too.
 
 ## 1.13.3 · 2026-10-13
