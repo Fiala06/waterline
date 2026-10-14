@@ -72,7 +72,7 @@ test('pets: naming one of a group gives it its own entry, page and history', asy
 	const visitor = await browser.newContext();
 	const v = await visitor.newPage();
 	await v.goto(`/t/${slug}`);
-	await expect(v.getByText('Corydoras').first()).toBeVisible();
+	await expect(v.locator('section#life')).toContainText('Corydoras');
 	await expect(v.locator('body')).not.toContainText('Salt');
 	await expect(v.locator('body')).not.toContainText('Pepper');
 	await visitor.close();
@@ -146,7 +146,7 @@ test('pet photos: tag one from the viewer, its gallery, and the public page swit
 	const visitor = await browser.newContext();
 	const v = await visitor.newPage();
 	await v.goto(`/t/${slug}`);
-	await expect(v.getByText('Betta').first()).toBeVisible();
+	await expect(v.locator('section#life')).toContainText('Betta');
 	await expect(v.locator('body')).not.toContainText('Captain');
 	await expect(v.locator(`img[src*="${photoId}"]`)).toHaveCount(0);
 	expect((await v.request.get(`/p/${slug}/${photoId}?size=thumb`)).status()).toBe(404);
@@ -156,7 +156,7 @@ test('pet photos: tag one from the viewer, its gallery, and the public page swit
 	await page.getByRole('button', { name: 'Save' }).first().click();
 	await expect(page.getByText('✓ Public page saved')).toBeVisible();
 	await v.goto(`/t/${slug}`);
-	await expect(v.getByText('Captain · Betta', { exact: true })).toBeVisible();
+	await expect(v.locator('section#life th', { hasText: 'Captain · Betta' })).toBeVisible();
 	await expect(v.locator(`img[src*="${photoId}"]`).first()).toBeAttached();
 	expect((await v.request.get(`/p/${slug}/${photoId}?size=thumb`)).status()).toBe(200);
 	await visitor.close();

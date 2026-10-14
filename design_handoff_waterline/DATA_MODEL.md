@@ -145,7 +145,9 @@ public_pages     tank_id, enabled, slug, show_readings, show_charts, show_photos
                  show_activity, show_livestock, show_equipment, show_description,
                  show_timeline (photos in date order with the day, readings and changes between,
                  following the readings, pet names, livestock and activity switches),
-                 show_pet_names, description?, display_name, indexable, seo_title?,
+                 show_pet_names, show_details (times, notes on entries, observations and the
+                 schedule, for people helping diagnose), description?, question? (the keeper's
+                 question to helpers), display_name, indexable, seo_title?,
                  seo_description?, og_photo_id?, og_plain, view_count
 public_page_views tank_id, day, views
 tank_members     id, tank_id, email, user_id? (once accepted), role(log|view), token_hash,

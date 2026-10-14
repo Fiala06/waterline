@@ -1,8 +1,10 @@
 import { coverPosition } from '$lib/media';
 // Public, read-only tank pages (/t/<slug>) and photo share links (/s/<id>).
-// Only what the owner switched on is included. Never public: tasks, notes on
-// entries, email addresses, livestock sources, equipment notes. The log and the
-// timeline say the day, never the time; only the latest readings say theirs.
+// Only what the owner switched on is included. Never public: email addresses,
+// livestock sources, equipment notes, prices. Tasks, notes on entries and the
+// times of tests and care only with "Detail for people helping me" on
+// (public-detail.ts); otherwise the log and the timeline say the day, never the
+// time, and only the latest readings say theirs.
 import { error } from '@sveltejs/kit';
 import { and, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
 import { createHash, randomBytes } from 'node:crypto';
@@ -175,7 +177,7 @@ export function publicRanges(url: URL): PublicRanges {
 	const c = url.searchParams.get('chart');
 	const l = url.searchParams.get('log');
 	return {
-		chart: CHART_RANGES.some((r) => r.key === c) ? (c as PublicRanges['chart']) : '90d',
+		chart: CHART_RANGES.some((r) => r.key === c) ? (c as PublicRanges['chart']) : '30d',
 		log: LOG_RANGES.some((r) => r.key === l) ? (l as PublicRanges['log']) : 'month'
 	};
 }
@@ -183,7 +185,7 @@ export function publicRanges(url: URL): PublicRanges {
 const LOG_MAX = 200;
 
 /** Everything the public page may show, already filtered by the owner's switches. */
-export function publicView(page: PublicPage, tank: Tank, owner: User, ranges: PublicRanges = { chart: '90d', log: 'month' }) {
+export function publicView(page: PublicPage, tank: Tank, owner: User, ranges: PublicRanges = { chart: '30d', log: 'month' }) {
 	const tz = owner.timeZone;
 	const prefs = owner;
 	const today = todayInZone(tz);

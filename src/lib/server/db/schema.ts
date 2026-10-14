@@ -895,7 +895,11 @@ export const publicPages = sqliteTable(
 		showTimeline: integer('show_timeline', { mode: 'boolean' }).notNull().default(false),
 		// pets' names, and photos tagged with a pet; off: species only, tagged photos hidden
 		showPetNames: integer('show_pet_names', { mode: 'boolean' }).notNull().default(false),
+		// detail for people helping diagnose a problem: times, notes on entries, observations and the schedule
+		showDetails: integer('show_details', { mode: 'boolean' }).notNull().default(false),
 		description: text('description'),
+		// "What I'm asking about": the keeper's question to people helping, at the top of the page
+		question: text('question'),
 		displayName: text('display_name', { enum: ['full', 'short', 'none'] }).notNull().default('short'),
 		indexable: integer('indexable', { mode: 'boolean' }).notNull().default(false),
 		seoTitle: text('seo_title'),

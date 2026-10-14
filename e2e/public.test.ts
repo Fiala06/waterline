@@ -34,6 +34,7 @@ test('public tank page and photo share link', async ({ page, browser }, info) =>
 	await page.getByLabel('URL').fill(slug);
 	await page.getByLabel('Allow search engines').check({ force: true });
 	await page.getByLabel(/Page title/).fill('Riverbed 40: planted tank log');
+	await page.getByLabel("What I'm asking about").fill('Nitrate keeps climbing between water changes. What am I missing?');
 	await page.getByRole('button', { name: 'Save' }).first().click();
 	await expect(page.getByText('✓ Public page saved')).toBeVisible();
 
@@ -42,20 +43,30 @@ test('public tank page and photo share link', async ({ page, browser }, info) =>
 	const v = await visitor.newPage();
 	await v.goto(`/t/${slug}`);
 	await expect(v.getByRole('heading', { name: 'Riverbed 40', level: 1 })).toBeVisible();
-	await expect(v.getByText('✕ Nitrate high')).toBeVisible();
-	await expect(v.getByText('Latest readings')).toBeVisible();
+	// the keeper's question leads the page
+	await expect(v.locator('blockquote.question')).toHaveText('Nitrate keeps climbing between water changes. What am I missing?');
+	// what's out of range, with its target and what it was before
+	const nitrate = v.locator('.arow', { hasText: 'Nitrate' });
+	await expect(v.getByRole('heading', { name: 'Needs attention' })).toBeVisible();
+	await expect(nitrate).toContainText('✕ High');
+	await expect(nitrate).toContainText('was 40 on');
+	await expect(nitrate.locator('.aval')).toContainText('35');
 	// the latest test's time shows with its day
-	await expect(v.locator('section.readings .sh .muted')).toHaveText(/^Today, \d{1,2}:\d{2} [AP]M$/);
-	// a reading's tile opens its chart; its link reloads the page with that chart when scripts are off
-	const chart = v.locator('section.chart');
-	await expect(chart.locator('h2')).toContainText('Nitrate · last 90 days');
-	const ph = v.locator('section.readings a.rd', { hasText: 'pH' });
-	await expect(ph).toHaveAttribute('href', /\?p=[\w-]+#chart$/);
-	await ph.click();
-	await expect(chart.locator('h2')).toContainText('pH · last 90 days');
-	await expect(v).toHaveURL(new RegExp(`/t/${slug}$`));
-	await v.goto((await ph.getAttribute('href'))!);
-	await expect(chart.locator('h2')).toContainText('pH · last 90 days');
+	await expect(v.locator('.by')).toContainText(/Last water test today, \d{1,2}:\d{2} [AP]M/);
+	// every tested parameter has a lane on the shared timeline; the range is a link
+	const trends = v.locator('section#trends');
+	await expect(trends.locator('.lane .ln', { hasText: 'Nitrate' })).toBeVisible();
+	await expect(trends.locator('.lane .ln', { hasText: 'pH' })).toBeVisible();
+	await expect(trends.locator('svg circle.pt.bad')).toHaveCount(2);
+	await trends.getByRole('link', { name: '90 days' }).click();
+	await expect(v).toHaveURL(new RegExp(`/t/${slug}\\?chart=90d#trends$`));
+	await expect(trends.getByRole('link', { name: '90 days' })).toHaveAttribute('aria-current', 'true');
+	await v.goto(`/t/${slug}`);
+	// the test log: one row per test, out-of-range shaded; days only while detail is off
+	const log = v.locator('section#tests table');
+	await expect(log.locator('tbody tr')).toHaveCount(2);
+	await expect(log.locator('td.bad').first()).toHaveText(/^35/);
+	await expect(log.locator('tbody th').first()).toHaveText(/^\w{3} \d{1,2}$/);
 	// the cover opens full size in the lightbox
 	await v.locator('a.hero').click();
 	const box = v.getByRole('dialog', { name: 'Photo' });
@@ -65,12 +76,18 @@ test('public tank page and photo share link', async ({ page, browser }, info) =>
 	await expect(box).toBeHidden();
 	await expect(v.locator('body')).not.toContainText('SECRET');
 	await expect(v.locator('body')).not.toContainText('Water change 25%'); // tasks are never public
-	// a water test in the log opens to its readings (never its note)
-	const testRow = v.locator('li.test', { hasText: 'Water test · 2 readings' }).first();
-	await testRow.locator('summary').click();
-	await expect(testRow.getByText('35 ppm')).toBeVisible();
-	await expect(testRow.getByText('✕ High')).toBeVisible();
-	await expect(testRow).not.toContainText('SECRET');
+	// the care log names the out-of-range reading (never the test's note)
+	await expect(v.locator('section#care')).toContainText('Nitrate 35 high');
+	// the data as CSV, and the page as text for a forum post: nothing private in either
+	const csv = await (await visitor.request.get(`/t/${slug}/data.csv`)).text();
+	expect(csv.split('\r\n')[0]).toContain('Nitrate (ppm)');
+	expect(csv).toContain(',35,');
+	expect(csv).not.toContain('SECRET');
+	const summary = await (await visitor.request.get(`/t/${slug}/summary.txt`)).text();
+	expect(summary).toContain('Nitrate keeps climbing');
+	expect(summary).toContain('Nitrate 35 ppm (✕ High');
+	expect(summary).toContain(`/t/${slug}`);
+	expect(summary).not.toContain('SECRET');
 	await expect(v).toHaveTitle('Riverbed 40: planted tank log');
 	await expect(v.locator('meta[name="robots"]')).toHaveAttribute('content', 'index, follow');
 	await expect(v.locator('meta[property="og:image"]')).toHaveAttribute('content', new RegExp(`/t/${slug}/og\\.png\\?v=`));
@@ -84,6 +101,17 @@ test('public tank page and photo share link', async ({ page, browser }, info) =>
 	const robots = await (await visitor.request.get('/robots.txt')).text();
 	expect(robots).toContain('Allow: /t/');
 	expect(robots).toContain('Disallow: /');
+
+	// Detail for people helping: the times of tests and the notes on them (and the schedule) go public
+	await open(page, `/tanks/${tankId}/public`);
+	await page.getByLabel(/Detail for people helping me/).check({ force: true });
+	await page.getByRole('button', { name: 'Save' }).first().click();
+	await expect(page.getByText('✓ Public page saved')).toBeVisible();
+	await v.goto(`/t/${slug}`);
+	await expect(log.locator('tbody th').first()).toHaveText(/^\w{3} \d{1,2} · \d{1,2}:\d{2} [AP]M$/);
+	await expect(log.locator('td.note').first()).toHaveText('SECRET private note');
+	await expect(v.locator('.units')).toContainText('All times');
+	expect(await (await visitor.request.get(`/t/${slug}/data.csv`)).text()).toContain('SECRET private note');
 
 	// The app itself stays private
 	await v.goto('/history');

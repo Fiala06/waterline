@@ -386,6 +386,13 @@
       "when": 1792000965385,
       "tag": "0054_cycling_ask_dismissed",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "6",
+      "when": 1792003205659,
+      "tag": "0055_public_details",
+      "breakpoints": true
     }
   ]
 }

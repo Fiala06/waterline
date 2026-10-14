@@ -88,7 +88,7 @@ test('tank timeline: moments, what changed, compare, public', async ({ page, bro
 	const visitor = await browser.newContext();
 	const v = await visitor.newPage();
 	await v.goto(`/t/${slug}`);
-	const tl = v.locator('section.timeline');
+	const tl = v.locator('section#photos');
 	await expect(tl.getByRole('heading', { name: 'Timeline' })).toBeVisible();
 	// newest first, with what happened between the two under the newer one
 	await expect(tl.locator('li.tl-entry')).toHaveCount(2);
@@ -97,7 +97,7 @@ test('tank timeline: moments, what changed, compare, public', async ({ page, bro
 	await expect(tl.locator('li.tl-entry').last()).toContainText('✕ High');
 	await expect(tl.locator('li.tl-gap')).toContainText('12 days · +6 Ember tetra · nitrate 40 → 10 ppm');
 	// both photos are in the timeline, so the Photos grid has nothing left to show
-	await expect(v.locator('section.photos')).toHaveCount(0);
+	await expect(v.locator('section#photos .grid')).toHaveCount(0);
 	// readings off: the dates stay, the values go
 	await open(page, `/tanks/${tankId}/public`);
 	await page.getByLabel('Latest readings').uncheck({ force: true });
@@ -126,10 +126,11 @@ test('tank timeline: moments, what changed, compare, public', async ({ page, bro
 	await box.locator('.lb-stage').click({ position: { x: 4, y: 4 } });
 	await expect(box).toBeHidden();
 
-	// the chart is the full one, as on Charts: points, limit labels and the Date axis
+	// all time: the readings and the changes between them on one timeline, back to March 2025
 	await v.goto(`/t/${slug}?chart=all`);
-	const chart = v.locator('section.chart');
-	await expect(chart.locator('svg text', { hasText: 'Date' })).toBeVisible();
-	await expect(chart.locator('svg .last-dot')).toBeVisible();
+	const trends = v.locator('section#trends');
+	await expect(trends.locator('.lane .ln', { hasText: 'Nitrate' })).toBeVisible();
+	await expect(trends.locator('svg circle.pt')).not.toHaveCount(0);
+	await expect(trends.locator('.keylist')).toContainText('+6 Ember tetra');
 	await visitor.close();
 });
