@@ -49,7 +49,9 @@ tanks            id, user_id, name, type(freshwater|planted|brackish|reef),
                  targets, livestock}), archived_at?, created_at
 tank_parameters  id, tank_id, key (ph|nh3|no2|no3|gh|kh|temp|… or custom), name, unit,
                  decimals, min?, max?, test_every_days? (Test every: a reading older than this
-                 is due on the dashboard), tracked, sort, is_custom
+                 is due on the dashboard), tracked, sort, is_custom, sensor_record (the sensor's
+                 reading is this parameter's reading: the newest of its latest sample and its
+                 latest test, graded and alerted on like a test)
 
 tests            id, tank_id, taken_at, note?, edited_at?, client_id? (offline dedupe),
                  import_id?, logged_by? (who logged it on a shared tank)

@@ -45,6 +45,21 @@ test('sensor readings over the API', async ({ page }, info) => {
 	await expect(page.locator('.stat.live')).toContainText('ESPHome');
 	await expect(page.locator('.stat').filter({ hasText: 'Latest' })).toContainText('78');
 
+	// the sensor as the reading of record (Parameters & targets): its 77 is the reading now, not the test's 78
+	await open(page, `/tanks/${tankId}/targets`);
+	const record = page.getByRole('checkbox', { name: /The sensor's reading is the reading/ });
+	await expect(record).not.toBeChecked();
+	await record.check();
+	await page.getByRole('button', { name: 'Save targets' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Targets saved');
+	await open(page, `/?tank=${tankId}`);
+	await expect(page.getByRole('link', { name: /^Temp 77 ?°F ● Live · / })).toBeVisible();
+	await expect(page.getByText(/● Live 77 °F/)).toHaveCount(0);
+	// Charts keeps the tests' own Latest beside Live
+	await open(page, `/charts?tank=${tankId}`);
+	await expect(page.locator('.stat').filter({ hasText: 'Latest' })).toContainText('78');
+	await expect(page.locator('.stat.live')).toContainText('77 °F');
+
 	// Settings shows what came in; Revoke cuts it off
 	await open(page, '/settings/sensors');
 	await expect(page.getByText(/Riverbed 40 · 1 reading/)).toBeVisible();

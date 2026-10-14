@@ -3,6 +3,7 @@ import { error } from '@sveltejs/kit';
 import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 import { additivesOf } from '$lib/events';
 import { statusOf } from '$lib/params';
+import { paramStatus } from '$lib/status';
 import { db } from './db';
 import { requireRoleOn, visibleTo } from './members';
 import {
@@ -16,6 +17,7 @@ import {
 	type TankParameter,
 	type Test
 } from './db/schema';
+import { latestSamplesFor, outOfRangeSince } from './sensors';
 import { getTank } from './tanks';
 import { completeTask } from './tasks';
 import { followEntryDate, removeEntryPhotoFiles } from './photos';
@@ -151,11 +153,38 @@ export function latestReadings(tankId: string) {
 	return latestReadingsFor([tankId]).get(tankId)!;
 }
 
+/**
+ * A parameter's latest reading: its newest test's, or, where the sensor is the
+ * reading of record (Parameters & targets), its newest sample when that's newer.
+ * `sensor` names the source then, and `since` says when its run of out-of-range
+ * readings began, so an alert for it keeps one key while the stretch lasts.
+ */
+export type LatestReading = { value: number; takenAt: string; sensor?: string; since?: string };
+
 /** The same for several tanks in one query (#105): tank id → parameter id → reading. */
 export function latestReadingsFor(tankIds: string[]) {
-	const out = new Map<string, Map<string, { value: number; takenAt: string }>>(tankIds.map((id) => [id, new Map()]));
+	const out = new Map<string, Map<string, LatestReading>>(tankIds.map((id) => [id, new Map()]));
 	if (!tankIds.length) return out;
 	for (const r of latestReadingsQuery(tankIds).all()) out.get(r.tankId)?.set(r.parameterId, { value: r.value, takenAt: r.takenAt });
+	// a sensor that is the reading of record: its latest sample, when newer than the latest test
+	const record = db
+		.select({ tankId: tankParameters.tankId, id: tankParameters.id, min: tankParameters.min, max: tankParameters.max })
+		.from(tankParameters)
+		.where(and(inArray(tankParameters.tankId, tankIds), eq(tankParameters.sensorRecord, true)))
+		.all();
+	if (record.length) {
+		const samples = latestSamplesFor([...new Set(record.map((p) => p.tankId))]);
+		for (const p of record) {
+			const s = samples.get(p.tankId)?.get(p.id);
+			if (!s) continue;
+			const tank = out.get(p.tankId)!;
+			const cur = tank.get(p.id);
+			if (cur && Date.parse(cur.takenAt) >= Date.parse(s.at)) continue;
+			const reading: LatestReading = { value: s.value, takenAt: s.at, sensor: s.source };
+			if (paramStatus(s.value, p).level === 'bad') reading.since = outOfRangeSince(p.tankId, p.id, p)?.since ?? s.at;
+			tank.set(p.id, reading);
+		}
+	}
 	return out;
 }
 

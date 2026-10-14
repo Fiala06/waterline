@@ -241,6 +241,8 @@ export function updateParams(
     max: number | null;
     tracked: boolean;
     testEveryDays?: number | null;
+    /** the sensor's reading is this parameter's reading; left as it is when undefined */
+    sensorRecord?: boolean;
   }[],
 ) {
   getTank(userId, tankId, "owner");
@@ -253,6 +255,9 @@ export function updateParams(
           tracked: r.tracked,
           ...(r.testEveryDays !== undefined
             ? { testEveryDays: r.testEveryDays }
+            : {}),
+          ...(r.sensorRecord !== undefined
+            ? { sensorRecord: r.sensorRecord }
             : {}),
         })
         .where(

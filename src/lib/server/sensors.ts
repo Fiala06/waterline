@@ -1,7 +1,7 @@
 // Readings from sensors and controllers (#19): POST /api/v1/tanks/<id>/readings
 // with a sensor token. Samples are stored metric in their own table, at most
 // one a minute per parameter, and never raise an out-of-range alert on their own.
-import { and, eq, gte, lt, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, gte, inArray, lt, lte, or, sql } from 'drizzle-orm';
 import { displayValue, type ParamLike } from '$lib/params';
 import { fToC, ppmToDgh, type UnitPrefs } from '$lib/units';
 import { db } from './db';
@@ -110,9 +110,40 @@ export function recordSamples(tankId: string, samples: SampleIn[], source: strin
 	);
 }
 
+export type LatestSample = { value: number; at: string; source: string; prevAt: string | null };
+
 /** The newest sample per parameter of a tank, with when and from what, and when the one before it came. */
-export function latestSamples(tankId: string): Map<string, { value: number; at: string; source: string; prevAt: string | null }> {
-	return new Map(latestSamplesQuery(tankId).all().map((r) => [r.parameterId, r]));
+export function latestSamples(tankId: string): Map<string, LatestSample> {
+	return latestSamplesFor([tankId]).get(tankId)!;
+}
+
+/** The same for several tanks in one query: tank id → parameter id → sample. */
+export function latestSamplesFor(tankIds: string[]): Map<string, Map<string, LatestSample>> {
+	const out = new Map<string, Map<string, LatestSample>>(tankIds.map((id) => [id, new Map()]));
+	if (!tankIds.length) return out;
+	for (const r of latestSamplesQuery(tankIds).all()) out.get(r.tankId)?.set(r.parameterId, { value: r.value, at: r.at, source: r.source, prevAt: r.prevAt });
+	return out;
+}
+
+/**
+ * When a sensor's current run of out-of-range readings began, and how many
+ * readings it has: the first reading after the newest one inside the target;
+ * null while the latest reading is in range, or the parameter has no target.
+ */
+export function outOfRangeSince(tankId: string, parameterId: string, range: { min: number | null; max: number | null }): { since: string; count: number } | null {
+	const bad = or(range.min != null ? lt(sensorReadings.value, range.min) : undefined, range.max != null ? gt(sensorReadings.value, range.max) : undefined);
+	if (range.min == null && range.max == null) return null;
+	const mine = and(eq(sensorReadings.tankId, tankId), eq(sensorReadings.parameterId, parameterId));
+	const newest = db.select({ value: sensorReadings.value }).from(sensorReadings).where(mine).orderBy(desc(sensorReadings.at)).limit(1).get();
+	if (!newest || !((range.min != null && newest.value < range.min) || (range.max != null && newest.value > range.max))) return null;
+	const inRange = and(range.min != null ? gte(sensorReadings.value, range.min) : undefined, range.max != null ? lte(sensorReadings.value, range.max) : undefined);
+	const lastGood = db.select({ at: sensorReadings.at }).from(sensorReadings).where(and(mine, inRange)).orderBy(desc(sensorReadings.at)).limit(1).get();
+	const run = db
+		.select({ since: sql<string>`min(${sensorReadings.at})`, count: sql<number>`count(*)` })
+		.from(sensorReadings)
+		.where(and(mine, bad, lastGood ? gt(sensorReadings.at, lastGood.at) : undefined))
+		.get();
+	return run?.since ? { since: run.since, count: Number(run.count) } : null;
 }
 
 /** A sensor is live for half an hour after a reading, or three times its own gap between readings when it reports more slowly. */
@@ -127,17 +158,18 @@ export function isLive(at: string, prevAt: string | null | undefined, now = Date
 }
 
 /** The query behind latestSamples, apart so a test can read its plan. */
-export function latestSamplesQuery(tankId: string) {
+export function latestSamplesQuery(tankIds: string | string[]) {
+	const ids = typeof tankIds === 'string' ? [tankIds] : tankIds;
 	// one indexed lookup per parameter (#99): the newest row from the end of
 	// sensor_readings_tank_param_at, however many a year of samples there are
 	const newest = sql`(select r.id from sensor_readings r where r.tank_id = ${tankParameters.tankId} and r.parameter_id = ${tankParameters.id} order by r.at desc limit 1)`;
 	// and when the one before it came: how often the sensor reports, for its Live window
 	const previous = sql<string | null>`(select r.at from sensor_readings r where r.tank_id = ${tankParameters.tankId} and r.parameter_id = ${tankParameters.id} and r.at < ${sensorReadings.at} order by r.at desc limit 1)`;
 	return db
-		.select({ parameterId: sensorReadings.parameterId, value: sensorReadings.value, at: sensorReadings.at, source: sensorReadings.source, prevAt: previous })
+		.select({ tankId: sensorReadings.tankId, parameterId: sensorReadings.parameterId, value: sensorReadings.value, at: sensorReadings.at, source: sensorReadings.source, prevAt: previous })
 		.from(tankParameters)
 		.innerJoin(sensorReadings, eq(sensorReadings.id, newest))
-		.where(eq(tankParameters.tankId, tankId));
+		.where(inArray(tankParameters.tankId, ids));
 }
 
 /** A point on a sensor chart: the average of its span, and the span's lowest and highest (#103). */

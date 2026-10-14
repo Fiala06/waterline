@@ -1,0 +1,1 @@
+ALTER TABLE `tank_parameters` ADD `sensor_record` integer DEFAULT false NOT NULL;

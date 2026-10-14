@@ -218,7 +218,10 @@ export const tankParameters = sqliteTable(
 		testEveryDays: integer('test_every_days'),
 		tracked: integer('tracked', { mode: 'boolean' }).notNull().default(true),
 		sort: integer('sort').notNull().default(0),
-		isCustom: integer('is_custom', { mode: 'boolean' }).notNull().default(false)
+		isCustom: integer('is_custom', { mode: 'boolean' }).notNull().default(false),
+		// the sensor's reading is this parameter's reading: the newest of its latest sample
+		// and its latest test is the reading of record, graded and alerted on like a test
+		sensorRecord: integer('sensor_record', { mode: 'boolean' }).notNull().default(false)
 	},
 	(t) => [index('tank_parameters_tank').on(t.tankId)]
 );

@@ -79,6 +79,14 @@
 								{#each TEST_CADENCES as c (c.days ?? '')}<option value={c.days == null ? '' : String(c.days)}>{c.label}</option>{/each}
 							</select>
 						</label>
+						{#if r.sensor}
+							<!-- a sensor reports this parameter: its reading can be the reading of record -->
+							<input type="hidden" name="sensor_{r.id}" value="1" />
+							<label class="record">
+								<input type="checkbox" name="record_{r.id}" checked={r.sensorRecord} />
+								<span><strong>The sensor's reading is the reading.</strong> {r.sensor} reports {r.name}: its latest reading counts here as a test would, and an alert goes after 15 minutes out of range.</span>
+							</label>
+						{/if}
 					</div>
 					{#if errors[r.id]}<span class="error-text">✕ {errors[r.id]}</span>{/if}
 					{#if r.isCustom}
@@ -204,6 +212,26 @@
 		gap: 10px;
 		font-size: 12px;
 		color: var(--text-muted);
+	}
+	/* a sensor's reading as the reading of record: a plain checkbox with its explanation */
+	.record {
+		flex-basis: 100%;
+		display: flex;
+		align-items: flex-start;
+		gap: 10px;
+		font-size: 12px;
+		color: var(--text-muted);
+		cursor: pointer;
+	}
+	.record input {
+		flex: none;
+		width: 20px;
+		height: 20px;
+		margin: 1px 0 0;
+		accent-color: var(--accent);
+	}
+	.record strong {
+		color: var(--text);
 	}
 	.every select {
 		flex: 1;

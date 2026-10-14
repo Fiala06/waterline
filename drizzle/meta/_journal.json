@@ -372,6 +372,13 @@
       "when": 1791935221530,
       "tag": "0052_device_polls",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "6",
+      "when": 1791937069342,
+      "tag": "0053_sensor_record",
+      "breakpoints": true
     }
   ]
 }

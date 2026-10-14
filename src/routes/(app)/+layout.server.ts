@@ -65,10 +65,11 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 			if (st.level !== 'bad' || !r) continue;
 			outOfRange++;
 			alerts.push({
-				key: `reading:${p.id}:${r.takenAt}`,
+				// a sensor's reading keeps one key while its stretch out of range lasts, so Mark read holds
+				key: `reading:${p.id}:${r.since ?? r.takenAt}`,
 				kind: 'reading',
 				title: `${shortName(p)} ${st.direction === 'low' ? 'low' : 'high'} · ${fmtValue(p, r.value, user)}`,
-				sub: `${t.name} · ${fmtWhen(r.takenAt, user.timeZone)}`,
+				sub: `${t.name} · ${r.sensor ? `${r.sensor} · ` : ''}${fmtWhen(r.takenAt, user.timeZone)}`,
 				href: `/charts?tank=${t.id}&p=${p.id}`,
 				tankId: t.id
 			});

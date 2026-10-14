@@ -8,7 +8,7 @@ import { pruneOAuth } from './assistant/oauth';
 import { cleanupExports } from './export';
 import { getServerSettings } from './mail';
 import { logger, pruneLogs } from './log';
-import { runNotifications } from './notifications';
+import { alertSensorExcursions, runNotifications } from './notifications';
 import { ensureCare } from './species-care';
 
 const EVERY_MS = 5 * 60_000;
@@ -24,6 +24,8 @@ export function startScheduler() {
 			if (getServerSettings().scheduledEmails) await runNotifications();
 			// devices Waterline reads itself, every run: 5 minutes apart
 			await pollAllDevices();
+			// a sensor that is a parameter's reading of record, out of range for a while
+			await alertSensorExcursions();
 			pruneLogs();
 			pruneActionTokens();
 			pruneSamples();

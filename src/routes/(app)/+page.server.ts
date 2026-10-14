@@ -343,11 +343,13 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
         if (!p) return [id, null];
         const fresh = isLive(s.at, s.prevAt);
         const unit = paramUnit(p, user);
+        // where the sensor is the reading of record, the value is the card's already
+        const value = latest.get(id)?.sensor ? "" : ` ${fmtValue(p, s.value, user)}${unit ? ` ${unit}` : ""}`;
         return [
           id,
           {
             fresh,
-            text: `${fresh ? "Live" : "Last"} ${fmtValue(p, s.value, user)}${unit ? ` ${unit}` : ""} · ${fmtWhen(s.at, tz).replace(/^Today, /, "")}`,
+            text: `${fresh ? "Live" : "Last"}${value} · ${fmtWhen(s.at, tz).replace(/^Today, /, "")}`,
           },
         ];
       }),

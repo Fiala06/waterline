@@ -94,7 +94,7 @@ sensor:
 		<h1>Sensors & controllers</h1>
 		<p class="lede">
 			Let a temperature probe, an Apex or HYDROS, ESPHome, Node-RED or Home Assistant log readings on its own. A sensor token can only add readings to the tanks you pick, nothing else. Readings from sensors are kept apart from your water tests: they draw as a thin line on
-			Charts and show as Live on the tank, but they never raise an out-of-range alert by themselves. One reading a minute per parameter is kept; anything faster is dropped.
+			Charts and show as Live on the tank, but they never raise an out-of-range alert by themselves. To make a sensor the tank's reading for a parameter, graded and alerted on like a test, turn on "The sensor's reading is the reading" under <a href="/tanks/current/targets">Parameters & targets</a>. One reading a minute per parameter is kept; anything faster is dropped.
 		</p>
 	</div>
 

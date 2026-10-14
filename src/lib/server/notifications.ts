@@ -7,19 +7,21 @@ import { and, desc, eq, isNull, lt } from 'drizzle-orm';
 import { env } from '$env/dynamic/private';
 import { fmtRange, fmtValue, paramUnit, shortName, statusOf } from '$lib/params';
 import { dueInfo, intervalText, isRoutine } from '$lib/tasks';
-import { dateInZone, daysBetween, fmtDate, fmtTime, todayInZone, utcToZoned } from '$lib/time';
+import { dateInZone, daysBetween, fmtDate, fmtTime, fmtWhen, todayInZone, utcToZoned } from '$lib/time';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { createActionToken } from './action-tokens';
 import { db } from './db';
 import { logger } from './log';
-import { emailLog, notificationPrefs, taskCompletions, tests, testReadings, users, type User } from './db/schema';
+import { emailLog, notificationPrefs, tankParameters, tanks, taskCompletions, tests, testReadings, users, type Tank, type TankParameter, type User } from './db/schema';
 import { lastEventOf, latestReadings } from './logs';
 import { emailConfigured, sendMail } from './mail';
 import { digestEmail, outOfRangeEmail, taskEmail, type DigestTank, type Footer, type Rendered } from './mail/templates';
 import { hasPushTarget, pushOnce, type Notice } from './push';
 import { tankNotes } from './trends';
 import { sign } from './secrets';
-import { notifiesUser } from './members';
+import { notifiesUser, tankPeople } from './members';
+import { isLive, latestSamplesFor, outOfRangeSince } from './sensors';
+import { getUser } from './users';
 import { listParams, listTanks, roleOn } from './tanks';
 import { listTasks } from './tasks';
 import { tankTypeLabel } from '$lib/types';
@@ -310,52 +312,107 @@ export async function runNotifications(now = new Date()) {
 export async function alertOutOfRange(user: User, tankId: string, testId: string) {
 	const base = baseUrl();
 	if (!base) return;
+	const test = db.select().from(tests).where(eq(tests.id, testId)).get();
+	if (!test || Date.now() - Date.parse(test.takenAt) > 86_400_000) return;
+	const params = new Map(listParams(tankId, { all: true }).map((p) => [p.id, p]));
+	const readings = db.select().from(testReadings).where(eq(testReadings.testId, testId)).all();
+	const bad = readings
+		.map((r) => ({ p: params.get(r.parameterId)!, value: r.value }))
+		.filter(({ p, value }) => p && statusOf(p, value).level === 'bad');
+	if (!bad.length) return;
+	const tank = listTanks(user.id).find((t) => t.id === tankId);
+	if (!tank || !notifiesUser(tank, user.id, 'alert', roleOn(user.id, tank))) return;
+	const today = todayInZone(user.timeZone);
+	const loggedDay = dateInZone(test.takenAt, user.timeZone);
+	await notifyOutOfRange(user, tank, `oor:${testId}`, bad, { at: test.takenAt, logged: `${loggedDay === today ? 'today' : fmtDate(loggedDay)} at ${fmtTime(test.takenAt, user.timeZone)}` }, base);
+}
+
+/** How long a sensor that is the reading of record reads out of range before its alert goes, and the readings it takes. */
+export const EXCURSION_MS = 15 * 60_000;
+export const EXCURSION_READINGS = 2;
+
+/**
+ * Sensors that are the reading of record (Parameters & targets) and have read
+ * out of range for a while: the alert a test would raise, to everyone the
+ * tank alerts, once per stretch out of range (its key is when the stretch
+ * began). A sensor gone quiet doesn't alert on its last reading.
+ */
+export async function alertSensorExcursions(now = Date.now()) {
+	const base = baseUrl();
+	if (!base) return;
+	const rows = db
+		.select({ p: tankParameters, tank: tanks })
+		.from(tankParameters)
+		.innerJoin(tanks, eq(tanks.id, tankParameters.tankId))
+		.where(and(eq(tankParameters.sensorRecord, true), isNull(tanks.archivedAt)))
+		.all();
+	if (!rows.length) return;
+	const samples = latestSamplesFor([...new Set(rows.map((r) => r.tank.id))]);
+	for (const { p, tank } of rows) {
+		const s = samples.get(tank.id)?.get(p.id);
+		if (!s || !isLive(s.at, s.prevAt, now)) continue;
+		const st = statusOf(p, s.value);
+		if (st.level !== 'bad') continue;
+		// a newer hand-logged test is the reading instead
+		const r = latestReadings(tank.id).get(p.id);
+		if (!r || !r.sensor) continue;
+		const run = outOfRangeSince(tank.id, p.id, p);
+		if (!run || run.count < EXCURSION_READINGS || now - Date.parse(run.since) < EXCURSION_MS) continue;
+		for (const userId of tankPeople(tank).keys()) {
+			const user = getUser(userId);
+			if (!user || !notifiesUser(tank, userId, 'alert', roleOn(userId, tank))) continue;
+			const direction = st.direction === 'low' ? 'low' : 'high';
+			await notifyOutOfRange(
+				user,
+				tank,
+				`oor:sensor:${p.id}:${run.since}`,
+				[{ p, value: s.value }],
+				{ at: s.at, logged: `by ${s.source} at ${fmtTime(s.at, user.timeZone)}, ${direction} since ${fmtWhen(run.since, user.timeZone).replace(/^Today, /, '')}` },
+				base
+			).catch((e) => logger.error('email', "The sensor's out-of-range alert didn't send", { userId, tankId: tank.id, error: e }));
+		}
+	}
+}
+
+/**
+ * E4: the out-of-range alert itself, by push as it happens and by email when
+ * delivery is individual (digests include out-of-range readings instead), each
+ * once per key. The first out-of-range reading leads; the rest are "also".
+ */
+async function notifyOutOfRange(user: User, tank: Tank, key: string, bad: { p: TankParameter; value: number }[], when: { at: string; logged: string }, base: string) {
 	const prefs = prefsFor(user.id);
 	const to = emailConfigured() && prefs.outOfRangeAlerts && prefs.delivery === 'individual' ? recipient(user, prefs) : null;
 	// pushed as it happens, whatever the email delivery
 	const push = prefs.pushOutOfRangeAlerts && hasPushTarget(user.id, prefs);
 	if (!to && !push) return;
-	const test = db.select().from(tests).where(eq(tests.id, testId)).get();
-	if (!test || Date.now() - Date.parse(test.takenAt) > 86_400_000) return;
-
-	const params = new Map(listParams(tankId, { all: true }).map((p) => [p.id, p]));
-	const readings = db.select().from(testReadings).where(eq(testReadings.testId, testId)).all();
-	const bad = readings
-		.map((r) => ({ r, p: params.get(r.parameterId)! }))
-		.filter(({ p, r }) => p && statusOf(p, r.value).level === 'bad');
-	if (!bad.length) return;
-	const [{ p, r }, ...rest] = bad;
-	const st = statusOf(p, r.value);
-	const tank = listTanks(user.id).find((t) => t.id === tankId);
-	if (!tank || !notifiesUser(tank, user.id, 'alert', roleOn(user.id, tank))) return;
-
-	// previous reading of the same parameter
+	const [{ p, value }, ...rest] = bad;
+	const st = statusOf(p, value);
+	// previous test of the same parameter
 	const prev = db
 		.select({ value: testReadings.value, takenAt: tests.takenAt })
 		.from(testReadings)
 		.innerJoin(tests, eq(tests.id, testReadings.testId))
-		.where(and(eq(tests.tankId, tankId), eq(testReadings.parameterId, p.id), lt(tests.takenAt, test.takenAt)))
+		.where(and(eq(tests.tankId, tank.id), eq(testReadings.parameterId, p.id), lt(tests.takenAt, when.at)))
 		.orderBy(desc(tests.takenAt))
 		.limit(1)
 		.get();
-	const wc = lastEventOf(tankId, 'water_change');
+	const wc = lastEventOf(tank.id, 'water_change');
 	const today = todayInZone(user.timeZone);
 	const wcDays = wc ? daysBetween(dateInZone(wc.occurredAt, user.timeZone), today) : null;
-	const loggedDay = dateInZone(test.takenAt, user.timeZone);
 	const unit = paramUnit(p, user);
+	const more = rest.map(({ p: q, value: x }) => `${shortName(q)} ${fmtValue(q, x, user)}`);
 
 	if (push) {
-		const more = rest.map(({ p: q, r: x }) => `${shortName(q)} ${fmtValue(q, x.value, user)}`);
 		await pushOnce(
 			user,
 			prefs,
-			`oor:${testId}`,
+			key,
 			() => ({
 				kind: 'oor',
-				title: `${p.name} is ${st.direction === 'low' ? 'low' : 'high'} in ${tank.name}: ${fmtValue(p, r.value, user)}${unit ? ` ${unit}` : ''}`,
+				title: `${p.name} is ${st.direction === 'low' ? 'low' : 'high'} in ${tank.name}: ${fmtValue(p, value, user)}${unit ? ` ${unit}` : ''}`,
 				body: [`Target ${fmtRange(p, user)}`, more.length ? `Also out of range: ${more.join(', ')}` : null].filter(Boolean).join(' · '),
-				url: `${base}/?tank=${tankId}`,
-				tag: `oor-${tankId}`
+				url: `${base}/?tank=${tank.id}`,
+				tag: `oor-${tank.id}`
 			}),
 			base
 		);
@@ -365,21 +422,21 @@ export async function alertOutOfRange(user: User, tankId: string, testId: string
 	await sendOnce(
 		user,
 		to,
-		`oor:${testId}`,
+		key,
 		() =>
 			outOfRangeEmail({
 				paramName: p.name,
 				direction: st.direction === 'low' ? 'low' : 'high',
 				tankName: tank.name,
-				value: fmtValue(p, r.value, user),
+				value: fmtValue(p, value, user),
 				unit,
 				target: fmtRange(p, user, false),
 				targetWithUnit: fmtRange(p, user),
 				previous: prev ? { value: fmtValue(p, prev.value, user), date: fmtDate(dateInZone(prev.takenAt, user.timeZone)) } : null,
-				logged: `${loggedDay === today ? 'today' : fmtDate(loggedDay)} at ${fmtTime(test.takenAt, user.timeZone)}`,
+				logged: when.logged,
 				lastWaterChange: wcDays == null ? null : wcDays === 0 ? 'today' : `${wcDays} day${wcDays === 1 ? '' : 's'} ago`,
-				dashboardUrl: `${base}/?tank=${tankId}`,
-				more: rest.map(({ p: q, r: x }) => `${shortName(q)} ${fmtValue(q, x.value, user)}`),
+				dashboardUrl: `${base}/?tank=${tank.id}`,
+				more,
 				footer: footer(user, "You're getting this because out-of-range alerts are on. Targets are set per tank.", base)
 			}),
 		base

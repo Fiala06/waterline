@@ -94,7 +94,7 @@ describe('latest sensor samples over a year of minutes', () => {
 		});
 		const latest = latestSamples(tank.id);
 		expect(latest.size).toBe(2);
-		expect(latest.get(temp.id)).toEqual({ parameterId: temp.id, value: N - 1, at: iso(t0 + (N - 1) * 60_000), source: 'probe', prevAt: iso(t0 + (N - 3) * 60_000) });
+		expect(latest.get(temp.id)).toEqual({ value: N - 1, at: iso(t0 + (N - 1) * 60_000), source: 'probe', prevAt: iso(t0 + (N - 3) * 60_000) });
 		expect(latest.get(ph.id)).toMatchObject({ value: N - 2, source: 'controller' });
 		expect(latestSamples(other.id).size).toBe(0);
 
