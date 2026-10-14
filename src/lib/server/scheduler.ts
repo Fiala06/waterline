@@ -2,6 +2,7 @@
 // Server settings), and tidying up. EMAIL_SCHEDULER=off stops all of it.
 import { env } from '$env/dynamic/private';
 import { pruneActionTokens } from './action-tokens';
+import { pollAllDevices } from './devices';
 import { pruneSamples } from './sensors';
 import { pruneOAuth } from './assistant/oauth';
 import { cleanupExports } from './export';
@@ -21,6 +22,8 @@ export function startScheduler() {
 		running = true;
 		try {
 			if (getServerSettings().scheduledEmails) await runNotifications();
+			// devices Waterline reads itself, every run: 5 minutes apart
+			await pollAllDevices();
 			pruneLogs();
 			pruneActionTokens();
 			pruneSamples();

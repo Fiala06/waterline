@@ -365,6 +365,13 @@
       "when": 1791908434343,
       "tag": "0051_barcodes",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "6",
+      "when": 1791935221530,
+      "tag": "0052_device_polls",
+      "breakpoints": true
     }
   ]
 }

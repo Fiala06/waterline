@@ -969,6 +969,46 @@ export type AssistantToken = typeof assistantTokens.$inferSelect;
  * from hand-logged tests. Stored metric, at most one a minute per parameter,
  * and thinned for charts. `source` is the token's name ("Apex", "ESPHome").
  */
+/**
+ * A sensor of a polled device and the tank parameter it feeds: the device's id for it
+ * (ESPHome's object id), its name as the device shows it, the parameter's key or custom
+ * name, and the unit the device reports in.
+ */
+export type PolledSensor = { objectId: string; name: string; parameter: string; unit: string | null };
+
+/**
+ * Devices Waterline reads itself: a device with its own web page (ESPHome's web
+ * server), asked for its sensors every 5 minutes by the scheduler, with no token
+ * or Home Assistant in between. What it reports is stored as sensor readings
+ * with the device's name as the source.
+ */
+export const devicePolls = sqliteTable(
+	'device_polls',
+	{
+		id: id(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		tankId: text('tank_id')
+			.notNull()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		// the readings' source, as the sensor token's name is
+		name: text('name').notNull(),
+		// "http://192.168.1.33": scheme, host, port and path, nothing else
+		url: text('url').notNull(),
+		// when the device's web page asks for a sign-in
+		username: text('username'),
+		passwordEnc: text('password_enc'),
+		sensors: text('sensors', { mode: 'json' }).$type<PolledSensor[]>().notNull().default([]),
+		createdAt: createdAt(),
+		lastPolledAt: text('last_polled_at'),
+		lastOkAt: text('last_ok_at'),
+		lastError: text('last_error')
+	},
+	(t) => [index('device_polls_user').on(t.userId), index('device_polls_tank').on(t.tankId)]
+);
+export type DevicePoll = typeof devicePolls.$inferSelect;
+
 export const sensorReadings = sqliteTable(
 	'sensor_readings',
 	{

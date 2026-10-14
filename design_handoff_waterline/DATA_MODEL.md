@@ -195,6 +195,11 @@ sensor_readings  id, tank_id, parameter_id, value (stored units), at, source (th
                  token_id? (readings from probes and controllers, apart from tests: one a minute
                  per parameter, kept a year, never an alert by themselves; charts show each span's
                  average with its lowest and highest)
+device_polls     id, user_id, tank_id, name (the readings' source), url (scheme, host, port, path),
+                 username?, password_enc?, sensors JSON [{object_id, name, parameter (key or custom
+                 name), unit?}], created_at, last_polled_at?, last_ok_at?, last_error? (devices with
+                 their own web page, ESPHome's web server, that the scheduler reads every 5 minutes
+                 and stores as sensor_readings with no token: Settings › Sensors › Read a device)
 sensor_hours     tank_id, parameter_id, hour ('YYYY-MM-DDTHH', UTC), n, total, lo, hi
                  (each hour of sensor samples in sum, primary key tank+parameter+hour; kept by
                  triggers on sensor_readings: a sample adds to its hour, a deleted one takes away,

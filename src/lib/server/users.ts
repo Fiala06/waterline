@@ -3,6 +3,7 @@ import { VERSION } from '$lib/changelog';
 import { db } from './db';
 import {
 	assistantTokens,
+	devicePolls,
 	calendarFeeds,
 	emailLog,
 	events,
@@ -76,6 +77,7 @@ export const USER_LINKS = {
 	'imports.user_id': 'move',
 	'exports.user_id': 'move',
 	'assistant_tokens.user_id': 'move',
+	'device_polls.user_id': 'move',
 	'push_subscriptions.user_id': 'move',
 	// who logged an entry or test on a shared tank, and the server log's account: no foreign key, kept attributed
 	'events.logged_by': 'move',
@@ -109,14 +111,14 @@ const RANK = { view: 0, log: 1 } as const;
 function joinAccounts(keep: User, from: User): User {
 	const joined = db.transaction((tx) => {
 		const at = new Date().toISOString();
-		const moved = (t: typeof tanks | typeof products | typeof quickFavorites | typeof dashboardPrefs | typeof testKits | typeof imports | typeof exports | typeof assistantTokens | typeof pushSubscriptions | typeof logs) =>
+		const moved = (t: typeof tanks | typeof products | typeof quickFavorites | typeof dashboardPrefs | typeof testKits | typeof imports | typeof exports | typeof assistantTokens | typeof devicePolls | typeof pushSubscriptions | typeof logs) =>
 			tx.update(t).set({ userId: keep.id }).where(eq(t.userId, from.id)).run();
 		// the kept account's dashboard choices win where both have some for a tank
 		for (const d of tx.select().from(dashboardPrefs).where(eq(dashboardPrefs.userId, from.id)).all()) {
 			const theirs = tx.select({ id: dashboardPrefs.id }).from(dashboardPrefs).where(and(eq(dashboardPrefs.userId, keep.id), eq(dashboardPrefs.tankId, d.tankId))).get();
 			if (theirs) tx.delete(dashboardPrefs).where(eq(dashboardPrefs.id, d.id)).run();
 		}
-		for (const t of [tanks, products, quickFavorites, dashboardPrefs, testKits, imports, exports, assistantTokens, pushSubscriptions, logs]) moved(t);
+		for (const t of [tanks, products, quickFavorites, dashboardPrefs, testKits, imports, exports, assistantTokens, devicePolls, pushSubscriptions, logs]) moved(t);
 		tx.update(events).set({ loggedBy: keep.id }).where(eq(events.loggedBy, from.id)).run();
 		tx.update(tests).set({ loggedBy: keep.id }).where(eq(tests.loggedBy, from.id)).run();
 		tx.update(invites).set({ invitedBy: keep.id }).where(eq(invites.invitedBy, from.id)).run();
