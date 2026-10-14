@@ -12,6 +12,9 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 ## Unreleased
 
 - **Dividers that line up.** In a tank's parameters on the [dashboard](/), a parameter with a sensor's "● Live" line under its value no longer has its divider sitting lower than the rest of its row.
+- **Public page: newest first.** The timeline on a tank's public page now runs newest first, with the latest six photos shown and the rest behind "Show earlier", and the log shows its latest eight entries with the rest of the range behind "Show more" instead of one long list. Set it up under [Public page](/tanks/current/public).
+- **Public page: more to tap.** The cover photo opens full size, each reading under Latest readings that has a chart opens it, and the plants are listed as tags like the livestock. Latest readings now say when the latest test was taken ("Today, 7:12 PM"); the log and timeline still say only the day.
+- **A sensor on the public page.** A parameter a probe reports now shows "● Live · 9:30 AM" on its tile under Latest readings (with its value, where the tile shows your latest test), and its chart draws the probe's line even before there are two water tests to plot.
 
 ## 1.14.0 · 2026-10-14
 

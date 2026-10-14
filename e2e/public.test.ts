@@ -13,6 +13,19 @@ test('public tank page and photo share link', async ({ page, browser }, info) =>
 	await page.locator('input[type=file][name=photos]').setInputFiles(await jpeg());
 	await page.getByRole('button', { name: 'Save 2 readings' }).click();
 	await expect(page.getByRole('status')).toContainText('Saved 2 readings');
+	// an earlier test, three days ago, so the readings have a chart to open
+	const earlier = new Date(Date.now() - 3 * 86_400_000).toISOString().slice(0, 10);
+	await open(page, `/entries/test/new?tank=${tankId}&date=${earlier}&time=09:00`);
+	await page.getByLabel('Nitrate', { exact: true }).fill('40');
+	await page.getByLabel('pH', { exact: true }).fill('7');
+	await page.getByRole('button', { name: 'Save 2 readings' }).click();
+	await expect(page.getByRole('status')).toContainText('Saved 2 readings');
+	// a cover photo
+	await open(page, `/tanks/${tankId}/settings`);
+	await page.locator('input[type=file][name=cover]').setInputFiles(await jpeg('#335577', 'cover.jpg'));
+	await expect(page.getByRole('img', { name: /^Tank cover/ })).toBeVisible();
+	await page.getByRole('button', { name: 'Save changes' }).click();
+	await expect(page.getByRole('status').filter({ hasText: '✓ Tank saved' })).toBeVisible();
 
 	// Publish
 	const slug = `riverbed-${info.project.name}-${Date.now().toString(36)}`;
@@ -31,10 +44,29 @@ test('public tank page and photo share link', async ({ page, browser }, info) =>
 	await expect(v.getByRole('heading', { name: 'Riverbed 40', level: 1 })).toBeVisible();
 	await expect(v.getByText('✕ Nitrate high')).toBeVisible();
 	await expect(v.getByText('Latest readings')).toBeVisible();
+	// the latest test's time shows with its day
+	await expect(v.locator('section.readings .sh .muted')).toHaveText(/^Today, \d{1,2}:\d{2} [AP]M$/);
+	// a reading's tile opens its chart; its link reloads the page with that chart when scripts are off
+	const chart = v.locator('section.chart');
+	await expect(chart.locator('h2')).toContainText('Nitrate · last 90 days');
+	const ph = v.locator('section.readings a.rd', { hasText: 'pH' });
+	await expect(ph).toHaveAttribute('href', /\?p=[\w-]+#chart$/);
+	await ph.click();
+	await expect(chart.locator('h2')).toContainText('pH · last 90 days');
+	await expect(v).toHaveURL(new RegExp(`/t/${slug}$`));
+	await v.goto((await ph.getAttribute('href'))!);
+	await expect(chart.locator('h2')).toContainText('pH · last 90 days');
+	// the cover opens full size in the lightbox
+	await v.locator('a.hero').click();
+	const box = v.getByRole('dialog', { name: 'Photo' });
+	await expect(box).toBeVisible();
+	await expect(box.locator('.lb-cap')).toHaveText(/^\w{3} \d{1,2}, \d{4}$/);
+	await v.keyboard.press('Escape');
+	await expect(box).toBeHidden();
 	await expect(v.locator('body')).not.toContainText('SECRET');
 	await expect(v.locator('body')).not.toContainText('Water change 25%'); // tasks are never public
 	// a water test in the log opens to its readings (never its note)
-	const testRow = v.locator('li.test', { hasText: 'Water test · 2 readings' });
+	const testRow = v.locator('li.test', { hasText: 'Water test · 2 readings' }).first();
 	await testRow.locator('summary').click();
 	await expect(testRow.getByText('35 ppm')).toBeVisible();
 	await expect(testRow.getByText('✕ High')).toBeVisible();

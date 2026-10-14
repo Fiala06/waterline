@@ -10,10 +10,23 @@
 	let { data } = $props();
 	const v = $derived(data.view);
 	const photo = (id: string, size: 'thumb' | 'full' = 'thumb') => `/p/${v.slug}/${id}${size === 'thumb' ? '?size=thumb' : ''}`;
-	let chartIdx = $state(0);
+	// the chart shown: the first (a problem first), or the one a reading's tile chose (?p= without scripts);
+	// the page's data is read once here on purpose, for the starting chart
+	// svelte-ignore state_referenced_locally
+	let chartIdx = $state(Math.max(0, data.view.charts.findIndex((c) => c.id === data.chartParam)));
 	const chart = $derived(v.charts[chartIdx] ?? v.charts[0]);
 	// the water change a visitor tapped on the chart, for its popover
 	let selected = $state<string | null>(null);
+	// a tap on a reading's tile shows its chart, scrolled into view; without scripts the link reloads with it chosen
+	let chartEl = $state<HTMLElement>();
+	function showChart(e: MouseEvent, i: number) {
+		if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+		e.preventDefault();
+		chartIdx = i;
+		selected = null;
+		chartEl?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+		chartEl?.focus({ preventScroll: true });
+	}
 	const now = Date.now();
 	// The lightbox: a tapped photo opens here, with prev/next through the photos
 	// beside it; without scripts the link opens the full-size image instead.
@@ -23,7 +36,7 @@
 	let shot = $state<number | null>(null);
 	const current = $derived(shot == null ? null : (shots[shot] ?? null));
 	function openShot(e: MouseEvent, list: Shot[], i: number) {
-		if (!box?.showModal || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+		if (!box?.showModal || !list.length || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
 		e.preventDefault();
 		shots = list;
 		shot = i;
@@ -44,20 +57,32 @@
 		e.preventDefault();
 	}
 	const gridShots = $derived(v.photos.slice(0, 6));
-	const timelineShots = $derived(v.timeline.map((e) => ({ id: e.id, date: e.date })));
-	// The timeline stays short: the latest few, the rest behind "Show earlier".
+	const coverShot = $derived(v.cover && v.coverDate ? [{ id: v.cover, date: v.coverDate }] : []);
+	// The timeline, newest first: the latest few, the rest behind "Show earlier". A second photo on
+	// the same day shares the readings shown with the one above it (`repeat`): once is enough.
 	const TL_SHOW = 6;
-	const tlRecent = $derived(v.timeline.slice(-TL_SHOW));
-	const tlEarlier = $derived(v.timeline.slice(0, -TL_SHOW));
-	// the visitor's ranges are links, so they work without scripts; each keeps the other
-	const rangeHref = (patch: Partial<typeof data.ranges>) => {
+	const tlAll = $derived([...v.timeline].reverse().map((e, i, all) => ({ ...e, repeat: i > 0 && all[i - 1].gap?.days === 0 })));
+	const tlRecent = $derived(tlAll.slice(0, TL_SHOW));
+	const tlEarlier = $derived(tlAll.slice(TL_SHOW));
+	const timelineShots = $derived(tlAll.map((e) => ({ id: e.id, date: e.date })));
+	// The log: the latest few rows, the rest of the range behind "Show more"
+	const LOG_SHOW = 8;
+	const logRecent = $derived(v.activity.slice(0, LOG_SHOW));
+	const logMore = $derived(v.activity.slice(LOG_SHOW));
+	// the plants as tags, one per name, with how many of it
+	const plantTags = $derived([...v.plants.reduce((m, n) => m.set(n, (m.get(n) ?? 0) + 1), new Map<string, number>())].map(([name, count]) => ({ name, count })));
+	// the visitor's ranges are links, so they work without scripts; each keeps the other, and the chart chosen
+	const rangeHref = (patch: Partial<typeof data.ranges>, p: string | null = chartIdx ? (chart?.id ?? null) : null) => {
 		const r = { ...data.ranges, ...patch };
 		const q = new URLSearchParams();
 		if (r.chart !== '90d') q.set('chart', r.chart);
 		if (r.log !== 'month') q.set('log', r.log);
+		if (p) q.set('p', p);
 		const s = q.toString();
 		return `/t/${v.slug}${s ? `?${s}` : ''}`;
 	};
+	// a reading's tile links to its chart, chosen by ?p= when scripts are off
+	const chartHref = (id: string) => `${rangeHref({}, id)}#chart`;
 	const jsonLd = $derived({
 		'@context': 'https://schema.org',
 		'@type': 'WebPage',
@@ -69,8 +94,9 @@
 		about: { '@type': 'Thing', name: `${v.name} (${v.type.toLowerCase()} aquarium)` }
 	});
 	const sub = $derived([v.type, v.volume, v.since ? `running since ${v.since}` : null].filter(Boolean).join(' · '));
-	// "today" or "Sep 25"; capitalized where it stands alone
-	const testedDay = $derived(v.tested ? v.tested.charAt(0).toUpperCase() + v.tested.slice(1) : null);
+	// "today, 7:12 PM" or "Sep 25, 12:22 PM"; capitalized where it stands alone
+	const testedWhen = $derived(v.tested ? `${v.tested}${v.testedTime ? `, ${v.testedTime}` : ''}` : null);
+	const testedDay = $derived(testedWhen ? testedWhen.charAt(0).toUpperCase() + testedWhen.slice(1) : null);
 	const squash = (s: string) => s.toLowerCase().replace(/\s+/g, '');
 	// "Tidewell 200 W" doesn't need "200 W" again
 	const specOf = (e: { name: string; spec: string | null }) => (e.spec && !squash(e.name).includes(squash(e.spec)) ? e.spec : null);
@@ -90,9 +116,12 @@
 
 	<main class="wrap">
 		<div class="col">
-			<div class="hero" class:photo-placeholder={!v.cover}>
-				{#if v.cover}<img src={photo(v.cover, 'full')} alt="{v.name} aquarium" style:object-position={v.coverPos} />{/if}
-			</div>
+			{#if v.cover}
+				<!-- the cover opens full size in the lightbox, like any photo on the page -->
+				<a class="hero" href={photo(v.cover, 'full')} onclick={(e) => openShot(e, coverShot, 0)}><img src={photo(v.cover, 'full')} alt="{v.name} aquarium" style:object-position={v.coverPos} /></a>
+			{:else}
+				<div class="hero photo-placeholder"></div>
+			{/if}
 
 			<div class="intro">
 				<div class="title">
@@ -103,7 +132,7 @@
 					<div class="pills">
 						{#each v.summary.bad as b (b)}<span class="status-tag tag-bad">✕ {b}</span>{/each}
 						{#if v.summary.ok}<span class="status-tag tag-ok">✓ {v.summary.ok} in range</span>{/if}
-						{#if v.tested}<span class="status-tag tag-none hide-desk">Tested {v.tested}</span>{/if}
+						{#if testedWhen}<span class="status-tag tag-none hide-desk">Tested {testedWhen}</span>{/if}
 					</div>
 				{/if}
 			</div>
@@ -111,7 +140,7 @@
 			{#if v.description}<p class="desc">{v.description}</p>{/if}
 
 			{#if chart}
-				<section class="chart">
+				<section class="chart" id="chart" bind:this={chartEl} tabindex="-1">
 					<div class="ch sh">
 						<h2>{chart.name} · {v.ranges.chart.label === 'All' ? 'all time' : `last ${v.ranges.chart.label}`}</h2>
 						<nav class="chips" aria-label="Chart range">
@@ -197,7 +226,9 @@
 					{#if v.plants.length}
 						<div class="group">
 							<h3>Plants</h3>
-							<p class="plants">{v.plants.join(', ')}</p>
+							<ul class="tags">
+								{#each plantTags as p (p.name)}<li class="tag">{p.name}{#if p.count > 1}<b class="num">{p.count}</b>{/if}</li>{/each}
+							</ul>
 						</div>
 					{/if}
 				</section>
@@ -212,13 +243,21 @@
 						<h2>Latest readings</h2>
 						{#if testedDay}<span class="muted">{testedDay}</span>{/if}
 					</div>
+					{#snippet tile(r: (typeof v.readings)[number])}
+						<span class="rn">{r.name}</span>
+						<span class="rv num">{r.value}{#if r.unit}{' '}<small>{r.unit}</small>{/if}</span>
+						<span class="rs status-{r.level}">{r.status}</span>
+						{#if r.live}<span class="rl" class:fresh={r.live.fresh}>{r.live.fresh ? '●' : '○'} {r.live.text}</span>{/if}
+					{/snippet}
 					<div class="tiles">
 						{#each v.readings as r (r.id)}
-							<div class="rd" class:bad={r.level === 'bad'} class:warn={r.level === 'warn'}>
-								<span class="rn">{r.name}</span>
-								<span class="rv num">{r.value}{#if r.unit}{' '}<small>{r.unit}</small>{/if}</span>
-								<span class="rs status-{r.level}">{r.status}</span>
-							</div>
+							{@const ci = v.charts.findIndex((c) => c.id === r.id)}
+							{#if ci >= 0}
+								<!-- a tile with a chart opens it; the link reloads the page with it chosen when scripts are off -->
+								<a class="rd link" class:bad={r.level === 'bad'} class:warn={r.level === 'warn'} class:current={chart?.id === r.id} href={chartHref(r.id)} onclick={(e) => showChart(e, ci)} title="Show {r.name} on the chart">{@render tile(r)}</a>
+							{:else}
+								<div class="rd" class:bad={r.level === 'bad'} class:warn={r.level === 'warn'}>{@render tile(r)}</div>
+							{/if}
 						{/each}
 					</div>
 				</section>
@@ -239,11 +278,12 @@
 				<section class="timeline">
 					<div class="sh"><h2>Timeline</h2></div>
 					<!-- compact rows: a small shot, the date and the day's facts on one line, the readings under it -->
-					{#snippet entries(list: typeof v.timeline, offset: number)}
+					{#snippet gapRow(gap: NonNullable<(typeof tlAll)[number]['gap']>)}
+						<!-- what happened between a photo and the older one below it -->
+						<li class="tl-gap"><b>{gap.label}</b>{gap.summary ? ` · ${gap.summary}` : ''}</li>
+					{/snippet}
+					{#snippet entries(list: typeof tlAll, offset: number)}
 						{#each list as e, i (e.id)}
-							{#if e.gap}
-								<li class="tl-gap"><b>{e.gap.label}</b>{e.gap.summary ? ` · ${e.gap.summary}` : ''}</li>
-							{/if}
 							<li class="tl-entry">
 								<a class="tl-shot" href={photo(e.id, 'full')} onclick={(ev) => openShot(ev, timelineShots, offset + i)}><img src={photo(e.id)} alt="{v.name} on {e.date}" loading="lazy" /></a>
 								<div class="tl-info">
@@ -258,8 +298,8 @@
 											</span>
 										{/if}
 									</span>
-									<!-- a second photo on the same day shares the entry above's readings: once is enough -->
-									{#if e.readings?.length && e.gap?.days !== 0}
+									<!-- a second photo on the same day shares the readings shown with the one above: once is enough -->
+									{#if e.readings?.length && !e.repeat}
 										<ul class="tl-readings">
 											{#each e.readings as r (r.name)}
 												<li><span class="muted">{r.name}</span> <span class="num">{r.value}{r.unit ? ` ${r.unit}` : ''}</span> <span class="rs status-{r.level}">{r.status}</span></li>
@@ -268,18 +308,24 @@
 									{/if}
 								</div>
 							</li>
+							<!-- the gap to the older photo below it; the last shown one's waits with the earlier entries -->
+							{#if e.gap && i < list.length - 1}{@render gapRow(e.gap)}{/if}
 						{/each}
 					{/snippet}
 					<ol class="tl">
+						{@render entries(tlRecent, 0)}
 						{#if tlEarlier.length}
-							<li class="tl-more">
+							{@const lastGap = tlRecent.at(-1)?.gap}
+							<li class="more">
 								<details>
 									<summary>Show {tlEarlier.length} earlier<span class="chev" aria-hidden="true">▾</span></summary>
-									<ol class="tl">{@render entries(tlEarlier, 0)}</ol>
+									<ol class="tl">
+										{#if lastGap}{@render gapRow(lastGap)}{/if}
+										{@render entries(tlEarlier, tlRecent.length)}
+									</ol>
 								</details>
 							</li>
 						{/if}
-						{@render entries(tlRecent, tlEarlier.length)}
 					</ol>
 				</section>
 			{/if}
@@ -294,9 +340,8 @@
 							{/each}
 						</nav>
 					</div>
-					{#if v.activity.length}
-						<ul class="rows">
-							{#each v.activity as a (a.key)}
+					{#snippet logRows(list: typeof v.activity)}
+						{#each list as a (a.key)}
 								{#if a.readings?.length}
 									<!-- a water test opens to its readings; <details> works without scripts -->
 									<li class="test">
@@ -312,7 +357,20 @@
 								{:else}
 									<li><span>{a.title}</span><span class="muted">{a.day}</span></li>
 								{/if}
-							{/each}
+						{/each}
+					{/snippet}
+					{#if v.activity.length}
+						<ul class="rows">
+							{@render logRows(logRecent)}
+							{#if logMore.length}
+								<!-- the rest of the range folds away behind one row -->
+								<li class="more">
+									<details>
+										<summary>Show {logMore.length} more<span class="chev" aria-hidden="true">▾</span></summary>
+										<ul class="rows">{@render logRows(logMore)}</ul>
+									</details>
+								</li>
+							{/if}
 						</ul>
 					{:else}
 						<p class="muted none">Nothing logged in this range.</p>
@@ -523,8 +581,8 @@
 		line-height: 1.4;
 		color: var(--text-2);
 	}
-	/* the earlier entries fold away behind one row */
-	.tl-more summary {
+	/* the earlier entries, and the rest of the log, fold away behind one row */
+	.more summary {
 		display: flex;
 		align-items: center;
 		min-height: 44px;
@@ -534,18 +592,19 @@
 		font-weight: 700;
 		border-bottom: 1px solid var(--divider);
 	}
-	.tl-more summary::-webkit-details-marker {
+	.more summary::-webkit-details-marker {
 		display: none;
 	}
-	.tl-more details[open] > summary {
+	.more details[open] > summary {
 		margin-bottom: 4px;
 	}
-	.tl-more details[open] .chev {
+	.more details[open] .chev {
 		transform: rotate(180deg);
 	}
 
 	/* ── Cover + title ────────────────────────────────────────── */
 	.hero {
+		display: block;
 		position: relative;
 		height: 220px;
 		margin: 0 -20px;
@@ -612,7 +671,7 @@
 	.rd {
 		padding: 8px 10px 8px 0;
 		display: grid;
-		grid-template-areas: 'n' 'v' 's';
+		grid-template-areas: 'n' 'v' 's' 'l';
 		align-content: start;
 		gap: 2px;
 		min-width: 0;
@@ -644,9 +703,36 @@
 		font-weight: 800;
 		white-space: nowrap;
 	}
+	/* a sensor's "● Live · 9:30 AM" (#19): in ink while it keeps reporting, muted as "○ Last" once it's gone quiet */
+	.rl {
+		grid-area: l;
+		font-size: 11px;
+		color: var(--text-muted);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.rl.fresh {
+		color: var(--text);
+		font-weight: 600;
+	}
 	/* a reading out of range reads in red; near, in neutral-800 (never colour alone) */
 	.rd.bad .rv {
 		color: var(--bad);
+	}
+	/* a tile with a chart is a link: a hover like the photos', and the chart shown has its name in ink */
+	.rd.link {
+		color: var(--text);
+		text-decoration: none;
+		cursor: pointer;
+	}
+	.rd.link:hover,
+	.rd.link:focus-visible {
+		background: var(--surface);
+	}
+	.rd.current .rn {
+		color: var(--text);
+		font-weight: 700;
 	}
 
 	/* ── Chart ────────────────────────────────────────────────── */
@@ -799,11 +885,6 @@
 	.tag b {
 		font-weight: 800;
 	}
-	.plants {
-		margin: 0;
-		font-size: 14px;
-		line-height: 1.6;
-	}
 
 	/* Equipment and activity: label left, detail right, 1px dividers */
 	.rows {
@@ -831,10 +912,14 @@
 		padding: 8px 0;
 		font-size: 14px;
 	}
-	/* a water test in the log opens to its readings */
-	.rows li.test {
+	/* a water test in the log opens to its readings; the rest of the log is one row that opens */
+	.rows li.test,
+	.rows li.more {
 		display: block;
 		padding: 0;
+	}
+	.rows li.more {
+		border-bottom: none;
 	}
 	.test summary {
 		display: flex;
@@ -1054,7 +1139,7 @@
 		.rd {
 			padding: 10px 12px 10px 0;
 			grid-template-columns: minmax(0, 1fr) auto;
-			grid-template-areas: 'n s' 'v v';
+			grid-template-areas: 'n s' 'v v' 'l l';
 			column-gap: 6px;
 		}
 		.rn,
