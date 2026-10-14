@@ -25,3 +25,26 @@ test('a new tank with high ammonia asks if it is cycling', async ({ page }, info
 	await open(page, `/history?tank=${tankId}`);
 	await expect(page.getByRole('link', { name: /^Marked as cycling/ })).toBeVisible();
 });
+
+// #155: an established tank with a one-off spike says Not cycling, and isn't asked again
+test('Not cycling dismisses the ask for good', async ({ page }, info) => {
+	await newKeeperWithTank(page, `not-cycling-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+
+	await open(page, `/entries/test/new?tank=${tankId}`);
+	await page.getByLabel('Ammonia', { exact: true }).fill('1');
+	await page.getByRole('button', { name: 'Save 1 reading' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Saved 1 reading');
+
+	const ask = page.getByRole('region', { name: /New tank\? High ammonia or nitrite is normal/ });
+	await expect(ask).toBeVisible();
+	await ask.getByRole('button', { name: 'Not cycling' }).click();
+	await expect(page.getByRole('status')).toContainText("✓ Riverbed 40 isn't cycling");
+	await expect(ask).toHaveCount(0);
+	// still high, still not asked; and the tank isn't marked cycling
+	await open(page, `/?tank=${tankId}`);
+	await expect(ask).toHaveCount(0);
+	await expect(page.getByRole('region', { name: 'Cycling' })).toHaveCount(0);
+	await expect(page.getByRole('region', { name: 'Needs attention' })).toContainText('Ammonia');
+	await expect(page.getByRole('region', { name: 'Needs attention' })).not.toContainText('▲ Cycling');
+});
