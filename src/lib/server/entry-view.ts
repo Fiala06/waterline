@@ -1,5 +1,6 @@
 // View data for one entry (water test or event): used by the entry pages
 // and the desktop History detail pane.
+import { specChangeText } from '$lib/equipment';
 import {
 	additivesOf,
 	additiveText,
@@ -130,6 +131,12 @@ export function eventView(user: User, id: string): EntryView {
 		case 'equipment':
 			add('Change', labelOf(EQUIPMENT_ACTIONS, d.action));
 			add('Item', d.item);
+			// what an adjustment changed: each setting, before → after
+			if (d.changes && typeof d.changes === 'object')
+				for (const [k, c] of Object.entries(d.changes as Record<string, unknown>)) {
+					const t = specChangeText(k, c, user);
+					if (t) add(t.label, t.text);
+				}
 			add('Why', d.reasons);
 			break;
 		case 'observation':

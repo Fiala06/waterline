@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   brandAndModel,
   guessEquipmentType,
+  specChangeText,
   parseServiceCadence,
   scheduleHours,
   scheduleText,
@@ -150,5 +151,25 @@ describe("from a product barcode (#147)", () => {
     expect(brandAndModel("Fluval", "Fluval")).toEqual({ brand: "Fluval", model: "" });
     expect(brandAndModel("API Freshwater Master Test Kit", "API")).toEqual({ brand: "API", model: "Freshwater Master Test Kit" });
     expect(brandAndModel("  Hygger   24W  LED Light | Full spectrum ", "")).toEqual({ brand: "Hygger", model: "24W LED Light" });
+  });
+});
+
+describe("what an adjustment changed", () => {
+  const metric = { unitSystem: "metric", hardnessUnit: "dgh" } as const;
+  const imperial = { unitSystem: "imperial", hardnessUnit: "dgh" } as const;
+  it("says the setting and before → after in the keeper's units", () => {
+    expect(specChangeText("intensity", [60, 80], metric)).toEqual({ label: "Intensity", text: "60% → 80%" });
+    expect(specChangeText("photoperiodH", [8.5, 8], metric)).toEqual({ label: "Photoperiod", text: "8.5 h → 8 h" });
+    expect(specChangeText("setC", [24, 26], imperial)).toEqual({ label: "Set to", text: "75 °F → 79 °F" });
+    expect(specChangeText("flowLh", [1000, 1200], imperial)).toEqual({ label: "Flow rate", text: "264.2 gph → 317 gph" });
+    expect(specChangeText("spectrum", [null, "Full spectrum"], metric)).toEqual({ label: "Spectrum", text: "none → Full spectrum" });
+    expect(specChangeText("filterType", ["Canister", "Sponge"], metric)).toEqual({ label: "Filter type", text: "Canister → Sponge" });
+  });
+  it("names the brand and model, and leaves out what isn't a change", () => {
+    expect(specChangeText("model", ["300S", "300S V"], metric)).toEqual({ label: "Model", text: "300S → 300S V" });
+    expect(specChangeText("brand", [null, "Twinstar"], metric)).toEqual({ label: "Brand", text: "none → Twinstar" });
+    expect(specChangeText("mystery", [1, 2], metric)).toEqual({ label: "mystery", text: "1 → 2" });
+    expect(specChangeText("intensity", 80, metric)).toBeNull();
+    expect(specChangeText("intensity", [80], metric)).toBeNull();
   });
 });

@@ -212,6 +212,10 @@ export function updateEquipment(
     if (before.specs[k] !== after.specs[k])
       changes[k] = [before.specs[k] ?? null, after.specs[k] ?? null];
   }
+  if (before.brand !== after.brand)
+    changes.brand = [before.brand ?? null, after.brand ?? null];
+  if (before.model !== after.model)
+    changes.model = [before.model ?? null, after.model ?? null];
   // the schedule changed (#25): its own entry, so trends can relate algae or pH to it
   const wasLabel = scheduleLabel(parseSchedule(before.schedule));
   const nowLabel = scheduleLabel(parseSchedule(after.schedule));

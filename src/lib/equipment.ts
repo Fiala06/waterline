@@ -194,6 +194,57 @@ export function specSummary(
   return out;
 }
 
+/** A spec's value as shown: "60%", "8 h", "25 °C", text as it is, and "none" for nothing. */
+export function specValueText(
+  f: SpecField,
+  v: unknown,
+  prefs: UnitPrefs,
+): string {
+  if (v == null || v === "") return "none";
+  if (typeof v === "number") {
+    const n = Number(
+      formatNumber(specToDisplay(f, v, prefs), f.quantity === "temp" ? 0 : 1),
+    ).toLocaleString("en-US");
+    const u = specUnit(f, prefs);
+    return u === "%" ? `${n}%` : u ? `${n} ${u}` : n;
+  }
+  return String(v);
+}
+
+const CHANGE_LABELS: Record<string, string> = {
+  brand: "Brand",
+  model: "Model",
+  name: "Name",
+  schedule: "Schedule",
+};
+
+/**
+ * What an adjustment changed, in words: the setting's label and "60% → 80%",
+ * from an equipment event's `changes` ({ key: [before, after] }). The field is
+ * found by its key across every type; brand and model have labels of their own.
+ */
+export function specChangeText(
+  key: string,
+  change: unknown,
+  prefs: UnitPrefs,
+): { label: string; text: string } | null {
+  if (!Array.isArray(change) || change.length !== 2) return null;
+  const [before, after] = change;
+  const f = Object.values(SPEC_FIELDS)
+    .flat()
+    .find((x) => x.key === key);
+  if (f)
+    return {
+      label: f.label,
+      text: `${specValueText(f, before, prefs)} → ${specValueText(f, after, prefs)}`,
+    };
+  const plain = (v: unknown) => (v == null || v === "" ? "none" : String(v));
+  return {
+    label: CHANGE_LABELS[key] ?? key,
+    text: `${plain(before)} → ${plain(after)}`,
+  };
+}
+
 // ── Service cadence ─────────────────────────────────────────────────────────
 // "Service every …" on an item is a maintenance task with its equipment_id;
 // the equipment form creates, updates or removes it. "Log service" completes it.

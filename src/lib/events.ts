@@ -1,5 +1,6 @@
 // Event categories: labels, form options and one-line titles for feeds.
 import type { EventCategory } from './types';
+import { specChangeText } from './equipment';
 import { healthTitle } from './livestock';
 import { algaeTitle, plantHealthTitle } from './plants';
 import { amountText } from './tasks';
@@ -197,7 +198,17 @@ export function eventTitle(e: EventLike, prefs: UnitPrefs): string {
 			if (d.action === 'schedule') return `${str(d.item) || 'Equipment'} runs ${str(d.schedule) || 'all day'}`;
 			if (d.action === 'par') return `PAR ${str(d.value)} at ${str(d.spot) || 'a spot'}`;
 			const action = EQUIPMENT_ACTIONS.find((a) => a.value === d.action)?.label ?? 'Changed';
-			return `${action} ${str(d.item) || 'equipment'}`;
+			const base = `${action} ${str(d.item) || 'equipment'}`;
+			// an adjustment says what changed: "Adjusted Twinstar 300S V · Intensity 60% → 80%"
+			if (d.action === 'adjusted' && d.changes && typeof d.changes === 'object') {
+				const parts = Object.entries(d.changes as Record<string, unknown>)
+					.map(([k, c]) => specChangeText(k, c, prefs))
+					.filter((t): t is { label: string; text: string } => !!t)
+					.map((t) => `${t.label} ${t.text}`);
+				if (parts.length > 2) return `${base} · ${parts.length} settings`;
+				if (parts.length) return `${base} · ${parts.join(', ')}`;
+			}
+			return base;
 		}
 		case 'observation': {
 			// a plant's health (#85) or algae on the tank (#86): their own titles
