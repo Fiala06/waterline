@@ -38,7 +38,7 @@ import { testReadings, tests } from "$lib/server/db/schema";
 import { thumbsFor } from "$lib/server/photos";
 import { equipmentName } from "$lib/equipment";
 import { listEquipment, scheduledItems, listLivestock, listPlants } from "$lib/server/specs";
-import { getTank, listParams, markCycling, markRunning, roleOn, setChecklist } from "$lib/server/tanks";
+import { dismissCyclingAsk, getTank, listParams, markCycling, markRunning, roleOn, setChecklist } from "$lib/server/tanks";
 import { checklistSteps, showChecklist } from "$lib/checklist";
 import { growingRows } from "$lib/growing";
 import { dashboardChoices, resetDashboardChoices, saveDashboardChoices } from "$lib/server/dashboard-prefs";
@@ -206,10 +206,11 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
   const cycleSince = new Date(
     Date.now() - CYCLE_DAYS * 86_400_000,
   ).toISOString();
-  // not marked cycling, but new and with ammonia or nitrite over target: ask (#68)
+  // not marked cycling, but new and with ammonia or nitrite over target: ask (#68), unless the keeper said Not cycling (#155)
   const born = tank.startDate ?? tank.createdAt.slice(0, 10);
   const askCycling =
     !tank.cycling &&
+    !tank.cyclingAskDismissed &&
     born >= addDays(today, -CYCLE_DAYS) &&
     params.some(
       (p) =>
@@ -405,6 +406,13 @@ export const actions: Actions = {
     const tankId = String((await request.formData()).get("tankId") ?? "");
     const tank = markCycling(locals.user!.id, tankId);
     setFlash(cookies, `✓ ${tank.name} is cycling`);
+    redirect(303, "/");
+  },
+  // Not cycling: the ask goes and stays gone for this tank (#155)
+  dismissCyclingAsk: async ({ request, locals, cookies }) => {
+    const tankId = String((await request.formData()).get("tankId") ?? "");
+    const tank = dismissCyclingAsk(locals.user!.id, tankId);
+    setFlash(cookies, `✓ ${tank.name} isn't cycling`);
     redirect(303, "/");
   },
   markRunning: async ({ request, locals, cookies }) => {

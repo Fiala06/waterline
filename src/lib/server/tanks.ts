@@ -431,6 +431,17 @@ export function setChecklist(userId: string, tankId: string, state: "hidden" | "
   db.update(tanks).set({ checklist: state }).where(eq(tanks.id, tankId)).run();
 }
 
+/** The keeper's answer to the dashboard's "New tank?": it isn't cycling, so it isn't asked again (#155). */
+export function dismissCyclingAsk(userId: string, tankId: string) {
+  getTank(userId, tankId, "owner");
+  return db
+    .update(tanks)
+    .set({ cyclingAskDismissed: true })
+    .where(eq(tanks.id, tankId))
+    .returning()
+    .get()!;
+}
+
 export function markCycling(userId: string, tankId: string) {
   const tank = getTank(userId, tankId, "owner");
   if (tank.cycling) return tank;

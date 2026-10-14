@@ -31,4 +31,15 @@ test('History says what an equipment adjustment changed', async ({ page }, info)
 	await expect(page.getByText('Intensity', { exact: true }).first()).toBeVisible();
 	await expect(page.getByText('60% → 80%', { exact: true }).first()).toBeVisible();
 	await expect(page.getByText('300S V → 300S VI', { exact: true }).first()).toBeVisible();
+	// on the desktop pane, a long value sits beside or under its label, never over it (#156)
+	if (info.project.name === 'desktop') {
+		for (const label of ['Item', 'Model']) {
+			const row = page.locator('.detail .drow', { has: page.locator('.dl', { hasText: new RegExp(`^${label}$`) }) });
+			const l = (await row.locator('.dl').boundingBox())!;
+			const v = (await row.locator('.dv').boundingBox())!;
+			const pane = (await page.locator('.detail').boundingBox())!;
+			expect(l.x + l.width).toBeLessThanOrEqual(v.x + 1);
+			expect(v.x + v.width).toBeLessThanOrEqual(pane.x + pane.width + 1);
+		}
+	}
 });

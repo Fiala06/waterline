@@ -151,6 +151,8 @@
 				<form method="POST" action="?/markCycling" use:enhance>
 					<input type="hidden" name="tankId" value={data.tank.id} />
 					<button class="btn btn-primary">Mark as cycling</button>
+					<!-- an established tank with a spike: the ask goes and stays gone (#155) -->
+					<button class="btn" formaction="?/dismissCyclingAsk">Not cycling</button>
 				</form>
 			</section>
 		{/if}
@@ -684,8 +686,13 @@
 	.ask-cycling b {
 		display: block;
 	}
+	.ask-cycling form {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		flex-shrink: 0;
+	}
 	.ask-cycling .btn {
-		align-self: flex-start;
 		min-height: 44px;
 	}
 	@media (min-width: 1024px) {

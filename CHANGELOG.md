@@ -11,6 +11,11 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.14.3 · 2026-10-14
+
+- **Not cycling.** The [dashboard](/)'s "New tank? High ammonia or nitrite is normal while it cycles" now has a second answer, Not cycling, for an established tank with a one-off spike. It goes and doesn't come back for that tank; Mark as cycling works as before.
+- **History's details readable.** In [History](/history) on a desktop, an entry's details on the right no longer draw a long value over its label: an item's name or a setting's change now takes its own room and wraps when long.
+
 ## 1.14.2 · 2026-10-14
 
 - **Share images readable again.** The picture shown when a [public page](/tanks/current/public) or a photo link is shared on Snapchat, Facebook, Discord and the like drew every letter as a box in 1.14.1. It reads again, and the images already made are redrawn.

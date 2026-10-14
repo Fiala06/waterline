@@ -38,7 +38,9 @@ tanks            id, user_id, name, type(freshwater|planted|brackish|reef),
                  lights_off when both are set), lights_on?, lights_off?, co2_on?, co2_off?
                  ("HH:MM": the lighting and CO₂ schedule), cycling (still cycling: ammonia and
                  nitrite above target show as ▲ Cycling, the dashboard follows the cycle, and
-                 Mark as running clears it with a "Cycle complete" note), checklist?(hidden|shown)
+                 Mark as running clears it with a "Cycle complete" note), cycling_ask_dismissed
+                 (the keeper answered the dashboard's "New tank?" with Not cycling: it isn't asked
+                 again), checklist?(hidden|shown)
                  (the dashboard's getting-started checklist: hidden by the owner, or shown again
                  from Tank setup; unset, it shows while the tank is new), without_equipment JSON
                  (what it goes without on purpose, of filter|heater|light|co2: ["heater"]; adding

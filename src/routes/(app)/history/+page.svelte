@@ -177,7 +177,7 @@
 						{#if d.rows.length}
 							<div class="drows">
 								{#each d.rows as r, i (i)}
-									<div class="drow" class:bad={r.level === 'bad'}>
+									<div class="drow" class:bad={r.level === 'bad'} class:has-status={!!r.statusText}>
 										<span class="dl">{r.label}</span>
 										{#if r.href}<a class="dv num" href={r.href}>{r.value} ›</a>{:else}<span class="dv num">{r.value}</span>{/if}
 										{#if r.statusText}<span class="ds status-{r.level}">{r.statusText}</span>{/if}
@@ -536,10 +536,12 @@
 			flex-shrink: 0;
 			border-top: 2px solid var(--ink);
 		}
+		/* the label keeps its width and the value takes the rest, wrapping when long (an item's name), so
+		   the two never draw over each other; a reading's status has a third column, other rows none */
 		.drow {
 			display: grid;
-			grid-template-columns: minmax(0, 1fr) auto 84px;
-			gap: 12px;
+			grid-template-columns: auto minmax(0, 1fr);
+			gap: 4px 12px;
 			align-items: baseline;
 			padding: 8px;
 			border-bottom: 1px solid var(--divider);
@@ -548,8 +550,11 @@
 		.drow.bad {
 			background: var(--bg);
 		}
+		.drow.has-status {
+			grid-template-columns: auto minmax(0, 1fr) 84px;
+		}
 		.dl {
-			min-width: 0;
+			white-space: nowrap;
 			color: var(--text-2);
 		}
 		.drow.bad .dl {
@@ -558,7 +563,8 @@
 		.dv {
 			font-size: 15px;
 			font-weight: 800;
-			white-space: nowrap;
+			text-align: right;
+			overflow-wrap: anywhere;
 		}
 		/* a value that leads somewhere, like an equipment item's page (#148) */
 		a.dv {
@@ -690,8 +696,8 @@
 		.actions {
 			padding-bottom: 24px;
 		}
-		.drow {
-			grid-template-columns: minmax(0, 1fr) auto 96px;
+		.drow.has-status {
+			grid-template-columns: auto minmax(0, 1fr) 96px;
 		}
 	}
 </style>
