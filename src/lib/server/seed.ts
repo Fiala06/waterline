@@ -250,6 +250,8 @@ async function seedPlanted(user: User) {
 		indexable: true,
 		slug: 'riverbed-40-demo',
 		showTimeline: true,
+		showDetails: true,
+		question: 'Some green spot algae on the glass since the light went to 8 hours. Is it the photoperiod, or is phosphate too low?',
 		description: 'Dutch-style planted tank with Rotala, Ludwigia and a carpet of Monte Carlo. CO₂ injected, lean dosing, weekly 30% water changes with RODI.',
 		seoTitle: 'Riverbed 40: 40 gal Dutch planted tank log'
 	});

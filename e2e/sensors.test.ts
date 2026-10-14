@@ -86,12 +86,12 @@ test('sensor readings over the API', async ({ page }, info) => {
 	await page.getByRole('button', { name: 'Save' }).first().click();
 	await expect(page.getByText('✓ Public page saved')).toBeVisible();
 	await page.goto(`/t/${slug}`);
-	const chart = page.locator('section.chart');
-	await expect(chart.locator('svg polyline.sensor')).toHaveCount(1);
-	await expect(chart.locator('.legend')).toContainText('Sensor');
-	// its tile says Live, with when; the heading's time stays the latest test's
-	await expect(page.locator('section.readings .rd', { hasText: 'Temp' })).toContainText(/● Live · \d{1,2}:\d{2} [AP]M/);
-	await expect(page.locator('section.readings .sh .muted')).toHaveText(/^Today, \d{1,2}:\d{2} [AP]M$/);
+	const trends = page.locator('section#trends');
+	await expect(trends.locator('svg polyline.sensor')).toHaveCount(1);
+	await expect(trends.locator('.legend')).toContainText('Sensor');
+	// its reading says Live, with when; the header's time stays the latest test's
+	await expect(page.locator('#summary li, #summary .arow').filter({ hasText: 'Temp' })).toContainText(/● Live · \d{1,2}:\d{2} [AP]M/);
+	await expect(page.locator('.by')).toContainText(/Last water test today, \d{1,2}:\d{2} [AP]M/);
 
 	await open(page, '/settings/sensors');
 	await page.getByRole('button', { name: 'Revoke ESPHome' }).click();

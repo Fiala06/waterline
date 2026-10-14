@@ -11,6 +11,11 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.15.0 · 2026-10-14
+
+- **Public page, built for getting help.** A tank's [public page](/tanks/current/public) now reads top to bottom the way someone diagnosing a problem needs it: your question first ("What I'm asking about", a new box in the page's settings), then what needs attention with its target and what it was before, then every parameter on one shared timeline with your water changes, doses and changes to the tank (new equipment, plants, losses) marked on it, so a spike the day the light changed stands out. Under that: the full water test log as a table, your setup with the light and CO₂ hours, your routine over the period (water changes, average size and gap, dosing per product), livestock with any losses, and the care log by day.
+- **Detail for people helping me.** A new switch on the [public page](/tanks/current/public) settings adds the times of tests and care, the notes on entries, observations, feeding and your maintenance schedule. Off by default: without it the page says the day, never the time, as before.
+- **Copy for a forum, download the data.** The public page has Copy summary for a forum post (the page as plain text with a link back) and Download data (CSV) of the tests over the range a visitor picked. Neither includes anything the page doesn't show.
 - **What's due stands out.** In Due on the [dashboard](/), a task that isn't due yet now steps back, its name in grey and its Done early muted, so an overdue task or one due today is what you see first.
 
 ## 1.14.3 · 2026-10-14
