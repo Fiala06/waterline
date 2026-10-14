@@ -79,7 +79,7 @@
 		decimals?: number;
 		/** the keeper's time zone, for dates and times */
 		timeZone?: string;
-		/** false: dates only (public pages never show times) */
+		/** false: dates only (the public page's charts are by day) */
 		times?: boolean;
 		full?: boolean;
 		selected?: string | null;

@@ -130,7 +130,7 @@
 						<option value="none" selected={p.displayName === 'none'}>Don't show a name</option>
 					</select>
 				</div>
-				<p class="hint">Never public: tasks, private notes, exact times, your email.</p>
+				<p class="hint">Never public: tasks, private notes, your email. The log and timeline say the day, not the time.</p>
 			</section>
 
 			<section class="stack">

@@ -20,6 +20,8 @@ export const load: PageServerLoad = ({ params, request, url, locals }) => {
 		ranges,
 		chartRanges: CHART_RANGES.map((r) => ({ key: r.key, label: r.label })),
 		logRanges: LOG_RANGES.map((r) => ({ key: r.key, label: r.label })),
+		// the chart a reading's tile chose, without scripts (?p=)
+		chartParam: url.searchParams.get('p'),
 		isOwner: locals.user?.id === user.id,
 		ownerTankId: locals.user?.id === user.id ? tank.id : null,
 		seo: {

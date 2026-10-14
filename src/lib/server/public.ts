@@ -1,7 +1,8 @@
 import { coverPosition } from '$lib/media';
 // Public, read-only tank pages (/t/<slug>) and photo share links (/s/<id>).
 // Only what the owner switched on is included. Never public: tasks, notes on
-// entries, exact times, email addresses, livestock sources, equipment notes.
+// entries, email addresses, livestock sources, equipment notes. The log and the
+// timeline say the day, never the time; only the latest readings say theirs.
 import { error } from '@sveltejs/kit';
 import { and, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
 import { createHash, randomBytes } from 'node:crypto';
@@ -11,7 +12,7 @@ import { eventTitle } from '$lib/events';
 import { bySpecies, livestockLabel, speciesKey } from '$lib/livestock';
 import { displayValue, fmtRange, fmtValue, paramDecimals, paramUnit, shortName, statusOf } from '$lib/params';
 import { statusShort } from '$lib/status';
-import { dateInZone, fmtDate, fmtDateLong, todayInZone } from '$lib/time';
+import { dateInZone, fmtDate, fmtDateLong, fmtTime, fmtWhen, todayInZone } from '$lib/time';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { db } from './db';
 import {
@@ -33,8 +34,8 @@ import {
 	type User
 } from './db/schema';
 import { getServerSettings } from './mail';
-import { eventsSince, latestReadings, series } from './logs';
-import { displaySamples, sampleSeries } from './sensors';
+import { eventsSince, latestReadings, latestTest, series } from './logs';
+import { displaySamples, isLive, latestSamples, sampleSeries } from './sensors';
 import { getPhoto } from './photos';
 import { requireRoleOn } from './members';
 import { getTank, listParams } from './tanks';
@@ -188,6 +189,18 @@ export function publicView(page: PublicPage, tank: Tank, owner: User, ranges: Pu
 	const today = todayInZone(tz);
 	const params = listParams(tank.id);
 	const latest = latestReadings(tank.id);
+	// a sensor's latest sample per parameter (#19), for "● Live" on its tile and a chart of its own
+	const live = page.showReadings ? latestSamples(tank.id) : new Map<string, ReturnType<typeof latestSamples> extends Map<string, infer S> ? S : never>();
+	// "Live · 9:30 AM" while the sensor keeps reporting, "Last 74 °F · Yesterday, 3:11 PM" once it's gone quiet;
+	// with its value where the tile shows the latest test's instead
+	const liveLine = (p: (typeof params)[number], fromSensor: boolean) => {
+		const s = live.get(p.id);
+		if (!s) return null;
+		const fresh = isLive(s.at, s.prevAt);
+		const unit = paramUnit(p, prefs);
+		const value = fromSensor ? '' : ` ${fmtValue(p, s.value, prefs)}${unit ? ` ${unit}` : ''}`;
+		return { fresh, text: `${fresh ? 'Live' : 'Last'}${value} · ${fmtWhen(s.at, tz).replace(/^Today, /, '')}` };
+	};
 	const vol = tank.nominalVolumeL != null ? `${formatNumber(toDisplay(tank.nominalVolumeL, 'volume', prefs), 1)} ${unitLabel('volume', prefs)}` : null;
 
 	const cards = params
@@ -205,13 +218,19 @@ export function publicView(page: PublicPage, tank: Tank, owner: User, ranges: Pu
 				status: statusShort(st).replace(/ (low|high)$/, ''),
 				statusLong: statusShort(st),
 				target: fmtRange(p, prefs, false),
-				day: dateInZone(r.takenAt, tz)
+				day: dateInZone(r.takenAt, tz),
+				// the reading is the sensor's (the reading of record), not a test's
+				fromSensor: !!r.sensor,
+				live: liveLine(p, !!r.sensor)
 			};
 		});
-	const lastDay = cards.reduce<string | null>((m, c) => (!m || c.day > m ? c.day : m), null);
+	// the latest test and when it was taken, even where a sensor's reading has replaced its on a card
+	const last = cards.length ? latestTest(tank.id) : undefined;
+	const lastDay = last ? dateInZone(last.takenAt, tz) : null;
+	const lastAt = last?.takenAt ?? null;
 	const bad = cards.filter((c) => c.level === 'bad');
 
-	// Charts: every tested parameter, bad ones first; dates only (no times). The visitor picks the range.
+	// Charts: every tested parameter, bad ones first, by day (no times). The visitor picks the range.
 	const chartRange = CHART_RANGES.find((r) => r.key === ranges.chart)!;
 	const since = chartRange.days ? new Date(Date.now() - chartRange.days * 86_400_000).toISOString() : '';
 	// Problems first, then the usual headline parameters.
@@ -221,8 +240,9 @@ export function publicView(page: PublicPage, tank: Tank, owner: User, ranges: Pu
 		const o = ORDER.indexOf(p.key);
 		return (l === 'bad' ? 0 : l === 'warn' ? 100 : 200) + (o < 0 ? 50 : o);
 	};
+	// a parameter a sensor reports has a chart too, with or without tests (#130)
 	const chartParams = [...params]
-		.filter((p) => latest.has(p.id))
+		.filter((p) => latest.has(p.id) || live.has(p.id))
 		.sort((a, b) => rank(a) - rank(b));
 	// public charts are by day: noon of the day, so a reading and a water change on the same day line up
 	const dayT = (at: string) => Date.parse(dateInZone(at, tz) + 'T12:00:00Z');
@@ -265,10 +285,12 @@ export function publicView(page: PublicPage, tank: Tank, owner: User, ranges: Pu
 						lastLevel: statusOf(p, latest.get(p.id)?.value).level
 					};
 				})
-				.filter((c) => c.points.length >= 2)
+				.filter((c) => c.points.length >= 2 || c.sensor.length >= 2)
 		: [];
 
 	const names = page.showPetNames;
+	// the cover opens full size in the lightbox, captioned with its day
+	const coverShot = tank.coverPhotoId ? db.select({ takenAt: photos.takenAt }).from(photos).where(eq(photos.id, tank.coverPhotoId)).get() : null;
 	// the latest photos, each with the day it was taken (dates are fine, times never); with the
 	// timeline on, the photos it carries aren't shown twice: the grid keeps the others (close-ups)
 	const photoIds = page.showPhotos
@@ -364,12 +386,15 @@ export function publicView(page: PublicPage, tank: Tank, owner: User, ranges: Pu
 		description: page.showDescription ? page.description : null,
 		cover: tank.coverPhotoId,
 		coverPos: coverPosition(tank.coverX, tank.coverY),
+		coverDate: coverShot ? fmtDateLong(dateInZone(coverShot.takenAt, tz)) : null,
 		// status and test date are readings too: hidden with them
 		summary:
 			page.showReadings && cards.length
 				? { bad: bad.map((c) => `${c.name} ${c.statusLong.replace('✕ ', '').toLowerCase()}`), ok: cards.length - bad.length }
 				: null,
 		tested: page.showReadings && lastDay ? (lastDay === today ? 'today' : fmtDate(lastDay)) : null,
+		// "7:12 PM": the time of the latest test, beside its day on the page (the share image keeps the day)
+		testedTime: page.showReadings && lastAt ? fmtTime(lastAt, tz) : null,
 		readings: page.showReadings ? cards : [],
 		charts,
 		photos: photoIds,
