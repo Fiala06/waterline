@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.14.2 · 2026-10-14
+
 - **Share images readable again.** The picture shown when a [public page](/tanks/current/public) or a photo link is shared on Snapchat, Facebook, Discord and the like drew every letter as a box in 1.14.1. It reads again, and the images already made are redrawn.
 
 ## 1.14.1 · 2026-10-14
