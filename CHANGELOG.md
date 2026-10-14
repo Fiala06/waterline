@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.14.3 · 2026-10-14
+
 - **Not cycling.** The [dashboard](/)'s "New tank? High ammonia or nitrite is normal while it cycles" now has a second answer, Not cycling, for an established tank with a one-off spike. It goes and doesn't come back for that tank; Mark as cycling works as before.
 - **History's details readable.** In [History](/history) on a desktop, an entry's details on the right no longer draw a long value over its label: an item's name or a setting's change now takes its own room and wraps when long.
 
