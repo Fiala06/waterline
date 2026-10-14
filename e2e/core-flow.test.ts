@@ -70,6 +70,8 @@ test('core flow', async ({ page }, info) => {
 	// the setup review says what it's for (#69)
 	await expect(due).toContainText('Check the tank’s details, equipment, targets and livestock are still right.');
 	await expect(due.getByRole('button', { name: 'Mark done', exact: true })).toHaveCount(0);
+	// and the row steps back (grey name, muted button), so what is due stands out
+	await expect(due.locator('.row', { hasText: 'Water change 25%' })).toHaveClass(/\blater\b/);
 	await due.getByRole('button', { name: 'Mark Water change 25% done early' }).click();
 	await expect(page).toHaveURL(/\/entries\/event\/new\?.*category=water_change/);
 	await expect(page.getByLabel(/Also mark the reminder “Water change 25%” done/)).toBeChecked();

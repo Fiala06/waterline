@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **What's due stands out.** In Due on the [dashboard](/), a task that isn't due yet now steps back, its name in grey and its Done early muted, so an overdue task or one due today is what you see first.
+
 ## 1.14.3 · 2026-10-14
 
 - **Not cycling.** The [dashboard](/)'s "New tank? High ammonia or nitrite is normal while it cycles" now has a second answer, Not cycling, for an established tank with a one-off spike. It goes and doesn't come back for that tank; Mark as cycling works as before.
