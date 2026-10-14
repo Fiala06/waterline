@@ -34,7 +34,7 @@ import {
 	type User
 } from './db/schema';
 import { getServerSettings } from './mail';
-import { eventsSince, latestReadings, series } from './logs';
+import { eventsSince, latestReadings, latestTest, series } from './logs';
 import { displaySamples, isLive, latestSamples, sampleSeries } from './sensors';
 import { getPhoto } from './photos';
 import { requireRoleOn } from './members';
@@ -224,9 +224,10 @@ export function publicView(page: PublicPage, tank: Tank, owner: User, ranges: Pu
 				live: liveLine(p, !!r.sensor)
 			};
 		});
-	// the latest test (a sensor's reading isn't one), and when it was taken
-	const lastDay = cards.reduce<string | null>((m, c) => (c.fromSensor || (m && c.day <= m) ? m : c.day), null);
-	const lastAt = cards.length ? (params.flatMap((p) => (latest.get(p.id)?.sensor ? [] : (latest.get(p.id)?.takenAt ?? []))).sort().at(-1) ?? null) : null;
+	// the latest test and when it was taken, even where a sensor's reading has replaced its on a card
+	const last = cards.length ? latestTest(tank.id) : undefined;
+	const lastDay = last ? dateInZone(last.takenAt, tz) : null;
+	const lastAt = last?.takenAt ?? null;
 	const bad = cards.filter((c) => c.level === 'bad');
 
 	// Charts: every tested parameter, bad ones first, by day (no times). The visitor picks the range.
