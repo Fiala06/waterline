@@ -12,6 +12,7 @@ import { env } from '$env/dynamic/private';
 import type { Photo } from './photos';
 import { photoFilePath } from './photos';
 import type { PublicView } from './public';
+import { woffToSfnt } from './woff';
 
 const W = 1200;
 const H = 630;
@@ -21,9 +22,10 @@ const require = createRequire(import.meta.url);
 let fonts: { name: string; data: Buffer; weight: 400 | 600 | 700; style: 'normal' }[] | null = null;
 function loadFonts() {
 	if (!fonts) {
+		// unwrapped to TTF: satori's shaper can't read WOFF and draws boxes from it (#153)
 		const f = (w: 400 | 600 | 700) => ({
 			name: 'Inter',
-			data: readFileSync(require.resolve(`@fontsource/inter/files/inter-latin-${w}-normal.woff`)),
+			data: woffToSfnt(readFileSync(require.resolve(`@fontsource/inter/files/inter-latin-${w}-normal.woff`))),
 			weight: w,
 			style: 'normal' as const
 		});
@@ -40,8 +42,8 @@ const h = (type: string, style: Record<string, unknown>, ...children: (Node | st
 const img = (src: string, style: Record<string, unknown>): Node => ({ type: 'img', props: { src, style } });
 
 const cacheDir = () => join(env.DATA_DIR ?? './data', 'og');
-// Bump when the card layout changes so cached images are rebuilt.
-const TEMPLATE = 2;
+// Bump when the card layout changes so cached images are rebuilt (3: the text, boxes in 1.14.1).
+const TEMPLATE = 3;
 
 /** The photo cut to width × height around its focus (0–100 across and down; the middle by default). */
 async function photoData(p: Photo, width: number, height: number, focus = { x: 50, y: 50 }) {
