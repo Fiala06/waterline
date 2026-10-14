@@ -98,21 +98,19 @@ Font: `"Helvetica Neue", Helvetica, Arial, sans-serif` (single family). Monospac
 ## Screens (file → labels)
 | File | Screens |
 |---|---|
-| `Core Screens(.Light).dc.html` | 01 Sign in · 02 Setup · 03 Dashboard · 04 Quick add sheet · 05 Log water test · 06 Tasks · 07 Desktop dashboard · 08 Desktop log water test modal |
-| `More Screens(.Light).dc.html` | 09 Tanks list · 10 Tank detail/edit · 11 History · 12 Charts · 13 Photos · 13b Photo viewer · 14 Log event (water change) · 15 Task edit · 16 Settings · 17 Export (building) · 18 Admin server settings · 19 Desktop charts |
-| `Desktop Screens(.Light).dc.html` | D1 Sign in (with local admin) · D2 Setup · D3 Tanks · D4 Tank detail + targets table · D5 Tasks + edit pane · D6 History + detail pane · D7 Photos · D8 Photo viewer + share link · D9 Settings/Notifications · D10 Export ready · D11 Admin (Mailgun / Custom SMTP, public share links) · D12 Quick add modal · D13 Log event modal (dosing) |
-| `Gap Screens(.Light).dc.html` | G1 Tank switcher sheet · G2–G5 Log event: Maintenance, Livestock/plants, Equipment, Observation · G6 Edit entry · G7 Custom parameter · G8 Snooze · G9 Date/time picker · G10 Export ready (phone) · G11 Install prompt + offline · G12 Desktop tank switcher |
-| `Tank Specs(.Light).dc.html` | T1 Overview (specs) · T2 Equipment · T3 Add equipment · T4 Livestock (count change) · T5 Add livestock · T6 Desktop livestock + equipment · T7 Plants |
-| `Public Tank Page(.Light).dc.html` | S1–S4 OG share images · P1 Public page settings · P2 Public page phone · P3 Public page desktop · P4 Search & sharing (SEO) · P5 Admin public pages & analytics |
-| `Component Library(.Light).dc.html` | Tokens, parameter card (4 states), event card, task row, numeric input states, chart, photo upload states, category icons, buttons/chips/toggles, empty states, loading/success/error, confirm dialogs |
+| `Core Screens.dc.html` | 01 Sign in · 02 Setup · 03 Dashboard · 04 Quick add sheet · 05 Log water test · 06 Tasks · 07 Desktop dashboard · 08 Desktop log water test modal |
+| `More Screens.dc.html` | 09 Tanks list · 10 Tank detail/edit · 11 History · 12 Charts · 13 Photos · 13b Photo viewer · 14 Log event (water change) · 15 Task edit · 16 Settings · 17 Export (building) · 18 Admin server settings · 19 Desktop charts |
+| `Desktop Screens.dc.html` | D1 Sign in (with local admin) · D2 Setup · D3 Tanks · D4 Tank detail + targets table · D5 Tasks + edit pane · D6 History + detail pane · D7 Photos · D8 Photo viewer + share link · D9 Settings/Notifications · D10 Export ready · D11 Admin (Mailgun / Custom SMTP, public share links) · D12 Quick add modal · D13 Log event modal (dosing) |
+| `Gap Screens.dc.html` | G1 Tank switcher sheet · G2–G5 Log event: Maintenance, Livestock/plants, Equipment, Observation · G6 Edit entry · G7 Custom parameter · G8 Snooze · G9 Date/time picker · G10 Export ready (phone) · G11 Install prompt + offline · G12 Desktop tank switcher |
+| `Tank Specs.dc.html` | T1 Overview (specs) · T2 Equipment · T3 Add equipment · T4 Livestock (count change) · T5 Add livestock · T6 Desktop livestock + equipment · T7 Plants |
+| `Public Tank Page.dc.html` | S1–S4 OG share images · P1 Public page settings · P2 Public page phone · P3 Public page desktop · P4 Search & sharing (SEO) · P5 Admin public pages & analytics |
+| `Component Library.dc.html` | Tokens, parameter card (4 states), event card, task row, numeric input states, chart, photo upload states, category icons, buttons/chips/toggles, empty states, loading/success/error, confirm dialogs |
 | `Email Templates.dc.html` | E1 Task reminder · E2 Overdue · E3 Daily digest · E4 Out-of-range · E5 Test email |
 | `Waterline Brand.dc.html` | Mark refinements, lockups, app icons, splash (animated) |
 | `Waterline Prototype.dc.html` | **Clickable** core flow: sign in → setup → create tank → log test → dashboard → complete task; entry detail; parameters & targets editor |
-| `Brand Explorations.dc.html` | Name/logo exploration (history only) |
-| `Desktop Sidebar(.Light).dc.html` | Shared desktop sidebar component (`active` prop) |
-| `Waterline Refresh.dc.html` | Dashboard refresh, direction 1c (built in 1.6): 1c, 2a desktop dark, 2b phone light; notes in [`REFRESH_1C.md`](REFRESH_1C.md) |
+| `Desktop Sidebar.dc.html` | Shared desktop sidebar component (`active` prop) |
 
-Treat the dark files as canonical; Light files are the same layouts with the light token column.
+The boards are the dark theme; the light values are in the token table above. The current look, in both themes, is in `../design_handoff_waterline_redesign/`.
 
 ---
 

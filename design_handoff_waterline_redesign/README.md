@@ -326,8 +326,6 @@ Breakpoints are based on the **main area width** (window minus the sidebar slot)
 ## Files
 - `Waterline App.dc.html`: the full clickable desktop prototype (every screen above, light and dark, narrow layouts). The markup is in the template; behaviour and demo data are in the `class Component` script at the bottom.
 - `Waterline Phone.dc.html`: the seven phone screens.
-- `reference/Waterline Current Dashboard.dc.html`: a recreation of today's UI, for comparison.
-- `reference/Waterline Desktop Redesign.dc.html`: the original layout directions. **1a** (tank workspace) was chosen.
 - `ios-frame.jsx`, `support.js`, `_ds/…/styles.css`: needed to open the files above.
 - `screenshots/`: a still of each key state: `desktop-01…22-*.png` (Tanks, Overview, Charts, History, Photos, Livestock, Add several, Equipment, Setup, Sharing, Log test, Print report, Get help, Tasks snooze, Alerts, ⌘K, Shortcuts, Import & export, Server Sign-in, Email, Chat alerts, Logs) and `phone-01…07-*.png`. They were taken at a ~924px-wide window, so the desktop shots show the narrow layout with the sidebar pinned; open the live file at ≥1280px to see the full-width layout. Use them for quick reference; the live files are the source of truth for behaviour.
 
