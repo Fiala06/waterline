@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Dividers that line up.** In a tank's parameters on the [dashboard](/), a parameter with a sensor's "● Live" line under its value no longer has its divider sitting lower than the rest of its row.
+
 ## 1.14.0 · 2026-10-14
 
 - **Read a device with no Home Assistant.** A probe with its own web page, like an Apollo temperature probe or anything else running ESPHome with its web server on, can now be read by Waterline itself: under [Settings › Sensors › Read a device](/settings/sensors), give its address, and Find sensors lists what it reports with the parameter guessed for each (°C or °F is the temperature, the board's own sensors left out). Start reading reads it on the spot and then every 5 minutes, with no token, automation or reflash. Each device shows how its last read went ("✓ OK · read 3:11 PM", or what went wrong), with Read now and Remove beside it. The server has to reach the device, so the two share a network; a device that asks for a sign-in takes a username and password, kept encrypted.

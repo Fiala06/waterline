@@ -108,10 +108,14 @@
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
+	/* each link fills its cell, so a taller one (a sensor's Live line) keeps its divider level with the row's */
 	li {
 		min-width: 0;
+		display: flex;
 	}
 	.grid a {
+		flex: 1 1 0;
+		min-width: 0;
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
