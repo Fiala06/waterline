@@ -42,7 +42,8 @@
 					? '▲ Today'
 					: `${d.days === 1 ? 'Tomorrow' : d.days <= 7 ? `In ${d.days} days` : fmtDate(t.due)} · ${intervalText(t)}`}
 		{@const dose = amountText(t.amount, t.amountUnit)}
-		<div class="row">
+		<!-- a task not due yet steps back, so what is due or over stands out -->
+		<div class="row" class:later={d.days > 0}>
 			<div class="text">
 				<div class="name">{t.name}</div>
 				{#if t.kind === 'review'}<div class="about">{REVIEW_ABOUT}</div>{/if}
@@ -105,15 +106,24 @@
 	.due .plain {
 		font-weight: 400;
 	}
-	/* not due yet: the design's ghost, there if it's needed but not asking to be pressed */
+	/* not due yet: the name in neutral and regular weight, and the design's ghost of a button, muted
+	   until hovered: there if it's needed but not asking to be pressed */
+	.row.later .name {
+		color: var(--text-2);
+		font-weight: 400;
+	}
 	.early {
 		border-color: transparent;
-		color: var(--accent-text);
+		color: var(--text-muted);
 	}
 	@media (hover: hover) {
 		.early:hover {
 			border-color: var(--divider);
+			color: var(--accent-text);
 		}
+	}
+	.early:focus-visible {
+		color: var(--accent-text);
 	}
 	@media (min-width: 1024px) {
 		.row {
