@@ -7,12 +7,10 @@ import { newKeeperWithTank, open } from './helpers';
 test('Charts lists what was logged while a reading moved', async ({ page }, info) => {
 	await newKeeperWithTank(page, `what-changed-${info.project.name}`);
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
-	// every test at the same time of day, a few minutes ago (the keeper's zone is UTC), so
-	// the span is whole days whatever the hour: logged at 09:00 and "now", it read 13 days
-	// late in the day, as the summary rounds the stretch to days
-	const base = Date.now() - 5 * 60_000;
-	const daysAgo = (n: number) => new Date(base - n * 86_400_000).toISOString().slice(0, 10);
-	const time = new Date(base).toISOString().slice(11, 16);
+	const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
+	// the earlier readings at this time of day, so each gap is a whole number of days whatever the hour
+	// the test runs: "over 12 days" is rounded from the hours between the readings
+	const timeNow = new Date().toISOString().slice(11, 16);
 
 	// nitrate up, then down over 12 days; a dose before the fall, a water change and a trim during it
 	for (const [n, v] of [
@@ -21,7 +19,8 @@ test('Charts lists what was logged while a reading moved', async ({ page }, info
 		[6, '10'],
 		[0, '7']
 	] as const) {
-		await open(page, `/entries/test/new?tank=${tankId}&date=${daysAgo(n)}&time=${time}`);
+		// today's is logged now
+		await open(page, `/entries/test/new?tank=${tankId}${n ? `&date=${daysAgo(n)}&time=${timeNow}` : ''}`);
 		await page.getByLabel('Nitrate', { exact: true }).fill(v);
 		await page.getByRole('button', { name: 'Save 1 reading' }).click();
 		await expect(page.getByRole('status')).toContainText('✓ Saved 1 reading');

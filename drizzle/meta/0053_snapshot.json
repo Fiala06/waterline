@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "725f8b5d-7ba5-4fe8-b693-9e5dddcc8b42",
-  "prevId": "3c1f1f44-d604-491b-a328-a48b628f7c73",
+  "id": "16fd6f59-3ad5-48e9-b40f-be28487588a2",
+  "prevId": "f0c3cc5c-dd1a-486c-a710-db068cec863b",
   "tables": {
     "action_tokens": {
       "name": "action_tokens",
@@ -980,6 +980,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "equipment_id": {
+          "name": "equipment_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "receipt_path": {
           "name": "receipt_path",
           "type": "text",
@@ -1018,6 +1025,13 @@
             "date"
           ],
           "isUnique": false
+        },
+        "expenses_equipment": {
+          "name": "expenses_equipment",
+          "columns": [
+            "equipment_id"
+          ],
+          "isUnique": false
         }
       },
       "foreignKeys": {
@@ -1040,6 +1054,19 @@
           "tableTo": "products",
           "columnsFrom": [
             "product_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "expenses_equipment_id_equipment_id_fk": {
+          "name": "expenses_equipment_id_equipment_id_fk",
+          "tableFrom": "expenses",
+          "tableTo": "equipment",
+          "columnsFrom": [
+            "equipment_id"
           ],
           "columnsTo": [
             "id"

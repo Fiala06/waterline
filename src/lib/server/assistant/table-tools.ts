@@ -12,6 +12,7 @@ import { toDisplay, unitLabel } from '$lib/units';
 import { tankTypeLabel } from '$lib/types';
 import { db } from '../db';
 import { events, expenses, livestock, plants, tasks, testReadings, tests, type Tank, type TankParameter, type User } from '../db/schema';
+import { equipmentNames } from '../expenses';
 import { latestReadingsFor } from '../logs';
 import { getTank, listParamsFor, listTanks } from '../tanks';
 import type { AssistantAccess } from './tokens';
@@ -225,13 +226,13 @@ export const tasksTool: Tool = {
 
 // ── Spending ────────────────────────────────────────────────────────────────
 
-const SPENDING_COLUMNS = ['tank', 'tank_id', 'date', 'category', 'what', 'amount', 'currency', 'note'];
+const SPENDING_COLUMNS = ['tank', 'tank_id', 'date', 'category', 'what', 'equipment', 'amount', 'currency', 'note'];
 
 export const spendingTool: Tool = {
 	name: 'get_spending',
 	title: 'Spending as rows',
 	description:
-		"What's been spent on the tanks as a flat table, newest first: tank, date, category (livestock, plants, equipment, consumables, other), what, amount in the keeper's currency, and the note. Across every tank unless tank_id is given.",
+		"What's been spent on the tanks as a flat table, newest first: tank, date, category (livestock, plants, equipment, consumables, other), what, the equipment item it was for (if linked), amount in the keeper's currency, and the note. Across every tank unless tank_id is given.",
 	inputSchema: { type: 'object', properties: { tank_id: optionalTankArg, days: daysArg(3650, 3650) } },
 	run: (access, args) => {
 		const { user } = access;
@@ -245,6 +246,7 @@ export const spendingTool: Tool = {
 			.where(and(inArray(expenses.tankId, [...byId.keys()]), gte(expenses.date, since)))
 			.orderBy(desc(expenses.date), desc(expenses.createdAt))
 			.all();
+		const items = equipmentNames([...byId.keys()]);
 		return table(
 			SPENDING_COLUMNS,
 			rows.map((x) => ({
@@ -253,6 +255,7 @@ export const spendingTool: Tool = {
 				date: x.date,
 				category: x.category,
 				what: x.what,
+				equipment: x.equipmentId ? (items.get(x.equipmentId) ?? null) : null,
 				amount: x.amountCents / 100,
 				currency: user.currency,
 				note: x.note

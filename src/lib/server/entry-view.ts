@@ -16,7 +16,9 @@ import { statusMedium } from '$lib/status';
 import { amountText } from '$lib/tasks';
 import { dateInZone, fmtDate, fmtDateLong, fmtTime, fmtWhen } from '$lib/time';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
-import type { User } from './db/schema';
+import { and, eq } from 'drizzle-orm';
+import { db } from './db';
+import { equipment, type User } from './db/schema';
 import { getEvent, getTest } from './logs';
 import { entryPhotos } from './photos';
 import { getTank, listParams } from './tanks';
@@ -44,7 +46,7 @@ export interface EntryView {
 	day: string;
 	edited: string | null;
 	note: string | null;
-	rows: { label: string; value: string; statusText?: string; level?: string }[];
+	rows: { label: string; value: string; statusText?: string; level?: string; href?: string }[];
 	photos: { id: string }[];
 	/** a water test as plain text to paste into a message: the tank and when, then "pH 7.8" a line, no statuses */
 	copy?: string;
@@ -128,7 +130,7 @@ export function eventView(user: User, id: string): EntryView {
 			add('Count', d.count);
 			add('Status', labelOf(LIVESTOCK_STATUS, d.status));
 			break;
-		case 'equipment':
+		case 'equipment': {
 			add('Change', labelOf(EQUIPMENT_ACTIONS, d.action));
 			add('Item', d.item);
 			// what an adjustment changed: each setting, before → after
@@ -137,8 +139,14 @@ export function eventView(user: User, id: string): EntryView {
 					const t = specChangeText(k, c, user);
 					if (t) add(t.label, t.text);
 				}
+			// the item's own page (#148), past equipment included, while the item is still there
+			const eid = typeof d.equipment_id === 'string' ? d.equipment_id : '';
+			const item = rows.find((r) => r.label === 'Item');
+			if (eid && item && db.select({ id: equipment.id }).from(equipment).where(and(eq(equipment.id, eid), eq(equipment.tankId, e.tankId))).get())
+				item.href = `/tanks/${e.tankId}/equipment/${eid}`;
 			add('Why', d.reasons);
 			break;
+		}
 		case 'observation':
 			add('Noticed', d.tags);
 			add('Check again', typeof d.recheck_at === 'string' ? fmtDate(d.recheck_at) : null);

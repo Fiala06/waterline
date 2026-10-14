@@ -126,8 +126,9 @@ describe('tasks', () => {
 describe('spending', () => {
 	it('gives amounts in the keeper’s currency', async () => {
 		const t = await rowsOf('get_spending');
+		expect(t.columns).toContain('equipment');
 		expect(t.rows).toEqual([
-			expect.objectContaining({ tank: 'Betta Tank', amount: 12.99, currency: 'USD', what: 'Seachem Prime' }),
+			expect.objectContaining({ tank: 'Betta Tank', amount: 12.99, currency: 'USD', what: 'Seachem Prime', equipment: null }),
 			expect.objectContaining({ tank: 'Shrimp Bowl', amount: 5, what: 'Moss' })
 		]);
 	});

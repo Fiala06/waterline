@@ -108,3 +108,39 @@ test('spending works without scripts', async ({ page, browser }, info) => {
 	await expect(plain.locator('.tile', { hasText: 'This year' })).toContainText('$8.00');
 	await ctx.close();
 });
+
+// #148: an expense says which item it was for; the item's page shows what it cost
+test('an expense linked to a piece of equipment, from the item’s page', async ({ page }, info) => {
+	await newKeeperWithTank(page, `spend-item-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, `/tanks/${tankId}/equipment/new`);
+	await page.locator('label', { hasText: /^Light$/ }).click();
+	await page.getByLabel('Brand').fill('Twinstar');
+	await page.getByLabel('Model').fill('300S V');
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('status')).toContainText('✓ Twinstar 300S V added');
+
+	// History's entry for it opens the item
+	await open(page, '/history');
+	await page.getByRole('link', { name: /Installed Twinstar 300S V/ }).first().click();
+	await page.getByRole('link', { name: 'Twinstar 300S V ›' }).click();
+	await expect(page).toHaveURL(/\/equipment\/[\w-]+$/);
+	await expect(page.getByText('No expense linked yet.')).toBeVisible();
+
+	// Add expense from the item: the form comes filled in and linked
+	await page.getByRole('link', { name: 'Add expense ›' }).click();
+	await expect(page.getByLabel('What for')).toHaveValue('Twinstar 300S V');
+	await expect(page.getByRole('radio', { name: 'Equipment' })).toBeChecked();
+	await expect(page.getByLabel('For which item · optional')).toContainText('Twinstar 300S V');
+	await page.getByLabel('Amount').fill('129.99');
+	await page.getByRole('button', { name: 'Add expense' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Expense added');
+
+	// the item's page shows what it cost, each line opening the expense
+	await page.goBack();
+	await page.goBack();
+	await expect(page.getByText('Cost · $129.99')).toBeVisible();
+	await page.getByRole('link', { name: /Twinstar 300S V \$129\.99/ }).click();
+	await expect(page).toHaveURL(/\/spending\/[\w-]+$/);
+	await expect(page.getByLabel('For which item · optional')).toHaveValue(/[\w-]+/);
+});

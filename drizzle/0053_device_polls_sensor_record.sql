@@ -16,4 +16,5 @@ CREATE TABLE `device_polls` (
 );
 --> statement-breakpoint
 CREATE INDEX `device_polls_user` ON `device_polls` (`user_id`);--> statement-breakpoint
-CREATE INDEX `device_polls_tank` ON `device_polls` (`tank_id`);
+CREATE INDEX `device_polls_tank` ON `device_polls` (`tank_id`);--> statement-breakpoint
+ALTER TABLE `tank_parameters` ADD `sensor_record` integer DEFAULT false NOT NULL;

@@ -3,12 +3,12 @@ import { redirect, type Cookies } from '@sveltejs/kit';
 import { parseMoney } from '$lib/money';
 import { isDate, todayInZone } from '$lib/time';
 import type { User } from './db/schema';
-import { attachReceipt, CATEGORY_LABEL, removeReceipt, type ExpenseCategory, type ExpenseInput } from './expenses';
+import { attachReceipt, CATEGORY_LABEL, equipmentNames, removeReceipt, type ExpenseCategory, type ExpenseInput } from './expenses';
 import { setFlash } from './flash';
 import { optStr, str } from './forms';
 import { listTanks } from './tanks';
 
-export type ExpenseValues = Record<'amount' | 'what' | 'category' | 'date' | 'note' | 'tankId' | 'productId', string>;
+export type ExpenseValues = Record<'amount' | 'what' | 'category' | 'date' | 'note' | 'tankId' | 'productId' | 'equipmentId', string>;
 
 /** The form's fields, checked: the expense, or what to fix. */
 export function readExpenseForm(form: FormData, user: User, fallbackTankId: string) {
@@ -19,7 +19,8 @@ export function readExpenseForm(form: FormData, user: User, fallbackTankId: stri
 		date: str(form, 'date'),
 		note: str(form, 'note').slice(0, 2000),
 		tankId: str(form, 'tankId') || fallbackTankId,
-		productId: str(form, 'productId')
+		productId: str(form, 'productId'),
+		equipmentId: str(form, 'equipmentId')
 	};
 	const errors: Record<string, string> = {};
 	const amountCents = parseMoney(values.amount);
@@ -30,6 +31,8 @@ export function readExpenseForm(form: FormData, user: User, fallbackTankId: stri
 	// the keeper's own tanks only
 	const tankId = listTanks(user.id).some((t) => t.id === values.tankId) ? values.tankId : fallbackTankId;
 	const category = (values.category in CATEGORY_LABEL ? values.category : 'other') as ExpenseCategory;
+	// the item it was for (#148): one of the tank it goes on, else no link
+	const equipmentId = values.equipmentId && equipmentNames([tankId]).has(values.equipmentId) ? values.equipmentId : null;
 	if (Object.keys(errors).length) return { errors, values };
 	const input: ExpenseInput & { tankId: string } = {
 		tankId,
@@ -38,7 +41,8 @@ export function readExpenseForm(form: FormData, user: User, fallbackTankId: stri
 		category,
 		what: values.what,
 		note: optStr(form, 'note', 2000),
-		productId: values.productId || null
+		productId: values.productId || null,
+		equipmentId
 	};
 	return { input, values };
 }

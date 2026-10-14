@@ -369,15 +369,15 @@
     {
       "idx": 52,
       "version": "6",
-      "when": 1791935221530,
-      "tag": "0052_device_polls",
+      "when": 1791926758135,
+      "tag": "0052_expense_equipment",
       "breakpoints": true
     },
     {
       "idx": 53,
       "version": "6",
-      "when": 1791937069342,
-      "tag": "0053_sensor_record",
+      "when": 1791939745555,
+      "tag": "0053_device_polls_sensor_record",
       "breakpoints": true
     }
   ]
