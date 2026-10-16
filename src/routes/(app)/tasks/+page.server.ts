@@ -1,11 +1,11 @@
 import { error, redirect } from '@sveltejs/kit';
-import { addDays, fmtDate, isDate, todayInZone } from '$lib/time';
+import { addDays, fmtDate, isDate, todayInZone, utcToZoned, zonedToUtc } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
 import { str } from '$lib/server/forms';
 import { safeReturn } from '$lib/server/redirect';
 import { listTanks } from '$lib/server/tanks';
 import { routineProducts, taskFormValues, taskType } from '$lib/server/task-form';
-import { completeTask, getTask, listTasks, skipTask, snoozeTask, undoCompletion } from '$lib/server/tasks';
+import { completeTask, countableEntry, getTask, lastDoneOn, lastDoseText, listTasks, recentCompletions, skipTask, snoozeTask, undoCompletion } from '$lib/server/tasks';
 import { effectiveDue } from '$lib/tasks';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -28,7 +28,10 @@ export const load: PageServerLoad = ({ locals, url }) => {
 	return {
 		filter,
 		today: todayInZone(user.timeZone),
-		tasks: rows.map((r) => r.task),
+		// a water change or test logged already that Skip can count instead (#163)
+		tasks: rows.map((r) => ({ ...r.task, countable: countableEntry(r.task, user.timeZone), lastDone: lastDoneOn(r.task.id, user.timeZone), lastDose: r.task.kind === 'dosing' ? lastDoseText(r.task, user.timeZone) : null })),
+		// the pane's task: the last few times it was done (#164)
+		done: pane?.taskId ? recentCompletions(pane.taskId, user.timeZone) : [],
 		pane,
 		formTanks: listTanks(user.id).map((t) => ({ id: t.id, name: t.name })),
 		products: routineProducts(user.id)
@@ -42,6 +45,11 @@ export const actions: Actions = {
 		const taskId = str(form, 'taskId');
 		if (!taskId) error(400, 'Missing task');
 		const task = getTask(user.id, taskId);
+		// Done on an earlier day (#162): that day, at this time of day, so the next one counts from it
+		const today = todayInZone(user.timeZone);
+		const doneOn = str(form, 'doneOn');
+		if (doneOn && (!isDate(doneOn) || doneOn > today)) error(400, `Pick a day on or before ${fmtDate(today)}`);
+		const earlier = doneOn && doneOn < today ? doneOn : null;
 
 		// The setup review (#30) is done on its own page, where the parts are checked.
 		if (task.kind === 'review') redirect(303, `/tanks/${task.tankId}/review`);
@@ -49,13 +57,18 @@ export const actions: Actions = {
 		// Completing a water change or test opens the matching log form.
 		if (task.openFormOnDone && (task.kind === 'water_change' || task.kind === 'test')) {
 			const q = new URLSearchParams({ tank: task.tankId, task: task.id });
+			if (earlier) {
+				q.set('date', earlier);
+				q.set('time', utcToZoned(new Date(), user.timeZone).time);
+			}
 			if (task.kind === 'test') redirect(303, `/entries/test/new?${q}`);
 			q.set('category', 'water_change');
 			redirect(303, `/entries/event/new?${q}`);
 		}
 
-		const done = completeTask(user.id, taskId, { timeZone: user.timeZone });
-		setFlash(cookies, `✓ ${task.name} done${done.nextDue ? ` · next ${fmtDate(done.nextDue)}` : ''}`, {
+		const at = earlier ? zonedToUtc(earlier, utcToZoned(new Date(), user.timeZone).time, user.timeZone).toISOString() : undefined;
+		const done = completeTask(user.id, taskId, { at, timeZone: user.timeZone });
+		setFlash(cookies, `✓ ${task.name} done${earlier ? ` ${fmtDate(earlier)}` : ''}${done.nextDue ? ` · next ${fmtDate(done.nextDue)}` : ''}`, {
 			undo: { action: '/tasks?/undo', name: 'completionId', value: done.completionId }
 		});
 		redirect(303, safeReturn(form.get('from'), '/tasks'));
@@ -66,12 +79,44 @@ export const actions: Actions = {
 		const taskId = str(form, 'taskId');
 		if (!taskId) error(400, 'Missing task');
 		const until = str(form, 'until');
-		const date = isDate(until) ? until : addDays(todayInZone(user.timeZone), 1);
+		const today = todayInZone(user.timeZone);
+		const date = isDate(until) ? until : addDays(today, 1);
 		const due = effectiveDue(getTask(user.id, taskId));
-		const after = due && due > todayInZone(user.timeZone) ? due : todayInZone(user.timeZone);
-		if (date <= after) error(400, `Pick a date after ${fmtDate(after)}`);
+		// later than today, or today itself for a task not due yet: Do it today (#165) brings it forward
+		if (date < today || (date === today && !(due && due > today))) error(400, `Pick a date after ${fmtDate(today)}`);
 		const task = snoozeTask(user.id, taskId, date);
-		setFlash(cookies, `Snoozed ${task.name} to ${fmtDate(date)}`);
+		setFlash(cookies, due && date < due ? `Moved ${task.name} to ${date === today ? 'today' : fmtDate(date)}` : `Snoozed ${task.name} to ${fmtDate(date)}`, {
+			undo: { action: '/tasks?/unsnooze', name: 'taskId', value: `${task.id}|${due ?? ''}` }
+		});
+		redirect(303, safeReturn(form.get('from'), '/tasks'));
+	},
+	/** Undo a snooze or a move: back to the date it had */
+	unsnooze: async ({ request, locals, cookies }) => {
+		const user = locals.user!;
+		const form = await request.formData();
+		const [taskId, was] = str(form, 'taskId').split('|');
+		const task = getTask(user.id, taskId);
+		snoozeTask(user.id, taskId, isDate(was) ? was : (task.nextDue ?? ''));
+		setFlash(cookies, `Undid ${task.name}`);
+		redirect(303, safeReturn(form.get('from'), '/tasks'));
+	},
+	/** Count the water change or test already logged as this one (#163), instead of skipping it */
+	count: async ({ request, locals, cookies }) => {
+		const user = locals.user!;
+		const form = await request.formData();
+		const taskId = str(form, 'taskId');
+		if (!taskId) error(400, 'Missing task');
+		const task = getTask(user.id, taskId);
+		const entry = countableEntry(task, user.timeZone);
+		if (!entry || entry.id !== str(form, 'entryId')) error(409, 'That entry no longer counts for this task');
+		const done = completeTask(user.id, taskId, {
+			at: entry.at,
+			...(entry.kind === 'event' ? { eventId: entry.id } : { logged: true }),
+			timeZone: user.timeZone
+		});
+		setFlash(cookies, `✓ ${task.name} done ${fmtDate(entry.date)}${done.nextDue ? ` · next ${fmtDate(done.nextDue)}` : ''}`, {
+			undo: { action: '/tasks?/undo', name: 'completionId', value: done.completionId }
+		});
 		redirect(303, safeReturn(form.get('from'), '/tasks'));
 	},
 	/** Skip this one (#71): on to the next date, with Undo */

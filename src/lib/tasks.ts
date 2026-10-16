@@ -45,10 +45,13 @@ export function onOrAfterWeekday(date: string, days: number[]): string {
 	return d;
 }
 
-/** The date a task is actually due: a snooze moves only this occurrence. */
+/**
+ * The date a task is actually due: a snooze moves only this occurrence, later
+ * or, with Do it today (#165), sooner; the schedule stays on `nextDue`.
+ */
 export function effectiveDue(task: { nextDue: string | null; snoozedUntil?: string | null }): string | null {
 	if (!task.nextDue) return null;
-	return task.snoozedUntil && task.snoozedUntil > task.nextDue ? task.snoozedUntil : task.nextDue;
+	return task.snoozedUntil ?? task.nextDue;
 }
 
 /**
@@ -158,6 +161,50 @@ export function dueInfo(nextDue: string, today: string): DueInfo {
 	return { days, level: 'ok', text: fmtDate(nextDue), section: 'later' };
 }
 
+export type ReminderTask = Schedulable & { snoozedUntil?: string | null };
+
+/**
+ * Whether work logged on `entryDate` is this task's occurrence (#163): it's
+ * after the last time it was done, and the task is overdue by then or due
+ * within half its cadence (a day early on every 3 days, 3 on a weekly one).
+ * Earlier than that it's an extra one, and the schedule stays as it is.
+ */
+export function logCompletes(task: ReminderTask, lastDone: string | null, entryDate: string): boolean {
+	const due = effectiveDue(task);
+	if (!due) return false;
+	if (lastDone && entryDate <= lastDone) return false;
+	const early = daysBetween(entryDate, due);
+	const window = !task.recurring ? DUE_SOON_DAYS : task.scheduleMode === 'weekdays' ? 1 : Math.max(1, Math.floor((task.intervalDays ?? 0) / 2));
+	return early <= window;
+}
+
+/** Where a log form's reminder stands: "Due today · next Oct 23", "Not due until Oct 20 · next would be Oct 27" */
+export function reminderSub(task: ReminderTask, entryDate: string, today: string): string {
+	const due = effectiveDue(task);
+	if (!due) return '';
+	const d = dueInfo(due, today);
+	const next = nextDueAfterCompletion(task, entryDate, today);
+	const state = d.days < 0 ? `${-d.days} day${d.days === -1 ? '' : 's'} overdue` : d.days === 0 ? 'Due today' : `Not due until ${fmtDate(due)}`;
+	const after = next ? (d.days > 0 ? `next would be ${fmtDate(next)}` : `next ${fmtDate(next)}`) : 'closes the reminder';
+	return `${state} · ${after}`;
+}
+
+/**
+ * A task's cadence with how it repeats and when it was last done (#164):
+ * "every 3 days after done · last Oct 13", "every 7 days · on schedule",
+ * "Mon, Wed, Fri · last Oct 14", "one-off".
+ */
+export function cadenceText(
+	task: { recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null; kind?: string; nextDue?: string | null; endsOn?: string | null },
+	lastDone?: string | null
+): string {
+	const base = repeatText(task);
+	const every = task.recurring && task.intervalDays && task.scheduleMode !== 'weekdays' && task.kind !== 'review';
+	const how = every ? (task.scheduleMode === 'fixed' ? `${base} · on schedule` : `${base} after done`) : base;
+	const course = task.endsOn && task.nextDue ? courseText({ ...task, scheduleMode: (task.scheduleMode ?? 'completion') as Schedulable['scheduleMode'], nextDue: task.nextDue }) : null;
+	return [how, course, lastDone ? `last ${fmtDate(lastDone)}` : null].filter(Boolean).join(' · ');
+}
+
 /** "every 7 days", "every 2 weeks", "Mon, Wed, Fri", "every day but Sun", "one-off" */
 export function intervalText(task: { recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null; kind?: string; nextDue?: string | null; endsOn?: string | null }): string {
 	const base = repeatText(task);
@@ -183,25 +230,30 @@ function repeatText(task: { recurring: boolean; intervalDays: number | null; sch
 	return d === 1 ? 'every day' : `every ${d} days`;
 }
 
-/** Snooze choices (G8): tomorrow, in 3 days, next weekend (the coming Saturday after this week's). */
+/**
+ * Snooze choices (README → Screens §10): Tomorrow, In 2 days, This weekend and
+ * Next week, each a different day; a task not due yet moves back from its due date.
+ */
 export function snoozeOptions(today: string, due: string) {
 	// Not due yet: push it back from its due date (a date before it would do nothing).
 	if (due > today) {
 		return [
 			{ label: 'A day later', date: addDays(due, 1) },
-			{ label: '3 days later', date: addDays(due, 3) },
+			{ label: '2 days later', date: addDays(due, 2) },
 			{ label: 'A week later', date: addDays(due, 7) }
 		];
 	}
 	const dow = new Date(today + 'T12:00:00Z').getUTCDay(); // 0 Sun … 6 Sat
-	const toSat = ((6 - dow + 7) % 7) || 7;
-	// never the same day as "In 3 days" (a Wednesday's Saturday): the one after
-	const weekend = addDays(today, toSat <= 3 ? toSat + 7 : toSat);
-	return [
+	// the coming Saturday, or Sunday when today is Saturday
+	const weekend = addDays(today, dow === 6 ? 1 : 6 - dow || 6);
+	const all = [
 		{ label: 'Tomorrow', date: addDays(today, 1) },
-		{ label: 'In 3 days', date: addDays(today, 3) },
-		{ label: 'Next weekend', date: weekend }
+		{ label: 'In 2 days', date: addDays(today, 2) },
+		{ label: 'This weekend', date: weekend },
+		{ label: 'Next week', date: addDays(today, 7) }
 	];
+	// never the same day twice: on a Thursday, In 2 days is the weekend already
+	return all.filter((o, i) => all.findIndex((x) => x.date === o.date) === i);
 }
 
 /** Example under each schedule mode (15): "Done late on Sep 26 → next due Oct 3". */

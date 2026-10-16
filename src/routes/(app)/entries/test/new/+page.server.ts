@@ -38,7 +38,7 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 				? Object.fromEntries(params.filter((p) => p.lastInput != null).map((p) => [p.id, p.lastInput!]))
 				: null,
 		when: date && time ? { date, time } : null,
-		task: completableTask(user, tank.id, 'test', url.searchParams.get('task')),
+		task: completableTask(user, tank.id, 'test', url.searchParams.get('task'), date),
 		waterChange: testWaterChange(tank, user),
 		today: todayInZone(user.timeZone),
 		// "+ Add parameter": custom ones from other tanks, in one tap

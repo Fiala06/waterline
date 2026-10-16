@@ -83,6 +83,11 @@ events           id, tank_id, category(water_change|dosing|maintenance|livestock
                  -- note {system: tank_created|tank_archived|tank_restored} (the tank's own)
                  -- note {system: setup_reviewed, changed:[parts], prev_checks} (All still
                  --       right on the setup review; prev_checks lets Undo put the checks back)
+                 -- note {system: task_done, task_id, task_done: true} ("Done: …", a task's
+                 --       Done when nothing else logged it; Undo deletes it)
+                 -- maintenance {actions:[task name], equipment_id?, prev_serviced_at?, task_id,
+                 --       task_done: true} (a maintenance task's Done; with an item it's
+                 --       serviced, and Undo puts last_serviced_at back)
 photos           id, tank_id, event_id?, test_id?, path, thumb_path, width, height, taken_at
                  (from the photo's details, the day picked on upload, or its entry's date),
                  taken_at_set (the keeper changed it in the viewer: it no longer follows the entry),

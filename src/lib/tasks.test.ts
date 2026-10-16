@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { amountText, courseText, dueInfo, effectiveDue, endsAfterTimes, intervalText, nextDueAfterCompletion, occurrencesUntil, onOrAfterWeekday, parseWeekdays, reminderDue, routineLine, scheduleExamples, skipTo, snoozeOptions } from './tasks';
+import { amountText, cadenceText, courseText, dueInfo, effectiveDue, endsAfterTimes, intervalText, logCompletes, nextDueAfterCompletion, occurrencesUntil, onOrAfterWeekday, parseWeekdays, reminderDue, reminderSub, routineLine, scheduleExamples, skipTo, snoozeOptions } from './tasks';
 
 const weekly = { recurring: true, intervalDays: 7, scheduleMode: 'completion' as const, nextDue: '2026-09-24' };
 
@@ -69,9 +69,9 @@ describe('a course with an end', () => {
 });
 
 describe('effectiveDue', () => {
-	it('uses the snooze only when it is later than the schedule', () => {
+	it('uses the moved date, later or (Do it today) sooner', () => {
 		expect(effectiveDue({ nextDue: '2026-09-24', snoozedUntil: '2026-09-27' })).toBe('2026-09-27');
-		expect(effectiveDue({ nextDue: '2026-10-01', snoozedUntil: '2026-09-27' })).toBe('2026-10-01');
+		expect(effectiveDue({ nextDue: '2026-10-01', snoozedUntil: '2026-09-27' })).toBe('2026-09-27');
 		expect(effectiveDue({ nextDue: '2026-09-24', snoozedUntil: null })).toBe('2026-09-24');
 		expect(effectiveDue({ nextDue: null, snoozedUntil: '2026-09-27' })).toBeNull();
 	});
@@ -88,31 +88,29 @@ describe('dueInfo', () => {
 });
 
 describe('snoozeOptions', () => {
-	it('offers tomorrow, in 3 days and next weekend', () => {
-		// Fri Sep 25 2026
-		expect(snoozeOptions('2026-09-25', '2026-09-24')).toEqual([
-			{ label: 'Tomorrow', date: '2026-09-26' },
-			{ label: 'In 3 days', date: '2026-09-28' },
-			{ label: 'Next weekend', date: '2026-10-03' }
+	it('offers tomorrow, in 2 days, this weekend and next week (#165)', () => {
+		// Tue Sep 22 2026
+		expect(snoozeOptions('2026-09-22', '2026-09-21')).toEqual([
+			{ label: 'Tomorrow', date: '2026-09-23' },
+			{ label: 'In 2 days', date: '2026-09-24' },
+			{ label: 'This weekend', date: '2026-09-26' },
+			{ label: 'Next week', date: '2026-09-29' }
 		]);
 	});
 
-	it('never offers the same day twice: on a Wednesday, next weekend is the one after this Saturday', () => {
-		// Wed Sep 30 2026: in 3 days is Saturday Oct 3
-		expect(snoozeOptions('2026-09-30', '2026-09-28')).toEqual([
-			{ label: 'Tomorrow', date: '2026-10-01' },
-			{ label: 'In 3 days', date: '2026-10-03' },
-			{ label: 'Next weekend', date: '2026-10-10' }
-		]);
+	it('never offers the same day twice', () => {
+		// Thu Sep 24 2026: in 2 days is Saturday
+		expect(snoozeOptions('2026-09-24', '2026-09-24').map((o) => o.label)).toEqual(['Tomorrow', 'In 2 days', 'Next week']);
 		for (let d = 0; d < 7; d++) {
 			const today = `2026-10-0${d + 1}`;
 			const dates = snoozeOptions(today, '2026-09-01').map((o) => o.date);
-			expect(new Set(dates).size, today).toBe(3);
+			expect(new Set(dates).size, today).toBe(dates.length);
+			expect(dates.every((x) => x > today)).toBe(true);
 		}
 	});
 
 	it('pushes back from the due date when it is not due yet', () => {
-		expect(snoozeOptions('2026-09-25', '2026-10-07').map((o) => o.date)).toEqual(['2026-10-08', '2026-10-10', '2026-10-14']);
+		expect(snoozeOptions('2026-09-25', '2026-10-07').map((o) => o.date)).toEqual(['2026-10-08', '2026-10-09', '2026-10-14']);
 	});
 });
 
@@ -217,5 +215,54 @@ describe('skipTo (#71)', () => {
 	it('has nothing to skip to for a one-off or the last of a course', () => {
 		expect(skipTo({ ...base, recurring: false }, '2026-10-04')).toBeNull();
 		expect(skipTo({ ...base, endsOn: '2026-10-05' }, '2026-10-04')).toBeNull();
+	});
+});
+
+describe('logCompletes (#163)', () => {
+	const every3 = { recurring: true, intervalDays: 3, scheduleMode: 'completion' as const, nextDue: '2026-10-04' };
+	it('counts a water change a day early, on the day, or late', () => {
+		expect(logCompletes(every3, '2026-10-01', '2026-10-03')).toBe(true);
+		expect(logCompletes(every3, '2026-10-01', '2026-10-04')).toBe(true);
+		expect(logCompletes(every3, '2026-10-01', '2026-10-07')).toBe(true);
+	});
+	it('takes an earlier one as extra, and leaves the schedule', () => {
+		expect(logCompletes(every3, '2026-10-01', '2026-10-02')).toBe(false);
+		// a weekly one: up to 3 days early
+		expect(logCompletes(weekly, null, '2026-09-21')).toBe(true);
+		expect(logCompletes(weekly, null, '2026-09-20')).toBe(false);
+	});
+	it('never counts an entry from before it was last done', () => {
+		expect(logCompletes(every3, '2026-10-03', '2026-10-03')).toBe(false);
+		expect(logCompletes(every3, '2026-10-03', '2026-10-02')).toBe(false);
+	});
+	it('goes by the snoozed date', () => {
+		expect(logCompletes({ ...every3, snoozedUntil: '2026-10-08' }, '2026-10-01', '2026-10-04')).toBe(false);
+		expect(logCompletes({ ...every3, snoozedUntil: '2026-10-08' }, '2026-10-01', '2026-10-07')).toBe(true);
+	});
+	it('allows a day early on set days', () => {
+		const days = { recurring: true, intervalDays: null, scheduleMode: 'weekdays' as const, nextDue: '2026-10-07', weekdays: '3' };
+		expect(logCompletes(days, null, '2026-10-06')).toBe(true);
+		expect(logCompletes(days, null, '2026-10-05')).toBe(false);
+	});
+});
+
+describe('reminderSub (#163)', () => {
+	const every3 = { recurring: true, intervalDays: 3, scheduleMode: 'completion' as const, nextDue: '2026-10-04' };
+	it('counts what comes next from the entry\'s day', () => {
+		expect(reminderSub(every3, '2026-10-03', '2026-10-03')).toBe('Not due until Oct 4 · next would be Oct 6');
+		expect(reminderSub(every3, '2026-10-02', '2026-10-05')).toBe('1 day overdue · next Oct 5');
+	});
+});
+
+describe('cadenceText (#164)', () => {
+	it('says how it repeats and when it was last done', () => {
+		expect(cadenceText({ ...weekly, intervalDays: 3 }, '2026-10-13')).toBe('every 3 days after done · last Oct 13');
+		expect(cadenceText({ ...weekly, scheduleMode: 'fixed' })).toBe('every 7 days · on schedule');
+		expect(cadenceText({ recurring: true, intervalDays: null, scheduleMode: 'weekdays', nextDue: '2026-10-14', weekdays: '1,3,5' }, '2026-10-14')).toBe('Mon, Wed, Fri · last Oct 14');
+		expect(cadenceText({ recurring: false, intervalDays: null, scheduleMode: 'completion', nextDue: '2026-10-14' })).toBe('one-off');
+	});
+	it('keeps a course and the setup review as they read', () => {
+		expect(cadenceText({ ...weekly, intervalDays: 2, nextDue: '2026-10-01', endsOn: '2026-10-05' })).toBe('every 2 days after done · 3 times left · ends Oct 5');
+		expect(cadenceText({ ...weekly, intervalDays: 91, kind: 'review' })).not.toMatch(/after done/);
 	});
 });

@@ -2,7 +2,7 @@ import { fail, redirect, type RequestEvent } from '@sveltejs/kit';
 import { visibleTo } from './members';
 import { and, desc, eq } from 'drizzle-orm';
 import { DOSING_UNITS } from '$lib/events';
-import { endsAfterTimes, FEED_UNITS, isRoutine, onOrAfterWeekday, parseWeekdays } from '$lib/tasks';
+import { effectiveDue, endsAfterTimes, FEED_UNITS, isRoutine, onOrAfterWeekday, parseWeekdays } from '$lib/tasks';
 import { addDays, isDate, todayInZone } from '$lib/time';
 import { db } from './db';
 import { events, tanks, type Task, type User } from './db/schema';
@@ -70,7 +70,7 @@ export function taskFormValues(task: Task | null, user: User, tankId: string | n
 		every: days ? '1' : String(weeks ? d / 7 : d),
 		unit: days ? ('days' as const) : weeks ? ('weeks' as const) : ('days' as const),
 		weekdays: parseWeekdays(task.weekdays),
-		nextDue: task.snoozedUntil && task.nextDue && task.snoozedUntil > task.nextDue ? task.snoozedUntil : (task.nextDue ?? todayInZone(user.timeZone)),
+		nextDue: effectiveDue(task) ?? todayInZone(user.timeZone),
 		scheduleMode: (task.scheduleMode === 'fixed' ? 'fixed' : 'completion') as 'completion' | 'fixed',
 		onDone: (task.openFormOnDone && (task.kind === 'test' || task.kind === 'water_change') ? task.kind : 'none') as OnDone,
 		product: task.product ?? '',

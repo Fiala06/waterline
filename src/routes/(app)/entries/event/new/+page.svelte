@@ -32,6 +32,7 @@
 		closeHref={data.returnTo ?? `/?tank=${data.tank.id}`}
 		returnTo={data.returnTo}
 		task={data.task}
+		doseRoutines={data.doseRoutines}
 		recentProducts={data.recentProducts}
 		recentAdditives={data.recentAdditives}
 		recentFoods={data.recentFoods}

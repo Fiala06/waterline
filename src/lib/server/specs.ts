@@ -305,6 +305,8 @@ export function markServiced(
     completeTask(userId, task.id, {
       at,
       eventId: opts.eventId,
+      // a service is always logged in History by whoever calls this
+      logged: true,
       timeZone: opts.timeZone ?? "UTC",
     });
 }

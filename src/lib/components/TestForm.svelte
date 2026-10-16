@@ -172,8 +172,8 @@
 	const outOfRange = $derived(rows.filter((r) => r.st?.level === 'bad').length);
 	const saveLabel = $derived(testSaveLabel(mode, filled, withWc));
 	// "Also mark the reminder “Water test” done", with where it stands on its own line
-	const taskText = $derived(splitTask(task));
-	const wcTaskText = $derived(splitTask(waterChange?.task));
+	const taskText = $derived(splitTask(task, when?.date));
+	const wcTaskText = $derived(splitTask(waterChange?.task, when?.date));
 
 	function clean(id: string, e: Event) {
 		const el = e.currentTarget as HTMLInputElement;

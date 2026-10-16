@@ -23,7 +23,7 @@
 		OBSERVATION_TAGS,
 		RECHECK_OPTIONS
 	} from '$lib/events';
-	import { FEED_UNITS } from '$lib/tasks';
+	import { FEED_UNITS, logCompletes, type ReminderTask } from '$lib/tasks';
 	import { fmtWhenShort, type ExifDate } from '$lib/exif';
 	import { whenLabel, type When } from '$lib/time';
 	import { entryHref, photoOtherDay, splitTask } from './entry-form';
@@ -59,7 +59,8 @@
 		inventory = null,
 		water = null,
 		ontankclick,
-		draftKey = null
+		draftKey = null,
+		doseRoutines = []
 	}: {
 		mode?: 'new' | 'edit';
 		category: EventCategory;
@@ -76,6 +77,8 @@
 		/** where saving goes back to (a page in the app), instead of the dashboard */
 		returnTo?: string | null;
 		task?: { id: string; label: string; sub?: string; checked: boolean } | null;
+		/** Dosing: the tank's dosing routines, the one for the product dosed offered to complete (#167) */
+		doseRoutines?: { id: string; product: string; label: string; sub: string; schedule: ReminderTask; lastDone: string | null; today: string }[];
 		/** % or volume, and how much, as the last water change was logged */
 		lastAmountMode?: 'percent' | 'volume';
 		lastAmount?: string | null;
@@ -208,7 +211,12 @@
 	);
 
 	// "Also mark the reminder “Water change 25%” done", with where it stands on its own line
-	const taskText = $derived(splitTask(task));
+	// a dose: the routine for the product typed, ticked when the dose is this one (#167)
+	const routine = $derived(category === 'dosing' ? (doseRoutines.find((r) => r.product.trim().toLowerCase() === product.trim().toLowerCase()) ?? null) : null);
+	const offered = $derived(
+		task ?? (routine ? { ...routine, checked: logCompletes(routine.schedule, routine.lastDone, when?.date ?? routine.today) } : null)
+	);
+	const taskText = $derived(splitTask(offered, when?.date));
 
 	const saveLabel = $derived(eventSaveLabel(mode, category));
 	const title = $derived(eventTitle(mode, category));
@@ -608,13 +616,15 @@
 					</label>
 				{/if}
 
-				{#if task && taskText}
+				{#if offered && taskText}
+					{#key offered.id}
 					<label class="check-row task">
-						<input type="checkbox" name="completeTask" value={task.id} defaultChecked={task.checked} />
+						<input type="checkbox" name="completeTask" value={offered.id} defaultChecked={offered.checked} />
 						<span class="task-text"
 							><span>{taskText.main}</span>{#if taskText.next}{' '}<span class="next">{taskText.next}</span>{/if}</span
 						>
 					</label>
+					{/key}
 				{/if}
 			</div>
 		</div>

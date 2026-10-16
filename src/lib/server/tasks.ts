@@ -1,10 +1,10 @@
 import { error } from '@sveltejs/kit';
 import { and, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
-import { addDays, dateInZone, todayInZone } from '$lib/time';
-import { effectiveDue, isRoutine, nextDueAfterCompletion, skipTo } from '$lib/tasks';
+import { addDays, dateInZone, fmtDate, todayInZone } from '$lib/time';
+import { amountText, effectiveDue, isRoutine, logCompletes, nextDueAfterCompletion, reminderSub, skipTo } from '$lib/tasks';
 import { db } from './db';
 import { requireRoleOn, visibleTo } from './members';
-import { events, taskCompletions, tanks, tasks, type Tank, type Task } from './db/schema';
+import { equipment, events, taskCompletions, tanks, tasks, tests, type Tank, type Task } from './db/schema';
 import { getTank } from './tanks';
 
 /** Open tasks (with a due date) across the user's active tanks, soonest first. */
@@ -45,12 +45,26 @@ function routineEntry(task: Task) {
 }
 
 /**
- * Mark a task done at `at` (ISO instant) and move it to its next occurrence.
- * The previous schedule is kept on the completion so it can be undone. A
- * dosing or feeding routine also logs its entry, wherever it's marked done
- * (the Tasks page, the dashboard, an email or a notification).
+ * What any other task's Done logs in History (#161), when nothing else did: a
+ * maintenance task is a Maintenance entry, the rest a "Done: …" note.
  */
-export function completeTask(userId: string, taskId: string, opts: { at?: string; eventId?: string; timeZone: string }) {
+function doneEntry(task: Task, prevServicedAt: string | null) {
+	if (task.kind === 'maintenance') {
+		const item = task.equipmentId ? { equipment_id: task.equipmentId, prev_serviced_at: prevServicedAt } : {};
+		return { category: 'maintenance' as const, note: null, data: { actions: [task.name], ...item, task_id: task.id, task_done: true } };
+	}
+	return { category: 'note' as const, note: `Done: ${task.name}`, data: { system: 'task_done', task_id: task.id, task_done: true } };
+}
+
+/**
+ * Mark a task done at `at` (ISO instant) and move it to its next occurrence.
+ * The previous schedule is kept on the completion so it can be undone. Done
+ * always leaves an entry in History, wherever it's marked (the Tasks page, the
+ * dashboard, an email or a notification): a routine its dose or feeding, any
+ * other task a Maintenance entry or a note, unless the work was logged already
+ * (`eventId`, or `logged` for a water test, which isn't an entry).
+ */
+export function completeTask(userId: string, taskId: string, opts: { at?: string; eventId?: string; logged?: boolean; timeZone: string }) {
 	const task = getTask(userId, taskId);
 	requireRoleOn(userId, task.tankId, 'log');
 	const at = opts.at ?? new Date().toISOString();
@@ -62,10 +76,17 @@ export function completeTask(userId: string, taskId: string, opts: { at?: string
 			tx.insert(events)
 				.values({ tankId: task.tankId, occurredAt: at, category: 'note', note: `Finished: ${isRoutine(task.kind) ? `${task.product ?? task.name} course` : task.name}`, data: { system: 'course_finished', task_id: task.id } })
 				.run();
-		const logged =
-			!opts.eventId && isRoutine(task.kind)
-				? tx.insert(events).values({ tankId: task.tankId, occurredAt: at, note: null, ...routineEntry(task) }).returning().get()
-				: null;
+		const logs = !opts.eventId && !opts.logged;
+		// an item's service task: done is serviced, as when the service is logged
+		const item = logs && task.kind === 'maintenance' && task.equipmentId ? tx.select().from(equipment).where(eq(equipment.id, task.equipmentId)).get() : undefined;
+		if (item) tx.update(equipment).set({ lastServicedAt: at }).where(eq(equipment.id, item.id)).run();
+		const logged = logs
+			? tx
+					.insert(events)
+					.values({ tankId: task.tankId, occurredAt: at, ...(isRoutine(task.kind) ? { note: null, ...routineEntry(task) } : doneEntry(task, item?.lastServicedAt ?? null)) })
+					.returning()
+					.get()
+			: null;
 		const c = tx
 			.insert(taskCompletions)
 			.values({
@@ -113,7 +134,18 @@ export function undoCompletion(userId: string, completionId: string) {
 		if (row.task.endsOn && !row.task.nextDue)
 			tx.delete(events).where(and(eq(events.tankId, row.task.tankId), eq(events.category, 'note'), sql`json_extract(${events.data}, '$.system') = 'course_finished' AND json_extract(${events.data}, '$.task_id') = ${row.task.id}`)).run();
 		// a routine's dose or feeding was logged by Done: undoing takes it back out of History
-		if (isRoutine(row.task.kind) && row.c.eventId) tx.delete(events).where(eq(events.id, row.c.eventId)).run();
+		// (a dose logged by hand that completed it (#167) stays: it has no task_id)
+		if (isRoutine(row.task.kind) && row.c.eventId)
+			tx.delete(events).where(and(eq(events.id, row.c.eventId), sql`json_extract(${events.data}, '$.task_id') = ${row.task.id}`)).run();
+		// and so was any other task's entry (#161), but never one logged from a form
+		if (!isRoutine(row.task.kind) && !row.c.skipped && row.c.eventId) {
+			const entry = tx.select().from(events).where(eq(events.id, row.c.eventId)).get();
+			if (entry?.data.task_done === true) {
+				if (typeof entry.data.equipment_id === 'string')
+					tx.update(equipment).set({ lastServicedAt: (entry.data.prev_serviced_at as string | null) ?? null }).where(eq(equipment.id, entry.data.equipment_id)).run();
+				tx.delete(events).where(eq(events.id, entry.id)).run();
+			}
+		}
 		// a setup review (#30): its History entry goes, and the parts it checked are as they were
 		if (row.task.kind === 'review' && row.c.eventId) {
 			const entry = tx.select().from(events).where(eq(events.id, row.c.eventId)).get();
@@ -166,7 +198,90 @@ export function snoozeTask(userId: string, taskId: string, until: string) {
 	const task = getTask(userId, taskId);
 	requireRoleOn(userId, task.tankId, 'log');
 	if (!task.nextDue) return task;
-	return db.update(tasks).set({ snoozedUntil: until }).where(eq(tasks.id, taskId)).returning().get();
+	// back on its own date: nothing moved
+	return db.update(tasks).set({ snoozedUntil: until === task.nextDue ? null : until }).where(eq(tasks.id, taskId)).returning().get();
+}
+
+/** The day a task was last done (not skipped), in the keeper's time zone. */
+export function lastDoneOn(taskId: string, timeZone: string): string | null {
+	const c = db
+		.select({ at: taskCompletions.completedAt })
+		.from(taskCompletions)
+		.where(and(eq(taskCompletions.taskId, taskId), eq(taskCompletions.skipped, false)))
+		.orderBy(desc(taskCompletions.completedAt))
+		.get();
+	return c ? dateInZone(c.at, timeZone) : null;
+}
+
+/**
+ * A water change or test already logged that is this task's occurrence (#163),
+ * so Skip can offer to count it instead: the tank's latest of that kind.
+ */
+export function countableEntry(task: Task, timeZone: string): { kind: 'event' | 'test'; id: string; at: string; date: string } | null {
+	if (task.kind !== 'water_change' && task.kind !== 'test') return null;
+	const latest =
+		task.kind === 'test'
+			? db.select({ id: tests.id, at: tests.takenAt }).from(tests).where(eq(tests.tankId, task.tankId)).orderBy(desc(tests.takenAt)).get()
+			: db
+					.select({ id: events.id, at: events.occurredAt })
+					.from(events)
+					.where(and(eq(events.tankId, task.tankId), eq(events.category, 'water_change')))
+					.orderBy(desc(events.occurredAt))
+					.get();
+	if (!latest) return null;
+	const date = dateInZone(latest.at, timeZone);
+	if (date > todayInZone(timeZone) || !logCompletes(task, lastDoneOn(task.id, timeZone), date)) return null;
+	return { kind: task.kind === 'test' ? 'test' : 'event', id: latest.id, at: latest.at, date };
+}
+
+/** The last few times a task was done or skipped (#164), newest first, each with its History entry. */
+export function recentCompletions(taskId: string, timeZone: string, limit = 5) {
+	return db
+		// the entry, when it's still in History
+		.select({ id: taskCompletions.id, at: taskCompletions.completedAt, skipped: taskCompletions.skipped, eventId: events.id })
+		.from(taskCompletions)
+		.leftJoin(events, eq(events.id, taskCompletions.eventId))
+		.where(eq(taskCompletions.taskId, taskId))
+		.orderBy(desc(taskCompletions.completedAt))
+		.limit(limit)
+		.all()
+		.map((c) => ({ ...c, date: dateInZone(c.at, timeZone) }));
+}
+
+/**
+ * A tank's open dosing routines, for a dose logged by hand to complete the one
+ * for its product (#167): the form ticks it as it does a water change's (#163).
+ */
+export function dosingRoutines(userId: string, tankId: string, timeZone: string) {
+	const today = todayInZone(timeZone);
+	return listTasks(userId, tankId)
+		.filter((r) => r.task.kind === 'dosing')
+		.map(({ task }) => {
+			const schedule = { recurring: task.recurring, intervalDays: task.intervalDays, scheduleMode: task.scheduleMode, nextDue: task.nextDue, snoozedUntil: task.snoozedUntil, weekdays: task.weekdays, endsOn: task.endsOn };
+			return {
+				id: task.id,
+				product: task.product ?? task.name,
+				label: `Also mark the reminder “${task.name}” done`,
+				sub: reminderSub(schedule, today, today),
+				schedule,
+				lastDone: lastDoneOn(task.id, timeZone),
+				today
+			};
+		});
+}
+
+/** The last dose of a routine's product logged on its tank (#167): "last 2 pumps · Oct 14". */
+export function lastDoseText(task: Pick<Task, 'tankId' | 'product' | 'name'>, timeZone: string): string | null {
+	const product = (task.product ?? task.name).trim().toLowerCase();
+	const e = db
+		.select({ at: events.occurredAt, data: events.data })
+		.from(events)
+		.where(and(eq(events.tankId, task.tankId), eq(events.category, 'dosing'), sql`lower(trim(json_extract(${events.data}, '$.product'))) = ${product}`))
+		.orderBy(desc(events.occurredAt))
+		.get();
+	if (!e) return null;
+	const amount = amountText(typeof e.data.amount === 'number' ? e.data.amount : null, typeof e.data.unit === 'string' ? e.data.unit : null);
+	return `last ${amount ? `${amount} · ` : ''}${fmtDate(dateInZone(e.at, timeZone))}`;
 }
 
 /** First open task of a kind for a tank, e.g. the water-change reminder. */

@@ -14,6 +14,7 @@ import { db } from '../db';
 import { events, expenses, livestock, plants, tasks, testReadings, tests, type Tank, type TankParameter, type User } from '../db/schema';
 import { equipmentNames } from '../expenses';
 import { latestReadingsFor } from '../logs';
+import { lastDoneOn } from '../tasks';
 import { getTank, listParamsFor, listTanks } from '../tanks';
 import type { AssistantAccess } from './tokens';
 import { days, daysArg, shown, sinceDays, whole, ToolError, type Args, type Tool } from './tool-types';
@@ -173,7 +174,11 @@ export const waterChangesTool: Tool = {
 
 // ── Tasks ───────────────────────────────────────────────────────────────────
 
-const TASK_COLUMNS = ['tank', 'tank_id', 'task', 'kind', 'due', 'days_until_due', 'status', 'recurring', 'every_days', 'snoozed_until'];
+const TASK_COLUMNS = ['tank', 'tank_id', 'task', 'kind', 'due', 'days_until_due', 'status', 'recurring', 'every_days', 'schedule', 'ends_on', 'last_done', 'snoozed_until'];
+
+/** How a task repeats (#164): from completion (after done), fixed (on schedule), set days, or once. */
+const scheduleWord = (t: { recurring: boolean; scheduleMode: string }) =>
+	!t.recurring ? 'once' : t.scheduleMode === 'fixed' ? 'on schedule' : t.scheduleMode === 'weekdays' ? 'set days' : 'after done';
 
 /** Overdue, Due today, Due soon (within a week) or Upcoming. */
 export function dueWord(daysUntil: number) {
@@ -187,7 +192,7 @@ export const tasksTool: Tool = {
 	name: 'get_tasks',
 	title: 'Tasks as rows',
 	description:
-		"Open tasks as a flat table, soonest first: tank, task, kind, when it's due (after any snooze), days until due (negative when overdue), status (Overdue, Due today, Due soon, Upcoming), whether it repeats and how often. Across every tank unless tank_id is given; archived tanks' tasks are left out.",
+		"Open tasks as a flat table, soonest first: tank, task, kind, when it's due (after any snooze), days until due (negative when overdue), status (Overdue, Due today, Due soon, Upcoming), whether it repeats and how often, how (schedule: after done counts from the last time it was done, on schedule keeps its dates, set days, once), the last day of a course (ends_on) and the day it was last done (last_done, not counting skips). Across every tank unless tank_id is given; archived tanks' tasks are left out.",
 	inputSchema: { type: 'object', properties: { tank_id: optionalTankArg } },
 	run: (access, args) => {
 		const { user } = access;
@@ -216,7 +221,10 @@ export const tasksTool: Tool = {
 						status: dueWord(n),
 						recurring: task.recurring,
 						every_days: task.recurring && task.scheduleMode !== 'weekdays' ? task.intervalDays : null,
-						snoozed_until: task.snoozedUntil && task.snoozedUntil > (task.nextDue ?? '') ? task.snoozedUntil : null
+						schedule: scheduleWord(task),
+						ends_on: task.endsOn,
+						last_done: lastDoneOn(task.id, user.timeZone),
+						snoozed_until: task.snoozedUntil && task.snoozedUntil !== task.nextDue ? task.snoozedUntil : null
 					};
 				}),
 			{ today }

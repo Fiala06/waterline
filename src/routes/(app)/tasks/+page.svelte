@@ -9,13 +9,16 @@
 	import { hscroll } from '$lib/actions';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import SnoozeSheet from '$lib/components/SnoozeSheet.svelte';
+	import TaskDoneLog from '$lib/components/TaskDoneLog.svelte';
 	import TaskForm from '$lib/components/TaskForm.svelte';
-	import { dueInfo, intervalText, isRoutine, routineLine } from '$lib/tasks';
+	import { cadenceText, dueInfo, isRoutine, routineLine } from '$lib/tasks';
 	import { REVIEW_ABOUT } from '$lib/review';
 
 	let { data } = $props();
-	// a routine's line has its amount too: "1 pump · Mon, Wed, Fri"
-	const every = (t: (typeof data.tasks)[number]) => (isRoutine(t.kind) ? routineLine(t) : intervalText(t));
+	// a routine's line has its amount too: "1 pump · Mon, Wed, Fri"; a task's says how it repeats
+	// and when it was last done (#164): "every 3 days after done · last Oct 13"
+	// and a dose, the last one logged (#167): "3 mL · every 2 days · last 2 pumps · Oct 14"
+	const every = (t: (typeof data.tasks)[number]) => (isRoutine(t.kind) ? [routineLine(t), t.lastDose].filter(Boolean).join(' · ') : cadenceText(t, t.lastDone));
 	// The pane posts to /tasks/[id] or /tasks/new; TaskForm puts their errors in page.form.
 	const paneForm = $derived(
 		page.form as { values?: NonNullable<typeof data.pane>['values']; errors?: Record<string, string> } | null
@@ -176,6 +179,7 @@
 						afterSave={q(data.pane.taskId ? { edit: data.pane.taskId, new: null } : { edit: null, new: null })}
 						today={data.today}
 					/>
+					{#if data.pane.mode === 'edit'}<TaskDoneLog done={data.done} />{/if}
 				{/key}
 			</div>
 		</aside>
@@ -336,10 +340,11 @@
 	.when.plain {
 		color: var(--text-muted);
 	}
+	/* "Tank · every 3 days after done · last Oct 13" wraps beside the buttons rather than running under them */
 	.meta {
 		font-size: 13px;
 		color: var(--text-2);
-		white-space: nowrap;
+		min-width: 0;
 	}
 	.acts {
 		display: flex;
@@ -377,10 +382,6 @@
 	}
 	@media (max-width: 1023px) {
 		.row.extra {
-			display: none;
-		}
-		/* phones: Snooze stays on what's overdue (the sheet has the same choices); rows keep to one action */
-		.row:not(.overdue) .snooze {
 			display: none;
 		}
 		.row {

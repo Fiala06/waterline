@@ -104,6 +104,8 @@ describe('tasks', () => {
 			['Water change', -2, 'Overdue'],
 			['Clean filter', 3, 'Due soon']
 		]);
+		// how it repeats, and when it was last done (#164)
+		expect(t.rows[0]).toMatchObject({ schedule: expect.stringMatching(/^(after done|on schedule|set days|once)$/), last_done: null });
 		const due = t.rows.map((r) => r.days_until_due as number);
 		expect(due).toEqual([...due].sort((a, b) => a - b));
 	});
