@@ -162,3 +162,63 @@ test('water change: the amount unit is remembered from the last one', async ({ p
 	await expect(page.getByRole('radio', { name: 'gal' })).toBeChecked();
 	await expect(page.getByLabel('Amount', { exact: true })).toHaveValue('5');
 });
+
+// #183: one last reading at a time, by tapping it
+test('water test: tap a last reading to use it', async ({ page }, info) => {
+	await newKeeperWithTank(page, `lastone-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	const form = `/entries/test/new?tank=${tankId}`;
+
+	await open(page, form);
+	await page.getByLabel('pH', { exact: true }).fill('7.2');
+	await page.getByLabel('Nitrate', { exact: true }).fill('30');
+	await page.getByRole('button', { name: 'Save 2 readings' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Saved 2 readings');
+
+	await open(page, form);
+	await page.getByRole('button', { name: 'Use last 7.2 for pH' }).click();
+	await expect(page.getByLabel('pH', { exact: true })).toHaveValue('7.2');
+	await expect(page.getByLabel('Nitrate', { exact: true })).toHaveValue('');
+	await expect(page.getByRole('button', { name: 'Use last 7.2 for pH' })).toHaveCount(0);
+	await expect(page.getByRole('button', { name: 'Use last 30 for Nitrate' })).toBeVisible();
+	await page.getByRole('button', { name: 'Save 1 reading' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Saved 1 reading');
+});
+
+// #184: Tab and Enter go from one reading to the next, past a kit's buttons
+test('water test: Tab and Enter go to the next reading', async ({ page }, info) => {
+	await newKeeperWithTank(page, `tabbing-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, '/settings/test-kits');
+	await page.locator('#add-name').fill('Quick pH');
+	await page.locator('#add-param').selectOption('ph');
+	await page.locator('#add-steps').fill('Add 3 drops\nRead the colour');
+	await page.getByRole('button', { name: 'Add kit' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Quick pH saved');
+
+	const form = `/entries/test/new?tank=${tankId}`;
+	await open(page, form);
+	await expect(page.getByRole('button', { name: /Start Quick pH/ })).toBeVisible();
+	const readings = page.locator('input[name^="v_"]:visible');
+	const ids = await readings.evaluateAll((els) => els.map((e) => e.id));
+	const ph = page.getByLabel('pH', { exact: true });
+	const i = ids.indexOf((await ph.getAttribute('id'))!);
+	const next = readings.nth(i + 1);
+
+	await ph.fill('7.2');
+	await ph.press('Tab');
+	await expect(next).toBeFocused();
+	await next.press('Shift+Enter');
+	await expect(ph).toBeFocused();
+	await ph.press('Enter');
+	await expect(next).toBeFocused();
+	await expect(page).toHaveURL(form);
+
+	// Enter never saves: after the last reading it goes on to the note
+	const last = readings.nth(ids.length - 1);
+	await last.fill('1');
+	await last.press('Enter');
+	await expect(page.getByLabel('Note')).toBeFocused();
+	await expect(page).toHaveURL(form);
+	await expect(page.getByRole('button', { name: 'Save 2 readings' })).toBeVisible();
+});
