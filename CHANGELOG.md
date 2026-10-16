@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.16.2 · 2026-10-16
+
 - **A day late is fine.** A task's form on [Tasks](/tasks) now has Late is fine for: up to 3 days. Within them a late task reads ▲ Due yesterday rather than ✕ Overdue, with no overdue alert and no red mark on the tank. A new tank's water change starts with a day.
 - **Just this one.** Changing the next date of a task on a fixed calendar or on set days now asks Just this one (only that one moves; the schedule stays) or From now on (the schedule moves). A moved one says where it moved from.
 
