@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.15.3 · 2026-10-16
+
 - **Your products in water changes.** On [Log water change](/entries/event/new?category=water_change), What went in now suggests the products you saved under [Settings › Products](/settings/products) as well as what the tank has used before, so a remineraliser or conditioner you haven't logged on that tank yet is there to pick.
 
 ## 1.15.2 · 2026-10-16
