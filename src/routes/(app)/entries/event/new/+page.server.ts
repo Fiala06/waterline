@@ -58,7 +58,15 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 		// a dose completes its product's routine (#167)
 		doseRoutines: category === 'dosing' ? dosingRoutines(user.id, tank.id, user.timeZone) : [],
 		// a water change's conditioner / remineraliser rows: what was added before, then what's been dosed
-		recentAdditives: category === 'water_change' ? dedupe([...recentAdditives(tank.id), ...recentDosingProducts(tank.id)]) : [],
+		// then the keeper's saved products (Settings › Products), as the Dose form offers them (#169)
+		recentAdditives:
+			category === 'water_change'
+				? dedupe([
+						...recentAdditives(tank.id),
+						...recentDosingProducts(tank.id),
+						...listProducts(user.id).map((p) => ({ product: p.name.trim(), amount: null, unit: null, at: '' }))
+					]).filter((r) => r.product)
+				: [],
 		recentFoods: category === 'feeding' ? recentFoods(tank.id) : [],
 		// "Reorder" for a dosed product with a saved link
 		productLinks: category === 'dosing' ? listProducts(user.id).map((p) => ({ name: p.name, url: p.url })) : [],
