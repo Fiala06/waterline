@@ -5,7 +5,7 @@ import { reviewEvery } from './review';
 interface Schedulable {
 	recurring: boolean;
 	intervalDays: number | null;
-	scheduleMode: 'completion' | 'fixed' | 'weekdays';
+	scheduleMode: 'completion' | 'fixed' | 'weekdays' | 'after';
 	nextDue: string | null;
 	/** "1,3,5" (0 Sunday … 6 Saturday), for scheduleMode weekdays */
 	weekdays?: string | null;
@@ -77,6 +77,8 @@ export function nextDueAfterCompletion(task: Schedulable, doneOn: string, today:
 }
 
 function nextOccurrence(task: Schedulable, doneOn: string, today: string): string | null {
+	// after a log (#178): it waits for the next one
+	if (task.scheduleMode === 'after') return null;
 	// on set days: the next of them after this one, or after the day it's done if that's later
 	if (task.recurring && task.scheduleMode === 'weekdays') {
 		const days = parseWeekdays(task.weekdays);
@@ -222,7 +224,7 @@ export function cadenceText(
 		endsOn?: string | null;
 		tempIntervalDays?: number | null;
 		tempUntil?: string | null;
-	},
+	} & Follows,
 	lastDone?: string | null,
 	today?: string
 ): string {
@@ -231,6 +233,8 @@ export function cadenceText(
 		const temp = `${repeatText({ ...task, intervalDays: task.tempIntervalDays })} until ${fmtDate(task.tempUntil)} · then ${repeatText(task)}`;
 		return [temp, lastDone ? `last ${fmtDate(lastDone)}` : null].filter(Boolean).join(' · ');
 	}
+	// after a log (#178): "1 day after a water change · last Oct 13"
+	if (task.scheduleMode === 'after') return [followText(task as Follows), lastDone ? `last ${fmtDate(lastDone)}` : null].filter(Boolean).join(' · ');
 	const base = repeatText(task);
 	const every = task.recurring && task.intervalDays && task.scheduleMode !== 'weekdays' && task.kind !== 'review';
 	const how = every ? (task.scheduleMode === 'fixed' ? `${base} · on schedule` : `${base} after done`) : base;
@@ -269,14 +273,15 @@ export function courseDayText(startedOn: string, endsOn: string, today: string):
 }
 
 /** "every 7 days", "every 2 weeks", "Mon, Wed, Fri", "every day but Sun", "one-off" */
-export function intervalText(task: { recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null; kind?: string; nextDue?: string | null; endsOn?: string | null }): string {
+export function intervalText(task: { recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null; kind?: string; nextDue?: string | null; endsOn?: string | null } & Follows): string {
 	const base = repeatText(task);
 	// a course: "every 2 days · 3 doses left · ends Oct 9"
 	const course = task.endsOn && task.nextDue ? courseText({ ...task, scheduleMode: (task.scheduleMode ?? 'completion') as Schedulable['scheduleMode'], nextDue: task.nextDue }) : null;
 	return course ? `${base} · ${course}` : base;
 }
 
-function repeatText(task: { recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null; kind?: string }): string {
+function repeatText(task: { recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null; kind?: string } & Follows): string {
+	if (task.scheduleMode === 'after') return followText(task);
 	if (task.recurring && task.scheduleMode === 'weekdays') {
 		const days = parseWeekdays(task.weekdays);
 		if (days.length === 7) return 'every day';
@@ -291,6 +296,44 @@ function repeatText(task: { recurring: boolean; intervalDays: number | null; sch
 	if (task.kind === 'review' && reviewEvery(d)) return reviewEvery(d)!;
 	if (d % 7 === 0 && d >= 14) return `every ${d / 7} weeks`;
 	return d === 1 ? 'every day' : `every ${d} days`;
+}
+
+/** What a task can follow (#178): the log that sets its due date. */
+export const TRIGGER_KINDS = [
+	{ value: 'water_change', label: 'Water change', word: 'water change' },
+	{ value: 'dosing', label: 'Dose', word: 'dose' },
+	{ value: 'maintenance', label: 'Maintenance', word: 'maintenance' },
+	{ value: 'test', label: 'Water test', word: 'water test' }
+] as const;
+export type TriggerKind = (typeof TRIGGER_KINDS)[number]['value'];
+export const isTriggerKind = (v: unknown): v is TriggerKind => TRIGGER_KINDS.some((k) => k.value === v);
+
+/** The days after it to choose from: the same day to a week after. */
+export const TRIGGER_OFFSETS = [0, 1, 2, 3, 4, 5, 6, 7];
+
+interface Follows {
+	triggerKind?: string | null;
+	triggerOffsetDays?: number | null;
+	triggerProduct?: string | null;
+}
+
+/** "a water change", "a dose of Thrive S", "maintenance" */
+function triggerWords(task: Follows): string {
+	const k = TRIGGER_KINDS.find((t) => t.value === task.triggerKind);
+	if (!k) return 'a log';
+	if (k.value === 'dosing' && task.triggerProduct) return `a dose of ${task.triggerProduct}`;
+	return k.value === 'maintenance' ? 'maintenance' : `a ${k.word}`;
+}
+
+/** "1 day after a water change", "the day of a dose of Thrive S" */
+export function followText(task: Follows): string {
+	const n = task.triggerOffsetDays ?? 0;
+	return `${n === 0 ? 'the day of' : `${n} day${n === 1 ? '' : 's'} after`} ${triggerWords(task)}`;
+}
+
+/** A follower with no due date yet: "After the next water change", "After the next dose of Thrive S". */
+export function waitingText(task: Follows): string {
+	return `After the next ${triggerWords(task).replace(/^an? /, '')}`;
 }
 
 /**
@@ -361,7 +404,7 @@ export function amountText(amount: number | null | undefined, unit: string | nul
 }
 
 /** A routine's line under its name: "1 pump · Mon, Wed, Fri". */
-export function routineLine(task: { kind: string; amount: number | null; amountUnit: string | null; recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null; nextDue?: string | null; endsOn?: string | null }) {
+export function routineLine(task: { kind: string; amount: number | null; amountUnit: string | null; recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null; nextDue?: string | null; endsOn?: string | null } & Follows) {
 	return [amountText(task.amount, task.amountUnit), intervalText(task)].filter(Boolean).join(' · ');
 }
 

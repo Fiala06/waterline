@@ -178,7 +178,7 @@ const TASK_COLUMNS = ['tank', 'tank_id', 'task', 'kind', 'due', 'days_until_due'
 
 /** How a task repeats (#164): from completion (after done), fixed (on schedule), set days, or once. */
 const scheduleWord = (t: { recurring: boolean; scheduleMode: string }) =>
-	!t.recurring ? 'once' : t.scheduleMode === 'fixed' ? 'on schedule' : t.scheduleMode === 'weekdays' ? 'set days' : 'after done';
+	!t.recurring ? 'once' : t.scheduleMode === 'fixed' ? 'on schedule' : t.scheduleMode === 'weekdays' ? 'set days' : t.scheduleMode === 'after' ? 'after a log' : 'after done';
 
 /** Overdue, Due today, Due soon (within a week) or Upcoming. */
 export function dueWord(daysUntil: number) {
@@ -192,7 +192,7 @@ export const tasksTool: Tool = {
 	name: 'get_tasks',
 	title: 'Tasks as rows',
 	description:
-		"Open tasks as a flat table, soonest first: tank, task, kind, when it's due (after any snooze), days until due (negative when overdue), status (Overdue, Due today, Due soon, Upcoming, or Paused until a day to come), whether it repeats and how often, how (schedule: after done counts from the last time it was done, on schedule keeps its dates, set days, once), the last day of a course (ends_on) and the day it was last done (last_done, not counting skips). Across every tank unless tank_id is given; archived tanks' tasks are left out.",
+		"Open tasks as a flat table, soonest first: tank, task, kind, when it's due (after any snooze), days until due (negative when overdue), status (Overdue, Due today, Due soon, Upcoming, or Paused until a day to come), whether it repeats and how often, how (schedule: after done counts from the last time it was done, on schedule keeps its dates, set days, after a log is due a day or so after a water change, dose, maintenance or test, once), the last day of a course (ends_on) and the day it was last done (last_done, not counting skips). Across every tank unless tank_id is given; archived tanks' tasks are left out.",
 	inputSchema: { type: 'object', properties: { tank_id: optionalTankArg } },
 	run: (access, args) => {
 		const { user } = access;

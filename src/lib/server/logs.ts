@@ -19,7 +19,8 @@ import {
 } from './db/schema';
 import { latestSamplesFor, outOfRangeSince } from './sensors';
 import { getTank } from './tanks';
-import { completeTask } from './tasks';
+import { dateInZone } from '$lib/time';
+import { completeTask, followLog, refollowEntry, triggerOf, unfollowEntry, userZone } from './tasks';
 import { followEntryDate, removeEntryPhotoFiles } from './photos';
 
 // ── Tests ───────────────────────────────────────────────────────────────────
@@ -68,9 +69,10 @@ export function createTest(
 		}
 		return t;
 	});
-	if (opts.completeTaskId) {
-		completeTask(userId, opts.completeTaskId, { at: input.takenAt, logged: true, timeZone: opts.timeZone });
-	}
+	const done = opts.completeTaskId ? completeTask(userId, opts.completeTaskId, { at: input.takenAt, logged: true, timeZone: opts.timeZone }) : null;
+	// the tasks that follow a water test (#178), unless it's an import or a follower's own
+	if (!input.importId && done?.scheduleMode !== 'after')
+		followLog(tankId, { kind: 'test', date: dateInZone(input.takenAt, opts.timeZone), id: test.id }, opts.timeZone, done?.id);
 	return { test, ...summarize(test.id, params), duplicate: false };
 }
 
@@ -118,7 +120,10 @@ export function updateTest(userId: string, testId: string, input: Omit<TestInput
 			.set({ takenAt: input.takenAt, note: input.note, editedAt: new Date().toISOString() })
 			.where(eq(tests.id, testId))
 			.run();
-		if (input.takenAt !== test.takenAt) followEntryDate({ testId }, input.takenAt);
+		if (input.takenAt !== test.takenAt) {
+			followEntryDate({ testId }, input.takenAt);
+			refollowEntry(testId, dateInZone(input.takenAt, userZone(userId)));
+		}
 		tx.delete(testReadings).where(eq(testReadings.testId, testId)).run();
 		if (input.readings.size) {
 			tx.insert(testReadings)
@@ -141,6 +146,7 @@ export function deleteTest(userId: string, testId: string) {
 	requireRoleOn(userId, test.tankId, 'log');
 	removeEntryPhotoFiles({ testId });
 	db.delete(tests).where(eq(tests.id, testId)).run();
+	unfollowEntry(testId);
 	return test;
 }
 
@@ -267,13 +273,12 @@ export function createEvent(
 		.values({ ...input, tankId, clientId: input.clientId ?? null, importId: input.importId ?? null, loggedBy: userId })
 		.returning()
 		.get();
-	if (opts.completeTaskId) {
-		completeTask(userId, opts.completeTaskId, {
-			at: input.occurredAt,
-			eventId: event.id,
-			timeZone: opts.timeZone
-		});
-	}
+	const done = opts.completeTaskId ? completeTask(userId, opts.completeTaskId, { at: input.occurredAt, eventId: event.id, timeZone: opts.timeZone }) : null;
+	// the tasks that follow a water change, a dose or maintenance (#178), unless it's an
+	// import or a follower's own (chains stop after one step)
+	const trigger = triggerOf(input.category, input.data);
+	if (trigger && !input.importId && done?.scheduleMode !== 'after')
+		followLog(tankId, { ...trigger, date: dateInZone(input.occurredAt, opts.timeZone), id: event.id }, opts.timeZone, done?.id);
 	return { event, duplicate: false };
 }
 
@@ -301,7 +306,10 @@ export function updateEvent(
 		.where(eq(events.id, eventId))
 		.returning()
 		.get();
-	if (patch.occurredAt !== before.occurredAt) followEntryDate({ eventId }, patch.occurredAt);
+	if (patch.occurredAt !== before.occurredAt) {
+		followEntryDate({ eventId }, patch.occurredAt);
+		refollowEntry(eventId, dateInZone(patch.occurredAt, userZone(userId)));
+	}
 	return updated;
 }
 
@@ -310,6 +318,7 @@ export function deleteEvent(userId: string, eventId: string) {
 	requireRoleOn(userId, e.tankId, 'log');
 	removeEntryPhotoFiles({ eventId });
 	db.delete(events).where(eq(events.id, eventId)).run();
+	unfollowEntry(eventId);
 	return e;
 }
 

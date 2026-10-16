@@ -9,7 +9,7 @@
 	import DateField from '$lib/components/DateField.svelte';
 	import { untrack } from 'svelte';
 	import { DOSING_UNITS } from '$lib/events';
-	import { endsAfterTimes, FEED_UNITS, scheduleExamples, WEEKDAYS } from '$lib/tasks';
+	import { endsAfterTimes, FEED_UNITS, scheduleExamples, TRIGGER_KINDS, TRIGGER_OFFSETS, waitingText, WEEKDAYS, type TriggerKind } from '$lib/tasks';
 	import { addDays, fmtDate } from '$lib/time';
 	import { parseNumber } from '$lib/units';
 
@@ -20,7 +20,7 @@
 		fromEvent?: string;
 		tankId: string;
 		recurring: boolean;
-		repeat: 'every' | 'days' | 'no';
+		repeat: 'every' | 'days' | 'after' | 'no';
 		every: string;
 		unit: 'days' | 'weeks';
 		weekdays: number[];
@@ -40,6 +40,12 @@
 		tempUntil: string;
 		/** days late before it's overdue (#175) */
 		graceDays: string;
+		/** after a log (#178): what it follows, how many days after, a dose's product */
+		triggerKind: TriggerKind;
+		triggerOffset: string;
+		triggerProduct: string;
+		/** not on water-change day (#178) */
+		avoidWaterChange: boolean;
 		/** a fixed or set-days task's next one moved (#173): the date it was on */
 		movedFrom?: string | null;
 		/** the scheduled date (next_due), to tell a moved date from a new schedule */
@@ -89,6 +95,7 @@
 	let endsTimes = $state(untrack(() => values.endsTimes));
 	let tempOn = $state(untrack(() => values.tempOn));
 	let tempUntil = $state(untrack(() => values.tempUntil));
+	let triggerKind = $state(untrack(() => values.triggerKind));
 	let busy = $state(false);
 
 	const days = $derived((parseNumber(every) ?? 0) * (unit === 'weeks' ? 7 : 1));
@@ -217,6 +224,7 @@
 			<div class="segmented repeat">
 				<label><input type="radio" name="recurring" value="yes" defaultChecked={repeat === 'every'} onchange={() => (repeat = 'every')} />Recurring</label>
 				<label><input type="radio" name="recurring" value="days" defaultChecked={repeat === 'days'} onchange={() => (repeat = 'days')} />On days</label>
+				<label><input type="radio" name="recurring" value="after" defaultChecked={repeat === 'after'} onchange={() => (repeat = 'after')} />After a log</label>
 				<label><input type="radio" name="recurring" value="no" defaultChecked={repeat === 'no'} onchange={() => (repeat = 'no')} />One-off</label>
 			</div>
 		</fieldset>
@@ -236,7 +244,32 @@
 			</fieldset>
 		{/if}
 
-		{#if compact}
+		{#if repeat === 'after'}
+			<!-- after a log (#178): due a day or so after a water change, a dose, maintenance or a test -->
+			<fieldset class="field">
+				<legend class="label">Due</legend>
+				<div class="follow">
+					<select class="input" name="triggerOffset" value={values.triggerOffset} aria-label="How many days after" aria-invalid={!!errors.triggerOffset}>
+						{#each TRIGGER_OFFSETS as n (n)}<option value={String(n)}>{n === 0 ? 'The day of' : `${n} day${n === 1 ? '' : 's'} after`}</option>{/each}
+					</select>
+					<select class="input" name="triggerKind" bind:value={triggerKind} aria-label="What it follows" aria-invalid={!!errors.triggerKind}>
+						{#each TRIGGER_KINDS as k (k.value)}<option value={k.value}>{k.value === 'maintenance' ? 'maintenance' : `a ${k.word}`}</option>{/each}
+					</select>
+				</div>
+				{#if triggerKind === 'dosing'}
+					<div class="follow-of">
+						<label class="times-word" for="t-trigger-product">of</label>
+						<input class="input" id="t-trigger-product" name="triggerProduct" defaultValue={values.triggerProduct} maxlength="80" autocomplete="off" list="t-trigger-products" placeholder="Any product" />
+						<datalist id="t-trigger-products">{#each products as p (p)}<option value={p}></option>{/each}</datalist>
+					</div>
+				{/if}
+				{#if errors.triggerOffset}<span class="error-text">✕ {errors.triggerOffset}</span>{/if}
+				{#if errors.triggerKind}<span class="error-text">✕ {errors.triggerKind}</span>{/if}
+				<small class="muted">
+					{#if mode === 'edit' && values.repeat === 'after'}{values.scheduled ? `Next due ${dayDate(values.scheduled)}. ` : `${waitingText(values)}. `}{/if}Logging one, from any form or a task’s Done, sets the date; until then it waits.
+				</small>
+			</fieldset>
+		{:else if compact}
 			<!-- D5: "Every" and "Next due" side by side -->
 			<div class="pair">
 				{#if repeat === 'every'}
@@ -346,7 +379,15 @@
 			</fieldset>
 		{/if}
 
-		{#if repeat !== 'no'}
+		{#if repeat === 'every' || repeat === 'days'}
+			<!-- not on water-change day (#178): due the day one's logged, it moves on a day -->
+			<div class="field">
+				<label class="check-row"><input type="checkbox" name="avoidWaterChange" defaultChecked={values.avoidWaterChange} />Not on water-change day</label>
+				<small class="muted">If a water change is logged the day it’s due, it moves to the next day.</small>
+			</div>
+		{/if}
+
+		{#if repeat !== 'no' && repeat !== 'after'}
 			<!-- a course (a treatment, a round of doses) stops: on a date, or after N times -->
 			<fieldset class="field">
 				<legend class="label">Ends</legend>
@@ -820,6 +861,21 @@
 			border: none;
 			color: var(--text-muted);
 		}
+	}
+	/* after a log (#178): "1 day after" "a water change", then a dose's product */
+	.follow {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+		gap: 8px;
+	}
+	.follow-of {
+		margin-top: 8px;
+		display: flex;
+		gap: 8px;
+	}
+	.follow-of .input {
+		flex: 1;
+		min-width: 0;
 	}
 	.temp-in {
 		display: flex;

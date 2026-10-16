@@ -324,8 +324,9 @@ export const tasks = sqliteTable(
 		kind: text('kind', { enum: TASK_KINDS }).notNull().default('other'),
 		recurring: integer('recurring', { mode: 'boolean' }).notNull().default(true),
 		intervalDays: integer('interval_days'),
-		// weekdays: on the days in `weekdays` (#17), whenever it's done
-		scheduleMode: text('schedule_mode', { enum: ['completion', 'fixed', 'weekdays'] })
+		// weekdays: on the days in `weekdays` (#17), whenever it's done; after: a day or so after
+		// another log (#178), waiting with no due date until one is logged
+		scheduleMode: text('schedule_mode', { enum: ['completion', 'fixed', 'weekdays', 'after'] })
 			.notNull()
 			.default('completion'),
 		/** "1,3,5": the days of the week it's due (0 Sunday … 6 Saturday), for schedule_mode weekdays */
@@ -342,6 +343,14 @@ export const tasks = sqliteTable(
 		pausedUntil: text('paused_until'),
 		// days late it can be before it's overdue (#175): inside them it reads ▲ Due, not ✕ Overdue
 		graceDays: integer('grace_days').notNull().default(0),
+		// after a log (#178): the kind of entry it follows, the days after it, the product for a dose
+		// (any dose when null), and the entry (an event or a test) its due date counts from
+		triggerKind: text('trigger_kind', { enum: ['water_change', 'dosing', 'maintenance', 'test'] }),
+		triggerOffsetDays: integer('trigger_offset_days'),
+		triggerProduct: text('trigger_product'),
+		triggerEntryId: text('trigger_entry_id'),
+		// not on water-change day (#178): due the day a water change is logged, it moves to the next day
+		avoidWaterChange: integer('avoid_water_change', { mode: 'boolean' }).notNull().default(false),
 		// the treatment plan it's part of (#177)
 		planRunId: text('plan_run_id').references(() => planRuns.id, { onDelete: 'set null' }),
 		// the entry a treatment course was started from (#174): an algae or health entry

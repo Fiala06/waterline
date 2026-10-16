@@ -17,6 +17,8 @@ const { createEvent, createTest } = await import('./logs');
 const { completableTask } = await import('./log-forms');
 const { algaeOf, completeTask, updateTask, countableEntry, courseDay, coursesFrom, createTask, dosingRoutines, endCourseEarly, reopenCourse, getTask, lastDoneOn, lastDoseText, listTasks, pauseTasks, recentCompletions, resumeTask, setTempCadence, settleTasks, skipTask, undoCompletion, unpauseTasks } = await import('./tasks');
 
+const await_follow = await import('./tasks');
+
 const user = upsertUser({ email: 'tasks@example.com', name: 'Keeper' });
 const tz = user.timeZone;
 const today = todayInZone(tz);
@@ -259,5 +261,113 @@ describe('a fixed task\'s next date moved (#173)', () => {
 		const b = createTask(user.id, t.id, base(sat));
 		updateTask(user.id, b.id, base(thu), { picked: thu });
 		expect(getTask(user.id, b.id)).toMatchObject({ nextDue: thu, snoozedUntil: null });
+	});
+});
+
+describe('tasks that follow another log (#178)', () => {
+	const { followSchedule, waitingTasks } = await_follow;
+	const pond = createTank(user, { name: 'Follow tank', type: 'planted', nominalVolumeL: 60 });
+	const follower = (name: string, triggerKind: 'water_change' | 'dosing' | 'maintenance' | 'test', triggerOffsetDays = 1, extra: Record<string, unknown> = {}) =>
+		createTask(user.id, pond.id, { name, kind: 'other', recurring: true, intervalDays: null, scheduleMode: 'after', nextDue: null, openFormOnDone: false, triggerKind, triggerOffsetDays, ...extra });
+	const log = (category: 'water_change' | 'dosing' | 'maintenance', daysAgo = 0, data: Record<string, unknown> = {}, completeTaskId?: string) =>
+		createEvent(user.id, pond.id, { category, occurredAt: `${addDays(today, -daysAgo)}T12:00:00.000Z`, note: null, data }, { completeTaskId, timeZone: tz }).event;
+	const due = (id: string) => getTask(user.id, id).nextDue;
+	const at = (daysAgo: number) => `${addDays(today, -daysAgo)}T12:00:00.000Z`;
+
+	it('waits with no date until the log it follows, then is due its day plus the offset', () => {
+		const macros = follower('Dose macros', 'water_change', 1);
+		expect(due(macros.id)).toBeNull();
+		expect(waitingTasks(user.id, pond.id).map((r) => r.task.id)).toContain(macros.id);
+		expect(listTasks(user.id, pond.id).map((r) => r.task.id)).not.toContain(macros.id);
+		log('water_change');
+		expect(due(macros.id)).toBe(addDays(today, 1));
+		expect(waitingTasks(user.id, pond.id).map((r) => r.task.id)).not.toContain(macros.id);
+	});
+
+	it('counts a back-dated log from its own day, and an older one never moves a later date', () => {
+		const glass = follower('Scrape glass', 'maintenance', 1);
+		log('maintenance', 3);
+		expect(due(glass.id)).toBe(addDays(today, -2));
+		log('maintenance', 1);
+		expect(due(glass.id)).toBe(today);
+		log('maintenance', 5);
+		expect(due(glass.id)).toBe(today);
+	});
+
+	it('done, it waits for the next log; one from before it was done leaves it waiting', () => {
+		const micros = follower('Dose micros', 'test', 1);
+		createTest(user.id, pond.id, { takenAt: at(2), note: null, readings: new Map() }, { timeZone: tz });
+		expect(due(micros.id)).toBe(addDays(today, -1));
+		completeTask(user.id, micros.id, { timeZone: tz });
+		expect(due(micros.id)).toBeNull();
+		createTest(user.id, pond.id, { takenAt: at(3), note: null, readings: new Map() }, { timeZone: tz });
+		expect(due(micros.id)).toBeNull();
+		createTest(user.id, pond.id, { takenAt: new Date().toISOString(), note: null, readings: new Map() }, { timeZone: tz });
+		expect(due(micros.id)).toBe(addDays(today, 1));
+	});
+
+	it("moves with its log's date while not done, and waits again when the log is deleted", async () => {
+		const { updateEvent, deleteEvent } = await import('./logs');
+		const rinse = follower('Rinse sponge', 'water_change', 2);
+		const wc = log('water_change');
+		expect(due(rinse.id)).toBe(addDays(today, 2));
+		updateEvent(user.id, wc.id, { occurredAt: at(1), note: null, data: {} });
+		expect(due(rinse.id)).toBe(addDays(today, 1));
+		deleteEvent(user.id, wc.id);
+		expect(due(rinse.id)).toBeNull();
+	});
+
+	it('follows a dose of its product only, or any dose; a routine’s Done counts as the dose', () => {
+		const thrive = follower('After Thrive', 'dosing', 1, { triggerProduct: 'Thrive S' });
+		const any = follower('After any dose', 'dosing', 2);
+		log('dosing', 0, { product: 'Excel' });
+		expect(due(thrive.id)).toBeNull();
+		expect(due(any.id)).toBe(addDays(today, 2));
+		const routine = createTask(user.id, pond.id, { name: 'Dose Thrive S', kind: 'dosing', product: 'thrive s', amount: 2, amountUnit: 'mL', recurring: true, intervalDays: 7, scheduleMode: 'completion', nextDue: today, openFormOnDone: false });
+		completeTask(user.id, routine.id, { timeZone: tz });
+		expect(due(thrive.id)).toBe(addDays(today, 1));
+	});
+
+	it("never triggers itself, and a follower's own log triggers nothing (chains stop after one step)", () => {
+		const first = createTask(user.id, pond.id, { name: 'Clean filter', kind: 'maintenance', recurring: true, intervalDays: null, scheduleMode: 'after', nextDue: null, openFormOnDone: false, triggerKind: 'water_change', triggerOffsetDays: 1 });
+		const second = follower('After maintenance', 'maintenance', 1);
+		log('water_change');
+		expect(due(first.id)).toBe(addDays(today, 1));
+		const before = due(second.id);
+		completeTask(user.id, first.id, { timeZone: tz });
+		expect(due(second.id)).toBe(before);
+		// logged from the form, completing it: the same
+		const again = createTask(user.id, pond.id, { name: 'Trim stems', kind: 'maintenance', recurring: true, intervalDays: null, scheduleMode: 'after', nextDue: today, openFormOnDone: false, triggerKind: 'maintenance', triggerOffsetDays: 3 });
+		log('maintenance', 0, { actions: ['Trim stems'] }, again.id);
+		expect(due(again.id)).toBeNull();
+		expect(due(second.id)).toBe(before);
+	});
+
+	it('Undo of the Done that logged the water change puts its followers back to waiting', () => {
+		const wcTask = createTask(user.id, pond.id, { name: 'Water change', kind: 'water_change', recurring: true, intervalDays: 7, scheduleMode: 'completion', nextDue: today, openFormOnDone: false });
+		const ferts = follower('Ferts after water change', 'water_change', 3);
+		const done = completeTask(user.id, wcTask.id, { timeZone: tz });
+		expect(due(ferts.id)).toBe(addDays(today, 3));
+		undoCompletion(user.id, done.completionId);
+		expect(due(ferts.id)).toBeNull();
+	});
+
+	it('not on water-change day: due the day one is logged, it moves to the next day, the schedule kept', () => {
+		const filter = createTask(user.id, pond.id, { name: 'Clean canister', kind: 'maintenance', recurring: true, intervalDays: 14, scheduleMode: 'fixed', nextDue: today, openFormOnDone: false, avoidWaterChange: true });
+		const other = createTask(user.id, pond.id, { name: 'Wipe lid', kind: 'maintenance', recurring: true, intervalDays: 14, scheduleMode: 'fixed', nextDue: today, openFormOnDone: false });
+		log('water_change', 1);
+		expect(getTask(user.id, filter.id).snoozedUntil).toBeNull();
+		log('water_change');
+		expect(getTask(user.id, filter.id)).toMatchObject({ nextDue: today, snoozedUntil: addDays(today, 1) });
+		expect(getTask(user.id, other.id).snoozedUntil).toBeNull();
+	});
+
+	it('starts from the latest such log when that day is still to come, else waits', () => {
+		const p2 = createTank(user, { name: 'Start tank', type: 'planted', nominalVolumeL: 40 });
+		const input = { tankId: p2.id, triggerKind: 'water_change' as const, triggerProduct: null };
+		expect(followSchedule({ ...input, triggerOffsetDays: 1 }, tz)).toEqual({ nextDue: null, triggerEntryId: null });
+		const wc = createEvent(user.id, p2.id, { category: 'water_change', occurredAt: at(1), note: null, data: {} }, { timeZone: tz }).event;
+		expect(followSchedule({ ...input, triggerOffsetDays: 1 }, tz)).toEqual({ nextDue: today, triggerEntryId: wc.id });
+		expect(followSchedule({ ...input, triggerOffsetDays: 0 }, tz)).toEqual({ nextDue: null, triggerEntryId: null });
 	});
 });

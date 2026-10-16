@@ -379,3 +379,46 @@ test('a fixed task moved just this once keeps its schedule', async ({ page }, in
 	await open(page, href!);
 	await expect(page.getByText(/Moved from .*; the schedule after it stays/).first()).toBeVisible();
 });
+
+// #178: a task due a day after the water change, and one kept off water-change day
+test('a task that follows the water change, and one kept off its day', async ({ page }, info) => {
+	await newKeeperWithTank(page, `m7f-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, `/tasks/new?tank=${tankId}`);
+	await page.getByRole('textbox', { name: 'Task' }).fill('Dose macros');
+	await page.locator('label', { hasText: 'After a log' }).click();
+	await expect(page.getByLabel('How many days after')).toHaveValue('1');
+	await expect(page.getByLabel('What it follows')).toHaveValue('water_change');
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('status')).toContainText('✓ Dose macros added');
+	await expect(page.getByRole('heading', { name: 'Waiting · 1' })).toBeVisible();
+	await expect(page.locator('.row.waiting', { hasText: 'Dose macros' })).toContainText('– After the next water change');
+
+	// a weekly task due today, kept off water-change day
+	await open(page, `/tasks/new?tank=${tankId}`);
+	await page.getByRole('textbox', { name: 'Task' }).fill('Clean filter');
+	await page.getByLabel('Not on water-change day').check();
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('status')).toContainText('✓ Clean filter added');
+
+	// the water change: macros due tomorrow, the filter moved to tomorrow
+	await open(page, `/entries/event/new?tank=${tankId}&category=water_change`);
+	await page.getByLabel('Amount', { exact: true }).fill('40');
+	await page.getByRole('button', { name: 'Save water change' }).click();
+	await expect(page.locator('.toast-region')).toContainText('✓ Water change logged');
+	await open(page, '/tasks');
+	await expect(page.getByRole('heading', { name: /^Waiting/ })).toHaveCount(0);
+	const macros = page.locator('.row', { hasText: 'Dose macros' });
+	// due tomorrow: "▲ Sat, Oct 17"
+	const tomorrow = /▲ (Mon|Tue|Wed|Thu|Fri|Sat|Sun), /;
+	await expect(macros).toContainText(tomorrow);
+	await expect(macros).toContainText('1 day after a water change');
+	const filter = page.locator('.row', { hasText: 'Clean filter' });
+	await expect(filter).toContainText(tomorrow);
+	await expect(filter).toContainText('moved from');
+
+	// done, it waits for the next water change again
+	await page.getByRole('button', { name: 'Mark Dose macros done' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Dose macros done');
+	await expect(page.locator('.row.waiting', { hasText: 'Dose macros' })).toContainText('– After the next water change');
+});

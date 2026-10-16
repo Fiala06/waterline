@@ -103,7 +103,7 @@ photo_livestock  photo_id, livestock_id (pets tagged in a photo)
 tasks            id, tank_id, name, kind(water_change|test|maintenance|other|dosing|feeding|
                  review: the setup review, one per tank, every 30/91/182 days or none when off;
                  done on its page, not by Mark done),
-                 recurring, interval_days?, schedule_mode(completion|fixed|weekdays),
+                 recurring, interval_days?, schedule_mode(completion|fixed|weekdays|after),
                  weekdays? ("1,3,5", 0 = Sunday), next_due?, ends_on? (no occurrences after
                  this day), snoozed_until? (this occurrence moved, later or sooner; also "Just this
                  one" from the form, #173), grace_days (0–3, #175: days late it can be and
@@ -113,7 +113,14 @@ tasks            id, tank_id, name, kind(water_change|test|maintenance|other|dos
                  and the return), paused_from?, paused_until? (#172: not due or notified
                  until paused_until; then resumed with its dates moved on), from_event_id? (#174:
                  the algae or health entry a treatment course was started from), plan_run_id? (#177:
-                 a step of a treatment plan), equipment_id? (the item's service reminder: the
+                 a step of a treatment plan), trigger_kind?(water_change|dosing|maintenance|test),
+                 trigger_offset_days?, trigger_product?, trigger_entry_id? (#178, schedule_mode
+                 after: due trigger_offset_days after the latest such log, a dose of
+                 trigger_product or any; next_due is null while it waits; trigger_entry_id is
+                 the event or test it counts from, so editing its date moves it and deleting
+                 it sets it waiting again; a follower's own log triggers nothing),
+                 avoid_water_change (#178: due the day a water change is logged, it moves to
+                 the next day by snoozed_until), equipment_id? (the item's service reminder: the
                  equipment form sets its cadence, and a logged service completes it),
                  open_form_on_done, product?, amount?, amount_unit? (a dosing or feeding
                  routine: Done logs the dose or feeding, and Undo removes it), created_at

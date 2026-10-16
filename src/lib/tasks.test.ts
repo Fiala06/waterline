@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { amountText, cadenceText, courseDayText, courseText, dueInfo, effectiveDue, endsAfterTimes, intervalText, intervalFor, logCompletes, nextDueAfterCompletion, occurrencesUntil, onOrAfterWeekday, parseWeekdays, reminderDue, reminderSub, resumeSchedule, routineLine, scheduleExamples, skipTo, snoozeOptions } from './tasks';
+import { amountText, cadenceText, followText, waitingText, courseDayText, courseText, dueInfo, effectiveDue, endsAfterTimes, intervalText, intervalFor, logCompletes, nextDueAfterCompletion, occurrencesUntil, onOrAfterWeekday, parseWeekdays, reminderDue, reminderSub, resumeSchedule, routineLine, scheduleExamples, skipTo, snoozeOptions } from './tasks';
 
 const weekly = { recurring: true, intervalDays: 7, scheduleMode: 'completion' as const, nextDue: '2026-09-24' };
 
@@ -317,5 +317,32 @@ describe('dueInfo with grace (#175)', () => {
 		expect(dueInfo('2026-10-14', '2026-10-16', 2)).toMatchObject({ section: 'soon', text: '▲ Due 2 days ago' });
 		expect(dueInfo('2026-10-14', '2026-10-16', 1)).toMatchObject({ section: 'overdue', text: '✕ Overdue 2 days' });
 		expect(dueInfo('2026-10-16', '2026-10-16', 3)).toMatchObject({ section: 'soon', text: '▲ Due today' });
+	});
+});
+
+describe('after a log (#178)', () => {
+	const after = { recurring: true, intervalDays: null, scheduleMode: 'after' as const, nextDue: '2026-10-17', triggerKind: 'water_change', triggerOffsetDays: 1, triggerProduct: null };
+
+	it('waits for the next log once done', () => {
+		expect(nextDueAfterCompletion(after, '2026-10-17', '2026-10-17')).toBeNull();
+	});
+
+	it('says what it follows and how long after', () => {
+		expect(followText(after)).toBe('1 day after a water change');
+		expect(followText({ triggerKind: 'dosing', triggerOffsetDays: 0, triggerProduct: 'Thrive S' })).toBe('the day of a dose of Thrive S');
+		expect(followText({ triggerKind: 'maintenance', triggerOffsetDays: 2 })).toBe('2 days after maintenance');
+		expect(followText({ triggerKind: 'test', triggerOffsetDays: 1 })).toBe('1 day after a water test');
+	});
+
+	it('says what it waits for', () => {
+		expect(waitingText(after)).toBe('After the next water change');
+		expect(waitingText({ triggerKind: 'dosing', triggerProduct: 'Thrive S' })).toBe('After the next dose of Thrive S');
+		expect(waitingText({ triggerKind: 'dosing' })).toBe('After the next dose');
+		expect(waitingText({ triggerKind: 'maintenance' })).toBe('After the next maintenance');
+	});
+
+	it('reads as its cadence, with when it was last done', () => {
+		expect(cadenceText(after, '2026-10-13')).toBe('1 day after a water change · last Oct 13');
+		expect(intervalText(after)).toBe('1 day after a water change');
 	});
 });

@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Tasks that follow a water change.** A task's Repeat on [Tasks](/tasks) can now be After a log: the day of, or a day or more after, a water change, a dose (of one product, or any), maintenance or a water test. Logging it, from any form or a task's Done, sets the task's date, so macros the day after the water change move with it when the water change does; until then the task waits under Waiting. Moving or deleting that log moves the task with it. A task that repeats on its own can be kept off water-change day too: due the day one is logged, it moves to the next day.
+
 ## 1.17.0 · 2026-10-16
 
 - **Treatment plans.** Start a plan from [Tasks](/tasks) (Start a treatment plan) or when you [log algae](/tanks/current/algae): a blackout, a spot treatment, a liquid carbon or medication course, or a new tank's water changes. Each starter is a place to begin: keep, rename or re-time its steps, and pick the routines it holds back (a blackout pauses ferts and feeding), seeing every date before it starts. Its steps are tasks like any other, the plan shows where it stands ("Day 3 of 19") with Extend and End early, and History notes when it starts and ends.
