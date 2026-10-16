@@ -5,7 +5,7 @@ import { str } from '$lib/server/forms';
 import { safeReturn } from '$lib/server/redirect';
 import { listTanks } from '$lib/server/tanks';
 import { routineProducts, taskFormValues, taskType } from '$lib/server/task-form';
-import { completeTask, countableEntry, getTask, listTasks, skipTask, snoozeTask, undoCompletion } from '$lib/server/tasks';
+import { completeTask, countableEntry, getTask, lastDoneOn, listTasks, recentCompletions, skipTask, snoozeTask, undoCompletion } from '$lib/server/tasks';
 import { effectiveDue } from '$lib/tasks';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -29,7 +29,9 @@ export const load: PageServerLoad = ({ locals, url }) => {
 		filter,
 		today: todayInZone(user.timeZone),
 		// a water change or test logged already that Skip can count instead (#163)
-		tasks: rows.map((r) => ({ ...r.task, countable: countableEntry(r.task, user.timeZone) })),
+		tasks: rows.map((r) => ({ ...r.task, countable: countableEntry(r.task, user.timeZone), lastDone: lastDoneOn(r.task.id, user.timeZone) })),
+		// the pane's task: the last few times it was done (#164)
+		done: pane?.taskId ? recentCompletions(pane.taskId, user.timeZone) : [],
 		pane,
 		formTanks: listTanks(user.id).map((t) => ({ id: t.id, name: t.name })),
 		products: routineProducts(user.id)

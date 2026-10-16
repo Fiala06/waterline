@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { amountText, courseText, dueInfo, effectiveDue, endsAfterTimes, intervalText, logCompletes, nextDueAfterCompletion, occurrencesUntil, onOrAfterWeekday, parseWeekdays, reminderDue, reminderSub, routineLine, scheduleExamples, skipTo, snoozeOptions } from './tasks';
+import { amountText, cadenceText, courseText, dueInfo, effectiveDue, endsAfterTimes, intervalText, logCompletes, nextDueAfterCompletion, occurrencesUntil, onOrAfterWeekday, parseWeekdays, reminderDue, reminderSub, routineLine, scheduleExamples, skipTo, snoozeOptions } from './tasks';
 
 const weekly = { recurring: true, intervalDays: 7, scheduleMode: 'completion' as const, nextDue: '2026-09-24' };
 
@@ -253,5 +253,18 @@ describe('reminderSub (#163)', () => {
 	it('counts what comes next from the entry\'s day', () => {
 		expect(reminderSub(every3, '2026-10-03', '2026-10-03')).toBe('Not due until Oct 4 · next would be Oct 6');
 		expect(reminderSub(every3, '2026-10-02', '2026-10-05')).toBe('1 day overdue · next Oct 5');
+	});
+});
+
+describe('cadenceText (#164)', () => {
+	it('says how it repeats and when it was last done', () => {
+		expect(cadenceText({ ...weekly, intervalDays: 3 }, '2026-10-13')).toBe('every 3 days after done · last Oct 13');
+		expect(cadenceText({ ...weekly, scheduleMode: 'fixed' })).toBe('every 7 days · on schedule');
+		expect(cadenceText({ recurring: true, intervalDays: null, scheduleMode: 'weekdays', nextDue: '2026-10-14', weekdays: '1,3,5' }, '2026-10-14')).toBe('Mon, Wed, Fri · last Oct 14');
+		expect(cadenceText({ recurring: false, intervalDays: null, scheduleMode: 'completion', nextDue: '2026-10-14' })).toBe('one-off');
+	});
+	it('keeps a course and the setup review as they read', () => {
+		expect(cadenceText({ ...weekly, intervalDays: 2, nextDue: '2026-10-01', endsOn: '2026-10-05' })).toBe('every 2 days after done · 3 times left · ends Oct 5');
+		expect(cadenceText({ ...weekly, intervalDays: 91, kind: 'review' })).not.toMatch(/after done/);
 	});
 });

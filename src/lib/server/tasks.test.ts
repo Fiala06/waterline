@@ -15,7 +15,7 @@ const { createTank } = await import('./tanks');
 const { addEquipment } = await import('./specs');
 const { createEvent, createTest } = await import('./logs');
 const { completableTask } = await import('./log-forms');
-const { completeTask, countableEntry, createTask, getTask, undoCompletion } = await import('./tasks');
+const { completeTask, countableEntry, createTask, getTask, lastDoneOn, recentCompletions, skipTask, undoCompletion } = await import('./tasks');
 
 const user = upsertUser({ email: 'tasks@example.com', name: 'Keeper' });
 const tz = user.timeZone;
@@ -109,5 +109,18 @@ describe('a log done early completes its reminder (#163)', () => {
 		completeTask(user.id, task.id, { at: event.occurredAt, eventId: event.id, timeZone: tz });
 		// counted: it isn't offered again
 		expect(countableEntry(getTask(user.id, task.id), tz)).toBeNull();
+	});
+});
+
+describe('when a task was last done (#164)', () => {
+	it('lists done and skipped, newest first, and last done leaves skips out', () => {
+		const task = newTask('Dose iron', 'other');
+		completeTask(user.id, task.id, { at: '2026-03-01T10:00:00.000Z', timeZone: tz });
+		db.$client.prepare('update tasks set next_due = ? where id = ?').run(addDays(today, -1), task.id);
+		skipTask(user.id, task.id, { timeZone: tz });
+		const done = recentCompletions(task.id, tz);
+		expect(done.map((c) => c.skipped)).toEqual([true, false]);
+		expect(done.every((c) => c.eventId)).toBe(true);
+		expect(lastDoneOn(task.id, tz)).toBe('2026-03-01');
 	});
 });

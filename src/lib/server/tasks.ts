@@ -231,6 +231,20 @@ export function countableEntry(task: Task, timeZone: string): { kind: 'event' | 
 	return { kind: task.kind === 'test' ? 'test' : 'event', id: latest.id, at: latest.at, date };
 }
 
+/** The last few times a task was done or skipped (#164), newest first, each with its History entry. */
+export function recentCompletions(taskId: string, timeZone: string, limit = 5) {
+	return db
+		// the entry, when it's still in History
+		.select({ id: taskCompletions.id, at: taskCompletions.completedAt, skipped: taskCompletions.skipped, eventId: events.id })
+		.from(taskCompletions)
+		.leftJoin(events, eq(events.id, taskCompletions.eventId))
+		.where(eq(taskCompletions.taskId, taskId))
+		.orderBy(desc(taskCompletions.completedAt))
+		.limit(limit)
+		.all()
+		.map((c) => ({ ...c, date: dateInZone(c.at, timeZone) }));
+}
+
 /** First open task of a kind for a tank, e.g. the water-change reminder. */
 export function taskOfKind(userId: string, tankId: string, kind: Task['kind']) {
 	getTank(userId, tankId);

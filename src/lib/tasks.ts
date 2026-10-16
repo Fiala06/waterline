@@ -186,6 +186,22 @@ export function reminderSub(task: ReminderTask, entryDate: string, today: string
 	return `${state} · ${after}`;
 }
 
+/**
+ * A task's cadence with how it repeats and when it was last done (#164):
+ * "every 3 days after done · last Oct 13", "every 7 days · on schedule",
+ * "Mon, Wed, Fri · last Oct 14", "one-off".
+ */
+export function cadenceText(
+	task: { recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null; kind?: string; nextDue?: string | null; endsOn?: string | null },
+	lastDone?: string | null
+): string {
+	const base = repeatText(task);
+	const every = task.recurring && task.intervalDays && task.scheduleMode !== 'weekdays' && task.kind !== 'review';
+	const how = every ? (task.scheduleMode === 'fixed' ? `${base} · on schedule` : `${base} after done`) : base;
+	const course = task.endsOn && task.nextDue ? courseText({ ...task, scheduleMode: (task.scheduleMode ?? 'completion') as Schedulable['scheduleMode'], nextDue: task.nextDue }) : null;
+	return [how, course, lastDone ? `last ${fmtDate(lastDone)}` : null].filter(Boolean).join(' · ');
+}
+
 /** "every 7 days", "every 2 weeks", "Mon, Wed, Fri", "every day but Sun", "one-off" */
 export function intervalText(task: { recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null; kind?: string; nextDue?: string | null; endsOn?: string | null }): string {
 	const base = repeatText(task);
