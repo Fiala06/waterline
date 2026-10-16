@@ -15,7 +15,7 @@ const { createTank } = await import('./tanks');
 const { addEquipment } = await import('./specs');
 const { createEvent, createTest } = await import('./logs');
 const { completableTask } = await import('./log-forms');
-const { completeTask, countableEntry, createTask, getTask, lastDoneOn, recentCompletions, skipTask, undoCompletion } = await import('./tasks');
+const { completeTask, countableEntry, createTask, dosingRoutines, getTask, lastDoneOn, lastDoseText, recentCompletions, skipTask, undoCompletion } = await import('./tasks');
 
 const user = upsertUser({ email: 'tasks@example.com', name: 'Keeper' });
 const tz = user.timeZone;
@@ -122,5 +122,26 @@ describe('when a task was last done (#164)', () => {
 		expect(done.map((c) => c.skipped)).toEqual([true, false]);
 		expect(done.every((c) => c.eventId)).toBe(true);
 		expect(lastDoneOn(task.id, tz)).toBe('2026-03-01');
+	});
+});
+
+describe('a dose logged by hand (#167)', () => {
+	it("is offered to its product's routine, completes it, and Undo leaves the dose in History", () => {
+		const t = createTank(user, { name: 'Dose tank', type: 'planted', nominalVolumeL: 60 });
+		const routine = createTask(user.id, t.id, { name: 'Thrive', kind: 'dosing', product: 'Thrive S', amount: 3, amountUnit: 'mL', recurring: true, intervalDays: 2, scheduleMode: 'completion', nextDue: today, openFormOnDone: false });
+		const [offer] = dosingRoutines(user.id, t.id, tz);
+		expect(offer).toMatchObject({ id: routine.id, product: 'Thrive S' });
+		expect(lastDoseText(routine, tz)).toBeNull();
+
+		const { event } = createEvent(user.id, t.id, { category: 'dosing', occurredAt: new Date().toISOString(), note: null, data: { product: 'thrive s', amount: 2, unit: 'pumps' } }, { completeTaskId: routine.id, timeZone: tz });
+		expect(getTask(user.id, routine.id).nextDue).toBe(addDays(today, 2));
+		expect(lastDoseText(routine, tz)).toMatch(/^last 2 pumps · /);
+		// one entry: the dose itself
+		expect(db.select().from(events).where(eq(events.tankId, t.id)).all().filter((e) => e.category === 'dosing')).toHaveLength(1);
+
+		const completion = db.$client.prepare('select id from task_completions where task_id = ?').get(routine.id) as { id: string };
+		undoCompletion(user.id, completion.id);
+		expect(db.select().from(events).where(eq(events.id, event.id)).get()).toBeDefined();
+		expect(getTask(user.id, routine.id).nextDue).toBe(today);
 	});
 });

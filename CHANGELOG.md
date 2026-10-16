@@ -17,6 +17,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 - **How it repeats, and when it was last done.** Each task on [Tasks](/tasks) now says how its schedule counts ("every 3 days after done", or "every 7 days · on schedule" for one that keeps its days) and when you last did it. Open a task to see the last few times it was done or skipped, each opening its entry in History.
 - **Do it today, and a clearer Snooze.** A task's Snooze menu on [Tasks](/tasks) now offers Tomorrow, In 2 days, This weekend and Next week, each with its date, and Undo after snoozing. A task that isn't due yet can be brought forward with Do it today (or an earlier date), without changing the schedule after it. On phones, Snooze is on every task, not only overdue ones.
 - **Every task due today on the dashboard.** Due on the [dashboard](/) now lists everything due today or overdue, however many, then the next three, with +N more to see the rest on Tasks.
+- **A dose you log counts for its routine.** Log a dose by hand and, when it's the product of one of your dosing routines, Also mark the reminder done is there (ticked when it's due), so the routine moves on without dosing or ticking it twice. Each dosing routine on [Tasks](/tasks) and the tank's page also shows the last dose logged, such as "last 2 pumps · Oct 14".
 
 ## 1.15.1 · 2026-10-16
 

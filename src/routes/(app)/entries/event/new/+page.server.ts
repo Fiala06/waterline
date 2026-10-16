@@ -14,7 +14,7 @@ import { createEvent, eventByClientId, recentAdditives, recentDosingProducts, re
 import { photoFiles, preparePhotos, storePhotos } from '$lib/server/photos';
 import { listProducts } from '$lib/server/products';
 import { getTank } from '$lib/server/tanks';
-import { createTask, getTask } from '$lib/server/tasks';
+import { createTask, dosingRoutines, getTask } from '$lib/server/tasks';
 import { equipmentName } from '$lib/equipment';
 import { handleLinkedLivestock } from '$lib/server/log-livestock';
 import { getEquipment, listEquipment, listLivestock, listPlants, markServiced, removeEquipment } from '$lib/server/specs';
@@ -55,6 +55,8 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 		when: date && time ? { date, time } : null,
 		task: completableTask(user, tank.id, taskKindFor(category), url.searchParams.get('task'), date),
 		recentProducts: category === 'dosing' ? recentDosingProducts(tank.id) : [],
+		// a dose completes its product's routine (#167)
+		doseRoutines: category === 'dosing' ? dosingRoutines(user.id, tank.id, user.timeZone) : [],
 		// a water change's conditioner / remineraliser rows: what was added before, then what's been dosed
 		recentAdditives: category === 'water_change' ? dedupe([...recentAdditives(tank.id), ...recentDosingProducts(tank.id)]) : [],
 		recentFoods: category === 'feeding' ? recentFoods(tank.id) : [],

@@ -6,7 +6,7 @@ import { dateInZone, fmtDateLong, todayInZone } from '$lib/time';
 import { dueInfo, isRoutine, routineLine } from '$lib/tasks';
 import { db } from './db';
 import { events, type Tank, type User } from './db/schema';
-import { listTasks } from './tasks';
+import { lastDoseText, listTasks } from './tasks';
 
 const SOURCES: Record<string, string> = { tap: 'Tap', rodi: 'RODI', mix: 'Mix', well: 'Well' };
 
@@ -51,7 +51,7 @@ export function tankDetails(user: User, t: Tank) {
 			.filter((r) => isRoutine(r.task.kind))
 			.map(({ task }) => {
 				const d = dueInfo(task.due, today);
-				return { id: task.id, name: task.name, line: routineLine(task), due: d.days < 0 ? d.text : d.days === 0 ? '▲ Today' : d.text.replace(/^▲ /, ''), level: d.level, now: d.days <= 0 };
+				return { id: task.id, name: task.name, line: [routineLine(task), task.kind === 'dosing' ? lastDoseText(task, user.timeZone) : null].filter(Boolean).join(' · '), due: d.days < 0 ? d.text : d.days === 0 ? '▲ Today' : d.text.replace(/^▲ /, ''), level: d.level, now: d.days <= 0 };
 			})
 	};
 }

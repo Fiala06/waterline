@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { and, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
-import { addDays, dateInZone, todayInZone } from '$lib/time';
-import { effectiveDue, isRoutine, logCompletes, nextDueAfterCompletion, skipTo } from '$lib/tasks';
+import { addDays, dateInZone, fmtDate, todayInZone } from '$lib/time';
+import { amountText, effectiveDue, isRoutine, logCompletes, nextDueAfterCompletion, reminderSub, skipTo } from '$lib/tasks';
 import { db } from './db';
 import { requireRoleOn, visibleTo } from './members';
 import { equipment, events, taskCompletions, tanks, tasks, tests, type Tank, type Task } from './db/schema';
@@ -134,7 +134,9 @@ export function undoCompletion(userId: string, completionId: string) {
 		if (row.task.endsOn && !row.task.nextDue)
 			tx.delete(events).where(and(eq(events.tankId, row.task.tankId), eq(events.category, 'note'), sql`json_extract(${events.data}, '$.system') = 'course_finished' AND json_extract(${events.data}, '$.task_id') = ${row.task.id}`)).run();
 		// a routine's dose or feeding was logged by Done: undoing takes it back out of History
-		if (isRoutine(row.task.kind) && row.c.eventId) tx.delete(events).where(eq(events.id, row.c.eventId)).run();
+		// (a dose logged by hand that completed it (#167) stays: it has no task_id)
+		if (isRoutine(row.task.kind) && row.c.eventId)
+			tx.delete(events).where(and(eq(events.id, row.c.eventId), sql`json_extract(${events.data}, '$.task_id') = ${row.task.id}`)).run();
 		// and so was any other task's entry (#161), but never one logged from a form
 		if (!isRoutine(row.task.kind) && !row.c.skipped && row.c.eventId) {
 			const entry = tx.select().from(events).where(eq(events.id, row.c.eventId)).get();
@@ -244,6 +246,42 @@ export function recentCompletions(taskId: string, timeZone: string, limit = 5) {
 		.limit(limit)
 		.all()
 		.map((c) => ({ ...c, date: dateInZone(c.at, timeZone) }));
+}
+
+/**
+ * A tank's open dosing routines, for a dose logged by hand to complete the one
+ * for its product (#167): the form ticks it as it does a water change's (#163).
+ */
+export function dosingRoutines(userId: string, tankId: string, timeZone: string) {
+	const today = todayInZone(timeZone);
+	return listTasks(userId, tankId)
+		.filter((r) => r.task.kind === 'dosing')
+		.map(({ task }) => {
+			const schedule = { recurring: task.recurring, intervalDays: task.intervalDays, scheduleMode: task.scheduleMode, nextDue: task.nextDue, snoozedUntil: task.snoozedUntil, weekdays: task.weekdays, endsOn: task.endsOn };
+			return {
+				id: task.id,
+				product: task.product ?? task.name,
+				label: `Also mark the reminder “${task.name}” done`,
+				sub: reminderSub(schedule, today, today),
+				schedule,
+				lastDone: lastDoneOn(task.id, timeZone),
+				today
+			};
+		});
+}
+
+/** The last dose of a routine's product logged on its tank (#167): "last 2 pumps · Oct 14". */
+export function lastDoseText(task: Pick<Task, 'tankId' | 'product' | 'name'>, timeZone: string): string | null {
+	const product = (task.product ?? task.name).trim().toLowerCase();
+	const e = db
+		.select({ at: events.occurredAt, data: events.data })
+		.from(events)
+		.where(and(eq(events.tankId, task.tankId), eq(events.category, 'dosing'), sql`lower(trim(json_extract(${events.data}, '$.product'))) = ${product}`))
+		.orderBy(desc(events.occurredAt))
+		.get();
+	if (!e) return null;
+	const amount = amountText(typeof e.data.amount === 'number' ? e.data.amount : null, typeof e.data.unit === 'string' ? e.data.unit : null);
+	return `last ${amount ? `${amount} · ` : ''}${fmtDate(dateInZone(e.at, timeZone))}`;
 }
 
 /** First open task of a kind for a tank, e.g. the water-change reminder. */
