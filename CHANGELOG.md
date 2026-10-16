@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.17.1 · 2026-10-16
+
 - **Tap a last reading.** On [Log water test](/entries/test/new), tap the last reading beside a parameter (Last 7.2) to fill that one field with it, when only some readings match last time's.
 - **Tab and Enter to the next reading.** On [Log water test](/entries/test/new), Tab or Enter after a reading goes straight to the next one, past a kit's Start and Steps; Shift+Enter goes back. Enter no longer saves the test halfway through: after the last reading it moves on to the note.
 
