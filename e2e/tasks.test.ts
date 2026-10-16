@@ -244,3 +244,64 @@ test('Due on the dashboard shows every task due today', async ({ page }, info) =
 	// upcoming: the water change, the two above and the setup review, so one is left for Tasks
 	await expect(due.getByRole('link', { name: '+1 more' })).toHaveAttribute('href', `/tasks?filter=${tankId}`);
 });
+
+// #171: a cadence for a while, set on the task's form, shown on the row and noted in History
+test('a cadence for a while: more often until a date, then back', async ({ page }, info) => {
+	await newKeeperWithTank(page, `m7w-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, '/tasks/new');
+	const today = await dateValue(page, 'nextDue');
+	await open(page, '/tasks');
+	const href = await page.locator('a', { hasText: 'Water change 25%' }).first().getAttribute('href');
+	await open(page, href!);
+	await page.getByText('More often until a date, then back to this').click();
+	await page.getByLabel('Every how many days for a while').fill('3');
+	await pickDate(page, 'tempUntil', new Date(Date.parse(today) + 14 * 86_400_000).toISOString().slice(0, 10));
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('status')).toContainText('✓ Task saved');
+	await expect(page.getByText(/every 3 days until .* · then every 7 days/).filter({ visible: true }).first()).toBeVisible();
+	await open(page, `/history?tank=${tankId}`);
+	await expect(page.getByRole('link', { name: /^Water change 25%: every 3 days until/ })).toHaveCount(1);
+
+	// unticked: back to weekly now, and History says it ended early
+	await open(page, href!);
+	await page.getByText('More often until a date, then back to this').click();
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('status')).toContainText('✓ Task saved');
+	await open(page, `/history?tank=${tankId}`);
+	await expect(page.getByRole('link', { name: 'Water change 25%: back to every 7 days (ended early)' })).toHaveCount(1);
+});
+
+// #172: pause a tank's tasks until a day, Undo, and Resume
+test('pause tasks until a day, with Undo and Resume', async ({ page }, info) => {
+	await newKeeperWithTank(page, `m7p-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, '/tasks');
+	await page.getByRole('link', { name: 'Pause tasks for a while ›' }).click();
+	await expect(page).toHaveURL(new RegExp(`/tanks/${tankId}/pause`));
+	// every task ticked: the water change and the setup review
+	await expect(page.getByRole('checkbox', { name: /Water change 25%/ })).toBeChecked();
+	await page.getByRole('checkbox', { name: /Review tank setup/ }).uncheck();
+	await page.getByRole('button', { name: 'Pause', exact: true }).click();
+	await expect(page.getByRole('status')).toContainText('Paused 1 task until');
+	await expect(page.getByRole('heading', { name: 'Paused · 1' })).toBeVisible();
+	await expect(page.locator('.row.paused', { hasText: 'Water change 25%' })).toContainText('Paused until');
+
+	// Undo: as it was, and nothing in History
+	await page.getByRole('status').getByRole('button', { name: 'Undo' }).click();
+	await expect(page.getByRole('status')).toContainText('Undid the pause');
+	await expect(page.getByRole('heading', { name: /^Paused/ })).toHaveCount(0);
+
+	// paused again from the task's own menu, then resumed
+	await page.locator('.row', { hasText: 'Water change 25%' }).getByRole('button', { name: 'Snooze', exact: true }).click();
+	await page.getByRole('link', { name: /^Pause until/ }).click();
+	await expect(page.getByRole('checkbox', { name: /Review tank setup/ })).not.toBeChecked();
+	await page.getByRole('button', { name: 'Pause', exact: true }).click();
+	await expect(page.getByRole('heading', { name: 'Paused · 1' })).toBeVisible();
+	await page.getByRole('button', { name: 'Resume Water change 25%' }).click();
+	await expect(page.getByRole('status')).toContainText('Resumed Water change 25%');
+	await expect(page.getByRole('heading', { name: /^Paused/ })).toHaveCount(0);
+	await open(page, `/history?tank=${tankId}`);
+	await expect(page.getByRole('link', { name: /^Paused Water change 25% until/ })).toHaveCount(1);
+	await expect(page.getByRole('link', { name: 'Resumed Water change 25%' })).toHaveCount(1);
+});

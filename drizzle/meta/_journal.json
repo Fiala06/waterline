@@ -393,6 +393,13 @@
       "when": 1792003205659,
       "tag": "0055_public_details",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "6",
+      "when": 1792168002050,
+      "tag": "0056_task_pause_cadence",
+      "breakpoints": true
     }
   ]
 }

@@ -31,6 +31,7 @@
 			weekdays?: string | null;
 			endsOn?: string | null;
 			kind?: string;
+			tankId?: string;
 			/** a water change or test logged already, to count instead of skipping (#163) */
 			countable?: { kind: 'event' | 'test'; id: string; date: string } | null;
 		} | null;
@@ -177,6 +178,10 @@
 					{/if}
 				</div>
 			{/if}
+			{#if task.tankId}
+				<!-- a blackout, a trip, a dose held back (#172): not due and not notified until a day -->
+				<a class="opt pause-link" href="/tanks/{task.tankId}/pause?task={task.id}&from={encodeURIComponent(from)}"><span>Pause until…</span><span aria-hidden="true">›</span></a>
+			{/if}
 			<p class="note">Snoozing moves only this occurrence. The schedule after it stays the same.</p>
 			<button type="button" class="btn cancel" onclick={close}>Cancel</button>
 		</div>
@@ -258,6 +263,11 @@
 		color: var(--text-muted);
 		white-space: nowrap;
 	}
+	.pause-link {
+		border-top: 2px solid var(--divider);
+		color: var(--text);
+	}
+	.pause-link span:last-child,
 	.pick-date span:last-child {
 		color: var(--text-muted);
 	}

@@ -15,7 +15,7 @@ import { latestReadingsFor, latestTest } from '$lib/server/logs';
 import { listParamsFor, listTanks } from '$lib/server/tanks';
 import { shownAvatar } from '$lib/server/avatar-image';
 import { alertsSeen } from '$lib/server/users';
-import { listTasks } from '$lib/server/tasks';
+import { listTasks, settleTasks } from '$lib/server/tasks';
 import { listFavorites } from '$lib/server/favorites';
 import { listRoutinesFor } from '$lib/server/routines';
 import { favoriteSub } from '$lib/favorites';
@@ -36,6 +36,8 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 		cookies.set('wl_tank', requested, { path: '/', httpOnly: true, sameSite: 'lax', maxAge: 31536000 });
 	}
 
+	// pauses that are up resume, and a cadence for a while that ran its time ends (#171, #172)
+	settleTasks(user.id, user.timeZone);
 	const tasks = listTasks(user.id);
 	const overdueByTank = new Map<string, number>();
 	let overdueCount = 0;

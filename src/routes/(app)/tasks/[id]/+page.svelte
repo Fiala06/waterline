@@ -13,6 +13,16 @@
 
 <style>
 	.done-log {
+		max-width: 560px;
+		margin-inline: auto;
 		padding: 0 20px 24px;
+	}
+	/* under the form, as wide as it (TaskForm: 640px with 32px sides) */
+	@media (min-width: 1024px) {
+		.done-log {
+			max-width: 640px;
+			margin: 0;
+			padding: 0 32px 48px;
+		}
 	}
 </style>

@@ -192,7 +192,7 @@ export const tasksTool: Tool = {
 	name: 'get_tasks',
 	title: 'Tasks as rows',
 	description:
-		"Open tasks as a flat table, soonest first: tank, task, kind, when it's due (after any snooze), days until due (negative when overdue), status (Overdue, Due today, Due soon, Upcoming), whether it repeats and how often, how (schedule: after done counts from the last time it was done, on schedule keeps its dates, set days, once), the last day of a course (ends_on) and the day it was last done (last_done, not counting skips). Across every tank unless tank_id is given; archived tanks' tasks are left out.",
+		"Open tasks as a flat table, soonest first: tank, task, kind, when it's due (after any snooze), days until due (negative when overdue), status (Overdue, Due today, Due soon, Upcoming, or Paused until a day to come), whether it repeats and how often, how (schedule: after done counts from the last time it was done, on schedule keeps its dates, set days, once), the last day of a course (ends_on) and the day it was last done (last_done, not counting skips). Across every tank unless tank_id is given; archived tanks' tasks are left out.",
 	inputSchema: { type: 'object', properties: { tank_id: optionalTankArg } },
 	run: (access, args) => {
 		const { user } = access;
@@ -218,7 +218,7 @@ export const tasksTool: Tool = {
 						kind: task.kind,
 						due,
 						days_until_due: n,
-						status: dueWord(n),
+						status: task.pausedUntil && task.pausedUntil > today ? 'Paused' : dueWord(n),
 						recurring: task.recurring,
 						every_days: task.recurring && task.scheduleMode !== 'weekdays' ? task.intervalDays : null,
 						schedule: scheduleWord(task),

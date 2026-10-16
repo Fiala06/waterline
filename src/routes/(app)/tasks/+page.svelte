@@ -13,12 +13,13 @@
 	import TaskForm from '$lib/components/TaskForm.svelte';
 	import { cadenceText, dueInfo, isRoutine, routineLine } from '$lib/tasks';
 	import { REVIEW_ABOUT } from '$lib/review';
+	import { fmtDate } from '$lib/time';
 
 	let { data } = $props();
 	// a routine's line has its amount too: "1 pump · Mon, Wed, Fri"; a task's says how it repeats
 	// and when it was last done (#164): "every 3 days after done · last Oct 13"
 	// and a dose, the last one logged (#167): "3 mL · every 2 days · last 2 pumps · Oct 14"
-	const every = (t: (typeof data.tasks)[number]) => (isRoutine(t.kind) ? [routineLine(t), t.lastDose].filter(Boolean).join(' · ') : cadenceText(t, t.lastDone));
+	const every = (t: (typeof data.tasks)[number]) => (isRoutine(t.kind) ? [routineLine(t), t.lastDose].filter(Boolean).join(' · ') : cadenceText(t, t.lastDone, data.today));
 	// The pane posts to /tasks/[id] or /tasks/new; TaskForm puts their errors in page.form.
 	const paneForm = $derived(
 		page.form as { values?: NonNullable<typeof data.pane>['values']; errors?: Record<string, string> } | null
@@ -160,6 +161,33 @@
 				</section>
 			{/if}
 		{/each}
+		{#if data.paused.length}
+			<!-- paused (#172): not due, not notified, until their day; Resume picks one up now -->
+			<section>
+				<div class="sec-head"><h2 class="sec muted">Paused · {data.paused.length}</h2></div>
+				<div class="rows">
+					{#each data.paused as t (t.id)}
+						<div class="row paused">
+							<a class="rtext t-link" href="/tasks/{t.id}"
+								><span class="name">{t.name}</span><span class="line"
+									><span class="when plain">‖ Paused until {fmtDate(t.until)}</span><span class="meta">{tankNames[t.tankId]}</span></span
+								></a
+							>
+							<div class="acts">
+								<form method="POST" action="/tasks?/resume" use:enhance>
+									<input type="hidden" name="taskId" value={t.id} />
+									<input type="hidden" name="from" value={from} />
+									<button class="btn mark" aria-label="Resume {t.name}">Resume</button>
+								</form>
+							</div>
+						</div>
+					{/each}
+				</div>
+			</section>
+		{/if}
+		{#if data.tanks.length}
+			<a class="cal-link" href="/tanks/{data.filter ?? data.tanks[0].id}/pause?from={encodeURIComponent(from)}">Pause tasks for a while ›</a>
+		{/if}
 		<a class="cal-link" href="/settings#calendar">See your tasks in your calendar ›</a>
 	</div>
 

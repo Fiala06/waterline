@@ -23,7 +23,7 @@ import { notifiesUser, tankPeople } from './members';
 import { isLive, latestSamplesFor, outOfRangeSince } from './sensors';
 import { getUser } from './users';
 import { listParams, listTanks, roleOn } from './tanks';
-import { listTasks } from './tasks';
+import { listTasks, settleTasks } from './tasks';
 import { tankTypeLabel } from '$lib/types';
 
 export type Prefs = typeof notificationPrefs.$inferSelect;
@@ -176,6 +176,7 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 		const t = tankRows.get(tankId);
 		return !!t && notifiesUser(t, user.id, kind, roleOn(user.id, t));
 	};
+	settleTasks(user.id, user.timeZone);
 	const tasks = listTasks(user.id)
 		.filter((r) => notified(r.task.tankId, 'remind'))
 		.map((r) => ({ ...r.task, tankName: r.tankName }));
