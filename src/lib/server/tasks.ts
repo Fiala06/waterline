@@ -196,7 +196,8 @@ export function snoozeTask(userId: string, taskId: string, until: string) {
 	const task = getTask(userId, taskId);
 	requireRoleOn(userId, task.tankId, 'log');
 	if (!task.nextDue) return task;
-	return db.update(tasks).set({ snoozedUntil: until }).where(eq(tasks.id, taskId)).returning().get();
+	// back on its own date: nothing moved
+	return db.update(tasks).set({ snoozedUntil: until === task.nextDue ? null : until }).where(eq(tasks.id, taskId)).returning().get();
 }
 
 /** The day a task was last done (not skipped), in the keeper's time zone. */

@@ -15,6 +15,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 - **Done yesterday.** Forgot to tap Done? In a task's Snooze menu on [Tasks](/tasks), Done already? has Done yesterday and Done on a day…, so the next one counts from the day you really did it.
 - **Early water changes count.** Log a water change or test a little before its reminder is due (up to half its cadence early, such as a day early on every 3 days) and Also mark the reminder done is ticked for you, with the next one counted from the day you logged. Further ahead, the box is there to tick. If you left it unticked, the reminder's Snooze menu on [Tasks](/tasks) offers Count the water change on that day instead of Skip.
 - **How it repeats, and when it was last done.** Each task on [Tasks](/tasks) now says how its schedule counts ("every 3 days after done", or "every 7 days · on schedule" for one that keeps its days) and when you last did it. Open a task to see the last few times it was done or skipped, each opening its entry in History.
+- **Do it today, and a clearer Snooze.** A task's Snooze menu on [Tasks](/tasks) now offers Tomorrow, In 2 days, This weekend and Next week, each with its date, and Undo after snoozing. A task that isn't due yet can be brought forward with Do it today (or an earlier date), without changing the schedule after it. On phones, Snooze is on every task, not only overdue ones.
 
 ## 1.15.1 · 2026-10-16
 

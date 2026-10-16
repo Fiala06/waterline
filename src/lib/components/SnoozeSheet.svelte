@@ -52,8 +52,8 @@
 	let pickingDone = $state(false);
 	let doneDay = $state('');
 	const yesterday = $derived(addDays(today, -1));
-	// the server only takes dates after the due date (or after today when overdue)
-	const minDate = $derived(task ? addDays(task.due > today ? task.due : today, 1) : '');
+	// the server takes any date after today, and today itself for a task not due yet (#165)
+	const minDate = $derived(task ? (task.due > today ? today : addDays(today, 1)) : '');
 	$effect(() => {
 		if (open) {
 			picking = false;
@@ -102,9 +102,18 @@
 			<div class="handle" aria-hidden="true"></div>
 			<div class="head">
 				<span class="kicker">{task.name} · {tankName}</span>
-				<h2>Snooze until</h2>
+				<h2>{task.due > today ? 'Move to' : 'Snooze until'}</h2>
 			</div>
 			<div class="opts">
+				{#if task.due > today}
+					<!-- not due yet: bring this one forward to today (#165); the schedule after it stays -->
+					<form method="POST" action="/tasks?/snooze" use:enhance={submitting}>
+						<input type="hidden" name="taskId" value={task.id} />
+						<input type="hidden" name="until" value={today} />
+						<input type="hidden" name="from" value={from} />
+						<button class="opt"><span>Do it today</span><span class="date">{longDate(today)}</span></button>
+					</form>
+				{/if}
 				{#each options as o (o.label)}
 					<form method="POST" action="/tasks?/snooze" use:enhance={submitting}>
 						<input type="hidden" name="taskId" value={task.id} />

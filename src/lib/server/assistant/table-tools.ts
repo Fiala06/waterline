@@ -224,7 +224,7 @@ export const tasksTool: Tool = {
 						schedule: scheduleWord(task),
 						ends_on: task.endsOn,
 						last_done: lastDoneOn(task.id, user.timeZone),
-						snoozed_until: task.snoozedUntil && task.snoozedUntil > (task.nextDue ?? '') ? task.snoozedUntil : null
+						snoozed_until: task.snoozedUntil && task.snoozedUntil !== task.nextDue ? task.snoozedUntil : null
 					};
 				}),
 			{ today }

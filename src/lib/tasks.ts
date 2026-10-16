@@ -45,10 +45,13 @@ export function onOrAfterWeekday(date: string, days: number[]): string {
 	return d;
 }
 
-/** The date a task is actually due: a snooze moves only this occurrence. */
+/**
+ * The date a task is actually due: a snooze moves only this occurrence, later
+ * or, with Do it today (#165), sooner; the schedule stays on `nextDue`.
+ */
 export function effectiveDue(task: { nextDue: string | null; snoozedUntil?: string | null }): string | null {
 	if (!task.nextDue) return null;
-	return task.snoozedUntil && task.snoozedUntil > task.nextDue ? task.snoozedUntil : task.nextDue;
+	return task.snoozedUntil ?? task.nextDue;
 }
 
 /**
@@ -227,25 +230,30 @@ function repeatText(task: { recurring: boolean; intervalDays: number | null; sch
 	return d === 1 ? 'every day' : `every ${d} days`;
 }
 
-/** Snooze choices (G8): tomorrow, in 3 days, next weekend (the coming Saturday after this week's). */
+/**
+ * Snooze choices (README → Screens §10): Tomorrow, In 2 days, This weekend and
+ * Next week, each a different day; a task not due yet moves back from its due date.
+ */
 export function snoozeOptions(today: string, due: string) {
 	// Not due yet: push it back from its due date (a date before it would do nothing).
 	if (due > today) {
 		return [
 			{ label: 'A day later', date: addDays(due, 1) },
-			{ label: '3 days later', date: addDays(due, 3) },
+			{ label: '2 days later', date: addDays(due, 2) },
 			{ label: 'A week later', date: addDays(due, 7) }
 		];
 	}
 	const dow = new Date(today + 'T12:00:00Z').getUTCDay(); // 0 Sun … 6 Sat
-	const toSat = ((6 - dow + 7) % 7) || 7;
-	// never the same day as "In 3 days" (a Wednesday's Saturday): the one after
-	const weekend = addDays(today, toSat <= 3 ? toSat + 7 : toSat);
-	return [
+	// the coming Saturday, or Sunday when today is Saturday
+	const weekend = addDays(today, dow === 6 ? 1 : 6 - dow || 6);
+	const all = [
 		{ label: 'Tomorrow', date: addDays(today, 1) },
-		{ label: 'In 3 days', date: addDays(today, 3) },
-		{ label: 'Next weekend', date: weekend }
+		{ label: 'In 2 days', date: addDays(today, 2) },
+		{ label: 'This weekend', date: weekend },
+		{ label: 'Next week', date: addDays(today, 7) }
 	];
+	// never the same day twice: on a Thursday, In 2 days is the weekend already
+	return all.filter((o, i) => all.findIndex((x) => x.date === o.date) === i);
 }
 
 /** Example under each schedule mode (15): "Done late on Sep 26 → next due Oct 3". */

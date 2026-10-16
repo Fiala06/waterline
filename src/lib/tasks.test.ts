@@ -69,9 +69,9 @@ describe('a course with an end', () => {
 });
 
 describe('effectiveDue', () => {
-	it('uses the snooze only when it is later than the schedule', () => {
+	it('uses the moved date, later or (Do it today) sooner', () => {
 		expect(effectiveDue({ nextDue: '2026-09-24', snoozedUntil: '2026-09-27' })).toBe('2026-09-27');
-		expect(effectiveDue({ nextDue: '2026-10-01', snoozedUntil: '2026-09-27' })).toBe('2026-10-01');
+		expect(effectiveDue({ nextDue: '2026-10-01', snoozedUntil: '2026-09-27' })).toBe('2026-09-27');
 		expect(effectiveDue({ nextDue: '2026-09-24', snoozedUntil: null })).toBe('2026-09-24');
 		expect(effectiveDue({ nextDue: null, snoozedUntil: '2026-09-27' })).toBeNull();
 	});
@@ -88,31 +88,29 @@ describe('dueInfo', () => {
 });
 
 describe('snoozeOptions', () => {
-	it('offers tomorrow, in 3 days and next weekend', () => {
-		// Fri Sep 25 2026
-		expect(snoozeOptions('2026-09-25', '2026-09-24')).toEqual([
-			{ label: 'Tomorrow', date: '2026-09-26' },
-			{ label: 'In 3 days', date: '2026-09-28' },
-			{ label: 'Next weekend', date: '2026-10-03' }
+	it('offers tomorrow, in 2 days, this weekend and next week (#165)', () => {
+		// Tue Sep 22 2026
+		expect(snoozeOptions('2026-09-22', '2026-09-21')).toEqual([
+			{ label: 'Tomorrow', date: '2026-09-23' },
+			{ label: 'In 2 days', date: '2026-09-24' },
+			{ label: 'This weekend', date: '2026-09-26' },
+			{ label: 'Next week', date: '2026-09-29' }
 		]);
 	});
 
-	it('never offers the same day twice: on a Wednesday, next weekend is the one after this Saturday', () => {
-		// Wed Sep 30 2026: in 3 days is Saturday Oct 3
-		expect(snoozeOptions('2026-09-30', '2026-09-28')).toEqual([
-			{ label: 'Tomorrow', date: '2026-10-01' },
-			{ label: 'In 3 days', date: '2026-10-03' },
-			{ label: 'Next weekend', date: '2026-10-10' }
-		]);
+	it('never offers the same day twice', () => {
+		// Thu Sep 24 2026: in 2 days is Saturday
+		expect(snoozeOptions('2026-09-24', '2026-09-24').map((o) => o.label)).toEqual(['Tomorrow', 'In 2 days', 'Next week']);
 		for (let d = 0; d < 7; d++) {
 			const today = `2026-10-0${d + 1}`;
 			const dates = snoozeOptions(today, '2026-09-01').map((o) => o.date);
-			expect(new Set(dates).size, today).toBe(3);
+			expect(new Set(dates).size, today).toBe(dates.length);
+			expect(dates.every((x) => x > today)).toBe(true);
 		}
 	});
 
 	it('pushes back from the due date when it is not due yet', () => {
-		expect(snoozeOptions('2026-09-25', '2026-10-07').map((o) => o.date)).toEqual(['2026-10-08', '2026-10-10', '2026-10-14']);
+		expect(snoozeOptions('2026-09-25', '2026-10-07').map((o) => o.date)).toEqual(['2026-10-08', '2026-10-09', '2026-10-14']);
 	});
 });
 

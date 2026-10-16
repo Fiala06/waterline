@@ -79,12 +79,25 @@ export const actions: Actions = {
 		const taskId = str(form, 'taskId');
 		if (!taskId) error(400, 'Missing task');
 		const until = str(form, 'until');
-		const date = isDate(until) ? until : addDays(todayInZone(user.timeZone), 1);
+		const today = todayInZone(user.timeZone);
+		const date = isDate(until) ? until : addDays(today, 1);
 		const due = effectiveDue(getTask(user.id, taskId));
-		const after = due && due > todayInZone(user.timeZone) ? due : todayInZone(user.timeZone);
-		if (date <= after) error(400, `Pick a date after ${fmtDate(after)}`);
+		// later than today, or today itself for a task not due yet: Do it today (#165) brings it forward
+		if (date < today || (date === today && !(due && due > today))) error(400, `Pick a date after ${fmtDate(today)}`);
 		const task = snoozeTask(user.id, taskId, date);
-		setFlash(cookies, `Snoozed ${task.name} to ${fmtDate(date)}`);
+		setFlash(cookies, due && date < due ? `Moved ${task.name} to ${date === today ? 'today' : fmtDate(date)}` : `Snoozed ${task.name} to ${fmtDate(date)}`, {
+			undo: { action: '/tasks?/unsnooze', name: 'taskId', value: `${task.id}|${due ?? ''}` }
+		});
+		redirect(303, safeReturn(form.get('from'), '/tasks'));
+	},
+	/** Undo a snooze or a move: back to the date it had */
+	unsnooze: async ({ request, locals, cookies }) => {
+		const user = locals.user!;
+		const form = await request.formData();
+		const [taskId, was] = str(form, 'taskId').split('|');
+		const task = getTask(user.id, taskId);
+		snoozeTask(user.id, taskId, isDate(was) ? was : (task.nextDue ?? ''));
+		setFlash(cookies, `Undid ${task.name}`);
 		redirect(303, safeReturn(form.get('from'), '/tasks'));
 	},
 	/** Count the water change or test already logged as this one (#163), instead of skipping it */

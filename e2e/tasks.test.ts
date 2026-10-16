@@ -75,7 +75,7 @@ test('snooze sheet picks a date and keeps the schedule', async ({ page }, info) 
 
 	await page.getByRole('button', { name: 'Snooze', exact: true }).first().click();
 	await expect(page.getByText('Snoozing moves only this occurrence.')).toBeVisible();
-	await page.getByRole('button', { name: /^In 3 days/ }).click();
+	await page.getByRole('button', { name: /^In 2 days/ }).click();
 	await expect(page.getByRole('status')).toContainText('Snoozed Water change 25% to');
 	await expect(page.getByRole('heading', { name: /Overdue/ })).toHaveCount(0);
 
@@ -204,4 +204,20 @@ test('a water change a day early completes its reminder, or Skip counts it', asy
 	// History has the water change, and no "Skipped"
 	await open(page, `/history?tank=${tankId}`);
 	await expect(page.getByRole('link', { name: /^Skipped/ })).toHaveCount(0);
+});
+
+// #165: a task not due yet can be brought forward to today, and back with Undo
+test('do it today brings a task forward, with Undo', async ({ page }, info) => {
+	await newKeeperWithTank(page, `m7t-${info.project.name}`);
+	await open(page, '/tasks');
+	await expect(page.getByRole('heading', { name: /Due soon/ })).toHaveCount(0);
+	const row = page.locator('.row', { hasText: 'Water change 25%' });
+	await row.getByRole('button', { name: 'Snooze', exact: true }).click();
+	await expect(page.getByRole('button', { name: /^This weekend|^A week later/ }).first()).toBeVisible();
+	await page.getByRole('button', { name: /^Do it today/ }).click();
+	await expect(page.getByRole('status')).toContainText('Moved Water change 25% to today');
+	await expect(page.locator('.row.soon', { hasText: 'Water change 25%' })).toBeVisible();
+	await page.getByRole('status').getByRole('button', { name: 'Undo' }).click();
+	await expect(page.getByRole('status')).toContainText('Undid Water change 25%');
+	await expect(page.locator('.row.later', { hasText: 'Water change 25%' })).toBeVisible();
 });

@@ -383,10 +383,6 @@
 		.row.extra {
 			display: none;
 		}
-		/* phones: Snooze stays on what's overdue (the sheet has the same choices); rows keep to one action */
-		.row:not(.overdue) .snooze {
-			display: none;
-		}
 		.row {
 			padding-left: 10px;
 		}
