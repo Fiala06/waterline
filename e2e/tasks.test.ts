@@ -115,3 +115,28 @@ test('skip this one moves to the next date, with Undo', async ({ page }, info) =
 	await open(page, `/history?tank=${tankId}`);
 	await expect(page.getByRole('link', { name: /^Skipped: Water change 25%/ })).toHaveCount(1);
 });
+
+// #161: Done leaves an entry in History, and Undo takes it out again
+test('done is logged in History, and Undo takes it out', async ({ page }, info) => {
+	await newKeeperWithTank(page, `m7h-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, '/tasks/new');
+	await page.getByRole('textbox', { name: 'Task' }).fill('Trim stems');
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('status')).toContainText('✓ Trim stems added');
+	const entries = page.getByRole('link', { name: /^Trim stems/ });
+
+	// done, then undone: nothing in History
+	await page.getByRole('button', { name: /Mark Trim stems done/ }).click();
+	await page.getByRole('status').getByRole('button', { name: 'Undo' }).click();
+	await expect(page.getByRole('status')).toContainText('Undid Trim stems');
+	await open(page, `/history?tank=${tankId}`);
+	await expect(entries).toHaveCount(0);
+
+	// done: a Maintenance entry
+	await open(page, '/tasks');
+	await page.getByRole('button', { name: /Mark Trim stems done/ }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Trim stems done');
+	await open(page, `/history?tank=${tankId}`);
+	await expect(entries).toHaveCount(1);
+});

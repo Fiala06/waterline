@@ -69,7 +69,7 @@ export function createTest(
 		return t;
 	});
 	if (opts.completeTaskId) {
-		completeTask(userId, opts.completeTaskId, { at: input.takenAt, timeZone: opts.timeZone });
+		completeTask(userId, opts.completeTaskId, { at: input.takenAt, logged: true, timeZone: opts.timeZone });
 	}
 	return { test, ...summarize(test.id, params), duplicate: false };
 }

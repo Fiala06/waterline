@@ -4,7 +4,7 @@ import { addDays, dateInZone, todayInZone } from '$lib/time';
 import { effectiveDue, isRoutine, nextDueAfterCompletion, skipTo } from '$lib/tasks';
 import { db } from './db';
 import { requireRoleOn, visibleTo } from './members';
-import { events, taskCompletions, tanks, tasks, type Tank, type Task } from './db/schema';
+import { equipment, events, taskCompletions, tanks, tasks, type Tank, type Task } from './db/schema';
 import { getTank } from './tanks';
 
 /** Open tasks (with a due date) across the user's active tanks, soonest first. */
@@ -45,12 +45,26 @@ function routineEntry(task: Task) {
 }
 
 /**
- * Mark a task done at `at` (ISO instant) and move it to its next occurrence.
- * The previous schedule is kept on the completion so it can be undone. A
- * dosing or feeding routine also logs its entry, wherever it's marked done
- * (the Tasks page, the dashboard, an email or a notification).
+ * What any other task's Done logs in History (#161), when nothing else did: a
+ * maintenance task is a Maintenance entry, the rest a "Done: …" note.
  */
-export function completeTask(userId: string, taskId: string, opts: { at?: string; eventId?: string; timeZone: string }) {
+function doneEntry(task: Task, prevServicedAt: string | null) {
+	if (task.kind === 'maintenance') {
+		const item = task.equipmentId ? { equipment_id: task.equipmentId, prev_serviced_at: prevServicedAt } : {};
+		return { category: 'maintenance' as const, note: null, data: { actions: [task.name], ...item, task_id: task.id, task_done: true } };
+	}
+	return { category: 'note' as const, note: `Done: ${task.name}`, data: { system: 'task_done', task_id: task.id, task_done: true } };
+}
+
+/**
+ * Mark a task done at `at` (ISO instant) and move it to its next occurrence.
+ * The previous schedule is kept on the completion so it can be undone. Done
+ * always leaves an entry in History, wherever it's marked (the Tasks page, the
+ * dashboard, an email or a notification): a routine its dose or feeding, any
+ * other task a Maintenance entry or a note, unless the work was logged already
+ * (`eventId`, or `logged` for a water test, which isn't an entry).
+ */
+export function completeTask(userId: string, taskId: string, opts: { at?: string; eventId?: string; logged?: boolean; timeZone: string }) {
 	const task = getTask(userId, taskId);
 	requireRoleOn(userId, task.tankId, 'log');
 	const at = opts.at ?? new Date().toISOString();
@@ -62,10 +76,17 @@ export function completeTask(userId: string, taskId: string, opts: { at?: string
 			tx.insert(events)
 				.values({ tankId: task.tankId, occurredAt: at, category: 'note', note: `Finished: ${isRoutine(task.kind) ? `${task.product ?? task.name} course` : task.name}`, data: { system: 'course_finished', task_id: task.id } })
 				.run();
-		const logged =
-			!opts.eventId && isRoutine(task.kind)
-				? tx.insert(events).values({ tankId: task.tankId, occurredAt: at, note: null, ...routineEntry(task) }).returning().get()
-				: null;
+		const logs = !opts.eventId && !opts.logged;
+		// an item's service task: done is serviced, as when the service is logged
+		const item = logs && task.kind === 'maintenance' && task.equipmentId ? tx.select().from(equipment).where(eq(equipment.id, task.equipmentId)).get() : undefined;
+		if (item) tx.update(equipment).set({ lastServicedAt: at }).where(eq(equipment.id, item.id)).run();
+		const logged = logs
+			? tx
+					.insert(events)
+					.values({ tankId: task.tankId, occurredAt: at, ...(isRoutine(task.kind) ? { note: null, ...routineEntry(task) } : doneEntry(task, item?.lastServicedAt ?? null)) })
+					.returning()
+					.get()
+			: null;
 		const c = tx
 			.insert(taskCompletions)
 			.values({
@@ -114,6 +135,15 @@ export function undoCompletion(userId: string, completionId: string) {
 			tx.delete(events).where(and(eq(events.tankId, row.task.tankId), eq(events.category, 'note'), sql`json_extract(${events.data}, '$.system') = 'course_finished' AND json_extract(${events.data}, '$.task_id') = ${row.task.id}`)).run();
 		// a routine's dose or feeding was logged by Done: undoing takes it back out of History
 		if (isRoutine(row.task.kind) && row.c.eventId) tx.delete(events).where(eq(events.id, row.c.eventId)).run();
+		// and so was any other task's entry (#161), but never one logged from a form
+		if (!isRoutine(row.task.kind) && !row.c.skipped && row.c.eventId) {
+			const entry = tx.select().from(events).where(eq(events.id, row.c.eventId)).get();
+			if (entry?.data.task_done === true) {
+				if (typeof entry.data.equipment_id === 'string')
+					tx.update(equipment).set({ lastServicedAt: (entry.data.prev_serviced_at as string | null) ?? null }).where(eq(equipment.id, entry.data.equipment_id)).run();
+				tx.delete(events).where(eq(events.id, entry.id)).run();
+			}
+		}
 		// a setup review (#30): its History entry goes, and the parts it checked are as they were
 		if (row.task.kind === 'review' && row.c.eventId) {
 			const entry = tx.select().from(events).where(eq(events.id, row.c.eventId)).get();

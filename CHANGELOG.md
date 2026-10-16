@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Done is in History.** Marking a task done on [Tasks](/tasks), the dashboard, or from an email or notification now leaves an entry in [History](/history): a maintenance task as Maintenance (and a filter's or other item's service task marks it serviced), anything else as "Done: …". Undo takes it out again.
+
 ## 1.15.1 · 2026-10-16
 
 - **Due matches Tasks.** In Due on the [dashboard](/), a water change that's due now shows with the tank's other tasks, as it does on the [Tasks](/tasks) page, instead of only as the Water change row in Needs attention.
