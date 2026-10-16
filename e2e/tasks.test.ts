@@ -221,3 +221,26 @@ test('do it today brings a task forward, with Undo', async ({ page }, info) => {
 	await expect(page.getByRole('status')).toContainText('Undid Water change 25%');
 	await expect(page.locator('.row.later', { hasText: 'Water change 25%' })).toBeVisible();
 });
+
+// #166: the dashboard's Due lists everything due today or over, then the next 3 and "+N more"
+test('Due on the dashboard shows every task due today', async ({ page }, info) => {
+	await newKeeperWithTank(page, `m7d-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	const add = async (name: string, days = 0) => {
+		await open(page, `/tasks/new?tank=${tankId}`);
+		await page.getByRole('textbox', { name: 'Task' }).fill(name);
+		if (days) {
+			const today = await dateValue(page, 'nextDue');
+			await pickDate(page, 'nextDue', new Date(Date.parse(today) + days * 86_400_000).toISOString().slice(0, 10));
+		}
+		await page.getByRole('button', { name: 'Save' }).last().click();
+		await expect(page.getByRole('status')).toContainText(`✓ ${name} added`);
+	};
+	for (const n of ['Trim stems', 'Clean glass', 'Dose iron', 'Top off']) await add(n);
+	for (const n of ['Clean pipes', 'Replace floss']) await add(n, 5);
+	await open(page, `/?tank=${tankId}`);
+	const due = page.getByRole('region', { name: 'Due' });
+	for (const n of ['Trim stems', 'Clean glass', 'Dose iron', 'Top off']) await expect(due.getByText(n, { exact: true })).toBeVisible();
+	// upcoming: the water change, the two above and the setup review, so one is left for Tasks
+	await expect(due.getByRole('link', { name: '+1 more' })).toHaveAttribute('href', `/tasks?filter=${tankId}`);
+});

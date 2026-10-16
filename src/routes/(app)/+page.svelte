@@ -104,6 +104,11 @@
 	// Due: every open task, soonest first, as on the Tasks page, the water change too when
 	// Needs attention has its row (as an overdue task is in both)
 	const dueTasks = $derived(data.tasks ?? []);
+	// Due (#166): everything due today or over, then the next 3; "+N more" opens the rest on Tasks
+	const UPCOMING = 3;
+	const dueNow = $derived(dueTasks.filter((t) => t.due <= (data.today ?? '')));
+	const upcoming = $derived(dueTasks.filter((t) => t.due > (data.today ?? '')));
+	const moreDue = $derived(Math.max(0, upcoming.length - UPCOMING));
 	// the fun bits only when nothing's out of range or overdue
 	const calm = $derived(!cards.some((c) => c.level === 'bad') && !overdue.length && !(wcDue && (wcDue.days > wcDue.goal)));
 	const allClear = $derived(hasReadings && !attention.length && !wcDue && !overdue.length);
@@ -259,7 +264,8 @@
 					>
 				</div>
 				{#if dueTasks.length}
-					<TaskList tasks={dueTasks.slice(0, 3)} today={data.today} />
+					<TaskList tasks={[...dueNow, ...upcoming.slice(0, UPCOMING)]} today={data.today} />
+					{#if moreDue}<a class="more-due" href="/tasks?filter={data.tank.id}">+{moreDue} more</a>{/if}
 				{:else}
 					<EmptyState
 						compact
@@ -1094,5 +1100,13 @@
 		.cell.main {
 			padding-right: 24px;
 		}
+	}
+	.more-due {
+		min-height: 44px;
+		display: flex;
+		align-items: center;
+		font-size: 14px;
+		font-weight: 800;
+		border-bottom: 1px solid var(--divider);
 	}
 </style>
