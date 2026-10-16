@@ -10,7 +10,7 @@
 	import { untrack } from 'svelte';
 	import { DOSING_UNITS } from '$lib/events';
 	import { endsAfterTimes, FEED_UNITS, scheduleExamples, WEEKDAYS } from '$lib/tasks';
-	import { fmtDate } from '$lib/time';
+	import { addDays, fmtDate } from '$lib/time';
 	import { parseNumber } from '$lib/units';
 
 	interface Values {
@@ -32,6 +32,10 @@
 		ends: 'never' | 'on' | 'times';
 		endsOn: string;
 		endsTimes: string;
+		/** for a while (#171): every tempEvery days until tempUntil, then back to the usual */
+		tempOn: boolean;
+		tempEvery: string;
+		tempUntil: string;
 	}
 	let {
 		mode,
@@ -75,6 +79,8 @@
 	let ends = $state(untrack(() => values.ends));
 	let endsOn = $state(untrack(() => values.endsOn));
 	let endsTimes = $state(untrack(() => values.endsTimes));
+	let tempOn = $state(untrack(() => values.tempOn));
+	let tempUntil = $state(untrack(() => values.tempUntil));
 	let busy = $state(false);
 
 	const days = $derived((parseNumber(every) ?? 0) * (unit === 'weeks' ? 7 : 1));
@@ -272,6 +278,26 @@
 						<input class="radio" type="radio" name="scheduleMode" value="fixed" bind:group={scheduleMode} />
 						<span class="c-text"><strong>Fixed calendar</strong><small>{examples?.fixed ?? 'Stays on the same schedule'}</small></span>
 					</label>
+				</div>
+			</fieldset>
+		{/if}
+
+		{#if repeat === 'every' && mode === 'edit'}
+			<!-- for a while (#171): tighter during an outbreak, then back by itself; the inputs show
+			     with the box ticked, by CSS, so it works without scripts too -->
+			<fieldset class="field temp">
+				<legend class="label">For a while</legend>
+				<label class="check-row"><input type="checkbox" name="tempOn" bind:checked={tempOn} onchange={() => { if (tempOn && !tempUntil && today) tempUntil = addDays(today, 14); }} />More often until a date, then back to this</label>
+				<div class="temp-in">
+					<div class="every">
+						<span class="times-word">Every</span>
+						<input class="input num-in" name="tempEvery" inputmode="numeric" value={values.tempEvery} aria-label="Every how many days for a while" aria-invalid={!!errors.tempEvery} />
+						<span class="times-word">days until</span>
+					</div>
+					<DateField name="tempUntil" id="t-temp-until" bind:value={tempUntil} label="Until" format="weekday" min={today} {today} invalid={!!errors.tempUntil} />
+					{#if errors.tempEvery}<span class="error-text">✕ {errors.tempEvery}</span>{/if}
+					{#if errors.tempUntil}<span class="error-text">✕ {errors.tempUntil}</span>{/if}
+					<small class="muted">History notes when it starts and when it's back to every {days > 1 ? `${days} days` : 'day'}.</small>
 				</div>
 			</fieldset>
 		{/if}
@@ -750,5 +776,13 @@
 			border: none;
 			color: var(--text-muted);
 		}
+	}
+	.temp-in {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+	.temp:not(:has(input[name='tempOn']:checked)) .temp-in {
+		display: none;
 	}
 </style>

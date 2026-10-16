@@ -9,13 +9,13 @@ import { addDays, todayInZone } from '$lib/time';
 const dir = mkdtempSync(join(tmpdir(), 'wl-tasks-'));
 vi.mock('$env/dynamic/private', () => ({ env: { DATA_DIR: dir } }));
 const { db } = await import('./db');
-const { equipment, events } = await import('./db/schema');
+const { equipment, events, tasks } = await import('./db/schema');
 const { upsertUser } = await import('./users');
 const { createTank } = await import('./tanks');
 const { addEquipment } = await import('./specs');
 const { createEvent, createTest } = await import('./logs');
 const { completableTask } = await import('./log-forms');
-const { completeTask, countableEntry, createTask, dosingRoutines, getTask, lastDoneOn, lastDoseText, recentCompletions, skipTask, undoCompletion } = await import('./tasks');
+const { completeTask, countableEntry, createTask, dosingRoutines, getTask, lastDoneOn, lastDoseText, listTasks, pauseTasks, recentCompletions, resumeTask, setTempCadence, settleTasks, skipTask, undoCompletion, unpauseTasks } = await import('./tasks');
 
 const user = upsertUser({ email: 'tasks@example.com', name: 'Keeper' });
 const tz = user.timeZone;
@@ -143,5 +143,71 @@ describe('a dose logged by hand (#167)', () => {
 		undoCompletion(user.id, completion.id);
 		expect(db.select().from(events).where(eq(events.id, event.id)).get()).toBeDefined();
 		expect(getTask(user.id, routine.id).nextDue).toBe(today);
+	});
+});
+
+const notesOf = (tankId: string, system: string) => db.select().from(events).where(eq(events.tankId, tankId)).all().filter((e) => e.data.system === system);
+
+describe('paused tasks (#172)', () => {
+	const t = createTank(user, { name: 'Pause tank', type: 'planted', nominalVolumeL: 60 });
+	const mk = (name: string, due: string) =>
+		createTask(user.id, t.id, { name, kind: 'maintenance', recurring: true, intervalDays: 7, scheduleMode: 'completion', nextDue: due, openFormOnDone: false });
+
+	it('are left out of what is due, noted once per tank, and Undo takes the pause back', () => {
+		const a = mk('Dose ferts', today);
+		const b = mk('Feed', addDays(today, 1));
+		const { noteIds } = pauseTasks(user.id, [a.id, b.id], addDays(today, 4), tz);
+		const shown = listTasks(user.id, t.id).map((r) => r.task.id);
+		expect(shown).not.toContain(a.id);
+		expect(listTasks(user.id, t.id, { paused: true }).find((r) => r.task.id === a.id)?.task.paused).toBe(true);
+		expect(notesOf(t.id, 'tasks_paused')).toHaveLength(1);
+		unpauseTasks(user.id, noteIds);
+		expect(listTasks(user.id, t.id).map((r) => r.task.id)).toEqual(expect.arrayContaining([a.id, b.id]));
+		expect(notesOf(t.id, 'tasks_paused')).toHaveLength(0);
+	});
+
+	it('resume on their day with their dates moved on, and History says so', () => {
+		const c = mk('Clean glass', addDays(today, 1));
+		pauseTasks(user.id, [c.id], addDays(today, 4), tz);
+		// four days on: the pause is up
+		db.update(tasks).set({ pausedFrom: addDays(today, -4), pausedUntil: today }).where(eq(tasks.id, c.id)).run();
+		db.update(tasks).set({ nextDue: addDays(today, -3) }).where(eq(tasks.id, c.id)).run();
+		settleTasks(user.id, tz);
+		const after = getTask(user.id, c.id);
+		expect(after).toMatchObject({ pausedUntil: null, pausedFrom: null, nextDue: addDays(today, 1) });
+		expect(notesOf(t.id, 'tasks_resumed').map((n) => n.note)).toContain('Resumed Clean glass');
+	});
+
+	it('can be resumed early', () => {
+		const d = mk('Trim', today);
+		pauseTasks(user.id, [d.id], addDays(today, 5), tz);
+		resumeTask(user.id, d.id, tz);
+		expect(getTask(user.id, d.id)).toMatchObject({ pausedUntil: null, nextDue: today });
+	});
+});
+
+describe('a cadence for a while (#171)', () => {
+	const t = createTank(user, { name: 'Outbreak tank', type: 'planted', nominalVolumeL: 60 });
+	it('starts sooner from the last time it was done, ends on its day, and History notes both', () => {
+		const wc = createTask(user.id, t.id, { name: 'Water change 50%', kind: 'water_change', recurring: true, intervalDays: 7, scheduleMode: 'completion', nextDue: addDays(today, 6), openFormOnDone: false });
+		completeTask(user.id, wc.id, { at: new Date(Date.now() - 86_400_000).toISOString(), timeZone: tz });
+		setTempCadence(user.id, wc.id, { intervalDays: 3, until: addDays(today, 14) }, tz);
+		const during = getTask(user.id, wc.id);
+		expect(during).toMatchObject({ tempIntervalDays: 3, tempUntil: addDays(today, 14), nextDue: addDays(today, 2) });
+		expect(notesOf(t.id, 'cadence_temp')[0].note).toMatch(/^Water change 50%: every 3 days until .*, then every 7 days$/);
+
+		// its day comes
+		db.update(tasks).set({ tempUntil: today }).where(eq(tasks.id, wc.id)).run();
+		settleTasks(user.id, tz);
+		expect(getTask(user.id, wc.id)).toMatchObject({ tempIntervalDays: null, tempUntil: null });
+		expect(notesOf(t.id, 'cadence_back')[0].note).toBe('Water change 50%: back to every 7 days');
+	});
+
+	it('ended early from the form says so', () => {
+		const wc = createTask(user.id, t.id, { name: 'Brush algae', kind: 'maintenance', recurring: true, intervalDays: 7, scheduleMode: 'completion', nextDue: today, openFormOnDone: false });
+		setTempCadence(user.id, wc.id, { intervalDays: 2, until: addDays(today, 10) }, tz);
+		setTempCadence(user.id, wc.id, null, tz);
+		expect(getTask(user.id, wc.id).tempIntervalDays).toBeNull();
+		expect(notesOf(t.id, 'cadence_back').map((n) => n.note)).toContain('Brush algae: back to every 7 days (ended early)');
 	});
 });

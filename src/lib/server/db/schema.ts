@@ -334,6 +334,12 @@ export const tasks = sqliteTable(
 		// a treatment course or any routine with an end: no more occurrences after this day
 		endsOn: text('ends_on'),
 		snoozedUntil: text('snoozed_until'),
+		// a cadence for a while (#171): every temp_interval_days until temp_until, then interval_days again
+		tempIntervalDays: integer('temp_interval_days'),
+		tempUntil: text('temp_until'),
+		// paused (#172) from paused_from until paused_until: not due, not notified; resumes with its dates moved on
+		pausedFrom: text('paused_from'),
+		pausedUntil: text('paused_until'),
 		equipmentId: text('equipment_id'),
 		openFormOnDone: integer('open_form_on_done', { mode: 'boolean' }).notNull().default(false),
 		// a routine (#17): the product dosed or the food fed, and how much; done logs it

@@ -5,14 +5,15 @@ import { str } from '$lib/server/forms';
 import { safeReturn } from '$lib/server/redirect';
 import { listTanks } from '$lib/server/tanks';
 import { routineProducts, taskFormValues, taskType } from '$lib/server/task-form';
-import { completeTask, countableEntry, getTask, lastDoneOn, lastDoseText, listTasks, recentCompletions, skipTask, snoozeTask, undoCompletion } from '$lib/server/tasks';
+import { completeTask, countableEntry, getTask, lastDoneOn, lastDoseText, listTasks, recentCompletions, resumeTask, skipTask, snoozeTask, undoCompletion, unpauseTasks } from '$lib/server/tasks';
 import { effectiveDue } from '$lib/tasks';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals, url }) => {
 	const user = locals.user!;
 	const filter = url.searchParams.get('filter');
-	const rows = listTasks(user.id, filter ?? undefined);
+	const all = listTasks(user.id, filter ?? undefined, { paused: true });
+	const rows = all.filter((r) => !r.task.paused);
 
 	// Desktop edit pane (D5): ?edit=<task id>, ?new, or else the first task in the list,
 	// so the pane is never empty (phones hide it). The task must be in the list shown.
@@ -30,6 +31,8 @@ export const load: PageServerLoad = ({ locals, url }) => {
 		today: todayInZone(user.timeZone),
 		// a water change or test logged already that Skip can count instead (#163)
 		tasks: rows.map((r) => ({ ...r.task, countable: countableEntry(r.task, user.timeZone), lastDone: lastDoneOn(r.task.id, user.timeZone), lastDose: r.task.kind === 'dosing' ? lastDoseText(r.task, user.timeZone) : null })),
+		// paused (#172), listed apart with Resume
+		paused: all.filter((r) => r.task.paused).map((r) => ({ id: r.task.id, name: r.task.name, tankId: r.task.tankId, until: r.task.pausedUntil! })),
 		// the pane's task: the last few times it was done (#164)
 		done: pane?.taskId ? recentCompletions(pane.taskId, user.timeZone) : [],
 		pane,
@@ -117,6 +120,22 @@ export const actions: Actions = {
 		setFlash(cookies, `✓ ${task.name} done ${fmtDate(entry.date)}${done.nextDue ? ` · next ${fmtDate(done.nextDue)}` : ''}`, {
 			undo: { action: '/tasks?/undo', name: 'completionId', value: done.completionId }
 		});
+		redirect(303, safeReturn(form.get('from'), '/tasks'));
+	},
+	/** Resume a paused task now (#172), its dates moved on by the days it was paused */
+	resume: async ({ request, locals, cookies }) => {
+		const user = locals.user!;
+		const form = await request.formData();
+		const task = resumeTask(user.id, str(form, 'taskId'), user.timeZone);
+		setFlash(cookies, `Resumed ${task.name}`);
+		redirect(303, safeReturn(form.get('from'), '/tasks'));
+	},
+	/** Undo a pause: as it was, and out of History */
+	unpause: async ({ request, locals, cookies }) => {
+		const user = locals.user!;
+		const form = await request.formData();
+		unpauseTasks(user.id, str(form, 'notes').split(',').filter(Boolean));
+		setFlash(cookies, 'Undid the pause');
 		redirect(303, safeReturn(form.get('from'), '/tasks'));
 	},
 	/** Skip this one (#71): on to the next date, with Undo */

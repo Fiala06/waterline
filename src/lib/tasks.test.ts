@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { amountText, cadenceText, courseText, dueInfo, effectiveDue, endsAfterTimes, intervalText, logCompletes, nextDueAfterCompletion, occurrencesUntil, onOrAfterWeekday, parseWeekdays, reminderDue, reminderSub, routineLine, scheduleExamples, skipTo, snoozeOptions } from './tasks';
+import { amountText, cadenceText, courseText, dueInfo, effectiveDue, endsAfterTimes, intervalText, intervalFor, logCompletes, nextDueAfterCompletion, occurrencesUntil, onOrAfterWeekday, parseWeekdays, reminderDue, reminderSub, resumeSchedule, routineLine, scheduleExamples, skipTo, snoozeOptions } from './tasks';
 
 const weekly = { recurring: true, intervalDays: 7, scheduleMode: 'completion' as const, nextDue: '2026-09-24' };
 
@@ -264,5 +264,38 @@ describe('cadenceText (#164)', () => {
 	it('keeps a course and the setup review as they read', () => {
 		expect(cadenceText({ ...weekly, intervalDays: 2, nextDue: '2026-10-01', endsOn: '2026-10-05' })).toBe('every 2 days after done · 3 times left · ends Oct 5');
 		expect(cadenceText({ ...weekly, intervalDays: 91, kind: 'review' })).not.toMatch(/after done/);
+	});
+});
+
+describe('a cadence for a while (#171)', () => {
+	const outbreak = { ...weekly, nextDue: '2026-10-10', tempIntervalDays: 3, tempUntil: '2026-10-30' };
+	it('counts from the tighter one until its day, then the usual', () => {
+		expect(intervalFor(outbreak, '2026-10-29')).toBe(3);
+		expect(intervalFor(outbreak, '2026-10-30')).toBe(7);
+		expect(nextDueAfterCompletion(outbreak, '2026-10-10', '2026-10-10')).toBe('2026-10-13');
+		expect(nextDueAfterCompletion(outbreak, '2026-10-31', '2026-10-31')).toBe('2026-11-07');
+		const fixed = { ...outbreak, scheduleMode: 'fixed' as const };
+		expect(nextDueAfterCompletion(fixed, '2026-10-10', '2026-10-10')).toBe('2026-10-13');
+	});
+	it('says so on the row while it lasts', () => {
+		expect(cadenceText(outbreak, '2026-10-10', '2026-10-12')).toBe('every 3 days until Oct 30 · then every 7 days · last Oct 10');
+		expect(cadenceText(outbreak, null, '2026-10-30')).toBe('every 7 days after done');
+	});
+});
+
+describe('resumeSchedule (#172)', () => {
+	it('moves a task due during the pause on by the days paused, never before the resume day', () => {
+		// paused Oct 16–20 (4 days), due Oct 18 → Oct 22
+		expect(resumeSchedule({ ...weekly, nextDue: '2026-10-18' }, '2026-10-16', '2026-10-20')).toEqual({ nextDue: '2026-10-22', snoozedUntil: null, endsOn: null });
+		// overdue from before the pause: to the resume day at least
+		expect(resumeSchedule({ ...weekly, nextDue: '2026-10-01' }, '2026-10-16', '2026-10-20').nextDue).toBe('2026-10-20');
+	});
+	it('leaves one due after the pause alone, and lengthens a course', () => {
+		expect(resumeSchedule({ ...weekly, nextDue: '2026-10-25', endsOn: '2026-11-01' }, '2026-10-16', '2026-10-20')).toEqual({ nextDue: '2026-10-25', snoozedUntil: null, endsOn: '2026-11-05' });
+	});
+	it('keeps a fixed or set-days task on its schedule', () => {
+		expect(resumeSchedule({ ...weekly, scheduleMode: 'fixed', nextDue: '2026-10-17' }, '2026-10-16', '2026-10-20').nextDue).toBe('2026-10-24');
+		// Wednesdays: the first one on or after Tue Oct 20 is Oct 21
+		expect(resumeSchedule({ recurring: true, intervalDays: null, scheduleMode: 'weekdays', weekdays: '3', nextDue: '2026-10-14' }, '2026-10-13', '2026-10-20').nextDue).toBe('2026-10-21');
 	});
 });

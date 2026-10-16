@@ -11,6 +11,14 @@ interface Schedulable {
 	weekdays?: string | null;
 	/** the last day it's due ('YYYY-MM-DD'): a course of doses, a round of treatments */
 	endsOn?: string | null;
+	/** a cadence for a while (#171): every tempIntervalDays for what's done before tempUntil */
+	tempIntervalDays?: number | null;
+	tempUntil?: string | null;
+}
+
+/** The interval a completion on `doneOn` counts with: the temporary one until its day (#171), then the usual. */
+export function intervalFor(task: Schedulable, doneOn: string): number | null {
+	return task.tempIntervalDays && task.tempUntil && doneOn < task.tempUntil ? task.tempIntervalDays : task.intervalDays;
 }
 
 export const WEEKDAYS = [
@@ -76,10 +84,11 @@ function nextOccurrence(task: Schedulable, doneOn: string, today: string): strin
 		const from = task.nextDue && task.nextDue > doneOn ? task.nextDue : doneOn;
 		return onOrAfterWeekday(addDays(from, 1), days);
 	}
-	if (!task.recurring || !task.intervalDays) return null;
-	if (task.scheduleMode === 'completion' || !task.nextDue) return addDays(doneOn, task.intervalDays);
-	let next = addDays(task.nextDue, task.intervalDays);
-	while (daysBetween(today, next) <= 0) next = addDays(next, task.intervalDays);
+	const interval = intervalFor(task, doneOn);
+	if (!task.recurring || !interval) return null;
+	if (task.scheduleMode === 'completion' || !task.nextDue) return addDays(doneOn, interval);
+	let next = addDays(task.nextDue, interval);
+	while (daysBetween(today, next) <= 0) next = addDays(next, interval);
 	return next;
 }
 
@@ -195,14 +204,53 @@ export function reminderSub(task: ReminderTask, entryDate: string, today: string
  * "Mon, Wed, Fri · last Oct 14", "one-off".
  */
 export function cadenceText(
-	task: { recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null; kind?: string; nextDue?: string | null; endsOn?: string | null },
-	lastDone?: string | null
+	task: {
+		recurring: boolean;
+		intervalDays: number | null;
+		scheduleMode?: string;
+		weekdays?: string | null;
+		kind?: string;
+		nextDue?: string | null;
+		endsOn?: string | null;
+		tempIntervalDays?: number | null;
+		tempUntil?: string | null;
+	},
+	lastDone?: string | null,
+	today?: string
 ): string {
+	// for a while (#171): "every 3 days until Oct 30 · then every 7 days"
+	if (task.recurring && task.tempIntervalDays && task.tempUntil && (!today || today < task.tempUntil)) {
+		const temp = `${repeatText({ ...task, intervalDays: task.tempIntervalDays })} until ${fmtDate(task.tempUntil)} · then ${repeatText(task)}`;
+		return [temp, lastDone ? `last ${fmtDate(lastDone)}` : null].filter(Boolean).join(' · ');
+	}
 	const base = repeatText(task);
 	const every = task.recurring && task.intervalDays && task.scheduleMode !== 'weekdays' && task.kind !== 'review';
 	const how = every ? (task.scheduleMode === 'fixed' ? `${base} · on schedule` : `${base} after done`) : base;
 	const course = task.endsOn && task.nextDue ? courseText({ ...task, scheduleMode: (task.scheduleMode ?? 'completion') as Schedulable['scheduleMode'], nextDue: task.nextDue }) : null;
 	return [how, course, lastDone ? `last ${fmtDate(lastDone)}` : null].filter(Boolean).join(' · ');
+}
+
+/**
+ * Where a paused task (#172) picks up when it resumes on `resumeOn`, paused
+ * since `from`: one due during the pause moves on by the days it was paused
+ * (never before the resume day), or to its next date on schedule; one due
+ * after it stays. A course ends that many days later, so no dose is lost.
+ */
+export function resumeSchedule(task: Schedulable & { snoozedUntil?: string | null }, from: string, resumeOn: string) {
+	const days = Math.max(0, daysBetween(from, resumeOn));
+	const endsOn = task.endsOn ? addDays(task.endsOn, days) : (task.endsOn ?? null);
+	const due = effectiveDue(task);
+	if (!due || !task.nextDue || due >= resumeOn) return { nextDue: task.nextDue, snoozedUntil: task.snoozedUntil ?? null, endsOn };
+	let nextDue: string;
+	if (task.recurring && task.scheduleMode === 'weekdays') nextDue = onOrAfterWeekday(resumeOn, parseWeekdays(task.weekdays));
+	else if (task.recurring && task.scheduleMode === 'fixed' && task.intervalDays) {
+		nextDue = task.nextDue;
+		while (nextDue < resumeOn) nextDue = addDays(nextDue, task.intervalDays);
+	} else {
+		const moved = addDays(due, days);
+		nextDue = moved > resumeOn ? moved : resumeOn;
+	}
+	return { nextDue, snoozedUntil: null, endsOn };
 }
 
 /** "every 7 days", "every 2 weeks", "Mon, Wed, Fri", "every day but Sun", "one-off" */

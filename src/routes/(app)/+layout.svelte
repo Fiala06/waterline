@@ -105,6 +105,7 @@
 				'/(app)/tanks/[id]/livestock/several': 'Add several',
 				'/(app)/tanks/[id]/plants/several': 'Add several plants',
 				'/(app)/tanks/[id]/remind': 'Remind me',
+				'/(app)/tanks/[id]/pause': 'Pause tasks',
 				'/(app)/tanks/[id]/review': 'Setup review',
 				'/(app)/tanks/[id]/spending/new': 'Add expense',
 				'/(app)/tanks/[id]/spending/[eid]': 'Edit expense',

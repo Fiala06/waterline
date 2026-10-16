@@ -10,7 +10,7 @@ import { listProducts } from './products';
 import { setFlash } from './flash';
 import { num, str } from './forms';
 import { listTanks } from './tanks';
-import { createTask, deleteTask, getTask, updateTask, type TaskInput } from './tasks';
+import { createTask, deleteTask, getTask, setTempCadence, updateTask, type TaskInput } from './tasks';
 
 export type OnDone = 'none' | 'test' | 'water_change';
 /** A task, or a routine (#17): Dosing and Feeding log their entry when done. */
@@ -55,7 +55,10 @@ export function taskFormValues(task: Task | null, user: User, tankId: string | n
 			amountUnit: type === 'dosing' ? 'mL' : '',
 			ends: (ends ? 'on' : 'never') as Ends,
 			endsOn: ends,
-			endsTimes: ''
+			endsTimes: '',
+			tempOn: false,
+			tempEvery: '',
+			tempUntil: ''
 		};
 	}
 	const d = task.intervalDays ?? 7;
@@ -78,7 +81,10 @@ export function taskFormValues(task: Task | null, user: User, tankId: string | n
 		amountUnit: task.amountUnit ?? '',
 		ends: (task.endsOn ? 'on' : 'never') as Ends,
 		endsOn: task.endsOn ?? '',
-		endsTimes: ''
+		endsTimes: '',
+		tempOn: !!(task.tempIntervalDays && task.tempUntil),
+		tempEvery: task.tempIntervalDays ? String(task.tempIntervalDays) : '',
+		tempUntil: task.tempUntil ?? ''
 	};
 }
 
@@ -195,9 +201,22 @@ const formValues = (form: FormData, existing: Task | null) => {
 		amountUnit: str(form, 'amountUnit'),
 		ends: endsOf(form),
 		endsOn: str(form, 'endsOn'),
-		endsTimes: str(form, 'endsTimes')
+		endsTimes: str(form, 'endsTimes'),
+		tempOn: form.has('tempOn'),
+		tempEvery: str(form, 'tempEvery'),
+		tempUntil: str(form, 'tempUntil')
 	};
 };
+
+/** For a while (#171): every N days until a day to come, on a task that repeats every so often. */
+function parseTemp(form: FormData, errors: Record<string, string>, today: string) {
+	if (!form.has('tempOn') || repeatOf(form) !== 'every') return null;
+	const every = num(form, 'tempEvery');
+	const until = str(form, 'tempUntil');
+	if (every == null || !Number.isInteger(every) || every < 1 || every > 365) errors.tempEvery = 'Enter how many days, 1 to 365.';
+	if (!isDate(until) || until <= today) errors.tempUntil = 'Pick a day after today.';
+	return errors.tempEvery || errors.tempUntil ? null : { intervalDays: every!, until };
+}
 
 /** The new-task form's query string: ?tank, ?type, ?from and what a link fills in. */
 export function taskPreset(params: URLSearchParams): TaskPreset {
@@ -216,9 +235,12 @@ export async function saveTaskAction({ request, locals, cookies }: RequestEvent,
 	const existing = taskId ? getTask(user.id, taskId) : null;
 	const form = await request.formData();
 	const { errors, input } = parse(form, existing);
+	const temp = existing ? parseTemp(form, errors, todayInZone(user.timeZone)) : null;
 	if (Object.keys(errors).length) return fail(400, { errors, values: formValues(form, existing) });
-	if (existing) updateTask(user.id, existing.id, input);
-	else createTask(user.id, input.tankId, input);
+	if (existing) {
+		updateTask(user.id, existing.id, input);
+		setTempCadence(user.id, existing.id, temp, user.timeZone);
+	} else createTask(user.id, input.tankId, input);
 	setFlash(cookies, existing ? (isRoutine(input.kind) ? '✓ Routine saved' : '✓ Task saved') : `✓ ${input.name} added`);
 	// a routine made from a tank's page goes back there
 	redirect(303, isRoutine(input.kind) && !existing && str(form, 'from').startsWith('/tanks/') ? str(form, 'from') : '/tasks');

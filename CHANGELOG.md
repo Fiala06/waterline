@@ -11,6 +11,11 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.16.0 · 2026-10-16
+
+- **More often for a while.** Fighting algae or ammonia? Open a task on [Tasks](/tasks) and tick More often until a date, then back to this: say every 3 days until the end of the month, and it goes back to its usual cadence by itself on that day. The row shows "every 3 days until Oct 30 · then every 7 days", and History notes when it starts and when it's back.
+- **Pause tasks.** A blackout, a trip, a dose held back until ammonia reads 0: Pause tasks for a while on [Tasks](/tasks) (or Pause until… in a task's Snooze menu) holds the tasks you tick until a day. Paused tasks aren't due and send no reminders; they're listed under Paused with Resume, and on their day they pick up again, moved on by the days they were paused (a course ends that much later). History notes the pause and the resume, and Undo takes a pause back.
+
 ## 1.15.3 · 2026-10-16
 
 - **Your products in water changes.** On [Log water change](/entries/event/new?category=water_change), What went in now suggests the products you saved under [Settings › Products](/settings/products) as well as what the tank has used before, so a remineraliser or conditioner you haven't logged on that tank yet is there to pick.

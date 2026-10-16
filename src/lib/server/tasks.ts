@@ -1,14 +1,24 @@
 import { error } from '@sveltejs/kit';
 import { and, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { addDays, dateInZone, fmtDate, todayInZone } from '$lib/time';
-import { amountText, effectiveDue, isRoutine, logCompletes, nextDueAfterCompletion, reminderSub, skipTo } from '$lib/tasks';
+import { amountText, effectiveDue, intervalText, isRoutine, logCompletes, nextDueAfterCompletion, reminderSub, resumeSchedule, skipTo } from '$lib/tasks';
 import { db } from './db';
 import { requireRoleOn, visibleTo } from './members';
-import { equipment, events, taskCompletions, tanks, tasks, tests, type Tank, type Task } from './db/schema';
+import { equipment, events, taskCompletions, tanks, tasks, tests, users, type Tank, type Task } from './db/schema';
 import { getTank } from './tanks';
 
-/** Open tasks (with a due date) across the user's active tanks, soonest first. */
-export function listTasks(userId: string, tankId?: string) {
+/** The user's today, for whether a task is paused (#172). */
+function userToday(userId: string) {
+	const u = db.select({ tz: users.timeZone }).from(users).where(eq(users.id, userId)).get();
+	return todayInZone(u?.tz ?? 'UTC');
+}
+
+/**
+ * Open tasks (with a due date) across the user's active tanks, soonest first.
+ * A paused one (#172) is left out, unless `paused` asks for it (Tasks lists it apart).
+ */
+export function listTasks(userId: string, tankId?: string, opts: { paused?: boolean } = {}) {
+	const today = userToday(userId);
 	return db
 		.select({ task: tasks, tankName: tanks.name })
 		.from(tasks)
@@ -22,9 +32,13 @@ export function listTasks(userId: string, tankId?: string) {
 			)
 		)
 		.all()
-		.map((r) => ({ ...r, task: { ...r.task, due: effectiveDue(r.task)! } }))
+		.map((r) => ({ ...r, task: { ...r.task, due: effectiveDue(r.task)!, paused: isPaused(r.task, today) } }))
+		.filter((r) => opts.paused || !r.task.paused)
 		.sort((a, b) => a.task.due.localeCompare(b.task.due) || a.task.name.localeCompare(b.task.name));
 }
+
+/** Paused (#172) until a day still to come. */
+export const isPaused = (task: Pick<Task, 'pausedUntil'>, today: string) => !!task.pausedUntil && task.pausedUntil > today;
 
 export function getTask(userId: string, taskId: string): Task {
 	const row = db
@@ -314,5 +328,138 @@ export function deleteTask(userId: string, taskId: string) {
 	requireRoleOn(userId, task.tankId, 'owner');
 	db.delete(tasks).where(eq(tasks.id, taskId)).run();
 	return task;
+}
+
+
+// ── For a while (#171) and paused (#172) ────────────────────────────────────
+
+/** A note in a tank's History from the app (not editable): a pause, a resume, a cadence for a while. */
+function systemNote(tankId: string, note: string, data: Record<string, unknown>) {
+	return db.insert(events).values({ tankId, occurredAt: new Date().toISOString(), category: 'note', note, data }).returning().get();
+}
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+/**
+ * Pause tasks until a day (#172): not due and not notified meanwhile. Each
+ * tank gets one History note; it's returned so Undo can take it back out.
+ */
+export function pauseTasks(userId: string, taskIds: string[], until: string, timeZone: string) {
+	const today = todayInZone(timeZone);
+	if (until <= today) error(400, `Pick a day after ${fmtDate(today)}`);
+	const list = taskIds.map((id) => getTask(userId, id));
+	for (const t of list) requireRoleOn(userId, t.tankId, 'log');
+	const notes = db.transaction(() => {
+		for (const t of list) db.update(tasks).set({ pausedFrom: today, pausedUntil: until }).where(eq(tasks.id, t.id)).run();
+		return [...Map.groupBy(list, (t) => t.tankId)].map(([tankId, ts]) =>
+			systemNote(tankId, ts.length === 1 ? `Paused ${ts[0].name} until ${fmtDate(until)}` : `Paused ${plural(ts.length, 'task')} until ${fmtDate(until)}`, {
+				system: 'tasks_paused',
+				task_ids: ts.map((t) => t.id),
+				until
+			})
+		);
+	});
+	return { tasks: list, noteIds: notes.map((n) => n.id) };
+}
+
+/** Undo a pause: as it was, its notes out of History. */
+export function unpauseTasks(userId: string, noteIds: string[]) {
+	for (const id of noteIds) {
+		const note = db.select().from(events).where(and(eq(events.id, id), sql`json_extract(${events.data}, '$.system') = 'tasks_paused'`)).get();
+		if (!note) continue;
+		requireRoleOn(userId, note.tankId, 'log');
+		const ids = (note.data.task_ids as string[] | undefined) ?? [];
+		db.transaction(() => {
+			for (const t of ids) db.update(tasks).set({ pausedFrom: null, pausedUntil: null }).where(and(eq(tasks.id, t), eq(tasks.tankId, note.tankId))).run();
+			db.delete(events).where(eq(events.id, note.id)).run();
+		});
+	}
+}
+
+/**
+ * Resume paused tasks on `resumeOn` (the day the pause ends, or today when
+ * resumed early): their dates move on by the days paused (`resumeSchedule`),
+ * and each tank's History says so.
+ */
+function resumeTasks(list: Task[], resumeOn: string) {
+	if (!list.length) return;
+	db.transaction(() => {
+		for (const t of list) {
+			const at = resumeSchedule(t, t.pausedFrom ?? resumeOn, resumeOn);
+			db.update(tasks).set({ ...at, pausedFrom: null, pausedUntil: null }).where(eq(tasks.id, t.id)).run();
+		}
+		for (const [tankId, ts] of Map.groupBy(list, (t) => t.tankId))
+			systemNote(tankId, ts.length === 1 ? `Resumed ${ts[0].name}` : `Resumed ${plural(ts.length, 'task')}`, { system: 'tasks_resumed', task_ids: ts.map((t) => t.id) });
+	});
+}
+
+/** Resume now, before the pause was up. */
+export function resumeTask(userId: string, taskId: string, timeZone: string) {
+	const task = getTask(userId, taskId);
+	requireRoleOn(userId, task.tankId, 'log');
+	if (task.pausedUntil) resumeTasks([task], todayInZone(timeZone));
+	return task;
+}
+
+/**
+ * Bring the user's tasks up to today (run when the app loads and by the
+ * scheduler): pauses that are up resume, on the day they ended, and a cadence
+ * for a while that has run its time goes back to the usual one, saying so in History.
+ */
+export function settleTasks(userId: string, timeZone: string) {
+	const today = todayInZone(timeZone);
+	const mine = db
+		.select({ task: tasks })
+		.from(tasks)
+		.innerJoin(tanks, eq(tanks.id, tasks.tankId))
+		.where(and(visibleTo(userId), sql`(${tasks.pausedUntil} <= ${today} or ${tasks.tempUntil} <= ${today})`))
+		.all()
+		.map((r) => r.task);
+	const ended = mine.filter((t) => t.pausedUntil && t.pausedUntil <= today);
+	for (const [until, ts] of Map.groupBy(ended, (t) => t.pausedUntil!)) resumeTasks(ts, until);
+	for (const t of mine.filter((t) => t.tempUntil && t.tempUntil <= today)) endTempCadence(t);
+}
+
+/** Back to the usual cadence (#171), with a note in History. */
+function endTempCadence(task: Task, early = false) {
+	db.transaction(() => {
+		db.update(tasks).set({ tempIntervalDays: null, tempUntil: null }).where(eq(tasks.id, task.id)).run();
+		systemNote(task.tankId, `${task.name}: back to ${intervalText({ ...task, endsOn: null })}${early ? ' (ended early)' : ''}`, { system: 'cadence_back', task_id: task.id });
+	});
+}
+
+/**
+ * A cadence for a while set, changed or ended on the task form (#171): the
+ * change goes in History, and starting one brings the next date in when the
+ * tighter cadence counts sooner from the last time it was done.
+ */
+export function setTempCadence(userId: string, taskId: string, temp: { intervalDays: number; until: string } | null, timeZone: string) {
+	const task = getTask(userId, taskId);
+	requireRoleOn(userId, task.tankId, 'owner');
+	const today = todayInZone(timeZone);
+	const was = task.tempIntervalDays && task.tempUntil ? { intervalDays: task.tempIntervalDays, until: task.tempUntil } : null;
+	if (!temp) {
+		if (was) endTempCadence(task, was.until > today);
+		return;
+	}
+	if (was && was.intervalDays === temp.intervalDays && was.until === temp.until) return;
+	const every = intervalText({ recurring: true, intervalDays: temp.intervalDays });
+	db.transaction(() => {
+		const set: Partial<Task> = { tempIntervalDays: temp.intervalDays, tempUntil: temp.until };
+		// sooner from the last time it was done, never before today
+		const last = lastDoneOn(task.id, timeZone);
+		if (!was && task.scheduleMode === 'completion' && task.nextDue && last) {
+			const sooner = addDays(last, temp.intervalDays);
+			const at = sooner > today ? sooner : today;
+			if (at < (effectiveDue(task) ?? at)) Object.assign(set, { nextDue: at, snoozedUntil: null });
+		}
+		db.update(tasks).set(set).where(eq(tasks.id, task.id)).run();
+		systemNote(task.tankId, `${task.name}: ${every} until ${fmtDate(temp.until)}${was ? '' : `, then ${intervalText({ ...task, endsOn: null })}`}`, {
+			system: 'cadence_temp',
+			task_id: task.id,
+			interval_days: temp.intervalDays,
+			until: temp.until
+		});
+	});
 }
 

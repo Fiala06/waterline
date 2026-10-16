@@ -7,7 +7,7 @@
 	import { enhance } from '$app/forms';
 	import { markDone } from '$lib/splash';
 	import { page } from '$app/state';
-	import { amountText, dueInfo, intervalText } from '$lib/tasks';
+	import { amountText, cadenceText, dueInfo, intervalText } from '$lib/tasks';
 	import { REVIEW_ABOUT } from '$lib/review';
 	import { fmtDate } from '$lib/time';
 
@@ -24,6 +24,9 @@
 		/** a routine's amount (#17): "1 pump" */
 		amount?: number | null;
 		amountUnit?: string | null;
+		/** for a while (#171) */
+		tempIntervalDays?: number | null;
+		tempUntil?: string | null;
 	}
 	let { tasks, today }: { tasks: TaskRow[]; today: string } = $props();
 
@@ -40,7 +43,7 @@
 				? `✕ ${-d.days} day${d.days === -1 ? '' : 's'} over`
 				: d.days === 0
 					? '▲ Today'
-					: `${d.days === 1 ? 'Tomorrow' : d.days <= 7 ? `In ${d.days} days` : fmtDate(t.due)} · ${intervalText(t)}`}
+					: `${d.days === 1 ? 'Tomorrow' : d.days <= 7 ? `In ${d.days} days` : fmtDate(t.due)} · ${t.tempUntil && t.tempUntil > today ? cadenceText(t, null, today) : intervalText(t)}`}
 		{@const dose = amountText(t.amount, t.amountUnit)}
 		<!-- a task not due yet steps back, so what is due or over stands out -->
 		<div class="row" class:later={d.days > 0}>

@@ -83,6 +83,8 @@ events           id, tank_id, category(water_change|dosing|maintenance|livestock
                  -- note {system: tank_created|tank_archived|tank_restored} (the tank's own)
                  -- note {system: setup_reviewed, changed:[parts], prev_checks} (All still
                  --       right on the setup review; prev_checks lets Undo put the checks back)
+                 -- note {system: tasks_paused, task_ids, until} / {system: tasks_resumed, task_ids}
+                 -- note {system: cadence_temp, task_id, interval_days, until} / {system: cadence_back, task_id}
                  -- note {system: task_done, task_id, task_done: true} ("Done: …", a task's
                  --       Done when nothing else logged it; Undo deletes it)
                  -- maintenance {actions:[task name], equipment_id?, prev_serviced_at?, task_id,
@@ -100,7 +102,11 @@ tasks            id, tank_id, name, kind(water_change|test|maintenance|other|dos
                  done on its page, not by Mark done),
                  recurring, interval_days?, schedule_mode(completion|fixed|weekdays),
                  weekdays? ("1,3,5", 0 = Sunday), next_due?, ends_on? (no occurrences after
-                 this day), snoozed_until?, equipment_id? (the item's service reminder: the
+                 this day), snoozed_until? (this occurrence moved, later or sooner),
+                 temp_interval_days?, temp_until? (#171: every temp_interval_days for what's
+                 done before temp_until, then interval_days again; History notes the start
+                 and the return), paused_from?, paused_until? (#172: not due or notified
+                 until paused_until; then resumed with its dates moved on), equipment_id? (the item's service reminder: the
                  equipment form sets its cadence, and a logged service completes it),
                  open_form_on_done, product?, amount?, amount_unit? (a dosing or feeding
                  routine: Done logs the dose or feeding, and Undo removes it), created_at
