@@ -45,6 +45,7 @@ import { dashboardChoices, resetDashboardChoices, saveDashboardChoices } from "$
 import { parseChoices } from "$lib/dashboard";
 import { intervalText } from "$lib/tasks";
 import { listTasks } from "$lib/server/tasks";
+import { tankSuggestions } from "$lib/server/suggestions";
 import type { Actions, PageServerLoad } from "./$types";
 
 const TREND_DAYS = 28;
@@ -337,6 +338,8 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
     },
     params,
     latest: Object.fromEntries(latest),
+    // a step the latest readings suggest (#179), under the reading in Needs attention
+    suggestions: tankSuggestions(user, tank, new Map([...latest].map(([id, r]) => [id, r.value]))),
     // "Live 25.4 °C · 3:11 PM" while the sensor keeps reporting; "Last 25.4 °C · Yesterday, 3:11 PM" once it's gone quiet
     live: Object.fromEntries(
       [...live].map(([id, s]) => {

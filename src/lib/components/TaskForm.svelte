@@ -38,6 +38,8 @@
 		tempOn: boolean;
 		tempEvery: string;
 		tempUntil: string;
+		/** or sooner, until a reading clears (#179): "ammonia reads 0" */
+		tempClear?: string | null;
 		/** days late before it's overdue (#175) */
 		graceDays: string;
 		/** after a log (#178): what it follows, how many days after, a dose's product */
@@ -374,6 +376,7 @@
 					<DateField name="tempUntil" id="t-temp-until" bind:value={tempUntil} label="Until" format="weekday" min={today} {today} invalid={!!errors.tempUntil} />
 					{#if errors.tempEvery}<span class="error-text">✕ {errors.tempEvery}</span>{/if}
 					{#if errors.tempUntil}<span class="error-text">✕ {errors.tempUntil}</span>{/if}
+					{#if values.tempClear}<small class="muted">Or sooner, once {values.tempClear}: a test that reads it ends it.</small>{/if}
 					<small class="muted">History notes when it starts and when it's back to every {days > 1 ? `${days} days` : 'day'}.</small>
 				</div>
 			</fieldset>

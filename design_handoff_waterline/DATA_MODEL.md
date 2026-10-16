@@ -40,7 +40,8 @@ tanks            id, user_id, name, type(freshwater|planted|brackish|reef),
                  nitrite above target show as ▲ Cycling, the dashboard follows the cycle, and
                  Mark as running clears it with a "Cycle complete" note), cycling_ask_dismissed
                  (the keeper answered the dashboard's "New tank?" with Not cycling: it isn't asked
-                 again), checklist?(hidden|shown)
+                 again), suggestions_off (json: rule ids from src/lib/suggestions.ts switched off
+                 for this tank, #179), checklist?(hidden|shown)
                  (the dashboard's getting-started checklist: hidden by the owner, or shown again
                  from Tank setup; unset, it shows while the tank is new), without_equipment JSON
                  (what it goes without on purpose, of filter|heater|light|co2: ["heater"]; adding
@@ -110,8 +111,11 @@ tasks            id, tank_id, name, kind(water_change|test|maintenance|other|dos
                  still read ▲ Due, not ✕ Overdue),
                  temp_interval_days?, temp_until? (#171: every temp_interval_days for what's
                  done before temp_until, then interval_days again; History notes the start
-                 and the return), paused_from?, paused_until? (#172: not due or notified
-                 until paused_until; then resumed with its dates moved on), from_event_id? (#174:
+                 and the return), temp_until_param? (#179: or sooner, once a test reads
+                 this tank parameter in range, 0 for ammonia and nitrite), paused_from?,
+                 paused_until? (#172: not due or notified until paused_until; then resumed
+                 with its dates moved on), paused_until_param? (#179: or sooner, the same
+                 way; History notes why it resumed), from_event_id? (#174:
                  the algae or health entry a treatment course was started from), plan_run_id? (#177:
                  a step of a treatment plan), trigger_kind?(water_change|dosing|maintenance|test),
                  trigger_offset_days?, trigger_product?, trigger_entry_id? (#178, schedule_mode

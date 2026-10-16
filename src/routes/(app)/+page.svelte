@@ -65,6 +65,8 @@
 					(st.level === 'bad' || st.level === 'warn') && !isCyclingStatus(p.key, st, cycling) && data.tank
 						? guidance(p.key, st.direction, { tankId: data.tank.id, tankType: data.tank.type, waterSource: data.tank.waterSource, co2: data.tank.co2, shrimp: data.tank.shrimp })
 						: null,
+				// a step it suggests (#179), with a tap
+				suggest: data.suggestions?.find((x) => x.paramId === p.id) ?? null,
 				// days since the reading when it's older than its Test every cadence
 				due: data.stale?.[p.id] ?? null,
 				sub: r ? (range ? `Target ${range}` : 'No target') : 'Not tested',
@@ -249,7 +251,7 @@
 					<div class="section-head"><h2>Needs attention</h2>{#if data.latestWhen}<span class="meta">{data.latestWhen}</span>{/if}</div>
 					<p class="clear"><b>✓ Nothing needs attention.</b> <span>Every tracked parameter is in range and no task is overdue.</span></p>
 				{:else}
-					<AttentionList items={attention} wc={wcDue} {overdue} when={data.latestWhen} />
+					<AttentionList items={attention} wc={wcDue} {overdue} when={data.latestWhen} tankId={data.tank?.id ?? null} />
 				{/if}
 				{#if hasReadings && calm && data.cheers.milestones.length}
 					<ul class="milestones" aria-label="Milestones">

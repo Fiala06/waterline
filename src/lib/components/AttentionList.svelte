@@ -10,6 +10,8 @@
 	import { markDone } from '$lib/splash';
 	import type { StatusLevel } from '$lib/status';
 	import Sparkline from './Sparkline.svelte';
+	import SuggestedStep from './SuggestedStep.svelte';
+	import type { Suggestion } from '$lib/suggestions';
 
 	interface Item {
 		id: string;
@@ -26,6 +28,8 @@
 		live?: { text: string; fresh: boolean } | null;
 		/** what to do about it, in a line (#62), with the calculator that does the sums (#90) */
 		next?: Guidance | null;
+		/** a step the reading suggests (#179), taken with a tap */
+		suggest?: Suggestion | null;
 	}
 	interface Overdue {
 		id: string;
@@ -39,7 +43,8 @@
 		items,
 		wc,
 		overdue = [],
-		when
+		when,
+		tankId = null
 	}: {
 		items: Item[];
 		/** the water change, when it's due or over */
@@ -48,6 +53,8 @@
 		overdue?: Overdue[];
 		/** "Today, 8:12 AM": when the latest test was */
 		when: string | null;
+		/** the tank, for a suggested step's buttons */
+		tankId?: string | null;
 	} = $props();
 
 	const over = $derived(wc ? Math.max(0, wc.days - wc.goal) : 0);
@@ -80,6 +87,7 @@
 						{#if c.next.link}<a class="act" href={c.next.link.href}>{c.next.link.label}<span class="sr-only"> for {c.fullName}</span></a>{/if}
 					</p>
 				{/if}
+				{#if c.suggest && tankId}<div class="step"><SuggestedStep s={c.suggest} {tankId} /></div>{/if}
 			</div>
 		{/each}
 		{#if wc}
@@ -192,6 +200,9 @@
 		border-bottom: none;
 	}
 	/* what to do: under the whole row, so it reads in one or two lines on a phone */
+	.step {
+		padding-bottom: 12px;
+	}
 	.next {
 		margin: -6px 0 0;
 		padding-bottom: 12px;

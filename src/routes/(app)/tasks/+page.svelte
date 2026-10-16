@@ -235,7 +235,7 @@
 						<div class="row paused">
 							<a class="rtext t-link" href="/tasks/{t.id}"
 								><span class="name">{t.name}</span><span class="line"
-									><span class="when plain">‖ Paused until {fmtDate(t.until)}</span><span class="meta">{tankNames[t.tankId]}</span></span
+									><span class="when plain">‖ Paused until {t.clears ?? fmtDate(t.until)}</span><span class="meta">{tankNames[t.tankId]}{t.clears ? ` · ${fmtDate(t.until)} at the latest` : ''}</span></span
 								></a
 							>
 							<div class="acts">
