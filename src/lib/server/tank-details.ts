@@ -50,7 +50,7 @@ export function tankDetails(user: User, t: Tank) {
 		routines: listTasks(user.id, t.id)
 			.filter((r) => isRoutine(r.task.kind))
 			.map(({ task }) => {
-				const d = dueInfo(task.due, today);
+				const d = dueInfo(task.due, today, task.graceDays);
 				return { id: task.id, name: task.name, line: [routineLine(task), task.kind === 'dosing' ? lastDoseText(task, user.timeZone) : null].filter(Boolean).join(' · '), due: d.days < 0 ? d.text : d.days === 0 ? '▲ Today' : d.text.replace(/^▲ /, ''), level: d.level, now: d.days <= 0 };
 			})
 	};

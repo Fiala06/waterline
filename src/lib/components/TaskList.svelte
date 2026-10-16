@@ -27,6 +27,8 @@
 		/** for a while (#171) */
 		tempIntervalDays?: number | null;
 		tempUntil?: string | null;
+		/** days late before it's overdue (#175) */
+		graceDays?: number;
 	}
 	let { tasks, today }: { tasks: TaskRow[]; today: string } = $props();
 
@@ -35,13 +37,15 @@
 
 <div class="list">
 	{#each tasks as t, i (t.id)}
-		{@const d = dueInfo(t.due, today)}
+		{@const d = dueInfo(t.due, today, t.graceDays ?? 0)}
 		<!-- "✕ 1 day over", "▲ Today", how soon ("In 2 days"), or a date further off;
 		     the primary button only on the most urgent, and "Done early" for one that isn't due -->
 		{@const when =
-			d.days < 0
+			d.section === 'overdue'
 				? `✕ ${-d.days} day${d.days === -1 ? '' : 's'} over`
-				: d.days === 0
+				: d.days < 0
+					? d.text
+					: d.days === 0
 					? '▲ Today'
 					: `${d.days === 1 ? 'Tomorrow' : d.days <= 7 ? `In ${d.days} days` : fmtDate(t.due)} · ${t.tempUntil && t.tempUntil > today ? cadenceText(t, null, today) : intervalText(t)}`}
 		{@const dose = amountText(t.amount, t.amountUnit)}

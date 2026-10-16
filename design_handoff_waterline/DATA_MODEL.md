@@ -105,7 +105,9 @@ tasks            id, tank_id, name, kind(water_change|test|maintenance|other|dos
                  done on its page, not by Mark done),
                  recurring, interval_days?, schedule_mode(completion|fixed|weekdays),
                  weekdays? ("1,3,5", 0 = Sunday), next_due?, ends_on? (no occurrences after
-                 this day), snoozed_until? (this occurrence moved, later or sooner),
+                 this day), snoozed_until? (this occurrence moved, later or sooner; also "Just this
+                 one" from the form, #173), grace_days (0–3, #175: days late it can be and
+                 still read ▲ Due, not ✕ Overdue),
                  temp_interval_days?, temp_until? (#171: every temp_interval_days for what's
                  done before temp_until, then interval_days again; History notes the start
                  and the return), paused_from?, paused_until? (#172: not due or notified

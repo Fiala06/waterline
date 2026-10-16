@@ -218,7 +218,7 @@ export const tasksTool: Tool = {
 						kind: task.kind,
 						due,
 						days_until_due: n,
-						status: task.pausedUntil && task.pausedUntil > today ? 'Paused' : dueWord(n),
+						status: task.pausedUntil && task.pausedUntil > today ? 'Paused' : dueWord(n < 0 && -n <= task.graceDays ? 0 : n),
 						recurring: task.recurring,
 						every_days: task.recurring && task.scheduleMode !== 'weekdays' ? task.intervalDays : null,
 						schedule: scheduleWord(task),
@@ -351,10 +351,14 @@ export const overviewTool: Tool = {
 				const due = t.archivedAt
 					? []
 					: openTasks
-							.filter((x) => x.tankId === t.id)
-							.map((x) => effectiveDue(x))
-							.filter((d): d is string => !!d)
-							.map((d) => daysBetween(today, d));
+							.filter((x) => x.tankId === t.id && !(x.pausedUntil && x.pausedUntil > today))
+							.flatMap((x) => {
+								const d = effectiveDue(x);
+								if (!d) return [];
+								// within its grace (#175) a late task counts as due, not overdue
+								const n = daysBetween(today, d);
+								return [n < 0 && -n <= x.graceDays ? 0 : n];
+							});
 				const tested = lastTest.get(t.id) ?? null;
 				const changed = lastChange.get(t.id) ?? null;
 				const water = t.actualVolumeL ?? t.nominalVolumeL;

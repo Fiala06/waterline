@@ -38,6 +38,12 @@
 		tempOn: boolean;
 		tempEvery: string;
 		tempUntil: string;
+		/** days late before it's overdue (#175) */
+		graceDays: string;
+		/** a fixed or set-days task's next one moved (#173): the date it was on */
+		movedFrom?: string | null;
+		/** the scheduled date (next_due), to tell a moved date from a new schedule */
+		scheduled?: string | null;
 	}
 	let {
 		mode,
@@ -86,7 +92,12 @@
 	let busy = $state(false);
 
 	const days = $derived((parseNumber(every) ?? 0) * (unit === 'weeks' ? 7 : 1));
-	const examples = $derived(days > 0 && nextDue ? scheduleExamples(nextDue, days) : null);
+	// a fixed or set-days task's next date changed (#173): this one only, or the schedule
+	const askScope = $derived(mode === 'edit' && !!values.scheduled && (repeat === 'days' || (repeat === 'every' && scheduleMode === 'fixed')) && nextDue !== values.scheduled);
+	let scope = $state('one');
+	// the examples follow the schedule that stays when only this one moves
+	const examples = $derived(days > 0 && nextDue ? scheduleExamples(askScope && scope === 'one' ? values.scheduled! : nextDue, days) : null);
+	const dayDate = (d: string) => new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
 	const routine = $derived(type !== 'task');
 	const title = $derived(
 		mode === 'edit' ? (routine ? 'Edit routine' : 'Edit task') : type === 'dosing' ? 'New dosing routine' : type === 'feeding' ? 'New feeding routine' : 'New task'
@@ -247,6 +258,7 @@
 			</div>
 			{#if repeat === 'every' && errors.every}<span class="error-text">✕ {errors.every}</span>{/if}
 			{#if errors.nextDue}<span class="error-text">✕ {errors.nextDue}</span>{/if}
+			{#if values.movedFrom}<small class="muted">Moved from {fmtDate(values.movedFrom)}; the schedule after it stays.</small>{/if}
 		{:else}
 			{#if repeat === 'every'}
 				<fieldset class="field">
@@ -266,6 +278,7 @@
 				<label class="label" for="t-due">Next due</label>
 				<DateField name="nextDue" id="t-due" bind:value={nextDue} required label="Next due" format="weekday" {today} invalid={!!errors.nextDue} />
 				{#if errors.nextDue}<span class="error-text">✕ {errors.nextDue}</span>{/if}
+				{#if values.movedFrom}<small class="muted">Moved from {fmtDate(values.movedFrom)}; the schedule after it stays.</small>{/if}
 			</div>
 		{/if}
 
@@ -284,6 +297,34 @@
 				</div>
 			</fieldset>
 		{/if}
+
+		{#if askScope && values.scheduled}
+			<!-- a fixed or set-days task's next date changed (#173): this one, or the schedule -->
+			<fieldset class="field">
+				<legend class="label">Change</legend>
+				<div class="choices">
+					<label class="choice">
+						<input class="radio" type="radio" name="moveScope" value="one" bind:group={scope} />
+						<span class="c-text"><strong>Just this one</strong><small>Only this one moves; the schedule stays on {dayDate(values.scheduled)}</small></span>
+					</label>
+					<label class="choice">
+						<input class="radio" type="radio" name="moveScope" value="all" bind:group={scope} />
+						<span class="c-text"><strong>From now on</strong><small>The schedule moves to {nextDue ? dayDate(nextDue) : 'the new date'}</small></span>
+					</label>
+				</div>
+			</fieldset>
+		{/if}
+
+		<div class="field">
+			<label class="label" for="t-grace">Late is fine for</label>
+			<select class="input" id="t-grace" name="graceDays" value={values.graceDays}>
+				<option value="0">No days: overdue the day after</option>
+				<option value="1">1 day</option>
+				<option value="2">2 days</option>
+				<option value="3">3 days</option>
+			</select>
+			<small class="muted">Within it a late task reads ▲ Due, with no overdue alert.</small>
+		</div>
 
 		{#if repeat === 'every' && mode === 'edit'}
 			<!-- for a while (#171): tighter during an outbreak, then back by itself; the inputs show

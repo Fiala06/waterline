@@ -63,7 +63,10 @@ export function taskFormValues(task: Task | null, user: User, tankId: string | n
 			endsTimes: '',
 			tempOn: false,
 			tempEvery: '',
-			tempUntil: ''
+			tempUntil: '',
+			graceDays: '0',
+			movedFrom: null as string | null,
+			scheduled: null as string | null
 		};
 	}
 	const d = task.intervalDays ?? 7;
@@ -90,7 +93,11 @@ export function taskFormValues(task: Task | null, user: User, tankId: string | n
 		endsTimes: '',
 		tempOn: !!(task.tempIntervalDays && task.tempUntil),
 		tempEvery: task.tempIntervalDays ? String(task.tempIntervalDays) : '',
-		tempUntil: task.tempUntil ?? ''
+		tempUntil: task.tempUntil ?? '',
+		graceDays: String(task.graceDays ?? 0),
+		// moved on its own (#173): shown as "Moved from …", the schedule still on next_due
+		movedFrom: task.snoozedUntil && task.nextDue && task.snoozedUntil !== task.nextDue ? task.nextDue : null,
+		scheduled: effectiveDue(task)
 	};
 }
 
@@ -168,7 +175,9 @@ function parse(form: FormData, existing: Task | null) {
 	else if (existing) kind = existing.kind;
 	else kind = /water change/i.test(name) ? 'water_change' : /\btest/i.test(name) ? 'test' : 'maintenance';
 
+	const grace = num(form, 'graceDays');
 	const input: TaskInput & { tankId: string } = {
+		graceDays: grace != null && Number.isInteger(grace) && grace >= 0 && grace <= 3 ? grace : 0,
 		name,
 		tankId: str(form, 'tankId'),
 		kind,
@@ -187,7 +196,15 @@ function parse(form: FormData, existing: Task | null) {
 	};
 	// a course from an algae or health entry (#174): on a new task, kept on an edit
 	if (!existing) input.fromEventId = entryOn(str(form, 'fromEvent'), input.tankId);
-	return { errors, input };
+	// a fixed or set-days task's next date moved, Just this one (#173): the date as picked, the schedule kept
+	const moveOne =
+		!!existing &&
+		str(form, 'moveScope') !== 'all' &&
+		form.has('moveScope') &&
+		existing.scheduleMode === input.scheduleMode &&
+		(input.scheduleMode === 'fixed' || input.scheduleMode === 'weekdays') &&
+		isDate(str(form, 'nextDue'));
+	return { errors, input, moveOne: moveOne ? str(form, 'nextDue') : null, picked: str(form, 'nextDue') };
 }
 
 const formValues = (form: FormData, existing: Task | null) => {
@@ -213,7 +230,10 @@ const formValues = (form: FormData, existing: Task | null) => {
 		fromEvent: str(form, 'fromEvent'),
 		tempOn: form.has('tempOn'),
 		tempEvery: str(form, 'tempEvery'),
-		tempUntil: str(form, 'tempUntil')
+		tempUntil: str(form, 'tempUntil'),
+		graceDays: str(form, 'graceDays') || '0',
+		movedFrom: null,
+		scheduled: existing ? effectiveDue(existing) : null
 	};
 };
 
@@ -257,11 +277,11 @@ export async function saveTaskAction({ request, locals, cookies }: RequestEvent,
 	const user = locals.user!;
 	const existing = taskId ? getTask(user.id, taskId) : null;
 	const form = await request.formData();
-	const { errors, input } = parse(form, existing);
+	const { errors, input, moveOne, picked } = parse(form, existing);
 	const temp = existing ? parseTemp(form, errors, todayInZone(user.timeZone)) : null;
 	if (Object.keys(errors).length) return fail(400, { errors, values: formValues(form, existing) });
 	if (existing) {
-		updateTask(user.id, existing.id, input);
+		updateTask(user.id, existing.id, input, { moveOne, picked });
 		setTempCadence(user.id, existing.id, temp, user.timeZone);
 	} else createTask(user.id, input.tankId, input);
 	setFlash(cookies, existing ? (isRoutine(input.kind) ? '✓ Routine saved' : '✓ Task saved') : `✓ ${input.name} added`);

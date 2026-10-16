@@ -337,3 +337,45 @@ test('mark several tasks done at once', async ({ page }, info) => {
 	await open(page, `/history?tank=${tankId}`);
 	await expect(page.getByRole('link', { name: /^(Trim stems|Clean glass|Dose iron)/ })).toHaveCount(3);
 });
+
+// #175: a day late within its grace reads ▲ Due, not overdue
+test('a task a day late within its grace is due, not overdue', async ({ page }, info) => {
+	await newKeeperWithTank(page, `m7g-${info.project.name}`);
+	await open(page, '/tasks/new');
+	const today = await dateValue(page, 'nextDue');
+	await page.getByRole('textbox', { name: 'Task' }).fill('Clean filter');
+	await pickDate(page, 'nextDue', new Date(Date.parse(today) - 86_400_000).toISOString().slice(0, 10));
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('heading', { name: /Overdue · 1/ })).toBeVisible();
+
+	const href = await page.locator('a', { hasText: 'Clean filter' }).first().getAttribute('href');
+	await open(page, href!);
+	await page.getByLabel('Late is fine for').selectOption('1');
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('status')).toContainText('✓ Task saved');
+	await expect(page.getByRole('heading', { name: /Overdue/ })).toHaveCount(0);
+	await expect(page.locator('.row', { hasText: 'Clean filter' })).toContainText('▲ Due yesterday');
+});
+
+// #173: moving a fixed task's next date asks Just this one or From now on
+test('a fixed task moved just this once keeps its schedule', async ({ page }, info) => {
+	await newKeeperWithTank(page, `m7j-${info.project.name}`);
+	await open(page, '/tasks/new');
+	const today = await dateValue(page, 'nextDue');
+	const day = (n: number) => new Date(Date.parse(today) + n * 86_400_000).toISOString().slice(0, 10);
+	await page.getByRole('textbox', { name: 'Task' }).fill('Dose micros');
+	await page.locator('label', { hasText: 'Fixed calendar' }).click();
+	await pickDate(page, 'nextDue', day(5));
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('status')).toContainText('✓ Dose micros added');
+
+	const href = await page.locator('a', { hasText: 'Dose micros' }).first().getAttribute('href');
+	await open(page, href!);
+	await pickDate(page, 'nextDue', day(3));
+	await expect(page.getByRole('radio', { name: /Just this one/ })).toBeChecked();
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('status')).toContainText('✓ Task saved');
+	await expect(page.locator('.row', { hasText: 'Dose micros' })).toContainText('moved from');
+	await open(page, href!);
+	await expect(page.getByText(/Moved from .*; the schedule after it stays/).first()).toBeVisible();
+});

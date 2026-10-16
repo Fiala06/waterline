@@ -96,9 +96,9 @@
 	// overdue tasks go in Needs attention too, with Done (the water change has its own row)
 	const overdue = $derived(
 		(data.tasks ?? [])
-			.filter((t) => t.due < (data.today ?? '') && !(wcDue && t.id === wcDue.taskId))
+			.filter((t) => dueInfo(t.due, data.today ?? '', t.graceDays).section === 'overdue' && !(wcDue && t.id === wcDue.taskId))
 			.map((t) => {
-				const d = dueInfo(t.due, data.today ?? '');
+				const d = dueInfo(t.due, data.today ?? '', t.graceDays);
 				return { id: t.id, name: t.name, when: `✕ ${-d.days} day${d.days === -1 ? '' : 's'} over`, sub: isRoutine(t.kind) ? routineLine(t) : intervalText(t) };
 			})
 	);

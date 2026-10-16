@@ -31,7 +31,7 @@
 	type T = (typeof data.tasks)[number];
 	const sections = $derived.by(() => {
 		const by = { overdue: [] as T[], soon: [] as T[], later: [] as T[] };
-		for (const t of data.tasks) by[dueInfo(t.due, data.today).section].push(t);
+		for (const t of data.tasks) by[dueInfo(t.due, data.today, t.graceDays).section].push(t);
 		return by;
 	});
 	// 06: phones list the first few later tasks, then "Show all" (a link, so it works without JS).
@@ -78,8 +78,9 @@
 		new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
 	// "✕ Overdue 1 day", "▲ Due today", "▲ Sat, Sep 27", "Fri, Oct 3"
 	const dueLabel = (t: T) => {
-		const d = dueInfo(t.due, data.today);
-		if (d.section === 'overdue' || d.days === 0) return d.text;
+		const d = dueInfo(t.due, data.today, t.graceDays);
+		// overdue, today, or a day or so late within its grace (#175): "▲ Due yesterday"
+		if (d.section === 'overdue' || d.days <= 0) return d.text;
 		return d.level === 'warn' ? `▲ ${longDue(t.due)}` : longDue(t.due);
 	};
 	const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -137,14 +138,16 @@
 					</div>
 					<div class="rows">
 						{#each s.items as t, i (t.id)}
-							{@const d = dueInfo(t.due, data.today)}
+							{@const d = dueInfo(t.due, data.today, t.graceDays)}
 							<div class="row {s.key}" class:selected={selectedId === t.id} class:extra={folded && i >= LATER_LIMIT}>
 								<a class="rtext t-link" href="/tasks/{t.id}" onclick={(e) => openEdit(e, t.id)}>
 									<span class="name">{t.name}</span>
 									{#if t.kind === 'review'}<span class="about">{REVIEW_ABOUT}</span>{/if}
 									<span class="line">
 										<span class="when {d.level === 'ok' ? 'plain' : `status-${d.level}`}">{dueLabel(t)}</span>
-										<span class="meta">{tankNames[t.tankId]} · {every(t)}</span>
+										<span class="meta"
+											>{tankNames[t.tankId]}{#if t.snoozedUntil && t.nextDue && t.snoozedUntil !== t.nextDue}{` · moved from ${longDue(t.nextDue)}`}{/if} · {every(t)}</span
+										>
 									</span>
 								</a>
 								{#if selecting}

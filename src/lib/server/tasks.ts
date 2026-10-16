@@ -305,21 +305,27 @@ export function taskOfKind(userId: string, tankId: string, kind: Task['kind']) {
 }
 
 export type TaskInput = Pick<Task, 'name' | 'kind' | 'recurring' | 'intervalDays' | 'scheduleMode' | 'nextDue' | 'openFormOnDone'> &
-	Partial<Pick<Task, 'equipmentId' | 'weekdays' | 'product' | 'amount' | 'amountUnit' | 'endsOn' | 'fromEventId'>>;
+	Partial<Pick<Task, 'equipmentId' | 'weekdays' | 'product' | 'amount' | 'amountUnit' | 'endsOn' | 'fromEventId' | 'graceDays'>>;
 
 export function createTask(userId: string, tankId: string, input: TaskInput) {
 	getTank(userId, tankId, 'owner');
 	return db.insert(tasks).values({ ...input, tankId }).returning().get();
 }
 
-export function updateTask(userId: string, taskId: string, input: TaskInput & { tankId: string }) {
+export function updateTask(userId: string, taskId: string, input: TaskInput & { tankId: string }, opts: { moveOne?: string | null; picked?: string } = {}) {
 	const task = getTask(userId, taskId);
 	requireRoleOn(userId, task.tankId, 'owner');
 	getTank(userId, input.tankId, 'owner');
 	// The form shows the snoozed date as "Next due". Left as shown, the schedule and
-	// snooze stay; a new date replaces both.
-	const same = input.nextDue === effectiveDue(task);
-	const schedule = same ? { nextDue: task.nextDue, snoozedUntil: task.snoozedUntil } : { snoozedUntil: null };
+	// snooze stay; a new date replaces both, unless it's Just this one (#173): then
+	// the schedule stays on next_due and only this occurrence moves.
+	// (the date as picked: on set days the form moves it to the next of them)
+	const same = (opts.picked ?? input.nextDue) === effectiveDue(task);
+	const schedule = same
+		? { nextDue: task.nextDue, snoozedUntil: task.snoozedUntil }
+		: opts.moveOne && task.nextDue
+			? { nextDue: task.nextDue, snoozedUntil: opts.moveOne === task.nextDue ? null : opts.moveOne }
+			: { snoozedUntil: null };
 	return db.update(tasks).set({ ...input, ...schedule }).where(eq(tasks.id, taskId)).returning().get();
 }
 

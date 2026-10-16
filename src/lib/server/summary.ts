@@ -284,8 +284,8 @@ export function tankSummary(user: User, tankId: string, days: number, now = new 
 		tasks.length
 			? tasks.map(({ task }) => {
 					const due = effectiveDue(task);
-					const d = due ? dueInfo(due, today) : null;
-					const when = !d ? 'no date' : d.days < 0 ? `overdue by ${plural(-d.days, 'day')} (due ${due})` : d.days === 0 ? 'due today' : `next due ${due}`;
+					const d = due ? dueInfo(due, today, task.graceDays) : null;
+					const when = !d ? 'no date' : d.section === 'overdue' ? `overdue by ${plural(-d.days, 'day')} (due ${due})` : d.days === 0 ? 'due today' : `next due ${due}`;
 					return `- ${task.name}: ${intervalText(task)}, ${when}`;
 				})
 			: ['No reminders set.']

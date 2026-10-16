@@ -145,6 +145,8 @@ export function createTank(user: User, input: TankInput): Tank {
         scheduleMode: "completion",
         nextDue: addDays(today, 7),
         openFormOnDone: true,
+        // a day late is still this week's water change (#175)
+        graceDays: 1,
       })
       .run();
     // the setup review (#30): every 3 months, in case something wasn't updated

@@ -342,8 +342,8 @@ export function publicDetail(page: PublicPage, tank: Tank, owner: User, opts: { 
 				.filter((t) => t.nextDue)
 				.map((t) => {
 					const due = effectiveDue(t)!;
-					const d = dueInfo(due, today);
-					return { name: t.name, every: intervalText(t), due: d.days < 0 ? `${plural(-d.days, 'day')} overdue` : d.days === 0 ? 'due today' : `next ${fmtDate(due)}`, overdue: d.days < 0 };
+					const d = dueInfo(due, today, t.graceDays);
+					return { name: t.name, every: intervalText(t), due: d.section === 'overdue' ? `${plural(-d.days, 'day')} overdue` : d.days < 0 ? 'due' : d.days === 0 ? 'due today' : `next ${fmtDate(due)}`, overdue: d.section === 'overdue' };
 				})
 				.sort((a, b) => Number(b.overdue) - Number(a.overdue))
 		: [];
