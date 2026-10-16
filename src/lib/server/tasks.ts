@@ -520,3 +520,7 @@ export function algaeOf(eventId: string | null): string | null {
 	const e = db.select({ data: events.data }).from(events).where(eq(events.id, eventId)).get();
 	return e?.data.kind === 'algae' && typeof e.data.algae === 'string' ? e.data.algae : null;
 }
+
+/** Done on its own (#176): the setup review is done on its page, and a water change or test that opens its form. */
+export const needsOwnDone = (task: Pick<Task, 'kind' | 'openFormOnDone'>) =>
+	task.kind === 'review' || (task.openFormOnDone && (task.kind === 'water_change' || task.kind === 'test'));

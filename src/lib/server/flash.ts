@@ -17,14 +17,14 @@ export interface FlashUndo {
 }
 
 /** The actions an Undo can post to. */
-const UNDO_ACTIONS = [/^\/tasks\?\/undo$/, /^\/tasks\?\/unsnooze$/, /^\/tasks\?\/unpause$/, /^\/tasks\?\/reopenCourse$/, /^\/tanks\/[\w-]+\/import\/[a-z-]+\?\/undo$/, /^\/photos\/[\w-]+\?\/uncover$/, /^\/tanks\/[\w-]+\/sharing\?\/restore$/, /^\/tanks\/[\w-]+\/wishlist\?\/restore$/];
+const UNDO_ACTIONS = [/^\/tasks\?\/undo$/, /^\/tasks\?\/unsnooze$/, /^\/tasks\?\/unpause$/, /^\/tasks\?\/reopenCourse$/, /^\/tasks\?\/undoMany$/, /^\/tanks\/[\w-]+\/import\/[a-z-]+\?\/undo$/, /^\/photos\/[\w-]+\?\/uncover$/, /^\/tanks\/[\w-]+\/sharing\?\/restore$/, /^\/tanks\/[\w-]+\/wishlist\?\/restore$/];
 
 function validUndo(u: unknown): FlashUndo | undefined {
 	if (!u || typeof u !== 'object') return undefined;
 	const { action, name, value } = u as Record<string, unknown>;
 	if (typeof action !== 'string' || !UNDO_ACTIONS.some((r) => r.test(action))) return undefined;
 	// the value may be empty: "the tank had no cover before"
-	if (typeof name !== 'string' || !/^[a-zA-Z]+$/.test(name) || typeof value !== 'string' || value.length > 100) return undefined;
+	if (typeof name !== 'string' || !/^[a-zA-Z]+$/.test(name) || typeof value !== 'string' || value.length > 2000) return undefined;
 	return { action, name, value };
 }
 

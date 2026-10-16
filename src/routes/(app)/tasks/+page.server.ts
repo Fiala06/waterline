@@ -5,7 +5,7 @@ import { str } from '$lib/server/forms';
 import { safeReturn } from '$lib/server/redirect';
 import { listTanks } from '$lib/server/tanks';
 import { routineProducts, taskFormValues, taskType } from '$lib/server/task-form';
-import { algaeOf, completeTask, countableEntry, courseDay, endCourseEarly, getTask, reopenCourse, lastDoneOn, lastDoseText, listTasks, recentCompletions, resumeTask, skipTask, snoozeTask, undoCompletion, unpauseTasks } from '$lib/server/tasks';
+import { algaeOf, completeTask, needsOwnDone, countableEntry, courseDay, endCourseEarly, getTask, reopenCourse, lastDoneOn, lastDoseText, listTasks, recentCompletions, resumeTask, skipTask, snoozeTask, undoCompletion, unpauseTasks } from '$lib/server/tasks';
 import { effectiveDue } from '$lib/tasks';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -131,6 +131,43 @@ export const actions: Actions = {
 		setFlash(cookies, `✓ ${task.name} done ${fmtDate(entry.date)}${done.nextDue ? ` · next ${fmtDate(done.nextDue)}` : ''}`, {
 			undo: { action: '/tasks?/undo', name: 'completionId', value: done.completionId }
 		});
+		redirect(303, safeReturn(form.get('from'), '/tasks'));
+	},
+	/**
+	 * Several done at once (#176): each as by its own Done, on the day or the day
+	 * before; the setup review and tasks that open a log form are left for their own.
+	 */
+	doneMany: async ({ request, locals, cookies }) => {
+		const user = locals.user!;
+		const form = await request.formData();
+		const today = todayInZone(user.timeZone);
+		const doneOn = str(form, 'doneOn');
+		if (doneOn && (!isDate(doneOn) || doneOn > today)) error(400, `Pick a day on or before ${fmtDate(today)}`);
+		const ids = [...new Set(form.getAll('taskId').map(String))].slice(0, 50);
+		const at = doneOn && doneOn < today ? zonedToUtc(doneOn, utcToZoned(new Date(), user.timeZone).time, user.timeZone).toISOString() : undefined;
+		const done: string[] = [];
+		const left: string[] = [];
+		for (const id of ids) {
+			const task = getTask(user.id, id);
+			if (needsOwnDone(task)) {
+				left.push(task.name);
+				continue;
+			}
+			done.push(completeTask(user.id, id, { at, timeZone: user.timeZone }).completionId);
+		}
+		const text = [done.length ? `✓ ${done.length} done${at ? ` ${fmtDate(doneOn)}` : ''}` : 'Nothing marked done', left.length ? `${left.join(', ')} ${left.length === 1 ? 'needs its' : 'need their'} own Done` : null]
+			.filter(Boolean)
+			.join(' · ');
+		setFlash(cookies, text, done.length ? { undo: { action: '/tasks?/undoMany', name: 'completions', value: done.join(',') } } : {});
+		redirect(303, safeReturn(form.get('from'), '/tasks'));
+	},
+	/** Undo several done at once */
+	undoMany: async ({ request, locals, cookies }) => {
+		const user = locals.user!;
+		const form = await request.formData();
+		const ids = str(form, 'completions').split(',').filter(Boolean).slice(0, 50);
+		for (const id of ids) undoCompletion(user.id, id);
+		setFlash(cookies, `Undid ${ids.length === 1 ? '1 task' : `${ids.length} tasks`}`);
 		redirect(303, safeReturn(form.get('from'), '/tasks'));
 	},
 	/** End a course before its last day (#174), with Undo */

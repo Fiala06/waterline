@@ -56,6 +56,13 @@
 		goto(q(id ? { edit: id, new: null } : { new: '', edit: null }), { noScroll: true, keepFocus: true });
 	}
 
+	// Select several (#176): ?select=1 swaps each row's buttons for a checkbox in one form, the bar's
+	const selecting = $derived(page.url.searchParams.get('select') === '1');
+	let picked = $state(0);
+	const countPicked = () => (picked = document.querySelectorAll('input[form="done-many"]:checked').length);
+	const ownDone = (t: T) => t.kind === 'review' || (t.openFormOnDone && (t.kind === 'water_change' || t.kind === 'test'));
+	const yesterday = $derived(new Date(Date.parse(data.today + 'T12:00:00Z') - 86_400_000).toISOString().slice(0, 10));
+
 	let snoozing = $state<T | null>(null);
 	let snoozeOpen = $state(false);
 	// where the Snooze ▾ button is, so the desktop menu hangs under it
@@ -108,6 +115,10 @@
 			</div>
 		{/if}
 
+		{#if data.tasks.length > 1}
+			<a class="select-link" href={q({ select: selecting ? null : '1', edit: null })} data-sveltekit-noscroll>{selecting ? 'Cancel selecting' : 'Select several'}</a>
+		{/if}
+
 		{#if !data.tasks.length}
 			<div class="empty">
 				<EmptyState icon="maintenance" title="Nothing due" text="The fish approve. Set up reminders for water changes and upkeep.">
@@ -136,6 +147,15 @@
 										<span class="meta">{tankNames[t.tankId]} · {every(t)}</span>
 									</span>
 								</a>
+								{#if selecting}
+									<div class="acts">
+										{#if ownDone(t)}
+											<span class="own">{t.kind === 'review' ? 'Review on its page' : 'Opens its form'}</span>
+										{:else}
+											<label class="check-row pick"><input type="checkbox" name="taskId" value={t.id} form="done-many" onchange={countPicked} aria-label="Select {t.name}" /></label>
+										{/if}
+									</div>
+								{:else}
 								<div class="acts">
 									<!-- Snooze on every task: one not due yet moves back from its due date -->
 									<form method="POST" action="/tasks?/snooze" use:enhance>
@@ -157,12 +177,21 @@
 										{/if}
 									</form>
 								</div>
+								{/if}
 							</div>
 						{/each}
 					</div>
 				</section>
 			{/if}
 		{/each}
+		{#if selecting}
+			<!-- the selected rows' checkboxes belong to this form (form="done-many") -->
+			<form id="done-many" class="many-bar" method="POST" action="/tasks?/doneMany">
+				<input type="hidden" name="from" value={q({ select: null })} />
+				<button class="btn btn-primary" name="doneOn" value="">Done{picked ? ` (${picked})` : ''}</button>
+				<button class="btn" name="doneOn" value={yesterday}>Done yesterday{picked ? ` (${picked})` : ''}</button>
+			</form>
+		{/if}
 		{#if data.paused.length}
 			<!-- paused (#172): not due, not notified, until their day; Resume picks one up now -->
 			<section>
@@ -398,6 +427,47 @@
 	.mark {
 		min-height: 40px;
 		padding: 0 14px;
+	}
+	.select-link {
+		align-self: flex-start;
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
+		font-size: 14px;
+		font-weight: 800;
+		margin-block: -10px;
+	}
+	.own {
+		font-size: 13px;
+		color: var(--text-muted);
+	}
+	.pick {
+		min-width: 44px;
+		justify-content: center;
+	}
+	/* Done (N) · Done yesterday (N), kept in reach at the foot while selecting */
+	.many-bar {
+		position: sticky;
+		/* phones: above the tab bar (78px) */
+		bottom: calc(78px + env(safe-area-inset-bottom));
+		display: flex;
+		gap: 8px;
+		padding: 12px 0;
+		background: var(--bg);
+		border-top: 2px solid var(--ink);
+		z-index: 2;
+	}
+	.many-bar .btn {
+		flex: 1;
+		min-height: 48px;
+	}
+	@media (min-width: 1024px) {
+		.many-bar {
+			bottom: 0;
+		}
+		.many-bar .btn {
+			flex: none;
+		}
 	}
 	.cal-link {
 		align-self: flex-start;

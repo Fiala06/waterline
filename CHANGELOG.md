@@ -11,6 +11,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Several done at once.** On [Tasks](/tasks), Select several puts a box on each task; tick the ones you did and tap Done (or Done yesterday), with one Undo for all of them. On the [dashboard](/), when two or more tasks are due, Mark all done does them in one tap. A water change or test that opens its form, and the setup review, still get their own Done.
 - **Treatment courses for algae.** [Log algae](/tanks/current/algae) now has Save and start a treatment course: a task every other day for two weeks (change it as you like), linked to the entry. Any task can be a course with an end, not just doses. A course on [Tasks](/tasks) shows where it stands ("Day 3 of 15"), its page has End early (with Undo), and the algae entry links to its course. When a course from an algae entry is done, Waterline asks how the algae looks now and opens Log algae.
 
 ## 1.16.0 · 2026-10-16

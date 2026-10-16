@@ -3,6 +3,7 @@
 	// between them. Needs attention and In range span two; Due and Recent take the
 	// third. Trends and In the tank follow in the same arrangement. The shell has
 	// the tank's name, cover and actions; below ~1100px the page is one column.
+	import { page } from '$app/state';
 	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ImportButton from '$lib/components/ImportButton.svelte';
@@ -109,6 +110,8 @@
 	const dueNow = $derived(dueTasks.filter((t) => t.due <= (data.today ?? '')));
 	const upcoming = $derived(dueTasks.filter((t) => t.due > (data.today ?? '')));
 	const moreDue = $derived(Math.max(0, upcoming.length - UPCOMING));
+	// Mark all done (#176): what's due now that Done finishes by itself (not the review, not one that opens its form)
+	const allDone = $derived(dueNow.filter((t) => t.kind !== 'review' && !(t.openFormOnDone && (t.kind === 'water_change' || t.kind === 'test'))));
 	// the fun bits only when nothing's out of range or overdue
 	const calm = $derived(!cards.some((c) => c.level === 'bad') && !overdue.length && !(wcDue && (wcDue.days > wcDue.goal)));
 	const allClear = $derived(hasReadings && !attention.length && !wcDue && !overdue.length);
@@ -266,6 +269,13 @@
 				{#if dueTasks.length}
 					<TaskList tasks={[...dueNow, ...upcoming.slice(0, UPCOMING)]} today={data.today} />
 					{#if moreDue}<a class="more-due" href="/tasks?filter={data.tank.id}">+{moreDue} more</a>{/if}
+					{#if allDone.length >= 2}
+						<form method="POST" action="/tasks?/doneMany" class="all-done">
+							{#each allDone as t (t.id)}<input type="hidden" name="taskId" value={t.id} />{/each}
+							<input type="hidden" name="from" value={page.url.pathname + page.url.search} />
+							<button class="btn">Mark all done ({allDone.length})</button>
+						</form>
+					{/if}
 				{:else}
 					<EmptyState
 						compact
@@ -1108,5 +1118,12 @@
 		font-size: 14px;
 		font-weight: 800;
 		border-bottom: 1px solid var(--divider);
+	}
+	.all-done {
+		padding-top: 12px;
+	}
+	.all-done .btn {
+		width: 100%;
+		min-height: 44px;
 	}
 </style>
