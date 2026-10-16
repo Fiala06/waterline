@@ -53,7 +53,7 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 		category,
 		context: eventFormContext(tank, user),
 		when: date && time ? { date, time } : null,
-		task: completableTask(user, tank.id, taskKindFor(category), url.searchParams.get('task')),
+		task: completableTask(user, tank.id, taskKindFor(category), url.searchParams.get('task'), date),
 		recentProducts: category === 'dosing' ? recentDosingProducts(tank.id) : [],
 		// a water change's conditioner / remineraliser rows: what was added before, then what's been dosed
 		recentAdditives: category === 'water_change' ? dedupe([...recentAdditives(tank.id), ...recentDosingProducts(tank.id)]) : [],

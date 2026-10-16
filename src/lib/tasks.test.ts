@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { amountText, courseText, dueInfo, effectiveDue, endsAfterTimes, intervalText, nextDueAfterCompletion, occurrencesUntil, onOrAfterWeekday, parseWeekdays, reminderDue, routineLine, scheduleExamples, skipTo, snoozeOptions } from './tasks';
+import { amountText, courseText, dueInfo, effectiveDue, endsAfterTimes, intervalText, logCompletes, nextDueAfterCompletion, occurrencesUntil, onOrAfterWeekday, parseWeekdays, reminderDue, reminderSub, routineLine, scheduleExamples, skipTo, snoozeOptions } from './tasks';
 
 const weekly = { recurring: true, intervalDays: 7, scheduleMode: 'completion' as const, nextDue: '2026-09-24' };
 
@@ -217,5 +217,41 @@ describe('skipTo (#71)', () => {
 	it('has nothing to skip to for a one-off or the last of a course', () => {
 		expect(skipTo({ ...base, recurring: false }, '2026-10-04')).toBeNull();
 		expect(skipTo({ ...base, endsOn: '2026-10-05' }, '2026-10-04')).toBeNull();
+	});
+});
+
+describe('logCompletes (#163)', () => {
+	const every3 = { recurring: true, intervalDays: 3, scheduleMode: 'completion' as const, nextDue: '2026-10-04' };
+	it('counts a water change a day early, on the day, or late', () => {
+		expect(logCompletes(every3, '2026-10-01', '2026-10-03')).toBe(true);
+		expect(logCompletes(every3, '2026-10-01', '2026-10-04')).toBe(true);
+		expect(logCompletes(every3, '2026-10-01', '2026-10-07')).toBe(true);
+	});
+	it('takes an earlier one as extra, and leaves the schedule', () => {
+		expect(logCompletes(every3, '2026-10-01', '2026-10-02')).toBe(false);
+		// a weekly one: up to 3 days early
+		expect(logCompletes(weekly, null, '2026-09-21')).toBe(true);
+		expect(logCompletes(weekly, null, '2026-09-20')).toBe(false);
+	});
+	it('never counts an entry from before it was last done', () => {
+		expect(logCompletes(every3, '2026-10-03', '2026-10-03')).toBe(false);
+		expect(logCompletes(every3, '2026-10-03', '2026-10-02')).toBe(false);
+	});
+	it('goes by the snoozed date', () => {
+		expect(logCompletes({ ...every3, snoozedUntil: '2026-10-08' }, '2026-10-01', '2026-10-04')).toBe(false);
+		expect(logCompletes({ ...every3, snoozedUntil: '2026-10-08' }, '2026-10-01', '2026-10-07')).toBe(true);
+	});
+	it('allows a day early on set days', () => {
+		const days = { recurring: true, intervalDays: null, scheduleMode: 'weekdays' as const, nextDue: '2026-10-07', weekdays: '3' };
+		expect(logCompletes(days, null, '2026-10-06')).toBe(true);
+		expect(logCompletes(days, null, '2026-10-05')).toBe(false);
+	});
+});
+
+describe('reminderSub (#163)', () => {
+	const every3 = { recurring: true, intervalDays: 3, scheduleMode: 'completion' as const, nextDue: '2026-10-04' };
+	it('counts what comes next from the entry\'s day', () => {
+		expect(reminderSub(every3, '2026-10-03', '2026-10-03')).toBe('Not due until Oct 4 · next would be Oct 6');
+		expect(reminderSub(every3, '2026-10-02', '2026-10-05')).toBe('1 day overdue · next Oct 5');
 	});
 });

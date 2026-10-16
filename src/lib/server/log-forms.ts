@@ -14,14 +14,14 @@ import {
 import { MAX_LIVESTOCK_COUNT } from '$lib/livestock';
 import type { GrowingStyle } from '$lib/types';
 import { displayValue, fmtRange, fmtValue, foldsInTestForm, paramDecimals, paramUnit, storedValue } from '$lib/params';
-import { dueInfo, effectiveDue, nextDueAfterCompletion } from '$lib/tasks';
+import { effectiveDue, logCompletes, reminderSub } from '$lib/tasks';
 import { paramTip, whenToTest } from '$lib/tips';
-import { fmtDate, todayInZone, utcToZoned } from '$lib/time';
+import { fmtDate, isDate, todayInZone, utcToZoned } from '$lib/time';
 import { formatNumber, parseNumber, toDisplay, toStored, unitLabel } from '$lib/units';
 import { EVENT_CATEGORIES, type EventCategory, type Tank, type TankParameter, type User } from './db/schema';
 import { num, optStr, str, type FieldErrors } from './forms';
 import { lastEventOf, latestTest } from './logs';
-import { getTask, taskOfKind } from './tasks';
+import { getTask, lastDoneOn, taskOfKind } from './tasks';
 
 export function parseCategory(value: string | null): EventCategory {
 	return EVENT_CATEGORIES.includes(value as EventCategory) ? (value as EventCategory) : 'water_change';
@@ -96,15 +96,19 @@ export function parseReadings(form: FormData, params: TankParameter[], user: Use
 
 /**
  * The task this log can also complete: the one passed in (?task=) or the
- * soonest open task of the matching kind that is overdue or due soon.
+ * soonest open task of the matching kind, whenever it's due (#163). It's ticked
+ * when the entry is this occurrence (`logCompletes`); `schedule` lets the form
+ * say what the next one would be as its When changes.
  */
 export function completableTask(
 	user: User,
 	tankId: string,
 	kind: 'water_change' | 'test' | 'maintenance' | null,
-	requestedId: string | null
+	requestedId: string | null,
+	entryDate?: string | null
 ) {
 	const today = todayInZone(user.timeZone);
+	const on = entryDate && isDate(entryDate) ? entryDate : today;
 	let task = null;
 	let fromRequest = false;
 	if (requestedId) {
@@ -113,22 +117,28 @@ export function completableTask(
 		task = t;
 		fromRequest = true;
 	} else if (kind) {
-		const t = taskOfKind(user.id, tankId, kind);
-		if (t && dueInfo(t.due, today).section !== 'later') task = t;
+		task = taskOfKind(user.id, tankId, kind) ?? null;
 	}
-	const due = task ? effectiveDue(task) : null;
-	if (!task || !due) return null;
-	const next = nextDueAfterCompletion(task, today, today);
-	const d = dueInfo(due, today);
-	// "Also mark the reminder “Water change 25%” done", then where it stands: ticked by itself when it's due
-	const state = d.days < 0 ? `${-d.days} day${d.days === -1 ? '' : 's'} overdue` : d.days === 0 ? 'Due today' : `Not due until ${fmtDate(due)}`;
-	const after = next ? (d.days > 0 ? `next would be ${fmtDate(next)}` : `next ${fmtDate(next)}`) : 'closes the reminder';
+	if (!task || !effectiveDue(task)) return null;
+	const lastDone = lastDoneOn(task.id, user.timeZone);
+	const schedule = {
+		recurring: task.recurring,
+		intervalDays: task.intervalDays,
+		scheduleMode: task.scheduleMode,
+		nextDue: task.nextDue,
+		snoozedUntil: task.snoozedUntil,
+		weekdays: task.weekdays,
+		endsOn: task.endsOn
+	};
+	// "Also mark the reminder “Water change 25%” done", then where it stands
 	return {
 		id: task.id,
 		name: task.name,
 		label: `Also mark the reminder “${task.name}” done`,
-		sub: `${state} · ${after}`,
-		checked: fromRequest || d.days <= 0
+		sub: reminderSub(schedule, on, today),
+		checked: fromRequest || logCompletes(schedule, lastDone, on),
+		schedule,
+		today
 	};
 }
 

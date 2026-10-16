@@ -5,7 +5,7 @@ import { str } from '$lib/server/forms';
 import { safeReturn } from '$lib/server/redirect';
 import { listTanks } from '$lib/server/tanks';
 import { routineProducts, taskFormValues, taskType } from '$lib/server/task-form';
-import { completeTask, getTask, listTasks, skipTask, snoozeTask, undoCompletion } from '$lib/server/tasks';
+import { completeTask, countableEntry, getTask, listTasks, skipTask, snoozeTask, undoCompletion } from '$lib/server/tasks';
 import { effectiveDue } from '$lib/tasks';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -28,7 +28,8 @@ export const load: PageServerLoad = ({ locals, url }) => {
 	return {
 		filter,
 		today: todayInZone(user.timeZone),
-		tasks: rows.map((r) => r.task),
+		// a water change or test logged already that Skip can count instead (#163)
+		tasks: rows.map((r) => ({ ...r.task, countable: countableEntry(r.task, user.timeZone) })),
 		pane,
 		formTanks: listTanks(user.id).map((t) => ({ id: t.id, name: t.name })),
 		products: routineProducts(user.id)
@@ -54,7 +55,10 @@ export const actions: Actions = {
 		// Completing a water change or test opens the matching log form.
 		if (task.openFormOnDone && (task.kind === 'water_change' || task.kind === 'test')) {
 			const q = new URLSearchParams({ tank: task.tankId, task: task.id });
-			if (earlier) q.set('date', earlier);
+			if (earlier) {
+				q.set('date', earlier);
+				q.set('time', utcToZoned(new Date(), user.timeZone).time);
+			}
 			if (task.kind === 'test') redirect(303, `/entries/test/new?${q}`);
 			q.set('category', 'water_change');
 			redirect(303, `/entries/event/new?${q}`);
@@ -79,6 +83,25 @@ export const actions: Actions = {
 		if (date <= after) error(400, `Pick a date after ${fmtDate(after)}`);
 		const task = snoozeTask(user.id, taskId, date);
 		setFlash(cookies, `Snoozed ${task.name} to ${fmtDate(date)}`);
+		redirect(303, safeReturn(form.get('from'), '/tasks'));
+	},
+	/** Count the water change or test already logged as this one (#163), instead of skipping it */
+	count: async ({ request, locals, cookies }) => {
+		const user = locals.user!;
+		const form = await request.formData();
+		const taskId = str(form, 'taskId');
+		if (!taskId) error(400, 'Missing task');
+		const task = getTask(user.id, taskId);
+		const entry = countableEntry(task, user.timeZone);
+		if (!entry || entry.id !== str(form, 'entryId')) error(409, 'That entry no longer counts for this task');
+		const done = completeTask(user.id, taskId, {
+			at: entry.at,
+			...(entry.kind === 'event' ? { eventId: entry.id } : { logged: true }),
+			timeZone: user.timeZone
+		});
+		setFlash(cookies, `✓ ${task.name} done ${fmtDate(entry.date)}${done.nextDue ? ` · next ${fmtDate(done.nextDue)}` : ''}`, {
+			undo: { action: '/tasks?/undo', name: 'completionId', value: done.completionId }
+		});
 		redirect(303, safeReturn(form.get('from'), '/tasks'));
 	},
 	/** Skip this one (#71): on to the next date, with Undo */

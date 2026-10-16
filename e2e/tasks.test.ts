@@ -163,3 +163,45 @@ test('done yesterday counts the next one from yesterday', async ({ page }, info)
 	// weekly, from yesterday: 6 days from today
 	expect(Math.round((Date.parse(next) - Date.parse(today)) / 86_400_000)).toBe(6);
 });
+
+// #163: a water change a day early ticks its reminder; one left unticked can be counted from Skip
+test('a water change a day early completes its reminder, or Skip counts it', async ({ page }, info) => {
+	await newKeeperWithTank(page, `m7e-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, '/tasks/new');
+	const today = await dateValue(page, 'nextDue');
+	await open(page, '/tasks');
+	const href = await page.locator('a', { hasText: 'Water change 25%' }).first().getAttribute('href');
+	await open(page, href!);
+	const tomorrow = new Date(Date.parse(today) + 86_400_000).toISOString().slice(0, 10);
+	await pickDate(page, 'nextDue', tomorrow);
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('status')).toContainText('✓ Task saved');
+
+	// due tomorrow: logging today ticks it
+	await open(page, `/entries/event/new?tank=${tankId}&category=water_change`);
+	const box = page.getByLabel(/Also mark the reminder “Water change 25%” done/);
+	await expect(box).toBeChecked();
+	// left unticked, the reminder stays due tomorrow
+	await box.uncheck();
+	await page.getByLabel('Amount', { exact: true }).fill('40');
+	await page.getByRole('button', { name: 'Save water change' }).click();
+	await expect(page.locator('.toast-region')).toContainText('✓ Water change logged');
+
+	// Skip's menu offers to count today's water change instead
+	await open(page, '/tasks');
+	const wcHref = await page.locator('a', { hasText: 'Water change 25%' }).first().getAttribute('href');
+	await open(page, wcHref!);
+	const twoDaysAgo = new Date(Date.parse(today) - 2 * 86_400_000).toISOString().slice(0, 10);
+	// overdue, so phones show its Snooze too
+	await pickDate(page, 'nextDue', twoDaysAgo);
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('heading', { name: /Overdue · 1/ })).toBeVisible();
+	await page.locator('.row', { hasText: 'Water change 25%' }).getByRole('button', { name: 'Snooze', exact: true }).click();
+	await page.getByRole('button', { name: /^Count the water change on/ }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Water change 25% done');
+	await expect(page.getByRole('heading', { name: /Overdue/ })).toHaveCount(0);
+	// History has the water change, and no "Skipped"
+	await open(page, `/history?tank=${tankId}`);
+	await expect(page.getByRole('link', { name: /^Skipped/ })).toHaveCount(0);
+});

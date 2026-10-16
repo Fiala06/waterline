@@ -72,9 +72,9 @@ test('a restored water change draft keeps "Also complete task" ticked', async ({
 	await newKeeperWithTank(page, `draft-task-${info.project.name}`);
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
 
-	// a water change started while the reminder isn't due (no task box on the form), left unsaved
+	// a water change started while the reminder isn't due for a week (its box offered, unticked), left unsaved
 	await open(page, `/entries/event/new?tank=${tankId}&category=water_change`);
-	await expect(page.getByLabel(/Also mark the reminder/)).toHaveCount(0);
+	await expect(page.getByLabel(/Also mark the reminder/)).not.toBeChecked();
 	await page.getByLabel('Amount', { exact: true }).fill('36');
 	// Close on a phone, Cancel on a computer
 	await page.locator('a[aria-label="Close"]:visible, a.cancel:visible').first().click();

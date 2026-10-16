@@ -208,7 +208,7 @@
 	);
 
 	// "Also mark the reminder “Water change 25%” done", with where it stands on its own line
-	const taskText = $derived(splitTask(task));
+	const taskText = $derived(splitTask(task, when?.date));
 
 	const saveLabel = $derived(eventSaveLabel(mode, category));
 	const title = $derived(eventTitle(mode, category));

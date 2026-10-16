@@ -158,6 +158,34 @@ export function dueInfo(nextDue: string, today: string): DueInfo {
 	return { days, level: 'ok', text: fmtDate(nextDue), section: 'later' };
 }
 
+export type ReminderTask = Schedulable & { snoozedUntil?: string | null };
+
+/**
+ * Whether work logged on `entryDate` is this task's occurrence (#163): it's
+ * after the last time it was done, and the task is overdue by then or due
+ * within half its cadence (a day early on every 3 days, 3 on a weekly one).
+ * Earlier than that it's an extra one, and the schedule stays as it is.
+ */
+export function logCompletes(task: ReminderTask, lastDone: string | null, entryDate: string): boolean {
+	const due = effectiveDue(task);
+	if (!due) return false;
+	if (lastDone && entryDate <= lastDone) return false;
+	const early = daysBetween(entryDate, due);
+	const window = !task.recurring ? DUE_SOON_DAYS : task.scheduleMode === 'weekdays' ? 1 : Math.max(1, Math.floor((task.intervalDays ?? 0) / 2));
+	return early <= window;
+}
+
+/** Where a log form's reminder stands: "Due today · next Oct 23", "Not due until Oct 20 · next would be Oct 27" */
+export function reminderSub(task: ReminderTask, entryDate: string, today: string): string {
+	const due = effectiveDue(task);
+	if (!due) return '';
+	const d = dueInfo(due, today);
+	const next = nextDueAfterCompletion(task, entryDate, today);
+	const state = d.days < 0 ? `${-d.days} day${d.days === -1 ? '' : 's'} overdue` : d.days === 0 ? 'Due today' : `Not due until ${fmtDate(due)}`;
+	const after = next ? (d.days > 0 ? `next would be ${fmtDate(next)}` : `next ${fmtDate(next)}`) : 'closes the reminder';
+	return `${state} · ${after}`;
+}
+
 /** "every 7 days", "every 2 weeks", "Mon, Wed, Fri", "every day but Sun", "one-off" */
 export function intervalText(task: { recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null; kind?: string; nextDue?: string | null; endsOn?: string | null }): string {
 	const base = repeatText(task);

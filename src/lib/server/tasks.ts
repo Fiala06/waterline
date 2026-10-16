@@ -1,10 +1,10 @@
 import { error } from '@sveltejs/kit';
 import { and, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { addDays, dateInZone, todayInZone } from '$lib/time';
-import { effectiveDue, isRoutine, nextDueAfterCompletion, skipTo } from '$lib/tasks';
+import { effectiveDue, isRoutine, logCompletes, nextDueAfterCompletion, skipTo } from '$lib/tasks';
 import { db } from './db';
 import { requireRoleOn, visibleTo } from './members';
-import { equipment, events, taskCompletions, tanks, tasks, type Tank, type Task } from './db/schema';
+import { equipment, events, taskCompletions, tanks, tasks, tests, type Tank, type Task } from './db/schema';
 import { getTank } from './tanks';
 
 /** Open tasks (with a due date) across the user's active tanks, soonest first. */
@@ -197,6 +197,38 @@ export function snoozeTask(userId: string, taskId: string, until: string) {
 	requireRoleOn(userId, task.tankId, 'log');
 	if (!task.nextDue) return task;
 	return db.update(tasks).set({ snoozedUntil: until }).where(eq(tasks.id, taskId)).returning().get();
+}
+
+/** The day a task was last done (not skipped), in the keeper's time zone. */
+export function lastDoneOn(taskId: string, timeZone: string): string | null {
+	const c = db
+		.select({ at: taskCompletions.completedAt })
+		.from(taskCompletions)
+		.where(and(eq(taskCompletions.taskId, taskId), eq(taskCompletions.skipped, false)))
+		.orderBy(desc(taskCompletions.completedAt))
+		.get();
+	return c ? dateInZone(c.at, timeZone) : null;
+}
+
+/**
+ * A water change or test already logged that is this task's occurrence (#163),
+ * so Skip can offer to count it instead: the tank's latest of that kind.
+ */
+export function countableEntry(task: Task, timeZone: string): { kind: 'event' | 'test'; id: string; at: string; date: string } | null {
+	if (task.kind !== 'water_change' && task.kind !== 'test') return null;
+	const latest =
+		task.kind === 'test'
+			? db.select({ id: tests.id, at: tests.takenAt }).from(tests).where(eq(tests.tankId, task.tankId)).orderBy(desc(tests.takenAt)).get()
+			: db
+					.select({ id: events.id, at: events.occurredAt })
+					.from(events)
+					.where(and(eq(events.tankId, task.tankId), eq(events.category, 'water_change')))
+					.orderBy(desc(events.occurredAt))
+					.get();
+	if (!latest) return null;
+	const date = dateInZone(latest.at, timeZone);
+	if (date > todayInZone(timeZone) || !logCompletes(task, lastDoneOn(task.id, timeZone), date)) return null;
+	return { kind: task.kind === 'test' ? 'test' : 'event', id: latest.id, at: latest.at, date };
 }
 
 /** First open task of a kind for a tank, e.g. the water-change reminder. */

@@ -31,6 +31,8 @@
 			weekdays?: string | null;
 			endsOn?: string | null;
 			kind?: string;
+			/** a water change or test logged already, to count instead of skipping (#163) */
+			countable?: { kind: 'event' | 'test'; id: string; date: string } | null;
 		} | null;
 		tankName: string;
 		today: string;
@@ -124,8 +126,20 @@
 					<button type="button" class="opt pick-date" onclick={() => (picking = true)}><span>Pick a date…</span><span aria-hidden="true">›</span></button>
 				{/if}
 			</div>
+			{#if task.countable}
+				<form method="POST" action="/tasks?/count" class="skip" use:enhance={submitting}>
+					<input type="hidden" name="taskId" value={task.id} />
+					<input type="hidden" name="entryId" value={task.countable.id} />
+					<input type="hidden" name="from" value={from} />
+					<button class="opt skip-btn"
+						><span>Count the {task.countable.kind === 'test' ? 'water test' : 'water change'} on {fmtDate(task.countable.date)}</span><span class="sub"
+							>Already in History · done that day</span
+						></button
+					>
+				</form>
+			{/if}
 			{#if skipDate}
-				<form method="POST" action="/tasks?/skip" class="skip" use:enhance={submitting}>
+				<form method="POST" action="/tasks?/skip" class="skip" class:after={!!task.countable} use:enhance={submitting}>
 					<input type="hidden" name="taskId" value={task.id} />
 					<input type="hidden" name="from" value={from} />
 					<button class="opt skip-btn"><span>Skip this one</span><span class="sub">Next one {longDate(skipDate)}</span></button>
@@ -262,6 +276,9 @@
 	/* below a divider: passes this one over instead of moving it */
 	.skip {
 		border-top: 2px solid var(--divider);
+	}
+	.skip.after {
+		border-top: none;
 	}
 	.skip-btn {
 		flex-direction: column;

@@ -14,7 +14,8 @@ const { upsertUser } = await import('./users');
 const { createTank } = await import('./tanks');
 const { addEquipment } = await import('./specs');
 const { createEvent, createTest } = await import('./logs');
-const { completeTask, createTask, getTask, undoCompletion } = await import('./tasks');
+const { completableTask } = await import('./log-forms');
+const { completeTask, countableEntry, createTask, getTask, undoCompletion } = await import('./tasks');
 
 const user = upsertUser({ email: 'tasks@example.com', name: 'Keeper' });
 const tz = user.timeZone;
@@ -76,5 +77,37 @@ describe('Done leaves an entry in History (#161)', () => {
 		const completion = db.$client.prepare('select id from task_completions where task_id = ?').get(wc.id) as { id: string };
 		undoCompletion(user.id, completion.id);
 		expect(db.select().from(events).where(eq(events.id, event.id)).get()).toBeDefined();
+	});
+});
+
+describe('a log done early completes its reminder (#163)', () => {
+	const otherTank = createTank(user, { name: 'Early tank', type: 'planted', nominalVolumeL: 60 });
+	const every3 = () =>
+		createTask(user.id, otherTank.id, { name: 'Water change 50%', kind: 'water_change', recurring: true, intervalDays: 3, scheduleMode: 'completion', nextDue: addDays(today, 1), openFormOnDone: false });
+
+	it('offers and ticks the reminder a day early, counting the next one from the entry', () => {
+		const task = every3();
+		const offer = completableTask(user, otherTank.id, 'water_change', null, today);
+		expect(offer).toMatchObject({ id: task.id, checked: true });
+		expect(offer?.sub).toMatch(/next would be/);
+	});
+
+	it('offers a reminder due later too, unticked', () => {
+		const t = createTank(user, { name: 'Later tank', type: 'planted', nominalVolumeL: 60 });
+		const task = createTask(user.id, t.id, { name: 'Water change 20%', kind: 'water_change', recurring: true, intervalDays: 7, scheduleMode: 'completion', nextDue: addDays(today, 6), openFormOnDone: false });
+		expect(completableTask(user, t.id, 'water_change', null, today)).toMatchObject({ id: task.id, checked: false });
+		// opened by its Mark done: always ticked
+		expect(completableTask(user, t.id, 'water_change', task.id, today)).toMatchObject({ checked: true });
+	});
+
+	it('lets Skip count a water change already logged', () => {
+		const t = createTank(user, { name: 'Count tank', type: 'planted', nominalVolumeL: 60 });
+		const task = createTask(user.id, t.id, { name: 'Water change 30%', kind: 'water_change', recurring: true, intervalDays: 7, scheduleMode: 'completion', nextDue: addDays(today, 1), openFormOnDone: false });
+		expect(countableEntry(task, tz)).toBeNull();
+		const { event } = createEvent(user.id, t.id, { category: 'water_change', occurredAt: new Date().toISOString(), note: null, data: { percent: 30 } }, { timeZone: tz });
+		expect(countableEntry(task, tz)).toMatchObject({ kind: 'event', id: event.id, date: today });
+		completeTask(user.id, task.id, { at: event.occurredAt, eventId: event.id, timeZone: tz });
+		// counted: it isn't offered again
+		expect(countableEntry(getTask(user.id, task.id), tz)).toBeNull();
 	});
 });

@@ -1,6 +1,7 @@
 // What the log forms (TestForm, EventForm) share (#120): pure, so it's
 // tested on its own (entry-form.test.ts) and written once.
 import { exifToWhen, type ExifDate } from '$lib/exif';
+import { reminderSub, type ReminderTask } from '$lib/tasks';
 import { todayInZone, type When } from '$lib/time';
 
 /**
@@ -18,8 +19,14 @@ export function photoOtherDay(dates: (ExifDate | null)[], when: When | null, tim
 }
 
 /** "Also mark the reminder “Water test” done", with where it stands on its own line. */
-export function splitTask(t: { label: string; sub?: string } | null | undefined): { main: string; next: string } | null {
-	return t ? { main: t.label, next: t.sub ?? '' } : null;
+export function splitTask(
+	t: { label: string; sub?: string; schedule?: ReminderTask; today?: string } | null | undefined,
+	entryDate?: string | null
+): { main: string; next: string } | null {
+	if (!t) return null;
+	// what the next one would be, from the entry's day as its When changes (#163)
+	const next = t.schedule && t.today && entryDate ? reminderSub(t.schedule, entryDate, t.today) : t.sub;
+	return { main: t.label, next: next ?? '' };
 }
 
 /** Another log type's form, keeping this one's tank and time (README § 11). */
