@@ -4,6 +4,7 @@ import { setFlash } from '$lib/server/flash';
 import { str } from '$lib/server/forms';
 import { safeReturn } from '$lib/server/redirect';
 import { listTanks } from '$lib/server/tanks';
+import { listPlanRuns } from '$lib/server/plans';
 import { routineProducts, taskFormValues, taskType } from '$lib/server/task-form';
 import { algaeOf, completeTask, needsOwnDone, countableEntry, courseDay, endCourseEarly, getTask, reopenCourse, lastDoneOn, lastDoseText, listTasks, recentCompletions, resumeTask, skipTask, snoozeTask, undoCompletion, unpauseTasks } from '$lib/server/tasks';
 import { effectiveDue } from '$lib/tasks';
@@ -31,6 +32,8 @@ export const load: PageServerLoad = ({ locals, url }) => {
 		today: todayInZone(user.timeZone),
 		// a water change or test logged already that Skip can count instead (#163)
 		tasks: rows.map((r) => ({ ...r.task, countable: countableEntry(r.task, user.timeZone), lastDone: lastDoneOn(r.task.id, user.timeZone), lastDose: r.task.kind === 'dosing' ? lastDoseText(r.task, user.timeZone) : null, courseDay: courseDay(r.task, user.timeZone) })),
+		// treatment plans running (#177), at the top
+		plans: listPlanRuns(user.id, user.timeZone, filter ?? undefined).running.map((p) => ({ id: p.id, tankId: p.tankId, name: p.name, tankName: p.tankName, status: p.status })),
 		// paused (#172), listed apart with Resume
 		paused: all.filter((r) => r.task.paused).map((r) => ({ id: r.task.id, name: r.task.name, tankId: r.task.tankId, until: r.task.pausedUntil! })),
 		// the pane's task: the last few times it was done (#164)

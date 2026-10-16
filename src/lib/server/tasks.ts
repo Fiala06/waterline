@@ -4,7 +4,7 @@ import { addDays, dateInZone, fmtDate, todayInZone } from '$lib/time';
 import { amountText, courseDayText, effectiveDue, intervalText, isRoutine, logCompletes, nextDueAfterCompletion, reminderSub, resumeSchedule, skipTo } from '$lib/tasks';
 import { db } from './db';
 import { requireRoleOn, visibleTo } from './members';
-import { equipment, events, taskCompletions, tanks, tasks, tests, users, type Tank, type Task } from './db/schema';
+import { equipment, events, planRuns, taskCompletions, tanks, tasks, tests, users, type Tank, type Task } from './db/schema';
 import { getTank } from './tanks';
 
 /** The user's today, for whether a task is paused (#172). */
@@ -421,6 +421,17 @@ export function settleTasks(userId: string, timeZone: string) {
 		.where(and(visibleTo(userId), sql`(${tasks.pausedUntil} <= ${today} or ${tasks.tempUntil} <= ${today})`))
 		.all()
 		.map((r) => r.task);
+	// plans past their last day (#177): finished, and History says so
+	const done = db
+		.select({ run: planRuns })
+		.from(planRuns)
+		.innerJoin(tanks, eq(tanks.id, planRuns.tankId))
+		.where(and(visibleTo(userId), isNull(planRuns.endedAt), sql`${planRuns.endsOn} < ${today}`))
+		.all();
+	for (const { run } of done) {
+		db.update(planRuns).set({ endedAt: new Date().toISOString() }).where(eq(planRuns.id, run.id)).run();
+		systemNote(run.tankId, `Finished plan: ${run.name}`, { system: 'plan_ended', plan_run_id: run.id });
+	}
 	const ended = mine.filter((t) => t.pausedUntil && t.pausedUntil <= today);
 	for (const [until, ts] of Map.groupBy(ended, (t) => t.pausedUntil!)) resumeTasks(ts, until);
 	for (const t of mine.filter((t) => t.tempUntil && t.tempUntil <= today)) endTempCadence(t);

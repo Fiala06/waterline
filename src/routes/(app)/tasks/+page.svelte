@@ -116,6 +116,20 @@
 			</div>
 		{/if}
 
+		{#if data.plans.length}
+			<!-- treatment plans running (#177): where each stands -->
+			<section>
+				<div class="sec-head"><h2 class="sec">Plans · {data.plans.length}</h2></div>
+				<div class="rows">
+					{#each data.plans as p (p.id)}
+						<a class="row plan t-link" href="/tanks/{p.tankId}/plans/{p.id}"
+							><span class="name">{p.name}</span><span class="line"><span class="when plain">{p.status}</span><span class="meta">{p.tankName}</span></span></a
+						>
+					{/each}
+				</div>
+			</section>
+		{/if}
+
 		{#if data.tasks.length > 1}
 			<a class="select-link" href={q({ select: selecting ? null : '1', edit: null })} data-sveltekit-noscroll>{selecting ? 'Cancel selecting' : 'Select several'}</a>
 		{/if}
@@ -220,6 +234,7 @@
 			</section>
 		{/if}
 		{#if data.tanks.length}
+			<a class="cal-link" href="/tanks/{data.filter ?? data.tanks[0].id}/plans?from={encodeURIComponent(from)}">Start a treatment plan ›</a>
 			<a class="cal-link" href="/tanks/{data.filter ?? data.tanks[0].id}/pause?from={encodeURIComponent(from)}">Pause tasks for a while ›</a>
 		{/if}
 		<a class="cal-link" href="/settings#calendar">See your tasks in your calendar ›</a>
@@ -430,6 +445,13 @@
 	.mark {
 		min-height: 40px;
 		padding: 0 14px;
+	}
+	.row.plan {
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+		padding: 10px 0 10px 8px;
+		border-left: 3px solid var(--ink);
 	}
 	.select-link {
 		align-self: flex-start;

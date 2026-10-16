@@ -90,6 +90,8 @@
 		<button class="btn btn-primary save" disabled={busy}>Save</button>
 		<!-- the same entry, then a task every other day for two weeks to treat it (#174) -->
 		<button class="btn course" name="then" value="course" disabled={busy}>Save and start a treatment course</button>
+		<!-- or a plan of several steps: a blackout, a spot treatment (#177) -->
+		<button class="btn course" name="then" value="plan" disabled={busy}>Save and start a plan</button>
 		<a class="btn cancel-btn hide-phone" href={data.from}>Cancel</a>
 	</div>
 </form>

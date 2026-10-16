@@ -106,6 +106,8 @@
 				'/(app)/tanks/[id]/plants/several': 'Add several plants',
 				'/(app)/tanks/[id]/remind': 'Remind me',
 				'/(app)/tanks/[id]/pause': 'Pause tasks',
+				'/(app)/tanks/[id]/plans': 'Treatment plans',
+				'/(app)/tanks/[id]/plans/new': 'Start a plan',
 				'/(app)/tanks/[id]/review': 'Setup review',
 				'/(app)/tanks/[id]/spending/new': 'Add expense',
 				'/(app)/tanks/[id]/spending/[eid]': 'Edit expense',
@@ -119,6 +121,8 @@
 			} as Record<string, string | undefined>
 		)[id];
 		if (tankPage) return { title: tankPage };
+		// a treatment plan (#177): its own name
+		if (id === '/(app)/tanks/[id]/plans/[rid]') return { title: (page.data.run as { name?: string } | undefined)?.name ?? 'Plan' };
 		// a pet's page has its own name hero
 		if (id === '/(app)/tanks/[id]/livestock/[lid]') return null;
 		if (id === '/(app)/tanks/[id]/import/[list=importList]') {
