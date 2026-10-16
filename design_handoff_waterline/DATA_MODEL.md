@@ -112,10 +112,16 @@ tasks            id, tank_id, name, kind(water_change|test|maintenance|other|dos
                  done before temp_until, then interval_days again; History notes the start
                  and the return), paused_from?, paused_until? (#172: not due or notified
                  until paused_until; then resumed with its dates moved on), from_event_id? (#174:
-                 the algae or health entry a treatment course was started from), equipment_id? (the item's service reminder: the
+                 the algae or health entry a treatment course was started from), plan_run_id? (#177:
+                 a step of a treatment plan), equipment_id? (the item's service reminder: the
                  equipment form sets its cadence, and a logged service completes it),
                  open_form_on_done, product?, amount?, amount_unit? (a dosing or feeding
                  routine: Done logs the dose or feeding, and Undo removes it), created_at
+plan_runs        id, tank_id, template (a starter's key, src/lib/plans.ts), name, started_on,
+                 ends_on, ended_at?, ended_early, paused_task_ids (json: the tank's tasks it
+                 held back, resumed when it ends early), from_event_id? (#177: a treatment
+                 plan; its steps are tasks with plan_run_id; History notes plan_started,
+                 plan_extended and plan_ended)
 task_completions id, task_id, completed_at, event_id?,
                  prev_next_due?, prev_snoozed_until? (to undo),
                  skipped (Skip this one: passed over, not done; event_id is its

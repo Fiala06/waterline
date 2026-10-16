@@ -14,6 +14,10 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 - **Tap a last reading.** On [Log water test](/entries/test/new), tap the last reading beside a parameter (Last 7.2) to fill that one field with it, when only some readings match last time's.
 - **Tab and Enter to the next reading.** On [Log water test](/entries/test/new), Tab or Enter after a reading goes straight to the next one, past a kit's Start and Steps; Shift+Enter goes back. Enter no longer saves the test halfway through: after the last reading it moves on to the note.
 
+## 1.17.0 · 2026-10-16
+
+- **Treatment plans.** Start a plan from [Tasks](/tasks) (Start a treatment plan) or when you [log algae](/tanks/current/algae): a blackout, a spot treatment, a liquid carbon or medication course, or a new tank's water changes. Each starter is a place to begin: keep, rename or re-time its steps, and pick the routines it holds back (a blackout pauses ferts and feeding), seeing every date before it starts. Its steps are tasks like any other, the plan shows where it stands ("Day 3 of 19") with Extend and End early, and History notes when it starts and ends.
+
 ## 1.16.2 · 2026-10-16
 
 - **A day late is fine.** A task's form on [Tasks](/tasks) now has Late is fine for: up to 3 days. Within them a late task reads ▲ Due yesterday rather than ✕ Overdue, with no overdue alert and no red mark on the tank. A new tank's water change starts with a day.

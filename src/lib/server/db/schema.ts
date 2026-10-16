@@ -342,6 +342,8 @@ export const tasks = sqliteTable(
 		pausedUntil: text('paused_until'),
 		// days late it can be before it's overdue (#175): inside them it reads ▲ Due, not ✕ Overdue
 		graceDays: integer('grace_days').notNull().default(0),
+		// the treatment plan it's part of (#177)
+		planRunId: text('plan_run_id').references(() => planRuns.id, { onDelete: 'set null' }),
 		// the entry a treatment course was started from (#174): an algae or health entry
 		fromEventId: text('from_event_id').references(() => events.id, { onDelete: 'set null' }),
 		equipmentId: text('equipment_id'),
@@ -354,6 +356,31 @@ export const tasks = sqliteTable(
 	},
 	(t) => [index('tasks_next_due').on(t.nextDue)]
 );
+
+/**
+ * A treatment plan started on a tank (#177): a blackout, a spot treatment, a
+ * medication course. Its steps are ordinary tasks (tasks.plan_run_id); the
+ * routines it holds back are paused, and their ids kept to resume at its end.
+ */
+export const planRuns = sqliteTable('plan_runs', {
+	id: id(),
+	tankId: text('tank_id')
+		.notNull()
+		.references(() => tanks.id, { onDelete: 'cascade' }),
+	/** the starter it came from (src/lib/plans.ts), as a key */
+	template: text('template').notNull(),
+	name: text('name').notNull(),
+	startedOn: text('started_on').notNull(), // YYYY-MM-DD
+	endsOn: text('ends_on').notNull(),
+	/** ended early, or settled after its last day */
+	endedAt: text('ended_at'),
+	endedEarly: integer('ended_early', { mode: 'boolean' }).notNull().default(false),
+	/** the tank's tasks it paused, to resume when it ends early */
+	pausedTaskIds: text('paused_task_ids', { mode: 'json' }).$type<string[]>().notNull().default([]),
+	/** the algae or health entry it was started from */
+	fromEventId: text('from_event_id').references(() => events.id, { onDelete: 'set null' }),
+	createdAt: createdAt()
+});
 
 export const taskCompletions = sqliteTable('task_completions', {
 	id: id(),
@@ -371,6 +398,7 @@ export const taskCompletions = sqliteTable('task_completions', {
 
 export type User = typeof users.$inferSelect;
 export type Tank = typeof tanks.$inferSelect;
+export type PlanRun = typeof planRuns.$inferSelect;
 export type TankParameter = typeof tankParameters.$inferSelect;
 export type Test = typeof tests.$inferSelect;
 export type Event = typeof events.$inferSelect;
