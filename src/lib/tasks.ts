@@ -253,6 +253,13 @@ export function resumeSchedule(task: Schedulable & { snoozedUntil?: string | nul
 	return { nextDue, snoozedUntil: null, endsOn };
 }
 
+/** Where a course stands (#174): "Day 3 of 14", from the day it was started to its last day. */
+export function courseDayText(startedOn: string, endsOn: string, today: string): string {
+	const of = Math.max(1, daysBetween(startedOn, endsOn) + 1);
+	const day = Math.min(of, Math.max(1, daysBetween(startedOn, today) + 1));
+	return `Day ${day} of ${of}`;
+}
+
 /** "every 7 days", "every 2 weeks", "Mon, Wed, Fri", "every day but Sun", "one-off" */
 export function intervalText(task: { recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null; kind?: string; nextDue?: string | null; endsOn?: string | null }): string {
 	const base = repeatText(task);

@@ -60,3 +60,32 @@ test('a plant keeps a health journal, and algae is logged on the tank', async ({
 	await expect(page.getByText('Red stem bunch · pinholes')).toBeVisible();
 	await expect(page.getByText('Algae · Black beard · some · on driftwood')).toBeVisible();
 });
+
+// #174: algae starts a treatment course, which shows where it stands, links back, and ends early with Undo
+test('algae starts a treatment course', async ({ page }, info) => {
+	await newKeeperWithTank(page, `algae-course-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, `/tanks/${tankId}/algae`);
+	await page.locator('label.chip', { hasText: 'Hair / thread' }).click();
+	await page.getByRole('button', { name: 'Save and start a treatment course' }).click();
+	await expect(page).toHaveURL(/\/tasks\/new\?/);
+	await expect(page.getByRole('textbox', { name: 'Task' })).toHaveValue('Treat hair / thread algae');
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('status')).toContainText('✓ Treat hair / thread algae added');
+	const row = page.locator('a.rtext', { hasText: 'Treat hair / thread algae' });
+	await expect(row).toContainText('Day 1 of 15');
+
+	// the entry links to it
+	await open(page, `/history?tank=${tankId}`);
+	await page.getByRole('link', { name: /^Algae · Hair \/ thread/ }).first().click();
+	await page.getByRole('link', { name: /Treat hair \/ thread algae · Day 1 of 15/ }).click();
+	await expect(page).toHaveURL(/\/tasks\/[\w-]+$/);
+
+	// End early, then Undo
+	await page.getByRole('button', { name: 'End early' }).click();
+	await expect(page.getByRole('status')).toContainText('Course ended early');
+	await page.getByRole('status').getByRole('button', { name: 'Undo' }).click();
+	await expect(page.getByRole('status')).toContainText('Undid Treat hair / thread algae');
+	await open(page, '/tasks');
+	await expect(page.locator('a.rtext', { hasText: 'Treat hair / thread algae' })).toBeVisible();
+});

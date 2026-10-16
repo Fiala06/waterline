@@ -9,7 +9,7 @@
 
 <TaskForm mode="edit" tanks={data.formTanks} values={form?.values ?? data.values} errors={form?.errors} products={data.products} cancelHref="/tasks" today={todayInZone(data.user.timeZone)} />
 
-<div class="done-log"><TaskDoneLog done={data.done} /></div>
+<div class="done-log"><TaskDoneLog done={data.done} course={data.course} taskId={data.taskId} /></div>
 
 <style>
 	.done-log {

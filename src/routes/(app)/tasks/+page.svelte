@@ -19,7 +19,9 @@
 	// a routine's line has its amount too: "1 pump · Mon, Wed, Fri"; a task's says how it repeats
 	// and when it was last done (#164): "every 3 days after done · last Oct 13"
 	// and a dose, the last one logged (#167): "3 mL · every 2 days · last 2 pumps · Oct 14"
-	const every = (t: (typeof data.tasks)[number]) => (isRoutine(t.kind) ? [routineLine(t), t.lastDose].filter(Boolean).join(' · ') : cadenceText(t, t.lastDone, data.today));
+	// a course leads with where it stands (#174): "Day 3 of 14 · every 2 days after done · 6 times left · ends Oct 30"
+	const every = (t: (typeof data.tasks)[number]) =>
+		[t.courseDay, isRoutine(t.kind) ? [routineLine(t), t.lastDose].filter(Boolean).join(' · ') : cadenceText(t, t.lastDone, data.today)].filter(Boolean).join(' · ');
 	// The pane posts to /tasks/[id] or /tasks/new; TaskForm puts their errors in page.form.
 	const paneForm = $derived(
 		page.form as { values?: NonNullable<typeof data.pane>['values']; errors?: Record<string, string> } | null
@@ -207,7 +209,7 @@
 						afterSave={q(data.pane.taskId ? { edit: data.pane.taskId, new: null } : { edit: null, new: null })}
 						today={data.today}
 					/>
-					{#if data.pane.mode === 'edit'}<TaskDoneLog done={data.done} />{/if}
+					{#if data.pane.mode === 'edit'}<TaskDoneLog done={data.done} course={data.course} taskId={data.pane.taskId ?? ''} />{/if}
 				{/key}
 			</div>
 		</aside>

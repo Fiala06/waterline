@@ -21,6 +21,7 @@ import { db } from './db';
 import { equipment, type User } from './db/schema';
 import { getEvent, getTest } from './logs';
 import { entryPhotos } from './photos';
+import { courseDay, coursesFrom } from './tasks';
 import { getTank, listParams } from './tanks';
 import { ALGAE_CHECKS, PLANT_SYMPTOM_CHECKS, resolveChecks, type Check } from '$lib/symptoms';
 import { isAlgaeType, isPlantObservation, PLANT_OBSERVATIONS } from '$lib/plants';
@@ -152,6 +153,8 @@ export function eventView(user: User, id: string): EntryView {
 			add('Check again', typeof d.recheck_at === 'string' ? fmtDate(d.recheck_at) : null);
 			break;
 	}
+	// the treatment course started from this entry (#174), where it stands
+	for (const t of coursesFrom(e.id)) rows.push({ label: 'Course', value: `${t.name} · ${courseDay(t, user.timeZone) ?? 'finished'}`, href: `/tasks/${t.id}` });
 	return {
 		kind: 'event',
 		id: e.id,

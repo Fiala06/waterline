@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { and, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { addDays, dateInZone, fmtDate, todayInZone } from '$lib/time';
-import { amountText, effectiveDue, intervalText, isRoutine, logCompletes, nextDueAfterCompletion, reminderSub, resumeSchedule, skipTo } from '$lib/tasks';
+import { amountText, courseDayText, effectiveDue, intervalText, isRoutine, logCompletes, nextDueAfterCompletion, reminderSub, resumeSchedule, skipTo } from '$lib/tasks';
 import { db } from './db';
 import { requireRoleOn, visibleTo } from './members';
 import { equipment, events, taskCompletions, tanks, tasks, tests, users, type Tank, type Task } from './db/schema';
@@ -305,7 +305,7 @@ export function taskOfKind(userId: string, tankId: string, kind: Task['kind']) {
 }
 
 export type TaskInput = Pick<Task, 'name' | 'kind' | 'recurring' | 'intervalDays' | 'scheduleMode' | 'nextDue' | 'openFormOnDone'> &
-	Partial<Pick<Task, 'equipmentId' | 'weekdays' | 'product' | 'amount' | 'amountUnit' | 'endsOn'>>;
+	Partial<Pick<Task, 'equipmentId' | 'weekdays' | 'product' | 'amount' | 'amountUnit' | 'endsOn' | 'fromEventId'>>;
 
 export function createTask(userId: string, tankId: string, input: TaskInput) {
 	getTank(userId, tankId, 'owner');
@@ -463,3 +463,60 @@ export function setTempCadence(userId: string, taskId: string, temp: { intervalD
 	});
 }
 
+
+// ── Courses (#174) ─────────────────────────────────────────────────────────
+
+/** A course's "Day 3 of 14", counted from the day it was made; none for a task with no end. */
+export function courseDay(task: Pick<Task, 'endsOn' | 'nextDue' | 'createdAt'>, timeZone: string): string | null {
+	if (!task.endsOn || !task.nextDue) return null;
+	return courseDayText(dateInZone(task.createdAt, timeZone), task.endsOn, todayInZone(timeZone));
+}
+
+/** End a course before its last day: nothing more is due, and History says so. Returns the note, for Undo. */
+export function endCourseEarly(userId: string, taskId: string) {
+	const task = getTask(userId, taskId);
+	requireRoleOn(userId, task.tankId, 'log');
+	if (!task.endsOn || !task.nextDue) error(400, 'This task is not a course');
+	return db.transaction((tx) => {
+		tx.update(tasks).set({ nextDue: null, snoozedUntil: null }).where(eq(tasks.id, task.id)).run();
+		return tx
+			.insert(events)
+			.values({
+				tankId: task.tankId,
+				occurredAt: new Date().toISOString(),
+				category: 'note',
+				note: `Finished early: ${isRoutine(task.kind) ? `${task.product ?? task.name} course` : task.name}`,
+				data: { system: 'course_finished', task_id: task.id, early: true, prev_next_due: task.nextDue, prev_snoozed_until: task.snoozedUntil }
+			})
+			.returning()
+			.get();
+	});
+}
+
+/** Undo ending a course early: due again where it was, the note out of History. */
+export function reopenCourse(userId: string, noteId: string) {
+	const note = db.select().from(events).where(eq(events.id, noteId)).get();
+	if (!note || note.data.system !== 'course_finished' || note.data.early !== true) error(404, 'Nothing to undo');
+	requireRoleOn(userId, note.tankId, 'log');
+	const task = getTask(userId, String(note.data.task_id));
+	db.transaction((tx) => {
+		tx.update(tasks)
+			.set({ nextDue: (note.data.prev_next_due as string) ?? null, snoozedUntil: (note.data.prev_snoozed_until as string | null) ?? null })
+			.where(eq(tasks.id, task.id))
+			.run();
+		tx.delete(events).where(eq(events.id, note.id)).run();
+	});
+	return task;
+}
+
+/** The courses started from an entry (#174), for the entry's page. */
+export function coursesFrom(eventId: string) {
+	return db.select().from(tasks).where(eq(tasks.fromEventId, eventId)).all();
+}
+
+/** The algae an entry logged, for a course started from it (#174). */
+export function algaeOf(eventId: string | null): string | null {
+	if (!eventId) return null;
+	const e = db.select({ data: events.data }).from(events).where(eq(events.id, eventId)).get();
+	return e?.data.kind === 'algae' && typeof e.data.algae === 'string' ? e.data.algae : null;
+}

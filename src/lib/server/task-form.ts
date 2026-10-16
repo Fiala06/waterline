@@ -22,6 +22,10 @@ export type Ends = 'never' | 'on' | 'times';
 
 /** What a link can fill in on the new-task form: "Start a treatment course" from a health entry. */
 export interface TaskPreset {
+	/** a course's name, from the entry it's started from (#174) */
+	name?: string | null;
+	/** the algae or health entry a course is started from (#174) */
+	entry?: string | null;
 	product?: string | null;
 	every?: string | null;
 	/** 'YYYY-MM-DD' */
@@ -39,7 +43,8 @@ export function taskFormValues(task: Task | null, user: User, tankId: string | n
 		const ends = preset.ends && isDate(preset.ends) ? preset.ends : '';
 		return {
 			type,
-			name: '',
+			name: (preset.name ?? '').slice(0, 80),
+			fromEvent: preset.entry && /^[\w-]{1,64}$/.test(preset.entry) ? preset.entry : '',
 			tankId: tankId ?? listTanks(user.id, { own: true })[0]?.id ?? '',
 			recurring: true,
 			repeat: 'every' as Repeat,
@@ -67,6 +72,7 @@ export function taskFormValues(task: Task | null, user: User, tankId: string | n
 	return {
 		type: taskType(task.kind),
 		name: task.name,
+		fromEvent: task.fromEventId ?? '',
 		tankId: task.tankId,
 		recurring: task.recurring,
 		repeat: (!task.recurring ? 'no' : days ? 'days' : 'every') as Repeat,
@@ -179,6 +185,8 @@ function parse(form: FormData, existing: Task | null) {
 			: null,
 		endsOn
 	};
+	// a course from an algae or health entry (#174): on a new task, kept on an edit
+	if (!existing) input.fromEventId = entryOn(str(form, 'fromEvent'), input.tankId);
 	return { errors, input };
 }
 
@@ -202,6 +210,7 @@ const formValues = (form: FormData, existing: Task | null) => {
 		ends: endsOf(form),
 		endsOn: str(form, 'endsOn'),
 		endsTimes: str(form, 'endsTimes'),
+		fromEvent: str(form, 'fromEvent'),
 		tempOn: form.has('tempOn'),
 		tempEvery: str(form, 'tempEvery'),
 		tempUntil: str(form, 'tempUntil')
@@ -220,13 +229,27 @@ function parseTemp(form: FormData, errors: Record<string, string>, today: string
 
 /** The new-task form's query string: ?tank, ?type, ?from and what a link fills in. */
 export function taskPreset(params: URLSearchParams): TaskPreset {
-	return { product: params.get('product'), every: params.get('every'), ends: params.get('ends'), amount: params.get('amount') };
+	return { name: params.get('name'), entry: params.get('entry'), product: params.get('product'), every: params.get('every'), ends: params.get('ends'), amount: params.get('amount') };
+}
+
+/** The entry a course comes from, when it's an entry of this tank; else none. */
+function entryOn(id: string, tankId: string): string | null {
+	if (!id) return null;
+	const e = db.select({ tankId: events.tankId }).from(events).where(eq(events.id, id)).get();
+	return e?.tankId === tankId ? id : null;
 }
 
 /** A treatment course from a health entry: a dose every other day for 10 days, from today. */
-export function courseHref(tankId: string, product: string | null, today: string, from: string) {
+export function courseHref(tankId: string, product: string | null, today: string, from: string, entry?: string) {
 	const q = new URLSearchParams({ tank: tankId, type: 'dosing', every: '2', ends: addDays(today, 10), from });
 	if (product) q.set('product', product);
+	if (entry) q.set('entry', entry);
+	return `/tasks/new?${q}`;
+}
+
+/** A treatment course from an algae entry (#174): a task every other day for two weeks, from today. */
+export function algaeCourseHref(tankId: string, algae: string, today: string, from: string, entry: string) {
+	const q = new URLSearchParams({ tank: tankId, name: `Treat ${algae.toLowerCase()} algae`.slice(0, 80), every: '2', ends: addDays(today, 14), from, entry });
 	return `/tasks/new?${q}`;
 }
 

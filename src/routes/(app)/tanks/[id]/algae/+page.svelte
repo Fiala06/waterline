@@ -41,7 +41,7 @@
 			<legend class="label">Which algae</legend>
 			<div class="chips">
 				{#each data.types as t (t)}
-					<label class="chip"><input type="radio" name="algae" value={t} defaultChecked={v?.algae === t} />{t}</label>
+					<label class="chip"><input type="radio" name="algae" value={t} defaultChecked={(v?.algae ?? data.algae) === t} />{t}</label>
 				{/each}
 			</div>
 			{#if errors.algae}<span class="error-text">✕ {errors.algae}</span>{/if}
@@ -88,6 +88,8 @@
 
 	<div class="foot">
 		<button class="btn btn-primary save" disabled={busy}>Save</button>
+		<!-- the same entry, then a task every other day for two weeks to treat it (#174) -->
+		<button class="btn course" name="then" value="course" disabled={busy}>Save and start a treatment course</button>
 		<a class="btn cancel-btn hide-phone" href={data.from}>Cancel</a>
 	</div>
 </form>
@@ -195,5 +197,11 @@
 			border: none;
 			color: var(--text-muted);
 		}
+	}
+	.course {
+		height: auto;
+		min-height: 44px;
+		padding: 10px 16px;
+		white-space: normal;
 	}
 </style>

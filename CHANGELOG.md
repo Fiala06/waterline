@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Treatment courses for algae.** [Log algae](/tanks/current/algae) now has Save and start a treatment course: a task every other day for two weeks (change it as you like), linked to the entry. Any task can be a course with an end, not just doses. A course on [Tasks](/tasks) shows where it stands ("Day 3 of 15"), its page has End early (with Undo), and the algae entry links to its course. When a course from an algae entry is done, Waterline asks how the algae looks now and opens Log algae.
+
 ## 1.16.0 · 2026-10-16
 
 - **More often for a while.** Fighting algae or ammonia? Open a task on [Tasks](/tasks) and tick More often until a date, then back to this: say every 3 days until the end of the month, and it goes back to its usual cadence by itself on that day. The row shows "every 3 days until Oct 30 · then every 7 days", and History notes when it starts and when it's back.

@@ -16,6 +16,8 @@
 	interface Values {
 		type: 'task' | 'dosing' | 'feeding';
 		name: string;
+		/** a course from an algae or health entry (#174) */
+		fromEvent?: string;
 		tankId: string;
 		recurring: boolean;
 		repeat: 'every' | 'days' | 'no';
@@ -136,6 +138,7 @@
 
 	<div class="body">
 		{#if from}<input type="hidden" name="from" value={from} />{/if}
+		{#if values.fromEvent}<input type="hidden" name="fromEvent" value={values.fromEvent} />{/if}
 		{#if mode === 'new'}
 			<fieldset class="field">
 				<legend class="sr-only">What it is</legend>
