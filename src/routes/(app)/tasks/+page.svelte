@@ -209,6 +209,23 @@
 				<button class="btn" name="doneOn" value={yesterday}>Done yesterday{picked ? ` (${picked})` : ''}</button>
 			</form>
 		{/if}
+		{#if data.waiting.length}
+			<!-- after a log (#178): no date until the log they follow is -->
+			<section>
+				<div class="sec-head"><h2 class="sec muted">Waiting · {data.waiting.length}</h2></div>
+				<div class="rows">
+					{#each data.waiting as t (t.id)}
+						<div class="row waiting" class:selected={selectedId === t.id}>
+							<a class="rtext t-link" href="/tasks/{t.id}" onclick={(e) => openEdit(e, t.id)}
+								><span class="name">{t.name}</span><span class="line"
+									><span class="when plain">– {t.text}</span><span class="meta">{tankNames[t.tankId]} · {t.follow}</span></span
+								></a
+							>
+						</div>
+					{/each}
+				</div>
+			</section>
+		{/if}
 		{#if data.paused.length}
 			<!-- paused (#172): not due, not notified, until their day; Resume picks one up now -->
 			<section>

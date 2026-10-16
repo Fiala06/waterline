@@ -6,8 +6,8 @@ import { safeReturn } from '$lib/server/redirect';
 import { listTanks } from '$lib/server/tanks';
 import { listPlanRuns } from '$lib/server/plans';
 import { routineProducts, taskFormValues, taskType } from '$lib/server/task-form';
-import { algaeOf, completeTask, needsOwnDone, countableEntry, courseDay, endCourseEarly, getTask, reopenCourse, lastDoneOn, lastDoseText, listTasks, recentCompletions, resumeTask, skipTask, snoozeTask, undoCompletion, unpauseTasks } from '$lib/server/tasks';
-import { effectiveDue } from '$lib/tasks';
+import { algaeOf, completeTask, needsOwnDone, countableEntry, courseDay, endCourseEarly, getTask, reopenCourse, lastDoneOn, waitingTasks, lastDoseText, listTasks, recentCompletions, resumeTask, skipTask, snoozeTask, undoCompletion, unpauseTasks } from '$lib/server/tasks';
+import { effectiveDue, followText, waitingText } from '$lib/tasks';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals, url }) => {
@@ -15,10 +15,12 @@ export const load: PageServerLoad = ({ locals, url }) => {
 	const filter = url.searchParams.get('filter');
 	const all = listTasks(user.id, filter ?? undefined, { paused: true });
 	const rows = all.filter((r) => !r.task.paused);
+	// after a log (#178), with no date until one's logged
+	const waiting = waitingTasks(user.id, filter ?? undefined);
 
 	// Desktop edit pane (D5): ?edit=<task id>, ?new, or else the first task in the list,
 	// so the pane is never empty (phones hide it). The task must be in the list shown.
-	const editing = rows.find((r) => r.task.id === url.searchParams.get('edit'))?.task;
+	const editing = [...rows, ...waiting].find((r) => r.task.id === url.searchParams.get('edit'))?.task;
 	let pane: { mode: 'new' | 'edit'; taskId: string | null; values: ReturnType<typeof taskFormValues> } | null = null;
 	if (!editing && url.searchParams.has('new')) {
 		pane = { mode: 'new', taskId: null, values: taskFormValues(null, user, filter, taskType(url.searchParams.get('type'))) };
@@ -36,6 +38,8 @@ export const load: PageServerLoad = ({ locals, url }) => {
 		plans: listPlanRuns(user.id, user.timeZone, filter ?? undefined).running.map((p) => ({ id: p.id, tankId: p.tankId, name: p.name, tankName: p.tankName, status: p.status })),
 		// paused (#172), listed apart with Resume
 		paused: all.filter((r) => r.task.paused).map((r) => ({ id: r.task.id, name: r.task.name, tankId: r.task.tankId, until: r.task.pausedUntil! })),
+		// waiting for the log they follow (#178)
+		waiting: waiting.map((r) => ({ id: r.task.id, name: r.task.name, tankId: r.task.tankId, text: waitingText(r.task), follow: followText(r.task) })),
 		// the pane's task: the last few times it was done (#164)
 		done: pane?.taskId ? recentCompletions(pane.taskId, user.timeZone) : [],
 		// a course (#174): where it stands, with End early

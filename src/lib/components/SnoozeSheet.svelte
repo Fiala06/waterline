@@ -26,7 +26,7 @@
 			due: string;
 			recurring?: boolean;
 			intervalDays?: number | null;
-			scheduleMode?: 'completion' | 'fixed' | 'weekdays';
+			scheduleMode?: 'completion' | 'fixed' | 'weekdays' | 'after';
 			nextDue?: string | null;
 			weekdays?: string | null;
 			endsOn?: string | null;

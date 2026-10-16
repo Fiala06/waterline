@@ -11,6 +11,10 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.17.2 · 2026-10-16
+
+- **Tasks that follow a water change.** A task's Repeat on [Tasks](/tasks) can now be After a log: the day of, or a day or more after, a water change, a dose (of one product, or any), maintenance or a water test. Logging it, from any form or a task's Done, sets the task's date, so macros the day after the water change move with it when the water change does; until then the task waits under Waiting. Moving or deleting that log moves the task with it. A task that repeats on its own can be kept off water-change day too: due the day one is logged, it moves to the next day.
+
 ## 1.17.1 · 2026-10-16
 
 - **Tap a last reading.** On [Log water test](/entries/test/new), tap the last reading beside a parameter (Last 7.2) to fill that one field with it, when only some readings match last time's.

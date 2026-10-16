@@ -1,16 +1,20 @@
 import { error } from '@sveltejs/kit';
 import { and, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { addDays, dateInZone, fmtDate, todayInZone } from '$lib/time';
-import { amountText, courseDayText, effectiveDue, intervalText, isRoutine, logCompletes, nextDueAfterCompletion, reminderSub, resumeSchedule, skipTo } from '$lib/tasks';
+import { amountText, courseDayText, effectiveDue, intervalText, isRoutine, logCompletes, nextDueAfterCompletion, reminderSub, resumeSchedule, skipTo, type TriggerKind } from '$lib/tasks';
 import { db } from './db';
 import { requireRoleOn, visibleTo } from './members';
 import { equipment, events, planRuns, taskCompletions, tanks, tasks, tests, users, type Tank, type Task } from './db/schema';
 import { getTank } from './tanks';
 
+/** The user's time zone, for a change made without one at hand. */
+export function userZone(userId: string) {
+	return db.select({ tz: users.timeZone }).from(users).where(eq(users.id, userId)).get()?.tz ?? 'UTC';
+}
+
 /** The user's today, for whether a task is paused (#172). */
 function userToday(userId: string) {
-	const u = db.select({ tz: users.timeZone }).from(users).where(eq(users.id, userId)).get();
-	return todayInZone(u?.tz ?? 'UTC');
+	return todayInZone(userZone(userId));
 }
 
 /**
@@ -115,6 +119,11 @@ export function completeTask(userId: string, taskId: string, opts: { at?: string
 		tx.update(tasks).set({ nextDue, snoozedUntil: null }).where(eq(tasks.id, taskId)).run();
 		return c;
 	});
+	// Done logged the work itself: the tasks that follow it are due from it (#178), never
+	// from a follower's own Done (chains stop after one step)
+	const kind = triggerKindOf(task.kind);
+	if (kind && completion.eventId && !opts.eventId && !opts.logged && task.scheduleMode !== 'after')
+		followLog(task.tankId, { kind, date: dateInZone(at, opts.timeZone), product: task.product, id: completion.eventId }, opts.timeZone, task.id);
 	return { ...task, nextDue, completionId: completion.id, eventId: completion.eventId };
 }
 
@@ -169,6 +178,8 @@ export function undoCompletion(userId: string, completionId: string) {
 			}
 		}
 	});
+	// the entry Done logged is gone: what followed it waits again (#178)
+	if (row.c.eventId && !db.select({ id: events.id }).from(events).where(eq(events.id, row.c.eventId)).get()) unfollowEntry(row.c.eventId);
 	return row.task;
 }
 
@@ -305,7 +316,12 @@ export function taskOfKind(userId: string, tankId: string, kind: Task['kind']) {
 }
 
 export type TaskInput = Pick<Task, 'name' | 'kind' | 'recurring' | 'intervalDays' | 'scheduleMode' | 'nextDue' | 'openFormOnDone'> &
-	Partial<Pick<Task, 'equipmentId' | 'weekdays' | 'product' | 'amount' | 'amountUnit' | 'endsOn' | 'fromEventId' | 'graceDays'>>;
+	Partial<
+		Pick<
+			Task,
+			'equipmentId' | 'weekdays' | 'product' | 'amount' | 'amountUnit' | 'endsOn' | 'fromEventId' | 'graceDays' | 'snoozedUntil' | 'triggerKind' | 'triggerOffsetDays' | 'triggerProduct' | 'triggerEntryId' | 'avoidWaterChange'
+		>
+	>;
 
 export function createTask(userId: string, tankId: string, input: TaskInput) {
 	getTank(userId, tankId, 'owner');
@@ -321,11 +337,15 @@ export function updateTask(userId: string, taskId: string, input: TaskInput & { 
 	// the schedule stays on next_due and only this occurrence moves.
 	// (the date as picked: on set days the form moves it to the next of them)
 	const same = (opts.picked ?? input.nextDue) === effectiveDue(task);
-	const schedule = same
-		? { nextDue: task.nextDue, snoozedUntil: task.snoozedUntil }
-		: opts.moveOne && task.nextDue
-			? { nextDue: task.nextDue, snoozedUntil: opts.moveOne === task.nextDue ? null : opts.moveOne }
-			: { snoozedUntil: null };
+	// after a log (#178): the form worked its date out from the log
+	const schedule =
+		input.scheduleMode === 'after'
+			? {}
+			: same
+				? { nextDue: task.nextDue, snoozedUntil: task.snoozedUntil }
+				: opts.moveOne && task.nextDue
+					? { nextDue: task.nextDue, snoozedUntil: opts.moveOne === task.nextDue ? null : opts.moveOne }
+					: { snoozedUntil: null };
 	return db.update(tasks).set({ ...input, ...schedule }).where(eq(tasks.id, taskId)).returning().get();
 }
 
@@ -541,3 +561,121 @@ export function algaeOf(eventId: string | null): string | null {
 /** Done on its own (#176): the setup review is done on its page, and a water change or test that opens its form. */
 export const needsOwnDone = (task: Pick<Task, 'kind' | 'openFormOnDone'>) =>
 	task.kind === 'review' || (task.openFormOnDone && (task.kind === 'water_change' || task.kind === 'test'));
+
+
+// ── After a log (#178) ──────────────────────────────────────────────────────
+
+/** A log a task can follow: its kind, its day, the product for a dose, and its entry. */
+export interface FollowedLog {
+	kind: TriggerKind;
+	/** 'YYYY-MM-DD' in the keeper's time zone */
+	date: string;
+	product?: string | null;
+	/** the event, or the test */
+	id: string;
+}
+
+/** The kind of log a task's own Done is, for the tasks that follow one. */
+function triggerKindOf(kind: Task['kind']): TriggerKind | null {
+	return kind === 'water_change' || kind === 'dosing' || kind === 'maintenance' || kind === 'test' ? kind : null;
+}
+
+/** The kind of log an entry is (null for the rest): a water change, a dose of a product, maintenance. */
+export function triggerOf(category: string, data: Record<string, unknown>): { kind: TriggerKind; product: string | null } | null {
+	if (category === 'water_change' || category === 'maintenance') return { kind: category, product: null };
+	if (category === 'dosing') return { kind: 'dosing', product: typeof data.product === 'string' ? data.product : null };
+	return null;
+}
+
+const sameProduct = (a: string | null | undefined, b: string | null | undefined) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/**
+ * A log on a tank: the tasks that follow its kind (a dose: of their product,
+ * or any) are due its day plus their offset, unless they've been done since
+ * or a later log counts already; a back-dated log counts from its own day.
+ * And a task kept off water-change day that's due the day of a water change
+ * moves to the next day. `exceptTaskId`: the task the log completed, never its own follower.
+ */
+export function followLog(tankId: string, log: FollowedLog, timeZone: string, exceptTaskId?: string | null) {
+	const followers = db
+		.select()
+		.from(tasks)
+		.where(and(eq(tasks.tankId, tankId), eq(tasks.scheduleMode, 'after'), eq(tasks.triggerKind, log.kind)))
+		.all();
+	for (const t of followers) {
+		if (t.id === exceptTaskId) continue;
+		if (log.kind === 'dosing' && t.triggerProduct && !sameProduct(t.triggerProduct, log.product)) continue;
+		const due = addDays(log.date, t.triggerOffsetDays ?? 0);
+		const last = lastDoneOn(t.id, timeZone);
+		if ((last && due <= last) || (t.nextDue && due < t.nextDue)) continue;
+		db.update(tasks).set({ nextDue: due, snoozedUntil: null, triggerEntryId: log.id }).where(eq(tasks.id, t.id)).run();
+	}
+	if (log.kind !== 'water_change') return;
+	const kept = db
+		.select()
+		.from(tasks)
+		.where(and(eq(tasks.tankId, tankId), eq(tasks.avoidWaterChange, true), isNotNull(tasks.nextDue)))
+		.all();
+	for (const t of kept) {
+		if (t.id === exceptTaskId || effectiveDue(t) !== log.date || lastDoneOn(t.id, timeZone) === log.date) continue;
+		db.update(tasks).set({ snoozedUntil: addDays(log.date, 1) }).where(eq(tasks.id, t.id)).run();
+	}
+}
+
+/** A log's day changed: what it set the due date of moves with it, unless done since. */
+export function refollowEntry(entryId: string, date: string) {
+	const list = db
+		.select()
+		.from(tasks)
+		.where(and(eq(tasks.triggerEntryId, entryId), eq(tasks.scheduleMode, 'after'), isNotNull(tasks.nextDue)))
+		.all();
+	for (const t of list) db.update(tasks).set({ nextDue: addDays(date, t.triggerOffsetDays ?? 0), snoozedUntil: null }).where(eq(tasks.id, t.id)).run();
+}
+
+/** A log deleted: what it set the due date of waits for the next one again. */
+export function unfollowEntry(entryId: string) {
+	db.update(tasks)
+		.set({ nextDue: null, snoozedUntil: null, triggerEntryId: null })
+		.where(and(eq(tasks.triggerEntryId, entryId), eq(tasks.scheduleMode, 'after'), isNotNull(tasks.nextDue)))
+		.run();
+}
+
+/** The tank's latest log of a kind (a dose: of a product, when it's for one). */
+function latestLog(tankId: string, kind: TriggerKind, product: string | null): { id: string; at: string } | undefined {
+	if (kind === 'test') return db.select({ id: tests.id, at: tests.takenAt }).from(tests).where(eq(tests.tankId, tankId)).orderBy(desc(tests.takenAt)).get();
+	const ofProduct = kind === 'dosing' && product ? sql`lower(trim(json_extract(${events.data}, '$.product'))) = ${product.trim().toLowerCase()}` : undefined;
+	return db
+		.select({ id: events.id, at: events.occurredAt })
+		.from(events)
+		.where(and(eq(events.tankId, tankId), eq(events.category, kind), ofProduct))
+		.orderBy(desc(events.occurredAt))
+		.get();
+}
+
+/**
+ * Where a task that follows a log starts, when it's made or what it follows
+ * changes: due from the latest such log if that day is today or still to come,
+ * else waiting for the next one. Done since that day, it waits too.
+ */
+export function followSchedule(
+	task: { id?: string; tankId: string; triggerKind: TriggerKind; triggerOffsetDays: number; triggerProduct: string | null },
+	timeZone: string
+): { nextDue: string | null; triggerEntryId: string | null } {
+	const log = latestLog(task.tankId, task.triggerKind, task.triggerKind === 'dosing' ? task.triggerProduct : null);
+	if (!log) return { nextDue: null, triggerEntryId: null };
+	const due = addDays(dateInZone(log.at, timeZone), task.triggerOffsetDays);
+	const last = task.id ? lastDoneOn(task.id, timeZone) : null;
+	if (due < todayInZone(timeZone) || (last && due <= last)) return { nextDue: null, triggerEntryId: null };
+	return { nextDue: due, triggerEntryId: log.id };
+}
+
+/** Tasks that follow a log and wait for the next one (#178): on the user's tanks, or one tank. */
+export function waitingTasks(userId: string, tankId?: string) {
+	return db
+		.select({ task: tasks, tankName: tanks.name })
+		.from(tasks)
+		.innerJoin(tanks, eq(tanks.id, tasks.tankId))
+		.where(and(visibleTo(userId), isNull(tanks.archivedAt), eq(tasks.scheduleMode, 'after'), isNull(tasks.nextDue), tankId ? eq(tasks.tankId, tankId) : undefined))
+		.orderBy(tasks.name)
+		.all();
+}
