@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.17.0 · 2026-10-16
+
 - **Treatment plans.** Start a plan from [Tasks](/tasks) (Start a treatment plan) or when you [log algae](/tanks/current/algae): a blackout, a spot treatment, a liquid carbon or medication course, or a new tank's water changes. Each starter is a place to begin: keep, rename or re-time its steps, and pick the routines it holds back (a blackout pauses ferts and feeding), seeing every date before it starts. Its steps are tasks like any other, the plan shows where it stands ("Day 3 of 19") with Extend and End early, and History notes when it starts and ends.
 
 ## 1.16.2 · 2026-10-16
