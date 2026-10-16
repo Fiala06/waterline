@@ -15,7 +15,7 @@ const { createTank } = await import('./tanks');
 const { addEquipment } = await import('./specs');
 const { createEvent, createTest } = await import('./logs');
 const { completableTask } = await import('./log-forms');
-const { algaeOf, completeTask, countableEntry, courseDay, coursesFrom, createTask, dosingRoutines, endCourseEarly, reopenCourse, getTask, lastDoneOn, lastDoseText, listTasks, pauseTasks, recentCompletions, resumeTask, setTempCadence, settleTasks, skipTask, undoCompletion, unpauseTasks } = await import('./tasks');
+const { algaeOf, completeTask, updateTask, countableEntry, courseDay, coursesFrom, createTask, dosingRoutines, endCourseEarly, reopenCourse, getTask, lastDoneOn, lastDoseText, listTasks, pauseTasks, recentCompletions, resumeTask, setTempCadence, settleTasks, skipTask, undoCompletion, unpauseTasks } = await import('./tasks');
 
 const user = upsertUser({ email: 'tasks@example.com', name: 'Keeper' });
 const tz = user.timeZone;
@@ -237,5 +237,27 @@ describe('treatment courses (#174)', () => {
 		reopenCourse(user.id, note.id);
 		expect(getTask(user.id, course.id).nextDue).toBe(today);
 		expect(db.select().from(events).where(eq(events.id, note.id)).get()).toBeUndefined();
+	});
+});
+
+describe('a fixed task\'s next date moved (#173)', () => {
+	const t = createTank(user, { name: 'Fixed tank', type: 'planted', nominalVolumeL: 60 });
+	const base = (nextDue: string) => ({ name: 'Water change', kind: 'water_change' as const, recurring: true, intervalDays: 7, scheduleMode: 'fixed' as const, nextDue, openFormOnDone: false, tankId: t.id });
+	it('Just this one keeps the schedule; From now on moves it', () => {
+		const sat = addDays(today, 5);
+		const thu = addDays(today, 3);
+		const a = createTask(user.id, t.id, base(sat));
+		updateTask(user.id, a.id, base(thu), { moveOne: thu, picked: thu });
+		expect(getTask(user.id, a.id)).toMatchObject({ nextDue: sat, snoozedUntil: thu });
+		// saved again as shown: still moved
+		updateTask(user.id, a.id, base(thu), { picked: thu });
+		expect(getTask(user.id, a.id)).toMatchObject({ nextDue: sat, snoozedUntil: thu });
+		// done on Thursday: the next one is on the schedule, a week after Saturday
+		completeTask(user.id, a.id, { timeZone: tz });
+		expect(getTask(user.id, a.id).nextDue).toBe(addDays(sat, 7));
+
+		const b = createTask(user.id, t.id, base(sat));
+		updateTask(user.id, b.id, base(thu), { picked: thu });
+		expect(getTask(user.id, b.id)).toMatchObject({ nextDue: thu, snoozedUntil: null });
 	});
 });

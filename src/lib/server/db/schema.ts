@@ -340,6 +340,8 @@ export const tasks = sqliteTable(
 		// paused (#172) from paused_from until paused_until: not due, not notified; resumes with its dates moved on
 		pausedFrom: text('paused_from'),
 		pausedUntil: text('paused_until'),
+		// days late it can be before it's overdue (#175): inside them it reads ▲ Due, not ✕ Overdue
+		graceDays: integer('grace_days').notNull().default(0),
 		// the entry a treatment course was started from (#174): an algae or health entry
 		fromEventId: text('from_event_id').references(() => events.id, { onDelete: 'set null' }),
 		equipmentId: text('equipment_id'),

@@ -152,8 +152,16 @@ export interface DueInfo {
 	section: 'overdue' | 'soon' | 'later';
 }
 
-export function dueInfo(nextDue: string, today: string): DueInfo {
+/**
+ * Where a task stands on `today`. Within its grace (#175), a day or so late
+ * is "▲ Due yesterday", still due soon; past it, "✕ Overdue".
+ */
+export function dueInfo(nextDue: string, today: string, graceDays = 0): DueInfo {
 	const days = daysBetween(today, nextDue);
+	if (days < 0 && -days <= graceDays) {
+		const n = -days;
+		return { days, level: 'warn', text: `▲ Due ${n === 1 ? 'yesterday' : `${n} days ago`}`, section: 'soon' };
+	}
 	if (days < 0) {
 		const n = -days;
 		return { days, level: 'bad', text: `✕ Overdue ${n} day${n === 1 ? '' : 's'}`, section: 'overdue' };

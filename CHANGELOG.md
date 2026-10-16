@@ -11,6 +11,9 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **A day late is fine.** A task's form on [Tasks](/tasks) now has Late is fine for: up to 3 days. Within them a late task reads ▲ Due yesterday rather than ✕ Overdue, with no overdue alert and no red mark on the tank. A new tank's water change starts with a day.
+- **Just this one.** Changing the next date of a task on a fixed calendar or on set days now asks Just this one (only that one moves; the schedule stays) or From now on (the schedule moves). A moved one says where it moved from.
+
 ## 1.16.1 · 2026-10-16
 
 - **Several done at once.** On [Tasks](/tasks), Select several puts a box on each task; tick the ones you did and tap Done (or Done yesterday), with one Undo for all of them. On the [dashboard](/), when two or more tasks are due, Mark all done does them in one tap. A water change or test that opens its form, and the setup review, still get their own Done.

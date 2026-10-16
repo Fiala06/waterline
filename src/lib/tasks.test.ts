@@ -307,3 +307,15 @@ describe('courseDayText (#174)', () => {
 		expect(courseDayText('2026-10-16', '2026-10-30', '2026-11-02')).toBe('Day 15 of 15');
 	});
 });
+
+describe('dueInfo with grace (#175)', () => {
+	it('is overdue the day after, with none', () => {
+		expect(dueInfo('2026-10-15', '2026-10-16')).toMatchObject({ section: 'overdue', level: 'bad' });
+	});
+	it('reads ▲ Due within its grace, overdue past it', () => {
+		expect(dueInfo('2026-10-15', '2026-10-16', 1)).toMatchObject({ days: -1, section: 'soon', level: 'warn', text: '▲ Due yesterday' });
+		expect(dueInfo('2026-10-14', '2026-10-16', 2)).toMatchObject({ section: 'soon', text: '▲ Due 2 days ago' });
+		expect(dueInfo('2026-10-14', '2026-10-16', 1)).toMatchObject({ section: 'overdue', text: '✕ Overdue 2 days' });
+		expect(dueInfo('2026-10-16', '2026-10-16', 3)).toMatchObject({ section: 'soon', text: '▲ Due today' });
+	});
+});

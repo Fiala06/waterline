@@ -1,0 +1,1 @@
+ALTER TABLE `tasks` ADD `grace_days` integer DEFAULT 0 NOT NULL;

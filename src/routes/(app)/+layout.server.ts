@@ -45,7 +45,7 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 	const alerts: { key: string; kind: 'task' | 'reading'; title: string; sub: string; href: string; tankId: string }[] = [];
 	const nameOf = (id: string) => tanks.find((t) => t.id === id)?.name ?? '';
 	for (const { task } of tasks) {
-		const d = dueInfo(task.due, today);
+		const d = dueInfo(task.due, today, task.graceDays);
 		if (d.section === 'overdue') {
 			overdueCount++;
 			overdueByTank.set(task.tankId, (overdueByTank.get(task.tankId) ?? 0) + 1);
@@ -148,7 +148,7 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 		quick: {
 			lastTest: lastTest ? `Last test ${fmtWhen(lastTest.takenAt, user.timeZone).replace(/^Today/, 'today').replace(/^Yesterday/, 'yesterday')}` : 'No tests yet',
 			lastTestAt: lastTest?.takenAt ?? null,
-			wcDue: wcTask ? dueInfo(wcTask.due, today) : null
+			wcDue: wcTask ? dueInfo(wcTask.due, today, wcTask.graceDays) : null
 		},
 		flash: flash ? { ...flash, id: crypto.randomUUID() } : null,
 		// the version running; a newer release only for admins, who can update the server

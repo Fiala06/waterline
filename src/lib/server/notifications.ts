@@ -189,8 +189,10 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 	// push: each task on its own, the same days as the emails
 	if (push) {
 		for (const t of tasks) {
-			const d = dueInfo(t.due, today);
-			const overdue = d.days < 0;
+			const d = dueInfo(t.due, today, t.graceDays);
+			const overdue = d.section === 'overdue';
+			// a day or so late, within its grace (#175): reminded on the day, no alert yet
+			if (!overdue && d.days < 0) continue;
 			if (overdue ? !prefs.pushOverdueAlerts : !prefs.pushTaskReminders || d.days > leadFor(t)) continue;
 			if (overdue && isRoutine(t.kind)) continue;
 			const key = `${overdue ? 'overdue' : 'reminder'}:${t.id}:${t.due}`;
@@ -202,8 +204,9 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 
 	if (prefs.delivery === 'individual') {
 		for (const t of tasks) {
-			const d = dueInfo(t.due, today);
-			const overdue = d.days < 0;
+			const d = dueInfo(t.due, today, t.graceDays);
+			const overdue = d.section === 'overdue';
+			if (!overdue && d.days < 0) continue;
 			if (overdue ? !prefs.overdueAlerts : !prefs.taskReminders || d.days > leadFor(t)) continue;
 			if (overdue && isRoutine(t.kind)) continue;
 			const key = `${overdue ? 'overdue' : 'reminder'}:${t.id}:${t.due}`;
@@ -242,22 +245,22 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 	const summary = { overdue: 0, due: 0, outOfRange: 0 };
 	for (const tank of listTanks(user.id)) {
 		const mine = (tasksIn.get(tank.id) ?? [])
-			.map((t) => ({ t, d: dueInfo(t.due, today) }))
-			.filter(({ t, d }) => (d.days < 0 ? prefs.overdueAlerts : prefs.taskReminders && d.days <= (isRoutine(t.kind) ? 0 : horizon)));
+			.map((t) => ({ t, d: dueInfo(t.due, today, t.graceDays) }))
+			.filter(({ t, d }) => (d.section === 'overdue' ? prefs.overdueAlerts : prefs.taskReminders && d.days <= (isRoutine(t.kind) ? 0 : horizon)));
 		const readings = prefs.outOfRangeAlerts && notified(tank.id, 'alert') ? badReadings(tank.id, user) : [];
 		// what stands out: with the rest of a tank's news, or on its own in the weekly digest
 		const noticed = tankNotes(tank.id, user, { limit: 3, now: now.getTime() }).map((n) => ({ text: n.text, warn: n.warn }));
 		if (!mine.length && !readings.length && !(weekly && noticed.length)) continue;
-		summary.overdue += mine.filter(({ d }) => d.days < 0).length;
-		summary.due += mine.filter(({ d }) => d.days >= 0).length;
+		summary.overdue += mine.filter(({ d }) => d.section === 'overdue').length;
+		summary.due += mine.filter(({ d }) => d.section !== 'overdue').length;
 		summary.outOfRange += readings.length;
 		tanksOut.push({
 			name: tank.name,
 			sub: tankSub(tank, user),
 			tasks: mine.map(({ t, d }) => ({
 				name: t.name,
-				due: d.days < 0 ? `✕ ${whenText(d.days).replace('Overdue by', 'Overdue')}` : d.days === 0 ? '▲ Due today' : `▲ Due ${longDate(t.due)}`,
-				level: d.days < 0 ? ('bad' as const) : ('warn' as const),
+				due: d.section === 'overdue' ? `✕ ${whenText(d.days).replace('Overdue by', 'Overdue')}` : d.days < 0 ? d.text : d.days === 0 ? '▲ Due today' : `▲ Due ${longDate(t.due)}`,
+				level: d.section === 'overdue' ? ('bad' as const) : ('warn' as const),
 				// a function, so tokens are only made when the digest is really sent
 				doneUrl: () => (t.kind === 'review' ? reviewUrl(t, base) : `${base}/e/${createActionToken(t.id, 'done', t.nextDue!)}`),
 				review: t.kind === 'review'
