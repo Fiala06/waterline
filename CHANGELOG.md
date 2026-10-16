@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.18.0 · 2026-10-16
+
 - **Suggested steps from your readings.** When a water test reads something keepers usually act on, Needs attention on the [Overview](/tanks/current) and the test's own page suggest a step, which happens only when you tap it: ammonia or nitrite in a cycled tank offers water changes every 2 days until it reads 0, nitrate at 0 in a dosed tank offers Dose now with your usual product, and low phosphate with green spot algae logged lately says why. Switch any off for a tank under [Tank setup › Suggested steps](/tanks/current/suggestions), where each says where it comes from.
 - **Until a reading clears.** [Pause tasks](/tasks) can now end sooner, when a test reads a parameter in range ("Paused until ammonia reads 0"), and so can water changes every 2 days from a suggested step. The test that clears it picks them back up, and History says why.
 
