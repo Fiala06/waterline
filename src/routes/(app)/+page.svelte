@@ -101,8 +101,9 @@
 				return { id: t.id, name: t.name, when: `✕ ${-d.days} day${d.days === -1 ? '' : 's'} over`, sub: isRoutine(t.kind) ? routineLine(t) : intervalText(t) };
 			})
 	);
-	// Due: the water change isn't listed twice when Needs attention has its row (with Done)
-	const dueTasks = $derived((data.tasks ?? []).filter((t) => !(wcDue && t.id === wcDue.taskId)));
+	// Due: every open task, soonest first, as on the Tasks page, the water change too when
+	// Needs attention has its row (as an overdue task is in both)
+	const dueTasks = $derived(data.tasks ?? []);
 	// the fun bits only when nothing's out of range or overdue
 	const calm = $derived(!cards.some((c) => c.level === 'bad') && !overdue.length && !(wcDue && (wcDue.days > wcDue.goal)));
 	const allClear = $derived(hasReadings && !attention.length && !wcDue && !overdue.length);
