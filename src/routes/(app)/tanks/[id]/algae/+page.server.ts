@@ -6,6 +6,7 @@ import { parseWhen, str } from '$lib/server/forms';
 import { logAlgae } from '$lib/server/log-plants';
 import { photoFiles, photoHints, preparePhotos, storePhotos } from '$lib/server/photos';
 import { safeReturn } from '$lib/server/redirect';
+import { algaeCourseHref } from '$lib/server/task-form';
 import { getTank } from '$lib/server/tanks';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -21,7 +22,9 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 		severities: ALGAE_SEVERITY,
 		today: todayInZone(user.timeZone),
 		now: utcToZoned(new Date(), user.timeZone),
-		from: safeReturn(url.searchParams.get('from'), `/?tank=${tank.id}`)
+		from: safeReturn(url.searchParams.get('from'), `/?tank=${tank.id}`),
+		// "How does it look now?" after a course (#174): the same algae, picked
+		algae: ALGAE_TYPES.find((t) => t === url.searchParams.get('algae')) ?? null
 	};
 };
 
@@ -38,7 +41,13 @@ export const actions: Actions = {
 		const r = logAlgae(user, tank, form, when.at);
 		if ('errors' in r) return fail(400, { errors: r.errors, values });
 		await storePhotos(tank.id, prepared, { eventId: r.eventId, takenAt: when.at });
+		const from = safeReturn(form.get('from'), `/?tank=${tank.id}`);
+		// "Save and start a treatment course" (#174): a task every other day for two weeks, linked to the entry
+		if (str(form, 'then') === 'course') {
+			setFlash(cookies, '✓ Algae logged');
+			redirect(303, algaeCourseHref(tank.id, str(form, 'algae'), todayInZone(user.timeZone), from, r.eventId));
+		}
 		setFlash(cookies, '✓ Algae logged', { view: `/entries/event/${r.eventId}` });
-		redirect(303, safeReturn(form.get('from'), `/?tank=${tank.id}`));
+		redirect(303, from);
 	}
 };

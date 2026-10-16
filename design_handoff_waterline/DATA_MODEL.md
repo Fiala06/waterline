@@ -85,6 +85,9 @@ events           id, tank_id, category(water_change|dosing|maintenance|livestock
                  --       right on the setup review; prev_checks lets Undo put the checks back)
                  -- note {system: tasks_paused, task_ids, until} / {system: tasks_resumed, task_ids}
                  -- note {system: cadence_temp, task_id, interval_days, until} / {system: cadence_back, task_id}
+                 -- note {system: course_finished, task_id, early?, prev_next_due?, prev_snoozed_until?}
+                 --       ("Finished: …" at a course's last Done; "Finished early: …" from End early,
+                 --       which Undo reopens)
                  -- note {system: task_done, task_id, task_done: true} ("Done: …", a task's
                  --       Done when nothing else logged it; Undo deletes it)
                  -- maintenance {actions:[task name], equipment_id?, prev_serviced_at?, task_id,
@@ -106,7 +109,8 @@ tasks            id, tank_id, name, kind(water_change|test|maintenance|other|dos
                  temp_interval_days?, temp_until? (#171: every temp_interval_days for what's
                  done before temp_until, then interval_days again; History notes the start
                  and the return), paused_from?, paused_until? (#172: not due or notified
-                 until paused_until; then resumed with its dates moved on), equipment_id? (the item's service reminder: the
+                 until paused_until; then resumed with its dates moved on), from_event_id? (#174:
+                 the algae or health entry a treatment course was started from), equipment_id? (the item's service reminder: the
                  equipment form sets its cadence, and a logged service completes it),
                  open_form_on_done, product?, amount?, amount_unit? (a dosing or feeding
                  routine: Done logs the dose or feeding, and Undo removes it), created_at

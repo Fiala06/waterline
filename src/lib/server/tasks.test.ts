@@ -15,7 +15,7 @@ const { createTank } = await import('./tanks');
 const { addEquipment } = await import('./specs');
 const { createEvent, createTest } = await import('./logs');
 const { completableTask } = await import('./log-forms');
-const { completeTask, countableEntry, createTask, dosingRoutines, getTask, lastDoneOn, lastDoseText, listTasks, pauseTasks, recentCompletions, resumeTask, setTempCadence, settleTasks, skipTask, undoCompletion, unpauseTasks } = await import('./tasks');
+const { algaeOf, completeTask, countableEntry, courseDay, coursesFrom, createTask, dosingRoutines, endCourseEarly, reopenCourse, getTask, lastDoneOn, lastDoseText, listTasks, pauseTasks, recentCompletions, resumeTask, setTempCadence, settleTasks, skipTask, undoCompletion, unpauseTasks } = await import('./tasks');
 
 const user = upsertUser({ email: 'tasks@example.com', name: 'Keeper' });
 const tz = user.timeZone;
@@ -209,5 +209,33 @@ describe('a cadence for a while (#171)', () => {
 		setTempCadence(user.id, wc.id, null, tz);
 		expect(getTask(user.id, wc.id).tempIntervalDays).toBeNull();
 		expect(notesOf(t.id, 'cadence_back').map((n) => n.note)).toContain('Brush algae: back to every 7 days (ended early)');
+	});
+});
+
+describe('treatment courses (#174)', () => {
+	const t = createTank(user, { name: 'Course tank', type: 'planted', nominalVolumeL: 60 });
+	it('remembers the algae entry it came from, ends early with a note, and Undo reopens it', () => {
+		const { event } = createEvent(user.id, t.id, { category: 'observation', occurredAt: new Date().toISOString(), note: null, data: { kind: 'algae', algae: 'Hair / thread', severity: 'moderate', tags: ['Algae'] } }, { timeZone: tz });
+		const course = createTask(user.id, t.id, {
+			name: 'Treat hair / thread algae',
+			kind: 'maintenance',
+			recurring: true,
+			intervalDays: 2,
+			scheduleMode: 'completion',
+			nextDue: today,
+			endsOn: addDays(today, 14),
+			fromEventId: event.id,
+			openFormOnDone: false
+		});
+		expect(coursesFrom(event.id).map((c) => c.id)).toEqual([course.id]);
+		expect(algaeOf(course.fromEventId)).toBe('Hair / thread');
+		expect(courseDay(course, tz)).toBe('Day 1 of 15');
+
+		const note = endCourseEarly(user.id, course.id);
+		expect(getTask(user.id, course.id).nextDue).toBeNull();
+		expect(note.note).toBe('Finished early: Treat hair / thread algae');
+		reopenCourse(user.id, note.id);
+		expect(getTask(user.id, course.id).nextDue).toBe(today);
+		expect(db.select().from(events).where(eq(events.id, note.id)).get()).toBeUndefined();
 	});
 });

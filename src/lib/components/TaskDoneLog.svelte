@@ -3,8 +3,35 @@
 	// a kicker over a 2px ink rule, then a row each, opening its History entry.
 	import { fmtDate } from '$lib/time';
 
-	let { done }: { done: { id: string; date: string; skipped: boolean; eventId: string | null }[] } = $props();
+	import { page } from '$app/state';
+
+	let {
+		done,
+		course = null,
+		taskId = ''
+	}: {
+		done: { id: string; date: string; skipped: boolean; eventId: string | null }[];
+		/** a course (#174): "Day 3 of 14", with End early */
+		course?: string | null;
+		taskId?: string;
+	} = $props();
+	const from = $derived(page.url.pathname + page.url.search);
 </script>
+
+{#if course && taskId}
+	<section class="log" aria-label="Course">
+		<span class="kicker rule">Course</span>
+		<div class="log-row">
+			<b>{course}</b>
+			<form method="POST" action="/tasks?/endCourse">
+				<input type="hidden" name="taskId" value={taskId} />
+				<input type="hidden" name="from" value={from} />
+				<button class="end">End early</button>
+			</form>
+		</div>
+		<span class="none">To extend it, pick a later last day under Ends.</span>
+	</section>
+{/if}
 
 <section class="log" aria-label="Last done">
 	<span class="kicker rule">Last done{done.length ? ` · ${done.length}` : ''}</span>
@@ -50,6 +77,13 @@
 		a.log-row:hover b {
 			color: var(--accent-text);
 		}
+	}
+	.end {
+		min-height: 44px;
+		padding: 0 4px;
+		font-size: 14px;
+		font-weight: 800;
+		color: var(--accent-text);
 	}
 	.none {
 		padding: 10px 0;

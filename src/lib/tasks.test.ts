@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { amountText, cadenceText, courseText, dueInfo, effectiveDue, endsAfterTimes, intervalText, intervalFor, logCompletes, nextDueAfterCompletion, occurrencesUntil, onOrAfterWeekday, parseWeekdays, reminderDue, reminderSub, resumeSchedule, routineLine, scheduleExamples, skipTo, snoozeOptions } from './tasks';
+import { amountText, cadenceText, courseDayText, courseText, dueInfo, effectiveDue, endsAfterTimes, intervalText, intervalFor, logCompletes, nextDueAfterCompletion, occurrencesUntil, onOrAfterWeekday, parseWeekdays, reminderDue, reminderSub, resumeSchedule, routineLine, scheduleExamples, skipTo, snoozeOptions } from './tasks';
 
 const weekly = { recurring: true, intervalDays: 7, scheduleMode: 'completion' as const, nextDue: '2026-09-24' };
 
@@ -297,5 +297,13 @@ describe('resumeSchedule (#172)', () => {
 		expect(resumeSchedule({ ...weekly, scheduleMode: 'fixed', nextDue: '2026-10-17' }, '2026-10-16', '2026-10-20').nextDue).toBe('2026-10-24');
 		// Wednesdays: the first one on or after Tue Oct 20 is Oct 21
 		expect(resumeSchedule({ recurring: true, intervalDays: null, scheduleMode: 'weekdays', weekdays: '3', nextDue: '2026-10-14' }, '2026-10-13', '2026-10-20').nextDue).toBe('2026-10-21');
+	});
+});
+
+describe('courseDayText (#174)', () => {
+	it('counts the days of a course, from 1, never past its end', () => {
+		expect(courseDayText('2026-10-16', '2026-10-30', '2026-10-16')).toBe('Day 1 of 15');
+		expect(courseDayText('2026-10-16', '2026-10-30', '2026-10-18')).toBe('Day 3 of 15');
+		expect(courseDayText('2026-10-16', '2026-10-30', '2026-11-02')).toBe('Day 15 of 15');
 	});
 });

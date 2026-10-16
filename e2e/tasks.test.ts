@@ -305,3 +305,35 @@ test('pause tasks until a day, with Undo and Resume', async ({ page }, info) => 
 	await expect(page.getByRole('link', { name: /^Paused Water change 25% until/ })).toHaveCount(1);
 	await expect(page.getByRole('link', { name: 'Resumed Water change 25%' })).toHaveCount(1);
 });
+
+// #176: several done at once, on Tasks and from the dashboard, with one Undo
+test('mark several tasks done at once', async ({ page }, info) => {
+	await newKeeperWithTank(page, `m7m-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	for (const n of ['Trim stems', 'Clean glass', 'Dose iron']) {
+		await open(page, `/tasks/new?tank=${tankId}`);
+		await page.getByRole('textbox', { name: 'Task' }).fill(n);
+		await page.getByRole('button', { name: 'Save' }).last().click();
+		await expect(page.getByRole('status')).toContainText(`✓ ${n} added`);
+	}
+
+	await open(page, '/tasks');
+	await page.getByRole('link', { name: 'Select several' }).click();
+	// the water change opens its form, so it's left for its own Done
+	await expect(page.locator('.row', { hasText: 'Water change 25%' })).toContainText('Opens its form');
+	await page.getByRole('checkbox', { name: 'Select Trim stems' }).check();
+	await page.getByRole('checkbox', { name: 'Select Clean glass' }).check();
+	await page.getByRole('button', { name: 'Done (2)' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ 2 done');
+	await expect(page.getByRole('heading', { name: /Due soon · 1/ })).toBeVisible();
+	await page.getByRole('status').getByRole('button', { name: 'Undo' }).click();
+	await expect(page.getByRole('status')).toContainText('Undid 2 tasks');
+	await expect(page.getByRole('heading', { name: /Due soon · 3/ })).toBeVisible();
+
+	// the dashboard: all three due today in one tap
+	await open(page, `/?tank=${tankId}`);
+	await page.getByRole('region', { name: 'Due' }).getByRole('button', { name: 'Mark all done (3)' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ 3 done');
+	await open(page, `/history?tank=${tankId}`);
+	await expect(page.getByRole('link', { name: /^(Trim stems|Clean glass|Dose iron)/ })).toHaveCount(3);
+});

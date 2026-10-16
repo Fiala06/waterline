@@ -43,7 +43,7 @@ export const actions: Actions = {
 		const from = safeReturn(form.get('from'), `/tanks/${tank.id}/livestock`);
 		setFlash(cookies, '✓ Health logged');
 		// "Save and start a treatment course": the new-routine form, filled in with the treatment
-		if (str(form, 'then') === 'course') redirect(303, courseHref(tank.id, r.treatment, todayInZone(user.timeZone), from));
+		if (str(form, 'then') === 'course') redirect(303, courseHref(tank.id, r.treatment, todayInZone(user.timeZone), from, r.eventId));
 		redirect(303, from);
 	}
 };
