@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Due matches Tasks.** In Due on the [dashboard](/), a water change that's due now shows with the tank's other tasks, as it does on the [Tasks](/tasks) page, instead of only as the Water change row in Needs attention.
+
 ## 1.15.0 · 2026-10-14
 
 - **Public page, built for getting help.** A tank's [public page](/tanks/current/public) now reads top to bottom the way someone diagnosing a problem needs it: your question first ("What I'm asking about", a new box in the page's settings), then what needs attention with its target and what it was before, then every parameter on one shared timeline with your water changes, doses and changes to the tank (new equipment, plants, losses) marked on it, so a spike the day the light changed stands out. Under that: the full water test log as a table, your setup with the light and CO₂ hours, your routine over the period (water changes, average size and gap, dosing per product), livestock with any losses, and the care log by day.
