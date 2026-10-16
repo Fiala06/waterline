@@ -140,3 +140,26 @@ test('done is logged in History, and Undo takes it out', async ({ page }, info) 
 	await open(page, `/history?tank=${tankId}`);
 	await expect(entries).toHaveCount(1);
 });
+
+// #162: done on an earlier day, from the Snooze menu; the next one counts from that day
+test('done yesterday counts the next one from yesterday', async ({ page }, info) => {
+	await newKeeperWithTank(page, `m7y-${info.project.name}`);
+	await open(page, '/tasks/new');
+	await page.getByRole('textbox', { name: 'Task' }).fill('Clean glass');
+	const today = await dateValue(page, 'nextDue');
+	// overdue, so phones show its Snooze too
+	const twoDaysAgo = new Date(Date.parse(today) - 2 * 86_400_000).toISOString().slice(0, 10);
+	await pickDate(page, 'nextDue', twoDaysAgo);
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('heading', { name: /Overdue · 1/ })).toBeVisible();
+
+	const row = page.locator('.row', { hasText: 'Clean glass' });
+	await row.getByRole('button', { name: 'Snooze', exact: true }).click();
+	await page.getByRole('button', { name: /^Done yesterday/ }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Clean glass done');
+	const href = await page.locator('a', { hasText: 'Clean glass' }).first().getAttribute('href');
+	await open(page, href!);
+	const next = await dateValue(page, 'nextDue');
+	// weekly, from yesterday: 6 days from today
+	expect(Math.round((Date.parse(next) - Date.parse(today)) / 86_400_000)).toBe(6);
+});

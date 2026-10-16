@@ -12,6 +12,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 ## Unreleased
 
 - **Done is in History.** Marking a task done on [Tasks](/tasks), the dashboard, or from an email or notification now leaves an entry in [History](/history): a maintenance task as Maintenance (and a filter's or other item's service task marks it serviced), anything else as "Done: …". Undo takes it out again.
+- **Done yesterday.** Forgot to tap Done? In a task's Snooze menu on [Tasks](/tasks), Done already? has Done yesterday and Done on a day…, so the next one counts from the day you really did it.
 
 ## 1.15.1 · 2026-10-16
 

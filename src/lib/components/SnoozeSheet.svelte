@@ -2,7 +2,9 @@
 	// Snooze (README → Screens §10): Later today, Tomorrow, In 2 days, This weekend,
 	// Next week, each with its date, and Pick a date. A 260px menu under the
 	// Snooze ▾ button on desktop, a bottom sheet on phones. Moves only this
-	// occurrence; the schedule after it stays the same.
+	// occurrence; the schedule after it stays the same. Below Skip this one,
+	// Done already (#162): done yesterday or on a day picked, so the next one
+	// counts from the day it was done.
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import DateField from './DateField.svelte';
@@ -28,6 +30,7 @@
 			nextDue?: string | null;
 			weekdays?: string | null;
 			endsOn?: string | null;
+			kind?: string;
 		} | null;
 		tankName: string;
 		today: string;
@@ -44,12 +47,17 @@
 
 	let picking = $state(false);
 	let custom = $state('');
+	let pickingDone = $state(false);
+	let doneDay = $state('');
+	const yesterday = $derived(addDays(today, -1));
 	// the server only takes dates after the due date (or after today when overdue)
 	const minDate = $derived(task ? addDays(task.due > today ? task.due : today, 1) : '');
 	$effect(() => {
 		if (open) {
 			picking = false;
 			custom = minDate;
+			pickingDone = false;
+			doneDay = yesterday;
 		}
 	});
 	const options = $derived(task ? snoozeOptions(today, task.due) : []);
@@ -65,7 +73,7 @@
 	// the menu's place on desktop: under the button, right-aligned, kept on screen
 	const menuStyle = $derived.by(() => {
 		if (!anchor) return '';
-		const top = Math.min(anchor.bottom + 6, Math.max(16, innerHeight - 420));
+		const top = Math.min(anchor.bottom + 6, Math.max(16, innerHeight - 560));
 		const right = Math.max(16, innerWidth - anchor.right);
 		return `--top:${top}px;--right:${right}px`;
 	});
@@ -122,6 +130,29 @@
 					<input type="hidden" name="from" value={from} />
 					<button class="opt skip-btn"><span>Skip this one</span><span class="sub">Next one {longDate(skipDate)}</span></button>
 				</form>
+			{/if}
+			{#if task.kind !== 'review'}
+				<div class="done-on">
+					<span class="sub-head">Done already?</span>
+					<form method="POST" action="/tasks?/done" use:enhance={submitting}>
+						<input type="hidden" name="taskId" value={task.id} />
+						<input type="hidden" name="doneOn" value={yesterday} />
+						<input type="hidden" name="from" value={from} />
+						<button class="opt"><span>Done yesterday</span><span class="date">{longDate(yesterday)}</span></button>
+					</form>
+					{#if pickingDone}
+						<form method="POST" action="/tasks?/done" class="pick" use:enhance={submitting}>
+							<input type="hidden" name="taskId" value={task.id} />
+							<input type="hidden" name="from" value={from} />
+							<div class="pick-date-field">
+								<DateField name="doneOn" bind:value={doneDay} max={today} required label="Done on" format="weekday" {today} />
+							</div>
+							<button class="btn btn-primary">Done</button>
+						</form>
+					{:else}
+						<button type="button" class="opt pick-date" onclick={() => (pickingDone = true)}><span>Done on a day…</span><span aria-hidden="true">›</span></button>
+					{/if}
+				</div>
 			{/if}
 			<p class="note">Snoozing moves only this occurrence. The schedule after it stays the same.</p>
 			<button type="button" class="btn cancel" onclick={close}>Cancel</button>
@@ -242,6 +273,20 @@
 	.skip-btn .sub {
 		font-size: 13px;
 		font-weight: 400;
+		color: var(--text-muted);
+	}
+	/* below a divider too: it was done, on another day */
+	.done-on {
+		display: flex;
+		flex-direction: column;
+		border-top: 2px solid var(--divider);
+		padding-top: 8px;
+	}
+	.sub-head {
+		font-size: 11px;
+		font-weight: 800;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
 		color: var(--text-muted);
 	}
 	.note {

@@ -1,5 +1,5 @@
 import { error, redirect } from '@sveltejs/kit';
-import { addDays, fmtDate, isDate, todayInZone } from '$lib/time';
+import { addDays, fmtDate, isDate, todayInZone, utcToZoned, zonedToUtc } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
 import { str } from '$lib/server/forms';
 import { safeReturn } from '$lib/server/redirect';
@@ -42,6 +42,11 @@ export const actions: Actions = {
 		const taskId = str(form, 'taskId');
 		if (!taskId) error(400, 'Missing task');
 		const task = getTask(user.id, taskId);
+		// Done on an earlier day (#162): that day, at this time of day, so the next one counts from it
+		const today = todayInZone(user.timeZone);
+		const doneOn = str(form, 'doneOn');
+		if (doneOn && (!isDate(doneOn) || doneOn > today)) error(400, `Pick a day on or before ${fmtDate(today)}`);
+		const earlier = doneOn && doneOn < today ? doneOn : null;
 
 		// The setup review (#30) is done on its own page, where the parts are checked.
 		if (task.kind === 'review') redirect(303, `/tanks/${task.tankId}/review`);
@@ -49,13 +54,15 @@ export const actions: Actions = {
 		// Completing a water change or test opens the matching log form.
 		if (task.openFormOnDone && (task.kind === 'water_change' || task.kind === 'test')) {
 			const q = new URLSearchParams({ tank: task.tankId, task: task.id });
+			if (earlier) q.set('date', earlier);
 			if (task.kind === 'test') redirect(303, `/entries/test/new?${q}`);
 			q.set('category', 'water_change');
 			redirect(303, `/entries/event/new?${q}`);
 		}
 
-		const done = completeTask(user.id, taskId, { timeZone: user.timeZone });
-		setFlash(cookies, `✓ ${task.name} done${done.nextDue ? ` · next ${fmtDate(done.nextDue)}` : ''}`, {
+		const at = earlier ? zonedToUtc(earlier, utcToZoned(new Date(), user.timeZone).time, user.timeZone).toISOString() : undefined;
+		const done = completeTask(user.id, taskId, { at, timeZone: user.timeZone });
+		setFlash(cookies, `✓ ${task.name} done${earlier ? ` ${fmtDate(earlier)}` : ''}${done.nextDue ? ` · next ${fmtDate(done.nextDue)}` : ''}`, {
 			undo: { action: '/tasks?/undo', name: 'completionId', value: done.completionId }
 		});
 		redirect(303, safeReturn(form.get('from'), '/tasks'));
