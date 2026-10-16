@@ -90,3 +90,19 @@ test('a saved product is offered on Log › Dose', async ({ page }, info) => {
 	await expect(page.getByLabel('Product', { exact: true })).toHaveValue('Thrive S');
 	await expect(page.getByRole('link', { name: /Reorder Thrive S/ })).toHaveAttribute('href', 'https://shop.example.com/thrive-s');
 });
+
+// #169: a water change's "What went in" suggests saved products too, not only the tank's own
+test("a water change's additives suggest saved products", async ({ page }, info) => {
+	await newKeeperWithTank(page, `additives-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, '/settings/products');
+	await page.locator('#add-name').fill('Salty Shrimp GH/KH+');
+	await page.locator('#add-url').fill('https://shop.example.com/salty-shrimp');
+	await page.getByRole('button', { name: 'Add product' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Salty Shrimp GH/KH+ saved');
+
+	await open(page, `/entries/event/new?tank=${tankId}&category=water_change`);
+	const addRow = page.getByRole('button', { name: /Add conditioner or remineraliser/ });
+	if (!(await page.getByLabel('Product').count())) await addRow.click();
+	await expect(page.locator('#recent-additives option[value="Salty Shrimp GH/KH+"]')).toHaveCount(1);
+});

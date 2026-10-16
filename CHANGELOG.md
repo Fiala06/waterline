@@ -11,6 +11,10 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.15.3 · 2026-10-16
+
+- **Your products in water changes.** On [Log water change](/entries/event/new?category=water_change), What went in now suggests the products you saved under [Settings › Products](/settings/products) as well as what the tank has used before, so a remineraliser or conditioner you haven't logged on that tank yet is there to pick.
+
 ## 1.15.2 · 2026-10-16
 
 - **Done is in History.** Marking a task done on [Tasks](/tasks), the dashboard, or from an email or notification now leaves an entry in [History](/history): a maintenance task as Maintenance (and a filter's or other item's service task marks it serviced), anything else as "Done: …". Undo takes it out again.
