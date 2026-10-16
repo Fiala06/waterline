@@ -44,6 +44,7 @@
 			name: 'Forms',
 			keys: [
 				['⌘↵', 'Save the open form'],
+				['↵', 'Next reading in a water test'],
 				['Esc', 'Close the top sheet or menu']
 			]
 		}

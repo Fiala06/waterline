@@ -182,6 +182,24 @@
 		if (el.value !== v) el.value = v;
 	}
 
+	// Tab and Enter go from one reading to the next (#184), past a kit's Start
+	// and Steps and the next name's ⓘ; Shift+Tab still reaches those. Enter
+	// never saves the test: after the last reading it goes on to the note.
+	function nextReading(e: KeyboardEvent) {
+		if ((e.key !== 'Tab' && e.key !== 'Enter') || e.altKey || e.ctrlKey || e.metaKey || e.isComposing) return;
+		const back = e.shiftKey;
+		if (e.key === 'Tab' && back) return;
+		if (e.key === 'Enter') e.preventDefault();
+		const el = e.currentTarget as HTMLInputElement;
+		// the folded "N more parameters" aren't on screen until opened
+		const all = [...(el.form?.querySelectorAll<HTMLInputElement>('input[name^="v_"]') ?? [])].filter((i) => !i.closest('details:not([open])'));
+		const to = all[all.indexOf(el) + (back ? -1 : 1)] ?? (e.key === 'Enter' && !back ? el.form?.querySelector<HTMLInputElement>('input[name="note"]') : null);
+		if (!to) return;
+		e.preventDefault();
+		to.focus();
+		to.select();
+	}
+
 	// The whole box is the tap target, also where the value doesn't reach.
 	function focusField(e: MouseEvent) {
 		if (!(e.target instanceof HTMLInputElement)) (e.currentTarget as HTMLElement).querySelector('input')?.focus();
@@ -224,10 +242,12 @@
 								id="v_{r.id}"
 								name="v_{r.id}"
 								inputmode="decimal"
+								enterkeyhint="next"
 								autocomplete="off"
 								placeholder="–"
 								value={r.raw}
 								oninput={(e) => clean(r.id, e)}
+								onkeydown={nextReading}
 								aria-describedby={[`last_${r.id}`, mode === 'new' && r.st ? `s_${r.id}` : ''].filter(Boolean).join(' ')}
 								aria-invalid={r.st?.level === 'bad' || !!fieldErrors[r.id]}
 							/>
@@ -240,6 +260,15 @@
 								<span class="st status-ok" aria-hidden="true">⏱</span>
 							{:else if mode === 'new' && r.st}
 								<span class="st status-{r.st.level}" aria-hidden="true">{r.st.level === 'ok' ? '✓' : statusShort(r.st)}</span>
+							{:else if mode === 'new' && r.last && r.lastInput != null}
+								<!-- tap to use it (#183); out of the Tab order, "Use last readings" does all of them -->
+								<button
+									type="button"
+									class="lastv"
+									tabindex="-1"
+									aria-label="Use {r.lastValue.toLowerCase()} for {r.name}"
+									onclick={() => (draft[r.id] = r.lastInput!)}>{r.lastValue}</button
+								>
 							{:else if mode === 'new' && r.last}
 								<span class="lastv">{r.lastValue}</span>
 							{/if}
@@ -706,6 +735,31 @@
 	.lastv {
 		color: var(--text-muted);
 		white-space: nowrap;
+	}
+	/* the whole flag beside an empty field is the tap target, 44px tall */
+	.flag:has(> button.lastv) {
+		position: relative;
+		align-self: stretch;
+		justify-content: center;
+	}
+	button.lastv {
+		align-self: flex-start;
+		padding: 0;
+		border: none;
+		background: none;
+		font: inherit;
+		text-align: left;
+		text-decoration: underline dotted;
+		text-underline-offset: 3px;
+		cursor: pointer;
+	}
+	button.lastv::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+	}
+	button.lastv:hover {
+		color: var(--text);
 	}
 	.msg {
 		font-size: 13px;
