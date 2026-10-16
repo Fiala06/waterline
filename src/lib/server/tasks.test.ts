@@ -3,13 +3,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { eq } from 'drizzle-orm';
 import { describe, expect, it, vi } from 'vitest';
-import { addDays, todayInZone } from '$lib/time';
+import { addDays, fmtDate, todayInZone } from '$lib/time';
 
 // a database of its own, with every migration
 const dir = mkdtempSync(join(tmpdir(), 'wl-tasks-'));
 vi.mock('$env/dynamic/private', () => ({ env: { DATA_DIR: dir } }));
 const { db } = await import('./db');
-const { equipment, events, tasks } = await import('./db/schema');
+const { equipment, events, tankParameters, tasks } = await import('./db/schema');
 const { upsertUser } = await import('./users');
 const { createTank } = await import('./tanks');
 const { addEquipment } = await import('./specs');
@@ -369,5 +369,80 @@ describe('tasks that follow another log (#178)', () => {
 		const wc = createEvent(user.id, p2.id, { category: 'water_change', occurredAt: at(1), note: null, data: {} }, { timeZone: tz }).event;
 		expect(followSchedule({ ...input, triggerOffsetDays: 1 }, tz)).toEqual({ nextDue: today, triggerEntryId: wc.id });
 		expect(followSchedule({ ...input, triggerOffsetDays: 0 }, tz)).toEqual({ nextDue: null, triggerEntryId: null });
+	});
+});
+
+describe('until a reading clears (#179)', () => {
+	const tankC = createTank(user, { name: 'Clear tank', type: 'planted', nominalVolumeL: 60 });
+	const params = db.select().from(tankParameters).where(eq(tankParameters.tankId, tankC.id)).all();
+	const nh3 = params.find((p) => p.key === 'nh3')!;
+	const test = (value: number, at = new Date().toISOString()) => createTest(user.id, tankC.id, { takenAt: at, note: null, readings: new Map([[nh3.id, value]]) }, { timeZone: tz });
+	const notes = () => db.select().from(events).where(eq(events.tankId, tankC.id)).all().map((e) => e.note);
+	const task = (name: string) => createTask(user.id, tankC.id, { name, kind: 'other', recurring: true, intervalDays: 7, scheduleMode: 'completion', nextDue: addDays(today, 1), openFormOnDone: false });
+
+	it('a pause until ammonia reads 0 ends with the test that reads it, saying why', () => {
+		const ferts = task('Dose ferts');
+		pauseTasks(user.id, [ferts.id], addDays(today, 30), tz, nh3.id);
+		expect(getTask(user.id, ferts.id)).toMatchObject({ pausedUntil: addDays(today, 30), pausedUntilParam: nh3.id });
+		expect(notes()).toContain(`Paused Dose ferts until ammonia reads 0, ${fmtDate(addDays(today, 30))} at the latest`);
+		test(0.5);
+		expect(getTask(user.id, ferts.id).pausedUntil).toBe(addDays(today, 30));
+		test(0);
+		expect(getTask(user.id, ferts.id)).toMatchObject({ pausedUntil: null, pausedUntilParam: null });
+		expect(notes()).toContain('Resumed Dose ferts: ammonia reads 0');
+	});
+
+	it('a test from before the pause began leaves it paused', () => {
+		const feed = task('Feed');
+		pauseTasks(user.id, [feed.id], addDays(today, 10), tz, nh3.id);
+		test(0, `${addDays(today, -3)}T12:00:00.000Z`);
+		expect(getTask(user.id, feed.id).pausedUntilParam).toBe(nh3.id);
+	});
+
+	it('a cadence for a while until ammonia reads 0 goes back to the usual when it does', () => {
+		const wc = task('Water change');
+		setTempCadence(user.id, wc.id, { intervalDays: 2, until: addDays(today, 14), untilParamId: nh3.id }, tz);
+		expect(getTask(user.id, wc.id)).toMatchObject({ tempIntervalDays: 2, tempUntilParam: nh3.id });
+		expect(notes()).toContain(`Water change: every 2 days until ammonia reads 0 (${fmtDate(addDays(today, 14))} at the latest), then every 7 days`);
+		// saved again from its form, the reading it waits on stays
+		setTempCadence(user.id, wc.id, { intervalDays: 2, until: addDays(today, 14) }, tz);
+		expect(getTask(user.id, wc.id).tempUntilParam).toBe(nh3.id);
+		test(0);
+		expect(getTask(user.id, wc.id)).toMatchObject({ tempIntervalDays: null, tempUntil: null, tempUntilParam: null });
+		expect(notes()).toContain('Water change: back to every 7 days: ammonia reads 0');
+	});
+});
+
+describe('suggested steps for a tank (#179)', async () => {
+	const { tankSuggestions, setSuggestion } = await import('./suggestions');
+	const { getTank } = await import('./tanks');
+	const old = createTank(user, { name: 'Old tank', type: 'planted', nominalVolumeL: 60, startDate: '2025-01-01' });
+	const params = db.select().from(tankParameters).where(eq(tankParameters.tankId, old.id)).all();
+	const nh3 = params.find((p) => p.key === 'nh3')!;
+	const no3 = params.find((p) => p.key === 'no3')!;
+
+	it("suggests the new tank's own water change for ammonia once it's past cycling", () => {
+		const [s] = tankSuggestions(user, getTank(user.id, old.id), new Map([[nh3.id, 0.5]]));
+		expect(s).toMatchObject({ rule: 'water_change_until_clear', action: { every: 2 } });
+		expect(getTask(user.id, (s as { action: { taskId: string } }).action.taskId).name).toBe('Water change 25%');
+		// a tank started this month may still be cycling: nothing yet
+		const fresh = createTank(user, { name: 'Fresh tank', type: 'planted', nominalVolumeL: 60 });
+		const freshNh3 = db.select().from(tankParameters).where(eq(tankParameters.tankId, fresh.id)).all().find((p) => p.key === 'nh3')!;
+		expect(tankSuggestions(user, getTank(user.id, fresh.id), new Map([[freshNh3.id, 0.5]]))).toEqual([]);
+	});
+
+	it('nitrate at 0: Dose now once the tank is dosed, with its routine’s product', () => {
+		const zero = new Map([[no3.id, 0]]);
+		expect(tankSuggestions(user, getTank(user.id, old.id), zero)).toEqual([]);
+		createTask(user.id, old.id, { name: 'Dose Easy Green', kind: 'dosing', product: 'Easy Green', amount: 1, amountUnit: 'pumps', recurring: true, intervalDays: 7, scheduleMode: 'completion', nextDue: today, openFormOnDone: false });
+		expect(tankSuggestions(user, getTank(user.id, old.id), zero)[0]).toMatchObject({ rule: 'dose_nitrate', link: { href: expect.stringContaining('product=Easy+Green') } });
+	});
+
+	it('switched off for the tank, and back on', () => {
+		const zero = new Map([[no3.id, 0]]);
+		setSuggestion(old.id, 'dose_nitrate', false);
+		expect(tankSuggestions(user, getTank(user.id, old.id), zero)).toEqual([]);
+		setSuggestion(old.id, 'dose_nitrate', true);
+		expect(tankSuggestions(user, getTank(user.id, old.id), zero)).toHaveLength(1);
 	});
 });

@@ -60,7 +60,7 @@
 							label: 'Tank setup',
 							href: `${base}/settings`,
 							// Notes & routines (/tanks/[id]) is a Setup page too
-							active: under('settings') || under('targets') || under('public') || under('review') || under('remind') || under('import') || under('sharing') || routeId === '/(app)/tanks/[id]/(tabs)'
+							active: under('settings') || under('targets') || under('public') || under('review') || under('suggestions') || under('remind') || under('import') || under('sharing') || routeId === '/(app)/tanks/[id]/(tabs)'
 						}
 					]
 				: [])
@@ -109,6 +109,7 @@
 				'/(app)/tanks/[id]/plans': 'Treatment plans',
 				'/(app)/tanks/[id]/plans/new': 'Start a plan',
 				'/(app)/tanks/[id]/review': 'Setup review',
+				'/(app)/tanks/[id]/suggestions': 'Suggested steps',
 				'/(app)/tanks/[id]/spending/new': 'Add expense',
 				'/(app)/tanks/[id]/spending/[eid]': 'Edit expense',
 				'/(app)/tanks/[id]/targets': 'Parameters & targets',
@@ -523,7 +524,8 @@
 							{ href: `/tanks/${current.id}/sharing`, label: `Sharing${data.counts.members ? ` · ${data.counts.members}` : ''}`, on: routeId.endsWith('/sharing') },
 							{ href: `/tanks/${current.id}/remind`, label: 'Remind me', on: routeId.endsWith('/remind') },
 							{ href: `/tanks/${current.id}`, label: 'Notes & routines', on: routeId === '/(app)/tanks/[id]/(tabs)' },
-							{ href: `/tanks/${current.id}/review`, label: 'Setup review', on: routeId.endsWith('/review') }
+							{ href: `/tanks/${current.id}/review`, label: 'Setup review', on: routeId.endsWith('/review') },
+							{ href: `/tanks/${current.id}/suggestions`, label: 'Suggested steps', on: routeId.endsWith('/suggestions') }
 						] as s (s.href)}
 							<a href={s.href} class:active={s.on} aria-current={s.on ? 'page' : undefined}>{s.label}</a>
 						{/each}

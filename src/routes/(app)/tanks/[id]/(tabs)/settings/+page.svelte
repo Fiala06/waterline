@@ -355,6 +355,7 @@
 			<a href="/tanks/{data.tank.id}/public"><span>Public page</span><span class="muted">{data.publicLive ? '● Live' : 'Off'} ›</span></a>
 			<a href="/tanks/{data.tank.id}/remind"><span>Reminders</span><span class="muted">›</span></a>
 			<a href="/tanks/{data.tank.id}/review"><span>Setup review</span><span class="muted">›</span></a>
+			<a href="/tanks/{data.tank.id}/suggestions"><span>Suggested steps</span><span class="muted">›</span></a>
 		</nav>
 
 		{#if !data.tank.archived}

@@ -224,13 +224,15 @@ export function cadenceText(
 		endsOn?: string | null;
 		tempIntervalDays?: number | null;
 		tempUntil?: string | null;
+		/** or sooner, until a reading clears (#179): "ammonia reads 0" */
+		tempClear?: string | null;
 	} & Follows,
 	lastDone?: string | null,
 	today?: string
 ): string {
 	// for a while (#171): "every 3 days until Oct 30 · then every 7 days"
 	if (task.recurring && task.tempIntervalDays && task.tempUntil && (!today || today < task.tempUntil)) {
-		const temp = `${repeatText({ ...task, intervalDays: task.tempIntervalDays })} until ${fmtDate(task.tempUntil)} · then ${repeatText(task)}`;
+		const temp = `${repeatText({ ...task, intervalDays: task.tempIntervalDays })} until ${task.tempClear ?? fmtDate(task.tempUntil)} · then ${repeatText(task)}`;
 		return [temp, lastDone ? `last ${fmtDate(lastDone)}` : null].filter(Boolean).join(' · ');
 	}
 	// after a log (#178): "1 day after a water change · last Oct 13"

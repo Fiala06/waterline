@@ -20,7 +20,7 @@ import {
 import { latestSamplesFor, outOfRangeSince } from './sensors';
 import { getTank } from './tanks';
 import { dateInZone } from '$lib/time';
-import { completeTask, followLog, refollowEntry, triggerOf, unfollowEntry, userZone } from './tasks';
+import { clearByTest, completeTask, followLog, refollowEntry, triggerOf, unfollowEntry, userZone } from './tasks';
 import { followEntryDate, removeEntryPhotoFiles } from './photos';
 
 // ── Tests ───────────────────────────────────────────────────────────────────
@@ -73,6 +73,8 @@ export function createTest(
 	// the tasks that follow a water test (#178), unless it's an import or a follower's own
 	if (!input.importId && done?.scheduleMode !== 'after')
 		followLog(tankId, { kind: 'test', date: dateInZone(input.takenAt, opts.timeZone), id: test.id }, opts.timeZone, done?.id);
+	// a pause or a cadence for a while that lasts until a reading clears (#179)
+	if (!input.importId) clearByTest(tankId, input.readings, dateInZone(input.takenAt, opts.timeZone), opts.timeZone);
 	return { test, ...summarize(test.id, params), duplicate: false };
 }
 

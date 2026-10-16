@@ -45,6 +45,14 @@
 				<label class="label" for="pause-until">Until</label>
 				<DateField name="until" id="pause-until" bind:value={until} required label="Until" format="weekday" min={data.today} today={data.today} />
 			</div>
+			<!-- or sooner, until a reading clears (#179): "until ammonia reads 0" -->
+			<div class="field">
+				<label class="label" for="pause-param">Or sooner, when a test reads in range</label>
+				<select class="input" id="pause-param" name="param" value={form?.values?.param ?? data.param}>
+					<option value="">No: just the day</option>
+					{#each data.clears as p (p.id)}<option value={p.id}>{p.text}</option>{/each}
+				</select>
+			</div>
 			<p class="hint">
 				Paused tasks aren't due and send no reminders. On {until ? fmtDate(until) : 'that day'} they pick up again: one that fell due meanwhile moves on by the days it was paused, and a course ends that much later. History notes both.
 			</p>

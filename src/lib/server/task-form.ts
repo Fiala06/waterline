@@ -7,6 +7,7 @@ import { addDays, isDate, todayInZone } from '$lib/time';
 import { db } from './db';
 import { events, tanks, type Task, type User } from './db/schema';
 import { listProducts } from './products';
+import { clearTextOf } from './suggestions';
 import { setFlash } from './flash';
 import { num, str } from './forms';
 import { listTanks } from './tanks';
@@ -64,6 +65,7 @@ export function taskFormValues(task: Task | null, user: User, tankId: string | n
 			tempOn: false,
 			tempEvery: '',
 			tempUntil: '',
+			tempClear: null as string | null,
 			graceDays: '0',
 			triggerKind: 'water_change' as TriggerKind,
 			triggerOffset: '1',
@@ -99,6 +101,8 @@ export function taskFormValues(task: Task | null, user: User, tankId: string | n
 		tempOn: !!(task.tempIntervalDays && task.tempUntil),
 		tempEvery: task.tempIntervalDays ? String(task.tempIntervalDays) : '',
 		tempUntil: task.tempUntil ?? '',
+		// or sooner, until a reading clears (#179)
+		tempClear: clearTextOf(task.tempUntilParam),
 		graceDays: String(task.graceDays ?? 0),
 		triggerKind: (isTriggerKind(task.triggerKind) ? task.triggerKind : 'water_change') as TriggerKind,
 		triggerOffset: String(task.triggerOffsetDays ?? 1),
@@ -252,6 +256,7 @@ const formValues = (form: FormData, existing: Task | null) => {
 		tempOn: form.has('tempOn'),
 		tempEvery: str(form, 'tempEvery'),
 		tempUntil: str(form, 'tempUntil'),
+		tempClear: existing ? clearTextOf(existing.tempUntilParam) : null,
 		graceDays: str(form, 'graceDays') || '0',
 		triggerKind: (isTriggerKind(str(form, 'triggerKind')) ? str(form, 'triggerKind') : 'water_change') as TriggerKind,
 		triggerOffset: str(form, 'triggerOffset') || '1',

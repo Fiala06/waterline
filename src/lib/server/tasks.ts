@@ -2,9 +2,10 @@ import { error } from '@sveltejs/kit';
 import { and, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { addDays, dateInZone, fmtDate, todayInZone } from '$lib/time';
 import { amountText, courseDayText, effectiveDue, intervalText, isRoutine, logCompletes, nextDueAfterCompletion, reminderSub, resumeSchedule, skipTo, type TriggerKind } from '$lib/tasks';
+import { clearText, readingClears } from '$lib/suggestions';
 import { db } from './db';
 import { requireRoleOn, visibleTo } from './members';
-import { equipment, events, planRuns, taskCompletions, tanks, tasks, tests, users, type Tank, type Task } from './db/schema';
+import { equipment, events, planRuns, tankParameters, taskCompletions, tanks, tasks, tests, users, type Tank, type Task } from './db/schema';
 import { getTank } from './tanks';
 
 /** The user's time zone, for a change made without one at hand. */
@@ -370,20 +371,24 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
  * Pause tasks until a day (#172): not due and not notified meanwhile. Each
  * tank gets one History note; it's returned so Undo can take it back out.
  */
-export function pauseTasks(userId: string, taskIds: string[], until: string, timeZone: string) {
+export function pauseTasks(userId: string, taskIds: string[], until: string, timeZone: string, untilParamId: string | null = null) {
 	const today = todayInZone(timeZone);
 	if (until <= today) error(400, `Pick a day after ${fmtDate(today)}`);
 	const list = taskIds.map((id) => getTask(userId, id));
 	for (const t of list) requireRoleOn(userId, t.tankId, 'log');
+	// or sooner, until a reading clears (#179): a parameter of the tank's
+	const param = untilParamId ? db.select().from(tankParameters).where(eq(tankParameters.id, untilParamId)).get() : undefined;
 	const notes = db.transaction(() => {
-		for (const t of list) db.update(tasks).set({ pausedFrom: today, pausedUntil: until }).where(eq(tasks.id, t.id)).run();
-		return [...Map.groupBy(list, (t) => t.tankId)].map(([tankId, ts]) =>
-			systemNote(tankId, ts.length === 1 ? `Paused ${ts[0].name} until ${fmtDate(until)}` : `Paused ${plural(ts.length, 'task')} until ${fmtDate(until)}`, {
-				system: 'tasks_paused',
-				task_ids: ts.map((t) => t.id),
-				until
-			})
-		);
+		for (const t of list)
+			db.update(tasks)
+				.set({ pausedFrom: today, pausedUntil: until, pausedUntilParam: param?.tankId === t.tankId ? param.id : null })
+				.where(eq(tasks.id, t.id))
+				.run();
+		return [...Map.groupBy(list, (t) => t.tankId)].map(([tankId, ts]) => {
+			const what = ts.length === 1 ? ts[0].name : plural(ts.length, 'task');
+			const when = param?.tankId === tankId ? `until ${clearText(param)}, ${fmtDate(until)} at the latest` : `until ${fmtDate(until)}`;
+			return systemNote(tankId, `Paused ${what} ${when}`, { system: 'tasks_paused', task_ids: ts.map((t) => t.id), until });
+		});
 	});
 	return { tasks: list, noteIds: notes.map((n) => n.id) };
 }
@@ -396,7 +401,7 @@ export function unpauseTasks(userId: string, noteIds: string[]) {
 		requireRoleOn(userId, note.tankId, 'log');
 		const ids = (note.data.task_ids as string[] | undefined) ?? [];
 		db.transaction(() => {
-			for (const t of ids) db.update(tasks).set({ pausedFrom: null, pausedUntil: null }).where(and(eq(tasks.id, t), eq(tasks.tankId, note.tankId))).run();
+			for (const t of ids) db.update(tasks).set({ pausedFrom: null, pausedUntil: null, pausedUntilParam: null }).where(and(eq(tasks.id, t), eq(tasks.tankId, note.tankId))).run();
 			db.delete(events).where(eq(events.id, note.id)).run();
 		});
 	}
@@ -407,15 +412,16 @@ export function unpauseTasks(userId: string, noteIds: string[]) {
  * resumed early): their dates move on by the days paused (`resumeSchedule`),
  * and each tank's History says so.
  */
-function resumeTasks(list: Task[], resumeOn: string) {
+function resumeTasks(list: Task[], resumeOn: string, why?: string) {
 	if (!list.length) return;
 	db.transaction(() => {
 		for (const t of list) {
 			const at = resumeSchedule(t, t.pausedFrom ?? resumeOn, resumeOn);
-			db.update(tasks).set({ ...at, pausedFrom: null, pausedUntil: null }).where(eq(tasks.id, t.id)).run();
+			db.update(tasks).set({ ...at, pausedFrom: null, pausedUntil: null, pausedUntilParam: null }).where(eq(tasks.id, t.id)).run();
 		}
+		// a reading that cleared it (#179) says why: "Resumed Dose ferts: ammonia reads 0"
 		for (const [tankId, ts] of Map.groupBy(list, (t) => t.tankId))
-			systemNote(tankId, ts.length === 1 ? `Resumed ${ts[0].name}` : `Resumed ${plural(ts.length, 'task')}`, { system: 'tasks_resumed', task_ids: ts.map((t) => t.id) });
+			systemNote(tankId, `Resumed ${ts.length === 1 ? ts[0].name : plural(ts.length, 'task')}${why ? `: ${why}` : ''}`, { system: 'tasks_resumed', task_ids: ts.map((t) => t.id) });
 	});
 }
 
@@ -458,10 +464,11 @@ export function settleTasks(userId: string, timeZone: string) {
 }
 
 /** Back to the usual cadence (#171), with a note in History. */
-function endTempCadence(task: Task, early = false) {
+function endTempCadence(task: Task, early = false, why?: string) {
 	db.transaction(() => {
-		db.update(tasks).set({ tempIntervalDays: null, tempUntil: null }).where(eq(tasks.id, task.id)).run();
-		systemNote(task.tankId, `${task.name}: back to ${intervalText({ ...task, endsOn: null })}${early ? ' (ended early)' : ''}`, { system: 'cadence_back', task_id: task.id });
+		db.update(tasks).set({ tempIntervalDays: null, tempUntil: null, tempUntilParam: null }).where(eq(tasks.id, task.id)).run();
+		const reason = why ? `: ${why}` : early ? ' (ended early)' : '';
+		systemNote(task.tankId, `${task.name}: back to ${intervalText({ ...task, endsOn: null })}${reason}`, { system: 'cadence_back', task_id: task.id });
 	});
 }
 
@@ -470,7 +477,7 @@ function endTempCadence(task: Task, early = false) {
  * change goes in History, and starting one brings the next date in when the
  * tighter cadence counts sooner from the last time it was done.
  */
-export function setTempCadence(userId: string, taskId: string, temp: { intervalDays: number; until: string } | null, timeZone: string) {
+export function setTempCadence(userId: string, taskId: string, temp: { intervalDays: number; until: string; untilParamId?: string | null } | null, timeZone: string) {
 	const task = getTask(userId, taskId);
 	requireRoleOn(userId, task.tankId, 'owner');
 	const today = todayInZone(timeZone);
@@ -479,10 +486,14 @@ export function setTempCadence(userId: string, taskId: string, temp: { intervalD
 		if (was) endTempCadence(task, was.until > today);
 		return;
 	}
-	if (was && was.intervalDays === temp.intervalDays && was.until === temp.until) return;
+	// or sooner, until a reading clears (#179); left out, it stays as it was
+	const paramId = temp.untilParamId === undefined ? task.tempUntilParam : temp.untilParamId;
+	const param = paramId ? db.select().from(tankParameters).where(and(eq(tankParameters.id, paramId), eq(tankParameters.tankId, task.tankId))).get() : undefined;
+	if (was && was.intervalDays === temp.intervalDays && was.until === temp.until && (param?.id ?? null) === task.tempUntilParam) return;
 	const every = intervalText({ recurring: true, intervalDays: temp.intervalDays });
+	const until = param ? `until ${clearText(param)} (${fmtDate(temp.until)} at the latest)` : `until ${fmtDate(temp.until)}`;
 	db.transaction(() => {
-		const set: Partial<Task> = { tempIntervalDays: temp.intervalDays, tempUntil: temp.until };
+		const set: Partial<Task> = { tempIntervalDays: temp.intervalDays, tempUntil: temp.until, tempUntilParam: param?.id ?? null };
 		// sooner from the last time it was done, never before today
 		const last = lastDoneOn(task.id, timeZone);
 		if (!was && task.scheduleMode === 'completion' && task.nextDue && last) {
@@ -491,7 +502,7 @@ export function setTempCadence(userId: string, taskId: string, temp: { intervalD
 			if (at < (effectiveDue(task) ?? at)) Object.assign(set, { nextDue: at, snoozedUntil: null });
 		}
 		db.update(tasks).set(set).where(eq(tasks.id, task.id)).run();
-		systemNote(task.tankId, `${task.name}: ${every} until ${fmtDate(temp.until)}${was ? '' : `, then ${intervalText({ ...task, endsOn: null })}`}`, {
+		systemNote(task.tankId, `${task.name}: ${every} ${until}${was ? '' : `, then ${intervalText({ ...task, endsOn: null })}`}`, {
 			system: 'cadence_temp',
 			task_id: task.id,
 			interval_days: temp.intervalDays,
@@ -678,4 +689,34 @@ export function waitingTasks(userId: string, tankId?: string) {
 		.where(and(visibleTo(userId), isNull(tanks.archivedAt), eq(tasks.scheduleMode, 'after'), isNull(tasks.nextDue), tankId ? eq(tasks.tankId, tankId) : undefined))
 		.orderBy(tasks.name)
 		.all();
+}
+
+
+// ── Until a reading clears (#179) ───────────────────────────────────────────
+
+/**
+ * A test on a tank: a pause or a cadence for a while that lasts until a
+ * parameter reads in range ends when this test reads it so (no longer ✕),
+ * with why in History. A test from before the pause began doesn't count.
+ */
+export function clearByTest(tankId: string, readings: Map<string, number>, takenOn: string, timeZone: string) {
+	const today = todayInZone(timeZone);
+	const waiting = db
+		.select()
+		.from(tasks)
+		.where(and(eq(tasks.tankId, tankId), sql`(${tasks.pausedUntilParam} is not null or ${tasks.tempUntilParam} is not null)`))
+		.all();
+	if (!waiting.length) return;
+	const params = new Map(db.select().from(tankParameters).where(eq(tankParameters.tankId, tankId)).all().map((p) => [p.id, p]));
+	const cleared = (id: string | null) => {
+		const p = id ? params.get(id) : undefined;
+		const v = p ? readings.get(p.id) : undefined;
+		return p && v != null && readingClears(p, v) ? clearText(p) : null;
+	};
+	for (const t of waiting) {
+		const paused = cleared(t.pausedUntilParam);
+		if (paused && isPaused(t, today) && takenOn >= (t.pausedFrom ?? takenOn)) resumeTasks([t], today, paused);
+		const temp = cleared(t.tempUntilParam);
+		if (temp && t.tempUntil && t.tempUntil > today) endTempCadence(t, true, temp);
+	}
 }

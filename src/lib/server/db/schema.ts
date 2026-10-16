@@ -151,6 +151,8 @@ export const tanks = sqliteTable(
 		cycling: integer('cycling', { mode: 'boolean' }).notNull().default(false),
 		// the keeper answered the dashboard's "New tank?" with Not cycling: it isn't asked again
 		cyclingAskDismissed: integer('cycling_ask_dismissed', { mode: 'boolean' }).notNull().default(false),
+		// suggested steps from readings switched off for this tank (#179): rule ids from src/lib/suggestions.ts
+		suggestionsOff: text('suggestions_off', { mode: 'json' }).$type<string[]>().notNull().default([]),
 		/** the getting-started checklist on the dashboard (#82): hidden by its owner, or shown again from Tank setup; null decides by age */
 		checklist: text('checklist', { enum: ['hidden', 'shown'] }),
 		/** the setup review (#30): when each part was last checked, e.g. {"details": "2026-10-02T…Z"} */
@@ -338,9 +340,13 @@ export const tasks = sqliteTable(
 		// a cadence for a while (#171): every temp_interval_days until temp_until, then interval_days again
 		tempIntervalDays: integer('temp_interval_days'),
 		tempUntil: text('temp_until'),
+		// or sooner, until a reading clears (#179): back to the usual once this parameter reads in range
+		tempUntilParam: text('temp_until_param').references(() => tankParameters.id, { onDelete: 'set null' }),
 		// paused (#172) from paused_from until paused_until: not due, not notified; resumes with its dates moved on
 		pausedFrom: text('paused_from'),
 		pausedUntil: text('paused_until'),
+		// or sooner, until a reading clears (#179): the parameter a test reads in range to resume it
+		pausedUntilParam: text('paused_until_param').references(() => tankParameters.id, { onDelete: 'set null' }),
 		// days late it can be before it's overdue (#175): inside them it reads ▲ Due, not ✕ Overdue
 		graceDays: integer('grace_days').notNull().default(0),
 		// after a log (#178): the kind of entry it follows, the days after it, the product for a dose
