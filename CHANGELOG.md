@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.15.1 · 2026-10-16
+
 - **Due matches Tasks.** In Due on the [dashboard](/), a water change that's due now shows with the tank's other tasks, as it does on the [Tasks](/tasks) page, instead of only as the Water change row in Needs attention.
 
 ## 1.15.0 · 2026-10-14
