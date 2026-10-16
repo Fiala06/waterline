@@ -43,6 +43,11 @@ export const actions: Actions = {
 		await storePhotos(tank.id, prepared, { eventId: r.eventId, takenAt: when.at });
 		const from = safeReturn(form.get('from'), `/?tank=${tank.id}`);
 		// "Save and start a treatment course" (#174): a task every other day for two weeks, linked to the entry
+		// "Save and start a plan" (#177): the starters, with this entry
+		if (str(form, 'then') === 'plan') {
+			setFlash(cookies, '✓ Algae logged');
+			redirect(303, `/tanks/${tank.id}/plans?${new URLSearchParams({ entry: r.eventId, from })}`);
+		}
 		if (str(form, 'then') === 'course') {
 			setFlash(cookies, '✓ Algae logged');
 			redirect(303, algaeCourseHref(tank.id, str(form, 'algae'), todayInZone(user.timeZone), from, r.eventId));
