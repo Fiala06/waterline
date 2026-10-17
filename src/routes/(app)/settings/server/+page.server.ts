@@ -112,6 +112,9 @@ export const load: PageServerLoad = ({ locals, url }) => {
 			updateCheckOff: env.UPDATE_CHECK === 'off',
 			stockPhotos: s.stockPhotos,
 			stockPhotosOff: env.STOCK_PHOTOS === 'off',
+			// what a scanned barcode is (#147), from the product databases
+			barcodeLookup: s.barcodeLookup,
+			barcodeLookupOff: env.BARCODE_LOOKUP === 'off',
 			// how the species photos are coming along, and why they aren't
 			stock: stockPhotosOn() ? stockPhotoStatus() : null,
 			// species care data from FishBase (#20): what this server has
@@ -231,7 +234,8 @@ export const actions: Actions = {
 			...(env.EMAIL_SCHEDULER === 'off' ? {} : { scheduledEmails: form.get('scheduledEmails') === 'on' }),
 			...(env.UPDATE_CHECK === 'off' ? {} : { updateCheck: form.get('updateCheck') === 'on' }),
 			...(env.STOCK_PHOTOS === 'off' ? {} : { stockPhotos: form.get('stockPhotos') === 'on' }),
-			...(env.SPECIES_CARE === 'off' ? {} : { speciesCare: form.get('speciesCare') === 'on' })
+			...(env.SPECIES_CARE === 'off' ? {} : { speciesCare: form.get('speciesCare') === 'on' }),
+			...(env.BARCODE_LOOKUP === 'off' ? {} : { barcodeLookup: form.get('barcodeLookup') === 'on' })
 		});
 		logger.info('settings', 'Server switches saved', { userId: locals.user!.id, scheduledEmails: form.get('scheduledEmails') === 'on', updateCheck: form.get('updateCheck') === 'on' });
 		return { serverSaved: true };

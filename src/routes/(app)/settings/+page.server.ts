@@ -13,6 +13,7 @@ import { parseTopicUrl } from '$lib/server/push/ntfy';
 import { listSubscriptions, removeSubscription, vapidKeys } from '$lib/server/push/webpush';
 import { encrypt } from '$lib/server/secrets';
 import { listProducts } from '$lib/server/products';
+import { listFavorites } from '$lib/server/favorites';
 import { listKits } from '$lib/server/kits';
 import { listAssistantTokens } from '$lib/server/assistant/tokens';
 import { getFeed, makeFeed, removeFeed } from '$lib/server/calendar';
@@ -52,6 +53,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
 		},
 		emailReady: emailConfigured(),
 		products: listProducts(locals.user!.id).length,
+		favorites: listFavorites(locals.user!.id).length,
 		kits: listKits(locals.user!.id).length,
 		sensors: listAssistantTokens(locals.user!.id, 'sensor').length,
 		assistants: listAssistantTokens(locals.user!.id).length,
@@ -90,12 +92,12 @@ export const actions: Actions = {
 	},
 	googlePhoto: async ({ locals, cookies }) => {
 		if (!locals.user!.avatarAt) return fail(400, { photoError: "There's no Google photo for this account." });
-		setAvatarChoice(locals.user!.id, 'google');
+		await setAvatarChoice(locals.user!.id, 'google');
 		setFlash(cookies, '✓ Using your Google photo');
 		redirect(303, '/settings#profile');
 	},
 	removePhoto: async ({ locals, cookies }) => {
-		setAvatarChoice(locals.user!.id, 'none');
+		await setAvatarChoice(locals.user!.id, 'none');
 		setFlash(cookies, '✓ Photo removed');
 		redirect(303, '/settings#profile');
 	},

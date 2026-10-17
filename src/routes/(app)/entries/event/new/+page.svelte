@@ -15,7 +15,7 @@
 
 <svelte:head><title>Log event · {data.tank.name}</title></svelte:head>
 
-{#key `${data.tank.id}-${data.category}`}
+{#key `${data.tank.id}-${data.category}-${JSON.stringify(data.prefill)}`}
 	<EventForm
 		category={data.category}
 		{categoryHref}
@@ -25,13 +25,14 @@
 		tankVolumeIsActual={data.context.tankVolumeIsActual}
 		lastAmountMode={data.context.lastAmountMode}
 		lastAmount={data.context.lastAmount}
-		values={form?.values ?? {}}
+		values={form?.values ?? data.prefill}
 		initialNote={typeof form?.values?.note === 'string' ? form.values.note : ''}
 		initialWhen={data.when}
 		timeZone={data.user.timeZone}
 		closeHref={data.returnTo ?? `/?tank=${data.tank.id}`}
 		returnTo={data.returnTo}
 		task={data.task}
+		doseRoutines={data.doseRoutines}
 		recentProducts={data.recentProducts}
 		recentAdditives={data.recentAdditives}
 		recentFoods={data.recentFoods}

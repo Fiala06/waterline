@@ -11,6 +11,8 @@
 		value: string;
 		statusText?: string;
 		level?: string;
+		/** where the value leads, like an equipment item's page */
+		href?: string;
 	}
 	let {
 		title,
@@ -21,7 +23,8 @@
 		photos = [],
 		backHref,
 		editHref,
-		actions
+		actions,
+		extra
 	}: {
 		title: string;
 		when: string;
@@ -32,6 +35,8 @@
 		backHref: string;
 		editHref: string;
 		actions: Snippet;
+		/** anything under the photos, before Edit / Delete (Worth checking on an observation, #95) */
+		extra?: Snippet;
 	} = $props();
 
 	// "‹ History", "‹ Overview": the back link names where it goes.
@@ -65,7 +70,7 @@
 			{#each rows as r, i (i)}
 				<div class="row" class:bad={r.level === 'bad'}>
 					<span class="label">{r.label}</span>
-					<span class="value num">{r.value}</span>
+					{#if r.href}<a class="value num" href={r.href}>{r.value} ›</a>{:else}<span class="value num">{r.value}</span>{/if}
 					{#if r.statusText}<span class="st status-{r.level}">{r.statusText}</span>{/if}
 				</div>
 			{/each}
@@ -84,6 +89,7 @@
 			{/each}
 		</div>
 	{/if}
+	{#if extra}{@render extra()}{/if}
 	<div class="actions">
 		{#if editHref}<a class="btn edit" href={editHref}>Edit</a>{/if}
 		{@render actions()}
@@ -138,6 +144,12 @@
 		font-weight: 800;
 		white-space: nowrap;
 	}
+	a.value {
+		color: var(--accent-text);
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
+	}
 	.st {
 		text-align: right;
 		font-size: 12px;
@@ -171,10 +183,9 @@
 		gap: 10px;
 		padding-top: 6px;
 	}
-	/* Only the row's own buttons: the confirm dialog inside keeps its 44px buttons (7.10). */
-	.actions > .edit,
-	.actions > :global(.copy),
-	.actions > :global(.btn-danger) {
+	/* Only the row's own buttons (Edit, Copy, Delete…), all one size: the confirm
+	   dialog inside keeps its 44px buttons (7.10). */
+	.actions > :global(.btn) {
 		flex: 1;
 		height: 50px;
 		font-size: 15px;
@@ -185,8 +196,7 @@
 			max-width: 640px;
 			padding: 20px 32px 32px;
 		}
-		.actions > .edit,
-		.actions > :global(.btn-danger) {
+		.actions > :global(.btn) {
 			height: 44px;
 			font-size: 14px;
 		}

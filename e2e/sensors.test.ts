@@ -15,11 +15,13 @@ test('sensor readings over the API', async ({ page }, info) => {
 	// a sensor token
 	await open(page, '/settings/sensors');
 	await expect(page.getByText('No sensor connected')).toBeVisible();
-	await page.getByLabel('Device').fill('ESPHome');
+	await page.getByLabel('Device', { exact: true }).fill('ESPHome');
 	await page.getByRole('button', { name: 'Create sensor token' }).click();
 	await expect(page.getByText("Copy it now: it's shown only this once.")).toBeVisible();
 	const token = (await page.locator('#made-token').textContent())!.trim();
 	expect(token).toMatch(/^wls_[\w-]{40,}$/);
+	// the examples carry this token's tank
+	await expect(page.locator('#how-curl')).toContainText(tankId);
 
 	// it may add readings, in °F too, and nothing else
 	const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
@@ -38,23 +40,45 @@ test('sensor readings over the API', async ({ page }, info) => {
 	await open(page, `/?tank=${tankId}`);
 	await expect(page.getByText(/● Live 77 °F/).first()).toBeVisible();
 	await open(page, `/charts?tank=${tankId}`);
+	await expect(page.locator('.stat.live')).toContainText('● Live');
 	await expect(page.locator('.stat.live')).toContainText('77 °F');
 	await expect(page.locator('.stat.live')).toContainText('ESPHome');
 	await expect(page.locator('.stat').filter({ hasText: 'Latest' })).toContainText('78');
+
+	// the sensor as the reading of record (Parameters & targets): its 77 is the reading now, not the test's 78
+	await open(page, `/tanks/${tankId}/targets`);
+	const record = page.getByRole('checkbox', { name: /The sensor's reading is the reading/ });
+	await expect(record).not.toBeChecked();
+	await record.check();
+	await page.getByRole('button', { name: 'Save targets' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Targets saved');
+	await open(page, `/?tank=${tankId}`);
+	await expect(page.getByRole('link', { name: /^Temp 77 ?°F ● Live · / })).toBeVisible();
+	await expect(page.getByText(/● Live 77 °F/)).toHaveCount(0);
+	// Charts keeps the tests' own Latest beside Live
+	await open(page, `/charts?tank=${tankId}`);
+	await expect(page.locator('.stat').filter({ hasText: 'Latest' })).toContainText('78');
+	await expect(page.locator('.stat.live')).toContainText('77 °F');
 
 	// Settings shows what came in; Revoke cuts it off
 	await open(page, '/settings/sensors');
 	await expect(page.getByText(/Riverbed 40 · 1 reading/)).toBeVisible();
 
-	// On the public page, the sensor's readings are the thin line under the tests (readings on)
-	const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
-	const more = await page.request.post(`/api/v1/tanks/${tankId}/readings`, { headers, data: { readings: [{ parameter: 'temp', value: 25.4, unit: '°C', at: hoursAgo(3) }, { parameter: 'temp', value: 25.6, unit: '°C', at: hoursAgo(2) }] } });
-	expect(more.status()).toBe(200);
+	// A second hand-logged test, so the chart draws: the sensor's one reading is a dot on it, not yet a line
 	const earlier = new Date(Date.now() - 5 * 86_400_000).toISOString().slice(0, 10);
 	await open(page, `/entries/test/new?tank=${tankId}&date=${earlier}&time=18:00`);
 	await page.getByLabel('Temperature', { exact: true }).fill('77');
 	await page.getByRole('button', { name: 'Save 1 reading' }).click();
 	await expect(page.getByRole('status')).toContainText('✓ Saved 1 reading');
+	await open(page, `/charts?tank=${tankId}`);
+	await expect(page.locator('.chart-card svg rect.sensor-dot')).toHaveCount(1);
+	await expect(page.locator('.chart-card svg polyline.sensor')).toHaveCount(0);
+	await expect(page.locator('.legend')).toContainText('Sensor');
+
+	// On the public page, the sensor's readings are the thin line under the tests (readings on)
+	const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
+	const more = await page.request.post(`/api/v1/tanks/${tankId}/readings`, { headers, data: { readings: [{ parameter: 'temp', value: 25.4, unit: '°C', at: hoursAgo(3) }, { parameter: 'temp', value: 25.6, unit: '°C', at: hoursAgo(2) }] } });
+	expect(more.status()).toBe(200);
 	const slug = `sensor-${info.project.name}-${Date.now().toString(36)}`;
 	await open(page, `/tanks/${tankId}/public`);
 	await page.getByLabel('Share this tank').check({ force: true });
@@ -62,13 +86,154 @@ test('sensor readings over the API', async ({ page }, info) => {
 	await page.getByRole('button', { name: 'Save' }).first().click();
 	await expect(page.getByText('✓ Public page saved')).toBeVisible();
 	await page.goto(`/t/${slug}`);
-	const chart = page.locator('section.chart');
-	await expect(chart.locator('svg polyline.sensor')).toHaveCount(1);
-	await expect(chart.locator('.legend')).toContainText('Sensor');
+	const trends = page.locator('section#trends');
+	await expect(trends.locator('svg polyline.sensor')).toHaveCount(1);
+	await expect(trends.locator('.legend')).toContainText('Sensor');
+	// its reading says Live, with when; the header's time stays the latest test's
+	await expect(page.locator('#summary li, #summary .arow').filter({ hasText: 'Temp' })).toContainText(/● Live · \d{1,2}:\d{2} [AP]M/);
+	await expect(page.locator('.by')).toContainText(/Last water test today, \d{1,2}:\d{2} [AP]M/);
 
 	await open(page, '/settings/sensors');
 	await page.getByRole('button', { name: 'Revoke ESPHome' }).click();
 	await page.getByRole('button', { name: 'Revoke', exact: true }).last().click();
 	await expect(page.getByRole('status')).toContainText("ESPHome can't send readings any more");
 	expect((await page.request.post(`/api/v1/tanks/${tankId}/readings`, { headers, data: { parameter: 'temp', value: 25 } })).status()).toBe(401);
+});
+
+// #130: a parameter only a probe reports still gets its chart; before, Charts
+// waited for two hand-logged tests however many samples there were.
+test('a sensor charts without a hand-logged test', async ({ page }, info) => {
+	await newKeeperWithTank(page, `probe-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+
+	await open(page, `/charts?tank=${tankId}`);
+	await expect(page.getByText('Charts appear after your second test.')).toBeVisible();
+
+	await open(page, '/settings/sensors');
+	await page.getByLabel('Device', { exact: true }).fill('Probe');
+	await page.getByRole('button', { name: 'Create sensor token' }).click();
+	const token = (await page.locator('#made-token').textContent())!.trim();
+	const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
+	// a day of hourly samples, 20 days back: inside the 30-day range, outside 2 weeks
+	const at = (h: number) => new Date(Date.now() - 20 * 86_400_000 + h * 3_600_000).toISOString();
+	const day = await page.request.post(`/api/v1/tanks/${tankId}/readings`, {
+		headers,
+		data: { readings: Array.from({ length: 24 }, (_, i) => ({ parameter: 'temp', value: 25 + (i % 4) / 10, unit: '°C', at: at(i) })) }
+	});
+	expect(day.status()).toBe(200);
+
+	// the sensor's line, its legend and the Live value, with no test stats to go with them
+	await open(page, `/charts?tank=${tankId}`);
+	const chart = page.locator('.chart-card');
+	await expect(chart.locator('svg polyline.sensor')).toHaveCount(1);
+	await expect(chart.locator('svg polyline.trace')).toHaveAttribute('points', '');
+	await expect(page.locator('.legend')).toContainText('Sensor');
+	await expect(page.locator('.stat.live')).toContainText('Probe');
+	// twenty days of silence: Last, not Live
+	await expect(page.locator('.stat.live')).toContainText('○ Last');
+	await expect(page.locator('.stat').filter({ hasText: 'Latest' })).toHaveCount(0);
+	await expect(page.getByText('Charts appear after your second test.')).toHaveCount(0);
+
+	// the dashboard's trend draws from the sensor too
+	await open(page, `/?tank=${tankId}`);
+	await expect(page.locator('svg polyline.sensor')).toHaveCount(1);
+	await expect(page.locator('.legend')).toContainText('Sensor');
+	await expect(page.getByText('Charts appear after your second test.')).toHaveCount(0);
+
+	// samples outside the range are the range's doing, not a missing test
+	await open(page, `/charts?tank=${tankId}&r=2w`);
+	await expect(page.getByText('Fewer than 2 readings in this range')).toBeVisible();
+});
+
+// The examples carry the tank a token writes to, not the first tank in the
+// list, which sent readings to the wrong tank when the token was for another.
+test('the examples are for the tank the token writes to', async ({ page }, info) => {
+	await newKeeperWithTank(page, `example-${info.project.name}`);
+	const first = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, '/tanks/new');
+	await page.getByLabel('Tank name').fill('Shrimp 10');
+	await page.locator('label', { hasText: 'Freshwater' }).click();
+	await page.getByLabel('Volume').fill('10');
+	await page.getByRole('button', { name: 'Create tank' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Tank created');
+	const second = new URL(page.url()).searchParams.get('tank')!;
+
+	// no token yet: the first tank, and a chip per tank to switch
+	await open(page, '/settings/sensors');
+	const how = page.locator('.how');
+	await expect(page.locator('#how-curl')).toContainText(first);
+	await expect(how.getByRole('link', { name: 'Riverbed 40' })).toHaveAttribute('aria-current', 'true');
+
+	// a token for the second tank alone: the examples follow it, now and on a later visit
+	await page.getByLabel('Device', { exact: true }).fill('Apex');
+	await page.getByRole('checkbox', { name: 'Riverbed 40' }).uncheck({ force: true });
+	await page.getByRole('checkbox', { name: 'Shrimp 10' }).check({ force: true });
+	await page.getByRole('button', { name: 'Create sensor token' }).click();
+	await expect(page.getByText("Copy it now: it's shown only this once.")).toBeVisible();
+	await expect(page.locator('#how-curl')).toContainText(second);
+	await open(page, '/settings/sensors');
+	await expect(page.locator('#how-curl')).toContainText(second);
+	await expect(page.locator('#how-ha')).toContainText(second);
+	await expect(how.getByRole('link', { name: 'Shrimp 10' })).toHaveAttribute('aria-current', 'true');
+
+	// switching the chip switches every example
+	await how.getByRole('link', { name: 'Riverbed 40' }).click();
+	await expect(page.locator('#how-curl')).toContainText(first);
+	await expect(page.locator('#how-ha')).toContainText(first);
+	await expect(page.locator('#how-esp')).toContainText(first);
+	await expect(page.locator('#how-curl')).not.toContainText(second);
+});
+
+// A device read straight from its own web page: an ESPHome web server (the
+// stand-in at /dev/esphome, shaped like an Apollo probe), found, mapped to a
+// parameter, read on the spot and then every 5 minutes, with no token.
+test('a device is read from its own web page', async ({ page }, info) => {
+	await newKeeperWithTank(page, `device-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	// a hand-logged test, so the tank lists its temperature, where Live shows
+	await open(page, `/entries/test/new?tank=${tankId}`);
+	await page.getByLabel('Temperature', { exact: true }).fill('78');
+	await page.getByRole('button', { name: 'Save 1 reading' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Saved 1 reading');
+	await open(page, '/settings/sensors');
+	await expect(page.getByText('No device is read directly yet.')).toBeVisible();
+
+	// nothing there
+	await page.getByLabel('Device address').fill('http://localhost:65530/');
+	await page.getByRole('button', { name: 'Find sensors' }).click();
+	await expect(page.getByText('✕ Nothing is listening at http://localhost:65530.')).toBeVisible();
+
+	// the probe: its sensors, the one in the water ticked and read as the temperature
+	await page.getByLabel('Device address').fill(`${new URL(page.url()).origin}/dev/esphome`);
+	await page.getByRole('button', { name: 'Find sensors' }).click();
+	await expect(page.getByRole('heading', { name: '✓ Found Apollo TEMP-1 20f0ac · 4 sensors' })).toBeVisible();
+	await expect(page.getByRole('checkbox', { name: 'Temperature Probe 23.6 °C' })).toBeChecked();
+	await expect(page.getByLabel('Parameter for Temperature Probe')).toHaveValue('temp');
+	await expect(page.getByRole('checkbox', { name: 'Board Temperature 34.91 °C' })).not.toBeChecked();
+	await expect(page.getByRole('checkbox', { name: 'Food Probe NA' })).not.toBeChecked();
+	await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Apollo TEMP-1 20f0ac');
+
+	// nothing ticked is a slip, and the list stays
+	await page.getByRole('checkbox', { name: 'Temperature Probe 23.6 °C' }).uncheck({ force: true });
+	await page.getByRole('button', { name: 'Start reading' }).click();
+	await expect(page.getByText('✕ Tick at least one sensor.')).toBeVisible();
+	await page.getByRole('checkbox', { name: 'Temperature Probe 23.6 °C' }).check({ force: true });
+	await page.getByRole('button', { name: 'Start reading' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Apollo TEMP-1 20f0ac added · 1 reading in');
+	await expect(page.getByText('Reads Temperature Probe → Temperature into Riverbed 40')).toBeVisible();
+	await expect(page.getByText(/✓ OK · read/)).toBeVisible();
+	await expect(page.getByText(/Riverbed 40 · 1 reading/)).toBeVisible();
+
+	// Live on the tank, in the keeper's units
+	await open(page, `/?tank=${tankId}`);
+	await expect(page.getByText(/● Live 74 °F/).first()).toBeVisible();
+
+	// read again by hand: within the minute, nothing new to store; then stop
+	await open(page, '/settings/sensors');
+	await page.getByRole('button', { name: 'Read now Apollo TEMP-1 20f0ac' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Apollo TEMP-1 20f0ac read · 0 readings in');
+	await page.getByRole('button', { name: 'Remove Apollo TEMP-1 20f0ac' }).click();
+	await page.getByRole('button', { name: 'Remove', exact: true }).last().click();
+	await expect(page.getByRole('status')).toContainText("Apollo TEMP-1 20f0ac isn't read any more");
+	await expect(page.getByText('No device is read directly yet.')).toBeVisible();
 });

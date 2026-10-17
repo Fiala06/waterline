@@ -9,13 +9,19 @@
 	import { hscroll } from '$lib/actions';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import SnoozeSheet from '$lib/components/SnoozeSheet.svelte';
+	import TaskDoneLog from '$lib/components/TaskDoneLog.svelte';
 	import TaskForm from '$lib/components/TaskForm.svelte';
-	import { dueInfo, intervalText, isRoutine, routineLine } from '$lib/tasks';
+	import { cadenceText, dueInfo, isRoutine, routineLine } from '$lib/tasks';
 	import { REVIEW_ABOUT } from '$lib/review';
+	import { fmtDate } from '$lib/time';
 
 	let { data } = $props();
-	// a routine's line has its amount too: "1 pump · Mon, Wed, Fri"
-	const every = (t: (typeof data.tasks)[number]) => (isRoutine(t.kind) ? routineLine(t) : intervalText(t));
+	// a routine's line has its amount too: "1 pump · Mon, Wed, Fri"; a task's says how it repeats
+	// and when it was last done (#164): "every 3 days after done · last Oct 13"
+	// and a dose, the last one logged (#167): "3 mL · every 2 days · last 2 pumps · Oct 14"
+	// a course leads with where it stands (#174): "Day 3 of 14 · every 2 days after done · 6 times left · ends Oct 30"
+	const every = (t: (typeof data.tasks)[number]) =>
+		[t.courseDay, isRoutine(t.kind) ? [routineLine(t), t.lastDose].filter(Boolean).join(' · ') : cadenceText(t, t.lastDone, data.today)].filter(Boolean).join(' · ');
 	// The pane posts to /tasks/[id] or /tasks/new; TaskForm puts their errors in page.form.
 	const paneForm = $derived(
 		page.form as { values?: NonNullable<typeof data.pane>['values']; errors?: Record<string, string> } | null
@@ -25,7 +31,7 @@
 	type T = (typeof data.tasks)[number];
 	const sections = $derived.by(() => {
 		const by = { overdue: [] as T[], soon: [] as T[], later: [] as T[] };
-		for (const t of data.tasks) by[dueInfo(t.due, data.today).section].push(t);
+		for (const t of data.tasks) by[dueInfo(t.due, data.today, t.graceDays).section].push(t);
 		return by;
 	});
 	// 06: phones list the first few later tasks, then "Show all" (a link, so it works without JS).
@@ -50,6 +56,13 @@
 		goto(q(id ? { edit: id, new: null } : { new: '', edit: null }), { noScroll: true, keepFocus: true });
 	}
 
+	// Select several (#176): ?select=1 swaps each row's buttons for a checkbox in one form, the bar's
+	const selecting = $derived(page.url.searchParams.get('select') === '1');
+	let picked = $state(0);
+	const countPicked = () => (picked = document.querySelectorAll('input[form="done-many"]:checked').length);
+	const ownDone = (t: T) => t.kind === 'review' || (t.openFormOnDone && (t.kind === 'water_change' || t.kind === 'test'));
+	const yesterday = $derived(new Date(Date.parse(data.today + 'T12:00:00Z') - 86_400_000).toISOString().slice(0, 10));
+
 	let snoozing = $state<T | null>(null);
 	let snoozeOpen = $state(false);
 	// where the Snooze ▾ button is, so the desktop menu hangs under it
@@ -65,8 +78,9 @@
 		new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
 	// "✕ Overdue 1 day", "▲ Due today", "▲ Sat, Sep 27", "Fri, Oct 3"
 	const dueLabel = (t: T) => {
-		const d = dueInfo(t.due, data.today);
-		if (d.section === 'overdue' || d.days === 0) return d.text;
+		const d = dueInfo(t.due, data.today, t.graceDays);
+		// overdue, today, or a day or so late within its grace (#175): "▲ Due yesterday"
+		if (d.section === 'overdue' || d.days <= 0) return d.text;
 		return d.level === 'warn' ? `▲ ${longDue(t.due)}` : longDue(t.due);
 	};
 	const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -102,6 +116,24 @@
 			</div>
 		{/if}
 
+		{#if data.plans.length}
+			<!-- treatment plans running (#177): where each stands -->
+			<section>
+				<div class="sec-head"><h2 class="sec">Plans · {data.plans.length}</h2></div>
+				<div class="rows">
+					{#each data.plans as p (p.id)}
+						<a class="row plan t-link" href="/tanks/{p.tankId}/plans/{p.id}"
+							><span class="name">{p.name}</span><span class="line"><span class="when plain">{p.status}</span><span class="meta">{p.tankName}</span></span></a
+						>
+					{/each}
+				</div>
+			</section>
+		{/if}
+
+		{#if data.tasks.length > 1}
+			<a class="select-link" href={q({ select: selecting ? null : '1', edit: null })} data-sveltekit-noscroll>{selecting ? 'Cancel selecting' : 'Select several'}</a>
+		{/if}
+
 		{#if !data.tasks.length}
 			<div class="empty">
 				<EmptyState icon="maintenance" title="Nothing due" text="The fish approve. Set up reminders for water changes and upkeep.">
@@ -120,16 +152,27 @@
 					</div>
 					<div class="rows">
 						{#each s.items as t, i (t.id)}
-							{@const d = dueInfo(t.due, data.today)}
+							{@const d = dueInfo(t.due, data.today, t.graceDays)}
 							<div class="row {s.key}" class:selected={selectedId === t.id} class:extra={folded && i >= LATER_LIMIT}>
 								<a class="rtext t-link" href="/tasks/{t.id}" onclick={(e) => openEdit(e, t.id)}>
 									<span class="name">{t.name}</span>
 									{#if t.kind === 'review'}<span class="about">{REVIEW_ABOUT}</span>{/if}
 									<span class="line">
 										<span class="when {d.level === 'ok' ? 'plain' : `status-${d.level}`}">{dueLabel(t)}</span>
-										<span class="meta">{tankNames[t.tankId]} · {every(t)}</span>
+										<span class="meta"
+											>{tankNames[t.tankId]}{#if t.snoozedUntil && t.nextDue && t.snoozedUntil !== t.nextDue}{` · moved from ${longDue(t.nextDue)}`}{/if} · {every(t)}</span
+										>
 									</span>
 								</a>
+								{#if selecting}
+									<div class="acts">
+										{#if ownDone(t)}
+											<span class="own">{t.kind === 'review' ? 'Review on its page' : 'Opens its form'}</span>
+										{:else}
+											<label class="check-row pick"><input type="checkbox" name="taskId" value={t.id} form="done-many" onchange={countPicked} aria-label="Select {t.name}" /></label>
+										{/if}
+									</div>
+								{:else}
 								<div class="acts">
 									<!-- Snooze on every task: one not due yet moves back from its due date -->
 									<form method="POST" action="/tasks?/snooze" use:enhance>
@@ -151,12 +194,66 @@
 										{/if}
 									</form>
 								</div>
+								{/if}
 							</div>
 						{/each}
 					</div>
 				</section>
 			{/if}
 		{/each}
+		{#if selecting}
+			<!-- the selected rows' checkboxes belong to this form (form="done-many") -->
+			<form id="done-many" class="many-bar" method="POST" action="/tasks?/doneMany">
+				<input type="hidden" name="from" value={q({ select: null })} />
+				<button class="btn btn-primary" name="doneOn" value="">Done{picked ? ` (${picked})` : ''}</button>
+				<button class="btn" name="doneOn" value={yesterday}>Done yesterday{picked ? ` (${picked})` : ''}</button>
+			</form>
+		{/if}
+		{#if data.waiting.length}
+			<!-- after a log (#178): no date until the log they follow is -->
+			<section>
+				<div class="sec-head"><h2 class="sec muted">Waiting · {data.waiting.length}</h2></div>
+				<div class="rows">
+					{#each data.waiting as t (t.id)}
+						<div class="row waiting" class:selected={selectedId === t.id}>
+							<a class="rtext t-link" href="/tasks/{t.id}" onclick={(e) => openEdit(e, t.id)}
+								><span class="name">{t.name}</span><span class="line"
+									><span class="when plain">– {t.text}</span><span class="meta">{tankNames[t.tankId]} · {t.follow}</span></span
+								></a
+							>
+						</div>
+					{/each}
+				</div>
+			</section>
+		{/if}
+		{#if data.paused.length}
+			<!-- paused (#172): not due, not notified, until their day; Resume picks one up now -->
+			<section>
+				<div class="sec-head"><h2 class="sec muted">Paused · {data.paused.length}</h2></div>
+				<div class="rows">
+					{#each data.paused as t (t.id)}
+						<div class="row paused">
+							<a class="rtext t-link" href="/tasks/{t.id}"
+								><span class="name">{t.name}</span><span class="line"
+									><span class="when plain">‖ Paused until {t.clears ?? fmtDate(t.until)}</span><span class="meta">{tankNames[t.tankId]}{t.clears ? ` · ${fmtDate(t.until)} at the latest` : ''}</span></span
+								></a
+							>
+							<div class="acts">
+								<form method="POST" action="/tasks?/resume" use:enhance>
+									<input type="hidden" name="taskId" value={t.id} />
+									<input type="hidden" name="from" value={from} />
+									<button class="btn mark" aria-label="Resume {t.name}">Resume</button>
+								</form>
+							</div>
+						</div>
+					{/each}
+				</div>
+			</section>
+		{/if}
+		{#if data.tanks.length}
+			<a class="cal-link" href="/tanks/{data.filter ?? data.tanks[0].id}/plans?from={encodeURIComponent(from)}">Start a treatment plan ›</a>
+			<a class="cal-link" href="/tanks/{data.filter ?? data.tanks[0].id}/pause?from={encodeURIComponent(from)}">Pause tasks for a while ›</a>
+		{/if}
 		<a class="cal-link" href="/settings#calendar">See your tasks in your calendar ›</a>
 	</div>
 
@@ -176,6 +273,7 @@
 						afterSave={q(data.pane.taskId ? { edit: data.pane.taskId, new: null } : { edit: null, new: null })}
 						today={data.today}
 					/>
+					{#if data.pane.mode === 'edit'}<TaskDoneLog done={data.done} course={data.course} taskId={data.pane.taskId ?? ''} />{/if}
 				{/key}
 			</div>
 		</aside>
@@ -336,10 +434,11 @@
 	.when.plain {
 		color: var(--text-muted);
 	}
+	/* "Tank · every 3 days after done · last Oct 13" wraps beside the buttons rather than running under them */
 	.meta {
 		font-size: 13px;
 		color: var(--text-2);
-		white-space: nowrap;
+		min-width: 0;
 	}
 	.acts {
 		display: flex;
@@ -364,6 +463,54 @@
 		min-height: 40px;
 		padding: 0 14px;
 	}
+	.row.plan {
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+		padding: 10px 0 10px 8px;
+		border-left: 3px solid var(--ink);
+	}
+	.select-link {
+		align-self: flex-start;
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
+		font-size: 14px;
+		font-weight: 800;
+		margin-block: -10px;
+	}
+	.own {
+		font-size: 13px;
+		color: var(--text-muted);
+	}
+	.pick {
+		min-width: 44px;
+		justify-content: center;
+	}
+	/* Done (N) · Done yesterday (N), kept in reach at the foot while selecting */
+	.many-bar {
+		position: sticky;
+		/* phones: above the tab bar (78px) */
+		bottom: calc(78px + env(safe-area-inset-bottom));
+		display: flex;
+		gap: 8px;
+		padding: 12px 0;
+		background: var(--bg);
+		border-top: 2px solid var(--ink);
+		z-index: 2;
+	}
+	.many-bar .btn {
+		flex: 1;
+		min-height: 48px;
+	}
+	@media (min-width: 1024px) {
+		.many-bar {
+			bottom: 0;
+		}
+		.many-bar .btn {
+			flex: none;
+		}
+	}
 	.cal-link {
 		align-self: flex-start;
 		min-height: 44px;
@@ -377,10 +524,6 @@
 	}
 	@media (max-width: 1023px) {
 		.row.extra {
-			display: none;
-		}
-		/* phones: Snooze stays on what's overdue (the sheet has the same choices); rows keep to one action */
-		.row:not(.overdue) .snooze {
 			display: none;
 		}
 		.row {
@@ -439,11 +582,10 @@
 			background: var(--surface);
 			border-left: 2px solid var(--divider);
 		}
+		/* scrolls with the page (not a box of its own), so the form's Save row can pin to the window's foot */
 		.pane-inner {
 			position: sticky;
 			top: 0;
-			height: 100dvh;
-			overflow-y: auto;
 			padding: 28px 24px;
 			display: flex;
 			flex-direction: column;

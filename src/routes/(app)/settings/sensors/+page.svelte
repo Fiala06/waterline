@@ -1,7 +1,8 @@
 <script lang="ts">
 	// Sensors & controllers (#19): a token for a probe or controller, the readings
 	// it may add and to which tanks, examples for curl, ESPHome and Home
-	// Assistant, and what's come in.
+	// Assistant, devices Waterline reads itself from their own web page, and
+	// what's come in.
 	import { enhance } from '$app/forms';
 	import { untrack } from 'svelte';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
@@ -25,7 +26,11 @@
 		}
 	}
 	const token = $derived(created?.token ?? '<your token>');
-	const tankId = $derived(created?.tankId || data.tanks[0]?.id || '<tank id>');
+	// the tank the examples carry: one picked here (while the token it was picked beside is
+	// still the one shown), else the token just made's first tank, else the server's choice
+	let picked = $state<{ token: string | null; tankId: string } | null>(null);
+	const tankId = $derived((picked?.token === (created?.id ?? null) ? picked?.tankId : null) || created?.tankId || data.exampleTank || '<tank id>');
+	const tankName = $derived(data.tanks.find((t) => t.id === tankId)?.name ?? null);
 	const curl = $derived(`curl -X POST ${data.apiUrl}/tanks/${tankId}/readings \\
   -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" \\
   -d '{"parameter":"temp","value":25.4,"unit":"°C"}'`);
@@ -52,6 +57,11 @@ sensor:
               Content-Type: application/json
             body: !lambda 'return "{\\"parameter\\":\\"temp\\",\\"value\\":" + to_string(x) + ",\\"unit\\":\\"°C\\"}";'`);
 	const tankList = (names: string[]) => (names.length ? names.join(', ') : 'No tanks');
+	// a device read from its own web page: what Find sensors turned up, and the forms' slips
+	const found = $derived(form?.found ?? null);
+	const findErr = $derived<Record<string, string>>(form?.find?.errors ?? {});
+	const addErr = $derived<Record<string, string>>(form?.add?.errors ?? {});
+	const findTank = $derived(form?.find?.tankId || found?.tankId || data.exampleTank || data.tanks[0]?.id || '');
 </script>
 
 <svelte:head><title>Sensors · Settings · Waterline</title></svelte:head>
@@ -84,7 +94,7 @@ sensor:
 		<h1>Sensors & controllers</h1>
 		<p class="lede">
 			Let a temperature probe, an Apex or HYDROS, ESPHome, Node-RED or Home Assistant log readings on its own. A sensor token can only add readings to the tanks you pick, nothing else. Readings from sensors are kept apart from your water tests: they draw as a thin line on
-			Charts and show as Live on the tank, but they never raise an out-of-range alert by themselves. One reading a minute per parameter is kept; anything faster is dropped.
+			Charts and show as Live on the tank, but they never raise an out-of-range alert by themselves. To make a sensor the tank's reading for a parameter, graded and alerted on like a test, turn on "The sensor's reading is the reading" under <a href="/tanks/current/targets">Parameters & targets</a>. One reading a minute per parameter is kept; anything faster is dropped.
 		</p>
 	</div>
 
@@ -165,6 +175,29 @@ sensor:
 		<p class="small">
 			POST JSON to <code class="mono">{data.apiUrl}/tanks/&lt;tank id&gt;/readings</code> with the token as <code class="mono">Authorization: Bearer</code>. One reading, or <code class="mono">{'{"readings": [...]}'}</code> for several. Each has <code class="mono">parameter</code> (temp, ph, nh3, no2, no3, gh, kh, or a parameter's name), <code class="mono">value</code>, and optionally <code class="mono">unit</code> (°F and ppm are converted) and <code class="mono">at</code> (ISO 8601; now when left out). The tank id is in the address of its pages.
 		</p>
+		{#if tankName}
+			<div class="for">
+				<span class="label" id="for-h">Examples for</span>
+				{#if data.tanks.length > 1}
+					<div class="chips" role="group" aria-labelledby="for-h">
+						{#each data.tanks as t (t.id)}
+							<a
+								class="chip"
+								class:selected={t.id === tankId}
+								aria-current={t.id === tankId ? 'true' : undefined}
+								href="?for={t.id}"
+								onclick={(e) => {
+									e.preventDefault();
+									picked = { token: created?.id ?? null, tankId: t.id };
+								}}>{t.name}</a
+							>
+						{/each}
+					</div>
+				{:else}
+					<span class="for-name">{tankName}</span>
+				{/if}
+			</div>
+		{/if}
 		{@render copyField('how-curl', 'curl', curl, true)}
 		<details>
 			<summary>Home Assistant</summary>
@@ -175,6 +208,109 @@ sensor:
 			{@render copyField('how-esp', 'A temperature probe posting every 5 minutes', esphome, true)}
 		</details>
 	</section>
+
+	{#if data.polling}
+		<section aria-labelledby="dev-h" class="block">
+			<h2 id="dev-h" class="kicker">Read directly · {data.devices.length}</h2>
+			<p class="small">
+				A device with its own web page, like an Apollo probe or anything else running ESPHome with its web server on, needs no token: Waterline asks it for its readings itself, every 5 minutes. The two have to share a network, so this server can reach the device's address.
+			</p>
+			{#if data.devices.length}
+				<ul class="list">
+					{#each data.devices as d (d.id)}
+						<li>
+							<div class="item">
+								<div class="t">
+									<span class="name">{d.name} <span class="mono hint-code">{d.url}</span></span>
+									<span class="meta">Reads {d.reads} into {d.tankName}</span>
+									<span class="meta status-{d.level}">{d.status}</span>
+								</div>
+								<div class="acts">
+									<form method="POST" action="?/pollNow" use:enhance>
+										<input type="hidden" name="id" value={d.id} />
+										<button class="btn-text">Read now<span class="sr-only"> {d.name}</span></button>
+									</form>
+									<button type="button" class="btn btn-danger" popovertarget="remove-{d.id}">Remove<span class="sr-only"> {d.name}</span></button>
+								</div>
+							</div>
+							<ConfirmDelete id="remove-{d.id}" trigger={false} title="Stop reading {d.name}?" body="Waterline stops asking it for readings. The readings already in stay." action="?/removeDevice" label="Remove" fields={{ id: d.id }} />
+						</li>
+					{/each}
+				</ul>
+			{:else}
+				<p class="none">No device is read directly yet.</p>
+			{/if}
+		</section>
+
+		<form method="POST" action="?/find" class="block" use:enhance aria-labelledby="find-h">
+			<h2 id="find-h" class="kicker">Read a device</h2>
+			<div class="field">
+				<label class="label" for="d-url">Device address</label>
+				<input class="input mono" id="d-url" name="url" inputmode="url" autocomplete="off" placeholder="192.168.1.33" value={form?.find?.url ?? ''} aria-invalid={!!findErr.url} aria-describedby={findErr.url ? 'd-url-e' : undefined} />
+				{#if findErr.url}<span class="error-text" id="d-url-e">✕ {findErr.url}</span>{/if}
+			</div>
+			<fieldset class="tanks" aria-describedby={findErr.tank ? 'd-tank-e' : undefined}>
+				<legend class="label">Tank it reads into</legend>
+				<div class="checks">
+					{#each data.tanks as t (t.id)}
+						<label class="check-row"><input type="radio" name="tank" value={t.id} checked={t.id === findTank} /><span>{t.name}</span></label>
+					{/each}
+				</div>
+				{#if findErr.tank}<span class="error-text" id="d-tank-e">✕ {findErr.tank}</span>{/if}
+			</fieldset>
+			<details class="signin" open={!!form?.find?.username}>
+				<summary>The device asks for a sign-in</summary>
+				<div class="field">
+					<label class="label" for="d-user">Username</label>
+					<input class="input" id="d-user" name="username" autocomplete="off" value={form?.find?.username ?? ''} />
+				</div>
+				<div class="field">
+					<label class="label" for="d-pass">Password</label>
+					<input class="input" id="d-pass" name="password" type="password" autocomplete="off" />
+				</div>
+			</details>
+			<button class="btn btn-primary go">Find sensors</button>
+		</form>
+
+		{#if found}
+			<form method="POST" action="?/addDevice" class="block found" use:enhance aria-labelledby="found-h">
+				<h2 id="found-h" class="kicker">✓ Found {found.title ?? found.url} · {found.sensors.length} sensor{found.sensors.length === 1 ? '' : 's'}</h2>
+				<input type="hidden" name="tank" value={found.tankId} />
+				<input type="hidden" name="url" value={found.url} />
+				<input type="hidden" name="title" value={found.title ?? ''} />
+				<input type="hidden" name="auth" value={found.auth} />
+				<div class="field">
+					<label class="label" for="d-name">Name</label>
+					<input class="input" id="d-name" name="name" maxlength="60" value={found.name} aria-invalid={!!addErr.name} aria-describedby={addErr.name ? 'd-name-e' : undefined} />
+					{#if addErr.name}<span class="error-text" id="d-name-e">✕ {addErr.name}</span>{/if}
+				</div>
+				<fieldset class="sensors" aria-describedby={addErr.sensors ? 'd-sensors-e' : undefined}>
+					<legend class="label">Sensors to read into {found.tankName}, and which parameter each one is</legend>
+					<ul class="sensor-list">
+						{#each found.sensors as s (s.objectId)}
+							<li class="sensor-row">
+								<input type="hidden" name="all" value={s.objectId} />
+								<input type="hidden" name="name-{s.objectId}" value={s.name} />
+								<input type="hidden" name="unit-{s.objectId}" value={s.unit ?? ''} />
+								<input type="hidden" name="state-{s.objectId}" value={s.state} />
+								<label class="check-row"><input type="checkbox" name="sensor" value={s.objectId} checked={s.checked} /><span>{s.name} <span class="mono hint-code">{s.state}</span></span></label>
+								<label class="sr-only" for="p-{s.objectId}">Parameter for {s.name}</label>
+								<select class="input" id="p-{s.objectId}" name="param-{s.objectId}">
+									<option value="">Which parameter?</option>
+									{#each found.params as p (p.label)}
+										<option value={p.label} selected={p.label === s.guess}>{p.name}</option>
+									{/each}
+								</select>
+							</li>
+						{/each}
+					</ul>
+					<p class="small">A sensor with no value now (NA) is left unticked; the board's own temperature and humidity too.</p>
+					{#if addErr.sensors}<span class="error-text" id="d-sensors-e">✕ {addErr.sensors}</span>{/if}
+				</fieldset>
+				<button class="btn btn-primary go">Start reading</button>
+			</form>
+		{/if}
+	{/if}
 
 	{#each data.incoming.filter((t) => t.count) as t (t.id)}
 		<section class="block" aria-labelledby="in-{t.id}">
@@ -246,6 +382,51 @@ sensor:
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
+	}
+	/* which tank's id the examples carry: a chip per tank, or the one tank's name */
+	.for {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+	.for-name {
+		font-size: 14px;
+		font-weight: 800;
+	}
+	/* a device's sensors, each with the parameter it feeds */
+	.sensors {
+		margin: 0;
+		padding: 0;
+		border: 0;
+		min-width: 0;
+	}
+	.sensor-list {
+		list-style: none;
+		margin: 8px 0 0;
+		padding: 0;
+	}
+	.sensor-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 8px 12px;
+		padding: 6px 0;
+		border-bottom: 1px solid var(--divider);
+	}
+	.sensor-row .check-row {
+		flex: 1;
+		min-width: 200px;
+	}
+	.sensor-row select {
+		width: auto;
+		min-width: 200px;
+	}
+	.signin summary {
+		cursor: pointer;
+		font-size: 14px;
+	}
+	.signin .field {
+		margin-top: 12px;
 	}
 	.copy {
 		min-height: 32px;

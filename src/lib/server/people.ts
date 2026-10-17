@@ -1,12 +1,13 @@
 // People on the server (#27): everyone with an account, for Server settings ›
 // People, and what an admin can do about them.
 import { error } from '@sveltejs/kit';
-import { and, count, eq, isNotNull, ne } from 'drizzle-orm';
-import { rmSync } from 'node:fs';
+import { and, count, eq, inArray, isNotNull, ne } from 'drizzle-orm';
 import { join } from 'node:path';
 import { env } from '$env/dynamic/private';
 import { db } from './db';
 import { invites, photos, tanks, users, type User } from './db/schema';
+import { avatarFile, ownAvatarFile } from './avatar';
+import { removeFiles } from './files';
 import { logger } from './log';
 import { adminEmail } from './sign-in';
 import { LOCAL_ADMIN_FALLBACK_EMAIL } from './users';
@@ -68,22 +69,27 @@ export function signOutEverywhere(by: User, userId: string): User {
 /** What goes with a person: their tanks and photos, for the confirmation. */
 export function personFootprint(userId: string) {
 	const ids = db.select({ id: tanks.id }).from(tanks).where(eq(tanks.userId, userId)).all().map((t) => t.id);
-	let photoCount = 0;
-	for (const id of ids) photoCount += db.select({ n: count() }).from(photos).where(eq(photos.tankId, id)).get()?.n ?? 0;
+	const photoCount = ids.length ? (db.select({ n: count() }).from(photos).where(inArray(photos.tankId, ids)).get()?.n ?? 0) : 0;
 	return { tanks: ids.length, photos: photoCount, tankIds: ids };
 }
 
 /** Remove a person and everything of theirs: tanks, entries, photos on disk. Never the last admin, never yourself. */
-export function removePerson(by: User, userId: string): User {
+export async function removePerson(by: User, userId: string): Promise<User> {
 	const u = db.select().from(users).where(eq(users.id, userId)).get();
 	if (!u) error(404, 'Person not found');
 	if (u.id === by.id) error(400, "You can't remove your own account from here.");
 	if (u.isAdmin && adminCount() <= 1) error(400, 'The server needs at least one admin.');
 	const { tankIds, tanks: n, photos: p } = personFootprint(userId);
-	for (const id of tankIds) rmSync(join(env.DATA_DIR ?? './data', 'photos', id), { recursive: true, force: true });
 	// their invitation goes too, so the address can't sign back in by itself
 	db.update(invites).set({ revokedAt: new Date().toISOString() }).where(and(eq(invites.email, u.email), ne(invites.email, ''))).run();
 	db.delete(users).where(eq(users.id, userId)).run(); // cascades to everything else
+	// then their files (#118): each tank's photos and receipts, and their profile photos
+	const data = env.DATA_DIR ?? './data';
+	await removeFiles(
+		[...tankIds.flatMap((id) => [join(data, 'photos', id), join(data, 'receipts', id)]), avatarFile(userId), ownAvatarFile(userId)],
+		'settings',
+		{ recursive: true }
+	);
 	logger.info('settings', `${u.email} removed from the server with ${n} tank${n === 1 ? '' : 's'} and ${p} photo${p === 1 ? '' : 's'}`, { userId: by.id });
 	return u;
 }

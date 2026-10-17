@@ -1,5 +1,7 @@
 # Waterline: one image, one volume (/data).
-FROM node:22-bookworm-slim AS build
+# The base image is pinned to a digest (#109), so a build is the same build;
+# Dependabot proposes a new digest when node:22-bookworm-slim is updated.
+FROM node:22-bookworm-slim@sha256:c3de60bf2f9dd0ac6370e6117950ff62d6e339527e7472301c9c78a017978392 AS build
 WORKDIR /app
 # Build tools only in case better-sqlite3 has no prebuilt binary for this platform.
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
@@ -9,7 +11,7 @@ RUN npm ci
 COPY . .
 RUN npm run build && npm prune --omit=dev
 
-FROM node:22-bookworm-slim
+FROM node:22-bookworm-slim@sha256:c3de60bf2f9dd0ac6370e6117950ff62d6e339527e7472301c9c78a017978392
 WORKDIR /app
 ENV NODE_ENV=production \
 	PORT=3000 \

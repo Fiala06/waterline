@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  brandAndModel,
+  guessEquipmentType,
+  specChangeText,
   parseServiceCadence,
   scheduleHours,
   scheduleText,
@@ -114,4 +117,59 @@ describe('schedules on equipment (#25)', async () => {
 		expect(lightingText({ lightsOn: null, lightsOff: null, co2On: null, co2Off: null, photoperiodH: null }, [])).toBe('');
 		expect(tankLighting({ lightsOn: null, lightsOff: null, co2On: null, co2Off: null, photoperiodH: 7 }, []).photoperiodH).toBe(7);
 	});
+});
+
+describe('a light period the form previews and the server saves (#120)', () => {
+	it('needs two real times that differ', async () => {
+		const { isCompletePeriod } = await import('./equipment');
+		expect(isCompletePeriod({ on: '08:00', off: '16:00' })).toBe(true);
+		expect(isCompletePeriod({ on: '22:00', off: '06:00' })).toBe(true);
+		expect(isCompletePeriod({ on: '08:00', off: '08:00' })).toBe(false);
+		expect(isCompletePeriod({ on: '25:00', off: '06:00' })).toBe(false);
+		expect(isCompletePeriod({ on: '8:00', off: '16:00' })).toBe(false);
+		expect(isCompletePeriod({ on: '', off: '16:00' })).toBe(false);
+	});
+});
+
+describe("from a product barcode (#147)", () => {
+  it("guesses the type from the listing's words", () => {
+    expect(guessEquipmentType("Fluval 407 Performance Canister Filter, Aquarium Filter for up to 100 Gallons")).toBe("filter");
+    expect(guessEquipmentType("Pet Supplies > Fish Supplies > Aquarium Heaters Tidewell 200 W")).toBe("heater");
+    expect(guessEquipmentType("Hygger 24W Full Spectrum Aquarium LED Light")).toBe("light");
+    expect(guessEquipmentType("Fluval CO2 Kit with Regulator")).toBe("co2");
+    expect(guessEquipmentType("Sicce Syncra Silent 1.5 Return Pump")).toBe("pump");
+    expect(guessEquipmentType("Tetra Whisper Air Pump for Aquarium Filters")).toBe("filter");
+    expect(guessEquipmentType("Reef Octopus Classic 110 Protein Skimmer with pump")).toBe("skimmer");
+    expect(guessEquipmentType("Seachem Prime 500 mL")).toBe("other");
+  });
+  it("splits a listing's name into brand and model", () => {
+    expect(brandAndModel("Fluval 407 Performance Canister Filter, Aquarium Filter for up to 100 Gallons", "FLUVAL")).toEqual({ brand: "Fluval", model: "407 Performance Canister Filter" });
+    expect(brandAndModel("Tetra Whisper IQ 30 Power Filter - 10 gal", "Tetra")).toEqual({ brand: "Tetra", model: "Whisper IQ 30 Power Filter" });
+    expect(brandAndModel("Eheim Jager 150 W Heater with Thermostat (TruTemp)", null)).toEqual({ brand: "Eheim", model: "Jager 150 W Heater" });
+    expect(brandAndModel("Aquarium heater 200 W", null)).toEqual({ brand: "", model: "Aquarium heater 200 W" });
+    expect(brandAndModel("Canister Filter 407 by Fluval", "Fluval")).toEqual({ brand: "Fluval", model: "Canister Filter 407 by Fluval" });
+    expect(brandAndModel("Fluval", "Fluval")).toEqual({ brand: "Fluval", model: "" });
+    expect(brandAndModel("API Freshwater Master Test Kit", "API")).toEqual({ brand: "API", model: "Freshwater Master Test Kit" });
+    expect(brandAndModel("  Hygger   24W  LED Light | Full spectrum ", "")).toEqual({ brand: "Hygger", model: "24W LED Light" });
+  });
+});
+
+describe("what an adjustment changed", () => {
+  const metric = { unitSystem: "metric", hardnessUnit: "dgh" } as const;
+  const imperial = { unitSystem: "imperial", hardnessUnit: "dgh" } as const;
+  it("says the setting and before → after in the keeper's units", () => {
+    expect(specChangeText("intensity", [60, 80], metric)).toEqual({ label: "Intensity", text: "60% → 80%" });
+    expect(specChangeText("photoperiodH", [8.5, 8], metric)).toEqual({ label: "Photoperiod", text: "8.5 h → 8 h" });
+    expect(specChangeText("setC", [24, 26], imperial)).toEqual({ label: "Set to", text: "75 °F → 79 °F" });
+    expect(specChangeText("flowLh", [1000, 1200], imperial)).toEqual({ label: "Flow rate", text: "264.2 gph → 317 gph" });
+    expect(specChangeText("spectrum", [null, "Full spectrum"], metric)).toEqual({ label: "Spectrum", text: "none → Full spectrum" });
+    expect(specChangeText("filterType", ["Canister", "Sponge"], metric)).toEqual({ label: "Filter type", text: "Canister → Sponge" });
+  });
+  it("names the brand and model, and leaves out what isn't a change", () => {
+    expect(specChangeText("model", ["300S", "300S V"], metric)).toEqual({ label: "Model", text: "300S → 300S V" });
+    expect(specChangeText("brand", [null, "Twinstar"], metric)).toEqual({ label: "Brand", text: "none → Twinstar" });
+    expect(specChangeText("mystery", [1, 2], metric)).toEqual({ label: "mystery", text: "1 → 2" });
+    expect(specChangeText("intensity", 80, metric)).toBeNull();
+    expect(specChangeText("intensity", [80], metric)).toBeNull();
+  });
 });

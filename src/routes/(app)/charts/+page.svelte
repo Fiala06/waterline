@@ -8,20 +8,35 @@
 	import { hscroll } from '$lib/actions';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import TrendChart from '$lib/components/TrendChart.svelte';
+	import { WHAT_CHANGED_NOTE } from '$lib/what-changed';
+	import { browser } from '$app/environment';
 	import OverlayChart, { seriesStyle } from '$lib/components/OverlayChart.svelte';
-	import { CHART_RANGES } from '$lib/charts';
+	import { CHART_RANGES, DEFAULT_OVERLAYS, MAX_COMPARE, OVERLAYS, OVERLAY_LABEL, type OverlayKind } from '$lib/charts';
 
 	let { data } = $props();
 	let selected = $state<string | null>(null);
-	// Dosing can be several times a week, so its markers are opt-in.
-	let showDosing = $state(false);
-	const markers = $derived((data.chart?.markers ?? data.all?.markers ?? []).filter((m) => showDosing || m.kind !== 'dosing'));
+	// Event overlays (#88): water changes by default, the rest opt-in (dosing can be
+	// several times a week), each on its own switch; the choice is kept on this device.
+	const OVERLAY_KEY = 'wl_chart_overlays';
+	let shown = $state<Record<OverlayKind, boolean>>({ ...DEFAULT_OVERLAYS });
+	const toggle = (kind: OverlayKind) => {
+		shown = { ...shown, [kind]: !shown[kind] };
+		try {
+			localStorage.setItem(OVERLAY_KEY, JSON.stringify(shown));
+		} catch {
+			/* storage blocked */
+		}
+	};
+	// the kinds with an event in range, in legend order
+	const allMarkers = $derived(data.chart?.markers ?? data.all?.markers ?? []);
+	const kindsInRange = $derived(OVERLAYS.filter((o) => allMarkers.some((m) => m.kind === o.kind)));
+	const markers = $derived(allMarkers.filter((m) => shown[m.kind as OverlayKind]));
 	const current = $derived(data.all ? 'all' : data.chart?.paramId);
-	// All parameters: the ones taken off the chart, and the one the legend points at
+	// All parameters: the lines taken off the chart, and the one the keys point at
 	let hidden = $state<string[]>([]);
 	let focus = $state<string | null>(null);
 	const order = $derived(data.all?.lines.map((l) => l.id) ?? []);
-	const toggle = (id: string) => (hidden = hidden.includes(id) ? hidden.filter((h) => h !== id) : [...hidden, id]);
+	const toggleLine = (id: string) => (hidden = hidden.includes(id) ? hidden.filter((h) => h !== id) : [...hidden, id]);
 
 	const q = (patch: Record<string, string>) => {
 		const u = new URLSearchParams(page.url.searchParams);
@@ -32,9 +47,18 @@
 	const keep = (name: string) => [...page.url.searchParams].filter(([k]) => k !== name);
 	const submit = (e: Event) => (e.currentTarget as HTMLInputElement | HTMLSelectElement).form?.requestSubmit();
 
-	const allMarkers = $derived(data.chart?.markers ?? data.all?.markers ?? []);
 	const chosen = $derived(allMarkers.find((m) => m.href === selected) ?? null);
-	const hasDosing = $derived(allMarkers.some((m) => m.kind === 'dosing'));
+	// Comparing (#87): the parameters drawn beside this one, and the address without one of them
+	const compared = $derived((data.chart?.compare ?? []).map((c) => c.id));
+	const without = (id: string) => {
+		const u = new URLSearchParams(page.url.searchParams);
+		const rest = compared.filter((x) => x !== id);
+		if (rest.length) u.set('c', rest.join(','));
+		else u.delete('c');
+		return `/charts?${u}`;
+	};
+	// the ones not drawn yet; a drawn one comes off by its chip's ×
+	const compareOptions = $derived((data.list ?? []).filter((p) => p.id !== data.chart?.paramId && !compared.includes(p.id)));
 	// "ppm · target 5–20"; pH has no unit, so just "target 6.5–7.5"
 	const subtitle = $derived(
 		[data.chart?.unit, data.chart?.targetBare && `target ${data.chart.targetBare}`].filter(Boolean).join(' · ')
@@ -49,6 +73,14 @@
 	// the tooltip stays on the latest reading on phones
 	let phone = $state(false);
 	onMount(() => {
+		if (browser) {
+			try {
+				const kept = JSON.parse(localStorage.getItem(OVERLAY_KEY) ?? 'null');
+				if (kept && typeof kept === 'object') shown = { ...shown, ...Object.fromEntries(OVERLAYS.filter((o) => typeof kept[o.kind] === 'boolean').map((o) => [o.kind, kept[o.kind]])) };
+			} catch {
+				/* storage blocked or junk */
+			}
+		}
 		const mq = matchMedia('(max-width: 1023px)');
 		const sync = () => (phone = mq.matches);
 		sync();
@@ -114,7 +146,7 @@
 									>
 										{#snippet popover(m)}
 											{@const full = a.markers.find((x) => x.href === m.href)}
-											<div class="pop-day">{full?.day} · {m.kind === 'dosing' ? 'Dosing' : 'Water change'}</div>
+											<div class="pop-day">{full?.day} · {OVERLAY_LABEL[m.kind as OverlayKind] ?? 'Event'}</div>
 											<div class="pop-title">{m.label.replace(/^Water change · /, '')}</div>
 											<a class="pop-link" href={m.href}>View entry ›</a>
 										{/snippet}
@@ -131,7 +163,7 @@
 									class:dashed={st.dash}
 									aria-pressed={!hidden.includes(l.id)}
 									style:--key={st.color}
-									onclick={() => toggle(l.id)}
+									onclick={() => toggleLine(l.id)}
 									onpointerenter={() => (focus = hidden.includes(l.id) ? null : l.id)}
 									onpointerleave={() => (focus = null)}
 									onfocus={() => (focus = hidden.includes(l.id) ? null : l.id)}
@@ -144,14 +176,11 @@
 						<div class="legend all-legend">
 							<span><i class="lg-band"></i>Target</span>
 							<span><i class="lg-zone"></i>Out of range</span>
-							{#if a.markers.some((m) => m.kind !== 'dosing')}
-								<span><i class="lg-marker"></i>Water change</span>
-							{/if}
-							{#if hasDosing}
-								<button type="button" class="lg-toggle" aria-pressed={showDosing} onclick={() => (showDosing = !showDosing)}>
-									<span aria-hidden="true">◆</span>{showDosing ? 'Hide dosing' : 'Show dosing'}
+							{#each kindsInRange as o (o.kind)}
+								<button type="button" class="lg-toggle" aria-pressed={shown[o.kind]} onclick={() => toggle(o.kind)}>
+									<i class="lg-mk {o.kind}" aria-hidden="true"></i>{o.label}
 								</button>
-							{/if}
+							{/each}
 						</div>
 						{#if a.noTarget.length}
 							<p class="no-target">
@@ -199,11 +228,35 @@
 						{#if subtitle || phoneSubtitle}
 							<span class="c-sub"><span class="hide-phone">{subtitle}</span><span class="hide-desk">{phoneSubtitle}</span></span>
 						{/if}
+						<!-- compared parameters (#87): each a chip with its ×, and Compare… to add up to two -->
+						{#each c.compare as cp (cp.id)}
+							<a class="chip cmp" href={without(cp.id)} data-sveltekit-noscroll aria-label="Stop comparing with {cp.name}">vs {cp.name} <span aria-hidden="true">×</span></a>
+						{/each}
+						{#if compareOptions.length && c.compare.length < MAX_COMPARE}
+							<details class="compare">
+								<summary class="chip">Compare… <span class="caret" aria-hidden="true">▾</span></summary>
+								<!-- the boxes post c=id&c=id after the ones already drawn, so the first picked keeps the axis; the server takes them all, up to two -->
+								<form class="compare-menu" method="GET" action="/charts" data-sveltekit-noscroll data-sveltekit-keepfocus>
+									{#each keep('c') as [k, v], i (i)}<input type="hidden" name={k} value={v} />{/each}
+									{#each compared as id (id)}<input type="hidden" name="c" value={id} />{/each}
+									<fieldset>
+										<legend>Compare with up to {MAX_COMPARE}, each on its own scale</legend>
+										{#each compareOptions as p (p.id)}
+											<label class="option">
+												<input type="checkbox" name="c" value={p.id} onchange={submit} />
+												<span>{p.name}</span>{#if p.unit}<span class="opt-unit">{p.unit}</span>{/if}
+											</label>
+										{/each}
+									</fieldset>
+									<noscript><button class="btn">Compare</button></noscript>
+								</form>
+							</details>
+						{/if}
 					</div>
 					{@render rangeForm()}
 				</div>
 
-				{#if c.points.length >= 2}
+				{#if c.points.length >= 2 || c.sensor.length >= 2}
 					<div class="chart-card">
 						<div class="chart-box">
 							<div class="chart-fill">
@@ -213,6 +266,7 @@
 									height={260}
 									points={c.points}
 									sensor={c.sensor}
+									compare={c.compare}
 									band={c.band}
 									{markers}
 									from={c.from}
@@ -229,7 +283,7 @@
 								>
 									{#snippet popover(m)}
 										{@const full = c.markers.find((x) => x.href === m.href)}
-										<div class="pop-day">{full?.day} · {m.kind === 'dosing' ? 'Dosing' : 'Water change'}</div>
+										<div class="pop-day">{full?.day} · {OVERLAY_LABEL[m.kind as OverlayKind] ?? 'Event'}</div>
 										<div class="pop-title">{m.label.replace(/^Water change · /, '')}</div>
 										{#if full?.change}<div class="pop-change">{full.change}</div>{/if}
 										<a class="pop-link" href={m.href}>View entry ›</a>
@@ -243,14 +297,18 @@
 							<span><i class="lg-band"></i>Target {c.target}</span>
 							<span><i class="lg-zone"></i>Out of range</span>
 						{/if}
-						{#if c.markers.some((m) => m.kind !== 'dosing')}
-							<span><i class="lg-marker"></i>Water change</span>
+						{#if c.sensor.length >= 1}
+							<span><i class="lg-sensor"></i>Sensor</span>
 						{/if}
-						{#if hasDosing}
-							<button type="button" class="lg-toggle" aria-pressed={showDosing} onclick={() => (showDosing = !showDosing)}>
-								<span aria-hidden="true">◆</span>{showDosing ? 'Hide dosing' : 'Show dosing'}
+						{#each c.compare as cp, i (cp.id)}
+							<span><i class="lg-cmp c{i + 1}"></i>{cp.name}{cp.unit ? ` (${cp.unit})` : ''} · own scale{i === 0 ? ', right' : ''}</span>
+						{/each}
+						<!-- the event overlays with something in range, each a switch (#88) -->
+						{#each kindsInRange as o (o.kind)}
+							<button type="button" class="lg-toggle" aria-pressed={shown[o.kind]} onclick={() => toggle(o.kind)}>
+								<i class="lg-mk {o.kind}" aria-hidden="true"></i>{o.label}
 							</button>
-						{/if}
+						{/each}
 					</div>
 				{:else}
 					<div class="chart-empty">
@@ -271,22 +329,45 @@
 			</div>
 
 			<div class="side">
-				{#if c.stats}
-					{@const s = c.stats}
+				<!-- the tests' stats; Live stands alone when a sensor is all there is (#130) -->
+				{#if c.stats || c.live}
 					<div class="stats">
-						<div class="stat latest hide-phone">
-							<span class="sl">Latest</span>
-							<span class="sv num status-{s.latestLevel}">{s.latest}{c.unit ? ` ${c.unit}` : ''}</span>
-							<span class="st status-{s.latestLevel}">{s.latestStatus}</span>
-						</div>
-						{#if c.live}
-							<div class="stat live"><span class="sl">● Live</span><span class="sv num status-{c.live.level}">{c.live.value}{c.unit ? ` ${c.unit}` : ''}</span><span class="st">{c.live.at} · {c.live.source}</span></div>
+						{#if c.stats}
+							<div class="stat latest hide-phone">
+								<span class="sl">Latest</span>
+								<span class="sv num status-{c.stats.latestLevel}">{c.stats.latest}{c.unit ? ` ${c.unit}` : ''}</span>
+								<span class="st status-{c.stats.latestLevel}">{c.stats.latestStatus}</span>
+							</div>
 						{/if}
-						<div class="stat"><span class="sl">Average</span><span class="sv num">{s.average}</span></div>
-						<div class="stat"><span class="sl">Range</span><span class="sv num">{s.range}</span></div>
-						<div class="stat"><span class="sl">In target</span><span class="sv num">{s.inTarget}</span><span class="st">{s.inRangePct} in range</span></div>
-						<div class="stat"><span class="sl">Change</span><span class="sv num">{s.change?.amount ?? '–'}</span>{#if s.change}<span class="st">{s.change.over}</span>{/if}</div>
+						{#if c.live}
+							<div class="stat live" class:fresh={c.live.fresh}><span class="sl">{c.live.fresh ? '● Live' : '○ Last'}</span><span class="sv num status-{c.live.level}">{c.live.value}{c.unit ? ` ${c.unit}` : ''}</span><span class="st">{c.live.at} · {c.live.source}</span></div>
+						{/if}
+						{#if c.stats}
+							{@const s = c.stats}
+							<div class="stat"><span class="sl">Average</span><span class="sv num">{s.average}</span></div>
+							<div class="stat"><span class="sl">Range</span><span class="sv num">{s.range}</span></div>
+							<div class="stat"><span class="sl">In target</span><span class="sv num">{s.inTarget}</span><span class="st">{s.inRangePct} in range</span></div>
+							<div class="stat"><span class="sl">Change</span><span class="sv num">{s.change?.amount ?? '–'}</span>{#if s.change}<span class="st">{s.change.over}</span>{/if}</div>
+						{/if}
 					</div>
+				{/if}
+				{#if c.changed}
+					<!-- What changed? (#89): the latest move, and what was logged in the same stretch; facts, not a cause -->
+					<section class="changed" aria-labelledby="changed-h">
+						<h2 class="kicker" id="changed-h">What changed?</h2>
+						<p class="headline"><b aria-hidden="true">{c.changed.up ? '↗' : '↘'}</b><span>{c.changed.headline}</span></p>
+						{#if c.changed.events.length}
+							<p class="lead">Logged in that time:</p>
+							<ul>
+								{#each c.changed.events as e (e.href)}
+									<li><a href={e.href}><span class="e-title">{e.title}</span><span class="e-day">{e.day}</span></a></li>
+								{/each}
+							</ul>
+							<p class="note">{WHAT_CHANGED_NOTE}</p>
+						{:else}
+							<p class="note">Nothing else was logged in {c.changed.days === 1 ? 'that day' : 'those days'}.</p>
+						{/if}
+					</section>
 				{/if}
 				{@render eventsList()}
 			</div>
@@ -430,6 +511,11 @@
 		font-size: 12px;
 		color: var(--text-muted);
 	}
+	/* a sensor still reporting reads "● Live" in ink; one gone quiet stays muted, as "○ Last" */
+	.stat.live.fresh .sl {
+		color: var(--text);
+		font-weight: 600;
+	}
 	.sv {
 		font-size: 18px;
 		font-weight: 800;
@@ -459,6 +545,55 @@
 	.insight.warn b {
 		color: var(--bad);
 	}
+	/* What changed?: a kicker, the move in a line, the entries of that stretch, the caveat */
+	.changed {
+		order: 4;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		padding: 12px 0;
+		border-bottom: 1px solid var(--divider);
+		font-size: 13px;
+		line-height: 1.45;
+		color: var(--text-2);
+	}
+	.changed .headline {
+		margin: 0;
+		display: flex;
+		gap: 10px;
+		color: var(--text);
+		font-weight: 600;
+	}
+	.changed .headline b {
+		flex-shrink: 0;
+	}
+	.changed .lead,
+	.changed .note {
+		margin: 0;
+	}
+	.changed .note {
+		font-size: 12px;
+		color: var(--text-muted);
+	}
+	.changed ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	.changed li {
+		border-top: 1px solid var(--divider);
+	}
+	.changed li a {
+		display: flex;
+		justify-content: space-between;
+		gap: 12px;
+		min-height: 44px;
+		align-items: center;
+		color: var(--text);
+	}
+	.changed li a:hover .e-title {
+		text-decoration: underline;
+	}
 	.legend {
 		order: 5;
 		display: flex;
@@ -485,10 +620,120 @@
 		height: 10px;
 		background: var(--zone-bad);
 	}
-	.lg-marker {
+	/* the overlays' glyphs, as the chart draws them (#88) */
+	.lg-mk {
+		position: relative;
+		display: inline-block;
 		width: 10px;
 		height: 10px;
+		box-sizing: border-box;
 		background: var(--ink);
+	}
+	.lg-mk.dosing {
+		transform: rotate(45deg) scale(0.8);
+		background: var(--neutral-600);
+	}
+	.lg-mk.co2 {
+		height: 4px;
+		background: var(--neutral-600);
+	}
+	.lg-mk.light {
+		background: var(--neutral-600);
+		clip-path: polygon(50% 0, 100% 100%, 0 100%);
+	}
+	.lg-mk.trim {
+		background:
+			linear-gradient(45deg, transparent 38%, var(--neutral-600) 38% 62%, transparent 62%),
+			linear-gradient(-45deg, transparent 38%, var(--neutral-600) 38% 62%, transparent 62%);
+	}
+	.lg-mk.maintenance {
+		background: none;
+		border: 2px solid var(--neutral-600);
+	}
+	.lg-mk.algae {
+		background: none;
+		border: 2px solid var(--neutral-600);
+		transform: rotate(45deg) scale(0.8);
+	}
+	.lg-toggle[aria-pressed='false'] {
+		color: var(--text-muted);
+		text-decoration: line-through;
+	}
+	.lg-toggle[aria-pressed='false'] .lg-mk {
+		opacity: 0.35;
+	}
+	/* a sensor's thin line (#19) */
+	/* a compared parameter's line: dashed, then dotted, in text-2 */
+	.lg-cmp {
+		display: inline-block;
+		width: 18px;
+		height: 0;
+		border-top: 2px dashed var(--text-2);
+		margin-right: 6px;
+		vertical-align: middle;
+	}
+	.lg-cmp.c2 {
+		border-top-style: dotted;
+	}
+	/* "vs pH ×" and Compare…: chips beside the title */
+	.cmp {
+		height: 28px;
+		padding: 0 10px;
+		font-size: 13px;
+		font-weight: 700;
+		color: var(--text);
+	}
+	.compare {
+		position: relative;
+	}
+	.compare summary {
+		height: 28px;
+		padding: 0 10px;
+		font-size: 13px;
+		list-style: none;
+		cursor: pointer;
+	}
+	.compare summary::-webkit-details-marker {
+		display: none;
+	}
+	.compare-menu {
+		position: absolute;
+		z-index: 5;
+		left: 0;
+		top: calc(100% + 6px);
+		min-width: 240px;
+		padding: 10px 12px 12px;
+		background: var(--bg);
+		border: 2px solid var(--ink);
+		box-shadow: var(--shadow-lg);
+	}
+	.compare-menu fieldset {
+		margin: 0;
+		padding: 0;
+		border: 0;
+		display: flex;
+		flex-direction: column;
+	}
+	.compare-menu legend {
+		padding: 0 0 6px;
+		font-size: 11px;
+		font-weight: 800;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--text-muted);
+	}
+	.compare-menu .option {
+		min-height: 40px;
+	}
+	.opt-unit {
+		margin-left: auto;
+		font-size: 12px;
+		color: var(--text-muted);
+	}
+	.lg-sensor {
+		width: 16px;
+		height: 0;
+		border-top: 1.5px solid var(--neutral-600);
 	}
 	.lg-toggle {
 		display: flex;
@@ -788,8 +1033,12 @@
 			font-size: 20px;
 			white-space: normal;
 		}
-		.events {
+		.events,
+		.changed {
 			order: 0;
+		}
+		.changed {
+			border-bottom: none;
 		}
 		/* big enough to read: one other tank takes the row, more share it */
 	}

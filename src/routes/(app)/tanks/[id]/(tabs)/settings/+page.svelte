@@ -10,6 +10,7 @@
 	import { fmtDate } from '$lib/time';
 	import TankDetailsSections from '$lib/components/TankDetailsSections.svelte';
 	import { hoursText, scheduleHours } from '$lib/equipment';
+	import { GROWING_STYLE_LABEL } from '$lib/types';
 	let { data, form } = $props();
 	// the lighting and CO₂ schedule; with both lights times set the photoperiod is the hours between
 	let lightsOn = $state(untrack(() => data.tank.lightsOn));
@@ -222,10 +223,6 @@
 				<input class="input" id="glass" name="glass" defaultValue={data.tank.glass} maxlength="60" placeholder="e.g. Low-iron, rimless" />
 			</div>
 			<div class="field">
-				<label class="label" for="substrate">Substrate</label>
-				<input class="input" id="substrate" name="substrate" defaultValue={data.tank.substrate} maxlength="60" placeholder="e.g. Aquasoil, 3 in" />
-			</div>
-			<div class="field">
 				<label class="label" for="waterSource">Water source</label>
 				<select class="input" id="waterSource" name="waterSource">
 					{#each [['', '—'], ['tap', 'Tap'], ['rodi', 'RODI'], ['mix', 'Mix'], ['well', 'Well']] as [v, l] (v)}
@@ -233,9 +230,26 @@
 					{/each}
 				</select>
 			</div>
+			{#if data.tank.type === 'planted'}
+				<!-- what a planted tank grows on (#96): light, CO₂, fertilizer and substrate together -->
+				<div class="section-head growing" id="growing"><h2>Growing setup</h2></div>
+				<div class="field">
+					<label class="label" for="growingStyle">How it's grown</label>
+					<select class="input" id="growingStyle" name="growingStyle">
+						{#each [['', '—'], ...Object.entries(GROWING_STYLE_LABEL)] as [v, l] (v)}
+							<option value={v} selected={(data.tank.growingStyle ?? '') === v}>{l}</option>
+						{/each}
+					</select>
+					<span class="hint">Changing it leaves the parameters as they are: turn CO₂ or the nutrients on or off in <a href="/tanks/{data.tank.id}/targets">Parameters &amp; targets</a>.</span>
+				</div>
+			{/if}
+			<div class="field">
+				<label class="label" for="substrate">Substrate</label>
+				<input class="input" id="substrate" name="substrate" defaultValue={data.tank.substrate} maxlength="60" placeholder="e.g. Aquasoil, 3 in" />
+			</div>
 			<!-- set on the light's or CO₂ item's schedule (#25): shown here, changed on the item -->
 			{#if data.lighting.lights}
-				<div class="field sched">
+				<div class="field sched" id="lights">
 					<span class="label">Lights on / off</span>
 					<input type="hidden" name="lightsOn" value={lightsOn} />
 					<input type="hidden" name="lightsOff" value={lightsOff} />
@@ -244,7 +258,7 @@
 					<a class="hint sched-link" href="/tanks/{data.tank.id}/equipment/{data.lighting.lights.item.id}">Set on {data.lighting.lights.item.name} ›</a>
 				</div>
 			{:else}
-				<fieldset class="field sched">
+				<fieldset class="field sched" id="lights">
 					<legend class="label">Lights on / off</legend>
 					<div class="times">
 						<input class="input" type="time" name="lightsOn" aria-label="Lights on" bind:value={lightsOn} aria-invalid={!!errors.lightsOn} />
@@ -257,7 +271,7 @@
 				</fieldset>
 			{/if}
 			{#if data.lighting.co2}
-				<div class="field sched">
+				<div class="field sched" id="co2">
 					<span class="label">CO₂ on / off</span>
 					<input type="hidden" name="co2On" value={co2On} />
 					<input type="hidden" name="co2Off" value={co2Off} />
@@ -265,7 +279,7 @@
 					<a class="hint sched-link" href="/tanks/{data.tank.id}/equipment/{data.lighting.co2.item.id}">Set on {data.lighting.co2.item.name} ›</a>
 				</div>
 			{:else}
-				<fieldset class="field sched">
+				<fieldset class="field sched" id="co2">
 					<legend class="label">CO₂ on / off</legend>
 					<div class="times">
 						<input class="input" type="time" name="co2On" aria-label="CO₂ on" bind:value={co2On} aria-invalid={!!errors.co2On} />
@@ -284,6 +298,21 @@
 				</div>
 				{#if data.lighting.lights}<span class="hint">From the light's schedule.</span>{:else if lightsHours != null}<span class="hint">From the lights' times.</span>{/if}
 			</div>
+			{#if data.tank.type === 'planted'}
+				<div class="field" id="fertilizer">
+					<span class="label">Fertilizer</span>
+					{#if data.dosing.length}
+						<ul class="dosing" aria-label="Dosing routines">
+							{#each data.dosing as d (d.id)}
+								<li><a href="/tasks/{d.id}"><span class="d-text">{d.text}</span><span class="d-when">{d.interval} · {d.next} ›</span></a></li>
+							{/each}
+						</ul>
+					{:else}
+						<span class="hint">No dosing routine yet. A routine's Done logs each dose in History.</span>
+					{/if}
+					<a class="hint sched-link" href="/tasks/new?tank={data.tank.id}&type=dosing&from={encodeURIComponent(`/tanks/${data.tank.id}/settings`)}">Add a dosing routine ›</a>
+				</div>
+			{/if}
 			<div class="field">
 				<label class="label" for="startDate">Start date</label>
 				<DateField name="startDate" id="startDate" bind:value={startDate} label="Start date" today={data.today} max={data.today} invalid={!!errors.startDate} />
@@ -326,6 +355,7 @@
 			<a href="/tanks/{data.tank.id}/public"><span>Public page</span><span class="muted">{data.publicLive ? '● Live' : 'Off'} ›</span></a>
 			<a href="/tanks/{data.tank.id}/remind"><span>Reminders</span><span class="muted">›</span></a>
 			<a href="/tanks/{data.tank.id}/review"><span>Setup review</span><span class="muted">›</span></a>
+			<a href="/tanks/{data.tank.id}/suggestions"><span>Suggested steps</span><span class="muted">›</span></a>
 		</nav>
 
 		{#if !data.tank.archived}
@@ -348,12 +378,66 @@
 	tone="warn"
 />
 
+<!-- the getting-started checklist (#82): hidden from the dashboard, back from here -->
+{#if !data.tank.archived}
+	<form class="start-again" method="POST" action="?/showChecklist" use:enhance>
+		<div class="section-head"><h2>Getting started</h2></div>
+		<p class="hint">The checklist for a new tank: first test, livestock, plants, lights, a photo. It leaves the dashboard once hidden or once the tank has settled in.</p>
+		<button class="btn">Show it on the dashboard</button>
+	</form>
+{/if}
+
 <!-- Specs, notes and routines (the same sections as Notes & routines), after the form -->
 <div class="details-more" id="details-more">
 	<TankDetailsSections tankId={data.tank.id} tankName={data.tank.name} details={data.details} editHref="#specBrand" from="/tanks/{data.tank.id}/settings" />
 </div>
 
 <style>
+	/* Growing setup (#96): a heading inside the form, then its fields */
+	.section-head.growing {
+		grid-column: 1 / -1;
+		margin-top: 8px;
+	}
+	.dosing {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		border-top: 2px solid var(--ink);
+	}
+	.dosing li {
+		border-bottom: 1px solid var(--divider);
+	}
+	.dosing a {
+		display: flex;
+		justify-content: space-between;
+		gap: 12px;
+		align-items: center;
+		min-height: 44px;
+		padding: 6px 0;
+		color: inherit;
+		text-decoration: none;
+	}
+	.d-text {
+		font-weight: 700;
+	}
+	.d-when {
+		font-size: 13px;
+		color: var(--text-muted);
+		white-space: nowrap;
+	}
+	.start-again {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		align-items: flex-start;
+		margin: 0 20px;
+	}
+	.start-again .hint {
+		margin: 0;
+		font-size: 14px;
+		line-height: 1.45;
+		color: var(--text-muted);
+	}
 	.wrap {
 		padding: 20px 20px calc(24px + env(safe-area-inset-bottom));
 		display: flex;

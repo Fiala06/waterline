@@ -5,17 +5,20 @@ import { statusOf } from '$lib/params';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { fmtValue, shortName } from '$lib/params';
 import { listEquipment, listLivestock, listPlants } from '$lib/server/specs';
-import { listMembers } from '$lib/server/members';
+import { listMembers, rolesOn } from '$lib/server/members';
 import { db } from '$lib/server/db';
 import { photos, wishes } from '$lib/server/db/schema';
 import { and, count, eq, isNull } from 'drizzle-orm';
 import { displayVersion, VERSION } from '$lib/changelog';
 import { takeFlash } from '$lib/server/flash';
-import { latestReadings, latestTest } from '$lib/server/logs';
-import { listParams, listTanks, roleOn } from '$lib/server/tanks';
+import { latestReadingsFor, latestTest } from '$lib/server/logs';
+import { listParamsFor, listTanks } from '$lib/server/tanks';
 import { shownAvatar } from '$lib/server/avatar-image';
 import { alertsSeen } from '$lib/server/users';
-import { listTasks } from '$lib/server/tasks';
+import { listTasks, settleTasks } from '$lib/server/tasks';
+import { listFavorites } from '$lib/server/favorites';
+import { listRoutinesFor } from '$lib/server/routines';
+import { favoriteSub } from '$lib/favorites';
 import { availableUpdate, projectPage } from '$lib/server/updates';
 import type { LayoutServerLoad } from './$types';
 
@@ -33,6 +36,8 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 		cookies.set('wl_tank', requested, { path: '/', httpOnly: true, sameSite: 'lax', maxAge: 31536000 });
 	}
 
+	// pauses that are up resume, and a cadence for a while that ran its time ends (#171, #172)
+	settleTasks(user.id, user.timeZone);
 	const tasks = listTasks(user.id);
 	const overdueByTank = new Map<string, number>();
 	let overdueCount = 0;
@@ -40,7 +45,7 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 	const alerts: { key: string; kind: 'task' | 'reading'; title: string; sub: string; href: string; tankId: string }[] = [];
 	const nameOf = (id: string) => tanks.find((t) => t.id === id)?.name ?? '';
 	for (const { task } of tasks) {
-		const d = dueInfo(task.due, today);
+		const d = dueInfo(task.due, today, task.graceDays);
 		if (d.section === 'overdue') {
 			overdueCount++;
 			overdueByTank.set(task.tankId, (overdueByTank.get(task.tankId) ?? 0) + 1);
@@ -48,19 +53,25 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 		}
 	}
 
+	// every tank's parameters, latest readings and this person's role, in a query each (#105)
+	const ids = tanks.map((t) => t.id);
+	const paramsOf = listParamsFor(ids);
+	const latestOf = latestReadingsFor(ids);
+	const roles = rolesOn(user.id, tanks);
 	const summaries = tanks.map((t) => {
-		const latest = latestReadings(t.id);
+		const latest = latestOf.get(t.id)!;
 		let outOfRange = 0;
-		for (const p of listParams(t.id)) {
+		for (const p of paramsOf.get(t.id)!) {
 			const r = latest.get(p.id);
 			const st = statusOf(p, r?.value);
 			if (st.level !== 'bad' || !r) continue;
 			outOfRange++;
 			alerts.push({
-				key: `reading:${p.id}:${r.takenAt}`,
+				// a sensor's reading keeps one key while its stretch out of range lasts, so Mark read holds
+				key: `reading:${p.id}:${r.since ?? r.takenAt}`,
 				kind: 'reading',
 				title: `${shortName(p)} ${st.direction === 'low' ? 'low' : 'high'} · ${fmtValue(p, r.value, user)}`,
-				sub: `${t.name} · ${fmtWhen(r.takenAt, user.timeZone)}`,
+				sub: `${t.name} · ${r.sensor ? `${r.sensor} · ` : ''}${fmtWhen(r.takenAt, user.timeZone)}`,
 				href: `/charts?tank=${t.id}&p=${p.id}`,
 				tankId: t.id
 			});
@@ -75,7 +86,7 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 					: null,
 			startDate: t.startDate,
 			// shared with this person (#22): what they may do, and whose it is
-			role: roleOn(user.id, t),
+			role: roles.get(t.id) ?? 'view',
 			cover: t.coverPhotoId,
 			coverPos: coverPosition(t.coverX, t.coverY),
 			alerts: outOfRange + (overdueByTank.get(t.id) ?? 0),
@@ -130,10 +141,14 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 		// the alert keys already marked read, kept on the account (every device agrees)
 		alertsSeen: alertsSeen(user),
 		counts,
+		// Quick log favorites (#93): the keeper's pinned entries, for the tank chosen on Quick add
+		favorites: listFavorites(user.id).map((f) => ({ id: f.id, label: f.label, kind: f.kind, tankId: f.tankId, fields: f.fields, sub: favoriteSub(f.kind, f.fields, unitLabel('volume', user)) })),
+		// maintenance routines (#92), to run from Quick add and ⌘K
+		routines: listRoutinesFor(user.id).filter((r) => r.steps.length).map((r) => ({ id: r.id, tankId: r.tankId, name: r.name, steps: r.steps.length })),
 		quick: {
 			lastTest: lastTest ? `Last test ${fmtWhen(lastTest.takenAt, user.timeZone).replace(/^Today/, 'today').replace(/^Yesterday/, 'yesterday')}` : 'No tests yet',
 			lastTestAt: lastTest?.takenAt ?? null,
-			wcDue: wcTask ? dueInfo(wcTask.due, today) : null
+			wcDue: wcTask ? dueInfo(wcTask.due, today, wcTask.graceDays) : null
 		},
 		flash: flash ? { ...flash, id: crypto.randomUUID() } : null,
 		// the version running; a newer release only for admins, who can update the server

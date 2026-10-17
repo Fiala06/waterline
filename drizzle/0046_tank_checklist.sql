@@ -1,0 +1,1 @@
+ALTER TABLE `tanks` ADD `checklist` text;

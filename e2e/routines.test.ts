@@ -87,6 +87,40 @@ test('a daily feeding routine: done from the dashboard, the feeding is in Histor
 	await open(page, `${entry}/edit`);
 	await page.getByLabel('Amount').fill('3');
 	await page.getByRole('button', { name: 'Save changes' }).click();
+	// saved once it leaves the edit page; History opened sooner can beat the save
+	await page.waitForURL((u) => !u.pathname.endsWith('/edit'));
 	await open(page, `/history?tank=${tankId}&cat=feeding&range=all`);
 	await expect(page.getByRole('link', { name: 'Fed 3 pinches of Micro pellets' })).toBeVisible();
+});
+
+// #167: a dose logged by hand completes its product's routine
+test('a dose logged by hand completes its routine', async ({ page }, info) => {
+	await newKeeperWithTank(page, `routine-hand-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	const base = `/tanks/${tankId}`;
+	await open(page, base);
+	const routines = page.getByRole('region', { name: 'Routines' });
+	await routines.getByRole('link', { name: 'Add dosing' }).click();
+	await page.getByLabel('Product').fill('Easy Green');
+	await page.getByLabel('Amount').fill('2');
+	await page.getByLabel('Unit').selectOption('pumps');
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('status')).toContainText('✓ Dose Easy Green added');
+	await expect(routines.getByRole('listitem')).toContainText('▲ Today');
+
+	await open(page, `/entries/event/new?tank=${tankId}&category=dosing`);
+	const box = page.getByLabel(/Also mark the reminder “Dose Easy Green” done/);
+	await expect(box).toHaveCount(0);
+	await page.getByLabel('Product').fill('easy green');
+	await expect(box).toBeChecked();
+	await page.getByLabel('Amount', { exact: true }).fill('3');
+	await page.getByRole('button', { name: /^Save/ }).last().click();
+	await expect(page).not.toHaveURL(/\/entries\/event\/new/);
+
+	await open(page, base);
+	await expect(routines.getByRole('listitem')).not.toContainText('Today');
+	await expect(routines.getByRole('listitem')).toContainText('last 3');
+	// one dose in History: the one logged
+	await open(page, `/history?tank=${tankId}&cat=dosing&range=all`);
+	await expect(page.getByRole('link', { name: /^Dosed easy green/i })).toHaveCount(1);
 });

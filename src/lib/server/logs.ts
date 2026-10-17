@@ -3,6 +3,7 @@ import { error } from '@sveltejs/kit';
 import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 import { additivesOf } from '$lib/events';
 import { statusOf } from '$lib/params';
+import { paramStatus } from '$lib/status';
 import { db } from './db';
 import { requireRoleOn, visibleTo } from './members';
 import {
@@ -16,8 +17,10 @@ import {
 	type TankParameter,
 	type Test
 } from './db/schema';
+import { latestSamplesFor, outOfRangeSince } from './sensors';
 import { getTank } from './tanks';
-import { completeTask } from './tasks';
+import { dateInZone } from '$lib/time';
+import { clearByTest, completeTask, followLog, refollowEntry, triggerOf, unfollowEntry, userZone } from './tasks';
 import { followEntryDate, removeEntryPhotoFiles } from './photos';
 
 // ── Tests ───────────────────────────────────────────────────────────────────
@@ -66,9 +69,12 @@ export function createTest(
 		}
 		return t;
 	});
-	if (opts.completeTaskId) {
-		completeTask(userId, opts.completeTaskId, { at: input.takenAt, timeZone: opts.timeZone });
-	}
+	const done = opts.completeTaskId ? completeTask(userId, opts.completeTaskId, { at: input.takenAt, logged: true, timeZone: opts.timeZone }) : null;
+	// the tasks that follow a water test (#178), unless it's an import or a follower's own
+	if (!input.importId && done?.scheduleMode !== 'after')
+		followLog(tankId, { kind: 'test', date: dateInZone(input.takenAt, opts.timeZone), id: test.id }, opts.timeZone, done?.id);
+	// a pause or a cadence for a while that lasts until a reading clears (#179)
+	if (!input.importId) clearByTest(tankId, input.readings, dateInZone(input.takenAt, opts.timeZone), opts.timeZone);
 	return { test, ...summarize(test.id, params), duplicate: false };
 }
 
@@ -116,7 +122,10 @@ export function updateTest(userId: string, testId: string, input: Omit<TestInput
 			.set({ takenAt: input.takenAt, note: input.note, editedAt: new Date().toISOString() })
 			.where(eq(tests.id, testId))
 			.run();
-		if (input.takenAt !== test.takenAt) followEntryDate({ testId }, input.takenAt);
+		if (input.takenAt !== test.takenAt) {
+			followEntryDate({ testId }, input.takenAt);
+			refollowEntry(testId, dateInZone(input.takenAt, userZone(userId)));
+		}
 		tx.delete(testReadings).where(eq(testReadings.testId, testId)).run();
 		if (input.readings.size) {
 			tx.insert(testReadings)
@@ -139,6 +148,7 @@ export function deleteTest(userId: string, testId: string) {
 	requireRoleOn(userId, test.tankId, 'log');
 	removeEntryPhotoFiles({ testId });
 	db.delete(tests).where(eq(tests.id, testId)).run();
+	unfollowEntry(testId);
 	return test;
 }
 
@@ -148,19 +158,54 @@ export function deleteTest(userId: string, testId: string) {
  * until one has it, and only for parameters with any reading at all.
  */
 export function latestReadings(tankId: string) {
-	const rows = latestReadingsQuery(tankId).all();
-	return new Map<string, { value: number; takenAt: string }>(rows.map((r) => [r.parameterId, { value: r.value, takenAt: r.takenAt }]));
+	return latestReadingsFor([tankId]).get(tankId)!;
+}
+
+/**
+ * A parameter's latest reading: its newest test's, or, where the sensor is the
+ * reading of record (Parameters & targets), its newest sample when that's newer.
+ * `sensor` names the source then, and `since` says when its run of out-of-range
+ * readings began, so an alert for it keeps one key while the stretch lasts.
+ */
+export type LatestReading = { value: number; takenAt: string; sensor?: string; since?: string };
+
+/** The same for several tanks in one query (#105): tank id → parameter id → reading. */
+export function latestReadingsFor(tankIds: string[]) {
+	const out = new Map<string, Map<string, LatestReading>>(tankIds.map((id) => [id, new Map()]));
+	if (!tankIds.length) return out;
+	for (const r of latestReadingsQuery(tankIds).all()) out.get(r.tankId)?.set(r.parameterId, { value: r.value, takenAt: r.takenAt });
+	// a sensor that is the reading of record: its latest sample, when newer than the latest test
+	const record = db
+		.select({ tankId: tankParameters.tankId, id: tankParameters.id, min: tankParameters.min, max: tankParameters.max })
+		.from(tankParameters)
+		.where(and(inArray(tankParameters.tankId, tankIds), eq(tankParameters.sensorRecord, true)))
+		.all();
+	if (record.length) {
+		const samples = latestSamplesFor([...new Set(record.map((p) => p.tankId))]);
+		for (const p of record) {
+			const s = samples.get(p.tankId)?.get(p.id);
+			if (!s) continue;
+			const tank = out.get(p.tankId)!;
+			const cur = tank.get(p.id);
+			if (cur && Date.parse(cur.takenAt) >= Date.parse(s.at)) continue;
+			const reading: LatestReading = { value: s.value, takenAt: s.at, sensor: s.source };
+			if (paramStatus(s.value, p).level === 'bad') reading.since = outOfRangeSince(p.tankId, p.id, p)?.since ?? s.at;
+			tank.set(p.id, reading);
+		}
+	}
+	return out;
 }
 
 /** The query behind latestReadings, apart so a test can read its plan. */
-export function latestReadingsQuery(tankId: string) {
+export function latestReadingsQuery(tankIds: string | string[]) {
+	const ids = typeof tankIds === 'string' ? [tankIds] : tankIds;
 	const newest = sql`(select t.id from tests t where t.tank_id = ${tankParameters.tankId} and exists (select 1 from test_readings r where r.test_id = t.id and r.parameter_id = ${tankParameters.id}) order by t.taken_at desc limit 1)`;
 	return db
-		.select({ parameterId: testReadings.parameterId, value: testReadings.value, takenAt: tests.takenAt })
+		.select({ tankId: tankParameters.tankId, parameterId: testReadings.parameterId, value: testReadings.value, takenAt: tests.takenAt })
 		.from(tankParameters)
 		.innerJoin(tests, eq(tests.id, newest))
 		.innerJoin(testReadings, and(eq(testReadings.testId, tests.id), eq(testReadings.parameterId, tankParameters.id)))
-		.where(and(eq(tankParameters.tankId, tankId), sql`exists (select 1 from test_readings r where r.parameter_id = ${tankParameters.id})`));
+		.where(and(inArray(tankParameters.tankId, ids), sql`exists (select 1 from test_readings r where r.parameter_id = ${tankParameters.id})`));
 }
 
 export function latestTest(tankId: string) {
@@ -230,13 +275,12 @@ export function createEvent(
 		.values({ ...input, tankId, clientId: input.clientId ?? null, importId: input.importId ?? null, loggedBy: userId })
 		.returning()
 		.get();
-	if (opts.completeTaskId) {
-		completeTask(userId, opts.completeTaskId, {
-			at: input.occurredAt,
-			eventId: event.id,
-			timeZone: opts.timeZone
-		});
-	}
+	const done = opts.completeTaskId ? completeTask(userId, opts.completeTaskId, { at: input.occurredAt, eventId: event.id, timeZone: opts.timeZone }) : null;
+	// the tasks that follow a water change, a dose or maintenance (#178), unless it's an
+	// import or a follower's own (chains stop after one step)
+	const trigger = triggerOf(input.category, input.data);
+	if (trigger && !input.importId && done?.scheduleMode !== 'after')
+		followLog(tankId, { ...trigger, date: dateInZone(input.occurredAt, opts.timeZone), id: event.id }, opts.timeZone, done?.id);
 	return { event, duplicate: false };
 }
 
@@ -264,7 +308,10 @@ export function updateEvent(
 		.where(eq(events.id, eventId))
 		.returning()
 		.get();
-	if (patch.occurredAt !== before.occurredAt) followEntryDate({ eventId }, patch.occurredAt);
+	if (patch.occurredAt !== before.occurredAt) {
+		followEntryDate({ eventId }, patch.occurredAt);
+		refollowEntry(eventId, dateInZone(patch.occurredAt, userZone(userId)));
+	}
 	return updated;
 }
 
@@ -273,6 +320,7 @@ export function deleteEvent(userId: string, eventId: string) {
 	requireRoleOn(userId, e.tankId, 'log');
 	removeEntryPhotoFiles({ eventId });
 	db.delete(events).where(eq(events.id, eventId)).run();
+	unfollowEntry(eventId);
 	return e;
 }
 

@@ -1,5 +1,6 @@
 import { CHART_RANGES, findPublic, LOG_RANGES, ogVersion, publicRanges, publicSettings, publicView, recordView } from '$lib/server/public';
 import { tankCardAlt } from '$lib/server/og';
+import { forumSummary, publicDetail } from '$lib/server/public-detail';
 import type { PageServerLoad } from './$types';
 
 // Public, server-rendered, read-only tank page (P2 / P3).
@@ -7,6 +8,8 @@ export const load: PageServerLoad = ({ params, request, url, locals }) => {
 	const { page, tank, user } = findPublic(params.slug);
 	const ranges = publicRanges(url);
 	const view = publicView(page, tank, user, ranges);
+	// the diagnostic detail, over the visitor's chart range
+	const detail = publicDetail(page, tank, user, { days: view.ranges.chart.days });
 	if (locals.user?.id !== user.id) recordView(tank.id, request.headers.get('user-agent'));
 	const s = publicSettings();
 	const base = s.baseUrl ?? url.origin;
@@ -17,9 +20,14 @@ export const load: PageServerLoad = ({ params, request, url, locals }) => {
 		`Water parameters, trends and photos from ${view.name}, a ${view.type.toLowerCase()} aquarium${view.volume ? ` (${view.volume})` : ''}.`;
 	return {
 		view,
+		detail,
+		// the page as text for a forum post, for "Copy summary"
+		summary: forumSummary(detail, { name: view.name, type: view.type, volume: view.volume, keeper: view.keeper, url: canonical, periodTitle: view.ranges.chart.title }),
 		ranges,
 		chartRanges: CHART_RANGES.map((r) => ({ key: r.key, label: r.label })),
 		logRanges: LOG_RANGES.map((r) => ({ key: r.key, label: r.label })),
+		// the chart a reading's tile chose, without scripts (?p=)
+		chartParam: url.searchParams.get('p'),
 		isOwner: locals.user?.id === user.id,
 		ownerTankId: locals.user?.id === user.id ? tank.id : null,
 		seo: {

@@ -9,7 +9,7 @@ import { errorDetails, kept, redact, type LogLevel } from './log-format';
 import { getServerSettings } from './mail';
 
 export type { LogLevel };
-export type LogArea = 'server' | 'request' | 'sign-in' | 'setup' | 'email' | 'import' | 'export' | 'settings' | 'update' | 'assistant' | 'push' | 'photos';
+export type LogArea = 'server' | 'request' | 'sign-in' | 'setup' | 'email' | 'import' | 'export' | 'settings' | 'update' | 'assistant' | 'push' | 'photos' | 'barcodes' | 'sensors';
 
 interface Context {
 	/** the account it's about */

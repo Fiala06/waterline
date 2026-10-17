@@ -9,6 +9,7 @@ import { alertOutOfRange } from '$lib/server/notifications';
 import { getTank, listParams, reusableCustomParams } from '$lib/server/tanks';
 import { getTask } from '$lib/server/tasks';
 import { kitsByParam } from '$lib/server/kits';
+import { safeReturn } from '$lib/server/redirect';
 import type { Actions, PageServerLoad } from './$types';
 import { logger } from '$lib/server/log';
 
@@ -24,9 +25,12 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 	const tank = getTank(user.id, tankId, 'log');
 	const date = url.searchParams.get('date');
 	const time = url.searchParams.get('time');
-	const params = testFormParams(listParams(tank.id), latestReadings(tank.id), user, tank.type);
+	// back to where it was opened from (a maintenance routine's run page, #92)
+	const returnTo = safeReturn(url.searchParams.get('from'), '') || null;
+	const params = testFormParams(listParams(tank.id), latestReadings(tank.id), user, tank.type, tank.growingStyle);
 	return {
 		tank: { id: tank.id, name: tank.name },
+		returnTo,
 		params,
 		// "Use last readings" without scripts: the form comes back filled in
 		filled:
@@ -34,7 +38,7 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 				? Object.fromEntries(params.filter((p) => p.lastInput != null).map((p) => [p.id, p.lastInput!]))
 				: null,
 		when: date && time ? { date, time } : null,
-		task: completableTask(user, tank.id, 'test', url.searchParams.get('task')),
+		task: completableTask(user, tank.id, 'test', url.searchParams.get('task'), date),
 		waterChange: testWaterChange(tank, user),
 		today: todayInZone(user.timeZone),
 		// "+ Add parameter": custom ones from other tanks, in one tap
@@ -79,7 +83,7 @@ export const actions: Actions = {
 			{ completeTaskId: optStr(form, 'completeTask', 64), timeZone: user.timeZone }
 		);
 		if (!result.duplicate) {
-			storePhotos(tank.id, prepared, { testId: result.test.id, takenAt: when.at });
+			await storePhotos(tank.id, prepared, { testId: result.test.id, takenAt: when.at });
 			// E4 goes out in the background; a mail problem never blocks saving.
 			if (result.outOfRange) alertOutOfRange(user, tank.id, result.test.id).catch((e) => logger.error('email', "The out-of-range alert didn't send", { userId: user.id, error: e }));
 		}
@@ -98,6 +102,6 @@ export const actions: Actions = {
 			`✓ Saved ${n} reading${n === 1 ? '' : 's'}${wc ? ' + water change' : ''}${result.outOfRange ? ` · ${result.outOfRange} out of range` : ''}`,
 			{ view: `/entries/test/${result.test.id}` }
 		);
-		redirect(303, `/?tank=${tank.id}`);
+		redirect(303, safeReturn(form.get('from'), `/?tank=${tank.id}`));
 	}
 };

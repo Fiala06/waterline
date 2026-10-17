@@ -2,7 +2,7 @@
 // 400px square thumbnail, both JPEG. EXIF (including GPS) is stripped.
 import { error } from '@sveltejs/kit';
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { removeFiles, writeThen } from './files';
 import { join } from 'node:path';
 import sharp from 'sharp';
 import { env } from '$env/dynamic/private';
@@ -105,34 +105,41 @@ export function photoDate(p: PreparedPhoto, timeZone: string): string | null {
 	return takenAtFrom(p.exif, timeZone);
 }
 
-export function storePhotos(
+/** Save prepared photos: every file, then every row, or none of them (#118). */
+export async function storePhotos(
 	tankId: string,
 	prepared: PreparedPhoto[],
 	link: { eventId?: string | null; testId?: string | null; takenAt: string }
-): Photo[] {
+): Promise<Photo[]> {
 	if (!prepared.length) return [];
 	const dir = join(root(), tankId);
-	mkdirSync(dir, { recursive: true });
-	return prepared.map((p) => {
-		const id = crypto.randomUUID();
-		writeFileSync(join(dir, `${id}.jpg`), p.full);
-		writeFileSync(join(dir, `${id}_t.jpg`), p.thumb);
-		return db
-			.insert(photos)
-			.values({
-				id,
-				tankId,
-				eventId: link.eventId ?? null,
-				testId: link.testId ?? null,
-				path: join(tankId, `${id}.jpg`),
-				thumbPath: join(tankId, `${id}_t.jpg`),
-				width: p.width,
-				height: p.height,
-				takenAt: p.takenAt ?? link.takenAt
-			})
-			.returning()
-			.get();
-	});
+	const items = prepared.map((p) => ({ p, id: crypto.randomUUID() }));
+	return writeThen(
+		items.flatMap(({ p, id }) => [
+			[join(dir, `${id}.jpg`), p.full],
+			[join(dir, `${id}_t.jpg`), p.thumb]
+		]),
+		() =>
+			db.transaction((tx) =>
+				items.map(({ p, id }) =>
+					tx
+						.insert(photos)
+						.values({
+							id,
+							tankId,
+							eventId: link.eventId ?? null,
+							testId: link.testId ?? null,
+							path: join(tankId, `${id}.jpg`),
+							thumbPath: join(tankId, `${id}_t.jpg`),
+							width: p.width,
+							height: p.height,
+							takenAt: p.takenAt ?? link.takenAt
+						})
+						.returning()
+						.get()
+				)
+			)
+	);
 }
 
 /** The keeper fixes a photo's date in the viewer (#42): from then on it no longer follows its entry's. */
@@ -173,27 +180,32 @@ function unlinkPhoto(id: string) {
 	db.update(publicPages).set({ ogPhotoId: null }).where(eq(publicPages.ogPhotoId, id)).run();
 }
 
-export function deletePhoto(userId: string, photoId: string) {
+/** A photo's two files, to remove once its row has gone. */
+const filesOf = (p: Photo) => [photoFilePath(p, 'full'), photoFilePath(p, 'thumb')];
+
+export async function deletePhoto(userId: string, photoId: string) {
 	const p = getPhoto(userId, photoId);
 	requireRoleOn(userId, p.tankId, 'log');
 	unlinkPhoto(p.id);
 	db.delete(photos).where(eq(photos.id, photoId)).run();
-	rmSync(photoFilePath(p, 'full'), { force: true });
-	rmSync(photoFilePath(p, 'thumb'), { force: true });
+	await removeFiles(filesOf(p), 'photos');
 	return p;
 }
 
 /** Delete photos by id, but only ones attached to the given entry. */
-export function deleteEntryPhotos(userId: string, ids: string[], entry: { eventId?: string; testId?: string }) {
+export async function deleteEntryPhotos(userId: string, ids: string[], entry: { eventId?: string; testId?: string }) {
 	for (const id of ids) {
 		const p = getPhoto(userId, id);
 		if ((entry.eventId && p.eventId === entry.eventId) || (entry.testId && p.testId === entry.testId)) {
-			deletePhoto(userId, id);
+			await deletePhoto(userId, id);
 		}
 	}
 }
 
-/** Remove files for photos whose entry is being deleted (rows go with the entry). */
+/**
+ * The photos of an entry that's being deleted: their rows go now, with the
+ * entry's, and their files just after, without holding up the request.
+ */
 export function removeEntryPhotoFiles(entry: { eventId?: string; testId?: string }) {
 	const rows = db
 		.select()
@@ -203,9 +215,8 @@ export function removeEntryPhotoFiles(entry: { eventId?: string; testId?: string
 	for (const p of rows) {
 		unlinkPhoto(p.id);
 		db.delete(photos).where(eq(photos.id, p.id)).run();
-		rmSync(photoFilePath(p, 'full'), { force: true });
-		rmSync(photoFilePath(p, 'thumb'), { force: true });
 	}
+	if (rows.length) void removeFiles(rows.flatMap(filesOf), 'photos');
 }
 
 export function entryPhotos(entry: { eventId?: string; testId?: string }) {

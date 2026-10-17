@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { EVENT_CATEGORIES, IMPORT_KINDS, TANK_TYPES, TASK_KINDS } from '../../types';
+import { EVENT_CATEGORIES, GROWING_STYLES, IMPORT_KINDS, TANK_TYPES, TASK_KINDS } from '../../types';
 import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 // All measurements are stored metric (L, °C, cm, hardness in dGH).
@@ -139,6 +139,8 @@ export const tanks = sqliteTable(
 		glass: text('glass'),
 		substrate: text('substrate'),
 		waterSource: text('water_source'),
+		/** a planted tank's growing style (#81): low_tech | co2 | simple; null when never chosen */
+		growingStyle: text('growing_style', { enum: GROWING_STYLES }),
 		photoperiodH: real('photoperiod_h'),
 		// the lighting and CO₂ schedule, "08:00"–"16:00" (planted keepers time CO₂ against the lights)
 		lightsOn: text('lights_on'),
@@ -147,6 +149,12 @@ export const tanks = sqliteTable(
 		co2Off: text('co2_off'),
 		// a new tank cycling: ammonia and nitrite are stages, not failures, until it's running
 		cycling: integer('cycling', { mode: 'boolean' }).notNull().default(false),
+		// the keeper answered the dashboard's "New tank?" with Not cycling: it isn't asked again
+		cyclingAskDismissed: integer('cycling_ask_dismissed', { mode: 'boolean' }).notNull().default(false),
+		// suggested steps from readings switched off for this tank (#179): rule ids from src/lib/suggestions.ts
+		suggestionsOff: text('suggestions_off', { mode: 'json' }).$type<string[]>().notNull().default([]),
+		/** the getting-started checklist on the dashboard (#82): hidden by its owner, or shown again from Tank setup; null decides by age */
+		checklist: text('checklist', { enum: ['hidden', 'shown'] }),
 		/** the setup review (#30): when each part was last checked, e.g. {"details": "2026-10-02T…Z"} */
 		/** equipment the tank goes without on purpose ("No heater"): filter | heater | light | co2 */
 		withoutEquipment: text('without_equipment', { mode: 'json' }).$type<string[]>().notNull().default([]),
@@ -214,7 +222,10 @@ export const tankParameters = sqliteTable(
 		testEveryDays: integer('test_every_days'),
 		tracked: integer('tracked', { mode: 'boolean' }).notNull().default(true),
 		sort: integer('sort').notNull().default(0),
-		isCustom: integer('is_custom', { mode: 'boolean' }).notNull().default(false)
+		isCustom: integer('is_custom', { mode: 'boolean' }).notNull().default(false),
+		// the sensor's reading is this parameter's reading: the newest of its latest sample
+		// and its latest test is the reading of record, graded and alerted on like a test
+		sensorRecord: integer('sensor_record', { mode: 'boolean' }).notNull().default(false)
 	},
 	(t) => [index('tank_parameters_tank').on(t.tankId)]
 );
@@ -298,7 +309,10 @@ export const photos = sqliteTable('photos', {
 	takenAtSet: integer('taken_at_set', { mode: 'boolean' }).notNull().default(false),
 	/** in the tank's timeline (#26); off for a close-up that doesn't show the tank changing */
 	inTimeline: integer('in_timeline', { mode: 'boolean' }).notNull().default(true)
-});
+},
+	// a tank's photos by date (Photos, Timeline, public page, the assistant), and an entry's (#119)
+	(t) => [index('photos_tank_taken').on(t.tankId, t.takenAt, t.id), index('photos_event').on(t.eventId), index('photos_test').on(t.testId)]
+);
 
 
 export const tasks = sqliteTable(
@@ -312,8 +326,9 @@ export const tasks = sqliteTable(
 		kind: text('kind', { enum: TASK_KINDS }).notNull().default('other'),
 		recurring: integer('recurring', { mode: 'boolean' }).notNull().default(true),
 		intervalDays: integer('interval_days'),
-		// weekdays: on the days in `weekdays` (#17), whenever it's done
-		scheduleMode: text('schedule_mode', { enum: ['completion', 'fixed', 'weekdays'] })
+		// weekdays: on the days in `weekdays` (#17), whenever it's done; after: a day or so after
+		// another log (#178), waiting with no due date until one is logged
+		scheduleMode: text('schedule_mode', { enum: ['completion', 'fixed', 'weekdays', 'after'] })
 			.notNull()
 			.default('completion'),
 		/** "1,3,5": the days of the week it's due (0 Sunday … 6 Saturday), for schedule_mode weekdays */
@@ -322,6 +337,30 @@ export const tasks = sqliteTable(
 		// a treatment course or any routine with an end: no more occurrences after this day
 		endsOn: text('ends_on'),
 		snoozedUntil: text('snoozed_until'),
+		// a cadence for a while (#171): every temp_interval_days until temp_until, then interval_days again
+		tempIntervalDays: integer('temp_interval_days'),
+		tempUntil: text('temp_until'),
+		// or sooner, until a reading clears (#179): back to the usual once this parameter reads in range
+		tempUntilParam: text('temp_until_param').references(() => tankParameters.id, { onDelete: 'set null' }),
+		// paused (#172) from paused_from until paused_until: not due, not notified; resumes with its dates moved on
+		pausedFrom: text('paused_from'),
+		pausedUntil: text('paused_until'),
+		// or sooner, until a reading clears (#179): the parameter a test reads in range to resume it
+		pausedUntilParam: text('paused_until_param').references(() => tankParameters.id, { onDelete: 'set null' }),
+		// days late it can be before it's overdue (#175): inside them it reads ▲ Due, not ✕ Overdue
+		graceDays: integer('grace_days').notNull().default(0),
+		// after a log (#178): the kind of entry it follows, the days after it, the product for a dose
+		// (any dose when null), and the entry (an event or a test) its due date counts from
+		triggerKind: text('trigger_kind', { enum: ['water_change', 'dosing', 'maintenance', 'test'] }),
+		triggerOffsetDays: integer('trigger_offset_days'),
+		triggerProduct: text('trigger_product'),
+		triggerEntryId: text('trigger_entry_id'),
+		// not on water-change day (#178): due the day a water change is logged, it moves to the next day
+		avoidWaterChange: integer('avoid_water_change', { mode: 'boolean' }).notNull().default(false),
+		// the treatment plan it's part of (#177)
+		planRunId: text('plan_run_id').references(() => planRuns.id, { onDelete: 'set null' }),
+		// the entry a treatment course was started from (#174): an algae or health entry
+		fromEventId: text('from_event_id').references(() => events.id, { onDelete: 'set null' }),
 		equipmentId: text('equipment_id'),
 		openFormOnDone: integer('open_form_on_done', { mode: 'boolean' }).notNull().default(false),
 		// a routine (#17): the product dosed or the food fed, and how much; done logs it
@@ -332,6 +371,31 @@ export const tasks = sqliteTable(
 	},
 	(t) => [index('tasks_next_due').on(t.nextDue)]
 );
+
+/**
+ * A treatment plan started on a tank (#177): a blackout, a spot treatment, a
+ * medication course. Its steps are ordinary tasks (tasks.plan_run_id); the
+ * routines it holds back are paused, and their ids kept to resume at its end.
+ */
+export const planRuns = sqliteTable('plan_runs', {
+	id: id(),
+	tankId: text('tank_id')
+		.notNull()
+		.references(() => tanks.id, { onDelete: 'cascade' }),
+	/** the starter it came from (src/lib/plans.ts), as a key */
+	template: text('template').notNull(),
+	name: text('name').notNull(),
+	startedOn: text('started_on').notNull(), // YYYY-MM-DD
+	endsOn: text('ends_on').notNull(),
+	/** ended early, or settled after its last day */
+	endedAt: text('ended_at'),
+	endedEarly: integer('ended_early', { mode: 'boolean' }).notNull().default(false),
+	/** the tank's tasks it paused, to resume when it ends early */
+	pausedTaskIds: text('paused_task_ids', { mode: 'json' }).$type<string[]>().notNull().default([]),
+	/** the algae or health entry it was started from */
+	fromEventId: text('from_event_id').references(() => events.id, { onDelete: 'set null' }),
+	createdAt: createdAt()
+});
 
 export const taskCompletions = sqliteTable('task_completions', {
 	id: id(),
@@ -349,6 +413,7 @@ export const taskCompletions = sqliteTable('task_completions', {
 
 export type User = typeof users.$inferSelect;
 export type Tank = typeof tanks.$inferSelect;
+export type PlanRun = typeof planRuns.$inferSelect;
 export type TankParameter = typeof tankParameters.$inferSelect;
 export type Test = typeof tests.$inferSelect;
 export type Event = typeof events.$inferSelect;
@@ -395,6 +460,8 @@ export const serverSettings = sqliteTable('server_settings', {
 	stockPhotos: integer('stock_photos', { mode: 'boolean' }).notNull().default(true),
 	// species care ranges from FishBase (#20), downloaded by this server into DATA_DIR, never bundled (CC BY-NC)
 	speciesCare: integer('species_care', { mode: 'boolean' }).notNull().default(true),
+	// what a scanned barcode is (#147), asked by this server of Open Products Facts and UPCitemdb
+	barcodeLookup: integer('barcode_lookup', { mode: 'boolean' }).notNull().default(true),
 	// what the log keeps: errors and warnings, or also what the server did;
 	// everything (debug) only until log_debug_until, while troubleshooting
 	logLevel: text('log_level', { enum: ['warn', 'info'] }).notNull().default('warn'),
@@ -499,6 +566,94 @@ export const products = sqliteTable(
 
 export type Product = typeof products.$inferSelect;
 
+// ── Quick log favorites (#93): the keeper's usual entries, one tap from Log ──
+
+export const FAVORITE_KINDS = ['test', 'water_change', 'dosing', 'feeding', 'maintenance', 'note'] as const;
+
+/**
+ * A pinned entry on Quick add: "40% water change", "Dose Thrive 5 mL". Opening
+ * one takes the keeper to that log form, filled in from `fields`; nothing is
+ * saved until they do. For one tank, or every tank when tank_id is null.
+ */
+export const quickFavorites = sqliteTable(
+	'quick_favorites',
+	{
+		id: id(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		tankId: text('tank_id').references(() => tanks.id, { onDelete: 'cascade' }),
+		label: text('label').notNull(),
+		kind: text('kind', { enum: FAVORITE_KINDS }).notNull(),
+		// what the form opens with, as typed into it (a water change's amount in the
+		// keeper's unit when amountMode is volume): amountMode, amount, source,
+		// product, unit, food, actions[]
+		fields: text('fields', { mode: 'json' }).$type<Record<string, string | string[]>>().notNull().default({}),
+		position: integer('position').notNull().default(0),
+		createdAt: createdAt()
+	},
+	(t) => [index('quick_favorites_user').on(t.userId)]
+);
+
+export type QuickFavorite = typeof quickFavorites.$inferSelect;
+
+// ── Dashboard personalization (#94): light touches, per keeper and tank ──────
+
+export const DASHBOARD_SECTIONS = ['trends', 'recent', 'inTank', 'growing', 'live'] as const;
+
+/**
+ * What a keeper changed about a tank's dashboard: the parameter Trends opens
+ * on, the parameters listed first, and the parts hidden. Nothing here means
+ * the defaults; on the account, so every device agrees.
+ */
+export const dashboardPrefs = sqliteTable(
+	'dashboard_prefs',
+	{
+		id: id(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		tankId: text('tank_id')
+			.notNull()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		// Trends opens on this parameter; null: the one out of range, else the first with readings
+		trendParamId: text('trend_param_id'),
+		// parameter ids listed first in Tank parameters, in this order (at most 3)
+		priority: text('priority', { mode: 'json' }).$type<string[]>().notNull().default([]),
+		// sections and extras hidden: trends | recent | inTank | growing | live
+		hidden: text('hidden', { mode: 'json' }).$type<string[]>().notNull().default([]),
+		createdAt: createdAt()
+	},
+	(t) => [uniqueIndex('dashboard_prefs_user_tank').on(t.userId, t.tankId)]
+);
+
+export type DashboardPrefs = typeof dashboardPrefs.$inferSelect;
+
+// ── Maintenance routines (#92): a named sequence of log steps, run in order ──
+
+/**
+ * "Sunday maintenance": steps like a 40% water change, a dose, a trim, a test,
+ * each a log form filled in (the same kinds and fields as a Quick log favorite).
+ * Running one walks the steps; each logged step is an ordinary History entry.
+ */
+export const maintenanceRoutines = sqliteTable(
+	'maintenance_routines',
+	{
+		id: id(),
+		tankId: text('tank_id')
+			.notNull()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		name: text('name').notNull(),
+		// [{ kind, label, fields }], in order
+		steps: text('steps', { mode: 'json' }).$type<{ kind: string; label: string; fields: Record<string, string | string[]> }[]>().notNull().default([]),
+		position: integer('position').notNull().default(0),
+		createdAt: createdAt()
+	},
+	(t) => [index('maintenance_routines_tank').on(t.tankId)]
+);
+
+export type MaintenanceRoutine = typeof maintenanceRoutines.$inferSelect;
+
 /**
  * Test kits (#21): the steps of a test and its waits, per parameter, so the
  * water test form can run them with a timer. Account-wide, like products.
@@ -540,13 +695,15 @@ export const expenses = sqliteTable(
 		what: text('what').notNull(),
 		note: text('note'),
 		productId: text('product_id').references(() => products.id, { onDelete: 'set null' }),
+		/** the equipment item it was for (#148): the purchase, or a part for it since */
+		equipmentId: text('equipment_id').references(() => equipment.id, { onDelete: 'set null' }),
 		/** DATA_DIR/receipts/<tank>/<file>; a JPEG or a PDF */
 		receiptPath: text('receipt_path'),
 		receiptType: text('receipt_type', { enum: ['image/jpeg', 'application/pdf'] }),
 		importId: text('import_id'), // the import that added it (undone together)
 		createdAt: createdAt()
 	},
-	(t) => [index('expenses_tank_date').on(t.tankId, t.date)]
+	(t) => [index('expenses_tank_date').on(t.tankId, t.date), index('expenses_equipment').on(t.equipmentId)]
 );
 
 export type Expense = typeof expenses.$inferSelect;
@@ -595,10 +752,12 @@ export const equipment = sqliteTable(
 		lastServicedAt: text('last_serviced_at'),
 		notes: text('notes'),
 		removedAt: text('removed_at'),
+		/** the product barcode it was scanned from (#147), as a GTIN: EAN-13 (a UPC-A with a 0 in front), EAN-8 or GTIN-14 */
+		barcode: text('barcode'),
 		importId: text('import_id'),
 		createdAt: createdAt()
 	},
-	(t) => [index('equipment_tank').on(t.tankId)]
+	(t) => [index('equipment_tank').on(t.tankId), index('equipment_barcode').on(t.barcode)]
 );
 
 export const livestock = sqliteTable(
@@ -685,6 +844,29 @@ export const stockPhotos = sqliteTable('stock_photos', {
 	fetchedAt: text('fetched_at').notNull()
 });
 
+/**
+ * What a product barcode is (#147): asked once by this server of the product
+ * databases when a keeper scans it to add equipment, and kept, whatever the
+ * answer, so the same box is never asked about twice.
+ */
+export const barcodeLookups = sqliteTable('barcode_lookups', {
+	/** the GTIN as the scanner page makes it: EAN-13, EAN-8 or GTIN-14 */
+	code: text('code').primaryKey(),
+	status: text('status', { enum: ['ok', 'none', 'failed'] }).notNull(),
+	/** the product's name as listed: "Fluval 407 Performance Canister Filter, Aquarium Filter for up to 100 Gallons" */
+	title: text('title'),
+	brand: text('brand'),
+	/** the listing's category, where there is one: "Pet Supplies > Fish Supplies > Aquarium Filters" */
+	category: text('category'),
+	/** which database answered: "Open Products Facts", "UPCitemdb" */
+	source: text('source'),
+	sourceUrl: text('source_url'),
+	/** why there's nothing: "Not in Open Products Facts or UPCitemdb", "UPCitemdb answered 503" */
+	reason: text('reason'),
+	fetchedAt: text('fetched_at').notNull()
+});
+export type BarcodeLookup = typeof barcodeLookups.$inferSelect;
+
 /** PAR readings (#25) at spots in a reef tank, a simple map of the light over it. */
 export const parReadings = sqliteTable(
 	'par_readings',
@@ -766,7 +948,11 @@ export const publicPages = sqliteTable(
 		showTimeline: integer('show_timeline', { mode: 'boolean' }).notNull().default(false),
 		// pets' names, and photos tagged with a pet; off: species only, tagged photos hidden
 		showPetNames: integer('show_pet_names', { mode: 'boolean' }).notNull().default(false),
+		// detail for people helping diagnose a problem: times, notes on entries, observations and the schedule
+		showDetails: integer('show_details', { mode: 'boolean' }).notNull().default(false),
 		description: text('description'),
+		// "What I'm asking about": the keeper's question to people helping, at the top of the page
+		question: text('question'),
 		displayName: text('display_name', { enum: ['full', 'short', 'none'] }).notNull().default('short'),
 		indexable: integer('indexable', { mode: 'boolean' }).notNull().default(false),
 		seoTitle: text('seo_title'),
@@ -847,6 +1033,46 @@ export type AssistantToken = typeof assistantTokens.$inferSelect;
  * from hand-logged tests. Stored metric, at most one a minute per parameter,
  * and thinned for charts. `source` is the token's name ("Apex", "ESPHome").
  */
+/**
+ * A sensor of a polled device and the tank parameter it feeds: the device's id for it
+ * (ESPHome's object id), its name as the device shows it, the parameter's key or custom
+ * name, and the unit the device reports in.
+ */
+export type PolledSensor = { objectId: string; name: string; parameter: string; unit: string | null };
+
+/**
+ * Devices Waterline reads itself: a device with its own web page (ESPHome's web
+ * server), asked for its sensors every 5 minutes by the scheduler, with no token
+ * or Home Assistant in between. What it reports is stored as sensor readings
+ * with the device's name as the source.
+ */
+export const devicePolls = sqliteTable(
+	'device_polls',
+	{
+		id: id(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		tankId: text('tank_id')
+			.notNull()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		// the readings' source, as the sensor token's name is
+		name: text('name').notNull(),
+		// "http://192.168.1.33": scheme, host, port and path, nothing else
+		url: text('url').notNull(),
+		// when the device's web page asks for a sign-in
+		username: text('username'),
+		passwordEnc: text('password_enc'),
+		sensors: text('sensors', { mode: 'json' }).$type<PolledSensor[]>().notNull().default([]),
+		createdAt: createdAt(),
+		lastPolledAt: text('last_polled_at'),
+		lastOkAt: text('last_ok_at'),
+		lastError: text('last_error')
+	},
+	(t) => [index('device_polls_user').on(t.userId), index('device_polls_tank').on(t.tankId)]
+);
+export type DevicePoll = typeof devicePolls.$inferSelect;
+
 export const sensorReadings = sqliteTable(
 	'sensor_readings',
 	{
@@ -865,6 +1091,26 @@ export const sensorReadings = sqliteTable(
 	(t) => [index('sensor_readings_tank_param_at').on(t.tankId, t.parameterId, t.at)]
 );
 export type SensorReading = typeof sensorReadings.$inferSelect;
+
+/**
+ * Each hour of sensor samples in sum (#103), so a chart over weeks or a year
+ * reads hours, not minutes. Kept by triggers on sensor_readings (see the
+ * migration), so every write counts; an hour goes when its last sample does.
+ * `hour` is the samples' UTC hour, 'YYYY-MM-DDTHH'.
+ */
+export const sensorHours = sqliteTable(
+	'sensor_hours',
+	{
+		tankId: text('tank_id').notNull(),
+		parameterId: text('parameter_id').notNull(),
+		hour: text('hour').notNull(),
+		n: integer('n').notNull(),
+		total: real('total').notNull(),
+		lo: real('lo').notNull(),
+		hi: real('hi').notNull()
+	},
+	(t) => [primaryKey({ columns: [t.tankId, t.parameterId, t.hour] })]
+);
 
 /** Apps that registered themselves to connect by signing in (OAuth dynamic client registration). */
 export const oauthClients = sqliteTable('oauth_clients', {

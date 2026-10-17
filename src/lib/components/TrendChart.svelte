@@ -1,40 +1,15 @@
 <script lang="ts" module>
+	import type { OverlayKind } from '$lib/charts';
 	export interface Marker {
 		t: number;
 		label: string;
 		href: string;
-		kind?: 'water_change' | 'dosing' | 'other';
+		/** which event overlay it belongs to (#88): each draws its own glyph */
+		kind?: OverlayKind | 'other';
 	}
 
-	/** About `count` round values across lo…hi, for the side axis; never fewer than two. */
-	export function niceTicks(lo: number, hi: number, count: number): number[] {
-		const span = hi - lo;
-		if (!(span > 0) || count < 1) return [];
-		const raw = span / count;
-		const mag = 10 ** Math.floor(Math.log10(raw));
-		const steps = [0.5, 1, 2, 2.5, 5, 10].map((m) => m * mag);
-		const within = (step: number) => {
-			const out: number[] = [];
-			for (let v = Math.ceil(lo / step - 1e-9) * step; v <= hi + 1e-9; v += step) out.push(Math.round(v * 1e6) / 1e6 || 0);
-			return out;
-		};
-		// the round step nearest the ideal one, then a smaller one if that leaves just one number
-		const i = steps.reduce((best, s, j) => (Math.abs(Math.log(s / raw)) < Math.abs(Math.log(steps[best] / raw)) ? j : best), 0);
-		const out = within(steps[i]);
-		return out.length >= 2 || i === 0 ? out : within(steps[i - 1]);
-	}
-
-	/** Which of the points (their x positions, left to right) is nearest to px. */
-	export function nearestIndex(xs: number[], px: number): number {
-		let lo = 0;
-		let hi = xs.length - 1;
-		while (hi - lo > 1) {
-			const mid = (lo + hi) >> 1;
-			if (xs[mid] < px) lo = mid;
-			else hi = mid;
-		}
-		return Math.abs(xs[hi] - px) < Math.abs(xs[lo] - px) ? hi : lo;
-	}
+	// the arithmetic and words are in trend-chart.ts (#120); these two are used by name elsewhere
+	export { nearestIndex, niceTicks } from './trend-chart';
 </script>
 
 <script lang="ts">
@@ -48,15 +23,24 @@
 	// axis titles, the limit labels and a popover for the chosen marker.
 	import type { Snippet } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { paramStatus, statusShort, type StatusLevel } from '$lib/status';
+	import { paramStatus, type StatusLevel } from '$lib/status';
 	import { formatNumber } from '$lib/units';
 	import { chartDomain } from '$lib/charts';
+	import { axisTitle, hasLowZone, keyIndex, nearestIndex, niceTicks, readoutStatus, readoutWhen, tapWidths, tipStyle as placeTip, zeroIsBest, zoneLabels as zonesFor } from './trend-chart';
 
 	interface Point {
 		t: number; // ms
 		v: number; // display units
 		/** the test this reading belongs to: a click opens it */
 		href?: string;
+	}
+	/** Another parameter drawn beside the readings (#87), on its own scale. */
+	interface CompareSeries {
+		id: string;
+		name: string;
+		unit: string;
+		decimals: number;
+		points: Point[];
 	}
 	let {
 		points,
@@ -78,7 +62,8 @@
 		popover,
 		fit = false,
 		pinLatest = false,
-		sensor = []
+		sensor = [],
+		compare = []
 	}: {
 		points: Point[];
 		band: { min: number | null; max: number | null };
@@ -94,7 +79,7 @@
 		decimals?: number;
 		/** the keeper's time zone, for dates and times */
 		timeZone?: string;
-		/** false: dates only (public pages never show times) */
+		/** false: dates only (the public page's charts are by day) */
 		times?: boolean;
 		full?: boolean;
 		selected?: string | null;
@@ -105,7 +90,9 @@
 		/** Keep a small tooltip on the latest reading while nothing is pointed at (phones). */
 		pinLatest?: boolean;
 		/** readings from a sensor (#19), drawn as a thin neutral line under the tests */
-		sensor?: { t: number; v: number }[];
+		sensor?: { t: number; v: number; lo?: number; hi?: number }[];
+		/** up to two more parameters (#87): dashed lines on their own scales, the first with an axis on the right */
+		compare?: CompareSeries[];
 	} = $props();
 
 	let el = $state<HTMLDivElement>();
@@ -118,25 +105,45 @@
 	const plotH = $derived(Math.max(1, h - TOP - BOTTOM));
 
 	// room past the target on both sides, so it's a band and never the whole chart (#74)
-	const domain = $derived(chartDomain([...points.map((p) => p.v), ...sensor.map((s) => s.v)], band));
+	// a sensor's lowest and highest count too, so a spike stays on the chart (#103)
+	const domain = $derived(chartDomain([...points.map((p) => p.v), ...sensor.flatMap((s) => [s.v, s.lo ?? s.v, s.hi ?? s.v])], band));
+	// the spread of each span of sensor samples, as a faint band behind its line
+	const sensorBand = $derived(
+		sensor.length > 1 && sensor.some((s) => s.lo != null && s.hi != null && s.hi > s.lo)
+			? [...sensor.map((s) => `${x(s.t)},${y(s.hi ?? s.v)}`), ...[...sensor].reverse().map((s) => `${x(s.t)},${y(s.lo ?? s.v)}`)].join(' ')
+			: null
+	);
 
 	// fewer numbers up the side of a short chart
 	const ticks = $derived(niceTicks(domain.lo, domain.hi, plotH < 70 ? 2 : plotH < 200 ? 3 : 4));
 	const tickText = (v: number) => String(v);
 	// "Nitrate (ppm)" up the side; just the unit when a short chart has no room for the rest
-	const title = $derived.by(() => {
-		const long = name ? (unit ? `${name} (${unit})` : name) : unit;
-		return long.length * 6.5 <= plotH ? long : unit || name;
-	});
+	const title = $derived(axisTitle(name, unit, plotH));
 	const LEFT = $derived((title ? 18 : 4) + Math.max(1, ...ticks.map((t) => tickText(t).length)) * 7 + 8);
-	// a full chart names its zones in a gutter on the right (#74)
-	const zoned = $derived(full && (band.min != null || band.max != null));
-	const RIGHT = $derived(zoned ? (width < 480 ? 74 : 92) : 10);
+	// a full chart names its zones in a gutter on the right (#74); when comparing,
+	// the first compared parameter's axis takes that side instead (the band and the legend still say the target)
+	const zoned = $derived(full && (band.min != null || band.max != null) && !compare.length);
+	// each compared parameter's own scale, so a pH line and a nitrate line share the plot
+	const scales = $derived(
+		compare.map((c) => {
+			const d = chartDomain(c.points.map((p) => p.v), { min: null, max: null });
+			return { ...c, domain: d, ticks: niceTicks(d.lo, d.hi, plotH < 200 ? 3 : 4) };
+		})
+	);
+	const axis2 = $derived(full && scales.length ? scales[0] : null);
+	const axis2Title = $derived(axis2 ? (axis2.unit ? `${axis2.name} (${axis2.unit})` : axis2.name) : '');
+	const RIGHT = $derived(axis2 ? Math.max(1, ...axis2.ticks.map((t) => String(t).length)) * 7 + 8 + (axis2Title.length * 6.5 <= plotH ? 18 : 6) : zoned ? (width < 480 ? 74 : 92) : 10);
 	// the lowest value sits a little above the axis, so a run of zeros isn't hidden under it
 	const LIFT = 8;
 
 	const x = (t: number) => LEFT + ((t - from) / Math.max(1, to - from)) * (width - LEFT - RIGHT);
 	const y = (v: number) => TOP + (1 - (v - domain.lo) / (domain.hi - domain.lo)) * (plotH - LIFT);
+	const y2 = (v: number, d: { lo: number; hi: number }) => TOP + (1 - (v - d.lo) / (d.hi - d.lo)) * (plotH - LIFT);
+	/** a compared parameter's reading from the same test as `p` (the same instant), for the readout */
+	const alongside = (p: Point) => scales.flatMap((c) => {
+		const m = c.points.find((q) => q.t === p.t);
+		return m ? [`${c.name} ${formatNumber(m.v, c.decimals)}${c.unit ? ` ${c.unit}` : ''}`] : [];
+	});
 
 	const xTicks = $derived.by(() => {
 		const n = Math.max(2, Math.min(5, Math.floor((width - LEFT) / 90)));
@@ -149,37 +156,17 @@
 	const bandBottom = $derived(band.min != null ? y(band.min) : h - BOTTOM);
 	const hasBand = $derived(band.min != null || band.max != null);
 	const baseline = $derived(h - BOTTOM);
-	// "≤ 0.25": 0 is best, anything up to the limit a trace (the ▲ Near status)
-	const zeroBest = $derived(band.min === 0 && band.max != null && band.max > 0);
-	const lowZone = $derived(band.min != null && band.min > 0);
+	const zeroBest = $derived(zeroIsBest(band));
+	const lowZone = $derived(hasLowZone(band));
 	const zoneRight = $derived(width - RIGHT + 8);
-	const zoneMid = (top: number, bottom: number) => (top + bottom) / 2;
-	/** The zones' labels, where they fit: [y, title, detail, bad] */
-	const zoneLabels = $derived.by(() => {
-		if (!zoned) return [];
-		const f = (v: number) => formatNumber(v, decimals);
-		const out: { y: number; title: string; sub: string; bad: boolean; room: number }[] = [];
-		if (band.max != null) out.push({ y: zoneMid(TOP, bandTop), title: '✕ High', sub: `over ${f(band.max)}`, bad: true, room: bandTop - TOP });
-		if (zeroBest) {
-			out.push({ y: zoneMid(bandTop, y(0)), title: '▲ Trace', sub: `0–${f(band.max!)}`, bad: false, room: y(0) - bandTop });
-			out.push({ y: y(0), title: '✓ 0 is best', sub: '', bad: false, room: 99 });
-		} else {
-			const range = band.min != null && band.max != null ? `${f(band.min)}–${f(band.max)}` : band.max != null ? `up to ${f(band.max)}` : `${f(band.min!)} or more`;
-			out.push({ y: zoneMid(bandTop, bandBottom), title: '✓ Target', sub: range, bad: false, room: bandBottom - bandTop });
-			if (lowZone) out.push({ y: zoneMid(bandBottom, baseline), title: '✕ Low', sub: `under ${f(band.min!)}`, bad: true, room: baseline - bandBottom });
-		}
-		return out.filter((z) => z.room >= 14);
-	});
+	/** The zones' labels in the gutter, where they fit */
+	const zoneLabels = $derived(zoned ? zonesFor(band, decimals, { top: TOP, bandTop, bandBottom, baseline, zero: y(0) }) : []);
 
 	const fmt = (t: number) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone });
-	const dayOf = (t: number) => new Date(t).toLocaleDateString('en-CA', { timeZone });
-	const isToday = (t: number) => dayOf(t) === dayOf(Date.now());
+	const isToday = (t: number) => readoutWhen(t, timeZone, false) === 'Today';
 	const chosen = $derived(markers.find((m) => m.href === selected) ?? null);
 	/** Each marker's tap width: 44px, narrower where the next one is closer, so no tap area covers another's dot. */
-	const tapWidth = $derived.by(() => {
-		const xs = markers.map((m) => x(m.t));
-		return xs.map((at, i) => Math.max(14, Math.min(44, ...xs.map((o, j) => (j === i ? 44 : Math.abs(o - at))))));
-	});
+	const tapWidth = $derived(tapWidths(markers.map((m) => x(m.t))));
 
 	// The readout: the reading nearest the pointer, or picked with the keys
 	let active = $state<number | null>(null);
@@ -187,22 +174,11 @@
 	const shown = $derived(active ?? points.length - 1);
 	// nothing pointed at: a small tooltip stays on the latest reading
 	const pinned = $derived(pinLatest && active == null && last ? last : null);
-	const when = (t: number) => {
-		const d = new Date(t);
-		const day = isToday(t) ? 'Today' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone });
-		return times ? `${day} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone })}` : day;
-	};
+	const when = (t: number) => readoutWhen(t, timeZone, times);
 	const value = (p: Point) => `${formatNumber(p.v, decimals)}${unit ? ` ${unit}` : ''}`;
 	const level = (p: Point): StatusLevel => (hasBand ? paramStatus(p.v, band).level : 'ok');
 	/** "✕ 15 over target", "▲ Near high", "✓ In range"; "" without a target */
-	const status = (p: Point) => {
-		if (!hasBand) return '';
-		const st = paramStatus(p.v, band);
-		if (st.level !== 'bad') return st.level === 'ok' ? '✓ In range' : statusShort(st);
-		const over = band.max != null && p.v > band.max;
-		const diff = over ? p.v - band.max! : band.min! - p.v;
-		return `✕ ${formatNumber(diff, decimals)} ${over ? 'over' : 'under'} target`;
-	};
+	const status = (p: Point) => readoutStatus(p.v, band, decimals);
 	const spoken = (p: Point | undefined) => (p ? `${when(p.t)}: ${value(p)}${status(p) ? `, ${status(p).replace(/^\S+ /, '')}` : ''}` : 'No readings');
 
 	const onMarker = (e: Event) => !!(e.target as Element | null)?.closest?.('.marker, .pop, .readout');
@@ -233,11 +209,8 @@
 	function onkeydown(e: KeyboardEvent) {
 		const end = points.length - 1;
 		if (end < 0) return;
-		if (e.key === 'ArrowRight' || e.key === 'ArrowUp') active = Math.min(end, (active ?? -1) + 1);
-		else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') active = Math.max(0, (active ?? end + 1) - 1);
-		else if (e.key === 'Home') active = 0;
-		else if (e.key === 'End') active = end;
-		else if (e.key === 'Escape') active = null;
+		const next = keyIndex(e.key, active, end);
+		if (next !== undefined) active = next;
 		else if (e.key === 'Enter' && hot?.href) goto(hot.href);
 		else return;
 		e.preventDefault();
@@ -275,13 +248,7 @@
 	});
 
 	/** The tooltip's place: beside the reading, flipped inside the chart's edges. */
-	const tipStyle = (p: Point) => {
-		const px = x(p.t);
-		const py = y(p.v);
-		const side = px < 200 ? '0' : px > width - 200 ? '-100%' : '-50%';
-		const below = py < 110;
-		return `left:${px}px;top:${py}px;transform:translate(${side},${below ? '14px' : 'calc(-100% - 14px)'})`;
-	};
+	const tipStyle = (p: Point) => placeTip(x(p.t), y(p.v), width);
 </script>
 
 <!-- the slider is the plot; the markers are beside it, not inside, so each is its own control -->
@@ -331,15 +298,36 @@
 					x2={x(m.t)}
 					y1={TOP - 10}
 					y2={baseline}
-					class="marker-line"
-					class:dosing={m.kind === 'dosing'}
+					class="marker-line {m.kind ?? ''}"
 					class:chosen={m.href === selected}
 				></line>
 			{/each}
 			{#if hot}<line x1={x(hot.t)} x2={x(hot.t)} y1={TOP - 4} y2={baseline} class="guide"></line>{/if}
 			{#if pinned}<line x1={x(pinned.t)} x2={x(pinned.t)} y1={TOP - 4} y2={baseline} class="guide"></line>{/if}
+			{#if sensorBand}
+				<polygon class="sensor-band" points={sensorBand} fill="var(--neutral-600)" fill-opacity="0.16" stroke="none"></polygon>
+			{/if}
 			{#if sensor.length > 1}
 				<polyline class="sensor" points={sensor.map((p) => `${x(p.t)},${y(p.v)}`).join(' ')} fill="none" stroke="var(--neutral-600)" stroke-width="1.25" stroke-linejoin="round"></polyline>
+			{:else if sensor.length === 1}
+				<!-- a sensor's first reading, before there's a line to draw -->
+				<rect class="sensor-dot" x={x(sensor[0].t) - 2.5} y={y(sensor[0].v) - 2.5} width="5" height="5" fill="var(--neutral-600)"></rect>
+			{/if}
+			{#each scales as c, i (c.id)}
+				<polyline class="compare c{i + 1}" points={c.points.map((p) => `${x(p.t).toFixed(1)},${y2(p.v, c.domain).toFixed(1)}`).join(' ')} fill="none" stroke-linejoin="round"></polyline>
+				{#if full}
+					{#each c.points as p (p.t)}
+						<rect class="compare-dot c{i + 1}" x={x(p.t) - 2.5} y={y2(p.v, c.domain) - 2.5} width="5" height="5"></rect>
+					{/each}
+				{/if}
+			{/each}
+			{#if axis2}
+				{#each axis2.ticks as t (t)}
+					<text x={width - RIGHT + 6} y={y2(t, axis2.domain) + 4} class="axis axis2">{t}</text>
+				{/each}
+				{#if axis2Title.length * 6.5 <= plotH}
+					<text class="axis-title axis2" transform="translate({width - 6} {TOP + plotH / 2}) rotate(90)" text-anchor="middle">{axis2Title}</text>
+				{/if}
 			{/if}
 			<polyline class="trace" pathLength="1" points={line} fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"></polyline>
 			{#if full}
@@ -376,6 +364,7 @@
 				<span class="r-kicker">{active === points.length - 1 ? 'Latest test' : 'Water test'}</span>
 				<span class="r-value status-{level(hot)}">{value(hot)}</span>
 				<span class="r-when">{when(hot.t)}{status(hot) ? ` · ${status(hot)}` : ''}</span>
+				{#each alongside(hot) as line (line)}<span class="r-also">{line}</span>{/each}
 				{#if hot.href}<a class="r-link" href={hot.href}>Open this test ›</a>{/if}
 			</div>
 		{:else if pinned}
@@ -389,8 +378,7 @@
 		{#if onselect}
 			<button
 				type="button"
-				class="marker"
-				class:dosing={m.kind === 'dosing'}
+				class="marker {m.kind ?? ''}"
 				class:chosen={m.href === selected}
 				style:left="{x(m.t)}px"
 				style:top="{TOP - 10}px"
@@ -400,7 +388,7 @@
 				onclick={() => onselect(m)}
 			></button>
 		{:else}
-			<a class="marker" class:dosing={m.kind === 'dosing'} href={m.href} style:left="{x(m.t)}px" style:top="{TOP - 10}px" style:--tap="{tapWidth[i]}px" title={m.label} aria-label="{m.label}, {fmt(m.t)}"></a>
+			<a class="marker {m.kind ?? ''}" href={m.href} style:left="{x(m.t)}px" style:top="{TOP - 10}px" style:--tap="{tapWidth[i]}px" title={m.label} aria-label="{m.label}, {fmt(m.t)}"></a>
 		{/if}
 	{/each}
 	{#if chosen && popover}
@@ -478,7 +466,12 @@
 		stroke-opacity: 0.6;
 		stroke-dasharray: 3 3;
 	}
-	.marker-line.dosing {
+	.marker-line.dosing,
+	.marker-line.co2,
+	.marker-line.light,
+	.marker-line.trim,
+	.marker-line.maintenance,
+	.marker-line.algae {
 		stroke-dasharray: 1 3;
 	}
 	.marker-line.chosen {
@@ -490,6 +483,26 @@
 	.axis {
 		fill: var(--text-muted);
 		font-size: 12px;
+	}
+	/* compared parameters (#87): dashed for the first, dotted for the second, never the accent (that means status) */
+	.compare {
+		stroke: var(--text-2);
+		stroke-width: 1.5;
+	}
+	.compare.c1 {
+		stroke-dasharray: 6 4;
+	}
+	.compare.c2 {
+		stroke-dasharray: 1.5 3.5;
+		stroke-linecap: round;
+	}
+	.compare-dot {
+		fill: var(--bg);
+		stroke: var(--text-2);
+		stroke-width: 1.25;
+	}
+	.axis2 {
+		fill: var(--text-2);
 	}
 	.axis-title {
 		fill: var(--text-2);
@@ -527,6 +540,11 @@
 		text-transform: uppercase;
 		color: var(--text-muted);
 		white-space: nowrap;
+	}
+	.r-also {
+		display: block;
+		font-size: 12px;
+		color: var(--text-2);
 	}
 	.r-value {
 		font-size: 18px;
@@ -584,10 +602,35 @@
 		box-sizing: border-box;
 		background: var(--ink);
 	}
-	/* a dose is a diamond */
+	/* each overlay its own glyph (#88): a dose is a diamond, CO₂ a bar, a light a triangle,
+	   a trim a cross, other maintenance a hollow square; all in the neutral, the water change in ink */
 	.marker.dosing::before {
 		transform: rotate(45deg) scale(0.8);
 		background: var(--neutral-600);
+	}
+	.marker.co2::before {
+		top: 20px;
+		height: 4px;
+		background: var(--neutral-600);
+	}
+	.marker.light::before {
+		background: var(--neutral-600);
+		clip-path: polygon(50% 0, 100% 100%, 0 100%);
+	}
+	.marker.trim::before {
+		background:
+			linear-gradient(45deg, transparent 38%, var(--neutral-600) 38% 62%, transparent 62%),
+			linear-gradient(-45deg, transparent 38%, var(--neutral-600) 38% 62%, transparent 62%);
+	}
+	.marker.maintenance::before {
+		background: none;
+		border: 2px solid var(--neutral-600);
+	}
+	/* algae: a hollow diamond */
+	.marker.algae::before {
+		background: none;
+		border: 2px solid var(--neutral-600);
+		transform: rotate(45deg) scale(0.8);
 	}
 	/* the reading line draws itself in, then the latest reading pops up */
 	.trace {

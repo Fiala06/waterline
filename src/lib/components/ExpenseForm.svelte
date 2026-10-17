@@ -10,15 +10,18 @@
 		values,
 		errors = {},
 		tanks,
+		equipmentByTank = {},
 		currencySymbol,
 		today,
 		cancelHref,
 		receipt = null
 	}: {
 		mode: 'new' | 'edit';
-		values: { amount: string; what: string; category: string; date: string; note: string; tankId: string; productId: string };
+		values: { amount: string; what: string; category: string; date: string; note: string; tankId: string; productId: string; equipmentId: string };
 		errors?: Record<string, string>;
 		tanks: { id: string; name: string }[];
+		/** the equipment an expense can be for (#148), per tank: in the tank first, then past */
+		equipmentByTank?: Record<string, { id: string; name: string; past: boolean }[]>;
 		currencySymbol: string;
 		today: string;
 		cancelHref: string;
@@ -35,7 +38,12 @@
 	];
 	let category = $state(untrack(() => values.category || 'consumables'));
 	let date = $state(untrack(() => values.date || today));
+	let tankId = $state(untrack(() => values.tankId));
+	let equipmentId = $state(untrack(() => values.equipmentId));
 	let busy = $state(false);
+	// the item picker: for equipment, or while an item is linked (so a link can be taken off whatever the category)
+	const items = $derived(equipmentByTank[tankId] ?? []);
+	const showItems = $derived(category === 'equipment' || !!equipmentId);
 </script>
 
 <form
@@ -120,12 +128,32 @@
 		{#if tanks.length > 1}
 			<div class="field">
 				<label class="label" for="x-tank">Tank</label>
-				<select class="input" id="x-tank" name="tankId" value={values.tankId}>
+				<select class="input" id="x-tank" name="tankId" bind:value={tankId}>
 					{#each tanks as t (t.id)}<option value={t.id}>{t.name}</option>{/each}
 				</select>
 			</div>
 		{:else}
 			<input type="hidden" name="tankId" value={values.tankId} />
+		{/if}
+
+		{#if showItems}
+			<div class="field">
+				<label class="label" for="x-equipment">For which item · optional</label>
+				{#if items.length}
+					<select class="input" id="x-equipment" name="equipmentId" bind:value={equipmentId}>
+						<option value="">Not linked to an item</option>
+						{#each items.filter((i) => !i.past) as i (i.id)}<option value={i.id}>{i.name}</option>{/each}
+						{#if items.some((i) => i.past)}
+							<optgroup label="Past equipment">
+								{#each items.filter((i) => i.past) as i (i.id)}<option value={i.id}>{i.name}</option>{/each}
+							</optgroup>
+						{/if}
+					</select>
+					<span class="hint">The item's page under Equipment then shows what it cost.</span>
+				{:else}
+					<span class="hint" id="x-equipment">No equipment on this tank yet. Add it under Equipment, then link the expense to it.</span>
+				{/if}
+			</div>
 		{/if}
 
 		<div class="field">

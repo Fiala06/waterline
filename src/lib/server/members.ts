@@ -47,6 +47,22 @@ export function tankRole(userId: string, tank: Pick<Tank, 'id' | 'userId'>): Rol
 	return activeMembership(tank.id, userId)?.role ?? null;
 }
 
+/** This person's role on each of several tanks, in one query (#105); tanks they can't see are left out. */
+export function rolesOn(userId: string, list: Pick<Tank, 'id' | 'userId'>[]): Map<string, Role> {
+	const out = new Map<string, Role>();
+	const others = list.filter((t) => t.userId !== userId).map((t) => t.id);
+	for (const t of list) if (t.userId === userId) out.set(t.id, 'owner');
+	if (!others.length) return out;
+	const rows = db
+		.select({ tankId: tankMembers.tankId, role: tankMembers.role })
+		.from(tankMembers)
+		.where(and(inArray(tankMembers.tankId, others), eq(tankMembers.userId, userId), isNotNull(tankMembers.acceptedAt), isNull(tankMembers.revokedAt)))
+		.all();
+	// one active membership each; were there two, the higher role, as tankRole decides
+	for (const r of rows) if (!out.has(r.tankId) || RANK[r.role] > RANK[out.get(r.tankId)!]) out.set(r.tankId, r.role);
+	return out;
+}
+
 /** Whether this address (or the account behind it) already has access to the tank. */
 export function hasAccess(tankId: string, email: string): boolean {
 	const e = norm(email);

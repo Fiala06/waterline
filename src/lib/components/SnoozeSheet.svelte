@@ -2,7 +2,9 @@
 	// Snooze (README → Screens §10): Later today, Tomorrow, In 2 days, This weekend,
 	// Next week, each with its date, and Pick a date. A 260px menu under the
 	// Snooze ▾ button on desktop, a bottom sheet on phones. Moves only this
-	// occurrence; the schedule after it stays the same.
+	// occurrence; the schedule after it stays the same. Below Skip this one,
+	// Done already (#162): done yesterday or on a day picked, so the next one
+	// counts from the day it was done.
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import DateField from './DateField.svelte';
@@ -24,10 +26,14 @@
 			due: string;
 			recurring?: boolean;
 			intervalDays?: number | null;
-			scheduleMode?: 'completion' | 'fixed' | 'weekdays';
+			scheduleMode?: 'completion' | 'fixed' | 'weekdays' | 'after';
 			nextDue?: string | null;
 			weekdays?: string | null;
 			endsOn?: string | null;
+			kind?: string;
+			tankId?: string;
+			/** a water change or test logged already, to count instead of skipping (#163) */
+			countable?: { kind: 'event' | 'test'; id: string; date: string } | null;
 		} | null;
 		tankName: string;
 		today: string;
@@ -44,12 +50,17 @@
 
 	let picking = $state(false);
 	let custom = $state('');
-	// the server only takes dates after the due date (or after today when overdue)
-	const minDate = $derived(task ? addDays(task.due > today ? task.due : today, 1) : '');
+	let pickingDone = $state(false);
+	let doneDay = $state('');
+	const yesterday = $derived(addDays(today, -1));
+	// the server takes any date after today, and today itself for a task not due yet (#165)
+	const minDate = $derived(task ? (task.due > today ? today : addDays(today, 1)) : '');
 	$effect(() => {
 		if (open) {
 			picking = false;
 			custom = minDate;
+			pickingDone = false;
+			doneDay = yesterday;
 		}
 	});
 	const options = $derived(task ? snoozeOptions(today, task.due) : []);
@@ -65,7 +76,7 @@
 	// the menu's place on desktop: under the button, right-aligned, kept on screen
 	const menuStyle = $derived.by(() => {
 		if (!anchor) return '';
-		const top = Math.min(anchor.bottom + 6, Math.max(16, innerHeight - 420));
+		const top = Math.min(anchor.bottom + 6, Math.max(16, innerHeight - 560));
 		const right = Math.max(16, innerWidth - anchor.right);
 		return `--top:${top}px;--right:${right}px`;
 	});
@@ -92,9 +103,18 @@
 			<div class="handle" aria-hidden="true"></div>
 			<div class="head">
 				<span class="kicker">{task.name} · {tankName}</span>
-				<h2>Snooze until</h2>
+				<h2>{task.due > today ? 'Move to' : 'Snooze until'}</h2>
 			</div>
 			<div class="opts">
+				{#if task.due > today}
+					<!-- not due yet: bring this one forward to today (#165); the schedule after it stays -->
+					<form method="POST" action="/tasks?/snooze" use:enhance={submitting}>
+						<input type="hidden" name="taskId" value={task.id} />
+						<input type="hidden" name="until" value={today} />
+						<input type="hidden" name="from" value={from} />
+						<button class="opt"><span>Do it today</span><span class="date">{longDate(today)}</span></button>
+					</form>
+				{/if}
 				{#each options as o (o.label)}
 					<form method="POST" action="/tasks?/snooze" use:enhance={submitting}>
 						<input type="hidden" name="taskId" value={task.id} />
@@ -116,12 +136,51 @@
 					<button type="button" class="opt pick-date" onclick={() => (picking = true)}><span>Pick a date…</span><span aria-hidden="true">›</span></button>
 				{/if}
 			</div>
+			{#if task.countable}
+				<form method="POST" action="/tasks?/count" class="skip" use:enhance={submitting}>
+					<input type="hidden" name="taskId" value={task.id} />
+					<input type="hidden" name="entryId" value={task.countable.id} />
+					<input type="hidden" name="from" value={from} />
+					<button class="opt skip-btn"
+						><span>Count the {task.countable.kind === 'test' ? 'water test' : 'water change'} on {fmtDate(task.countable.date)}</span><span class="sub"
+							>Already in History · done that day</span
+						></button
+					>
+				</form>
+			{/if}
 			{#if skipDate}
-				<form method="POST" action="/tasks?/skip" class="skip" use:enhance={submitting}>
+				<form method="POST" action="/tasks?/skip" class="skip" class:after={!!task.countable} use:enhance={submitting}>
 					<input type="hidden" name="taskId" value={task.id} />
 					<input type="hidden" name="from" value={from} />
 					<button class="opt skip-btn"><span>Skip this one</span><span class="sub">Next one {longDate(skipDate)}</span></button>
 				</form>
+			{/if}
+			{#if task.kind !== 'review'}
+				<div class="done-on">
+					<span class="sub-head">Done already?</span>
+					<form method="POST" action="/tasks?/done" use:enhance={submitting}>
+						<input type="hidden" name="taskId" value={task.id} />
+						<input type="hidden" name="doneOn" value={yesterday} />
+						<input type="hidden" name="from" value={from} />
+						<button class="opt"><span>Done yesterday</span><span class="date">{longDate(yesterday)}</span></button>
+					</form>
+					{#if pickingDone}
+						<form method="POST" action="/tasks?/done" class="pick" use:enhance={submitting}>
+							<input type="hidden" name="taskId" value={task.id} />
+							<input type="hidden" name="from" value={from} />
+							<div class="pick-date-field">
+								<DateField name="doneOn" bind:value={doneDay} max={today} required label="Done on" format="weekday" {today} />
+							</div>
+							<button class="btn btn-primary">Done</button>
+						</form>
+					{:else}
+						<button type="button" class="opt pick-date" onclick={() => (pickingDone = true)}><span>Done on a day…</span><span aria-hidden="true">›</span></button>
+					{/if}
+				</div>
+			{/if}
+			{#if task.tankId}
+				<!-- a blackout, a trip, a dose held back (#172): not due and not notified until a day -->
+				<a class="opt pause-link" href="/tanks/{task.tankId}/pause?task={task.id}&from={encodeURIComponent(from)}"><span>Pause until…</span><span aria-hidden="true">›</span></a>
 			{/if}
 			<p class="note">Snoozing moves only this occurrence. The schedule after it stays the same.</p>
 			<button type="button" class="btn cancel" onclick={close}>Cancel</button>
@@ -204,6 +263,11 @@
 		color: var(--text-muted);
 		white-space: nowrap;
 	}
+	.pause-link {
+		border-top: 2px solid var(--divider);
+		color: var(--text);
+	}
+	.pause-link span:last-child,
 	.pick-date span:last-child {
 		color: var(--text-muted);
 	}
@@ -232,6 +296,9 @@
 	.skip {
 		border-top: 2px solid var(--divider);
 	}
+	.skip.after {
+		border-top: none;
+	}
 	.skip-btn {
 		flex-direction: column;
 		align-items: flex-start;
@@ -242,6 +309,20 @@
 	.skip-btn .sub {
 		font-size: 13px;
 		font-weight: 400;
+		color: var(--text-muted);
+	}
+	/* below a divider too: it was done, on another day */
+	.done-on {
+		display: flex;
+		flex-direction: column;
+		border-top: 2px solid var(--divider);
+		padding-top: 8px;
+	}
+	.sub-head {
+		font-size: 11px;
+		font-weight: 800;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
 		color: var(--text-muted);
 	}
 	.note {

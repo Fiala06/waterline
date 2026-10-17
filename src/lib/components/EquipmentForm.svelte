@@ -5,7 +5,7 @@
 	import DateField from '$lib/components/DateField.svelte';
 	import { untrack } from 'svelte';
 	import DayTimeline from '$lib/components/DayTimeline.svelte';
-	import { DEFAULT_SERVICE, EQUIPMENT_TYPE_LABEL, EQUIPMENT_TYPES, hoursText, MAX_PERIODS, RAMP_OPTIONS, SERVICE_CADENCES, SPEC_FIELDS, scheduleTotalHours, serviceVerb, specUnit, type EquipmentType } from '$lib/equipment';
+	import { DEFAULT_SERVICE, EQUIPMENT_TYPE_LABEL, EQUIPMENT_TYPES, hoursText, isCompletePeriod, MAX_PERIODS, RAMP_OPTIONS, SERVICE_CADENCES, SPEC_FIELDS, scheduleTotalHours, serviceVerb, specUnit, type EquipmentType } from '$lib/equipment';
 	import type { UnitPrefs } from '$lib/units';
 
 	let {
@@ -16,13 +16,16 @@
 		prefs,
 		cancelHref,
 		today,
-		about = null
+		about = null,
+		scanned = null
 	}: {
 		mode: 'new' | 'edit';
 		values: {
 			type: EquipmentType;
 			brand: string;
 			model: string;
+			/** the product barcode it was scanned from (#147), kept with it */
+			barcode: string;
 			installedAt: string;
 			notes: string;
 			specs: Record<string, string>;
@@ -46,9 +49,21 @@
 			serviced: string | null;
 			history: { id: string; title: string; note: string | null; day: string }[];
 			task: { id: string; name: string; line: string; due: { text: string; level: 'ok' | 'warn' | 'bad' } | null } | null;
+			/** what it cost (#148): the expenses linked to it, and where to add one */
+			cost: { total: string; rows: { id: string; what: string; day: string; amount: string; receipt: boolean }[]; addHref: string };
 		} | null;
+		/** a new item from the scanner (#147): its barcode, and the listing the lookup found, if any */
+		scanned?: { code: string; title: string | null; source: string | null } | null;
 	} = $props();
 	const tankId = $derived(cancelHref.split('/')[2] ?? '');
+	// "Scanned 0015561104470: Fluval 407 Performance Canister Filter · UPCitemdb"
+	const scannedLine = $derived(
+		!scanned
+			? ''
+			: scanned.title
+				? `Scanned ${scanned.code}: ${scanned.title}${scanned.source ? ` · ${scanned.source}` : ''}`
+				: `Scanned ${scanned.code}: nothing found for it, so type its brand and model. The barcode stays with the item.`
+	);
 	const serviceHref = $derived(`/entries/event/new?tank=${tankId}&category=maintenance&from=${encodeURIComponent(cancelHref)}`);
 
 	let type = $state<EquipmentType>(untrack(() => values.type));
@@ -64,7 +79,7 @@
 	let runs = $state(untrack(() => values.runs));
 	let periods = $state<{ on: string; off: string }[]>(untrack(() => (values.periods.length ? values.periods.map((p) => ({ ...p })) : [{ on: '08:00', off: '16:00' }])));
 	let rampMin = $state(untrack(() => values.rampMin));
-	const complete = $derived(periods.filter((p) => /^\d\d:\d\d$/.test(p.on) && /^\d\d:\d\d$/.test(p.off) && p.on !== p.off));
+	const complete = $derived(periods.filter(isCompletePeriod));
 	const preview = $derived(runs === 'schedule' && complete.length ? { periods: complete, rampMin: type === 'light' ? Number(rampMin) || null : null } : null);
 	const previewHours = $derived(scheduleTotalHours(preview));
 	// a new item's reminder follows its type (a filter monthly) until it's chosen by hand
@@ -106,6 +121,7 @@
 	{/if}
 	<div class="cols" class:with-side={!!about}>
 	<div class="body">
+		<input type="hidden" name="barcode" value={values.barcode} />
 		<fieldset class="field">
 			<legend class="label">Type</legend>
 			<div class="chips">
@@ -136,6 +152,13 @@
 				</div>
 			{/if}
 			{#if errors.brand}<span class="error-text">✕ {errors.brand}</span>{/if}
+			{#if scanned}
+				<p class="hint scanned">{scannedLine}</p>
+			{:else if mode === 'new'}
+				<p class="hint">Have the box? <a href="{cancelHref}/scan">Scan its barcode ›</a></p>
+			{:else if values.barcode}
+				<p class="hint">Barcode {values.barcode}</p>
+			{/if}
 		</div>
 
 		{#if fields.length}
@@ -259,6 +282,18 @@
 				{#if !about.history.length}<span class="none">No service logged yet.</span>{/if}
 				<a class="ghost hide-desk" href={serviceHref}>Log service</a>
 			</div>
+			<!-- what it cost (#148): the expenses linked to this item -->
+			<div class="log">
+				<span class="kicker rule">Cost{about.cost.rows.length ? ` · ${about.cost.total}` : ''}</span>
+				{#each about.cost.rows as x (x.id)}
+					<a class="log-row" href="/tanks/{tankId}/spending/{x.id}">
+						<span class="log-top"><b>{x.what}</b><span class="log-day num">{x.amount}</span></span>
+						<span class="log-note">{x.day}{x.receipt ? ' · Receipt' : ''}</span>
+					</a>
+				{/each}
+				{#if !about.cost.rows.length}<span class="none">No expense linked yet.</span>{/if}
+				<a class="ghost" href={about.cost.addHref}>Add expense ›</a>
+			</div>
 		</aside>
 	{/if}
 	</div>
@@ -344,6 +379,15 @@
 		display: flex;
 		flex-direction: column;
 		gap: 8px;
+	}
+	.brand .hint {
+		margin: 0;
+		font-size: 13px;
+		color: var(--text-muted);
+	}
+	.brand .hint a {
+		color: var(--accent-text);
+		text-decoration: underline;
 	}
 	.pair,
 	.specs {

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import EntryDetail from '$lib/components/EntryDetail.svelte';
+	import WorthChecking from '$lib/components/WorthChecking.svelte';
 	import { ui } from '$lib/ui.svelte';
 	let { data } = $props();
 	const e = $derived(data.entry);
@@ -18,6 +19,9 @@
 	backHref="/?tank={e.tankId}"
 	editHref={e.editable ? `/entries/event/${e.id}/edit` : ''}
 >
+	{#snippet extra()}
+		{#if e.checks}<WorthChecking title={e.checks.title} lead={e.checks.lead} checks={e.checks.checks} />{/if}
+	{/snippet}
 	{#snippet actions()}
 		<ConfirmDelete
 			fields={{ from: ui.prev ?? '' }}

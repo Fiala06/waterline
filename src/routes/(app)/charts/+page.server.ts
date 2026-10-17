@@ -9,9 +9,12 @@ import { tests } from '$lib/server/db/schema';
 import { eventsSince, latestReadings, series } from '$lib/server/logs';
 import { getTank, listParams } from '$lib/server/tanks';
 import { tankNotes } from '$lib/server/trends';
-import { latestSamples, sampleSeries } from '$lib/server/sensors';
+import { displaySamples, isLive, latestSamples, sampleCount, sampleSeries } from '$lib/server/sensors';
 import { fmtWhen } from '$lib/time';
-import { CHART_RANGES } from '$lib/charts';
+import { CHART_RANGES, equipmentTypeLookup, overlayKind, parseCompare } from '$lib/charts';
+import { equipmentName } from '$lib/equipment';
+import { whatChanged } from '$lib/what-changed';
+import { listEquipment } from '$lib/server/specs';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, parent, url }) => {
@@ -26,7 +29,9 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 	const now = Date.now();
 	const since = range.days ? new Date(now - range.days * 86_400_000).toISOString() : '0000';
 
-	const withData = params.filter((p) => latest.has(p.id));
+	// a parameter a sensor reports counts as having data too (#130)
+	const live = latestSamples(tank.id);
+	const withData = params.filter((p) => latest.has(p.id) || live.has(p.id));
 	const param =
 		params.find((p) => p.id === url.searchParams.get('p')) ??
 		withData.find((p) => statusOf(p, latest.get(p.id)?.value).level === 'bad') ??
@@ -49,15 +54,16 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 			.map((t) => [t.takenAt, t.id])
 	);
 	const hrefAt = (takenAt: string) => (testAt.has(takenAt) ? `/entries/test/${testAt.get(takenAt)}` : undefined);
-	const eventMarkers = (from: number) =>
-		eventsSince(tank.id, ['water_change', 'dosing'], new Date(from).toISOString()).map((e) => ({
-			t: Date.parse(e.occurredAt),
-			href: `/entries/event/${e.id}`,
-			kind: e.category === 'dosing' ? ('dosing' as const) : ('water_change' as const),
-			label: eventTitle(e, user),
-			day: fmtDate(dateInZone(e.occurredAt, user.timeZone)),
-			change: null as string | null
-		}));
+	// Events on the timeline (#88: each overlay kind on its own switch on the page)
+	const equipmentType = equipmentTypeLookup(listEquipment(user.id, tank.id).map((i) => ({ id: i.id, name: equipmentName(i), type: i.type })));
+	// (feeding and livestock changes aren't drawn, but belong in What changed? below)
+	const eventsFrom = (from: number) => eventsSince(tank.id, ['water_change', 'dosing', 'maintenance', 'equipment', 'observation', 'feeding', 'livestock'], new Date(from).toISOString());
+	const markersOf = (evs: ReturnType<typeof eventsFrom>) =>
+		evs.flatMap((e) => {
+			const kind = overlayKind(e, equipmentType);
+			if (!kind) return [];
+			return [{ t: Date.parse(e.occurredAt), href: `/entries/event/${e.id}`, kind, label: eventTitle(e, user), day: fmtDate(dateInZone(e.occurredAt, user.timeZone)), change: null as string | null }];
+		});
 
 	// Every parameter on one chart, each against its own target (?p=all)
 	if (url.searchParams.get('p') === 'all') {
@@ -95,26 +101,49 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 				anyEver: latest.size > 0,
 				from,
 				to: now,
-				markers: eventMarkers(from)
+				markers: markersOf(eventsFrom(from))
 			}
 		};
 	}
 
 	const raw = series(tank.id, param.id, since);
+	// compared parameters (#87): up to two more, each on its own scale, from ?c=id,id
+	const compare = parseCompare(url.searchParams.getAll('c').join(','), params.map((p) => p.id), param.id).map((id) => {
+		const cp = params.find((p) => p.id === id)!;
+		return {
+			id: cp.id,
+			name: cp.name,
+			unit: paramUnit(cp, user),
+			decimals: paramDecimals(cp, user),
+			points: series(tank.id, cp.id, since).map((r) => ({ t: Date.parse(r.takenAt), v: displayValue(cp, r.value, user) }))
+		};
+	});
 	// readings from a sensor (#19): a thin line under the tests, and the latest as Live
-	const sensor = sampleSeries(tank.id, param.id, since).map((s) => ({ t: s.t, v: displayValue(param, s.v, user) }));
-	const liveSample = latestSamples(tank.id).get(param.id);
-	const live = liveSample
-		? { value: fmtValue(param, liveSample.value, user), level: statusOf(param, liveSample.value).level, status: statusShort(statusOf(param, liveSample.value)), at: fmtWhen(liveSample.at, user.timeZone), source: liveSample.source }
+	const sensor = displaySamples(sampleSeries(tank.id, param.id, since), param, user);
+	const liveSample = live.get(param.id);
+	const liveStat = liveSample
+		? {
+				value: fmtValue(param, liveSample.value, user),
+				level: statusOf(param, liveSample.value).level,
+				status: statusShort(statusOf(param, liveSample.value)),
+				at: fmtWhen(liveSample.at, user.timeZone),
+				source: liveSample.source,
+				// Live while the sensor keeps reporting, Last once it's gone quiet
+				fresh: isLive(liveSample.at, liveSample.prevAt)
+			}
 		: null;
 	const points = raw.map((r) => ({ t: Date.parse(r.takenAt), v: displayValue(param, r.value, user), href: hrefAt(r.takenAt) }));
-	// Too few points in this range: is it the range, or are there no tests yet?
-	const allTime = points.length < 2 && range.days ? series(tank.id, param.id, '0000').length : points.length;
-	const from = range.days ? now - range.days * 86_400_000 : (points[0]?.t ?? now - 30 * 86_400_000);
+	// Too few points in this range: is it the range, or is there nothing yet?
+	// Sensor samples count as readings here (#130): a probe's chart shows
+	// without a test, and a range with none says to try a longer one.
+	const enough = points.length >= 2 || sensor.length >= 2;
+	const allTime = enough || !range.days ? Math.max(points.length, sensor.length) : Math.max(series(tank.id, param.id, '0000').length, sampleCount(tank.id, param.id));
+	const from = range.days ? now - range.days * 86_400_000 : (points[0]?.t ?? sensor[0]?.t ?? now - 30 * 86_400_000);
 
-	// Events on the timeline, with the reading just before and after each one.
+	// the events in range, with the reading just before and after each one
+	const evs = eventsFrom(from);
 	const fv = (stored: number) => fmtValue(param, stored, user);
-	const markers = eventMarkers(from).map((m) => {
+	const markers = markersOf(evs).map((m) => {
 		const before = [...raw].reverse().find((r) => Date.parse(r.takenAt) <= m.t);
 		const after = raw.find((r) => Date.parse(r.takenAt) > m.t);
 		return { ...m, change: before && after ? `${param.name} ${fv(before.value)} → ${fv(after.value)}${paramUnit(param, user) ? ' ' + paramUnit(param, user) : ''}` : null };
@@ -151,6 +180,13 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 		: null;
 	// What stands out (a run, a pace, a pattern), as the dashboard tells it
 	const insight = tankNotes(tank.id, user).find((n) => n.parameterId === param.id) ?? null;
+	// What changed? (#89): the latest move worth a word, and what was logged in that stretch
+	const changed = whatChanged(
+		param,
+		raw.map((r) => ({ t: Date.parse(r.takenAt), value: r.value })),
+		evs.map((e) => ({ id: e.id, t: Date.parse(e.occurredAt), title: eventTitle(e, user) })),
+		user
+	);
 
 	return {
 		tank: { id: tank.id, name: tank.name },
@@ -171,13 +207,22 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 			},
 			points,
 			sensor,
-			live,
+			compare,
+			live: liveStat,
 			allTime,
 			from,
 			to: now,
 			markers,
 			stats,
-			insight: insight ? { text: insight.text, warn: insight.warn, up: insight.direction === 'up' } : null
+			insight: insight ? { text: insight.text, warn: insight.warn, up: insight.direction === 'up' } : null,
+			changed: changed
+				? {
+						headline: changed.headline,
+						up: changed.direction === 'up',
+						days: changed.days,
+						events: changed.events.map((e) => ({ href: `/entries/event/${e.id}`, title: e.title, day: fmtDate(dateInZone(new Date(e.t).toISOString(), user.timeZone)) }))
+					}
+				: null
 		}
 	};
 };

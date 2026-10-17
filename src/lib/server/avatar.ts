@@ -3,12 +3,12 @@
 // offline). The Google photo is copied again at each Google sign-in; a photo
 // someone uploads is kept beside it and shown instead, whatever Google has.
 // Without either, the account menu shows initials.
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { eq } from 'drizzle-orm';
 import { avatarImage, largerGooglePhoto } from './avatar-image';
 import { db } from './db';
 import { users } from './db/schema';
+import { removeFiles, replaceFile } from './files';
 import { dataDir } from './instance';
 import { logger } from './log';
 
@@ -17,11 +17,6 @@ const MAX_BYTES = 5_000_000;
 export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 export const avatarFile = (userId: string) => join(dataDir(), 'avatars', `${userId}.jpg`);
 export const ownAvatarFile = (userId: string) => join(dataDir(), 'avatars', `${userId}-own.jpg`);
-
-function write(file: string, img: Buffer) {
-	mkdirSync(join(dataDir(), 'avatars'), { recursive: true });
-	writeFileSync(file, img);
-}
 
 /** Copy the photo in the background; sign-in doesn't wait for it, and a failure only means initials. */
 export async function copyGoogleAvatar(userId: string, url: string) {
@@ -32,7 +27,7 @@ export async function copyGoogleAvatar(userId: string, url: string) {
 		if (Number(res.headers.get('content-length') ?? 0) > MAX_BYTES) throw new Error('The photo is too large');
 		const buf = Buffer.from(await res.arrayBuffer());
 		if (buf.length > MAX_BYTES) throw new Error('The photo is too large');
-		write(avatarFile(userId), await avatarImage(buf));
+		await replaceFile(avatarFile(userId), await avatarImage(buf));
 		db.update(users).set({ avatarAt: new Date().toISOString() }).where(eq(users.id, userId)).run();
 	} catch (e) {
 		logger.warn('sign-in', "Couldn't copy the Google profile photo", { userId, error: e });
@@ -49,13 +44,18 @@ export async function saveOwnAvatar(userId: string, file: File): Promise<{ error
 	} catch {
 		return { error: "That file couldn't be read as a photo." };
 	}
-	write(ownAvatarFile(userId), img);
+	try {
+		await replaceFile(ownAvatarFile(userId), img);
+	} catch (e) {
+		logger.error('settings', "Couldn't save a profile photo", { userId, error: e });
+		return { error: "Couldn't save that photo. Try again." };
+	}
 	db.update(users).set({ avatarChoice: 'own', ownAvatarAt: new Date().toISOString() }).where(eq(users.id, userId)).run();
 	return null;
 }
 
 /** Back to the Google photo, or to initials; the photo they uploaded is deleted. */
-export function setAvatarChoice(userId: string, choice: 'google' | 'none') {
-	rmSync(ownAvatarFile(userId), { force: true });
+export async function setAvatarChoice(userId: string, choice: 'google' | 'none') {
 	db.update(users).set({ avatarChoice: choice, ownAvatarAt: null }).where(eq(users.id, userId)).run();
+	await removeFiles([ownAvatarFile(userId)], 'settings');
 }

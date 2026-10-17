@@ -1,0 +1,151 @@
+{
+  "_about": "Budgets for e2e/perf.test.ts and scripts/bundle-size.mjs (#110). Over warn is flagged in the report; over fail fails CI. LCP, CLS and TTFB follow Core Web Vitals (good / poor: LCP 2.5 s, CLS 0.1 / 0.25, TTFB 0.8 s), with room for CI's slower machines. Sizes are what each page loads today (Oct 2026) plus 25% (JS) or 40% (everything) to warn, 60% / 100% to fail. Raise a budget only with a reason in the commit.",
+  "pages": {
+    "Sign in": {
+      "lcp": {
+        "warn": 1500,
+        "fail": 2500
+      },
+      "cls": {
+        "warn": 0.1,
+        "fail": 0.25
+      },
+      "ttfb": {
+        "warn": 300,
+        "fail": 800
+      },
+      "jsKb": {
+        "warn": 60,
+        "fail": 75
+      },
+      "totalKb": {
+        "warn": 150,
+        "fail": 210
+      }
+    },
+    "Dashboard": {
+      "lcp": {
+        "warn": 1500,
+        "fail": 2500
+      },
+      "cls": {
+        "warn": 0.1,
+        "fail": 0.25
+      },
+      "ttfb": {
+        "warn": 300,
+        "fail": 800
+      },
+      "jsKb": {
+        "warn": 135,
+        "fail": 170
+      },
+      "totalKb": {
+        "warn": 420,
+        "fail": 600
+      }
+    },
+    "Charts": {
+      "lcp": {
+        "warn": 1500,
+        "fail": 2500
+      },
+      "cls": {
+        "warn": 0.1,
+        "fail": 0.25
+      },
+      "ttfb": {
+        "warn": 300,
+        "fail": 800
+      },
+      "jsKb": {
+        "warn": 115,
+        "fail": 145
+      },
+      "totalKb": {
+        "warn": 350,
+        "fail": 495
+      }
+    },
+    "History": {
+      "lcp": {
+        "warn": 1500,
+        "fail": 2500
+      },
+      "cls": {
+        "warn": 0.1,
+        "fail": 0.25
+      },
+      "ttfb": {
+        "warn": 300,
+        "fail": 800
+      },
+      "jsKb": {
+        "warn": 105,
+        "fail": 135
+      },
+      "totalKb": {
+        "warn": 825,
+        "fail": 1180
+      }
+    },
+    "Photos": {
+      "lcp": {
+        "warn": 1500,
+        "fail": 2500
+      },
+      "cls": {
+        "warn": 0.1,
+        "fail": 0.25
+      },
+      "ttfb": {
+        "warn": 300,
+        "fail": 800
+      },
+      "jsKb": {
+        "warn": 105,
+        "fail": 135
+      },
+      "totalKb": {
+        "warn": 525,
+        "fail": 750
+      }
+    },
+    "Public page": {
+      "lcp": {
+        "warn": 1500,
+        "fail": 2500
+      },
+      "cls": {
+        "warn": 0.1,
+        "fail": 0.25
+      },
+      "ttfb": {
+        "warn": 300,
+        "fail": 800
+      },
+      "jsKb": {
+        "warn": 75,
+        "fail": 95
+      },
+      "totalKb": {
+        "warn": 515,
+        "fail": 730
+      }
+    }
+  },
+  "interaction": {
+    "warn": 500,
+    "fail": 1000
+  },
+  "bundle": {
+    "totalGzKb": {
+      "warn": 380,
+      "fail": 480
+    },
+    "largestChunkGzKb": {
+      "warn": 35,
+      "fail": 50
+    }
+  }
+}

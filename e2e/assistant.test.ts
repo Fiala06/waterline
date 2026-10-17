@@ -68,6 +68,26 @@ test('an AI assistant: a token from Settings reads the tank over MCP and the API
 	const readings = await page.request.get(`/api/v1/tanks/${tankId}/readings?parameter=pH`, { headers: { authorization: `Bearer ${token}` } });
 	expect((await readings.json()).parameters).toEqual([expect.objectContaining({ name: 'pH', latest: expect.objectContaining({ value: 6.8, status: '✓ OK' }), readings: [expect.objectContaining({ value: 6.8 })] })]);
 
+	// the tables: rows over MCP, JSON and CSV over the API
+	const rows = await rpc('tools/call', { name: 'get_reading_rows', arguments: { parameter: 'no3' } });
+	expect(rows.structuredContent.rows).toEqual([expect.objectContaining({ tank: 'Riverbed 40', parameter: 'Nitrate', value: 10, unit: 'ppm' })]);
+	const overview = await page.request.get('/api/v1/overview', { headers: { authorization: `Bearer ${token}` } });
+	expect((await overview.json()).rows[0]).toMatchObject({ tank: 'Riverbed 40', last_tested: expect.any(String) });
+	const csv = await page.request.get('/api/v1/reading-rows?format=csv', { headers: { authorization: `Bearer ${token}` } });
+	expect(csv.headers()['content-type']).toContain('text/csv');
+	expect((await csv.text()).split('\r\n')[0]).toBe('tank,tank_id,date,time,parameter,key,value,unit,target_min,target_max,status');
+	// only a table has a CSV: the grouped readings say so instead of answering JSON
+	const notCsv = await page.request.get(`/api/v1/tanks/${tankId}/readings?format=csv`, { headers: { authorization: `Bearer ${token}` } });
+	expect(notCsv.status()).toBe(400);
+	expect((await notCsv.json()).error).toContain("readings isn't a table");
+
+	// a path that isn't a tool is just not found, even one Object has a property for
+	for (const path of ['/api/v1/constructor', `/api/v1/tanks/${tankId}/__proto__`]) {
+		const res = await page.request.get(path, { headers: { authorization: `Bearer ${token}` } });
+		expect(res.status(), path).toBe(404);
+		expect(await res.json(), path).toEqual({ error: 'Not found' });
+	}
+
 	// used, then revoked: refused
 	await open(page, '/settings/assistant');
 	await expect(page.getByRole('region', { name: 'Connected' }).getByRole('listitem').filter({ hasText: 'Claude' })).toContainText('Last used Today');

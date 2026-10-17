@@ -5,12 +5,20 @@ import { reviewEvery } from './review';
 interface Schedulable {
 	recurring: boolean;
 	intervalDays: number | null;
-	scheduleMode: 'completion' | 'fixed' | 'weekdays';
+	scheduleMode: 'completion' | 'fixed' | 'weekdays' | 'after';
 	nextDue: string | null;
 	/** "1,3,5" (0 Sunday … 6 Saturday), for scheduleMode weekdays */
 	weekdays?: string | null;
 	/** the last day it's due ('YYYY-MM-DD'): a course of doses, a round of treatments */
 	endsOn?: string | null;
+	/** a cadence for a while (#171): every tempIntervalDays for what's done before tempUntil */
+	tempIntervalDays?: number | null;
+	tempUntil?: string | null;
+}
+
+/** The interval a completion on `doneOn` counts with: the temporary one until its day (#171), then the usual. */
+export function intervalFor(task: Schedulable, doneOn: string): number | null {
+	return task.tempIntervalDays && task.tempUntil && doneOn < task.tempUntil ? task.tempIntervalDays : task.intervalDays;
 }
 
 export const WEEKDAYS = [
@@ -45,10 +53,13 @@ export function onOrAfterWeekday(date: string, days: number[]): string {
 	return d;
 }
 
-/** The date a task is actually due: a snooze moves only this occurrence. */
+/**
+ * The date a task is actually due: a snooze moves only this occurrence, later
+ * or, with Do it today (#165), sooner; the schedule stays on `nextDue`.
+ */
 export function effectiveDue(task: { nextDue: string | null; snoozedUntil?: string | null }): string | null {
 	if (!task.nextDue) return null;
-	return task.snoozedUntil && task.snoozedUntil > task.nextDue ? task.snoozedUntil : task.nextDue;
+	return task.snoozedUntil ?? task.nextDue;
 }
 
 /**
@@ -66,6 +77,8 @@ export function nextDueAfterCompletion(task: Schedulable, doneOn: string, today:
 }
 
 function nextOccurrence(task: Schedulable, doneOn: string, today: string): string | null {
+	// after a log (#178): it waits for the next one
+	if (task.scheduleMode === 'after') return null;
 	// on set days: the next of them after this one, or after the day it's done if that's later
 	if (task.recurring && task.scheduleMode === 'weekdays') {
 		const days = parseWeekdays(task.weekdays);
@@ -73,10 +86,11 @@ function nextOccurrence(task: Schedulable, doneOn: string, today: string): strin
 		const from = task.nextDue && task.nextDue > doneOn ? task.nextDue : doneOn;
 		return onOrAfterWeekday(addDays(from, 1), days);
 	}
-	if (!task.recurring || !task.intervalDays) return null;
-	if (task.scheduleMode === 'completion' || !task.nextDue) return addDays(doneOn, task.intervalDays);
-	let next = addDays(task.nextDue, task.intervalDays);
-	while (daysBetween(today, next) <= 0) next = addDays(next, task.intervalDays);
+	const interval = intervalFor(task, doneOn);
+	if (!task.recurring || !interval) return null;
+	if (task.scheduleMode === 'completion' || !task.nextDue) return addDays(doneOn, interval);
+	let next = addDays(task.nextDue, interval);
+	while (daysBetween(today, next) <= 0) next = addDays(next, interval);
 	return next;
 }
 
@@ -140,8 +154,16 @@ export interface DueInfo {
 	section: 'overdue' | 'soon' | 'later';
 }
 
-export function dueInfo(nextDue: string, today: string): DueInfo {
+/**
+ * Where a task stands on `today`. Within its grace (#175), a day or so late
+ * is "▲ Due yesterday", still due soon; past it, "✕ Overdue".
+ */
+export function dueInfo(nextDue: string, today: string, graceDays = 0): DueInfo {
 	const days = daysBetween(today, nextDue);
+	if (days < 0 && -days <= graceDays) {
+		const n = -days;
+		return { days, level: 'warn', text: `▲ Due ${n === 1 ? 'yesterday' : `${n} days ago`}`, section: 'soon' };
+	}
 	if (days < 0) {
 		const n = -days;
 		return { days, level: 'bad', text: `✕ Overdue ${n} day${n === 1 ? '' : 's'}`, section: 'overdue' };
@@ -158,15 +180,110 @@ export function dueInfo(nextDue: string, today: string): DueInfo {
 	return { days, level: 'ok', text: fmtDate(nextDue), section: 'later' };
 }
 
+export type ReminderTask = Schedulable & { snoozedUntil?: string | null };
+
+/**
+ * Whether work logged on `entryDate` is this task's occurrence (#163): it's
+ * after the last time it was done, and the task is overdue by then or due
+ * within half its cadence (a day early on every 3 days, 3 on a weekly one).
+ * Earlier than that it's an extra one, and the schedule stays as it is.
+ */
+export function logCompletes(task: ReminderTask, lastDone: string | null, entryDate: string): boolean {
+	const due = effectiveDue(task);
+	if (!due) return false;
+	if (lastDone && entryDate <= lastDone) return false;
+	const early = daysBetween(entryDate, due);
+	const window = !task.recurring ? DUE_SOON_DAYS : task.scheduleMode === 'weekdays' ? 1 : Math.max(1, Math.floor((task.intervalDays ?? 0) / 2));
+	return early <= window;
+}
+
+/** Where a log form's reminder stands: "Due today · next Oct 23", "Not due until Oct 20 · next would be Oct 27" */
+export function reminderSub(task: ReminderTask, entryDate: string, today: string): string {
+	const due = effectiveDue(task);
+	if (!due) return '';
+	const d = dueInfo(due, today);
+	const next = nextDueAfterCompletion(task, entryDate, today);
+	const state = d.days < 0 ? `${-d.days} day${d.days === -1 ? '' : 's'} overdue` : d.days === 0 ? 'Due today' : `Not due until ${fmtDate(due)}`;
+	const after = next ? (d.days > 0 ? `next would be ${fmtDate(next)}` : `next ${fmtDate(next)}`) : 'closes the reminder';
+	return `${state} · ${after}`;
+}
+
+/**
+ * A task's cadence with how it repeats and when it was last done (#164):
+ * "every 3 days after done · last Oct 13", "every 7 days · on schedule",
+ * "Mon, Wed, Fri · last Oct 14", "one-off".
+ */
+export function cadenceText(
+	task: {
+		recurring: boolean;
+		intervalDays: number | null;
+		scheduleMode?: string;
+		weekdays?: string | null;
+		kind?: string;
+		nextDue?: string | null;
+		endsOn?: string | null;
+		tempIntervalDays?: number | null;
+		tempUntil?: string | null;
+		/** or sooner, until a reading clears (#179): "ammonia reads 0" */
+		tempClear?: string | null;
+	} & Follows,
+	lastDone?: string | null,
+	today?: string
+): string {
+	// for a while (#171): "every 3 days until Oct 30 · then every 7 days"
+	if (task.recurring && task.tempIntervalDays && task.tempUntil && (!today || today < task.tempUntil)) {
+		const temp = `${repeatText({ ...task, intervalDays: task.tempIntervalDays })} until ${task.tempClear ?? fmtDate(task.tempUntil)} · then ${repeatText(task)}`;
+		return [temp, lastDone ? `last ${fmtDate(lastDone)}` : null].filter(Boolean).join(' · ');
+	}
+	// after a log (#178): "1 day after a water change · last Oct 13"
+	if (task.scheduleMode === 'after') return [followText(task as Follows), lastDone ? `last ${fmtDate(lastDone)}` : null].filter(Boolean).join(' · ');
+	const base = repeatText(task);
+	const every = task.recurring && task.intervalDays && task.scheduleMode !== 'weekdays' && task.kind !== 'review';
+	const how = every ? (task.scheduleMode === 'fixed' ? `${base} · on schedule` : `${base} after done`) : base;
+	const course = task.endsOn && task.nextDue ? courseText({ ...task, scheduleMode: (task.scheduleMode ?? 'completion') as Schedulable['scheduleMode'], nextDue: task.nextDue }) : null;
+	return [how, course, lastDone ? `last ${fmtDate(lastDone)}` : null].filter(Boolean).join(' · ');
+}
+
+/**
+ * Where a paused task (#172) picks up when it resumes on `resumeOn`, paused
+ * since `from`: one due during the pause moves on by the days it was paused
+ * (never before the resume day), or to its next date on schedule; one due
+ * after it stays. A course ends that many days later, so no dose is lost.
+ */
+export function resumeSchedule(task: Schedulable & { snoozedUntil?: string | null }, from: string, resumeOn: string) {
+	const days = Math.max(0, daysBetween(from, resumeOn));
+	const endsOn = task.endsOn ? addDays(task.endsOn, days) : (task.endsOn ?? null);
+	const due = effectiveDue(task);
+	if (!due || !task.nextDue || due >= resumeOn) return { nextDue: task.nextDue, snoozedUntil: task.snoozedUntil ?? null, endsOn };
+	let nextDue: string;
+	if (task.recurring && task.scheduleMode === 'weekdays') nextDue = onOrAfterWeekday(resumeOn, parseWeekdays(task.weekdays));
+	else if (task.recurring && task.scheduleMode === 'fixed' && task.intervalDays) {
+		nextDue = task.nextDue;
+		while (nextDue < resumeOn) nextDue = addDays(nextDue, task.intervalDays);
+	} else {
+		const moved = addDays(due, days);
+		nextDue = moved > resumeOn ? moved : resumeOn;
+	}
+	return { nextDue, snoozedUntil: null, endsOn };
+}
+
+/** Where a course stands (#174): "Day 3 of 14", from the day it was started to its last day. */
+export function courseDayText(startedOn: string, endsOn: string, today: string): string {
+	const of = Math.max(1, daysBetween(startedOn, endsOn) + 1);
+	const day = Math.min(of, Math.max(1, daysBetween(startedOn, today) + 1));
+	return `Day ${day} of ${of}`;
+}
+
 /** "every 7 days", "every 2 weeks", "Mon, Wed, Fri", "every day but Sun", "one-off" */
-export function intervalText(task: { recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null; kind?: string; nextDue?: string | null; endsOn?: string | null }): string {
+export function intervalText(task: { recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null; kind?: string; nextDue?: string | null; endsOn?: string | null } & Follows): string {
 	const base = repeatText(task);
 	// a course: "every 2 days · 3 doses left · ends Oct 9"
 	const course = task.endsOn && task.nextDue ? courseText({ ...task, scheduleMode: (task.scheduleMode ?? 'completion') as Schedulable['scheduleMode'], nextDue: task.nextDue }) : null;
 	return course ? `${base} · ${course}` : base;
 }
 
-function repeatText(task: { recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null; kind?: string }): string {
+function repeatText(task: { recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null; kind?: string } & Follows): string {
+	if (task.scheduleMode === 'after') return followText(task);
 	if (task.recurring && task.scheduleMode === 'weekdays') {
 		const days = parseWeekdays(task.weekdays);
 		if (days.length === 7) return 'every day';
@@ -183,25 +300,68 @@ function repeatText(task: { recurring: boolean; intervalDays: number | null; sch
 	return d === 1 ? 'every day' : `every ${d} days`;
 }
 
-/** Snooze choices (G8): tomorrow, in 3 days, next weekend (the coming Saturday after this week's). */
+/** What a task can follow (#178): the log that sets its due date. */
+export const TRIGGER_KINDS = [
+	{ value: 'water_change', label: 'Water change', word: 'water change' },
+	{ value: 'dosing', label: 'Dose', word: 'dose' },
+	{ value: 'maintenance', label: 'Maintenance', word: 'maintenance' },
+	{ value: 'test', label: 'Water test', word: 'water test' }
+] as const;
+export type TriggerKind = (typeof TRIGGER_KINDS)[number]['value'];
+export const isTriggerKind = (v: unknown): v is TriggerKind => TRIGGER_KINDS.some((k) => k.value === v);
+
+/** The days after it to choose from: the same day to a week after. */
+export const TRIGGER_OFFSETS = [0, 1, 2, 3, 4, 5, 6, 7];
+
+interface Follows {
+	triggerKind?: string | null;
+	triggerOffsetDays?: number | null;
+	triggerProduct?: string | null;
+}
+
+/** "a water change", "a dose of Thrive S", "maintenance" */
+function triggerWords(task: Follows): string {
+	const k = TRIGGER_KINDS.find((t) => t.value === task.triggerKind);
+	if (!k) return 'a log';
+	if (k.value === 'dosing' && task.triggerProduct) return `a dose of ${task.triggerProduct}`;
+	return k.value === 'maintenance' ? 'maintenance' : `a ${k.word}`;
+}
+
+/** "1 day after a water change", "the day of a dose of Thrive S" */
+export function followText(task: Follows): string {
+	const n = task.triggerOffsetDays ?? 0;
+	return `${n === 0 ? 'the day of' : `${n} day${n === 1 ? '' : 's'} after`} ${triggerWords(task)}`;
+}
+
+/** A follower with no due date yet: "After the next water change", "After the next dose of Thrive S". */
+export function waitingText(task: Follows): string {
+	return `After the next ${triggerWords(task).replace(/^an? /, '')}`;
+}
+
+/**
+ * Snooze choices (README → Screens §10): Tomorrow, In 2 days, This weekend and
+ * Next week, each a different day; a task not due yet moves back from its due date.
+ */
 export function snoozeOptions(today: string, due: string) {
 	// Not due yet: push it back from its due date (a date before it would do nothing).
 	if (due > today) {
 		return [
 			{ label: 'A day later', date: addDays(due, 1) },
-			{ label: '3 days later', date: addDays(due, 3) },
+			{ label: '2 days later', date: addDays(due, 2) },
 			{ label: 'A week later', date: addDays(due, 7) }
 		];
 	}
 	const dow = new Date(today + 'T12:00:00Z').getUTCDay(); // 0 Sun … 6 Sat
-	const toSat = ((6 - dow + 7) % 7) || 7;
-	// never the same day as "In 3 days" (a Wednesday's Saturday): the one after
-	const weekend = addDays(today, toSat <= 3 ? toSat + 7 : toSat);
-	return [
+	// the coming Saturday, or Sunday when today is Saturday
+	const weekend = addDays(today, dow === 6 ? 1 : 6 - dow || 6);
+	const all = [
 		{ label: 'Tomorrow', date: addDays(today, 1) },
-		{ label: 'In 3 days', date: addDays(today, 3) },
-		{ label: 'Next weekend', date: weekend }
+		{ label: 'In 2 days', date: addDays(today, 2) },
+		{ label: 'This weekend', date: weekend },
+		{ label: 'Next week', date: addDays(today, 7) }
 	];
+	// never the same day twice: on a Thursday, In 2 days is the weekend already
+	return all.filter((o, i) => all.findIndex((x) => x.date === o.date) === i);
 }
 
 /** Example under each schedule mode (15): "Done late on Sep 26 → next due Oct 3". */
@@ -246,7 +406,7 @@ export function amountText(amount: number | null | undefined, unit: string | nul
 }
 
 /** A routine's line under its name: "1 pump · Mon, Wed, Fri". */
-export function routineLine(task: { kind: string; amount: number | null; amountUnit: string | null; recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null; nextDue?: string | null; endsOn?: string | null }) {
+export function routineLine(task: { kind: string; amount: number | null; amountUnit: string | null; recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null; nextDue?: string | null; endsOn?: string | null } & Follows) {
 	return [amountText(task.amount, task.amountUnit), intervalText(task)].filter(Boolean).join(' · ');
 }
 

@@ -79,3 +79,72 @@ export function targetPosition(v: number, band: { min: number | null; max: numbe
 	if (v < min) return L - L * ease((min - v) / span);
 	return L + ((v - min) / span) * (H - L);
 }
+
+// Event overlays on Charts (#88): which tank events draw a marker, each kind
+// on its own switch. Water changes show by default; the rest are opt-in so a
+// beginner's chart stays clear.
+export type OverlayKind = 'water_change' | 'dosing' | 'co2' | 'light' | 'trim' | 'maintenance' | 'algae';
+export const OVERLAYS: { kind: OverlayKind; label: string; default: boolean }[] = [
+	{ kind: 'water_change', label: 'Water change', default: true },
+	{ kind: 'dosing', label: 'Dosing', default: false },
+	{ kind: 'co2', label: 'CO₂ change', default: false },
+	{ kind: 'light', label: 'Light change', default: false },
+	{ kind: 'trim', label: 'Plant trim', default: false },
+	{ kind: 'maintenance', label: 'Maintenance', default: false },
+	{ kind: 'algae', label: 'Algae', default: false }
+];
+export const OVERLAY_LABEL = Object.fromEntries(OVERLAYS.map((o) => [o.kind, o.label])) as Record<OverlayKind, string>;
+export const DEFAULT_OVERLAYS = Object.fromEntries(OVERLAYS.map((o) => [o.kind, o.default])) as Record<OverlayKind, boolean>;
+
+/** The type of the equipment an entry names: by id while the item exists, by its name after, by the name's words last. */
+export function equipmentTypeLookup(items: { id: string; name: string; type: string }[]): (id: unknown, item: unknown) => string | null {
+	const byId = new Map(items.map((i) => [i.id, i.type]));
+	const byName = new Map(items.map((i) => [i.name.trim().toLowerCase(), i.type]));
+	return (id, item) => {
+		if (typeof id === 'string' && byId.has(id)) return byId.get(id)!;
+		const name = typeof item === 'string' ? item.trim().toLowerCase() : '';
+		if (byName.has(name)) return byName.get(name)!;
+		if (/co₂|co2/.test(name)) return 'co2';
+		if (/\b(light|led|lamp)\b/.test(name)) return 'light';
+		return null;
+	};
+}
+
+/** Which overlay an event belongs to; null for the kinds that never draw a marker. */
+export function overlayKind(e: { category: string; data: Record<string, unknown> }, equipmentType: (id: unknown, item: unknown) => string | null): OverlayKind | null {
+	switch (e.category) {
+		case 'water_change':
+			return 'water_change';
+		case 'dosing':
+			return 'dosing';
+		case 'maintenance': {
+			const actions = Array.isArray(e.data.actions) ? (e.data.actions as unknown[]) : [];
+			return actions.includes('Trimmed plants') ? 'trim' : 'maintenance';
+		}
+		case 'equipment': {
+			const type = equipmentType(e.data.equipment_id, e.data.item);
+			return type === 'co2' ? 'co2' : type === 'light' ? 'light' : null;
+		}
+		case 'observation':
+			// algae logged on the tank (#86); other observations stay off the chart
+			return e.data.kind === 'algae' ? 'algae' : null;
+		default:
+			return null;
+	}
+}
+
+// Comparing parameters (#87): up to two more on the same chart, each on its
+// own scale (a dashed line, the first with an axis on the right), named in
+// the address as ?c=id,id so a comparison can be shared.
+export const MAX_COMPARE = 2;
+
+/** The parameters to draw beside the main one: known ids, not the main one, no repeats, at most MAX_COMPARE. */
+export function parseCompare(raw: string | null, ids: string[], primary: string): string[] {
+	if (!raw) return [];
+	const out: string[] = [];
+	for (const id of raw.split(',').map((s) => s.trim())) {
+		if (id && id !== primary && ids.includes(id) && !out.includes(id)) out.push(id);
+		if (out.length >= MAX_COMPARE) break;
+	}
+	return out;
+}

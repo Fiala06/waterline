@@ -69,7 +69,7 @@ ${stems}${fish}<path d="M0 1080 Q 400 1030 800 1070 T 1600 1060 V1200 H0 Z" fill
 async function photoFor(tankId: string, i: number, hue: 'green' | 'blue' | 'teal', link: { eventId?: string; testId?: string; takenAt: string }) {
 	const prepared = await preparePhotos([await fakePhoto(i, hue)]);
 	if ('error' in prepared) throw new Error(prepared.error);
-	return storePhotos(tankId, prepared, link)[0];
+	return (await storePhotos(tankId, prepared, link))[0];
 }
 
 function removeDemo() {
@@ -104,7 +104,7 @@ const event = (user: User, tank: Tank, offset: number, time: string, category: P
 // ── Riverbed 40: planted ────────────────────────────────────────────────────
 
 async function seedPlanted(user: User) {
-	const tank = createTank(user, { name: 'Riverbed 40', type: 'planted', nominalVolumeL: 151.4, actualVolumeL: 128.7, lengthCm: 91.4, widthCm: 45.7, heightCm: 40.6, startDate: day(-DAYS - 20), notes: 'Aquasoil, CO₂ 1 bps on a timer. Canister filter, 8 h photoperiod.' });
+	const tank = createTank(user, { name: 'Riverbed 40', type: 'planted', growingStyle: 'co2', nominalVolumeL: 151.4, actualVolumeL: 128.7, lengthCm: 91.4, widthCm: 45.7, heightCm: 40.6, startDate: day(-DAYS - 20), notes: 'Aquasoil, CO₂ 1 bps on a timer. Canister filter, 8 h photoperiod.' });
 	updateTank(user.id, tank.id, { specBrand: 'Aqualine', specModel: '90P', glass: 'Low-iron, rimless', substrate: 'Aquasoil, 3 in', waterSource: 'rodi', photoperiodH: 8 });
 	backdateCreated(tank, at(-DAYS - 20, '10:00'));
 
@@ -250,6 +250,8 @@ async function seedPlanted(user: User) {
 		indexable: true,
 		slug: 'riverbed-40-demo',
 		showTimeline: true,
+		showDetails: true,
+		question: 'Some green spot algae on the glass since the light went to 8 hours. Is it the photoperiod, or is phosphate too low?',
 		description: 'Dutch-style planted tank with Rotala, Ludwigia and a carpet of Monte Carlo. CO₂ injected, lean dosing, weekly 30% water changes with RODI.',
 		seoTitle: 'Riverbed 40: 40 gal Dutch planted tank log'
 	});

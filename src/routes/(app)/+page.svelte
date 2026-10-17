@@ -3,6 +3,7 @@
 	// between them. Needs attention and In range span two; Due and Recent take the
 	// third. Trends and In the tank follow in the same arrangement. The shell has
 	// the tank's name, cover and actions; below ~1100px the page is one column.
+	import { page } from '$app/state';
 	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ImportButton from '$lib/components/ImportButton.svelte';
@@ -14,7 +15,8 @@
 	import WhatsNew from '$lib/components/WhatsNew.svelte';
 	import { compactName, displayValue, fmtRange, fmtValue, paramDecimals, paramUnit, shortName, statusOf } from '$lib/params';
 	import { CYCLING_TEXT, cyclingLevel, isCyclingStatus, statusShort } from '$lib/status';
-	import { nextStep } from '$lib/tips';
+	import { guidance } from '$lib/tips';
+	import { customized, DASHBOARD_SECTIONS, DEFAULT_CHOICES, MAX_PRIORITY, prioritize } from '$lib/dashboard';
 	import Sparkline from '$lib/components/Sparkline.svelte';
 	import { enhance } from '$app/forms';
 	import { dueInfo, intervalText, isRoutine, routineLine } from '$lib/tasks';
@@ -26,6 +28,9 @@
 
 	let { data } = $props();
 	const prefs = $derived(data.user);
+	// the keeper's choices for this dashboard (#94); nothing chosen is the dashboard as it comes
+	const choices = $derived(data.choices ?? DEFAULT_CHOICES);
+	const hidden = $derived(choices.hidden);
 
 	/** "Rotala, Ludwigia, Java fern +3" */
 	const preview = (items: string[], n = 3) => items.slice(0, n).join(', ') + (items.length > n ? ` +${items.length - n}` : '');
@@ -39,7 +44,7 @@
 	}
 
 	const cards = $derived(
-		(data.params ?? []).map((p) => {
+		prioritize(data.params ?? [], choices.priority).map((p) => {
 			const r = data.latest?.[p.id];
 			// while the tank is cycling, high ammonia and nitrite are a stage, not a failure
 			const cycling = !!data.tank?.cycling;
@@ -54,16 +59,19 @@
 				unit: paramUnit(p, prefs),
 				level: st.level,
 				statusText: isCyclingStatus(p.key, st, cycling) ? CYCLING_TEXT : statusShort(st),
-				// what to do about it (#62); not for ammonia and nitrite while they're a stage of the cycle
+				// what to do about it (#62), worded for this tank with its calculator filled in (#90);
+				// not for ammonia and nitrite while they're a stage of the cycle
 				next:
-					(st.level === 'bad' || st.level === 'warn') && !isCyclingStatus(p.key, st, cycling)
-						? nextStep(p.key, st.direction, data.tank?.type ?? '')
+					(st.level === 'bad' || st.level === 'warn') && !isCyclingStatus(p.key, st, cycling) && data.tank
+						? guidance(p.key, st.direction, { tankId: data.tank.id, tankType: data.tank.type, waterSource: data.tank.waterSource, co2: data.tank.co2, shrimp: data.tank.shrimp })
 						: null,
+				// a step it suggests (#179), with a tap
+				suggest: data.suggestions?.find((x) => x.paramId === p.id) ?? null,
 				// days since the reading when it's older than its Test every cadence
 				due: data.stale?.[p.id] ?? null,
 				sub: r ? (range ? `Target ${range}` : 'No target') : 'Not tested',
 				// a sensor's latest reading (#19)
-				live: data.live?.[p.id] || null,
+				live: hidden.includes('live') ? null : data.live?.[p.id] || null,
 				range: r ? range : '',
 				spark: data.sparks?.[p.id] ?? [],
 				// the target band behind its line (stored units, as the readings)
@@ -90,36 +98,45 @@
 	// overdue tasks go in Needs attention too, with Done (the water change has its own row)
 	const overdue = $derived(
 		(data.tasks ?? [])
-			.filter((t) => t.due < (data.today ?? '') && !(wcDue && t.id === wcDue.taskId))
+			.filter((t) => dueInfo(t.due, data.today ?? '', t.graceDays).section === 'overdue' && !(wcDue && t.id === wcDue.taskId))
 			.map((t) => {
-				const d = dueInfo(t.due, data.today ?? '');
+				const d = dueInfo(t.due, data.today ?? '', t.graceDays);
 				return { id: t.id, name: t.name, when: `✕ ${-d.days} day${d.days === -1 ? '' : 's'} over`, sub: isRoutine(t.kind) ? routineLine(t) : intervalText(t) };
 			})
 	);
-	// Due: the water change isn't listed twice when Needs attention has its row (with Done)
-	const dueTasks = $derived((data.tasks ?? []).filter((t) => !(wcDue && t.id === wcDue.taskId)));
+	// Due: every open task, soonest first, as on the Tasks page, the water change too when
+	// Needs attention has its row (as an overdue task is in both)
+	const dueTasks = $derived(data.tasks ?? []);
+	// Due (#166): everything due today or over, then the next 3; "+N more" opens the rest on Tasks
+	const UPCOMING = 3;
+	const dueNow = $derived(dueTasks.filter((t) => t.due <= (data.today ?? '')));
+	const upcoming = $derived(dueTasks.filter((t) => t.due > (data.today ?? '')));
+	const moreDue = $derived(Math.max(0, upcoming.length - UPCOMING));
+	// Mark all done (#176): what's due now that Done finishes by itself (not the review, not one that opens its form)
+	const allDone = $derived(dueNow.filter((t) => t.kind !== 'review' && !(t.openFormOnDone && (t.kind === 'water_change' || t.kind === 'test'))));
 	// the fun bits only when nothing's out of range or overdue
 	const calm = $derived(!cards.some((c) => c.level === 'bad') && !overdue.length && !(wcDue && (wcDue.days > wcDue.goal)));
 	const allClear = $derived(hasReadings && !attention.length && !wcDue && !overdue.length);
 
-	// Trends: parameters with at least one reading in the window; pick one.
-	const trendable = $derived(
-		(data.params ?? []).filter((p) => (data.trends?.find((t) => t.parameterId === p.id)?.points.length ?? 0) > 0)
-	);
+	// Trends: parameters with a reading, or a sensor's samples (#130), in the window; pick one.
+	const trendOf = (id: string) => data.trends?.find((t) => t.parameterId === id);
+	const trendable = $derived((data.params ?? []).filter((p) => (trendOf(p.id)?.points.length ?? 0) > 0 || (trendOf(p.id)?.sensor.length ?? 0) >= 2));
 	let selected = $state<string | null>(null);
 	const chosen = $derived(
 		trendable.find((p) => p.id === selected) ??
+			trendable.find((p) => p.id === choices.trendParamId) ??
 			trendable.find((p) => statusOf(p, data.latest?.[p.id]?.value).level === 'bad') ??
 			trendable[0]
 	);
 	const chosenPoints = $derived(
 		chosen
-			? (data.trends?.find((t) => t.parameterId === chosen.id)?.points ?? []).map((pt) => ({
+			? (trendOf(chosen.id)?.points ?? []).map((pt) => ({
 					t: pt.t,
 					v: displayValue(chosen, pt.value, prefs)
 				}))
 			: []
 	);
+	const chosenSensor = $derived(chosen ? (trendOf(chosen.id)?.sensor ?? []) : []);
 </script>
 
 <svelte:head><title>{data.tank ? `${data.tank.name} · Waterline` : 'Waterline'}</title></svelte:head>
@@ -145,6 +162,8 @@
 				<form method="POST" action="?/markCycling" use:enhance>
 					<input type="hidden" name="tankId" value={data.tank.id} />
 					<button class="btn btn-primary">Mark as cycling</button>
+					<!-- an established tank with a spike: the ask goes and stays gone (#155) -->
+					<button class="btn" formaction="?/dismissCyclingAsk">Not cycling</button>
 				</form>
 			</section>
 		{/if}
@@ -154,7 +173,7 @@
 			<section class="cycling" aria-labelledby="cycling-h">
 				<div class="section-head">
 					<h2 id="cycling-h">Cycling</h2>
-					<a href="/tanks/{data.tank.id}/settings">Setup ›</a>
+					<a href="/tanks/{data.tank.id}/settings">Tank setup ›</a>
 				</div>
 				<p class="cycle-about">
 					Bacteria in the filter turn fish waste’s ammonia into nitrite, then nitrite into the far safer nitrate. It
@@ -180,6 +199,38 @@
 			</section>
 		{/if}
 
+		{#if data.checklist}
+			{@const c = data.checklist}
+			<!-- ── Getting started (#82): what to do after making the tank, ticked off from its data ── -->
+			<section class="start" aria-labelledby="start-h">
+				<div class="section-head">
+					<h2 id="start-h">Getting started</h2>
+					<span class="meta">{c.done} of {c.steps.length} done</span>
+				</div>
+				{#if c.allDone}
+					<p class="start-about"><b>✓ All set up.</b> From here it's logging: tests, water changes and the odd photo.</p>
+				{:else if c.cycling}
+					<p class="start-about">The tank is cycling: test ammonia, nitrite and nitrate every few days and log each one, so the cycle above shows where it is.</p>
+				{/if}
+				<ol class="steps">
+					{#each c.steps as s (s.key)}
+						<li class:done={s.done}>
+							<a href={s.href}>
+								<span class="step-status" class:status-ok={s.done}><span aria-hidden="true">{s.done ? '✓' : '–'}</span> {s.done ? 'Done' : 'To do'}</span>
+								<span class="step-text"><span class="step-title">{s.title}</span><span class="step-detail">{s.detail}</span></span>
+								<span class="chev" aria-hidden="true">›</span>
+							</a>
+						</li>
+					{/each}
+				</ol>
+				<form class="start-foot" method="POST" action="?/hideChecklist" use:enhance>
+					<input type="hidden" name="tankId" value={data.tank.id} />
+					<button class="btn" class:btn-primary={c.allDone}>{c.allDone ? 'Done' : 'Hide checklist'}</button>
+					<span class="hint">Tank setup brings it back.</span>
+				</form>
+			</section>
+		{/if}
+
 		<div class="grid">
 			<!-- ── Needs attention (span 2) ─────────────────────────────── -->
 			<div class="cell main first">
@@ -200,7 +251,7 @@
 					<div class="section-head"><h2>Needs attention</h2>{#if data.latestWhen}<span class="meta">{data.latestWhen}</span>{/if}</div>
 					<p class="clear"><b>✓ Nothing needs attention.</b> <span>Every tracked parameter is in range and no task is overdue.</span></p>
 				{:else}
-					<AttentionList items={attention} wc={wcDue} {overdue} when={data.latestWhen} />
+					<AttentionList items={attention} wc={wcDue} {overdue} when={data.latestWhen} tankId={data.tank?.id ?? null} />
 				{/if}
 				{#if hasReadings && calm && data.cheers.milestones.length}
 					<ul class="milestones" aria-label="Milestones">
@@ -218,7 +269,15 @@
 					>
 				</div>
 				{#if dueTasks.length}
-					<TaskList tasks={dueTasks.slice(0, 3)} today={data.today} />
+					<TaskList tasks={[...dueNow, ...upcoming.slice(0, UPCOMING)]} today={data.today} />
+					{#if moreDue}<a class="more-due" href="/tasks?filter={data.tank.id}">+{moreDue} more</a>{/if}
+					{#if allDone.length >= 2}
+						<form method="POST" action="/tasks?/doneMany" class="all-done">
+							{#each allDone as t (t.id)}<input type="hidden" name="taskId" value={t.id} />{/each}
+							<input type="hidden" name="from" value={page.url.pathname + page.url.search} />
+							<button class="btn">Mark all done ({allDone.length})</button>
+						</form>
+					{/if}
 				{:else}
 					<EmptyState
 						compact
@@ -241,6 +300,7 @@
 			</div>
 
 			<!-- ── Recent (column 3) ────────────────────────────────────── -->
+			{#if !hidden.includes('recent')}
 			<section class="cell side recent" aria-labelledby="recent-h">
 				<div class="section-head">
 					<h2 id="recent-h">Recent</h2>
@@ -285,7 +345,10 @@
 				</ul>
 			</section>
 
+			{/if}
+
 			<!-- ── Trends (span 2) ──────────────────────────────────────── -->
+			{#if !hidden.includes('trends')}
 			<section class="cell main trends" aria-labelledby="trends-h">
 				<div class="section-head">
 					<h2 id="trends-h">Trends <span class="meta">· Last 4 weeks</span></h2>
@@ -298,10 +361,11 @@
 						{/each}
 					</div>
 				{/if}
-				{#if chosen && chosenPoints.length >= 2}
+				{#if chosen && (chosenPoints.length >= 2 || chosenSensor.length >= 2)}
 					<div class="chart-box"><div class="chart-fill"><TrendChart
 						fit
 						points={chosenPoints}
+						sensor={chosenSensor}
 						band={{
 							min: chosen.min == null ? null : displayValue(chosen, chosen.min, prefs),
 							max: chosen.max == null ? null : displayValue(chosen, chosen.max, prefs)
@@ -321,6 +385,7 @@
 							<span><i class="lg-band"></i>Target {fmtRange(chosen, prefs)}</span>
 							<span><i class="lg-zone"></i>Out of range</span>
 						{/if}
+						{#if chosenSensor.length >= 1}<span><i class="lg-sensor"></i>Sensor</span>{/if}
 						{#if data.markers.length}<span><i class="lg-marker"></i>Water change</span>{/if}
 					</div>
 				{:else}
@@ -349,7 +414,10 @@
 				{/if}
 			</section>
 
+			{/if}
+
 			<!-- ── In the tank (column 3) ───────────────────────────────── -->
+			{#if !hidden.includes('inTank')}
 			<section class="cell side in-tank" aria-labelledby="in-tank-h">
 				<div class="section-head">
 					<h2 id="in-tank-h">In the tank</h2>
@@ -369,7 +437,18 @@
 							<span class="chev" aria-hidden="true">›</span>
 						</a>
 					{/each}
-					{#if data.contents.schedule}
+					{#if data.growing?.length && !hidden.includes('growing')}
+						<!-- a planted tank's growing setup (#97): light, CO₂, fertilizer, substrate -->
+						{#each data.growing as g, i (`${g.key}:${i}`)}
+							<a class="c-row growing" href={g.href}>
+								<span class="f-text">
+									<span class="f-title">{g.title}</span>
+									<span class="f-sub">{g.text}</span>
+								</span>
+								<span class="chev" aria-hidden="true">›</span>
+							</a>
+						{/each}
+					{:else if data.contents.schedule}
 						<a class="c-row" href="/tanks/{data.tank.id}/settings">
 							<span class="f-text">
 								<span class="f-title">Schedule</span>
@@ -380,11 +459,137 @@
 					{/if}
 				</div>
 			</section>
+			{/if}
 		</div>
+
+		<!-- Customize (#94): a few light choices, kept on the account; Reset brings the defaults back -->
+		<details class="customize">
+			<summary><span class="sq" aria-hidden="true">⚙</span>Customize this dashboard{customized(choices) ? ' · changed' : ''}</summary>
+			<form method="POST" action="?/customize" class="cz" use:enhance>
+				<input type="hidden" name="tankId" value={data.tank.id} />
+				<div class="field">
+					<label class="label" for="cz-trend">Trends opens on</label>
+					<select class="input" id="cz-trend" name="trend">
+						<option value="" selected={!choices.trendParamId}>Automatic · what’s out of range, else the first with readings</option>
+						{#each data.params ?? [] as p (p.id)}<option value={p.id} selected={choices.trendParamId === p.id}>{p.name}</option>{/each}
+					</select>
+				</div>
+				<fieldset class="field">
+					<legend class="label">Listed first in Tank parameters · up to {MAX_PRIORITY}, in their usual order</legend>
+					<div class="chips cz-chips">
+						{#each data.params ?? [] as p (p.id)}
+							<label class="chip pick"><input type="checkbox" name="priority" value={p.id} checked={choices.priority.includes(p.id)} />{shortName(p)}</label>
+						{/each}
+					</div>
+				</fieldset>
+				<fieldset class="field">
+					<legend class="label">Show</legend>
+					<div class="cz-show">
+						{#each DASHBOARD_SECTIONS as sec (sec.key)}
+							{#if sec.planted && data.tank.type !== 'planted'}
+								<input type="hidden" name="show" value={sec.key} />
+							{:else}
+								<label class="cz-row"><input type="checkbox" name="show" value={sec.key} checked={!hidden.includes(sec.key)} /><span class="o-text"><span class="o-t">{sec.label}</span><span class="o-s">{sec.sub}</span></span></label>
+							{/if}
+						{/each}
+					</div>
+				</fieldset>
+				<div class="cz-acts">
+					{#if customized(choices)}<button class="btn" formaction="?/resetDashboard">Reset to defaults</button>{/if}
+					<button class="btn btn-primary">Save</button>
+				</div>
+			</form>
+		</details>
 	</div>
 {/if}
 
 <style>
+	/* Customize: folded away under the grid; a small form when open */
+	.customize {
+		margin-top: 28px;
+		border-top: 1px solid var(--divider);
+	}
+	.customize summary {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		min-height: 44px;
+		font-size: 13px;
+		font-weight: 800;
+		color: var(--text-muted);
+		cursor: pointer;
+		list-style: none;
+	}
+	.customize summary::-webkit-details-marker {
+		display: none;
+	}
+	.customize summary .sq {
+		font-size: 15px;
+	}
+	.customize[open] summary {
+		color: var(--text);
+	}
+	.cz {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+		padding: 4px 0 8px;
+		max-width: 640px;
+	}
+	.cz fieldset {
+		margin: 0;
+		padding: 0;
+		border: 0;
+		min-width: 0;
+	}
+	.cz-chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+	/* each part a row with its box: ticked means shown */
+	.cz-show {
+		display: flex;
+		flex-direction: column;
+		border-top: 2px solid var(--ink);
+	}
+	.cz-row {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		min-height: 48px;
+		padding: 6px 0;
+		border-bottom: 1px solid var(--divider);
+		cursor: pointer;
+	}
+	.cz-row input {
+		width: 20px;
+		height: 20px;
+		margin: 0;
+		flex-shrink: 0;
+		accent-color: var(--accent);
+	}
+	.o-text {
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+	}
+	.o-t {
+		font-weight: 700;
+	}
+	.o-s {
+		font-size: 12px;
+		color: var(--text-muted);
+	}
+	.cz-acts {
+		display: flex;
+		gap: 10px;
+		justify-content: flex-end;
+	}
+	.cz-acts .btn {
+		min-height: 44px;
+	}
+
 	.page {
 		padding: 4px 20px 24px;
 		display: flex;
@@ -402,6 +607,83 @@
 		display: flex;
 		flex-direction: column;
 		padding: 18px 0 8px;
+	}
+	/* Getting started (#82): a heading, then the steps as rows with 1px dividers */
+	.start {
+		display: flex;
+		flex-direction: column;
+		padding: 18px 0 8px;
+	}
+	.start-about {
+		margin: 0 0 6px;
+		font-size: 14px;
+		line-height: 1.45;
+		color: var(--text-muted);
+	}
+	.start-about b {
+		color: var(--text);
+	}
+	.steps {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	.steps li {
+		border-bottom: 1px solid var(--divider);
+	}
+	.steps a {
+		display: grid;
+		grid-template-columns: 64px minmax(0, 1fr) 16px;
+		align-items: center;
+		column-gap: 12px;
+		min-height: 44px;
+		padding: 10px 0;
+		color: inherit;
+		text-decoration: none;
+	}
+	.step-status {
+		font-size: 12px;
+		font-weight: 800;
+		color: var(--text-muted);
+	}
+	.step-status.status-ok {
+		color: var(--ok-text, var(--text));
+	}
+	.step-text {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		min-width: 0;
+	}
+	.step-title {
+		font-size: 15px;
+		font-weight: 700;
+	}
+	.done .step-title {
+		font-weight: 400;
+		color: var(--text-muted);
+	}
+	.step-detail {
+		font-size: 13px;
+		line-height: 1.4;
+		color: var(--text-muted);
+	}
+	.done .step-detail {
+		display: none;
+	}
+	.steps .chev {
+		color: var(--text-faint);
+		font-size: 18px;
+	}
+	.start-foot {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		padding: 12px 0 4px;
+	}
+	.start-foot .hint {
+		font-size: 13px;
+		color: var(--text-muted);
 	}
 	.cycle-about {
 		margin: 0 0 14px;
@@ -423,8 +705,13 @@
 	.ask-cycling b {
 		display: block;
 	}
+	.ask-cycling form {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		flex-shrink: 0;
+	}
 	.ask-cycling .btn {
-		align-self: flex-start;
 		min-height: 44px;
 	}
 	@media (min-width: 1024px) {
@@ -637,6 +924,12 @@
 		height: 10px;
 		background: var(--ink);
 	}
+	/* a sensor's thin line (#19) */
+	.lg-sensor {
+		width: 16px;
+		height: 0;
+		border-top: 1.5px solid var(--neutral-600);
+	}
 	/* Recent: a small icon, the title and its line, each row a link */
 	.feed {
 		list-style: none;
@@ -712,6 +1005,10 @@
 	}
 	.c-row .f-sub {
 		font-size: 13px;
+	}
+	.c-row.growing {
+		min-height: 48px;
+		padding: 6px 0;
 	}
 	@media (hover: hover) {
 		.c-row:hover {
@@ -815,5 +1112,20 @@
 		.cell.main {
 			padding-right: 24px;
 		}
+	}
+	.more-due {
+		min-height: 44px;
+		display: flex;
+		align-items: center;
+		font-size: 14px;
+		font-weight: 800;
+		border-bottom: 1px solid var(--divider);
+	}
+	.all-done {
+		padding-top: 12px;
+	}
+	.all-done .btn {
+		width: 100%;
+		min-height: 44px;
 	}
 </style>

@@ -63,7 +63,7 @@ export const actions: Actions = {
 		for (const group of days.values()) {
 			const at = group.map((p) => p.takenAt!).sort()[0];
 			const { event } = createEvent(user.id, tank.id, { category: 'note', occurredAt: at, note: null, data: {} }, { timeZone: user.timeZone });
-			storePhotos(tank.id, group, { eventId: event.id, takenAt: at });
+			await storePhotos(tank.id, group, { eventId: event.id, takenAt: at });
 		}
 		const n = files.length;
 		const dated = undated === n ? ` · dated ${taken === today ? 'today' : fmtDate(taken)}` : '';

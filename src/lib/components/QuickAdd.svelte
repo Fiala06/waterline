@@ -12,6 +12,7 @@
 	import TankSwitcher from './TankSwitcher.svelte';
 	import { whenLabel, type When } from '$lib/time';
 	import type { DueInfo } from '$lib/tasks';
+	import { favoriteHref, type FavoriteLike } from '$lib/favorites';
 
 	interface TankSummary {
 		id: string;
@@ -26,7 +27,9 @@
 		currentTankId,
 		timeZone,
 		lastTest,
-		wcDue
+		wcDue,
+		favorites = [],
+		routines = []
 	}: {
 		open?: boolean;
 		tanks: TankSummary[];
@@ -34,6 +37,10 @@
 		timeZone: string;
 		lastTest: string;
 		wcDue: DueInfo | null;
+		/** Quick log favorites (#93): pinned entries, each opening its form filled in; for one tank or every tank */
+		favorites?: (FavoriteLike & { id: string; label: string; tankId: string | null; sub: string | null })[];
+		/** maintenance routines (#92) with steps, to run */
+		routines?: { id: string; tankId: string; name: string; steps: number }[];
 	} = $props();
 
 	let tankId = $state<string | null>(null);
@@ -50,6 +57,9 @@
 	});
 
 	const tank = $derived(tanks.find((t) => t.id === tankId));
+	// the favorites for the tank chosen here, and the ones for every tank
+	const pinned = $derived(favorites.filter((f) => !f.tankId || f.tankId === tankId));
+	const runnable = $derived(routines.filter((r) => r.tankId === tankId));
 
 	function href(path: string, params: Record<string, string> = {}) {
 		const q = new URLSearchParams(params);
@@ -70,7 +80,10 @@
 		{ category: 'livestock', label: 'Livestock / plants' },
 		{ category: 'equipment', label: 'Equipment' },
 		{ category: 'observation', label: 'Observation' },
-		{ category: 'health', label: 'Health' }
+		{ category: 'health', label: 'Health' },
+		// a plant's health (#85) and algae (#86) have their own pages
+		{ category: 'plant', label: 'Plant health', to: (t: string) => `/tanks/${t}/plants/health` },
+		{ category: 'observation', label: 'Algae', to: (t: string) => `/tanks/${t}/algae` }
 	] as const;
 
 	// "Now · Sep 28, 8:14 AM": when the sheet opened, in the keeper's time zone
@@ -121,6 +134,52 @@
 			</button>
 		</div>
 
+		{#if pinned.length}
+			<!-- Quick log favorites (#93): the keeper's usual entries, one tap to the form filled in -->
+			<section class="favs" aria-labelledby="qa-favs">
+				<div class="more-label favs-head">
+					<h3 id="qa-favs">Favorites</h3>
+					<a href="/settings/favorites" onclick={() => (open = false)}>Edit<span class="sr-only"> favorites</span> ›</a>
+				</div>
+				<ul class="fav-list">
+					{#each pinned as f (f.id)}
+						<li>
+							<a class="fav" href={favoriteHref(f, tankId, when)} onclick={() => (open = false)}>
+								<CategoryIcon kind={f.kind} size={36} />
+								<span class="t">
+									<span class="title">{f.label}</span>
+									{#if f.sub}<span class="sub">{f.sub}</span>{/if}
+								</span>
+							</a>
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{/if}
+
+		{#if runnable.length}
+			<!-- maintenance routines (#92): the tank's sequences, each a Run -->
+			<section class="favs" aria-labelledby="qa-routines">
+				<div class="more-label favs-head">
+					<h3 id="qa-routines">Routines</h3>
+					<a href="/tanks/{tankId}/routines" onclick={() => (open = false)}>Edit<span class="sr-only"> routines</span> ›</a>
+				</div>
+				<ul class="fav-list">
+					{#each runnable as r (r.id)}
+						<li>
+							<a class="fav" href="/tanks/{r.tankId}/routines/{r.id}/run" onclick={() => (open = false)}>
+								<CategoryIcon kind="maintenance" size={36} />
+								<span class="t">
+									<span class="title">Run {r.name}</span>
+									<span class="sub">{r.steps} step{r.steps === 1 ? '' : 's'}</span>
+								</span>
+							</a>
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{/if}
+
 		<!-- phones: three wide rows (04); the desktop's Log ▾ menu already has these -->
 		<div class="big hide-desk">
 			<a class="choice primary" href={href('/entries/test/new')} onclick={() => (open = false)}>
@@ -163,8 +222,8 @@
 		<section class="more" aria-labelledby="qa-more">
 			<h3 class="more-label" id="qa-more">More</h3>
 			<div class="tiles">
-				{#each more as m (m.category)}
-					<a class="tile" class:hide-desk={'phone' in m} href={href('/entries/event/new', { category: m.category })} onclick={() => (open = false)}>
+				{#each more as m (m.label)}
+					<a class="tile" class:hide-desk={'phone' in m} href={'to' in m ? m.to(tankId ?? '') : href('/entries/event/new', { category: m.category })} onclick={() => (open = false)}>
 						<CategoryIcon kind={m.category} size={32} />
 						<span>{m.label}</span>
 					</a>
@@ -175,6 +234,9 @@
 				</a>
 			</div>
 		</section>
+		{#if !pinned.length}
+			<p class="pin"><a href="/settings/favorites" onclick={() => (open = false)}>Pin what you log most as favorites ›</a></p>
+		{/if}
 		<p class="hint">Press + anywhere to open, then T, W or N.</p>
 	{/if}
 </Sheet>
@@ -310,6 +372,62 @@
 	.tile:hover {
 		color: var(--text);
 		border-color: var(--ink);
+	}
+	/* favorites: a heading like More's, then a row per favorite (icon, name, what it opens with) */
+	.favs {
+		display: flex;
+		flex-direction: column;
+		gap: 0;
+	}
+	.favs-head {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		gap: 12px;
+	}
+	.favs-head h3 {
+		margin: 0;
+		font: inherit;
+	}
+	.favs-head a {
+		font-size: 12px;
+		font-weight: 800;
+		letter-spacing: 0;
+		text-transform: none;
+		color: var(--accent-text);
+	}
+	.fav-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	.fav-list li {
+		border-bottom: 1px solid var(--divider);
+	}
+	.fav {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		min-height: 56px;
+		padding: 6px 0;
+		color: var(--text);
+	}
+	.fav:hover {
+		color: var(--text);
+	}
+	.fav:hover .title {
+		text-decoration: underline;
+	}
+	.fav .title {
+		font-size: 15px;
+	}
+	.pin {
+		margin: 0;
+		font-size: 13px;
+	}
+	.pin a {
+		color: var(--accent-text);
+		font-weight: 800;
 	}
 	.hint {
 		display: none;

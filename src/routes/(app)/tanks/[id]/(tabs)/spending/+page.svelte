@@ -98,7 +98,7 @@
 						<a href="{base}/spending/{e.id}">
 							<span class="lt">
 								<span class="lw">{e.what}</span>
-								<span class="ls">{e.day} · {e.category}{e.receipt ? ` · ${e.receipt === 'application/pdf' ? 'PDF receipt' : 'Receipt'}` : ''}</span>
+								<span class="ls">{e.day} · {e.category}{e.item ? ` · ${e.item}` : ''}{e.receipt ? ` · ${e.receipt === 'application/pdf' ? 'PDF receipt' : 'Receipt'}` : ''}</span>
 							</span>
 							<span class="la num">{e.amount}</span>
 						</a>

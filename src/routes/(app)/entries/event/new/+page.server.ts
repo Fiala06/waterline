@@ -14,7 +14,7 @@ import { createEvent, eventByClientId, recentAdditives, recentDosingProducts, re
 import { photoFiles, preparePhotos, storePhotos } from '$lib/server/photos';
 import { listProducts } from '$lib/server/products';
 import { getTank } from '$lib/server/tanks';
-import { createTask, getTask } from '$lib/server/tasks';
+import { createTask, dosingRoutines, getTask } from '$lib/server/tasks';
 import { equipmentName } from '$lib/equipment';
 import { handleLinkedLivestock } from '$lib/server/log-livestock';
 import { getEquipment, listEquipment, listLivestock, listPlants, markServiced, removeEquipment } from '$lib/server/specs';
@@ -38,16 +38,35 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 	const time = url.searchParams.get('time');
 	// back to where it was opened from ("Add note" on a tank's Overview)
 	const returnTo = safeReturn(url.searchParams.get('from'), '') || null;
+	// a Quick log favorite (#93) opens the form filled in from the address; nothing is saved until Save
+	const prefill: Record<string, string | string[]> = {};
+	for (const k of ['amountMode', 'amount', 'source', 'product', 'unit', 'food']) {
+		const v = url.searchParams.get(k);
+		if (v) prefill[k] = v.slice(0, 80);
+	}
+	const actions = url.searchParams.getAll('actions');
+	if (actions.length) prefill.actions = actions.slice(0, 12).map((a) => a.slice(0, 80));
 	return {
 		returnTo,
+		prefill,
 		tank: { id: tank.id, name: tank.name },
 		category,
 		context: eventFormContext(tank, user),
 		when: date && time ? { date, time } : null,
-		task: completableTask(user, tank.id, taskKindFor(category), url.searchParams.get('task')),
+		task: completableTask(user, tank.id, taskKindFor(category), url.searchParams.get('task'), date),
 		recentProducts: category === 'dosing' ? recentDosingProducts(tank.id) : [],
+		// a dose completes its product's routine (#167)
+		doseRoutines: category === 'dosing' ? dosingRoutines(user.id, tank.id, user.timeZone) : [],
 		// a water change's conditioner / remineraliser rows: what was added before, then what's been dosed
-		recentAdditives: category === 'water_change' ? dedupe([...recentAdditives(tank.id), ...recentDosingProducts(tank.id)]) : [],
+		// then the keeper's saved products (Settings › Products), as the Dose form offers them (#169)
+		recentAdditives:
+			category === 'water_change'
+				? dedupe([
+						...recentAdditives(tank.id),
+						...recentDosingProducts(tank.id),
+						...listProducts(user.id).map((p) => ({ product: p.name.trim(), amount: null, unit: null, at: '' }))
+					]).filter((r) => r.product)
+				: [],
 		recentFoods: category === 'feeding' ? recentFoods(tank.id) : [],
 		// "Reorder" for a dosed product with a saved link
 		productLinks: category === 'dosing' ? listProducts(user.id).map((p) => ({ name: p.name, url: p.url })) : [],
@@ -103,7 +122,7 @@ export const actions: Actions = {
 			const r = handleLinkedLivestock(user, tank, form, when.at);
 			if (r && 'errors' in r) return fail(400, { errors: r.errors, values, error: null });
 			if (r) {
-				if (r.eventId) storePhotos(tank.id, prepared, { eventId: r.eventId, takenAt: when.at });
+				if (r.eventId) await storePhotos(tank.id, prepared, { eventId: r.eventId, takenAt: when.at });
 				setFlash(cookies, r.message, r.eventId ? { view: `/entries/event/${r.eventId}` } : {});
 				redirect(303, `/?tank=${tank.id}`);
 			}
@@ -121,7 +140,7 @@ export const actions: Actions = {
 			if ('error' in prepared) return fail(400, { errors: {}, values, error: prepared.error });
 			const reasons = form.getAll('reasons').map(String).filter((r) => EQUIPMENT_REASONS.includes(r));
 			const r = removeEquipment(user.id, eqItem.id, { at: when.at, note: optStr(form, 'note'), clientId, reasons });
-			storePhotos(tank.id, prepared, { eventId: r.event.id, takenAt: when.at });
+			await storePhotos(tank.id, prepared, { eventId: r.event.id, takenAt: when.at });
 			setFlash(cookies, `${equipmentName(eqItem)} removed${r.tasksRemoved ? ' with its reminder' : ''}`);
 			redirect(303, `/?tank=${tank.id}`);
 		}
@@ -154,7 +173,7 @@ export const actions: Actions = {
 			{ completeTaskId, timeZone: user.timeZone }
 		);
 
-		if (!duplicate) storePhotos(tank.id, prepared, { eventId: event.id, takenAt: when.at });
+		if (!duplicate) await storePhotos(tank.id, prepared, { eventId: event.id, takenAt: when.at });
 		if (!duplicate && eqItem && category === 'maintenance') markServiced(user.id, eqItem.id, when.at);
 
 		if (!duplicate && typeof data.recheck_at === 'string') {

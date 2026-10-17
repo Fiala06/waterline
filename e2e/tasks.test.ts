@@ -75,7 +75,7 @@ test('snooze sheet picks a date and keeps the schedule', async ({ page }, info) 
 
 	await page.getByRole('button', { name: 'Snooze', exact: true }).first().click();
 	await expect(page.getByText('Snoozing moves only this occurrence.')).toBeVisible();
-	await page.getByRole('button', { name: /^In 3 days/ }).click();
+	await page.getByRole('button', { name: /^In 2 days/ }).click();
 	await expect(page.getByRole('status')).toContainText('Snoozed Water change 25% to');
 	await expect(page.getByRole('heading', { name: /Overdue/ })).toHaveCount(0);
 
@@ -114,4 +114,311 @@ test('skip this one moves to the next date, with Undo', async ({ page }, info) =
 	await skip();
 	await open(page, `/history?tank=${tankId}`);
 	await expect(page.getByRole('link', { name: /^Skipped: Water change 25%/ })).toHaveCount(1);
+});
+
+// #161: Done leaves an entry in History, and Undo takes it out again
+test('done is logged in History, and Undo takes it out', async ({ page }, info) => {
+	await newKeeperWithTank(page, `m7h-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, '/tasks/new');
+	await page.getByRole('textbox', { name: 'Task' }).fill('Trim stems');
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('status')).toContainText('✓ Trim stems added');
+	const entries = page.getByRole('link', { name: /^Trim stems/ });
+
+	// done, then undone: nothing in History
+	await page.getByRole('button', { name: /Mark Trim stems done/ }).click();
+	await page.getByRole('status').getByRole('button', { name: 'Undo' }).click();
+	await expect(page.getByRole('status')).toContainText('Undid Trim stems');
+	await open(page, `/history?tank=${tankId}`);
+	await expect(entries).toHaveCount(0);
+
+	// done: a Maintenance entry
+	await open(page, '/tasks');
+	await page.getByRole('button', { name: /Mark Trim stems done/ }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Trim stems done');
+	await open(page, `/history?tank=${tankId}`);
+	await expect(entries).toHaveCount(1);
+});
+
+// #162: done on an earlier day, from the Snooze menu; the next one counts from that day
+test('done yesterday counts the next one from yesterday', async ({ page }, info) => {
+	await newKeeperWithTank(page, `m7y-${info.project.name}`);
+	await open(page, '/tasks/new');
+	await page.getByRole('textbox', { name: 'Task' }).fill('Clean glass');
+	const today = await dateValue(page, 'nextDue');
+	// overdue, so phones show its Snooze too
+	const twoDaysAgo = new Date(Date.parse(today) - 2 * 86_400_000).toISOString().slice(0, 10);
+	await pickDate(page, 'nextDue', twoDaysAgo);
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('heading', { name: /Overdue · 1/ })).toBeVisible();
+
+	const row = page.locator('.row', { hasText: 'Clean glass' });
+	await row.getByRole('button', { name: 'Snooze', exact: true }).click();
+	await page.getByRole('button', { name: /^Done yesterday/ }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Clean glass done');
+	const href = await page.locator('a', { hasText: 'Clean glass' }).first().getAttribute('href');
+	await open(page, href!);
+	const next = await dateValue(page, 'nextDue');
+	// weekly, from yesterday: 6 days from today
+	expect(Math.round((Date.parse(next) - Date.parse(today)) / 86_400_000)).toBe(6);
+});
+
+// #163: a water change a day early ticks its reminder; one left unticked can be counted from Skip
+test('a water change a day early completes its reminder, or Skip counts it', async ({ page }, info) => {
+	await newKeeperWithTank(page, `m7e-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, '/tasks/new');
+	const today = await dateValue(page, 'nextDue');
+	await open(page, '/tasks');
+	const href = await page.locator('a', { hasText: 'Water change 25%' }).first().getAttribute('href');
+	await open(page, href!);
+	const tomorrow = new Date(Date.parse(today) + 86_400_000).toISOString().slice(0, 10);
+	await pickDate(page, 'nextDue', tomorrow);
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('status')).toContainText('✓ Task saved');
+
+	// due tomorrow: logging today ticks it
+	await open(page, `/entries/event/new?tank=${tankId}&category=water_change`);
+	const box = page.getByLabel(/Also mark the reminder “Water change 25%” done/);
+	await expect(box).toBeChecked();
+	// left unticked, the reminder stays due tomorrow
+	await box.uncheck();
+	await page.getByLabel('Amount', { exact: true }).fill('40');
+	await page.getByRole('button', { name: 'Save water change' }).click();
+	await expect(page.locator('.toast-region')).toContainText('✓ Water change logged');
+
+	// Skip's menu offers to count today's water change instead
+	await open(page, '/tasks');
+	const wcHref = await page.locator('a', { hasText: 'Water change 25%' }).first().getAttribute('href');
+	await open(page, wcHref!);
+	const twoDaysAgo = new Date(Date.parse(today) - 2 * 86_400_000).toISOString().slice(0, 10);
+	// overdue, so phones show its Snooze too
+	await pickDate(page, 'nextDue', twoDaysAgo);
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('heading', { name: /Overdue · 1/ })).toBeVisible();
+	await page.locator('.row', { hasText: 'Water change 25%' }).getByRole('button', { name: 'Snooze', exact: true }).click();
+	await page.getByRole('button', { name: /^Count the water change on/ }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Water change 25% done');
+	await expect(page.getByRole('heading', { name: /Overdue/ })).toHaveCount(0);
+	// History has the water change, and no "Skipped"
+	await open(page, `/history?tank=${tankId}`);
+	await expect(page.getByRole('link', { name: /^Skipped/ })).toHaveCount(0);
+});
+
+// #165: a task not due yet can be brought forward to today, and back with Undo
+test('do it today brings a task forward, with Undo', async ({ page }, info) => {
+	await newKeeperWithTank(page, `m7t-${info.project.name}`);
+	await open(page, '/tasks');
+	await expect(page.getByRole('heading', { name: /Due soon/ })).toHaveCount(0);
+	const row = page.locator('.row', { hasText: 'Water change 25%' });
+	await row.getByRole('button', { name: 'Snooze', exact: true }).click();
+	await expect(page.getByRole('button', { name: /^This weekend|^A week later/ }).first()).toBeVisible();
+	await page.getByRole('button', { name: /^Do it today/ }).click();
+	await expect(page.getByRole('status')).toContainText('Moved Water change 25% to today');
+	await expect(page.locator('.row.soon', { hasText: 'Water change 25%' })).toBeVisible();
+	await page.getByRole('status').getByRole('button', { name: 'Undo' }).click();
+	await expect(page.getByRole('status')).toContainText('Undid Water change 25%');
+	await expect(page.locator('.row.later', { hasText: 'Water change 25%' })).toBeVisible();
+});
+
+// #166: the dashboard's Due lists everything due today or over, then the next 3 and "+N more"
+test('Due on the dashboard shows every task due today', async ({ page }, info) => {
+	await newKeeperWithTank(page, `m7d-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	const add = async (name: string, days = 0) => {
+		await open(page, `/tasks/new?tank=${tankId}`);
+		await page.getByRole('textbox', { name: 'Task' }).fill(name);
+		if (days) {
+			const today = await dateValue(page, 'nextDue');
+			await pickDate(page, 'nextDue', new Date(Date.parse(today) + days * 86_400_000).toISOString().slice(0, 10));
+		}
+		await page.getByRole('button', { name: 'Save' }).last().click();
+		await expect(page.getByRole('status')).toContainText(`✓ ${name} added`);
+	};
+	for (const n of ['Trim stems', 'Clean glass', 'Dose iron', 'Top off']) await add(n);
+	for (const n of ['Clean pipes', 'Replace floss']) await add(n, 5);
+	await open(page, `/?tank=${tankId}`);
+	const due = page.getByRole('region', { name: 'Due' });
+	for (const n of ['Trim stems', 'Clean glass', 'Dose iron', 'Top off']) await expect(due.getByText(n, { exact: true })).toBeVisible();
+	// upcoming: the water change, the two above and the setup review, so one is left for Tasks
+	await expect(due.getByRole('link', { name: '+1 more' })).toHaveAttribute('href', `/tasks?filter=${tankId}`);
+});
+
+// #171: a cadence for a while, set on the task's form, shown on the row and noted in History
+test('a cadence for a while: more often until a date, then back', async ({ page }, info) => {
+	await newKeeperWithTank(page, `m7w-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, '/tasks/new');
+	const today = await dateValue(page, 'nextDue');
+	await open(page, '/tasks');
+	const href = await page.locator('a', { hasText: 'Water change 25%' }).first().getAttribute('href');
+	await open(page, href!);
+	await page.getByText('More often until a date, then back to this').click();
+	await page.getByLabel('Every how many days for a while').fill('3');
+	await pickDate(page, 'tempUntil', new Date(Date.parse(today) + 14 * 86_400_000).toISOString().slice(0, 10));
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('status')).toContainText('✓ Task saved');
+	await expect(page.getByText(/every 3 days until .* · then every 7 days/).filter({ visible: true }).first()).toBeVisible();
+	await open(page, `/history?tank=${tankId}`);
+	await expect(page.getByRole('link', { name: /^Water change 25%: every 3 days until/ })).toHaveCount(1);
+
+	// unticked: back to weekly now, and History says it ended early
+	await open(page, href!);
+	await page.getByText('More often until a date, then back to this').click();
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('status')).toContainText('✓ Task saved');
+	await open(page, `/history?tank=${tankId}`);
+	await expect(page.getByRole('link', { name: 'Water change 25%: back to every 7 days (ended early)' })).toHaveCount(1);
+});
+
+// #172: pause a tank's tasks until a day, Undo, and Resume
+test('pause tasks until a day, with Undo and Resume', async ({ page }, info) => {
+	await newKeeperWithTank(page, `m7p-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, '/tasks');
+	await page.getByRole('link', { name: 'Pause tasks for a while ›' }).click();
+	await expect(page).toHaveURL(new RegExp(`/tanks/${tankId}/pause`));
+	// every task ticked: the water change and the setup review
+	await expect(page.getByRole('checkbox', { name: /Water change 25%/ })).toBeChecked();
+	await page.getByRole('checkbox', { name: /Review tank setup/ }).uncheck();
+	await page.getByRole('button', { name: 'Pause', exact: true }).click();
+	await expect(page.getByRole('status')).toContainText('Paused 1 task until');
+	await expect(page.getByRole('heading', { name: 'Paused · 1' })).toBeVisible();
+	await expect(page.locator('.row.paused', { hasText: 'Water change 25%' })).toContainText('Paused until');
+
+	// Undo: as it was, and nothing in History
+	await page.getByRole('status').getByRole('button', { name: 'Undo' }).click();
+	await expect(page.getByRole('status')).toContainText('Undid the pause');
+	await expect(page.getByRole('heading', { name: /^Paused/ })).toHaveCount(0);
+
+	// paused again from the task's own menu, then resumed
+	await page.locator('.row', { hasText: 'Water change 25%' }).getByRole('button', { name: 'Snooze', exact: true }).click();
+	await page.getByRole('link', { name: /^Pause until/ }).click();
+	await expect(page.getByRole('checkbox', { name: /Review tank setup/ })).not.toBeChecked();
+	await page.getByRole('button', { name: 'Pause', exact: true }).click();
+	await expect(page.getByRole('heading', { name: 'Paused · 1' })).toBeVisible();
+	await page.getByRole('button', { name: 'Resume Water change 25%' }).click();
+	await expect(page.getByRole('status')).toContainText('Resumed Water change 25%');
+	await expect(page.getByRole('heading', { name: /^Paused/ })).toHaveCount(0);
+	await open(page, `/history?tank=${tankId}`);
+	await expect(page.getByRole('link', { name: /^Paused Water change 25% until/ })).toHaveCount(1);
+	await expect(page.getByRole('link', { name: 'Resumed Water change 25%' })).toHaveCount(1);
+});
+
+// #176: several done at once, on Tasks and from the dashboard, with one Undo
+test('mark several tasks done at once', async ({ page }, info) => {
+	await newKeeperWithTank(page, `m7m-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	for (const n of ['Trim stems', 'Clean glass', 'Dose iron']) {
+		await open(page, `/tasks/new?tank=${tankId}`);
+		await page.getByRole('textbox', { name: 'Task' }).fill(n);
+		await page.getByRole('button', { name: 'Save' }).last().click();
+		await expect(page.getByRole('status')).toContainText(`✓ ${n} added`);
+	}
+
+	await open(page, '/tasks');
+	await page.getByRole('link', { name: 'Select several' }).click();
+	// the water change opens its form, so it's left for its own Done
+	await expect(page.locator('.row', { hasText: 'Water change 25%' })).toContainText('Opens its form');
+	await page.getByRole('checkbox', { name: 'Select Trim stems' }).check();
+	await page.getByRole('checkbox', { name: 'Select Clean glass' }).check();
+	await page.getByRole('button', { name: 'Done (2)' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ 2 done');
+	await expect(page.getByRole('heading', { name: /Due soon · 1/ })).toBeVisible();
+	await page.getByRole('status').getByRole('button', { name: 'Undo' }).click();
+	await expect(page.getByRole('status')).toContainText('Undid 2 tasks');
+	await expect(page.getByRole('heading', { name: /Due soon · 3/ })).toBeVisible();
+
+	// the dashboard: all three due today in one tap
+	await open(page, `/?tank=${tankId}`);
+	await page.getByRole('region', { name: 'Due' }).getByRole('button', { name: 'Mark all done (3)' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ 3 done');
+	await open(page, `/history?tank=${tankId}`);
+	await expect(page.getByRole('link', { name: /^(Trim stems|Clean glass|Dose iron)/ })).toHaveCount(3);
+});
+
+// #175: a day late within its grace reads ▲ Due, not overdue
+test('a task a day late within its grace is due, not overdue', async ({ page }, info) => {
+	await newKeeperWithTank(page, `m7g-${info.project.name}`);
+	await open(page, '/tasks/new');
+	const today = await dateValue(page, 'nextDue');
+	await page.getByRole('textbox', { name: 'Task' }).fill('Clean filter');
+	await pickDate(page, 'nextDue', new Date(Date.parse(today) - 86_400_000).toISOString().slice(0, 10));
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('heading', { name: /Overdue · 1/ })).toBeVisible();
+
+	const href = await page.locator('a', { hasText: 'Clean filter' }).first().getAttribute('href');
+	await open(page, href!);
+	await page.getByLabel('Late is fine for').selectOption('1');
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('status')).toContainText('✓ Task saved');
+	await expect(page.getByRole('heading', { name: /Overdue/ })).toHaveCount(0);
+	await expect(page.locator('.row', { hasText: 'Clean filter' })).toContainText('▲ Due yesterday');
+});
+
+// #173: moving a fixed task's next date asks Just this one or From now on
+test('a fixed task moved just this once keeps its schedule', async ({ page }, info) => {
+	await newKeeperWithTank(page, `m7j-${info.project.name}`);
+	await open(page, '/tasks/new');
+	const today = await dateValue(page, 'nextDue');
+	const day = (n: number) => new Date(Date.parse(today) + n * 86_400_000).toISOString().slice(0, 10);
+	await page.getByRole('textbox', { name: 'Task' }).fill('Dose micros');
+	await page.locator('label', { hasText: 'Fixed calendar' }).click();
+	await pickDate(page, 'nextDue', day(5));
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('status')).toContainText('✓ Dose micros added');
+
+	const href = await page.locator('a', { hasText: 'Dose micros' }).first().getAttribute('href');
+	await open(page, href!);
+	await pickDate(page, 'nextDue', day(3));
+	await expect(page.getByRole('radio', { name: /Just this one/ })).toBeChecked();
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('status')).toContainText('✓ Task saved');
+	await expect(page.locator('.row', { hasText: 'Dose micros' })).toContainText('moved from');
+	await open(page, href!);
+	await expect(page.getByText(/Moved from .*; the schedule after it stays/).first()).toBeVisible();
+});
+
+// #178: a task due a day after the water change, and one kept off water-change day
+test('a task that follows the water change, and one kept off its day', async ({ page }, info) => {
+	await newKeeperWithTank(page, `m7f-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, `/tasks/new?tank=${tankId}`);
+	await page.getByRole('textbox', { name: 'Task' }).fill('Dose macros');
+	await page.locator('label', { hasText: 'After a log' }).click();
+	await expect(page.getByLabel('How many days after')).toHaveValue('1');
+	await expect(page.getByLabel('What it follows')).toHaveValue('water_change');
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('status')).toContainText('✓ Dose macros added');
+	await expect(page.getByRole('heading', { name: 'Waiting · 1' })).toBeVisible();
+	await expect(page.locator('.row.waiting', { hasText: 'Dose macros' })).toContainText('– After the next water change');
+
+	// a weekly task due today, kept off water-change day
+	await open(page, `/tasks/new?tank=${tankId}`);
+	await page.getByRole('textbox', { name: 'Task' }).fill('Clean filter');
+	await page.getByLabel('Not on water-change day').check();
+	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('status')).toContainText('✓ Clean filter added');
+
+	// the water change: macros due tomorrow, the filter moved to tomorrow
+	await open(page, `/entries/event/new?tank=${tankId}&category=water_change`);
+	await page.getByLabel('Amount', { exact: true }).fill('40');
+	await page.getByRole('button', { name: 'Save water change' }).click();
+	await expect(page.locator('.toast-region')).toContainText('✓ Water change logged');
+	await open(page, '/tasks');
+	await expect(page.getByRole('heading', { name: /^Waiting/ })).toHaveCount(0);
+	const macros = page.locator('.row', { hasText: 'Dose macros' });
+	// due tomorrow: "▲ Sat, Oct 17"
+	const tomorrow = /▲ (Mon|Tue|Wed|Thu|Fri|Sat|Sun), /;
+	await expect(macros).toContainText(tomorrow);
+	await expect(macros).toContainText('1 day after a water change');
+	const filter = page.locator('.row', { hasText: 'Clean filter' });
+	await expect(filter).toContainText(tomorrow);
+	await expect(filter).toContainText('moved from');
+
+	// done, it waits for the next water change again
+	await page.getByRole('button', { name: 'Mark Dose macros done' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Dose macros done');
+	await expect(page.locator('.row.waiting', { hasText: 'Dose macros' })).toContainText('– After the next water change');
 });

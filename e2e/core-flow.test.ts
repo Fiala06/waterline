@@ -34,7 +34,7 @@ test('core flow', async ({ page }, info) => {
 	await expect(page.getByRole('heading', { name: 'Water test' })).toBeVisible();
 	// the basics first; what a beginner's kit doesn't cover waits folded (#65)
 	await expect(page.getByLabel('Phosphate', { exact: true })).toBeHidden();
-	await page.getByText('6 more parameters').click();
+	await page.getByText('1 more parameter', { exact: true }).click();
 	await expect(page.getByLabel('Phosphate', { exact: true })).toBeVisible();
 	await page.getByLabel('pH', { exact: true }).fill('6.8');
 	await page.getByLabel('Nitrate', { exact: true }).fill('40');
@@ -46,7 +46,7 @@ test('core flow', async ({ page }, info) => {
 	// Dashboard shows statuses
 	await expect(page.getByRole('status')).toContainText('✓ Saved 3 readings · 1 out of range');
 	// needs attention: out of range, then near a limit; then what's fine, and what's untested
-	const attention = page.getByRole('region', { name: 'Needs attention' }).locator('a.row');
+	const attention = page.getByRole('region', { name: 'Needs attention' }).locator('.item');
 	await expect(attention).toHaveCount(2);
 	await expect(attention.nth(0)).toContainText('Nitrate ✕ High');
 	await expect(attention.nth(0)).toContainText('40');
@@ -59,7 +59,9 @@ test('core flow', async ({ page }, info) => {
 	await expect(inRange.getByRole('link', { name: /pH\s*6\.8/ })).toHaveAttribute('href', /\/charts\?p=/);
 	await expect(inRange.getByRole('link', { name: /Nitrate\s*✕ High\s*40/ })).toBeVisible();
 	await expect(inRange.getByRole('link', { name: /KH\s*▲ Near low\s*2/ })).toBeVisible();
-	await expect(inRange.getByText(/^Not tested: .*Ammonia.*CO₂/)).toBeVisible();
+	// a not-sure planted tank (#81): the basics and phosphate, not CO₂
+	await expect(inRange.getByText(/^Not tested: .*Ammonia.*Phosphate/)).toBeVisible();
+	await expect(inRange.getByText(/^Not tested: .*CO₂/)).toHaveCount(0);
 
 	// Complete a task: the water change reminder opens its log form. It isn't due
 	// for a week, so it says how soon, and its button is a quiet "Done early"
@@ -68,6 +70,8 @@ test('core flow', async ({ page }, info) => {
 	// the setup review says what it's for (#69)
 	await expect(due).toContainText('Check the tank’s details, equipment, targets and livestock are still right.');
 	await expect(due.getByRole('button', { name: 'Mark done', exact: true })).toHaveCount(0);
+	// and the row steps back (grey name, muted button), so what is due stands out
+	await expect(due.locator('.row', { hasText: 'Water change 25%' })).toHaveClass(/\blater\b/);
 	await due.getByRole('button', { name: 'Mark Water change 25% done early' }).click();
 	await expect(page).toHaveURL(/\/entries\/event\/new\?.*category=water_change/);
 	await expect(page.getByLabel(/Also mark the reminder “Water change 25%” done/)).toBeChecked();

@@ -28,7 +28,7 @@
 				['G then P', 'Photos'],
 				['G then L', 'Livestock'],
 				['G then E', 'Equipment'],
-				['G then S', 'Setup']
+				['G then S', 'Tank setup']
 			]
 		},
 		{
@@ -44,6 +44,7 @@
 			name: 'Forms',
 			keys: [
 				['⌘↵', 'Save the open form'],
+				['↵', 'Next reading in a water test'],
 				['Esc', 'Close the top sheet or menu']
 			]
 		}

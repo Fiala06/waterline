@@ -1,0 +1,1 @@
+ALTER TABLE `tanks` ADD `cycling_ask_dismissed` integer DEFAULT false NOT NULL;

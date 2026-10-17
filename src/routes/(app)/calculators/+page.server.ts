@@ -14,7 +14,7 @@ import { getTank, listParams, listTanks, updateTank } from '$lib/server/tanks';
 import { formatNumber, toDisplay, toStored, unitLabel } from '$lib/units';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals, parent }) => {
+export const load: PageServerLoad = async ({ locals, parent, url }) => {
 	const user = locals.user!;
 	const { currentTankId } = await parent();
 	const tanks = listTanks(user.id).map((t) => ({ id: t.id, name: t.name }));
@@ -55,6 +55,8 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		hardnessPpm: user.hardnessUnit === 'ppm',
 		params,
 		readings: { no3: by('no3'), ph: by('ph'), kh: by('kh'), gh: by('gh'), temp: by('temp') },
+		// the dashboard's guidance (#90) opens the water change for the reading that's high: ?param=no3
+		pick: by(url.searchParams.get('param') ?? '')?.id ?? null,
 		products: listProducts(user.id)
 			.filter((p) => p.strengthMgPerMl != null)
 			.map((p) => ({ id: p.id, name: p.name, mgPerMl: p.strengthMgPerMl!, of: p.strengthOf }))

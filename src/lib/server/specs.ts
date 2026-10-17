@@ -99,6 +99,8 @@ export interface EquipmentInput {
   notes: string | null;
   /** when it runs (#25); null or left out: all day */
   schedule?: Schedule | null;
+  /** the product barcode it was scanned from (#147); left out: unchanged */
+  barcode?: string | null;
 }
 
 /** The items of a tank that run on a schedule, for its lighting and the day timeline. */
@@ -210,6 +212,10 @@ export function updateEquipment(
     if (before.specs[k] !== after.specs[k])
       changes[k] = [before.specs[k] ?? null, after.specs[k] ?? null];
   }
+  if (before.brand !== after.brand)
+    changes.brand = [before.brand ?? null, after.brand ?? null];
+  if (before.model !== after.model)
+    changes.model = [before.model ?? null, after.model ?? null];
   // the schedule changed (#25): its own entry, so trends can relate algae or pH to it
   const wasLabel = scheduleLabel(parseSchedule(before.schedule));
   const nowLabel = scheduleLabel(parseSchedule(after.schedule));
@@ -299,6 +305,8 @@ export function markServiced(
     completeTask(userId, task.id, {
       at,
       eventId: opts.eventId,
+      // a service is always logged in History by whoever calls this
+      logged: true,
       timeZone: opts.timeZone ?? "UTC",
     });
 }

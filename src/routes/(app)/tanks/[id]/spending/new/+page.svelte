@@ -10,6 +10,7 @@
 	values={form?.values ?? data.values}
 	errors={form?.errors}
 	tanks={data.tanks}
+	equipmentByTank={data.equipmentByTank}
 	currencySymbol={data.currencySymbol}
 	today={data.today}
 	cancelHref="/tanks/{data.tank.id}/spending"

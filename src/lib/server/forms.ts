@@ -1,6 +1,7 @@
 // Form parsing shared by several actions.
 import { TANK_TYPES, type TankType } from "./db/schema";
 import { scheduleHours } from "$lib/equipment";
+import { GROWING_STYLES, type GrowingStyle } from "$lib/types";
 import { isDate, isTime, isValidTimeZone, zonedToUtc } from "$lib/time";
 import { parseNumber, toStored, type UnitPrefs } from "$lib/units";
 
@@ -57,6 +58,13 @@ export function parseTankForm(form: FormData, prefs: UnitPrefs) {
   const lightsOff = time("lightsOff");
   // with both lights times set, the photoperiod is the hours between them
   const lightsHours = scheduleHours(lightsOn, lightsOff);
+  // a planted tank's growing style (#81) and the water it's filled with; other types have no style
+  const waterSource = ["tap", "rodi", "mix", "well"].includes(str(form, "waterSource"))
+    ? str(form, "waterSource")
+    : null;
+  const style = str(form, "growingStyle") as GrowingStyle;
+  const growingStyle =
+    type === "planted" && GROWING_STYLES.includes(style) ? style : null;
 
   return {
     errors,
@@ -82,11 +90,7 @@ export function parseTankForm(form: FormData, prefs: UnitPrefs) {
             specModel: optStr(form, "specModel", 60),
             glass: optStr(form, "glass", 60),
             substrate: optStr(form, "substrate", 60),
-            waterSource: ["tap", "rodi", "mix", "well"].includes(
-              str(form, "waterSource"),
-            )
-              ? str(form, "waterSource")
-              : null,
+            waterSource,
             // the light's schedule (#25) sets the photoperiod; else the lights' times, else the field
             photoperiodH: form.has("photoperiodFixed")
               ? photoperiod()
@@ -101,6 +105,9 @@ export function parseTankForm(form: FormData, prefs: UnitPrefs) {
           form.get("cycling") === "on"
           ? { cycling: true }
           : {}),
+      // the Add tank form asks a planted tank both; Tank setup changes them (the style doesn't touch its parameters)
+      ...(form.has("growingStyle") ? { growingStyle } : {}),
+      ...(form.has("waterSource") && !form.has("specBrand") ? { waterSource } : {}),
     },
   };
 }

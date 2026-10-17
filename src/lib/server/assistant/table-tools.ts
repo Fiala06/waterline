@@ -1,0 +1,403 @@
+// Tables for dashboards and spreadsheets: the same read-only data as the other
+// assistant tools, but as flat rows (`{ columns, rows: [{…}, …] }`), one row per
+// reading, water change, task, expense or tank, across every tank the token may
+// read unless a tank_id narrows it. Values are in the keeper's units, dates and
+// times in their time zone, so a row reads the same as the app shows it.
+import { and, count, desc, eq, gte, inArray, isNull, max, sql } from 'drizzle-orm';
+import { WATER_SOURCES, additivesOf, additiveText } from '$lib/events';
+import { paramUnit, statusOf } from '$lib/params';
+import { effectiveDue } from '$lib/tasks';
+import { addDays, daysBetween, todayInZone, utcToZoned } from '$lib/time';
+import { toDisplay, unitLabel } from '$lib/units';
+import { tankTypeLabel } from '$lib/types';
+import { db } from '../db';
+import { events, expenses, livestock, plants, tasks, testReadings, tests, type Tank, type TankParameter, type User } from '../db/schema';
+import { equipmentNames } from '../expenses';
+import { latestReadingsFor } from '../logs';
+import { lastDoneOn } from '../tasks';
+import { getTank, listParamsFor, listTanks } from '../tanks';
+import type { AssistantAccess } from './tokens';
+import { days, daysArg, shown, sinceDays, whole, ToolError, type Args, type Tool } from './tool-types';
+
+const optionalTankArg = { type: 'string', description: 'Only this tank, an id from list_tanks. Every tank shared with you if left out.' };
+
+/** The tank_id argument, or '' when none was given. */
+const askedTank = (args: Args) => (typeof args.tank_id === 'string' ? args.tank_id.trim() : '');
+
+/** The tanks a table covers: the one asked for, or every tank the token may read (archived ones last). */
+export function tanksFor(access: AssistantAccess, args: Args): Tank[] {
+	const id = askedTank(args);
+	if (id) {
+		if (!access.tankIds.has(id)) throw new ToolError(`No tank ${id} is shared with this assistant. Call list_tanks for the ones that are.`);
+		return [getTank(access.user.id, id)];
+	}
+	// the token's tanks are the keeper's own, so two lists (open, archived) hold them all: no query per tank
+	return [...listTanks(access.user.id), ...listTanks(access.user.id, { archived: true })]
+		.filter((t) => access.tankIds.has(t.id))
+		.sort((a, b) => Number(!!a.archivedAt) - Number(!!b.archivedAt) || a.name.localeCompare(b.name));
+}
+
+/** "2026-10-07" and "18:18" in the keeper's time zone. */
+function when(instant: string, user: User) {
+	const z = utcToZoned(instant, user.timeZone);
+	return { date: z.date, time: z.time };
+}
+
+const round = (n: number, d: number) => Number(n.toFixed(d));
+const bound = (p: TankParameter, v: number | null, user: User) => (v == null ? null : shown(p, v, user));
+
+const LEVEL_WORD = { ok: 'OK', warn: 'Near', none: 'No data' } as const;
+/** OK, Near, High, Low or No data: the word the app shows beside a reading. */
+export function statusWord(p: TankParameter, stored: number | null | undefined) {
+	const s = statusOf(p, stored);
+	if (s.level === 'bad') return s.direction === 'low' ? 'Low' : 'High';
+	return LEVEL_WORD[s.level];
+}
+
+const table = (columns: string[], rows: Record<string, unknown>[], extra: Record<string, unknown> = {}) => ({ kind: 'json' as const, data: { ...extra, columns, rows } });
+
+// ── Readings ────────────────────────────────────────────────────────────────
+
+const READING_COLUMNS = ['tank', 'tank_id', 'date', 'time', 'parameter', 'key', 'value', 'unit', 'target_min', 'target_max', 'status'];
+/** Rows a call gives at most: years of daily tests across tanks run to tens of thousands, more than one answer should carry. */
+const READING_LIMIT = { fallback: 1000, max: 5000 };
+
+export const readingRowsTool: Tool = {
+	name: 'get_reading_rows',
+	title: 'Readings as rows',
+	description:
+		`Water test readings as a flat table, one row per reading, newest first: tank, date, time, parameter, value, unit, the parameter's target range and the reading's status (OK, Near, High, Low). Across every tank unless tank_id is given. At most limit rows (${READING_LIMIT.fallback} if left out, up to ${READING_LIMIT.max}); total says how many the window holds, so ask again with offset for the rest. Made for charts and spreadsheets; get_readings groups the same readings by parameter.`,
+	inputSchema: {
+		type: 'object',
+		properties: {
+			tank_id: optionalTankArg,
+			parameter: { type: 'string', description: 'Only this parameter, by name or key, e.g. "Nitrate", "no3", "pH". All if left out.' },
+			days: daysArg(90, 3650),
+			limit: { type: 'integer', minimum: 1, maximum: READING_LIMIT.max, description: `At most this many rows, ${READING_LIMIT.fallback} if left out.` },
+			offset: { type: 'integer', minimum: 0, description: 'Skip this many rows first, for the next page. 0 if left out.' }
+		}
+	},
+	run: (access, args) => {
+		const { user } = access;
+		const list = tanksFor(access, args);
+		const want = typeof args.parameter === 'string' ? args.parameter.trim().toLowerCase() : '';
+		const since = sinceDays(days(args, 90, 3650));
+		const limit = whole(args.limit, READING_LIMIT.fallback, 1, READING_LIMIT.max);
+		const offset = whole(args.offset, 0, 0, Number.MAX_SAFE_INTEGER);
+		const paramsBy = listParamsFor(list.map((t) => t.id));
+		const params = new Map<string, { p: TankParameter; tank: Tank }>();
+		for (const t of list)
+			for (const p of paramsBy.get(t.id) ?? []) if (!want || p.name.toLowerCase() === want || p.key === want) params.set(p.id, { p, tank: t });
+		if (want && !params.size) throw new ToolError(`No tank here tracks "${args.parameter}".`);
+		const ids = [...params.keys()];
+		const inWindow = and(inArray(testReadings.parameterId, ids), gte(tests.takenAt, since));
+		const total = ids.length ? db.select({ n: count() }).from(testReadings).innerJoin(tests, eq(tests.id, testReadings.testId)).where(inWindow).get()!.n : 0;
+		const rows =
+			ids.length && offset < total
+				? db
+						.select({ takenAt: tests.takenAt, parameterId: testReadings.parameterId, value: testReadings.value })
+						.from(testReadings)
+						.innerJoin(tests, eq(tests.id, testReadings.testId))
+						.where(inWindow)
+						.orderBy(desc(tests.takenAt), desc(tests.id))
+						.limit(limit)
+						.offset(offset)
+						.all()
+				: [];
+		return table(
+			READING_COLUMNS,
+			rows.map((r) => {
+				const { p, tank } = params.get(r.parameterId)!;
+				return {
+					tank: tank.name,
+					tank_id: tank.id,
+					...when(r.takenAt, user),
+					parameter: p.name,
+					key: p.key,
+					value: shown(p, r.value, user),
+					unit: paramUnit(p, user),
+					target_min: bound(p, p.min, user),
+					target_max: bound(p, p.max, user),
+					status: statusWord(p, r.value)
+				};
+			}),
+			{ total, limit, offset }
+		);
+	}
+};
+
+// ── Water changes ───────────────────────────────────────────────────────────
+
+const WATER_CHANGE_COLUMNS = ['tank', 'tank_id', 'date', 'time', 'percent', 'volume', 'volume_unit', 'source', 'additives', 'note'];
+
+export const waterChangesTool: Tool = {
+	name: 'get_water_changes',
+	title: 'Water changes as rows',
+	description:
+		"Water changes as a flat table, newest first: tank, date, time, how much (percent, and the volume when it was logged or can be worked out from the tank's water volume), the water's source (Tap, RODI, Mix), what was added and the note. Across every tank unless tank_id is given.",
+	inputSchema: { type: 'object', properties: { tank_id: optionalTankArg, days: daysArg(90, 3650) } },
+	run: (access, args) => {
+		const { user } = access;
+		const list = tanksFor(access, args);
+		const byId = new Map(list.map((t) => [t.id, t]));
+		const since = sinceDays(days(args, 90, 3650));
+		const rows = db
+			.select()
+			.from(events)
+			.where(and(inArray(events.tankId, [...byId.keys()]), eq(events.category, 'water_change'), gte(events.occurredAt, since)))
+			.orderBy(desc(events.occurredAt))
+			.all();
+		const vol = (l: number) => round(toDisplay(l, 'volume', user), 1);
+		return table(
+			WATER_CHANGE_COLUMNS,
+			rows.map((e) => {
+				const t = byId.get(e.tankId)!;
+				const d = e.data;
+				const water = t.actualVolumeL ?? t.nominalVolumeL;
+				const pct = typeof d.percent === 'number' ? d.percent : typeof d.volume_l === 'number' && water ? (d.volume_l / water) * 100 : null;
+				const litres = typeof d.volume_l === 'number' ? d.volume_l : pct != null && water ? (water * pct) / 100 : null;
+				return {
+					tank: t.name,
+					tank_id: t.id,
+					...when(e.occurredAt, user),
+					percent: pct == null ? null : round(pct, 0),
+					volume: litres == null ? null : vol(litres),
+					volume_unit: unitLabel('volume', user),
+					source: WATER_SOURCES.find((s) => s.value === d.source)?.label ?? null,
+					additives: additivesOf(d).map(additiveText).join(', ') || null,
+					note: e.note
+				};
+			})
+		);
+	}
+};
+
+// ── Tasks ───────────────────────────────────────────────────────────────────
+
+const TASK_COLUMNS = ['tank', 'tank_id', 'task', 'kind', 'due', 'days_until_due', 'status', 'recurring', 'every_days', 'schedule', 'ends_on', 'last_done', 'snoozed_until'];
+
+/** How a task repeats (#164): from completion (after done), fixed (on schedule), set days, or once. */
+const scheduleWord = (t: { recurring: boolean; scheduleMode: string }) =>
+	!t.recurring ? 'once' : t.scheduleMode === 'fixed' ? 'on schedule' : t.scheduleMode === 'weekdays' ? 'set days' : t.scheduleMode === 'after' ? 'after a log' : 'after done';
+
+/** Overdue, Due today, Due soon (within a week) or Upcoming. */
+export function dueWord(daysUntil: number) {
+	if (daysUntil < 0) return 'Overdue';
+	if (daysUntil === 0) return 'Due today';
+	if (daysUntil <= 7) return 'Due soon';
+	return 'Upcoming';
+}
+
+export const tasksTool: Tool = {
+	name: 'get_tasks',
+	title: 'Tasks as rows',
+	description:
+		"Open tasks as a flat table, soonest first: tank, task, kind, when it's due (after any snooze), days until due (negative when overdue), status (Overdue, Due today, Due soon, Upcoming, or Paused until a day to come), whether it repeats and how often, how (schedule: after done counts from the last time it was done, on schedule keeps its dates, set days, after a log is due a day or so after a water change, dose, maintenance or test, once), the last day of a course (ends_on) and the day it was last done (last_done, not counting skips). Across every tank unless tank_id is given; archived tanks' tasks are left out.",
+	inputSchema: { type: 'object', properties: { tank_id: optionalTankArg } },
+	run: (access, args) => {
+		const { user } = access;
+		const asked = tanksFor(access, args);
+		// an archived tank's tasks are paused: say so when it was asked for by name, leave it out of the whole
+		if (askedTank(args) && asked[0]?.archivedAt) throw new ToolError(`${asked[0].name} is archived, so its tasks are paused.`);
+		const list = asked.filter((t) => !t.archivedAt);
+		const byId = new Map(list.map((t) => [t.id, t]));
+		const today = todayInZone(user.timeZone);
+		const rows = list.length ? db.select().from(tasks).where(inArray(tasks.tankId, [...byId.keys()])).all() : [];
+		return table(
+			TASK_COLUMNS,
+			rows
+				.map((task) => ({ task, due: effectiveDue(task) }))
+				.filter((r): r is { task: typeof r.task; due: string } => !!r.due)
+				.sort((a, b) => a.due.localeCompare(b.due) || a.task.name.localeCompare(b.task.name))
+				.map(({ task, due }) => {
+					const n = daysBetween(today, due);
+					return {
+						tank: byId.get(task.tankId)!.name,
+						tank_id: task.tankId,
+						task: task.name,
+						kind: task.kind,
+						due,
+						days_until_due: n,
+						status: task.pausedUntil && task.pausedUntil > today ? 'Paused' : dueWord(n < 0 && -n <= task.graceDays ? 0 : n),
+						recurring: task.recurring,
+						every_days: task.recurring && task.scheduleMode !== 'weekdays' ? task.intervalDays : null,
+						schedule: scheduleWord(task),
+						ends_on: task.endsOn,
+						last_done: lastDoneOn(task.id, user.timeZone),
+						snoozed_until: task.snoozedUntil && task.snoozedUntil !== task.nextDue ? task.snoozedUntil : null
+					};
+				}),
+			{ today }
+		);
+	}
+};
+
+// ── Spending ────────────────────────────────────────────────────────────────
+
+const SPENDING_COLUMNS = ['tank', 'tank_id', 'date', 'category', 'what', 'equipment', 'amount', 'currency', 'note'];
+
+export const spendingTool: Tool = {
+	name: 'get_spending',
+	title: 'Spending as rows',
+	description:
+		"What's been spent on the tanks as a flat table, newest first: tank, date, category (livestock, plants, equipment, consumables, other), what, the equipment item it was for (if linked), amount in the keeper's currency, and the note. Across every tank unless tank_id is given.",
+	inputSchema: { type: 'object', properties: { tank_id: optionalTankArg, days: daysArg(3650, 3650) } },
+	run: (access, args) => {
+		const { user } = access;
+		const list = tanksFor(access, args);
+		const byId = new Map(list.map((t) => [t.id, t]));
+		// expenses are dated, not timed: count the days back from the keeper's today
+		const since = addDays(todayInZone(user.timeZone), -days(args, 3650, 3650));
+		const rows = db
+			.select()
+			.from(expenses)
+			.where(and(inArray(expenses.tankId, [...byId.keys()]), gte(expenses.date, since)))
+			.orderBy(desc(expenses.date), desc(expenses.createdAt))
+			.all();
+		const items = equipmentNames([...byId.keys()]);
+		return table(
+			SPENDING_COLUMNS,
+			rows.map((x) => ({
+				tank: byId.get(x.tankId)!.name,
+				tank_id: x.tankId,
+				date: x.date,
+				category: x.category,
+				what: x.what,
+				equipment: x.equipmentId ? (items.get(x.equipmentId) ?? null) : null,
+				amount: x.amountCents / 100,
+				currency: user.currency,
+				note: x.note
+			}))
+		);
+	}
+};
+
+// ── Overview ────────────────────────────────────────────────────────────────
+
+const OVERVIEW_COLUMNS = [
+	'tank',
+	'tank_id',
+	'type',
+	'water_volume',
+	'volume_unit',
+	'archived',
+	'last_tested',
+	'days_since_test',
+	'last_water_change',
+	'days_since_water_change',
+	'readings_ok',
+	'readings_near',
+	'readings_out',
+	'out_of_range',
+	'tasks_overdue',
+	'tasks_due_7_days',
+	'livestock',
+	'plants'
+];
+
+export const overviewTool: Tool = {
+	name: 'get_overview',
+	title: 'Tanks at a glance',
+	description:
+		"One row per tank with the numbers a dashboard leads with: when it was last tested and last had a water change (and how many days ago), how many parameters' latest readings are OK, near a limit or out of range (and which are out), tasks overdue and due within a week, and how many animals and plants it holds.",
+	inputSchema: { type: 'object', properties: { tank_id: optionalTankArg } },
+	run: (access, args) => {
+		const { user } = access;
+		const list = tanksFor(access, args);
+		const ids = list.map((t) => t.id);
+		const today = todayInZone(user.timeZone);
+		const paramsBy = listParamsFor(ids);
+		const latest = latestReadingsFor(ids);
+		// one grouped query each across every tank, not one a tank (#133)
+		const byTank = <T>(rows: { tankId: string; v: T }[]) => new Map(rows.map((r) => [r.tankId, r.v]));
+		const lastTest = ids.length ? byTank(db.select({ tankId: tests.tankId, v: max(tests.takenAt) }).from(tests).where(inArray(tests.tankId, ids)).groupBy(tests.tankId).all()) : new Map<string, string | null>();
+		const lastChange = ids.length
+			? byTank(
+					db
+						.select({ tankId: events.tankId, v: max(events.occurredAt) })
+						.from(events)
+						.where(and(inArray(events.tankId, ids), eq(events.category, 'water_change')))
+						.groupBy(events.tankId)
+						.all()
+				)
+			: new Map<string, string | null>();
+		const animals = ids.length
+			? byTank(
+					db
+						.select({ tankId: livestock.tankId, v: sql<number>`coalesce(sum(${livestock.count}), 0)` })
+						.from(livestock)
+						.where(and(inArray(livestock.tankId, ids), isNull(livestock.removedAt)))
+						.groupBy(livestock.tankId)
+						.all()
+				)
+			: new Map<string, number>();
+		const planted = ids.length
+			? byTank(db.select({ tankId: plants.tankId, v: count() }).from(plants).where(and(inArray(plants.tankId, ids), isNull(plants.removedAt))).groupBy(plants.tankId).all())
+			: new Map<string, number>();
+		const openTasks = ids.length ? db.select().from(tasks).where(inArray(tasks.tankId, ids)).all() : [];
+		const ago = (at: string | null) => (at ? daysBetween(when(at, user).date, today) : null);
+		return table(
+			OVERVIEW_COLUMNS,
+			list.map((t) => {
+				const counts = { OK: 0, Near: 0, out: [] as string[] };
+				for (const p of paramsBy.get(t.id) ?? []) {
+					const l = latest.get(t.id)?.get(p.id);
+					if (!l) continue;
+					const w = statusWord(p, l.value);
+					if (w === 'OK') counts.OK++;
+					else if (w === 'Near') counts.Near++;
+					else if (w === 'High' || w === 'Low') counts.out.push(`${p.name} ${w.toLowerCase()}`);
+				}
+				const due = t.archivedAt
+					? []
+					: openTasks
+							.filter((x) => x.tankId === t.id && !(x.pausedUntil && x.pausedUntil > today))
+							.flatMap((x) => {
+								const d = effectiveDue(x);
+								if (!d) return [];
+								// within its grace (#175) a late task counts as due, not overdue
+								const n = daysBetween(today, d);
+								return [n < 0 && -n <= x.graceDays ? 0 : n];
+							});
+				const tested = lastTest.get(t.id) ?? null;
+				const changed = lastChange.get(t.id) ?? null;
+				const water = t.actualVolumeL ?? t.nominalVolumeL;
+				return {
+					tank: t.name,
+					tank_id: t.id,
+					type: tankTypeLabel(t.type),
+					water_volume: water == null ? null : round(toDisplay(water, 'volume', user), 1),
+					volume_unit: unitLabel('volume', user),
+					archived: !!t.archivedAt,
+					last_tested: tested ? when(tested, user).date : null,
+					days_since_test: ago(tested),
+					last_water_change: changed ? when(changed, user).date : null,
+					days_since_water_change: ago(changed),
+					readings_ok: counts.OK,
+					readings_near: counts.Near,
+					readings_out: counts.out.length,
+					out_of_range: counts.out.join(', ') || null,
+					tasks_overdue: due.filter((n) => n < 0).length,
+					tasks_due_7_days: due.filter((n) => n >= 0 && n <= 7).length,
+					livestock: animals.get(t.id) ?? 0,
+					plants: planted.get(t.id) ?? 0
+				};
+			}),
+			{ today }
+		);
+	}
+};
+
+export const TABLE_TOOLS: Tool[] = [overviewTool, readingRowsTool, waterChangesTool, tasksTool, spendingTool];
+
+/** Rows as CSV, columns in the table's order, for `?format=csv` on the JSON API. */
+export function toCsv(columns: string[], rows: Record<string, unknown>[]) {
+	const cell = (v: unknown) => {
+		if (v == null) return '';
+		const s = typeof v === 'boolean' ? (v ? 'yes' : 'no') : String(v);
+		// guard against formulas when the file is opened in a spreadsheet
+		const safe = /^[=+\-@\t\r]/.test(s) && !/^-?\d/.test(s) ? `'${s}` : s;
+		return /[",\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+	};
+	return [columns.join(','), ...rows.map((r) => columns.map((c) => cell(r[c])).join(','))].join('\r\n') + '\r\n';
+}

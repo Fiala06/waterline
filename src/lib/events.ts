@@ -1,6 +1,8 @@
 // Event categories: labels, form options and one-line titles for feeds.
 import type { EventCategory } from './types';
+import { specChangeText } from './equipment';
 import { healthTitle } from './livestock';
+import { algaeTitle, plantHealthTitle } from './plants';
 import { amountText } from './tasks';
 import { formatNumber, toDisplay, unitLabel, type UnitPrefs } from './units';
 import { reviewTitle } from './review';
@@ -196,9 +198,22 @@ export function eventTitle(e: EventLike, prefs: UnitPrefs): string {
 			if (d.action === 'schedule') return `${str(d.item) || 'Equipment'} runs ${str(d.schedule) || 'all day'}`;
 			if (d.action === 'par') return `PAR ${str(d.value)} at ${str(d.spot) || 'a spot'}`;
 			const action = EQUIPMENT_ACTIONS.find((a) => a.value === d.action)?.label ?? 'Changed';
-			return `${action} ${str(d.item) || 'equipment'}`;
+			const base = `${action} ${str(d.item) || 'equipment'}`;
+			// an adjustment says what changed: "Adjusted Twinstar 300S V · Intensity 60% → 80%"
+			if (d.action === 'adjusted' && d.changes && typeof d.changes === 'object') {
+				const parts = Object.entries(d.changes as Record<string, unknown>)
+					.map(([k, c]) => specChangeText(k, c, prefs))
+					.filter((t): t is { label: string; text: string } => !!t)
+					.map((t) => `${t.label} ${t.text}`);
+				if (parts.length > 2) return `${base} · ${parts.length} settings`;
+				if (parts.length) return `${base} · ${parts.join(', ')}`;
+			}
+			return base;
 		}
 		case 'observation': {
+			// a plant's health (#85) or algae on the tank (#86): their own titles
+			if (d.kind === 'plant') return plantHealthTitle(d);
+			if (d.kind === 'algae') return algaeTitle(d);
 			const tags = Array.isArray(d.tags) ? (d.tags as string[]) : [];
 			return tags.length ? tags.join(', ') : firstLine(e.note) || 'Observation';
 		}
@@ -220,12 +235,14 @@ function firstLine(s: string | null) {
 
 /** The category icon for an entry: plant changes are logged as livestock, but show a plant. */
 export function eventIcon(e: EventLike) {
-	return e.category === 'livestock' && e.data.kind === 'plant' ? ('plant' as const) : e.category;
+	if (e.data.kind === 'plant' && (e.category === 'livestock' || e.category === 'observation')) return 'plant' as const;
+	return e.category;
 }
 
 /** Category word shown under a feed title ("Sep 17 · Water change"). */
 export function eventKindLabel(e: EventLike): string {
 	if (e.category === 'livestock') return e.data.kind === 'plant' ? 'Plant change' : 'Livestock change';
+	if (e.category === 'observation') return e.data.kind === 'plant' ? 'Plant health' : e.data.kind === 'algae' ? 'Algae' : 'Observation';
 	if (e.category === 'note' && e.data.system) return 'Tank';
 	return CATEGORY_LABEL[e.category] ?? cap(e.category);
 }

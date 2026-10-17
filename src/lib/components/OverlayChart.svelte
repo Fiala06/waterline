@@ -26,7 +26,8 @@
 	import { paramStatus, statusShort } from '$lib/status';
 	import { formatNumber } from '$lib/units';
 	import { TARGET_BAND, targetPosition } from '$lib/charts';
-	import { nearestIndex, type Marker } from './TrendChart.svelte';
+	import type { Marker } from './TrendChart.svelte';
+	import { nearestIndex, tapWidths } from './trend-chart';
 
 	let {
 		lines,
@@ -105,10 +106,7 @@
 		return `${day} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone })}`;
 	};
 	const chosen = $derived(markers.find((m) => m.href === selected) ?? null);
-	const tapWidth = $derived.by(() => {
-		const xs = markers.map((m) => x(m.t));
-		return xs.map((at, i) => Math.max(14, Math.min(44, ...xs.map((o, j) => (j === i ? 44 : Math.abs(o - at))))));
-	});
+	const tapWidth = $derived(tapWidths(markers.map((m) => x(m.t))));
 
 	// The readout: every reading taken in the test nearest the pointer
 	let active = $state<number | null>(null);
@@ -215,7 +213,7 @@
 				<text x={width - RIGHT + 8} y={z.y + 4} class="zone" class:bad={z.bad}>{z.title}</text>
 			{/each}
 			{#each markers as m (m.href)}
-				<line x1={x(m.t)} x2={x(m.t)} y1={TOP - 10} y2={baseline} class="marker-line" class:dosing={m.kind === 'dosing'} class:chosen={m.href === selected}></line>
+				<line x1={x(m.t)} x2={x(m.t)} y1={TOP - 10} y2={baseline} class="marker-line {m.kind ?? ''}" class:chosen={m.href === selected}></line>
 			{/each}
 			{#if hotT != null}<line x1={x(hotT)} x2={x(hotT)} y1={TOP - 4} y2={baseline} class="guide"></line>{/if}
 			{#each shown as l (l.id)}
@@ -270,8 +268,7 @@
 		{#if onselect}
 			<button
 				type="button"
-				class="marker"
-				class:dosing={m.kind === 'dosing'}
+				class="marker {m.kind ?? ''}"
 				class:chosen={m.href === selected}
 				style:left="{x(m.t)}px"
 				style:top="{TOP - 10}px"
@@ -281,7 +278,7 @@
 				onclick={() => onselect(m)}
 			></button>
 		{:else}
-			<a class="marker" class:dosing={m.kind === 'dosing'} href={m.href} style:left="{x(m.t)}px" style:top="{TOP - 10}px" style:--tap="{tapWidth[i]}px" title={m.label} aria-label="{m.label}, {fmt(m.t)}"></a>
+			<a class="marker {m.kind ?? ''}" href={m.href} style:left="{x(m.t)}px" style:top="{TOP - 10}px" style:--tap="{tapWidth[i]}px" title={m.label} aria-label="{m.label}, {fmt(m.t)}"></a>
 		{/if}
 	{/each}
 	{#if chosen && popover}
@@ -341,7 +338,12 @@
 		stroke-opacity: 0.6;
 		stroke-dasharray: 3 3;
 	}
-	.marker-line.dosing {
+	.marker-line.dosing,
+	.marker-line.co2,
+	.marker-line.light,
+	.marker-line.trim,
+	.marker-line.maintenance,
+	.marker-line.algae {
 		stroke-dasharray: 1 3;
 	}
 	.marker-line.chosen {
@@ -455,9 +457,33 @@
 		box-sizing: border-box;
 		background: var(--ink);
 	}
+	/* each event kind its own glyph, as on a single parameter's chart (#88) */
 	.marker.dosing::before {
 		transform: rotate(45deg) scale(0.8);
 		background: var(--neutral-600);
+	}
+	.marker.co2::before {
+		top: 20px;
+		height: 4px;
+		background: var(--neutral-600);
+	}
+	.marker.light::before {
+		background: var(--neutral-600);
+		clip-path: polygon(50% 0, 100% 100%, 0 100%);
+	}
+	.marker.trim::before {
+		background:
+			linear-gradient(45deg, transparent 38%, var(--neutral-600) 38% 62%, transparent 62%),
+			linear-gradient(-45deg, transparent 38%, var(--neutral-600) 38% 62%, transparent 62%);
+	}
+	.marker.maintenance::before {
+		background: none;
+		border: 2px solid var(--neutral-600);
+	}
+	.marker.algae::before {
+		background: none;
+		border: 2px solid var(--neutral-600);
+		transform: rotate(45deg) scale(0.8);
 	}
 	.marker:hover::before,
 	.marker:focus-visible::before,

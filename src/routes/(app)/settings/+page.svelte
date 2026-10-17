@@ -31,6 +31,7 @@
 	import { LEAD_OPTIONS, SEND_TIMES } from '$lib/notify-options';
 	import { install, promptInstall } from '$lib/install.svelte';
 	import { toast, ui } from '$lib/ui.svelte';
+	import { forgetDevice, queuedOnDevice } from '$lib/offline';
 	import { fmtWhen } from '$lib/time';
 	let installHelp = $state(false);
 	let { data, form } = $props();
@@ -118,6 +119,20 @@
 			? "▲ 1 entry hasn't synced yet. Sign out once it has, or it may be lost."
 			: `▲ ${n} entries haven't synced yet. Sign out once they have, or they may be lost.`;
 	});
+	// Remove offline data (#108): entries still waiting to sync are lost, so that asks twice
+	let forgetting = $state(0);
+	async function removeOffline() {
+		if (!forgetting) {
+			const n = await queuedOnDevice();
+			if (n) {
+				forgetting = n;
+				return;
+			}
+		}
+		await forgetDevice();
+		forgetting = 0;
+		toast('✓ Offline data removed from this device');
+	}
 	// the desktop menu: auto-hide (a rail that opens on hover) or kept open, as the shell stores it
 	function setAutoHide(auto: boolean) {
 		ui.navPinned = !auto;
@@ -349,6 +364,10 @@
 		<section id="products" class="sec" aria-labelledby="products-h">
 			<h2 id="products-h">Products<SectionLink id="products" label="Products" /></h2>
 			<div class="rows">
+				<a class="row link" href="/settings/favorites">
+					<span class="ttext"><span class="tt">Quick log favorites</span><span class="td">Your usual entries, like a 40% water change or a dose, one tap from Log</span></span>
+					{#if data.favorites}<span class="v">{data.favorites}</span>{/if}<span class="chev" aria-hidden="true">›</span>
+				</a>
 				<a class="row link" href="/settings/products">
 					<span class="ttext"><span class="tt">Saved product links</span><span class="td">Fertilizers, conditioner and food you buy again, one tap to reorder</span></span>
 					{#if data.products}<span class="v">{data.products}</span>{/if}<span class="chev" aria-hidden="true">›</span>
@@ -390,6 +409,17 @@
 						<span class="chev" aria-hidden="true">›</span>
 					</button>
 				{/if}
+				<div class="row toggle" id="offline-data">
+					<span class="ttext"
+						><span class="tt">Offline data on this device</span><span class="td"
+							>Pages and photos you've opened, and entries waiting to sync, are kept here so Waterline works at the tank without signal.</span
+						></span
+					>
+					<button type="button" class="btn" onclick={removeOffline}>{forgetting ? 'Remove anyway' : 'Remove'}<span class="sr-only"> offline data</span></button>
+				</div>
+				{#if forgetting}<p class="row unsynced status-warn" role="alert">
+						▲ {forgetting === 1 ? "1 entry hasn't" : `${forgetting} entries haven't`} synced yet and will be lost.
+					</p>{/if}
 				{#if u.isAdmin}
 					<a class="row link" href="/settings/server">
 						<span class="ttext"><span class="tt">Server settings<span class="tag tag-outline admin">ADMIN</span></span><span class="td">Sign-in, email, public pages, features and logs</span></span>

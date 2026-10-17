@@ -16,29 +16,12 @@
 	import PhotoPicker from './PhotoPicker.svelte';
 	import Tip from './Tip.svelte';
 	import WaterChangeFields from './WaterChangeFields.svelte';
-	import { WATER_SOURCES } from '$lib/events';
-	import { paramStatus, statusIcon, statusLong, statusMedium, statusShort } from '$lib/status';
-	import { dropsAsPpm, parseNumber } from '$lib/units';
-	import { exifToWhen, fmtWhenShort, type ExifDate } from '$lib/exif';
-	import { todayInZone, whenLabel, type When } from '$lib/time';
+	import { statusLong, statusShort } from '$lib/status';
+	import { fmtWhenShort, type ExifDate } from '$lib/exif';
+	import { whenLabel, type When } from '$lib/time';
 	import { kitKeyFor, type KitStep } from '$lib/kits';
-
-	interface Param {
-		id: string;
-		/** gh, kh… (the hardness hints need it) */
-		key?: string;
-		name: string;
-		unit: string;
-		min: number | null;
-		max: number | null;
-		rangeText: string;
-		last: string | null;
-		lastInput?: string | null;
-		/** what the parameter is (ⓘ), for standard ones */
-		tip?: string | null;
-		/** folded under "Show N more" on a new test (#65) */
-		later?: boolean;
-	}
+	import { entryHref, photoOtherDay, splitTask } from './entry-form';
+	import { attentionSummary, cleanReading, readingRow, shortStatus, statusWord, testSaveLabel, waterChangeSummary, type TestParam as Param } from './test-form';
 	let {
 		mode = 'new',
 		tankName,
@@ -48,6 +31,7 @@
 		initialWhen = null,
 		timeZone,
 		closeHref,
+		returnTo = null,
 		task = null,
 		error = null,
 		fieldErrors = {},
@@ -70,6 +54,8 @@
 		initialWhen?: When | null;
 		timeZone: string;
 		closeHref: string;
+		/** where Save goes back to when the form was opened from somewhere (a routine's run page, #92) */
+		returnTo?: string | null;
 		task?: { id: string; label: string; sub?: string; checked: boolean } | null;
 		error?: string | null;
 		fieldErrors?: Record<string, string>;
@@ -111,15 +97,7 @@
 	let picking = $state(false);
 	// A photo taken on another day than the test (#42): offer its date, without changing the test by itself.
 	let photoDates = $state<(ExifDate | null)[]>([]);
-	const photoWhen = $derived.by(() => {
-		const day = when?.date ?? todayInZone(timeZone);
-		for (const d of photoDates) {
-			if (!d) continue;
-			const w = exifToWhen(d, timeZone);
-			if (w.date !== day) return w;
-		}
-		return null;
-	});
+	const photoWhen = $derived(photoOtherDay(photoDates, when, timeZone));
 	// "+ Add parameter" opens G7 here, so the test in progress stays on screen
 	let addOpen = $state(false);
 	let clientId = $state('');
@@ -134,23 +112,7 @@
 		return () => mq.removeEventListener('change', sync);
 	});
 
-	const rows = $derived(
-		params.map((p) => {
-			const raw = draft[p.id] ?? '';
-			const v = parseNumber(raw);
-			const st = v == null ? null : paramStatus(v, { min: p.min, max: p.max });
-			// "was": the saved value while it's being changed, else the value before the last edit
-			const was = mode !== 'edit' ? null : (saved[p.id] ?? '') !== raw && saved[p.id] ? saved[p.id] : (previous[p.id] ?? null);
-			// "Last 7.0 · Sep 18": the date only fits on phones (05 vs 08)
-			const [lastValue, lastDate = ''] = (p.last ?? '').split(' · ');
-			// GH and KH: drop kits count degrees, 1 drop = 1°
-			const hard = p.key === 'gh' || p.key === 'kh';
-			const degrees = hard && /^d[GK]H$/.test(p.unit);
-			// in ppm, a small 7 or a round 80 reads like drops (a degree is ~17.9 ppm): offer the ppm
-			const drops = hard && !degrees ? dropsAsPpm(v) : null;
-			return { ...p, raw, v, st, was, lastValue, lastDate, degrees, drops };
-		})
-	);
+	const rows = $derived(params.map((p) => readingRow(p, draft[p.id] ?? '', { mode, saved: saved[p.id], previous: previous[p.id] })));
 	type Row = (typeof rows)[number];
 	// a new test leads with the basics; the rest wait under "N more parameters" (#65)
 	const shown = $derived(mode === 'new' ? rows.filter((r) => !r.later) : rows);
@@ -158,34 +120,13 @@
 	const filled = $derived(rows.filter((r) => r.v != null).length);
 
 	// the other log types, with the tank and time this one has (README § 11)
-	const typeHref = (category: string) => {
-		const q = new URLSearchParams();
-		for (const k of ['tank', 'date', 'time']) {
-			const v = page.url.searchParams.get(k);
-			if (v) q.set(k, v);
-		}
-		q.set('category', category);
-		return `/entries/event/new?${q}`;
-	};
+	const typeHref = (category: string) => entryHref(page.url.searchParams, '/entries/event/new', category);
 	function clearAll() {
 		for (const p of params) draft[p.id] = '';
 		copied = null;
 	}
 	// "▲ Nitrate is above target. Saving adds it to Needs attention.", before Save
-	const names = (xs: { name: string }[]) =>
-		xs.length <= 2 ? xs.map((x) => x.name).join(' and ') : `${xs.slice(0, -1).map((x) => x.name).join(', ')} and ${xs.at(-1)!.name}`;
-	const summary = $derived.by(() => {
-		if (mode !== 'new') return '';
-		const bad = rows.filter((r) => r.st?.level === 'bad');
-		const warn = rows.filter((r) => r.st?.level === 'warn');
-		if (bad.length) {
-			const one = bad.length === 1;
-			const how = one ? (bad[0].st?.direction === 'high' ? 'above' : 'below') + ' target' : 'out of range';
-			return `▲ ${names(bad)} ${one ? 'is' : 'are'} ${how}. Saving adds ${one ? 'it' : 'them'} to Needs attention.`;
-		}
-		if (warn.length) return `▲ ${names(warn)} ${warn.length === 1 ? 'is' : 'are'} near a limit.`;
-		return '';
-	});
+	const summary = $derived(mode === 'new' ? attentionSummary(rows) : '');
 
 	// "Use last readings": each empty field gets its previous reading; Undo
 	// empties the ones still holding it.
@@ -212,9 +153,7 @@
 	let wcMode = $state(untrack(() => waterChange?.amountMode ?? 'percent'));
 	let wcAmount = $state(untrack(() => waterChange?.amount ?? '25'));
 	let wcSource = $state(untrack(() => waterChange?.source ?? 'tap'));
-	const wcSummary = $derived(
-		`${wcAmount || '–'}${wcMode === 'percent' ? '%' : ` ${waterChange?.volUnit ?? ''}`} · ${WATER_SOURCES.find((s) => s.value === wcSource)?.label ?? ''}`
-	);
+	const wcSummary = $derived(waterChangeSummary(wcAmount, wcMode, waterChange?.volUnit ?? '', wcSource));
 	const withWc = $derived(mode === 'new' && !!waterChange && wcOn);
 
 	// A test that was left before it was saved comes back, with Discard.
@@ -231,35 +170,34 @@
 		};
 	}
 	const outOfRange = $derived(rows.filter((r) => r.st?.level === 'bad').length);
-	const saveLabel = $derived(
-		mode === 'edit'
-			? 'Save changes'
-			: filled
-				? `Save ${filled} reading${filled === 1 ? '' : 's'}${withWc ? ' + water change' : ''}`
-				: 'Save'
-	);
+	const saveLabel = $derived(testSaveLabel(mode, filled, withWc));
 	// "Also mark the reminder “Water test” done", with where it stands on its own line
-	function splitTask(t: { label: string; sub?: string } | null | undefined) {
-		return t ? { main: t.label, next: t.sub ?? '' } : null;
-	}
-	const taskText = $derived(splitTask(task));
-	const wcTaskText = $derived(splitTask(waterChange?.task));
-
-	// "In range", "Near limit", "Above 5–20": after the icon in 08, 7.5 and G6
-	function statusWord(r: (typeof rows)[number]) {
-		if (!r.st) return '';
-		if (r.st.level !== 'bad') return statusMedium(r.st).slice(2);
-		const unit = r.unit ? ` ${r.unit}` : '';
-		const range = (unit && r.rangeText.endsWith(unit) ? r.rangeText.slice(0, -unit.length) : r.rangeText).replace(/^[≤≥] /, '');
-		return `${r.st.direction === 'high' ? 'Above' : 'Below'} ${range}`;
-	}
-	const shortStatus = (r: (typeof rows)[number]) => (r.st ? `${statusIcon[r.st.level]} ${statusWord(r)}` : '');
+	const taskText = $derived(splitTask(task, when?.date));
+	const wcTaskText = $derived(splitTask(waterChange?.task, when?.date));
 
 	function clean(id: string, e: Event) {
 		const el = e.currentTarget as HTMLInputElement;
-		const v = el.value.replace(',', '.').replace(/[^0-9.\-]/g, '');
+		const v = cleanReading(el.value);
 		draft[id] = v;
 		if (el.value !== v) el.value = v;
+	}
+
+	// Tab and Enter go from one reading to the next (#184), past a kit's Start
+	// and Steps and the next name's ⓘ; Shift+Tab still reaches those. Enter
+	// never saves the test: after the last reading it goes on to the note.
+	function nextReading(e: KeyboardEvent) {
+		if ((e.key !== 'Tab' && e.key !== 'Enter') || e.altKey || e.ctrlKey || e.metaKey || e.isComposing) return;
+		const back = e.shiftKey;
+		if (e.key === 'Tab' && back) return;
+		if (e.key === 'Enter') e.preventDefault();
+		const el = e.currentTarget as HTMLInputElement;
+		// the folded "N more parameters" aren't on screen until opened
+		const all = [...(el.form?.querySelectorAll<HTMLInputElement>('input[name^="v_"]') ?? [])].filter((i) => !i.closest('details:not([open])'));
+		const to = all[all.indexOf(el) + (back ? -1 : 1)] ?? (e.key === 'Enter' && !back ? el.form?.querySelector<HTMLInputElement>('input[name="note"]') : null);
+		if (!to) return;
+		e.preventDefault();
+		to.focus();
+		to.select();
 	}
 
 	// The whole box is the tap target, also where the value doesn't reach.
@@ -274,7 +212,7 @@
 						<!-- the name is the field's label; the target or "Last 7.0" describes it -->
 						<div class="lbl">
 							<span class="pline"
-								><label class="pname" for="v_{r.id}">{r.name}</label>{#if r.tip}<Tip text={r.tip} label="About {r.name}" />{/if}</span
+								><label class="pname" for="v_{r.id}">{r.name}</label>{#if r.tip}<Tip text={r.tip} when={r.when} label="About {r.name}" />{/if}</span
 							>
 							<span class="last" id="last_{r.id}">
 								{#if mode === 'edit'}
@@ -304,10 +242,12 @@
 								id="v_{r.id}"
 								name="v_{r.id}"
 								inputmode="decimal"
+								enterkeyhint="next"
 								autocomplete="off"
 								placeholder="–"
 								value={r.raw}
 								oninput={(e) => clean(r.id, e)}
+								onkeydown={nextReading}
 								aria-describedby={[`last_${r.id}`, mode === 'new' && r.st ? `s_${r.id}` : ''].filter(Boolean).join(' ')}
 								aria-invalid={r.st?.level === 'bad' || !!fieldErrors[r.id]}
 							/>
@@ -320,6 +260,15 @@
 								<span class="st status-ok" aria-hidden="true">⏱</span>
 							{:else if mode === 'new' && r.st}
 								<span class="st status-{r.st.level}" aria-hidden="true">{r.st.level === 'ok' ? '✓' : statusShort(r.st)}</span>
+							{:else if mode === 'new' && r.last && r.lastInput != null}
+								<!-- tap to use it (#183); out of the Tab order, "Use last readings" does all of them -->
+								<button
+									type="button"
+									class="lastv"
+									tabindex="-1"
+									aria-label="Use {r.lastValue.toLowerCase()} for {r.name}"
+									onclick={() => (draft[r.id] = r.lastInput!)}>{r.lastValue}</button
+								>
 							{:else if mode === 'new' && r.last}
 								<span class="lastv">{r.lastValue}</span>
 							{/if}
@@ -366,6 +315,7 @@
 	})}
 	use:logDraft={{ key: mode === 'new' ? draftKey : null, onrestore, watch: when }}
 >
+	{#if returnTo}<input type="hidden" name="from" value={returnTo} />{/if}
 	<input type="hidden" name="clientId" value={clientId} />
 	<input type="hidden" name="date" value={when?.date ?? ''} />
 	<input type="hidden" name="time" value={when?.time ?? ''} />
@@ -434,7 +384,7 @@
 					<!-- the ones a beginner's kit doesn't cover, folded (#65); inside, they still post with the form -->
 					<details class="later" open={later.some((r) => r.raw !== '' || fieldErrors[r.id])}>
 						<summary
-							><span class="later-n">{later.length} more parameters</span>
+							><span class="later-n">{later.length} more parameter{later.length === 1 ? '' : 's'}</span>
 							<span class="later-names">{later.map((r) => r.name).join(', ')}</span></summary
 						>
 						{#each later as r (r.id)}{@render paramRow(r)}{/each}
@@ -785,6 +735,31 @@
 	.lastv {
 		color: var(--text-muted);
 		white-space: nowrap;
+	}
+	/* the whole flag beside an empty field is the tap target, 44px tall */
+	.flag:has(> button.lastv) {
+		position: relative;
+		align-self: stretch;
+		justify-content: center;
+	}
+	button.lastv {
+		align-self: flex-start;
+		padding: 0;
+		border: none;
+		background: none;
+		font: inherit;
+		text-align: left;
+		text-decoration: underline dotted;
+		text-underline-offset: 3px;
+		cursor: pointer;
+	}
+	button.lastv::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+	}
+	button.lastv:hover {
+		color: var(--text);
 	}
 	.msg {
 		font-size: 13px;

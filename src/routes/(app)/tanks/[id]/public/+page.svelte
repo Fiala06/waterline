@@ -11,6 +11,7 @@
 	let title = $state(untrack(() => data.page.seoTitle ?? ''));
 	let description = $state(untrack(() => data.page.seoDescription ?? ''));
 	let blurb = $state(untrack(() => data.page.description ?? ''));
+	let question = $state(untrack(() => data.page.question ?? ''));
 	let ogPhotoId = $state(untrack(() => data.page.ogPhotoId ?? ''));
 	let copied = $state(false);
 
@@ -28,7 +29,8 @@
 		{ k: 'showPetNames', t: 'Pet names and photos', d: 'Names you gave your pets, and photos tagged with them' },
 		{ k: 'showEquipment', t: 'Equipment', d: 'Brands and models; no notes' },
 		{ k: 'showActivity', t: 'Activity log', d: 'Water changes, dosing, plants; no notes. Visitors pick last week, last month or everything' },
-		{ k: 'showDescription', t: 'Tank description', d: 'A separate public blurb' }
+		{ k: 'showDescription', t: 'Tank description', d: 'A separate public blurb' },
+		{ k: 'showDetails', t: 'Detail for people helping me', d: 'Times of tests and care, notes on entries, observations and your maintenance schedule, so someone diagnosing a problem sees everything' }
 	] as const;
 
 	async function copy() {
@@ -123,6 +125,10 @@
 					<textarea class="input" id="pp-blurb" name="description" rows="3" maxlength="1000" bind:value={blurb} placeholder="What's special about this tank? Shown only if Tank description is on."></textarea>
 				</div>
 				<div class="field">
+					<label class="label" for="pp-question">What I'm asking about</label>
+					<textarea class="input" id="pp-question" name="question" rows="3" maxlength="1000" bind:value={question} placeholder="A problem you'd like help with, e.g. hair algae keeps coming back. Shown at the top of the page; leave empty for none."></textarea>
+				</div>
+				<div class="field">
 					<label class="label" for="pp-name">Display name</label>
 					<select class="input" id="pp-name" name="displayName">
 						<option value="short" selected={p.displayName === 'short'}>{data.names.short}</option>
@@ -130,7 +136,7 @@
 						<option value="none" selected={p.displayName === 'none'}>Don't show a name</option>
 					</select>
 				</div>
-				<p class="hint">Never public: tasks, private notes, exact times, your email.</p>
+				<p class="hint">Never public: your email, livestock sources, prices. Tasks, notes on entries and times stay private unless Detail for people helping me is on.</p>
 			</section>
 
 			<section class="stack">

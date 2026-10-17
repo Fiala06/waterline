@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chartDomain, TARGET_BAND, targetPosition } from './charts';
+import { chartDomain, equipmentTypeLookup, overlayKind, parseCompare, TARGET_BAND, targetPosition } from './charts';
 
 describe('chartDomain (#74)', () => {
 	it('gives ammonia at 0 room up to twice its limit', () => {
@@ -77,5 +77,43 @@ describe('targetPosition (all parameters on one chart)', () => {
 	it('leaves out a parameter without a target', () => {
 		expect(targetPosition(10, { min: null, max: null })).toBeNull();
 		expect(targetPosition(NaN, { min: 5, max: 20 })).toBeNull();
+	});
+});
+
+describe('event overlays (#88)', () => {
+	const type = equipmentTypeLookup([
+		{ id: 'e1', name: 'Chihiros WRGB', type: 'light' },
+		{ id: 'e2', name: 'CO₂ Art regulator', type: 'co2' },
+		{ id: 'e3', name: 'Eheim 2217', type: 'filter' }
+	]);
+
+	it('sorts events into their overlay, and leaves out the kinds that never mark a chart', () => {
+		expect(overlayKind({ category: 'water_change', data: { percent: 30 } }, type)).toBe('water_change');
+		expect(overlayKind({ category: 'dosing', data: {} }, type)).toBe('dosing');
+		expect(overlayKind({ category: 'maintenance', data: { actions: ['Trimmed plants', 'Scraped glass'] } }, type)).toBe('trim');
+		expect(overlayKind({ category: 'maintenance', data: { actions: ['Cleaned filter'] } }, type)).toBe('maintenance');
+		expect(overlayKind({ category: 'equipment', data: { action: 'schedule', equipment_id: 'e1', item: 'Chihiros WRGB' } }, type)).toBe('light');
+		expect(overlayKind({ category: 'equipment', data: { action: 'adjusted', equipment_id: 'e2', item: 'CO₂ Art regulator' } }, type)).toBe('co2');
+		expect(overlayKind({ category: 'equipment', data: { action: 'replaced', equipment_id: 'e3', item: 'Eheim 2217' } }, type)).toBeNull();
+		expect(overlayKind({ category: 'observation', data: { kind: 'algae', algae: 'Black beard', severity: 'moderate' } }, type)).toBe('algae');
+		for (const category of ['feeding', 'note', 'observation', 'livestock', 'health']) expect(overlayKind({ category, data: {} }, type)).toBeNull();
+	});
+
+	it('knows an item by id, then by name, then by what the name says', () => {
+		expect(type('e1', 'renamed since')).toBe('light');
+		expect(type(undefined, 'chihiros wrgb')).toBe('light');
+		expect(type(undefined, 'Old LED light')).toBe('light');
+		expect(type(undefined, 'CO2 diffuser')).toBe('co2');
+		expect(type(undefined, 'Heater')).toBeNull();
+	});
+});
+
+describe('parseCompare (#87)', () => {
+	it('keeps known parameters other than the main one, at most two, in order, once each', () => {
+		expect(parseCompare('b,c', ['a', 'b', 'c', 'd'], 'a')).toEqual(['b', 'c']);
+		expect(parseCompare('a,b,b,x,c,d', ['a', 'b', 'c', 'd'], 'a')).toEqual(['b', 'c']);
+		expect(parseCompare(' b , d', ['a', 'b', 'c', 'd'], 'a')).toEqual(['b', 'd']);
+		expect(parseCompare(null, ['a'], 'a')).toEqual([]);
+		expect(parseCompare('', ['a'], 'a')).toEqual([]);
 	});
 });

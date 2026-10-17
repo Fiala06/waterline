@@ -3,6 +3,7 @@
 // entry carries a clientId, so the server ignores a replay it already has.
 import type { SubmitFunction } from '@sveltejs/kit';
 import { toast, ui } from './ui.svelte';
+import { clearAllDrafts } from './draft';
 import { utcToZoned } from './time';
 
 const DB = 'waterline';
@@ -164,7 +165,12 @@ export async function flushQueue(): Promise<number> {
 			}
 			let res: Response;
 			try {
-				res = await fetch(currentUrl(item.url), { method: 'POST', body, headers: { 'x-sveltekit-action': 'true', accept: 'application/json', 'x-waterline-sync': '1' } });
+				res = await fetch(currentUrl(item.url), {
+					method: 'POST',
+					body,
+					// whose entry it is: the server saves it only for them (#108)
+					headers: { 'x-sveltekit-action': 'true', accept: 'application/json', 'x-waterline-sync': '1', ...(item.userId ? { 'x-waterline-user': item.userId } : {}) }
+				});
 			} catch {
 				break; // still offline
 			}
@@ -174,7 +180,12 @@ export async function flushQueue(): Promise<number> {
 				synced++;
 			} else {
 				// The server refused it (e.g. the tank was deleted); keep it so the user can see and discard it.
-				const message = result?.data ? "The server couldn't save this entry." : `Sync failed (${res.status}).`;
+				const message =
+					res.status === 409
+						? 'Logged by another account. Sign in as them to sync it.'
+						: result?.data
+							? "The server couldn't save this entry."
+							: `Sync failed (${res.status}).`;
 				await tx('readwrite', (s) => s.put({ ...item, error: message }));
 			}
 		}
@@ -183,4 +194,32 @@ export async function flushQueue(): Promise<number> {
 		await refreshQueue();
 	}
 	return synced;
+}
+
+/** How many entries on this device are still waiting to sync, for anyone. */
+export async function queuedOnDevice(): Promise<number> {
+	try {
+		return (await tx<number>('readonly', (s) => s.count())) ?? 0;
+	} catch {
+		return 0;
+	}
+}
+
+/**
+ * Forget this device (#108): the pages and photos kept for offline use, the
+ * entries waiting to sync (everyone's) and unsaved drafts. Nothing on the server changes.
+ */
+export async function forgetDevice() {
+	try {
+		await tx('readwrite', (s) => s.clear());
+	} catch {
+		// no queue yet
+	}
+	clearAllDrafts();
+	navigator.serviceWorker?.controller?.postMessage('clear-user-cache');
+	if ('caches' in window) {
+		const keys = await caches.keys();
+		await Promise.all(keys.filter((k) => k.startsWith('pages-') || k.startsWith('media-')).map((k) => caches.delete(k)));
+	}
+	await refreshQueue();
 }

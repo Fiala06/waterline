@@ -10,6 +10,9 @@ export const LOCAL_ADMIN_PASSWORD = 'e2e-admin-password';
 const salt = randomBytes(16);
 const hash = `scrypt:${salt.toString('base64')}:${scryptSync(LOCAL_ADMIN_PASSWORD, salt, 64).toString('base64')}`;
 
+// a Chromium already on the machine (PW_CHROMIUM=/path/to/chrome), when the pinned one can't be downloaded
+const chromium = process.env.PW_CHROMIUM ? { launchOptions: { executablePath: process.env.PW_CHROMIUM } } : {};
+
 export default defineConfig({
 	testDir: 'e2e',
 	fullyParallel: true,
@@ -20,13 +23,20 @@ export default defineConfig({
 	use: {
 		baseURL: `http://localhost:${PORT}`,
 		trace: 'retain-on-failure',
-		serviceWorkers: 'block',
-		// a Chromium already on the machine (PW_CHROMIUM=/path/to/chrome), when the pinned one can't be downloaded
-		...(process.env.PW_CHROMIUM ? { launchOptions: { executablePath: process.env.PW_CHROMIUM } } : {})
+		serviceWorkers: 'block'
 	},
+	// The full suite on Chromium, at a desktop and an Android phone's size; the
+	// essentials (e2e/smoke.test.ts) also on an iPhone and desktop Safari (WebKit)
+	// and Firefox (#104): npm run test:e2e:browsers, after
+	// npx playwright install webkit firefox.
 	projects: [
-		{ name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } } },
-		{ name: 'phone', use: { ...devices['Pixel 7'] } }
+		{ name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 }, ...chromium }, testIgnore: 'perf.test.ts' },
+		{ name: 'phone', use: { ...devices['Pixel 7'], ...chromium }, testIgnore: 'perf.test.ts' },
+		{ name: 'iphone', use: { ...devices['iPhone 15'] }, testMatch: 'smoke.test.ts' },
+		{ name: 'safari', use: { ...devices['Desktop Safari'], viewport: { width: 1280, height: 900 } }, testMatch: 'smoke.test.ts' },
+		{ name: 'firefox', use: { ...devices['Desktop Firefox'], viewport: { width: 1280, height: 900 } }, testMatch: 'smoke.test.ts' },
+		// performance budgets (#110), on their own: npm run test:perf
+		{ name: 'perf', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 }, ...chromium }, testMatch: 'perf.test.ts' }
 	],
 	webServer: {
 		command: `rm -rf .e2e-data && npm run build && node build`,
@@ -47,6 +57,9 @@ export default defineConfig({
 			// species photos from a stand-in for Wikipedia and Commons (src/routes/dev/wiki)
 			STOCK_PHOTO_WIKI: `http://localhost:${PORT}/dev/wiki`,
 			STOCK_PHOTO_COMMONS: `http://localhost:${PORT}/dev/wiki`,
+			// barcode lookups from a stand-in for Open Products Facts and UPCitemdb (src/routes/dev/upc)
+			BARCODE_OPF_URL: `http://localhost:${PORT}/dev/upc/opf`,
+			BARCODE_UPCITEMDB_URL: `http://localhost:${PORT}/dev/upc/upcitemdb`,
 			// species care from a tiny stand-in for FishBase's snapshot (e2e/files/fishbase)
 			SPECIES_CARE_URL: pathToFileURL(resolve('e2e/files/fishbase')).href,
 			LOCAL_ADMIN_PASSWORD_HASH: hash

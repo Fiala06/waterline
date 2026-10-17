@@ -57,10 +57,10 @@
 				? [
 						{
 							key: 'setup',
-							label: 'Setup',
+							label: 'Tank setup',
 							href: `${base}/settings`,
 							// Notes & routines (/tanks/[id]) is a Setup page too
-							active: under('settings') || under('targets') || under('public') || under('review') || under('remind') || under('import') || under('sharing') || routeId === '/(app)/tanks/[id]/(tabs)'
+							active: under('settings') || under('targets') || under('public') || under('review') || under('suggestions') || under('remind') || under('import') || under('sharing') || routeId === '/(app)/tanks/[id]/(tabs)'
 						}
 					]
 				: [])
@@ -96,23 +96,34 @@
 			{
 				'/(app)/tanks/[id]/(tabs)': 'Notes & routines',
 				'/(app)/tanks/[id]/equipment/new': 'Add equipment',
+				'/(app)/tanks/[id]/equipment/scan': 'Scan a barcode',
 				'/(app)/tanks/[id]/health': 'Log health',
+				'/(app)/tanks/[id]/plants/health': 'Log plant health',
+				'/(app)/tanks/[id]/algae': 'Log algae',
 				'/(app)/tanks/[id]/equipment/[eid]': 'Edit equipment',
 				'/(app)/tanks/[id]/livestock/new': 'Add livestock',
 				'/(app)/tanks/[id]/livestock/several': 'Add several',
 				'/(app)/tanks/[id]/plants/several': 'Add several plants',
 				'/(app)/tanks/[id]/remind': 'Remind me',
+				'/(app)/tanks/[id]/pause': 'Pause tasks',
+				'/(app)/tanks/[id]/plans': 'Treatment plans',
+				'/(app)/tanks/[id]/plans/new': 'Start a plan',
 				'/(app)/tanks/[id]/review': 'Setup review',
+				'/(app)/tanks/[id]/suggestions': 'Suggested steps',
 				'/(app)/tanks/[id]/spending/new': 'Add expense',
 				'/(app)/tanks/[id]/spending/[eid]': 'Edit expense',
 				'/(app)/tanks/[id]/targets': 'Parameters & targets',
 				'/(app)/tanks/[id]/public': 'Public page',
 				'/(app)/tanks/[id]/sharing': 'Sharing',
 				'/(app)/tanks/[id]/wishlist': 'Wish list',
+				'/(app)/tanks/[id]/routines': 'Maintenance routines',
+				'/(app)/tanks/[id]/routines/[rid]/run': 'Run routine',
 				'/(app)/tanks/[id]/summary': 'Share summary'
 			} as Record<string, string | undefined>
 		)[id];
 		if (tankPage) return { title: tankPage };
+		// a treatment plan (#177): its own name
+		if (id === '/(app)/tanks/[id]/plans/[rid]') return { title: (page.data.run as { name?: string } | undefined)?.name ?? 'Plan' };
 		// a pet's page has its own name hero
 		if (id === '/(app)/tanks/[id]/livestock/[lid]') return null;
 		if (id === '/(app)/tanks/[id]/import/[list=importList]') {
@@ -218,6 +229,8 @@
 		listenForInstall();
 		ui.online = navigator.onLine;
 		ui.userId = data.user.id;
+		// the service worker keeps pages for one person at a time (#108)
+		navigator.serviceWorker?.ready.then((r) => r.active?.postMessage({ type: 'user', id: data.user.id })).catch(() => {});
 		loadNav();
 		try {
 			const t = sessionStorage.getItem('wl_toast');
@@ -502,8 +515,8 @@
 		<main id="main" tabindex="-1" class:with-bar={showBar} class:setup={setupTab} aria-busy={slow}>
 			{#if setupTab && current}
 				<div class="setup-grid">
-					<nav class="setup-nav hide-phone" aria-label="Setup">
-						<span class="caps">Setup</span>
+					<nav class="setup-nav hide-phone" aria-label="Tank setup">
+						<span class="caps">Tank setup</span>
 						{#each [
 							{ href: `/tanks/${current.id}/settings`, label: 'Details', on: routeId.endsWith('/(tabs)/settings') },
 							{ href: `/tanks/${current.id}/targets`, label: 'Parameters & targets', on: routeId.endsWith('/targets') },
@@ -511,7 +524,8 @@
 							{ href: `/tanks/${current.id}/sharing`, label: `Sharing${data.counts.members ? ` · ${data.counts.members}` : ''}`, on: routeId.endsWith('/sharing') },
 							{ href: `/tanks/${current.id}/remind`, label: 'Remind me', on: routeId.endsWith('/remind') },
 							{ href: `/tanks/${current.id}`, label: 'Notes & routines', on: routeId === '/(app)/tanks/[id]/(tabs)' },
-							{ href: `/tanks/${current.id}/review`, label: 'Setup review', on: routeId.endsWith('/review') }
+							{ href: `/tanks/${current.id}/review`, label: 'Setup review', on: routeId.endsWith('/review') },
+							{ href: `/tanks/${current.id}/suggestions`, label: 'Suggested steps', on: routeId.endsWith('/suggestions') }
 						] as s (s.href)}
 							<a href={s.href} class:active={s.on} aria-current={s.on ? 'page' : undefined}>{s.label}</a>
 						{/each}
@@ -551,9 +565,11 @@
 	timeZone={data.user.timeZone}
 	lastTest={data.quick.lastTest}
 	wcDue={data.quick.wcDue}
+	favorites={data.favorites}
+	routines={data.routines}
 />
 <TankSwitcher bind:open={ui.tankSwitcher} tanks={data.tanks} currentId={data.currentTankId} onpick={pickTank} />
-<CommandPalette bind:open={ui.palette} tanks={data.tanks} currentTankId={data.currentTankId} onpick={pickTank} />
+<CommandPalette bind:open={ui.palette} tanks={data.tanks} currentTankId={data.currentTankId} favorites={data.favorites} routines={data.routines} onpick={pickTank} />
 <ShortcutsSheet bind:open={ui.keys} />
 <AlertsPanel bind:open={ui.alerts} {alerts} onread={markRead} />
 

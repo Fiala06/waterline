@@ -7,17 +7,49 @@ import { logger } from '$lib/server/log';
 import { parseSamples, recordSamples } from '$lib/server/sensors';
 import { bearerChallenge } from '$lib/server/assistant/discovery';
 import { photoFor, photoImage, runTool, ToolError } from '$lib/server/assistant/tools';
+import { TABLE_TOOLS, toCsv } from '$lib/server/assistant/table-tools';
 import type { RequestHandler } from './$types';
 
+// Maps, not objects, so a path like /api/v1/constructor finds nothing rather than Object's own.
 /** /tanks/<id>/<what> → the tool that answers it. */
-const TANK_TOOLS: Record<string, string> = {
-	summary: 'get_tank_summary',
-	readings: 'get_readings',
-	history: 'get_history',
-	livestock: 'get_livestock',
-	trends: 'get_trends',
-	photos: 'list_photos'
-};
+const TANK_TOOLS = new Map([
+	['summary', 'get_tank_summary'],
+	['readings', 'get_readings'],
+	['history', 'get_history'],
+	['livestock', 'get_livestock'],
+	['trends', 'get_trends'],
+	['photos', 'list_photos'],
+	['reading-rows', 'get_reading_rows'],
+	['water-changes', 'get_water_changes'],
+	['tasks', 'get_tasks'],
+	['spending', 'get_spending']
+]);
+
+/** /<what> → a table across every tank the token may read (narrowed by ?tank_id=), as JSON rows or ?format=csv. */
+// Named as under /tanks/<id>/, so reading-rows is the flat table at both levels and readings the grouped read.
+const TABLES = new Map([
+	['overview', 'get_overview'],
+	['reading-rows', 'get_reading_rows'],
+	['water-changes', 'get_water_changes'],
+	['tasks', 'get_tasks'],
+	['spending', 'get_spending']
+]);
+
+/** The tools whose result is a table, so ?format=csv has rows to give. */
+const IS_TABLE = new Set(TABLE_TOOLS.map((t) => t.name));
+const NOT_A_TABLE = (what: string) => `${what} isn't a table, so it has no CSV. The tables are overview, reading-rows, water-changes, tasks and spending.`;
+
+/** A table's rows as a CSV download, when ?format=csv asks for one. */
+function tableResponse(data: unknown, format: string | undefined, name: string, headers: Record<string, string>) {
+	const t = data as { columns?: string[]; rows?: Record<string, unknown>[] } | null;
+	if (format === 'csv') {
+		if (!t?.columns || !t.rows) return json({ error: NOT_A_TABLE(name) }, { status: 400, headers });
+		return new Response(toCsv(t.columns, t.rows), {
+			headers: { ...headers, 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="waterline-${name}.csv"` }
+		});
+	}
+	return json(data, { headers });
+}
 
 export const GET: RequestHandler = async ({ request, params, url }) => {
 	const auth = request.headers.get('authorization');
@@ -36,10 +68,18 @@ export const GET: RequestHandler = async ({ request, params, url }) => {
 			const r = await runTool(access, 'list_tanks', {});
 			return json(r.kind === 'json' ? r.data : null, { headers });
 		}
-		if (parts.length === 3 && parts[0] === 'tanks' && TANK_TOOLS[parts[2]]) {
-			const r = await runTool(access, TANK_TOOLS[parts[2]], { ...q, tank_id: parts[1], include_removed: q.include_removed === 'true' });
+		const table = parts.length === 1 ? TABLES.get(parts[0]) : undefined;
+		if (table) {
+			const r = await runTool(access, table, q);
+			return tableResponse(r.kind === 'json' ? r.data : null, q.format, parts[0], headers);
+		}
+		const tool = parts.length === 3 && parts[0] === 'tanks' ? TANK_TOOLS.get(parts[2]) : undefined;
+		if (tool) {
+			// said before the tool runs, so a Markdown summary doesn't come back as if it were a CSV
+			if (q.format === 'csv' && !IS_TABLE.has(tool)) return json({ error: NOT_A_TABLE(parts[2]) }, { status: 400, headers });
+			const r = await runTool(access, tool, { ...q, tank_id: parts[1], include_removed: q.include_removed === 'true' });
 			if (r.kind === 'text') return new Response(r.text, { headers: { ...headers, 'content-type': 'text/markdown; charset=utf-8' } });
-			return json(r.kind === 'json' ? r.data : null, { headers });
+			return tableResponse(r.kind === 'json' ? r.data : null, q.format, parts[2], headers);
 		}
 		if (parts.length === 2 && parts[0] === 'photos') {
 			const { photo } = photoFor(access, parts[1]);

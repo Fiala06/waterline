@@ -2,12 +2,13 @@
 // Server settings), and tidying up. EMAIL_SCHEDULER=off stops all of it.
 import { env } from '$env/dynamic/private';
 import { pruneActionTokens } from './action-tokens';
+import { pollAllDevices } from './devices';
 import { pruneSamples } from './sensors';
 import { pruneOAuth } from './assistant/oauth';
 import { cleanupExports } from './export';
 import { getServerSettings } from './mail';
 import { logger, pruneLogs } from './log';
-import { runNotifications } from './notifications';
+import { alertSensorExcursions, runNotifications } from './notifications';
 import { ensureCare } from './species-care';
 
 const EVERY_MS = 5 * 60_000;
@@ -21,6 +22,10 @@ export function startScheduler() {
 		running = true;
 		try {
 			if (getServerSettings().scheduledEmails) await runNotifications();
+			// devices Waterline reads itself, every run: 5 minutes apart
+			await pollAllDevices();
+			// a sensor that is a parameter's reading of record, out of range for a while
+			await alertSensorExcursions();
 			pruneLogs();
 			pruneActionTokens();
 			pruneSamples();

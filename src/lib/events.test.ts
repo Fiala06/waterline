@@ -50,3 +50,17 @@ describe('feeding and water change titles', () => {
 		expect(additivesOf({})).toEqual([]);
 	});
 });
+
+describe('equipment adjustments in History', () => {
+	const prefs = { unitSystem: 'metric', hardnessUnit: 'dgh' } as const;
+	const title = (data: Record<string, unknown>) => eventTitle({ category: 'equipment', note: null, data }, prefs);
+
+	it('says what changed, up to two settings, else how many', () => {
+		expect(title({ action: 'adjusted', item: 'Twinstar 300S V', changes: { intensity: [60, 80] } })).toBe('Adjusted Twinstar 300S V · Intensity 60% → 80%');
+		expect(title({ action: 'adjusted', item: 'Lumora Pro 90', changes: { photoperiodH: [8.5, 8], intensity: [100, 80] } })).toBe('Adjusted Lumora Pro 90 · Photoperiod 8.5 h → 8 h, Intensity 100% → 80%');
+		expect(title({ action: 'adjusted', item: 'Lumora Pro 90', changes: { photoperiodH: [8.5, 8], intensity: [100, 80], spectrum: [null, 'Full'] } })).toBe('Adjusted Lumora Pro 90 · 3 settings');
+		expect(title({ action: 'adjusted', item: 'Lumora Pro 90', changes: {} })).toBe('Adjusted Lumora Pro 90');
+		expect(title({ action: 'adjusted', item: 'Lumora Pro 90' })).toBe('Adjusted Lumora Pro 90');
+		expect(title({ action: 'replaced', item: 'Tidewell C-400', changes: { media: ['Sponge', 'Ceramic'] } })).toBe('Replaced Tidewell C-400');
+	});
+});

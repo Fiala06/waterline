@@ -4,6 +4,7 @@ import {
   asc,
   count,
   eq,
+  inArray,
   isNotNull,
   isNull,
   max,
@@ -27,6 +28,7 @@ import {
   type TankType,
   type User,
 } from "./db/schema";
+import type { GrowingStyle } from "$lib/types";
 
 /** The tanks this person owns, and those shared with them (#22); `own` keeps it to their own. */
 export function listTanks(
@@ -88,6 +90,8 @@ export interface TankInput {
   glass?: string | null;
   substrate?: string | null;
   waterSource?: string | null;
+  /** a planted tank's growing style (#81) */
+  growingStyle?: GrowingStyle | null;
   photoperiodH?: number | null;
   /** the lighting and CO₂ schedule, "HH:MM" */
   lightsOn?: string | null;
@@ -114,12 +118,17 @@ export function createTank(user: User, input: TankInput): Tank {
   return db.transaction((tx) => {
     const tank = tx
       .insert(tanks)
-      .values({ ...input, userId: user.id })
+      .values({
+        ...input,
+        // low-tech means no injected CO₂ on purpose, so guidance doesn't ask about it (#81)
+        ...(input.growingStyle === "low_tech" ? { withoutEquipment: ["co2"] } : {}),
+        userId: user.id,
+      })
       .returning()
       .get();
     tx.insert(tankParameters)
       .values(
-        defaultParameters(user, input.type).map((p) => ({
+        defaultParameters(user, input.type, input.growingStyle).map((p) => ({
           ...p,
           tankId: tank.id,
         })),
@@ -136,6 +145,8 @@ export function createTank(user: User, input: TankInput): Tank {
         scheduleMode: "completion",
         nextDue: addDays(today, 7),
         openFormOnDone: true,
+        // a day late is still this week's water change (#175)
+        graceDays: 1,
       })
       .run();
     // the setup review (#30): every 3 months, in case something wasn't updated
@@ -145,7 +156,11 @@ export function createTank(user: User, input: TankInput): Tank {
         tankId: tank.id,
         category: "note",
         occurredAt: new Date().toISOString(),
-        data: { system: "tank_created", type: input.type },
+        data: {
+          system: "tank_created",
+          type: input.type,
+          ...(input.growingStyle ? { growingStyle: input.growingStyle } : {}),
+        },
       })
       .run();
     return tank;
@@ -205,6 +220,20 @@ export function listParams(
     .all();
 }
 
+/** The tracked parameters of several tanks at once, each in its order (#105: one query, not one a tank). */
+export function listParamsFor(tankIds: string[]): Map<string, TankParameter[]> {
+  const out = new Map<string, TankParameter[]>(tankIds.map((id) => [id, []]));
+  if (!tankIds.length) return out;
+  const rows = db
+    .select()
+    .from(tankParameters)
+    .where(and(inArray(tankParameters.tankId, tankIds), eq(tankParameters.tracked, true)))
+    .orderBy(asc(tankParameters.sort))
+    .all();
+  for (const r of rows) out.get(r.tankId)?.push(r);
+  return out;
+}
+
 export function updateParams(
   userId: string,
   tankId: string,
@@ -214,6 +243,8 @@ export function updateParams(
     max: number | null;
     tracked: boolean;
     testEveryDays?: number | null;
+    /** the sensor's reading is this parameter's reading; left as it is when undefined */
+    sensorRecord?: boolean;
   }[],
 ) {
   getTank(userId, tankId, "owner");
@@ -226,6 +257,9 @@ export function updateParams(
           tracked: r.tracked,
           ...(r.testEveryDays !== undefined
             ? { testEveryDays: r.testEveryDays }
+            : {}),
+          ...(r.sensorRecord !== undefined
+            ? { sensorRecord: r.sensorRecord }
             : {}),
         })
         .where(
@@ -355,7 +389,7 @@ export function deleteCustomParam(
  */
 export function resetParamDefaults(user: User, tankId: string) {
   const tank = getTank(user.id, tankId, "owner");
-  const preset = defaultParameters(user, tank.type);
+  const preset = defaultParameters(user, tank.type, tank.growingStyle);
   const existing = new Map(
     listParams(tankId, { all: true })
       .filter((p) => !p.isCustom)
@@ -370,7 +404,7 @@ export function resetParamDefaults(user: User, tankId: string) {
             name: d.name,
             min: d.min,
             max: d.max,
-            tracked: true,
+            tracked: d.tracked,
             decimals: d.decimals,
             sort: d.sort,
           })
@@ -393,6 +427,23 @@ export function resetParamDefaults(user: User, tankId: string) {
 }
 
 /** The tank is still cycling after all (#68): cycling on, with a "Marked as cycling" note in History. */
+/** The getting-started checklist (#82): hidden from the dashboard, or shown there again from Tank setup. */
+export function setChecklist(userId: string, tankId: string, state: "hidden" | "shown") {
+  getTank(userId, tankId, "owner");
+  db.update(tanks).set({ checklist: state }).where(eq(tanks.id, tankId)).run();
+}
+
+/** The keeper's answer to the dashboard's "New tank?": it isn't cycling, so it isn't asked again (#155). */
+export function dismissCyclingAsk(userId: string, tankId: string) {
+  getTank(userId, tankId, "owner");
+  return db
+    .update(tanks)
+    .set({ cyclingAskDismissed: true })
+    .where(eq(tanks.id, tankId))
+    .returning()
+    .get()!;
+}
+
 export function markCycling(userId: string, tankId: string) {
   const tank = getTank(userId, tankId, "owner");
   if (tank.cycling) return tank;

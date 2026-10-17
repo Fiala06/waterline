@@ -32,11 +32,18 @@ tanks            id, user_id, name, type(freshwater|planted|brackish|reef),
                  calculator's other measurements, kept for next time),
                  start_date?, notes?, cover_photo_id?, cover_x, cover_y (the cover's focus, 0–100,
                  50 50 the middle), spec_brand?, spec_model?, glass?,
-                 substrate?, water_source?, photoperiod_h? (the hours between lights_on and
+                 substrate?, water_source?, growing_style?(low_tech|co2|simple) (a planted
+                 tank's: chosen on Add tank, it decides which parameters start tracked; changing
+                 it later leaves them alone), photoperiod_h? (the hours between lights_on and
                  lights_off when both are set), lights_on?, lights_off?, co2_on?, co2_off?
                  ("HH:MM": the lighting and CO₂ schedule), cycling (still cycling: ammonia and
                  nitrite above target show as ▲ Cycling, the dashboard follows the cycle, and
-                 Mark as running clears it with a "Cycle complete" note), without_equipment JSON
+                 Mark as running clears it with a "Cycle complete" note), cycling_ask_dismissed
+                 (the keeper answered the dashboard's "New tank?" with Not cycling: it isn't asked
+                 again), suggestions_off (json: rule ids from src/lib/suggestions.ts switched off
+                 for this tank, #179), checklist?(hidden|shown)
+                 (the dashboard's getting-started checklist: hidden by the owner, or shown again
+                 from Tank setup; unset, it shows while the tank is new), without_equipment JSON
                  (what it goes without on purpose, of filter|heater|light|co2: ["heater"]; adding
                  one takes it off), review_checks JSON
                  remind_to(all|owner), alert_to(all|owner) (a shared tank: whom its reminders and
@@ -45,7 +52,9 @@ tanks            id, user_id, name, type(freshwater|planted|brackish|reef),
                  targets, livestock}), archived_at?, created_at
 tank_parameters  id, tank_id, key (ph|nh3|no2|no3|gh|kh|temp|… or custom), name, unit,
                  decimals, min?, max?, test_every_days? (Test every: a reading older than this
-                 is due on the dashboard), tracked, sort, is_custom
+                 is due on the dashboard), tracked, sort, is_custom, sensor_record (the sensor's
+                 reading is this parameter's reading: the newest of its latest sample and its
+                 latest test, graded and alerted on like a test)
 
 tests            id, tank_id, taken_at, note?, edited_at?, client_id? (offline dedupe),
                  import_id?, logged_by? (who logged it on a shared tank)
@@ -67,9 +76,24 @@ events           id, tank_id, category(water_change|dosing|maintenance|livestock
                  -- equipment {action: schedule, equipment_id, item, schedule, was} (its periods changed)
                  -- equipment {action: par, par_id, item: "PAR", spot, value} (a PAR reading)
                  -- observation {tags:[...], recheck_at?}
+                 -- observation {kind: plant, plant_ids, plants:[names], observation: thriving|
+                 --              new_growth|melting|yellowing|pinholes|algae|stunted|removed|other,
+                 --              tags:[]} (a plant's health journal; sets the plant's status)
+                 -- observation {kind: algae, algae, severity: light|moderate|heavy, area?,
+                 --              tags:["Algae"]} (algae on the tank)
                  -- note {system: tank_created|tank_archived|tank_restored} (the tank's own)
                  -- note {system: setup_reviewed, changed:[parts], prev_checks} (All still
                  --       right on the setup review; prev_checks lets Undo put the checks back)
+                 -- note {system: tasks_paused, task_ids, until} / {system: tasks_resumed, task_ids}
+                 -- note {system: cadence_temp, task_id, interval_days, until} / {system: cadence_back, task_id}
+                 -- note {system: course_finished, task_id, early?, prev_next_due?, prev_snoozed_until?}
+                 --       ("Finished: …" at a course's last Done; "Finished early: …" from End early,
+                 --       which Undo reopens)
+                 -- note {system: task_done, task_id, task_done: true} ("Done: …", a task's
+                 --       Done when nothing else logged it; Undo deletes it)
+                 -- maintenance {actions:[task name], equipment_id?, prev_serviced_at?, task_id,
+                 --       task_done: true} (a maintenance task's Done; with an item it's
+                 --       serviced, and Undo puts last_serviced_at back)
 photos           id, tank_id, event_id?, test_id?, path, thumb_path, width, height, taken_at
                  (from the photo's details, the day picked on upload, or its entry's date),
                  taken_at_set (the keeper changed it in the viewer: it no longer follows the entry),
@@ -80,12 +104,35 @@ photo_livestock  photo_id, livestock_id (pets tagged in a photo)
 tasks            id, tank_id, name, kind(water_change|test|maintenance|other|dosing|feeding|
                  review: the setup review, one per tank, every 30/91/182 days or none when off;
                  done on its page, not by Mark done),
-                 recurring, interval_days?, schedule_mode(completion|fixed|weekdays),
+                 recurring, interval_days?, schedule_mode(completion|fixed|weekdays|after),
                  weekdays? ("1,3,5", 0 = Sunday), next_due?, ends_on? (no occurrences after
-                 this day), snoozed_until?, equipment_id? (the item's service reminder: the
+                 this day), snoozed_until? (this occurrence moved, later or sooner; also "Just this
+                 one" from the form, #173), grace_days (0–3, #175: days late it can be and
+                 still read ▲ Due, not ✕ Overdue),
+                 temp_interval_days?, temp_until? (#171: every temp_interval_days for what's
+                 done before temp_until, then interval_days again; History notes the start
+                 and the return), temp_until_param? (#179: or sooner, once a test reads
+                 this tank parameter in range, 0 for ammonia and nitrite), paused_from?,
+                 paused_until? (#172: not due or notified until paused_until; then resumed
+                 with its dates moved on), paused_until_param? (#179: or sooner, the same
+                 way; History notes why it resumed), from_event_id? (#174:
+                 the algae or health entry a treatment course was started from), plan_run_id? (#177:
+                 a step of a treatment plan), trigger_kind?(water_change|dosing|maintenance|test),
+                 trigger_offset_days?, trigger_product?, trigger_entry_id? (#178, schedule_mode
+                 after: due trigger_offset_days after the latest such log, a dose of
+                 trigger_product or any; next_due is null while it waits; trigger_entry_id is
+                 the event or test it counts from, so editing its date moves it and deleting
+                 it sets it waiting again; a follower's own log triggers nothing),
+                 avoid_water_change (#178: due the day a water change is logged, it moves to
+                 the next day by snoozed_until), equipment_id? (the item's service reminder: the
                  equipment form sets its cadence, and a logged service completes it),
                  open_form_on_done, product?, amount?, amount_unit? (a dosing or feeding
                  routine: Done logs the dose or feeding, and Undo removes it), created_at
+plan_runs        id, tank_id, template (a starter's key, src/lib/plans.ts), name, started_on,
+                 ends_on, ended_at?, ended_early, paused_task_ids (json: the tank's tasks it
+                 held back, resumed when it ends early), from_event_id? (#177: a treatment
+                 plan; its steps are tasks with plan_run_id; History notes plan_started,
+                 plan_extended and plan_ended)
 task_completions id, task_id, completed_at, event_id?,
                  prev_next_due?, prev_snoozed_until? (to undo),
                  skipped (Skip this one: passed over, not done; event_id is its
@@ -95,7 +142,8 @@ task_completions id, task_id, completed_at, event_id?,
 equipment        id, tank_id, type(filter|heater|light|co2|pump|skimmer|other), brand?,
                  model?, specs JSON, schedule? JSON ({periods:[{on,off}], rampMin?}: when it
                  runs; null runs all day; a light's sets the tank's lights times and photoperiod),
-                 installed_at?, last_serviced_at?, notes?, removed_at?, import_id?, created_at
+                 installed_at?, last_serviced_at?, notes?, removed_at?, barcode? (the product
+                 barcode it was scanned from, as a GTIN), import_id?, created_at
 par_readings     id, tank_id, spot, x, y (0–100 across and front to back), value (µmol/m²/s),
                  note?, measured_at, created_at
 livestock        id, tank_id, kind(fish|invert|coral), common_name, scientific_name?,
@@ -110,8 +158,20 @@ test_kits        id, user_id, name, param_key (ph|nh3|no2|no3|gh|kh|temp or cust
                  created_at
 products         id, user_id, name, url, note?, strength_mg_per_ml?, strength_of? (its strength for
                  the Dose → ppm calculator: mg per mL of what it adds), created_at (saved reorder links)
+quick_favorites  id, user_id, tank_id? (null: every tank), label, kind(test|water_change|dosing|
+                 feeding|maintenance|note), fields JSON (what the form opens with, as typed:
+                 amountMode, amount, source, product, unit, food, actions[]), position, created_at
+                 (Quick log favorites: pinned on Quick add, one tap to a form filled in, never saved
+                 on its own)
+dashboard_prefs  id, user_id, tank_id, trend_param_id?, priority JSON [parameter ids listed first],
+                 hidden JSON [trends|recent|inTank|growing|live], created_at; unique (user_id, tank_id)
+                 (a keeper's choices for a tank's dashboard; no row means the defaults)
+maintenance_routines id, tank_id, name, steps JSON [{kind(test|water_change|dosing|feeding|
+                 maintenance|note), label, fields}], position, created_at (a named sequence of log
+                 steps, run one at a time; each logged step is an events/tests row like any other)
 expenses         id, tank_id, date, amount_cents, category(livestock|plants|equipment|
-                 consumables|other), what, note?, product_id?, receipt_path?,
+                 consumables|other), what, note?, product_id?, equipment_id? (the item it
+                 was for), receipt_path?,
                  receipt_type?(image/jpeg|application/pdf), import_id?, created_at
 
 ── Sharing ────────────────────────────────────────────────────────────────────
@@ -119,7 +179,9 @@ public_pages     tank_id, enabled, slug, show_readings, show_charts, show_photos
                  show_activity, show_livestock, show_equipment, show_description,
                  show_timeline (photos in date order with the day, readings and changes between,
                  following the readings, pet names, livestock and activity switches),
-                 show_pet_names, description?, display_name, indexable, seo_title?,
+                 show_pet_names, show_details (times, notes on entries, observations and the
+                 schedule, for people helping diagnose), description?, question? (the keeper's
+                 question to helpers), display_name, indexable, seo_title?,
                  seo_description?, og_photo_id?, og_plain, view_count
 public_page_views tank_id, day, views
 tank_members     id, tank_id, email, user_id? (once accepted), role(log|view), token_hash,
@@ -160,14 +222,30 @@ server_settings  singleton: email_provider?(mailgun|smtp), mailgun_api_key_enc?,
                  allow_public_pages, public_home_enabled, public_base_url?, ga4_id?,
                  consent_banner, search_console_tag?, scheduled_emails, update_check,
                  log_level(warn|info), log_debug_until?, stock_photos, species_care (care ranges
-                 from FishBase, downloaded by the server into DATA_DIR/species-care.json), vapid_public_key?,
-                 vapid_private_key_enc? (Web Push keys, made on first use)
+                 from FishBase, downloaded by the server into DATA_DIR/species-care.json),
+                 barcode_lookup (what a scanned barcode is, asked by the server of Open Products
+                 Facts and UPCitemdb), vapid_public_key?, vapid_private_key_enc? (Web Push keys,
+                 made on first use)
 stock_photos     name (the scientific name looked up), status(ok|none|failed), file?,
                  width?, height?, author?, license?, license_url?, page_url?, reason?,
                  fetched_at (species photos from Wikimedia Commons, kept in DATA_DIR/stock)
+barcode_lookups  code (the GTIN scanned), status(ok|none|failed), title?, brand?, category?,
+                 source?(Open Products Facts|UPCitemdb), source_url?, reason?, fetched_at (what a
+                 product barcode is, asked once by the server when equipment is scanned, and kept)
 sensor_readings  id, tank_id, parameter_id, value (stored units), at, source (the token's name),
                  token_id? (readings from probes and controllers, apart from tests: one a minute
-                 per parameter, kept a year, averaged for charts, never an alert by themselves)
+                 per parameter, kept a year, never an alert by themselves; charts show each span's
+                 average with its lowest and highest)
+device_polls     id, user_id, tank_id, name (the readings' source), url (scheme, host, port, path),
+                 username?, password_enc?, sensors JSON [{object_id, name, parameter (key or custom
+                 name), unit?}], created_at, last_polled_at?, last_ok_at?, last_error? (devices with
+                 their own web page, ESPHome's web server, that the scheduler reads every 5 minutes
+                 and stores as sensor_readings with no token: Settings › Sensors › Read a device)
+sensor_hours     tank_id, parameter_id, hour ('YYYY-MM-DDTHH', UTC), n, total, lo, hi
+                 (each hour of sensor samples in sum, primary key tank+parameter+hour; kept by
+                 triggers on sensor_readings: a sample adds to its hour, a deleted one takes away,
+                 and the hour goes with its last sample; lo/hi stay until then. Charts with spans
+                 of an hour or more read these instead of the samples)
 wishes           id, tank_id, kind(fish|invert|coral|plant|equipment), name, scientific_name?,
                  count, equipment_type?, note?, price_cents?, url?, created_at, added_at?
                  (the wish list; Add to tank writes the livestock, plant or equipment row,
@@ -181,4 +259,4 @@ logs             id, created_at, level(error|warn|info|debug), area, message, de
 
 Everything that belongs to a tank is deleted with it, and everything that belongs to a user with them. `import_id` ties rows to the import that added them, so an import is undone in one step.
 
-Indexes: `tests(tank_id, taken_at)`, `test_readings(parameter_id)`, `sensor_readings(tank_id, parameter_id, at)`, `events(tank_id, occurred_at)`, `tasks(next_due)`, `expenses(tank_id, date)`, `public_pages(slug)`, `assistant_tokens(token_hash)`, `assistant_tokens(refresh_hash)`, plus one per `tank_id` or `user_id` foreign key.
+Indexes: `tests(tank_id, taken_at)`, `test_readings(parameter_id)`, `sensor_readings(tank_id, parameter_id, at)`, `events(tank_id, occurred_at)`, `photos(tank_id, taken_at, id)`, `photos(event_id)`, `photos(test_id)`, `tasks(next_due)`, `expenses(tank_id, date)`, `public_pages(slug)`, `assistant_tokens(token_hash)`, `assistant_tokens(refresh_hash)`, plus one per `tank_id` or `user_id` foreign key.

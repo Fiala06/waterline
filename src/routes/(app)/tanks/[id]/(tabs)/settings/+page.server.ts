@@ -8,7 +8,10 @@ import { dateInZone, fmtDate } from '$lib/time';
 import { db } from '$lib/server/db';
 import { publicPages } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
-import { getTank, listParams, setArchived, updateTank } from '$lib/server/tanks';
+import { getTank, listParams, setArchived, setChecklist, updateTank } from '$lib/server/tanks';
+import { listTasks } from '$lib/server/tasks';
+import { intervalText } from '$lib/tasks';
+import { doseText, nextDoseText } from '$lib/growing';
 import { parseReviewEvery, REVIEW_INTERVALS } from '$lib/review';
 import { checkSection, reviewTask, setReviewEvery } from '$lib/server/review';
 import { todayInZone } from '$lib/time';
@@ -50,6 +53,7 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 			glass: tank.glass ?? '',
 			substrate: tank.substrate ?? '',
 			waterSource: tank.waterSource ?? '',
+			growingStyle: tank.growingStyle ?? '',
 			photoperiodH: tank.photoperiodH == null ? '' : String(tank.photoperiodH),
 			lightsOn: tank.lightsOn ?? '',
 			lightsOff: tank.lightsOff ?? '',
@@ -63,6 +67,13 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 			const from = (x: typeof l.lights) => (x?.item ? { text: periodsText(x.schedule), hours: x.hours, item: { id: x.item.id, name: x.item.name } } : null);
 			return { lights: from(l.lights), co2: from(l.co2) };
 		})(),
+		// a planted tank's fertilizer routines (#96), listed with its growing setup
+		dosing:
+			tank.type === 'planted'
+				? listTasks(user.id, tank.id)
+						.filter((r) => r.task.kind === 'dosing')
+						.map((r) => ({ id: r.task.id, text: doseText({ ...r.task, title: r.task.name }), interval: intervalText(r.task), next: nextDoseText(r.task.due, todayInZone(user.timeZone)) }))
+				: [],
 		paramSummary: {
 			tracked: tracked.length,
 			custom: all.filter((p) => p.isCustom).length,
@@ -85,6 +96,12 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 };
 
 export const actions: Actions = {
+	// the getting-started checklist, back on the dashboard (#82)
+	showChecklist: async ({ locals, params, cookies }) => {
+		setChecklist(locals.user!.id, params.id, 'shown');
+		setFlash(cookies, '✓ The checklist is back on the dashboard');
+		redirect(303, `/?tank=${params.id}`);
+	},
 	save: async ({ request, locals, params, cookies }) => {
 		const user = locals.user!;
 		const form = await request.formData();
@@ -94,7 +111,7 @@ export const actions: Actions = {
 		const prepared = cover instanceof File && cover.size ? await preparePhotos([cover]) : [];
 		if ('error' in prepared) return fail(400, { errors: { cover: prepared.error } });
 		updateTank(user.id, params.id, values);
-		const [photo] = storePhotos(params.id, datePhotos(prepared, user.timeZone), { takenAt: new Date().toISOString() });
+		const [photo] = await storePhotos(params.id, datePhotos(prepared, user.timeZone), { takenAt: new Date().toISOString() });
 		if (photo) setCover(user.id, photo.id);
 		// or one of the tank's own photos, picked under Choose from photos (an upload wins)
 		const chosen = String(form.get('coverPhotoId') ?? '');

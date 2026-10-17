@@ -7,7 +7,7 @@
 	import { enhance } from '$app/forms';
 	import { markDone } from '$lib/splash';
 	import { page } from '$app/state';
-	import { amountText, dueInfo, intervalText } from '$lib/tasks';
+	import { amountText, cadenceText, dueInfo, intervalText } from '$lib/tasks';
 	import { REVIEW_ABOUT } from '$lib/review';
 	import { fmtDate } from '$lib/time';
 
@@ -24,6 +24,11 @@
 		/** a routine's amount (#17): "1 pump" */
 		amount?: number | null;
 		amountUnit?: string | null;
+		/** for a while (#171) */
+		tempIntervalDays?: number | null;
+		tempUntil?: string | null;
+		/** days late before it's overdue (#175) */
+		graceDays?: number;
 	}
 	let { tasks, today }: { tasks: TaskRow[]; today: string } = $props();
 
@@ -32,17 +37,20 @@
 
 <div class="list">
 	{#each tasks as t, i (t.id)}
-		{@const d = dueInfo(t.due, today)}
+		{@const d = dueInfo(t.due, today, t.graceDays ?? 0)}
 		<!-- "✕ 1 day over", "▲ Today", how soon ("In 2 days"), or a date further off;
 		     the primary button only on the most urgent, and "Done early" for one that isn't due -->
 		{@const when =
-			d.days < 0
+			d.section === 'overdue'
 				? `✕ ${-d.days} day${d.days === -1 ? '' : 's'} over`
-				: d.days === 0
+				: d.days < 0
+					? d.text
+					: d.days === 0
 					? '▲ Today'
-					: `${d.days === 1 ? 'Tomorrow' : d.days <= 7 ? `In ${d.days} days` : fmtDate(t.due)} · ${intervalText(t)}`}
+					: `${d.days === 1 ? 'Tomorrow' : d.days <= 7 ? `In ${d.days} days` : fmtDate(t.due)} · ${t.tempUntil && t.tempUntil > today ? cadenceText(t, null, today) : intervalText(t)}`}
 		{@const dose = amountText(t.amount, t.amountUnit)}
-		<div class="row">
+		<!-- a task not due yet steps back, so what is due or over stands out -->
+		<div class="row" class:later={d.days > 0}>
 			<div class="text">
 				<div class="name">{t.name}</div>
 				{#if t.kind === 'review'}<div class="about">{REVIEW_ABOUT}</div>{/if}
@@ -105,15 +113,24 @@
 	.due .plain {
 		font-weight: 400;
 	}
-	/* not due yet: the design's ghost, there if it's needed but not asking to be pressed */
+	/* not due yet: the name in neutral and regular weight, and the design's ghost of a button, muted
+	   until hovered: there if it's needed but not asking to be pressed */
+	.row.later .name {
+		color: var(--text-2);
+		font-weight: 400;
+	}
 	.early {
 		border-color: transparent;
-		color: var(--accent-text);
+		color: var(--text-muted);
 	}
 	@media (hover: hover) {
 		.early:hover {
 			border-color: var(--divider);
+			color: var(--accent-text);
 		}
+	}
+	.early:focus-visible {
+		color: var(--accent-text);
 	}
 	@media (min-width: 1024px) {
 		.row {

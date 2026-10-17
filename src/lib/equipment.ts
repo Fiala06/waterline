@@ -7,6 +7,7 @@ import {
   unitLabel,
   type UnitPrefs,
 } from "./units";
+import { isTime } from "./time";
 
 export type EquipmentType =
   | "filter"
@@ -193,6 +194,57 @@ export function specSummary(
   return out;
 }
 
+/** A spec's value as shown: "60%", "8 h", "25 °C", text as it is, and "none" for nothing. */
+export function specValueText(
+  f: SpecField,
+  v: unknown,
+  prefs: UnitPrefs,
+): string {
+  if (v == null || v === "") return "none";
+  if (typeof v === "number") {
+    const n = Number(
+      formatNumber(specToDisplay(f, v, prefs), f.quantity === "temp" ? 0 : 1),
+    ).toLocaleString("en-US");
+    const u = specUnit(f, prefs);
+    return u === "%" ? `${n}%` : u ? `${n} ${u}` : n;
+  }
+  return String(v);
+}
+
+const CHANGE_LABELS: Record<string, string> = {
+  brand: "Brand",
+  model: "Model",
+  name: "Name",
+  schedule: "Schedule",
+};
+
+/**
+ * What an adjustment changed, in words: the setting's label and "60% → 80%",
+ * from an equipment event's `changes` ({ key: [before, after] }). The field is
+ * found by its key across every type; brand and model have labels of their own.
+ */
+export function specChangeText(
+  key: string,
+  change: unknown,
+  prefs: UnitPrefs,
+): { label: string; text: string } | null {
+  if (!Array.isArray(change) || change.length !== 2) return null;
+  const [before, after] = change;
+  const f = Object.values(SPEC_FIELDS)
+    .flat()
+    .find((x) => x.key === key);
+  if (f)
+    return {
+      label: f.label,
+      text: `${specValueText(f, before, prefs)} → ${specValueText(f, after, prefs)}`,
+    };
+  const plain = (v: unknown) => (v == null || v === "" ? "none" : String(v));
+  return {
+    label: CHANGE_LABELS[key] ?? key,
+    text: `${plain(before)} → ${plain(after)}`,
+  };
+}
+
 // ── Service cadence ─────────────────────────────────────────────────────────
 // "Service every …" on an item is a maintenance task with its equipment_id;
 // the equipment form creates, updates or removes it. "Log service" completes it.
@@ -304,6 +356,10 @@ export interface Period {
   on: string; // HH:MM
   off: string; // HH:MM; earlier than `on` runs across midnight
 }
+/** A period that can be saved: an on and an off time, not the same (#120: the form's preview and the server agree). */
+export const isCompletePeriod = (p: Period) =>
+  isTime(p.on) && isTime(p.off) && p.on !== p.off;
+
 export interface Schedule {
   periods: Period[];
   /** lights: minutes to ramp up at the start and down at the end of each period */
@@ -436,4 +492,53 @@ export function lightingText(
   return [l.lights && `Lights ${periodsText(l.lights.schedule)}`, l.co2 && `CO₂ ${periodsText(l.co2.schedule)}`]
     .filter(Boolean)
     .join(" · ");
+}
+
+// ── From a product barcode (#147) ───────────────────────────────────────────
+
+/** Words in a product's listing that say what it is, in the order they decide. */
+const TYPE_WORDS: [EquipmentType, RegExp][] = [
+  ["co2", /\bco2\b|co₂|\bcarbon dioxide\b|\bregulator\b|\bdiffuser\b|\bsolenoid\b|\bbubble counter\b/i],
+  ["skimmer", /\bskimmer\b/i],
+  ["heater", /\bheaters?\b|\bthermostat\b/i],
+  ["filter", /\bfilters?\b|\bfiltration\b|\bcanister\b|\bhang-?on\b|\bhob\b/i],
+  ["light", /\blights?\b|\blighting\b|\bled\b|\blamp\b|\bfixture\b/i],
+  ["pump", /\bpumps?\b|\bpowerhead\b|\bwave ?maker\b|\bcirculation\b/i],
+];
+
+/** The type a product's name suggests: "Fluval 407 Performance Canister Filter" is a filter; `other` when nothing says. */
+export function guessEquipmentType(text: string): EquipmentType {
+  for (const [type, re] of TYPE_WORDS) if (re.test(text)) return type;
+  return "other";
+}
+
+const GENERIC_FIRST_WORDS = /^(aquarium|fish|tank|the|a|an|new|premium|submersible|adjustable|mini|large|small)$/i;
+
+/**
+ * Brand and model from a product listing's name: "Fluval 407 Performance
+ * Canister Filter, Aquarium Filter for up to 100 Gallons" with brand "Fluval"
+ * is brand "Fluval", model "407 Performance Canister Filter". The name is cut
+ * where listings start the sales pitch (a comma, a dash, a pipe, a bracket,
+ * "for", "with", "up to"); a brand in capitals is written as a name; without a
+ * brand given, the first word is taken as one when it's a word, not a size.
+ */
+export function brandAndModel(
+  title: string,
+  brand: string | null | undefined,
+): { brand: string; model: string } {
+  const clean = (s: string) => s.replace(/\s+/g, " ").trim();
+  let name = clean(title);
+  const cut = /\s+[-–—|]\s+|,\s|\s\(|\s+for\s+|\s+with\s+|\s+up to\s+/i.exec(name);
+  if (cut && cut.index >= 3) name = name.slice(0, cut.index).trim();
+  let b = clean(brand ?? "");
+  if (b.length > 3 && b === b.toUpperCase()) b = b[0] + b.slice(1).toLowerCase();
+  if (!b) {
+    const first = /^([A-Za-z][A-Za-z&'.-]+)\s+\S/.exec(name)?.[1] ?? "";
+    if (first && !GENERIC_FIRST_WORDS.test(first)) b = first;
+  }
+  let model = name;
+  if (b && model.toLowerCase().startsWith(b.toLowerCase())) model = model.slice(b.length);
+  model = model.replace(/^[\s:,-]+|[\s:,-]+$/g, "");
+  if (!model && name.toLowerCase() !== b.toLowerCase()) model = name;
+  return { brand: b.slice(0, 60), model: model.slice(0, 60) };
 }

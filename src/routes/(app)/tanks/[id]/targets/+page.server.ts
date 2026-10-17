@@ -1,13 +1,7 @@
 import { fail, redirect } from "@sveltejs/kit";
-import { paramTip } from "$lib/tips";
+import { paramTip, whenToTest } from "$lib/tips";
 import { parseTestEvery } from "$lib/status";
-import {
-  defaultParameters,
-  fmtTarget,
-  paramDecimals,
-  paramUnit,
-  storedValue,
-} from "$lib/params";
+import { defaultParameters, fmtTarget, paramDecimals, paramGroup, paramLevel, paramUnit, storedValue } from "$lib/params";
 import { setFlash } from "$lib/server/flash";
 import { num, str } from "$lib/server/forms";
 import {
@@ -21,6 +15,7 @@ import {
   updateParams,
 } from "$lib/server/tanks";
 import { checkSection } from "$lib/server/review";
+import { latestSamples } from "$lib/server/sensors";
 import { safeReturn } from "$lib/server/redirect";
 import type { Actions, PageServerLoad } from "./$types";
 
@@ -31,6 +26,8 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
     defaultParameters(user, tank.type).map((d) => [d.key, d]),
   );
   const counts = readingCounts(tank.id);
+  // which parameters a sensor reports, so the switch to make it the reading shows for them
+  const sensors = latestSamples(tank.id);
   return {
     tank: { id: tank.id, name: tank.name, type: tank.type },
     reusable: reusableCustomParams(user.id, tank.id),
@@ -45,9 +42,14 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
         unit: paramUnit(p, user),
         isCustom: p.isCustom,
         tip: p.isCustom ? null : paramTip(p.key, tank.type),
+        when: p.isCustom ? null : whenToTest(p.key, tank.type),
+        group: paramGroup(p, tank.type),
+        level: paramLevel(p, tank.type),
         readings: counts.get(p.id) ?? 0,
         tracked: p.tracked,
         testEvery: p.testEveryDays == null ? "" : String(p.testEveryDays),
+        sensor: sensors.get(p.id)?.source ?? null,
+        sensorRecord: p.sensorRecord,
         decimals: paramDecimals(p, user),
         min: p.min == null ? "" : fmtTarget(p, p.min, user),
         max: p.max == null ? "" : fmtTarget(p, p.max, user),
@@ -92,6 +94,10 @@ export const actions: Actions = {
         tracked: form.get(`tracked_${p.id}`) === "on",
         // "Test every": a reading older than this is due on the dashboard
         testEveryDays: parseTestEvery(form.get(`testEvery_${p.id}`)),
+        // the sensor's reading is the reading: only where the switch was on the page
+        ...(form.has(`sensor_${p.id}`)
+          ? { sensorRecord: form.get(`record_${p.id}`) === "on" }
+          : {}),
       };
     });
     if (Object.keys(errors).length) return fail(400, { errors });

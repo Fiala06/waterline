@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { newKeeperWithTank, open } from './helpers';
 
 test('tips explain parameters and less obvious fields', async ({ page }, info) => {
-	await newKeeperWithTank(page, `tips-${info.project.name}`);
+	await newKeeperWithTank(page, `tips-${info.project.name}`, 'Planted', 'CO₂ injected');
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
 
 	// Water test: an ⓘ beside the name; the field is still named by it
@@ -21,6 +21,13 @@ test('tips explain parameters and less obvious fields', async ({ page }, info) =
 	await open(page, `/tanks/${tankId}/targets`);
 	await page.getByRole('button', { name: 'About Nitrite' }).click();
 	await expect(page.getByText(/stops their blood carrying oxygen/)).toBeVisible();
+	// and when to test it (#91); the optional ones say so beside their default
+	await expect(page.locator('.tip-pop:popover-open')).toContainText('When to test');
+	await expect(page.locator('.tip-pop:popover-open')).toContainText(/while a tank cycles/);
+	await page.keyboard.press('Escape');
+	const row = (name: string) => page.locator('.prow', { has: page.locator('.nm', { hasText: new RegExp(`^${name}$`) }) });
+	await expect(row('Iron').getByText(/· Advanced$/)).toBeVisible();
+	await expect(row('Nitrate').getByText(/· Recommended$/)).toBeVisible();
 
 	// Tank settings: the two volumes
 	await open(page, `/tanks/${tankId}/settings`);

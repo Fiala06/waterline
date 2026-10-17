@@ -1,8 +1,8 @@
 import { and, count, desc, eq, inArray, lte, sql } from "drizzle-orm";
 import { redirect } from "@sveltejs/kit";
 import { cyclingStage, staleAfter, type CycleTest } from "$lib/status";
-import { lightingText } from "$lib/equipment";
-import { latestSamples } from "$lib/server/sensors";
+import { lightingText, tankLighting } from "$lib/equipment";
+import { displaySamples, isLive, latestSamples, sampleSeries } from "$lib/server/sensors";
 import { fmtValue, paramUnit, statusOf } from "$lib/params";
 import { setFlash } from "$lib/server/flash";
 import {
@@ -38,8 +38,14 @@ import { testReadings, tests } from "$lib/server/db/schema";
 import { thumbsFor } from "$lib/server/photos";
 import { equipmentName } from "$lib/equipment";
 import { listEquipment, scheduledItems, listLivestock, listPlants } from "$lib/server/specs";
-import { getTank, listParams, markCycling, markRunning } from "$lib/server/tanks";
+import { dismissCyclingAsk, getTank, listParams, markCycling, markRunning, roleOn, setChecklist } from "$lib/server/tanks";
+import { checklistSteps, showChecklist } from "$lib/checklist";
+import { growingRows } from "$lib/growing";
+import { dashboardChoices, resetDashboardChoices, saveDashboardChoices } from "$lib/server/dashboard-prefs";
+import { parseChoices } from "$lib/dashboard";
+import { intervalText } from "$lib/tasks";
 import { listTasks } from "$lib/server/tasks";
+import { tankSuggestions } from "$lib/server/suggestions";
 import type { Actions, PageServerLoad } from "./$types";
 
 const TREND_DAYS = 28;
@@ -51,7 +57,7 @@ const CYCLE_DAYS = 56;
 
 export const load: PageServerLoad = async ({ locals, parent }) => {
   const user = locals.user!;
-  const { currentTankId } = await parent();
+  const { currentTankId, counts } = await parent();
   if (!currentTankId) return { tank: null };
 
   const tank = getTank(user.id, currentTankId);
@@ -92,12 +98,15 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
   }
 
   const since = new Date(Date.now() - TREND_DAYS * 86_400_000).toISOString();
+  // the latest reading from a sensor per parameter (#19), and its line under the trend (#130)
+  const live = latestSamples(tank.id);
   const trends = params.map((p) => ({
     parameterId: p.id,
     points: series(tank.id, p.id, since).map((r) => ({
       t: Date.parse(r.takenAt),
       value: r.value,
     })),
+    sensor: live.has(p.id) ? displaySamples(sampleSeries(tank.id, p.id, since), p, user) : [],
   }));
   const markers = eventsSince(tank.id, ["water_change"], since).map((e) => ({
     t: Date.parse(e.occurredAt),
@@ -198,10 +207,11 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
   const cycleSince = new Date(
     Date.now() - CYCLE_DAYS * 86_400_000,
   ).toISOString();
-  // not marked cycling, but new and with ammonia or nitrite over target: ask (#68)
+  // not marked cycling, but new and with ammonia or nitrite over target: ask (#68), unless the keeper said Not cycling (#155)
   const born = tank.startDate ?? tank.createdAt.slice(0, 10);
   const askCycling =
     !tank.cycling &&
+    !tank.cyclingAskDismissed &&
     born >= addDays(today, -CYCLE_DAYS) &&
     params.some(
       (p) =>
@@ -262,8 +272,53 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
   // each with its feature's page when the line links one
   const whatsNew = whatsNewCard(user.seenVersion);
 
+  // getting started (#82): what to do after making the tank, while it's new
+  const facts = {
+    tankId: tank.id,
+    type: tank.type,
+    cycling: tank.cycling,
+    createdAt: tank.createdAt,
+    state: tank.checklist,
+    tests: testCount,
+    livestock: counts.livestock,
+    plants: counts.plants,
+    photos: counts.photos,
+    lights: !!tankLighting(tank, scheduledItems(tank.id)).lights || tank.withoutEquipment.includes("light"),
+    waterChangeTaskId: wcTask?.id ?? null,
+  };
+  // the owner's to work through and to hide; someone the tank is shared with sees the tank as it is
+  const checklist = roleOn(user.id, tank) === "owner" && showChecklist(facts)
+    ? (() => {
+        const steps = checklistSteps(facts);
+        return { steps, done: steps.filter((s) => s.done).length, cycling: tank.cycling, allDone: steps.every((s) => s.done) };
+      })()
+    : null;
+
+  // a planted tank's growing setup (#97): light, CO₂, fertilizer and substrate, each leading to where it's set
+  const growing =
+    tank.type === "planted"
+      ? (() => {
+          const l = tankLighting(tank, scheduledItems(tank.id));
+          const part = (x: typeof l.lights) => (x ? { schedule: x.schedule, hours: x.hours, itemId: x.item?.id ?? null } : null);
+          return growingRows({
+            tankId: tank.id,
+            lights: part(l.lights),
+            co2: part(l.co2),
+            substrate: tank.substrate,
+            dosing: tasks
+              .filter((t) => t.kind === "dosing")
+              .map((t) => ({ id: t.id, title: t.name, product: t.product, amount: t.amount, amountUnit: t.amountUnit, nextDue: t.due, interval: intervalText(t) })),
+            today,
+          });
+        })()
+      : [];
+
   return {
     whatsNew,
+    checklist,
+    growing,
+    // the keeper's choices for this dashboard (#94): what Trends opens on, what's listed first, what's hidden
+    choices: dashboardChoices(user.id, tank.id),
     cheers: { streak, milestones },
     contents,
     cycling,
@@ -276,18 +331,30 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
       nominalVolumeL: tank.nominalVolumeL,
       startDate: tank.startDate,
       cycling: tank.cycling,
+      // for tank-aware guidance (#90): the water source, whether CO₂ is injected, shrimp in the tank
+      waterSource: tank.waterSource,
+      co2: tankLighting(tank, scheduledItems(tank.id)).co2 ? true : tank.withoutEquipment.includes("co2") ? false : null,
+      shrimp: inTank.some((l) => /shrimp|caridina/i.test(`${l.commonName} ${l.scientificName ?? ""}`)),
     },
     params,
     latest: Object.fromEntries(latest),
-    // the latest reading from a sensor per parameter (#19): "Live 25.4 °C · 2 min ago"
+    // a step the latest readings suggest (#179), under the reading in Needs attention
+    suggestions: tankSuggestions(user, tank, new Map([...latest].map(([id, r]) => [id, r.value]))),
+    // "Live 25.4 °C · 3:11 PM" while the sensor keeps reporting; "Last 25.4 °C · Yesterday, 3:11 PM" once it's gone quiet
     live: Object.fromEntries(
-      [...latestSamples(tank.id)].map(([id, s]) => {
+      [...live].map(([id, s]) => {
         const p = params.find((x) => x.id === id);
+        if (!p) return [id, null];
+        const fresh = isLive(s.at, s.prevAt);
+        const unit = paramUnit(p, user);
+        // where the sensor is the reading of record, the value is the card's already
+        const value = latest.get(id)?.sensor ? "" : ` ${fmtValue(p, s.value, user)}${unit ? ` ${unit}` : ""}`;
         return [
           id,
-          p
-            ? `Live ${fmtValue(p, s.value, user)}${paramUnit(p, user) ? ` ${paramUnit(p, user)}` : ""} · ${fmtWhen(s.at, tz).replace(/^Today, /, "")}`
-            : "",
+          {
+            fresh,
+            text: `${fresh ? "Live" : "Last"}${value} · ${fmtWhen(s.at, tz).replace(/^Today, /, "")}`,
+          },
         ];
       }),
     ),
@@ -314,11 +381,41 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 };
 
 export const actions: Actions = {
+  // Customize (#94): a few choices per tank, kept on the account; Reset forgets them
+  customize: async ({ request, locals, cookies }) => {
+    const user = locals.user!;
+    const form = await request.formData();
+    const tank = getTank(user.id, String(form.get("tankId") ?? ""));
+    saveDashboardChoices(user.id, tank.id, parseChoices(form, listParams(tank.id, { all: true }).map((p) => p.id)));
+    setFlash(cookies, "✓ Dashboard saved");
+    redirect(303, `/?tank=${tank.id}`);
+  },
+  resetDashboard: async ({ request, locals, cookies }) => {
+    const user = locals.user!;
+    const tank = getTank(user.id, String((await request.formData()).get("tankId") ?? ""));
+    resetDashboardChoices(user.id, tank.id);
+    setFlash(cookies, "✓ Dashboard back to its defaults");
+    redirect(303, `/?tank=${tank.id}`);
+  },
+  // the getting-started checklist has done its job (#82)
+  hideChecklist: async ({ request, locals, cookies }) => {
+    const tankId = String((await request.formData()).get("tankId") ?? "");
+    setChecklist(locals.user!.id, tankId, "hidden");
+    setFlash(cookies, "✓ Checklist hidden · Tank setup brings it back");
+    redirect(303, "/");
+  },
   // the cycle is done: ammonia and nitrite count as failures again, with a note in History
   markCycling: async ({ request, locals, cookies }) => {
     const tankId = String((await request.formData()).get("tankId") ?? "");
     const tank = markCycling(locals.user!.id, tankId);
     setFlash(cookies, `✓ ${tank.name} is cycling`);
+    redirect(303, "/");
+  },
+  // Not cycling: the ask goes and stays gone for this tank (#155)
+  dismissCyclingAsk: async ({ request, locals, cookies }) => {
+    const tankId = String((await request.formData()).get("tankId") ?? "");
+    const tank = dismissCyclingAsk(locals.user!.id, tankId);
+    setFlash(cookies, `✓ ${tank.name} isn't cycling`);
     redirect(303, "/");
   },
   markRunning: async ({ request, locals, cookies }) => {

@@ -150,8 +150,8 @@ export const actions: Actions = {
 		setFlash(cookies, on ? '✓ In the timeline' : 'Left out of the timeline');
 		redirect(303, `/photos/${params.id}`);
 	},
-	delete: ({ locals, params, cookies }) => {
-		deletePhoto(locals.user!.id, params.id);
+	delete: async ({ locals, params, cookies }) => {
+		await deletePhoto(locals.user!.id, params.id);
 		setFlash(cookies, 'Photo deleted');
 		redirect(303, '/photos');
 	}

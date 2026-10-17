@@ -1,0 +1,1 @@
+ALTER TABLE `tasks` ADD `from_event_id` text REFERENCES events(id) ON DELETE set null;

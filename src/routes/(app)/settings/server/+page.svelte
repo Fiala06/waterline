@@ -552,6 +552,16 @@
 					>
 					<span class="switch"><input id="sv-care" type="checkbox" name="speciesCare" defaultChecked={care.on} disabled={care.off} /><span></span></span>
 				</div>
+				<div class="row" id="barcode-lookup">
+					<label for="sv-barcode" class="ttext"
+						><span class="tt">Barcode lookup</span><span class="td"
+							>{data.server.barcodeLookupOff
+								? 'Off: BARCODE_LOOKUP=off is set.'
+								: 'When someone scans the barcode on a new device’s box to add it, this server asks Open Products Facts, then UPCitemdb’s free lookup (100 a day for this server’s address, no account) what it is. Each barcode is asked once and kept, and the browser never contacts them. Off, the scanner still reads the number and finds equipment already added from it.'}</span
+						></label
+					>
+					<span class="switch"><input id="sv-barcode" type="checkbox" name="barcodeLookup" defaultChecked={data.server.barcodeLookup && !data.server.barcodeLookupOff} disabled={data.server.barcodeLookupOff} /><span></span></span>
+				</div>
 			</div>
 			<div class="actions"><button class="btn btn-primary">Save</button></div>
 		</form>
@@ -950,6 +960,10 @@
 		line-height: 1.4;
 		color: var(--text-muted);
 		overflow-wrap: anywhere;
+	}
+	/* a link in a muted line is too near its colour to tell apart without an underline (#107) */
+	.td a {
+		text-decoration: underline;
 	}
 	.choice .radio {
 		width: 20px;

@@ -13,6 +13,139 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 - **Every parameter on one chart:** On [Charts](/charts?p=all), pick All (at the top of the parameter list) to see every parameter you test on a single chart. pH, nitrate, temperature and the rest have no scale in common, so each is drawn against its own target: one shared band is the target, with High above it and Low below. Hover or tap for every reading in that test with its value and status, tap a parameter's key to take its line off the chart or put it back, and the latest of each is listed beside it.
 
+## 1.18.0 · 2026-10-16
+
+- **Suggested steps from your readings.** When a water test reads something keepers usually act on, Needs attention on the [Overview](/tanks/current) and the test's own page suggest a step, which happens only when you tap it: ammonia or nitrite in a cycled tank offers water changes every 2 days until it reads 0, nitrate at 0 in a dosed tank offers Dose now with your usual product, and low phosphate with green spot algae logged lately says why. Switch any off for a tank under [Tank setup › Suggested steps](/tanks/current/suggestions), where each says where it comes from.
+- **Until a reading clears.** [Pause tasks](/tasks) can now end sooner, when a test reads a parameter in range ("Paused until ammonia reads 0"), and so can water changes every 2 days from a suggested step. The test that clears it picks them back up, and History says why.
+
+## 1.17.2 · 2026-10-16
+
+- **Tasks that follow a water change.** A task's Repeat on [Tasks](/tasks) can now be After a log: the day of, or a day or more after, a water change, a dose (of one product, or any), maintenance or a water test. Logging it, from any form or a task's Done, sets the task's date, so macros the day after the water change move with it when the water change does; until then the task waits under Waiting. Moving or deleting that log moves the task with it. A task that repeats on its own can be kept off water-change day too: due the day one is logged, it moves to the next day.
+
+## 1.17.1 · 2026-10-16
+
+- **Tap a last reading.** On [Log water test](/entries/test/new), tap the last reading beside a parameter (Last 7.2) to fill that one field with it, when only some readings match last time's.
+- **Tab and Enter to the next reading.** On [Log water test](/entries/test/new), Tab or Enter after a reading goes straight to the next one, past a kit's Start and Steps; Shift+Enter goes back. Enter no longer saves the test halfway through: after the last reading it moves on to the note.
+
+## 1.17.0 · 2026-10-16
+
+- **Treatment plans.** Start a plan from [Tasks](/tasks) (Start a treatment plan) or when you [log algae](/tanks/current/algae): a blackout, a spot treatment, a liquid carbon or medication course, or a new tank's water changes. Each starter is a place to begin: keep, rename or re-time its steps, and pick the routines it holds back (a blackout pauses ferts and feeding), seeing every date before it starts. Its steps are tasks like any other, the plan shows where it stands ("Day 3 of 19") with Extend and End early, and History notes when it starts and ends.
+
+## 1.16.2 · 2026-10-16
+
+- **A day late is fine.** A task's form on [Tasks](/tasks) now has Late is fine for: up to 3 days. Within them a late task reads ▲ Due yesterday rather than ✕ Overdue, with no overdue alert and no red mark on the tank. A new tank's water change starts with a day.
+- **Just this one.** Changing the next date of a task on a fixed calendar or on set days now asks Just this one (only that one moves; the schedule stays) or From now on (the schedule moves). A moved one says where it moved from.
+
+## 1.16.1 · 2026-10-16
+
+- **Several done at once.** On [Tasks](/tasks), Select several puts a box on each task; tick the ones you did and tap Done (or Done yesterday), with one Undo for all of them. On the [dashboard](/), when two or more tasks are due, Mark all done does them in one tap. A water change or test that opens its form, and the setup review, still get their own Done.
+- **Treatment courses for algae.** [Log algae](/tanks/current/algae) now has Save and start a treatment course: a task every other day for two weeks (change it as you like), linked to the entry. Any task can be a course with an end, not just doses. A course on [Tasks](/tasks) shows where it stands ("Day 3 of 15"), its page has End early (with Undo), and the algae entry links to its course. When a course from an algae entry is done, Waterline asks how the algae looks now and opens Log algae.
+
+## 1.16.0 · 2026-10-16
+
+- **More often for a while.** Fighting algae or ammonia? Open a task on [Tasks](/tasks) and tick More often until a date, then back to this: say every 3 days until the end of the month, and it goes back to its usual cadence by itself on that day. The row shows "every 3 days until Oct 30 · then every 7 days", and History notes when it starts and when it's back.
+- **Pause tasks.** A blackout, a trip, a dose held back until ammonia reads 0: Pause tasks for a while on [Tasks](/tasks) (or Pause until… in a task's Snooze menu) holds the tasks you tick until a day. Paused tasks aren't due and send no reminders; they're listed under Paused with Resume, and on their day they pick up again, moved on by the days they were paused (a course ends that much later). History notes the pause and the resume, and Undo takes a pause back.
+
+## 1.15.3 · 2026-10-16
+
+- **Your products in water changes.** On [Log water change](/entries/event/new?category=water_change), What went in now suggests the products you saved under [Settings › Products](/settings/products) as well as what the tank has used before, so a remineraliser or conditioner you haven't logged on that tank yet is there to pick.
+
+## 1.15.2 · 2026-10-16
+
+- **Done is in History.** Marking a task done on [Tasks](/tasks), the dashboard, or from an email or notification now leaves an entry in [History](/history): a maintenance task as Maintenance (and a filter's or other item's service task marks it serviced), anything else as "Done: …". Undo takes it out again.
+- **Done yesterday.** Forgot to tap Done? In a task's Snooze menu on [Tasks](/tasks), Done already? has Done yesterday and Done on a day…, so the next one counts from the day you really did it.
+- **Early water changes count.** Log a water change or test a little before its reminder is due (up to half its cadence early, such as a day early on every 3 days) and Also mark the reminder done is ticked for you, with the next one counted from the day you logged. Further ahead, the box is there to tick. If you left it unticked, the reminder's Snooze menu on [Tasks](/tasks) offers Count the water change on that day instead of Skip.
+- **How it repeats, and when it was last done.** Each task on [Tasks](/tasks) now says how its schedule counts ("every 3 days after done", or "every 7 days · on schedule" for one that keeps its days) and when you last did it. Open a task to see the last few times it was done or skipped, each opening its entry in History.
+- **Do it today, and a clearer Snooze.** A task's Snooze menu on [Tasks](/tasks) now offers Tomorrow, In 2 days, This weekend and Next week, each with its date, and Undo after snoozing. A task that isn't due yet can be brought forward with Do it today (or an earlier date), without changing the schedule after it. On phones, Snooze is on every task, not only overdue ones.
+- **Every task due today on the dashboard.** Due on the [dashboard](/) now lists everything due today or overdue, however many, then the next three, with +N more to see the rest on Tasks.
+- **A dose you log counts for its routine.** Log a dose by hand and, when it's the product of one of your dosing routines, Also mark the reminder done is there (ticked when it's due), so the routine moves on without dosing or ticking it twice. Each dosing routine on [Tasks](/tasks) and the tank's page also shows the last dose logged, such as "last 2 pumps · Oct 14".
+
+## 1.15.1 · 2026-10-16
+
+- **Due matches Tasks.** In Due on the [dashboard](/), a water change that's due now shows with the tank's other tasks, as it does on the [Tasks](/tasks) page, instead of only as the Water change row in Needs attention.
+
+## 1.15.0 · 2026-10-14
+
+- **Public page, built for getting help.** A tank's [public page](/tanks/current/public) now reads top to bottom the way someone diagnosing a problem needs it: your question first ("What I'm asking about", a new box in the page's settings), then what needs attention with its target and what it was before, then every parameter on one shared timeline with your water changes, doses and changes to the tank (new equipment, plants, losses) marked on it, so a spike the day the light changed stands out. Under that: the full water test log as a table, your setup with the light and CO₂ hours, your routine over the period (water changes, average size and gap, dosing per product), livestock with any losses, and the care log by day.
+- **Detail for people helping me.** A new switch on the [public page](/tanks/current/public) settings adds the times of tests and care, the notes on entries, observations, feeding and your maintenance schedule. Off by default: without it the page says the day, never the time, as before.
+- **Copy for a forum, download the data.** The public page has Copy summary for a forum post (the page as plain text with a link back) and Download data (CSV) of the tests over the range a visitor picked. Neither includes anything the page doesn't show.
+- **What's due stands out.** In Due on the [dashboard](/), a task that isn't due yet now steps back, its name in grey and its Done early muted, so an overdue task or one due today is what you see first.
+
+## 1.14.3 · 2026-10-14
+
+- **Not cycling.** The [dashboard](/)'s "New tank? High ammonia or nitrite is normal while it cycles" now has a second answer, Not cycling, for an established tank with a one-off spike. It goes and doesn't come back for that tank; Mark as cycling works as before.
+- **History's details readable.** In [History](/history) on a desktop, an entry's details on the right no longer draw a long value over its label: an item's name or a setting's change now takes its own room and wraps when long.
+
+## 1.14.2 · 2026-10-14
+
+- **Share images readable again.** The picture shown when a [public page](/tanks/current/public) or a photo link is shared on Snapchat, Facebook, Discord and the like drew every letter as a box in 1.14.1. It reads again, and the images already made are redrawn.
+
+## 1.14.1 · 2026-10-14
+
+- **Dividers that line up.** In a tank's parameters on the [dashboard](/), a parameter with a sensor's "● Live" line under its value no longer has its divider sitting lower than the rest of its row.
+- **Public page: newest first.** The timeline on a tank's public page now runs newest first, with the latest six photos shown and the rest behind "Show earlier", and the log shows its latest eight entries with the rest of the range behind "Show more" instead of one long list. Set it up under [Public page](/tanks/current/public).
+- **Public page: more to tap.** The cover photo opens full size, each reading under Latest readings that has a chart opens it, and the plants are listed as tags like the livestock. Latest readings now say when the latest test was taken ("Today, 7:12 PM"); the log and timeline still say only the day.
+- **A sensor on the public page.** A parameter a probe reports now shows "● Live · 9:30 AM" on its tile under Latest readings (with its value, where the tile shows your latest test), and its chart draws the probe's line even before there are two water tests to plot.
+
+## 1.14.0 · 2026-10-14
+
+- **Read a device with no Home Assistant.** A probe with its own web page, like an Apollo temperature probe or anything else running ESPHome with its web server on, can now be read by Waterline itself: under [Settings › Sensors › Read a device](/settings/sensors), give its address, and Find sensors lists what it reports with the parameter guessed for each (°C or °F is the temperature, the board's own sensors left out). Start reading reads it on the spot and then every 5 minutes, with no token, automation or reflash. Each device shows how its last read went ("✓ OK · read 3:11 PM", or what went wrong), with Read now and Remove beside it. The server has to reach the device, so the two share a network; a device that asks for a sign-in takes a username and password, kept encrypted.
+- **The probe as the tank's reading.** Under [Parameters & targets](/tanks/current/targets), a parameter a sensor reports gets a switch, "The sensor's reading is the reading". With it on, the newest of the sensor's latest reading and your latest test is the parameter's reading everywhere: the [dashboard](/) card and its ✓ OK or ✕ Low, the alerts bell, Charts' Latest, the summary, the public page and what an AI assistant reads. Out-of-range alerts by email and push go as they would for a test, once the sensor has read out of range for 15 minutes, and once per stretch; a sensor gone quiet doesn't alert on its last reading. Off, which is how every parameter starts, readings from sensors stay beside your tests as before.
+- **Live, or Last.** A sensor's reading on the [dashboard](/), in a tank's parameters and on [Charts](/charts) now reads "● Live" in ink only while the sensor keeps reporting: within half an hour, or three times its usual gap for one that reports more slowly. Once it has gone quiet, the reading turns into a muted "○ Last 74 °F · Yesterday, 3:11 PM", so a probe that has stopped is easy to spot. A sensor's very first reading now shows as a dot on the chart instead of waiting for the second.
+- **Examples for the right tank.** On [Settings › Sensors](/settings/sensors), the curl, Home Assistant and ESPHome examples now carry the id of the tank your newest sensor token writes to, instead of the first tank in the list, and a row of tank names above them switches the examples to another tank. Before, copying an example for a token made for a second tank sent its readings to the wrong tank.
+- **History says what you changed on equipment.** Editing a light's intensity, a heater's setting or a model name used to leave an entry that said only "Adjusted". The entry in [History](/history) now says what changed, "Adjusted Twinstar 300S V · Intensity 60% → 80%", and its page lists each setting before and after, the brand and model included.
+
+## 1.13.4 · 2026-10-13
+
+- **What a piece of equipment cost.** An expense on [Spending](/tanks/current/spending) can now say which item it was for, and the item's page under [Equipment](/tanks/current/equipment) lists those expenses with their total, each opening the expense and its receipt, with Add expense right there to log the purchase with the item filled in. The Item line of an equipment entry in [History](/history) opens the item too.
+
+## 1.13.3 · 2026-10-13
+
+- **Scan a barcode to add equipment.** On a tank's [Equipment](/tanks/current/equipment) tab, Scan barcode points your phone's camera at the barcode on a new filter's, heater's or light's box and looks it up: Add to tank opens the Add equipment form with the brand, model and type filled in, and the barcode stays with the item, so scanning the same box again finds it instead of adding it twice. Without a camera, or on a page without scripts, take a photo of the barcode or type the number under it. The lookup asks Open Products Facts and UPCitemdb from the server, once per barcode; admins can turn it off under [Server settings › Features](/settings/server#barcode-lookup), and scanning still finds what's already added.
+
+## 1.13.2 · 2026-10-12
+
+- **Your data as tables.** An AI assistant you've connected in [Settings › AI assistant](/settings/assistant) can now read your tanks as ready-made tables: every tank at a glance (last test, days since the last water change, readings out of range, tasks overdue), every reading with its target and status, water changes with their percent and volume, open tasks with how many days until each is due, and spending. They make dashboards and charts easy to build, across all your tanks at once, and the same tables come as CSV from the JSON API for a spreadsheet.
+- **A blank "days" means the usual window.** An assistant or script asking the JSON API or MCP for readings or history with `days` left blank now gets the usual 90 or 30 days back, instead of only the last day.
+- **Save in view on Tasks.** On a computer, the Edit task pane's Save and Delete now stay at the foot of the window while the form scrolls, instead of waiting below the fold on [Tasks](/tasks).
+
+## 1.13.1 · 2026-10-08
+
+- **Planted tanks, low-tech or CO₂.** Adding a planted tank now asks how it's grown (low-tech, CO₂ injected, or not sure) and what water fills it. Low-tech and not-sure tanks start with the tests that matter for them, the basics and phosphate; a CO₂-injected tank also tracks CO₂, potassium and iron, with CO₂ in view on the water test. Anything left off waits in [Parameters & targets](/tanks/current/targets) to turn on, and the choice can be changed under Growing setup in [Tank setup](/tanks/current/settings#growing) without touching your parameters.
+- **Even buttons on a water test.** On a computer, Copy at the foot of a water test in [History](/history) is now the same size as Edit and Delete beside it.
+
+## 1.13.0 · 2026-10-07
+
+- **Maintenance routines.** Your usual sequence as one routine, like Sunday maintenance: a 40% water change, a dose, a trim, a test. Build it a step at a time (or from your Quick log favorites) under [Maintenance routines](/tanks/current/routines) on the tank's Notes & routines page, then Run walks you through the steps one at a time, each opening its form filled in and coming back for the next, with Skip for any step; every step you log is an ordinary entry in History. Run from Quick add or ⌘K too.
+- **Customize this dashboard.** At the foot of a tank's [dashboard](/), a few light choices kept on your account for that tank: which parameter Trends opens on, up to three parameters listed first in Tank parameters, and whether Trends, Recent, In the tank, the growing setup rows or live sensor readings are shown. Nothing changes until you choose, and Reset to defaults brings the dashboard back as it comes.
+- **Compare parameters on one chart.** On [Charts](/charts), Compare… beside the parameter's name draws up to two more on the same chart (nitrate with phosphate, pH with CO₂, GH with KH), each on its own scale: a dashed line with its own axis on the right, a dotted one for the third, and the legend names each with its unit. The target band stays the main parameter's, the tooltip shows the other readings from the same test, and the comparison is in the address so it can be shared. A chip with × takes one off again.
+- **Worth checking, not a diagnosis.** When a plant's latest health entry is a symptom (melting, yellowing, pinholes, algae on it, stunted), its sheet on [Plants](/tanks/current/plants) lists the things keepers usually look at for it, each with what your own records say: the latest reading of the nutrient in question (or "no readings yet"), the last dose, the light hours, whether CO₂ is injected, and photos to compare, each a tap away. An algae entry does the same for its kind (green spot, hair, black beard, diatoms, cyanobacteria…). Missing data is said to be missing, and the note under each list says more than one can be true, and none might be.
+- **What changed?** [Charts](/charts) now sums up a reading's latest move in a line ("Nitrate fell from 18 → 7 ppm over 12 days") and lists what was logged in that stretch, in date order, each opening its entry: water changes, doses, maintenance, feedings, livestock and plant changes, observations. It says what happened in the same time, not what caused the move, and shows nothing when the readings are too few or the move too small to mean anything.
+- **Guidance that knows your tank.** The next step under a reading out of range on the [dashboard](/) now uses what the app knows: with RO water, low GH or KH says to add a little more remineralizer (and opens the GH / KH calculator); on tap or well water it says to check what that reads first; with CO₂ injected, a low pH is read as the CO₂ at work and a low CO₂ reading on a tank without injection is called normal; a tank with shrimp is asked to move things slowly. High nitrate, phosphate, TDS, potassium or iron opens the water change calculator with that reading picked. The plain advice stays where the tank's details aren't set.
+- **Quick log favorites.** Pin what you log most, like a 40% water change, your fertilizer dose or a feeding, and it's one tap from Log: Quick add (and ⌘K) lists your favorites first, each opening its form filled in, and nothing is saved until you save it. Favorites can be for one tank or every tank, and routines that dose or feed something can be pinned in one tap. Manage them in [Settings › Quick log favorites](/settings/favorites).
+- **A planted tank's growing setup, together:** [Tank setup](/tanks/current/settings) for a planted tank now has a Growing setup section with the substrate, the lights' and CO₂'s times, the photoperiod and the fertilizer routines, with Add a dosing routine right there. The dashboard's In the tank lists the same at a glance (Light · 8 h/day, CO₂ · on 1 h before the lights, Fertilizer · Thrive 5 mL · every 3 days · Thu, Substrate · Aquasoil), each line opening where it's changed. Nothing shows for what isn't set.
+- **A plant's health, over time:** On [Plants](/tanks/current/plants), Health (and Log health › in a plant's sheet) logs what a plant is doing (thriving, new growth, melting, yellowing, pinholes, algae on it, stunted, removed) with a note and photos. Each plant's sheet shows its journal, its status follows the latest entry, and the entries are in History and backups.
+- **Algae, logged on the tank:** Algae on [Plants](/tanks/current/plants) or in Quick add logs which kind (green spot, hair, black beard, diatoms…), how much and where, with photos. It shows in History and, with the Algae switch on [Charts](/charts), as a mark on any trend, so you can line it up with light, dosing or water changes.
+- **Choose what's marked on a chart:** On [Charts](/charts), the legend now has a switch for each kind of event in range (water changes, dosing, CO₂ changes, light changes, plant trims, other maintenance), each with its own mark, so you can line a trend up with what you did to the tank. Water changes show by default; your choice is remembered on the device.
+- **Getting started with a new tank:** The [dashboard](/) of a new tank now lists what to do next (the first water test, livestock, plants, the light schedule, the water-change reminder, a photo), ticks each off as you do it, and talks a cycling tank through the cycle. Hide it when you've seen enough; Tank setup brings it back.
+- **Parameters grouped by purpose:** [Parameters & targets](/tanks/current/targets) now lists a tank's parameters under Core, Water chemistry, Plant nutrients, CO₂ and Custom, and says beside each whether it's recommended for every tank of that kind, optional, or advanced, so the planted preset no longer reads as a list you must test in full.
+- **When to test each parameter:** The ⓘ beside a parameter on [Parameters & targets](/tanks/current/targets) and on the water test now also says when a test is worth doing for your kind of tank, and the optional ones say Optional beside their default, so you can see which tests matter weekly and which can wait.
+- **Tank setup, by name:** The tank's Setup tab, the Setup list beside its pages, More › Setup & targets on phones and the ⌘K entry now say Tank setup, so a tank's own settings read apart from your [account settings](/settings) and the server's.
+- **Shortcuts on the installed app:** Once Waterline is added to your Home Screen or installed on a computer, pressing and holding its icon (or right-clicking it) offers Log water test, Log water change, [Tasks](/tasks) and [Photos](/photos) straight away, and the install sheet shows what the app looks like before you add it.
+- **Add several reads every list the same way:** On [Livestock](/tanks/current/livestock) › Add several, a pasted line like `Otocinclus x 5` or `Amano shrimp, 3` now adds 5 and 3 even when the page runs without scripts; before, only `5 Otocinclus` was counted there, and the rest was taken as one fish's name.
+
+## 1.12.14 · 2026-10-07
+
+- **Quicker behind the scenes:** A backup with years of tests and tasks is put together in fewer steps, the daily digest sorts each tank's tasks once, and an admin's preview of removing someone counts their photos in one go. Nothing changes in what you see.
+- **Charts from a sensor alone:** A parameter only a probe reports, like temperature from a controller, now shows its chart on [Charts](/charts) and in the [dashboard](/)'s trend with the sensor's line and Live value, without waiting for two hand-logged tests. When the chart is empty, it now says whether a longer range would show readings.
+- **Checked on iPhone and Firefox too:** Every release is now tested on an iPhone's Safari and on Firefox as well as Chrome and Android: signing in, logging a test, Quick add, photos, the charts, the date picker and the public page.
+- **Clearer links in Server settings:** The FishBase and license links in [Server settings](/settings/server) are now underlined, so they stand out from the text around them without relying on colour. Every release is now checked for accessibility problems on a phone and a computer, in light and dark.
+- **Photos and receipts saved safely:** Saving photos, receipts and profile pictures no longer holds up other people's pages while the files are written, and a save that fails part-way leaves nothing half done: the photos all go in or none do, and a replaced receipt is kept until its new one is in place. Removing someone from [People](/settings/server/people) now also clears their receipts and profile pictures from the server.
+- **Photos found faster:** A tank's [Photos](/photos), its Timeline and the photos on History's entries are now looked up directly, so they stay quick as a tank collects years of pictures.
+- **Sensor charts keep the spikes:** On [Charts](/charts), a sensor's line now has a faint band showing the lowest and highest readings behind each point, so a brief spike still shows on a 90-day or yearly chart instead of being averaged away. Long ranges also open many times faster.
+- **Quicker with many tanks:** Every page now gathers the sidebar's tanks, their alerts and your role on each in the same few steps however many tanks you have, so a long [tank list](/tanks) no longer slows each page down.
+- **Offline data on this device:** [Settings › Data](/settings#data) now says what Waterline keeps on your phone or computer so it works without signal, and Remove clears it, warning first if entries are still waiting to sync. What's kept belongs to one person: another account signing in on the device, or a session signed out from the server, clears the pages and photos, and an entry logged offline only ever syncs to the account that logged it.
+
 ## 1.12.13 · 2026-10-07
 
 - **Shared tanks keep to each person's role:** On a tank shared with you, viewing no longer lets you log a trim on [Plants](/tanks/current/plants), and only the owner can move or change the tank's expenses on [Spending](/tanks/current/spending) or tick off its [Wish list](/tanks/current/wishlist) with Add to tank.

@@ -35,7 +35,7 @@ test('export a full backup and a CSV', async ({ page }, info) => {
 	expect(names).toContain('waterline.json');
 	expect(names).toContain('water-tests.csv');
 	expect(names).toMatch(/photos\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.jpg/);
-	expect(names).toMatch(/receipts\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.pdf/);
+	expect(names).toMatch(/receipts\/[0-9a-f-]{36}\/[0-9a-f-]{36}-[0-9a-z]+\.pdf/);
 
 	// CSV of water tests
 	await page.locator('label', { hasText: 'Water tests (CSV)' }).click();

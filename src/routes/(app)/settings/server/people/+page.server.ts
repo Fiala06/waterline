@@ -132,7 +132,7 @@ export const actions: Actions = {
 		const u = getUser(id);
 		if (!u) error(404, 'Person not found');
 		const { tanks, photos } = personFootprint(id);
-		removePerson(me, id);
+		await removePerson(me, id);
 		setFlash(cookies, `${u.displayName || u.email} removed with ${tanks} tank${tanks === 1 ? '' : 's'} and ${photos} photo${photos === 1 ? '' : 's'}`);
 		redirect(303, '/settings/server/people');
 	}

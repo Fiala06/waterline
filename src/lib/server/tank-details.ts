@@ -1,10 +1,12 @@
 import { and, desc, eq as is, sql } from 'drizzle-orm';
+import { GROWING_STYLE_LABEL } from '$lib/types';
+import { listRoutines } from './routines';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { dateInZone, fmtDateLong, todayInZone } from '$lib/time';
-import { dueInfo, isRoutine, routineLine } from '$lib/tasks';
+import { dueInfo, isRoutine, routineLine, waitingText } from '$lib/tasks';
 import { db } from './db';
 import { events, type Tank, type User } from './db/schema';
-import { listTasks } from './tasks';
+import { lastDoseText, listTasks, waitingTasks } from './tasks';
 
 const SOURCES: Record<string, string> = { tap: 'Tap', rodi: 'RODI', mix: 'Mix', well: 'Well' };
 
@@ -27,6 +29,7 @@ export function tankDetails(user: User, t: Tank) {
 			['Glass', t.glass],
 			['Substrate', t.substrate],
 			['Water source', t.waterSource ? SOURCES[t.waterSource] : null],
+			['Grown', t.growingStyle ? GROWING_STYLE_LABEL[t.growingStyle] : null],
 			['Photoperiod', t.photoperiodH != null ? `${t.photoperiodH} h` : null]
 		].filter(([, v]) => v) as [string, string][],
 		today,
@@ -41,13 +44,21 @@ export function tankDetails(user: User, t: Tank) {
 			.all()
 			.filter((n) => n.note)
 			.map((n) => ({ id: n.id, day: fmtDateLong(dateInZone(n.at, user.timeZone)), text: n.note! })),
+		// maintenance routines (#92): how many, for the way in beside Add dosing
+		maintenanceRoutines: listRoutines(t.id).length,
 		// dosing and feeding routines (#17), soonest first
 		routines: listTasks(user.id, t.id)
 			.filter((r) => isRoutine(r.task.kind))
 			.map(({ task }) => {
-				const d = dueInfo(task.due, today);
-				return { id: task.id, name: task.name, line: routineLine(task), due: d.days < 0 ? d.text : d.days === 0 ? '▲ Today' : d.text.replace(/^▲ /, ''), level: d.level, now: d.days <= 0 };
+				const d = dueInfo(task.due, today, task.graceDays);
+				return { id: task.id, name: task.name, line: [routineLine(task), task.kind === 'dosing' ? lastDoseText(task, user.timeZone) : null].filter(Boolean).join(' · '), due: d.days < 0 ? d.text : d.days === 0 ? '▲ Today' : d.text.replace(/^▲ /, ''), level: d.level, now: d.days <= 0 };
 			})
+			// after a log (#178), waiting for it: last
+			.concat(
+				waitingTasks(user.id, t.id)
+					.filter((r) => isRoutine(r.task.kind))
+					.map(({ task }) => ({ id: task.id, name: task.name, line: [routineLine(task), task.kind === 'dosing' ? lastDoseText(task, user.timeZone) : null].filter(Boolean).join(' · '), due: waitingText(task), level: 'ok' as const, now: false }))
+			)
 	};
 }
 

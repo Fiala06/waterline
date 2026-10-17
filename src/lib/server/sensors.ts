@@ -1,10 +1,11 @@
 // Readings from sensors and controllers (#19): POST /api/v1/tanks/<id>/readings
 // with a sensor token. Samples are stored metric in their own table, at most
 // one a minute per parameter, and never raise an out-of-range alert on their own.
-import { and, eq, gte, lt, or, sql } from 'drizzle-orm';
-import { fToC, ppmToDgh } from '$lib/units';
+import { and, desc, eq, gt, gte, inArray, lt, lte, or, sql } from 'drizzle-orm';
+import { displayValue, type ParamLike } from '$lib/params';
+import { fToC, ppmToDgh, type UnitPrefs } from '$lib/units';
 import { db } from './db';
-import { sensorReadings, tankParameters, type TankParameter } from './db/schema';
+import { sensorHours, sensorReadings, tankParameters, type TankParameter } from './db/schema';
 
 /** Samples closer together than this are dropped (a probe every second is noise, not data). */
 export const MIN_GAP_MS = 60_000;
@@ -109,54 +110,165 @@ export function recordSamples(tankId: string, samples: SampleIn[], source: strin
 	);
 }
 
-/** The newest sample per parameter of a tank, with when and from what. */
-export function latestSamples(tankId: string): Map<string, { value: number; at: string; source: string }> {
-	return new Map(latestSamplesQuery(tankId).all().map((r) => [r.parameterId, r]));
+export type LatestSample = { value: number; at: string; source: string; prevAt: string | null };
+
+/** The newest sample per parameter of a tank, with when and from what, and when the one before it came. */
+export function latestSamples(tankId: string): Map<string, LatestSample> {
+	return latestSamplesFor([tankId]).get(tankId)!;
 }
 
-/** The query behind latestSamples, apart so a test can read its plan. */
-export function latestSamplesQuery(tankId: string) {
-	// one indexed lookup per parameter (#99): the newest row from the end of
-	// sensor_readings_tank_param_at, however many a year of samples there are
-	const newest = sql`(select r.id from sensor_readings r where r.tank_id = ${tankParameters.tankId} and r.parameter_id = ${tankParameters.id} order by r.at desc limit 1)`;
-	return db
-		.select({ parameterId: sensorReadings.parameterId, value: sensorReadings.value, at: sensorReadings.at, source: sensorReadings.source })
-		.from(tankParameters)
-		.innerJoin(sensorReadings, eq(sensorReadings.id, newest))
-		.where(eq(tankParameters.tankId, tankId));
+/** The same for several tanks in one query: tank id → parameter id → sample. */
+export function latestSamplesFor(tankIds: string[]): Map<string, Map<string, LatestSample>> {
+	const out = new Map<string, Map<string, LatestSample>>(tankIds.map((id) => [id, new Map()]));
+	if (!tankIds.length) return out;
+	for (const r of latestSamplesQuery(tankIds).all()) out.get(r.tankId)?.set(r.parameterId, { value: r.value, at: r.at, source: r.source, prevAt: r.prevAt });
+	return out;
 }
 
 /**
- * Samples for a chart since an instant, oldest first, averaged into at most
- * `buckets` spans so a probe every minute draws as a line, not a wall.
+ * When a sensor's current run of out-of-range readings began, and how many
+ * readings it has: the first reading after the newest one inside the target;
+ * null while the latest reading is in range, or the parameter has no target.
  */
-export function sampleSeries(tankId: string, parameterId: string, since: string, buckets = 240, until = Date.now()): { t: number; v: number }[] {
-	const rows = db
-		.select({ value: sensorReadings.value, at: sensorReadings.at })
+export function outOfRangeSince(tankId: string, parameterId: string, range: { min: number | null; max: number | null }): { since: string; count: number } | null {
+	const bad = or(range.min != null ? lt(sensorReadings.value, range.min) : undefined, range.max != null ? gt(sensorReadings.value, range.max) : undefined);
+	if (range.min == null && range.max == null) return null;
+	const mine = and(eq(sensorReadings.tankId, tankId), eq(sensorReadings.parameterId, parameterId));
+	const newest = db.select({ value: sensorReadings.value }).from(sensorReadings).where(mine).orderBy(desc(sensorReadings.at)).limit(1).get();
+	if (!newest || !((range.min != null && newest.value < range.min) || (range.max != null && newest.value > range.max))) return null;
+	const inRange = and(range.min != null ? gte(sensorReadings.value, range.min) : undefined, range.max != null ? lte(sensorReadings.value, range.max) : undefined);
+	const lastGood = db.select({ at: sensorReadings.at }).from(sensorReadings).where(and(mine, inRange)).orderBy(desc(sensorReadings.at)).limit(1).get();
+	const run = db
+		.select({ since: sql<string>`min(${sensorReadings.at})`, count: sql<number>`count(*)` })
 		.from(sensorReadings)
-		.where(and(eq(sensorReadings.tankId, tankId), eq(sensorReadings.parameterId, parameterId), gte(sensorReadings.at, since)))
-		.orderBy(sensorReadings.at)
-		.all();
-	if (rows.length <= buckets) return rows.map((r) => ({ t: Date.parse(r.at), v: r.value }));
-	const from = Date.parse(rows[0].at);
-	const span = Math.max(1, (until - from) / buckets);
-	const out: { t: number; v: number }[] = [];
-	let i = 0;
-	while (i < rows.length) {
-		const start = Date.parse(rows[i].at);
-		const end = start + span;
-		let sum = 0;
-		let n = 0;
-		let tsum = 0;
-		while (i < rows.length && Date.parse(rows[i].at) < end) {
-			sum += rows[i].value;
-			tsum += Date.parse(rows[i].at);
-			n++;
-			i++;
-		}
-		out.push({ t: Math.round(tsum / n), v: sum / n });
+		.where(and(mine, bad, lastGood ? gt(sensorReadings.at, lastGood.at) : undefined))
+		.get();
+	return run?.since ? { since: run.since, count: Number(run.count) } : null;
+}
+
+/** A sensor is live for half an hour after a reading, or three times its own gap between readings when it reports more slowly. */
+export const LIVE_MIN_MS = 30 * 60_000;
+export const LIVE_GAPS = 3;
+
+/** Whether a sensor's latest reading, at `at` with the one before at `prevAt`, still counts as Live; after that it's Last. */
+export function isLive(at: string, prevAt: string | null | undefined, now = Date.now()): boolean {
+	const t = Date.parse(at);
+	const gap = prevAt ? Math.max(0, t - Date.parse(prevAt)) : 0;
+	return now - t <= Math.max(LIVE_MIN_MS, LIVE_GAPS * gap);
+}
+
+/** The query behind latestSamples, apart so a test can read its plan. */
+export function latestSamplesQuery(tankIds: string | string[]) {
+	const ids = typeof tankIds === 'string' ? [tankIds] : tankIds;
+	// one indexed lookup per parameter (#99): the newest row from the end of
+	// sensor_readings_tank_param_at, however many a year of samples there are
+	const newest = sql`(select r.id from sensor_readings r where r.tank_id = ${tankParameters.tankId} and r.parameter_id = ${tankParameters.id} order by r.at desc limit 1)`;
+	// and when the one before it came: how often the sensor reports, for its Live window
+	const previous = sql<string | null>`(select r.at from sensor_readings r where r.tank_id = ${tankParameters.tankId} and r.parameter_id = ${tankParameters.id} and r.at < ${sensorReadings.at} order by r.at desc limit 1)`;
+	return db
+		.select({ tankId: sensorReadings.tankId, parameterId: sensorReadings.parameterId, value: sensorReadings.value, at: sensorReadings.at, source: sensorReadings.source, prevAt: previous })
+		.from(tankParameters)
+		.innerJoin(sensorReadings, eq(sensorReadings.id, newest))
+		.where(inArray(tankParameters.tankId, ids));
+}
+
+/** A point on a sensor chart: the average of its span, and the span's lowest and highest (#103). */
+export interface SamplePoint {
+	t: number;
+	v: number;
+	lo?: number;
+	hi?: number;
+}
+
+/**
+ * Samples for a chart since an instant, oldest first, as at most `buckets`
+ * points so a probe every minute draws as a line, not a wall. SQLite does the
+ * bucketing (#103): equal spans from the first sample to `until`, each the
+ * average with its lowest and highest, so a spike shows however long the range.
+ * Spans of an hour or more read sensor_hours (60 times fewer rows); shorter
+ * ones the samples, each span a range on the sensor index.
+ */
+export function sampleSeries(tankId: string, parameterId: string, since: string, buckets = 240, until = Date.now()): SamplePoint[] {
+	const where = and(eq(sensorReadings.tankId, tankId), eq(sensorReadings.parameterId, parameterId), gte(sensorReadings.at, since));
+	// the first sample is one step on the index; how many there are, from their hours
+	const head = db.select({ first: sql<string | null>`min(${sensorReadings.at})` }).from(sensorReadings).where(where).get();
+	if (!head?.first) return [];
+	const many = db
+		.select({ n: sql<number>`coalesce(sum(${sensorHours.n}), 0)` })
+		.from(sensorHours)
+		.where(and(eq(sensorHours.tankId, tankId), eq(sensorHours.parameterId, parameterId), gte(sensorHours.hour, head.first.slice(0, 13))))
+		.get()!.n;
+	if (many <= buckets) {
+		return db
+			.select({ value: sensorReadings.value, at: sensorReadings.at })
+			.from(sensorReadings)
+			.where(where)
+			.orderBy(sensorReadings.at)
+			.all()
+			.map((r) => ({ t: Date.parse(r.at), v: r.value }));
 	}
-	return out;
+	const from = Date.parse(head.first);
+	const span = Math.max(1, (until - from) / buckets);
+	if (span >= HOUR_MS) return hourSeries(tankId, parameterId, from, span, buckets);
+	// the edges as stored times; the last span runs on to any sample after `until`
+	const edge = (i: number) => new Date(from + i * span).toISOString();
+	const spans = sql.join(
+		Array.from({ length: buckets }, (_, i) => sql`select ${i} as i, ${i === 0 ? head.first : edge(i)} as lo, ${i === buckets - 1 ? '9999' : edge(i + 1)} as hi`),
+		sql` union all `
+	);
+	const rows = db.all<{ lo: string; hi: string; v: number; min: number; max: number }>(sql`
+		with spans as (${spans})
+		select min(r.at) as lo, max(r.at) as hi, avg(r.value) as v, min(r.value) as min, max(r.value) as max
+		from spans s join ${sensorReadings} r on r.tank_id = ${tankId} and r.parameter_id = ${parameterId} and r.at >= s.lo and r.at < s.hi
+		group by s.i order by s.i`);
+	return rows.map((r) => ({ t: Math.round((Date.parse(r.lo) + Date.parse(r.hi)) / 2), v: r.v, lo: r.min, hi: r.max }));
+}
+
+const HOUR_MS = 3_600_000;
+/** 'YYYY-MM-DDTHH', the UTC hour sensor_hours files a time under. */
+const hourKey = (ms: number) => new Date(Math.floor(ms / HOUR_MS) * HOUR_MS).toISOString().slice(0, 13);
+
+/** The same from whole hours: each span the hours that start in it. */
+function hourSeries(tankId: string, parameterId: string, from: number, span: number, buckets: number): SamplePoint[] {
+	const edge = (i: number) => hourKey(from + i * span);
+	const spans = sql.join(
+		Array.from({ length: buckets }, (_, i) => sql`select ${i} as i, ${edge(i)} as lo, ${i === buckets - 1 ? '9999' : edge(i + 1)} as hi`),
+		sql` union all `
+	);
+	const rows = db.all<{ first: string; last: string; n: number; total: number; lo: number; hi: number }>(sql`
+		with spans as (${spans})
+		select min(h.hour) as first, max(h.hour) as last, sum(h.n) as n, sum(h.total) as total, min(h.lo) as lo, max(h.hi) as hi
+		from spans s join ${sensorHours} h on h.tank_id = ${tankId} and h.parameter_id = ${parameterId} and h.hour >= s.lo and h.hour < s.hi
+		group by s.i order by s.i`);
+	return rows.map((r) => ({
+		// the middle of its hours
+		t: Math.round((Date.parse(`${r.first}:00:00Z`) + Date.parse(`${r.last}:00:00Z`) + HOUR_MS) / 2),
+		v: r.total / r.n,
+		lo: r.lo,
+		hi: r.hi
+	}));
+}
+
+/** Chart points in the person's units, the span's lowest and highest with them. */
+export function displaySamples(points: SamplePoint[], p: ParamLike, prefs: UnitPrefs): SamplePoint[] {
+	return points.map((s) => ({
+		t: s.t,
+		v: displayValue(p, s.v, prefs),
+		...(s.lo != null && s.hi != null ? { lo: displayValue(p, s.lo, prefs), hi: displayValue(p, s.hi, prefs) } : {})
+	}));
+}
+
+/**
+ * How many samples a parameter has at all, counted up to `upTo`: an empty
+ * chart says to try a longer range when the probe has data elsewhere (#130).
+ */
+export function sampleCount(tankId: string, parameterId: string, upTo = 2): number {
+	const row = db.get<{ n: number }>(sql`
+		select count(*) as n from (
+			select 1 from ${sensorReadings}
+			where ${sensorReadings.tankId} = ${tankId} and ${sensorReadings.parameterId} = ${parameterId}
+			limit ${upTo})`);
+	return row?.n ?? 0;
 }
 
 /** How many samples a tank has, and since when, for the Sensors page. */

@@ -1,4 +1,4 @@
-import { redirect, type Handle, type HandleServerError, type ServerInit } from '@sveltejs/kit';
+import { json, redirect, type Handle, type HandleServerError, type ServerInit } from '@sveltejs/kit';
 import { randomBytes } from 'node:crypto';
 import { building } from '$app/environment';
 import { startScheduler } from '$lib/server/scheduler';
@@ -122,7 +122,7 @@ function themeColorMeta(theme: string) {
 	return `${dark.replace(' />', ' media="(prefers-color-scheme: dark)" />')}${light.replace(' />', ' media="(prefers-color-scheme: light)" />')}`;
 }
 
-const isPublic = (path: string) => path === '/dev/seed' || path === '/dev/next-release' || path.startsWith('/dev/wiki/') || PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + '/'));
+const isPublic = (path: string) => path === '/dev/seed' || path === '/dev/next-release' || path.startsWith('/dev/wiki/') || path.startsWith('/dev/upc/') || path.startsWith('/dev/esphome/') || PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + '/'));
 
 const appHandle: Handle = async ({ event, resolve }) => {
 	// Background sync of offline entries: no "Saved" toast per replayed entry.
@@ -146,14 +146,21 @@ const appHandle: Handle = async ({ event, resolve }) => {
 	const path = event.url.pathname;
 	const user = event.locals.user;
 	// Signed-out visitors to / see the public home page when the admin turned it on.
-	if (!user && path === '/' && publicSettings().publicHomeEnabled && publicSettings().allowPublicPages) {
-		redirect(303, '/public');
+	if (!user && path === '/') {
+		const pub = publicSettings();
+		if (pub.publicHomeEnabled && pub.allowPublicPages) redirect(303, '/public');
 	}
 	if (!user && !isPublic(path)) {
 		redirect(303, `/signin${path === '/' ? '' : `?redirectTo=${encodeURIComponent(path + event.url.search)}`}`);
 	}
 	if (user && !user.setupDone && !path.startsWith('/setup') && !isPublic(path)) {
 		redirect(303, '/setup');
+	}
+	// An entry queued offline syncs only as the person who logged it (#108): if this device is now
+	// signed in as someone else, it waits for them rather than being saved to the wrong account
+	const queuedBy = event.request.headers.get('x-waterline-user');
+	if (queuedBy && event.request.headers.get('x-waterline-sync') === '1' && queuedBy !== user?.id) {
+		return json({ type: 'error', error: { message: 'Logged by another account' } }, { status: 409 });
 	}
 	if (user && path === '/signin') redirect(303, '/');
 
