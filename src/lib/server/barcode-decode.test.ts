@@ -15,7 +15,9 @@ async function photoOf(text: string, format: 'EAN-13' | 'UPC-A' | 'EAN-8' | 'QRC
 	return sharp(png).extend({ top: 180, bottom: 180, left: 140, right: 140, background: '#e8e2d6' }).resize(2200).jpeg({ quality: 82 }).toBuffer();
 }
 
-describe('decodeBarcodeImage', () => {
+// drawing the digits under the bars makes resvg load the system's fonts, over a second a photo on a Mac,
+// and more when the whole suite runs at once: the decode itself is quick
+describe('decodeBarcodeImage', { timeout: 30_000 }, () => {
 	it('reads the retail barcodes on a box as one canonical GTIN', async () => {
 		expect(await decodeBarcodeImage(await photoOf('0015561104470', 'EAN-13'))).toEqual({ code: '0015561104470', format: 'EAN13' });
 		expect(await decodeBarcodeImage(await photoOf('015561104470', 'UPC-A'))).toMatchObject({ code: '0015561104470' });

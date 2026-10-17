@@ -2,7 +2,7 @@
 // (#8), a photo (resized, without its metadata) or a PDF, kept in
 // DATA_DIR/receipts and shown only to its owner.
 import { error } from '@sveltejs/kit';
-import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import sharp from 'sharp';
@@ -42,7 +42,13 @@ export function listExpenses(userId: string, tankId: string) {
 
 /** What an item cost (#148): the expenses linked to it, newest first, with their sum. */
 export function expensesForEquipment(equipmentId: string) {
-	const rows = db.select().from(expenses).where(eq(expenses.equipmentId, equipmentId)).orderBy(desc(expenses.date), desc(expenses.createdAt)).all();
+	// two added in the same millisecond: the one added last is the newest
+	const rows = db
+		.select()
+		.from(expenses)
+		.where(eq(expenses.equipmentId, equipmentId))
+		.orderBy(desc(expenses.date), desc(expenses.createdAt), desc(sql`${expenses}.rowid`))
+		.all();
 	return { rows, totalCents: rows.reduce((n, e) => n + e.amountCents, 0) };
 }
 
