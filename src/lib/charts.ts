@@ -48,3 +48,34 @@ export function chartDomain(values: number[], band: { min: number | null; max: n
 	if (!(hi > lo)) hi = lo + 1;
 	return { lo, hi };
 }
+
+/** Where the shared target band sits on the all-parameters chart, from the bottom (0) to the top (1). */
+export const TARGET_BAND = { lo: 0.3, hi: 0.7 } as const;
+
+/**
+ * A reading's height on the all-parameters chart, 0 (bottom) to 1 (top): pH,
+ * nitrate and temperature have nothing in common but their targets, so each is
+ * drawn against its own. The target fills TARGET_BAND, evenly; past it the
+ * distance shrinks toward the edge (one target-width past the limit is halfway
+ * there), so nothing is cut off and High is always above, Low always below.
+ * - only a max: the target runs from 0 up to it
+ * - only a min: anything over it is in target, so it climbs the band but never leaves it
+ * Null without a target: such a parameter has nothing to share the band with.
+ */
+export function targetPosition(v: number, band: { min: number | null; max: number | null }): number | null {
+	if (!Number.isFinite(v)) return null;
+	const { lo: L, hi: H } = TARGET_BAND;
+	const ease = (d: number) => d / (d + 1);
+	let { min, max } = band;
+	if (min == null && max == null) return null;
+	if (min != null && max == null) {
+		const span = Math.abs(min) || 1;
+		return v >= min ? L + (H - L) * ease((v - min) / span) : L - L * ease((min - v) / span);
+	}
+	if (min == null) min = Math.min(0, max!);
+	if (!(max! > min)) max = min + (Math.abs(min) || 1);
+	const span = max! - min;
+	if (v > max!) return H + (1 - H) * ease((v - max!) / span);
+	if (v < min) return L - L * ease((min - v) / span);
+	return L + ((v - min) / span) * (H - L);
+}

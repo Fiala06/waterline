@@ -8,13 +8,20 @@
 	import { hscroll } from '$lib/actions';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import TrendChart from '$lib/components/TrendChart.svelte';
+	import OverlayChart, { seriesStyle } from '$lib/components/OverlayChart.svelte';
 	import { CHART_RANGES } from '$lib/charts';
 
 	let { data } = $props();
 	let selected = $state<string | null>(null);
 	// Dosing can be several times a week, so its markers are opt-in.
 	let showDosing = $state(false);
-	const markers = $derived((data.chart?.markers ?? []).filter((m) => showDosing || m.kind !== 'dosing'));
+	const markers = $derived((data.chart?.markers ?? data.all?.markers ?? []).filter((m) => showDosing || m.kind !== 'dosing'));
+	const current = $derived(data.all ? 'all' : data.chart?.paramId);
+	// All parameters: the ones taken off the chart, and the one the legend points at
+	let hidden = $state<string[]>([]);
+	let focus = $state<string | null>(null);
+	const order = $derived(data.all?.lines.map((l) => l.id) ?? []);
+	const toggle = (id: string) => (hidden = hidden.includes(id) ? hidden.filter((h) => h !== id) : [...hidden, id]);
 
 	const q = (patch: Record<string, string>) => {
 		const u = new URLSearchParams(page.url.searchParams);
@@ -25,8 +32,9 @@
 	const keep = (name: string) => [...page.url.searchParams].filter(([k]) => k !== name);
 	const submit = (e: Event) => (e.currentTarget as HTMLInputElement | HTMLSelectElement).form?.requestSubmit();
 
-	const chosen = $derived(data.chart?.markers.find((m) => m.href === selected) ?? null);
-	const hasDosing = $derived(data.chart?.markers.some((m) => m.kind === 'dosing'));
+	const allMarkers = $derived(data.chart?.markers ?? data.all?.markers ?? []);
+	const chosen = $derived(allMarkers.find((m) => m.href === selected) ?? null);
+	const hasDosing = $derived(allMarkers.some((m) => m.kind === 'dosing'));
 	// "ppm · target 5–20"; pH has no unit, so just "target 6.5–7.5"
 	const subtitle = $derived(
 		[data.chart?.unit, data.chart?.targetBare && `target ${data.chart.targetBare}`].filter(Boolean).join(' · ')
@@ -56,17 +64,19 @@
 		<div class="none">
 			<EmptyState icon="tank" title="No tanks yet" text="Add your first tank to start logging." href="/tanks/new" label="Add tank" primary />
 		</div>
-	{:else if !data.chart}
+	{:else if !data.chart && !data.all}
 		<div class="none">
 			<EmptyState icon="test" title="No parameters tracked for this tank." href="/tanks/{data.tank.id}/targets" label="Parameters & targets" />
 		</div>
 	{:else}
-		{@const c = data.chart}
 		<div class="layout">
-			<nav class="plist hscroll" aria-label="Parameter" use:hscroll={c.paramId}>
+			<nav class="plist hscroll" aria-label="Parameter" use:hscroll={current}>
 				<span class="caps kicker hide-phone">Parameter</span>
+				<a class="pitem chip all-item" class:active={current === 'all'} class:selected={current === 'all'} aria-current={current === 'all' ? 'true' : undefined} href={q({ p: 'all' })}>
+					<span class="p-name"><span class="hide-desk">All</span><span class="hide-phone">All parameters</span></span>
+				</a>
 				{#each data.list as p (p.id)}
-					<a class="pitem chip" class:active={c.paramId === p.id} class:selected={c.paramId === p.id} aria-current={c.paramId === p.id ? 'true' : undefined} href={q({ p: p.id })}>
+					<a class="pitem chip" class:active={current === p.id} class:selected={current === p.id} aria-current={current === p.id ? 'true' : undefined} href={q({ p: p.id })}>
 						<span class="p-name">{p.name}</span>
 						{#if p.level !== 'none'}
 							<span class="p-status status-{p.level}" title={p.status}><span aria-hidden="true">{p.icon}</span><span class="sr-only">{p.status}</span></span>
@@ -75,6 +85,113 @@
 				{/each}
 			</nav>
 
+			{#if data.all}
+				{@const a = data.all}
+				<div class="centre">
+					<div class="c-head">
+						<div class="c-title">
+							<h2>All parameters</h2>
+							<span class="c-sub">Each against its own target</span>
+						</div>
+						{@render rangeForm()}
+					</div>
+
+					{#if a.lines.length}
+						<div class="chart-card">
+							<div class="chart-box">
+								<div class="chart-fill">
+									<OverlayChart
+										lines={a.lines}
+										{order}
+										{hidden}
+										{focus}
+										{markers}
+										from={a.from}
+										to={a.to}
+										timeZone={data.user.timeZone}
+										{selected}
+										onselect={(m) => (selected = selected === m.href ? null : m.href)}
+									>
+										{#snippet popover(m)}
+											{@const full = a.markers.find((x) => x.href === m.href)}
+											<div class="pop-day">{full?.day} · {m.kind === 'dosing' ? 'Dosing' : 'Water change'}</div>
+											<div class="pop-title">{m.label.replace(/^Water change · /, '')}</div>
+											<a class="pop-link" href={m.href}>View entry ›</a>
+										{/snippet}
+									</OverlayChart>
+								</div>
+							</div>
+						</div>
+						<div class="series-keys" role="group" aria-label="Parameters on the chart">
+							{#each a.lines as l, i (l.id)}
+								{@const st = seriesStyle(i)}
+								<button
+									type="button"
+									class="key"
+									class:dashed={st.dash}
+									aria-pressed={!hidden.includes(l.id)}
+									style:--key={st.color}
+									onclick={() => toggle(l.id)}
+									onpointerenter={() => (focus = hidden.includes(l.id) ? null : l.id)}
+									onpointerleave={() => (focus = null)}
+									onfocus={() => (focus = hidden.includes(l.id) ? null : l.id)}
+									onblur={() => (focus = null)}
+								>
+									<i aria-hidden="true"></i>{l.name}
+								</button>
+							{/each}
+						</div>
+						<div class="legend all-legend">
+							<span><i class="lg-band"></i>Target</span>
+							<span><i class="lg-zone"></i>Out of range</span>
+							{#if a.markers.some((m) => m.kind !== 'dosing')}
+								<span><i class="lg-marker"></i>Water change</span>
+							{/if}
+							{#if hasDosing}
+								<button type="button" class="lg-toggle" aria-pressed={showDosing} onclick={() => (showDosing = !showDosing)}>
+									<span aria-hidden="true">◆</span>{showDosing ? 'Hide dosing' : 'Show dosing'}
+								</button>
+							{/if}
+						</div>
+						{#if a.noTarget.length}
+							<p class="no-target">
+								Not on this chart, with no target to hold them against: {a.noTarget.join(', ')}.
+								<a href="/tanks/{data.tank.id}/targets">Set targets ›</a>
+							</p>
+						{/if}
+					{:else}
+						<div class="chart-empty">
+							{#if a.anyEver}
+								<EmptyState compact icon="test" title="No readings in this range" text="Try a longer range." />
+							{:else}
+								<EmptyState compact icon="test" title="Charts appear after your second test." href="/entries/test/new?tank={data.tank.id}" label="Log water test" />
+							{/if}
+						</div>
+					{/if}
+				</div>
+
+				<div class="side">
+					{#if a.lines.length}
+						<div class="latest-list">
+							<h2 class="kicker">Latest</h2>
+							<ul>
+								{#each a.lines as l, i (l.id)}
+									<li>
+										<a href={q({ p: l.id })}>
+											<i aria-hidden="true" class:dashed={seriesStyle(i).dash} style:--key={seriesStyle(i).color}></i>
+											<span class="ll-name">{l.name}</span>
+											<span class="ll-value num">{l.latest ?? '–'}{l.latest && l.unit ? ` ${l.unit}` : ''}</span>
+											<span class="ll-status status-{l.level}">{l.status}</span>
+										</a>
+									</li>
+								{/each}
+							</ul>
+						</div>
+					{/if}
+					{@render eventsList()}
+				</div>
+			{:else if data.chart}
+			{@const c = data.chart}
 			<div class="centre">
 				<div class="c-head">
 					<div class="c-title">
@@ -83,18 +200,7 @@
 							<span class="c-sub"><span class="hide-phone">{subtitle}</span><span class="hide-desk">{phoneSubtitle}</span></span>
 						{/if}
 					</div>
-					<form class="range-form" method="GET" action="/charts" data-sveltekit-noscroll data-sveltekit-keepfocus>
-						{#each keep('r') as [k, v], i (i)}<input type="hidden" name={k} value={v} />{/each}
-						<fieldset>
-							<legend class="sr-only">Time range</legend>
-							<div class="segmented ranges">
-								{#each CHART_RANGES as r (r.key)}
-									<label><input type="radio" name="r" value={r.key} checked={data.range === r.key} onchange={submit} />{r.long}</label>
-								{/each}
-							</div>
-						</fieldset>
-						<noscript><button class="btn">Apply</button></noscript>
-					</form>
+					{@render rangeForm()}
 				</div>
 
 				{#if c.points.length >= 2}
@@ -182,25 +288,45 @@
 						<div class="stat"><span class="sl">Change</span><span class="sv num">{s.change?.amount ?? '–'}</span>{#if s.change}<span class="st">{s.change.over}</span>{/if}</div>
 					</div>
 				{/if}
-				{#if markers.length}
-					<div class="events">
-						<h2 class="kicker">Events in range · {markers.length}</h2>
-						<ul>
-							{#each [...markers].reverse() as m (m.href)}
-								<li>
-									<button type="button" class:active={chosen?.href === m.href} aria-pressed={chosen?.href === m.href} onclick={() => (selected = selected === m.href ? null : m.href)}>
-										<span class="e-row"><span class="e-title">{m.label}</span><span class="e-day">{m.day}</span></span>
-									</button>
-								</li>
-							{/each}
-						</ul>
-					</div>
-				{/if}
+				{@render eventsList()}
 			</div>
+			{/if}
 
 		</div>
 	{/if}
 </div>
+
+{#snippet rangeForm()}
+	<form class="range-form" method="GET" action="/charts" data-sveltekit-noscroll data-sveltekit-keepfocus>
+		{#each keep('r') as [k, v], i (i)}<input type="hidden" name={k} value={v} />{/each}
+		<fieldset>
+			<legend class="sr-only">Time range</legend>
+			<div class="segmented ranges">
+				{#each CHART_RANGES as r (r.key)}
+					<label><input type="radio" name="r" value={r.key} checked={data.range === r.key} onchange={submit} />{r.long}</label>
+				{/each}
+			</div>
+		</fieldset>
+		<noscript><button class="btn">Apply</button></noscript>
+	</form>
+{/snippet}
+
+{#snippet eventsList()}
+	{#if markers.length}
+		<div class="events">
+			<h2 class="kicker">Events in range · {markers.length}</h2>
+			<ul>
+				{#each [...markers].reverse() as m (m.href)}
+					<li>
+						<button type="button" class:active={chosen?.href === m.href} aria-pressed={chosen?.href === m.href} onclick={() => (selected = selected === m.href ? null : m.href)}>
+							<span class="e-row"><span class="e-title">{m.label}</span><span class="e-day">{m.day}</span></span>
+						</button>
+					</li>
+				{/each}
+			</ul>
+		</div>
+	{/if}
+{/snippet}
 
 <style>
 	/* ── Phone: chips, title, range, chart, stats, insight, legend… ───── */
@@ -372,6 +498,96 @@
 		font-size: 13px;
 		font-weight: 800;
 		color: var(--accent-text);
+	}
+	/* All parameters: a key per line (tap to hide or show it), and the latest of each */
+	.series-keys {
+		order: 3;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+	}
+	.key {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		min-height: 44px;
+		padding: 0 12px;
+		border: 2px solid var(--ink);
+		font-size: 13px;
+		font-weight: 700;
+		color: var(--text);
+	}
+	.key i,
+	.latest-list i {
+		flex-shrink: 0;
+		width: 16px;
+		height: 4px;
+		background: var(--key);
+	}
+	.key.dashed i,
+	.latest-list i.dashed {
+		background: repeating-linear-gradient(to right, var(--key) 0 6px, transparent 6px 9px);
+	}
+	.key[aria-pressed='false'] {
+		border-color: var(--divider);
+		color: var(--text-muted);
+		text-decoration: line-through;
+	}
+	.key[aria-pressed='false'] i {
+		opacity: 0.3;
+	}
+	.all-legend {
+		order: 3;
+	}
+	.no-target {
+		order: 3;
+		margin: 0;
+		font-size: 13px;
+		color: var(--text-2);
+	}
+	.latest-list {
+		order: 4;
+	}
+	.latest-list h2 {
+		margin: 0;
+		padding-bottom: 8px;
+		border-bottom: 2px solid var(--ink);
+		color: var(--text);
+	}
+	.latest-list ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	.latest-list a {
+		display: grid;
+		grid-template-columns: 16px minmax(0, 1fr) auto auto;
+		align-items: center;
+		column-gap: 10px;
+		min-height: 44px;
+		padding: 8px 0;
+		border-bottom: 1px solid var(--divider);
+		color: var(--text);
+		text-decoration: none;
+		font-size: 14px;
+	}
+	.latest-list a:hover {
+		background: var(--surface);
+	}
+	.ll-name {
+		font-weight: 600;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.ll-value {
+		font-weight: 800;
+		white-space: nowrap;
+	}
+	.ll-status {
+		font-size: 12px;
+		font-weight: 800;
+		white-space: nowrap;
 	}
 	.events {
 		order: 6;

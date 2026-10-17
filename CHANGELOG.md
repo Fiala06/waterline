@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Every parameter on one chart:** On [Charts](/charts?p=all), pick All (at the top of the parameter list) to see every parameter you test on a single chart. pH, nitrate, temperature and the rest have no scale in common, so each is drawn against its own target: one shared band is the target, with High above it and Low below. Hover or tap for every reading in that test with its value and status, tap a parameter's key to take its line off the chart or put it back, and the latest of each is listed beside it.
+
 ## 1.12.13 · 2026-10-07
 
 - **Shared tanks keep to each person's role:** On a tank shared with you, viewing no longer lets you log a trim on [Plants](/tanks/current/plants), and only the owner can move or change the tank's expenses on [Spending](/tanks/current/spending) or tick off its [Wish list](/tanks/current/wishlist) with Add to tank.
