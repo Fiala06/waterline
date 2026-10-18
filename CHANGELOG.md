@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.19.2 · 2026-10-18
+
 - **No more suggestions to dose.** Suggested steps in Needs attention on the [Overview](/tanks/current) never tell you to dose a product anymore: nitrate at 0 no longer offers Dose now, and the green spot algae note just says it often comes with low phosphate. The water changes for ammonia or nitrite stay, and you can still switch any step off under [Tank setup › Suggested steps](/tanks/current/suggestions).
 
 ## 1.19.1 · 2026-10-18
