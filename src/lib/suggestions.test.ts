@@ -6,8 +6,6 @@ const ctx = (over: Partial<SuggestContext> = {}): SuggestContext => ({
 	readings: [],
 	cycled: true,
 	waterChange: { id: 'wc', name: 'Water change 25%', intervalDays: 7, clearing: false },
-	dosed: true,
-	product: 'Thrive S',
 	greenSpot: null,
 	off: [],
 	...over
@@ -42,15 +40,9 @@ describe('suggested steps from readings (#179)', () => {
 		expect(suggestSteps(ctx({ readings: [r('nh3', 1)], waterChange: { id: 'wc', name: 'WC', intervalDays: 7, clearing: true } }))).toEqual([]);
 	});
 
-	it('nitrate at 0 in a dosed tank: Dose now with its usual nitrogen fertilizer', () => {
-		const [s] = suggestSteps(ctx({ readings: [r('no3', 0, 'Nitrate')] }));
-		expect(s).toMatchObject({ rule: 'dose_nitrate', link: { label: 'Dose now', href: '/entries/event/new?tank=t1&category=dosing&product=Thrive+S' } });
-		expect(suggestSteps(ctx({ readings: [r('no3', 0)], dosed: false }))).toEqual([]);
-		expect(suggestSteps(ctx({ readings: [r('no3', 5)] }))).toEqual([]);
-		expect(suggestSteps(ctx({ readings: [r('no3', 0)], product: null }))[0]).toMatchObject({
-			text: 'Nitrate reads 0, so the plants may go hungry: dose a fertilizer with nitrogen now.',
-			link: { href: '/entries/event/new?tank=t1&category=dosing' }
-		});
+	it('never suggests dosing: nitrate at 0 suggests nothing, whatever the tank doses', () => {
+		expect(suggestSteps(ctx({ readings: [r('no3', 0, 'Nitrate')] }))).toEqual([]);
+		for (const rule of SUGGESTION_RULES) expect(`${rule.name} ${rule.step}`).not.toMatch(/\bdos(e|ing)\b/i);
 	});
 
 	it('phosphate under 0.1 ppm with green spot algae lately: a note linking the entry', () => {
@@ -58,12 +50,14 @@ describe('suggested steps from readings (#179)', () => {
 		const [s] = suggestSteps(ctx({ readings: [r('po4', 0.05, 'Phosphate')], greenSpot }));
 		expect(s).toMatchObject({ rule: 'phosphate_green_spot', link: { href: '/entries/event/e1' } });
 		expect(s.text).toContain('Oct 10');
+		expect(s.text).not.toMatch(/dos(e|ing)/i);
 		expect(suggestSteps(ctx({ readings: [r('po4', 0.1)], greenSpot }))).toEqual([]);
 		expect(suggestSteps(ctx({ readings: [r('po4', 0.05)] }))).toEqual([]);
 	});
 
 	it('a rule switched off for the tank suggests nothing', () => {
-		expect(suggestSteps(ctx({ readings: [r('nh3', 1), r('no3', 0)], off: ['water_change_until_clear'] })).map((s) => s.rule)).toEqual(['dose_nitrate']);
+		const greenSpot = { eventId: 'e1', date: '2026-10-10' };
+		expect(suggestSteps(ctx({ readings: [r('nh3', 1), r('po4', 0.05)], greenSpot, off: ['water_change_until_clear'] })).map((s) => s.rule)).toEqual(['phosphate_green_spot']);
 	});
 
 	it('says what clears it: 0 for ammonia and nitrite or a target of 0, else in range', () => {

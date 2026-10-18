@@ -2,7 +2,8 @@
 // usually acts on, a step to take with a tap, never on its own. The rules are
 // here in one table with where they come from; the sources disagree in the
 // details, so each is offered as a suggestion, and each can be switched off
-// for a tank (Tank setup › Suggested steps).
+// for a tank (Tank setup › Suggested steps). None suggests dosing: the app
+// can't be sure what a product is, so it never names one to dose.
 import { paramStatus } from './status';
 import { fmtDate } from './time';
 
@@ -13,13 +14,6 @@ export const SUGGESTION_RULES = [
 		when: 'Ammonia or nitrite above 0 in a tank that isn’t cycling',
 		step: 'Water change every 2 days until it reads 0, then back to the usual',
 		source: 'API and Seachem guidance on ammonia and nitrite; planted-tank forums'
-	},
-	{
-		id: 'dose_nitrate',
-		name: 'Nitrate at 0 in a dosed tank',
-		when: 'Nitrate reads 0 in a tank dosed with fertilizer',
-		step: 'Dose now, with the tank’s usual fertilizer that adds nitrogen',
-		source: 'The Barr Report on Estimative Index dosing; 2Hr Aquarist'
 	},
 	{
 		id: 'phosphate_green_spot',
@@ -56,10 +50,6 @@ export interface SuggestContext {
 	cycled: boolean;
 	/** the tank's water-change routine that repeats every so many days (its usual cadence), and whether it's already more often */
 	waterChange: { id: string; name: string; intervalDays: number; clearing: boolean } | null;
-	/** dosed: a dosing routine, or a dose logged lately, that may be a fertilizer (not only a conditioner, bacteria or a medicine) */
-	dosed: boolean;
-	/** the tank's usual product that adds nitrogen (src/lib/fertilizer.ts); null when none is known */
-	product: string | null;
 	/** green spot algae logged lately: the entry and its day */
 	greenSpot: { eventId: string; date: string } | null;
 	/** rules switched off for this tank */
@@ -96,26 +86,13 @@ export function suggestSteps(ctx: SuggestContext): Suggestion[] {
 		});
 	}
 
-	// nitrate used up in a dosed tank: dose now
-	const no3 = reading('no3');
-	if (on('dose_nitrate') && no3 && no3.value <= 0 && ctx.dosed) {
-		const q = new URLSearchParams({ tank: ctx.tankId, category: 'dosing' });
-		if (ctx.product) q.set('product', ctx.product);
-		out.push({
-			rule: 'dose_nitrate',
-			paramId: no3.paramId,
-			text: `Nitrate reads 0, so the plants may go hungry: ${ctx.product ? `dose now, with ${ctx.product}` : 'dose a fertilizer with nitrogen now'}.`,
-			link: { label: 'Dose now', href: `/entries/event/new?${q}` }
-		});
-	}
-
 	// phosphate this low with green spot algae: the likely reason, as a note
 	const po4 = reading('po4');
 	if (on('phosphate_green_spot') && po4 && po4.value < LOW_PHOSPHATE && ctx.greenSpot) {
 		out.push({
 			rule: 'phosphate_green_spot',
 			paramId: po4.paramId,
-			text: `Green spot algae, logged ${fmtDate(ctx.greenSpot.date)}, often comes with phosphate below ${LOW_PHOSPHATE} ppm: dosing a little phosphate is the usual fix.`,
+			text: `Green spot algae, logged ${fmtDate(ctx.greenSpot.date)}, often comes with phosphate below ${LOW_PHOSPHATE} ppm.`,
 			link: { label: 'See the algae entry', href: `/entries/event/${ctx.greenSpot.eventId}` }
 		});
 	}

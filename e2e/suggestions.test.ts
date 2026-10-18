@@ -29,41 +29,43 @@ test('ammonia suggests water changes until it reads 0, and a clear test ends the
 	await expect(page.getByRole('link', { name: 'Water change 25%: back to every 7 days: ammonia reads 0' })).toBeVisible();
 });
 
-// #179: nitrate at 0 in a dosed tank suggests Dose now; Don't suggest this switches it off, with Undo
-test('nitrate at 0 suggests a dose, and can be switched off for the tank', async ({ page }, info) => {
+// #179: a suggested step shows on the test's page too; Don't suggest this switches it off, with Undo.
+// Nitrate at 0 suggests nothing, even in a dosed tank: no step ever names a product to dose.
+test('a suggested step can be switched off for the tank, and none suggests a dose', async ({ page }, info) => {
 	await newKeeperWithTank(page, `sug-n-${info.project.name}`);
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
 	await open(page, `/tasks/new?tank=${tankId}&type=dosing`);
-	await page.getByLabel('Product').fill('Thrive S');
+	await page.getByLabel('Product').fill('Seachem Prime');
 	await page.getByRole('button', { name: 'Save' }).last().click();
-	await expect(page.getByRole('status')).toContainText('✓ Dose Thrive S added');
-
+	await expect(page.getByRole('status')).toContainText('✓ Dose Seachem Prime added');
 	await logTest(page, tankId, 'Nitrate', '0');
 	const attention = page.getByRole('region', { name: 'Needs attention' });
-	const dose = attention.getByRole('link', { name: 'Dose now' });
-	await expect(dose).toHaveAttribute('href', `/entries/event/new?tank=${tankId}&category=dosing&product=Thrive+S`);
-	// the test's own page suggests it too
-	await page.getByRole('status').getByRole('link', { name: 'View' }).click();
-	await expect(page.getByRole('link', { name: 'Dose now' })).toBeVisible();
+	await expect(attention).toBeVisible();
+	await expect(attention).not.toContainText('Suggested step');
+	await expect(page.getByRole('link', { name: 'Dose now' })).toHaveCount(0);
 
-	await open(page, `/?tank=${tankId}`);
+	await logTest(page, tankId, 'Ammonia', '0.5');
+	await page.getByRole('region', { name: /New tank\?/ }).getByRole('button', { name: 'Not cycling' }).click();
+	const step = attention.getByRole('button', { name: 'Water change every 2 days until ammonia reads 0' });
+	await expect(step).toBeVisible();
 	await attention.getByRole('button', { name: 'Don’t suggest this' }).click();
 	await expect(page.getByRole('status')).toContainText('Won’t suggest that for Riverbed 40');
-	await expect(dose).toHaveCount(0);
+	await expect(step).toHaveCount(0);
 	await page.getByRole('status').getByRole('button', { name: 'Undo' }).click();
-	await expect(dose).toBeVisible();
+	await expect(step).toBeVisible();
 
 	// Tank setup › Suggested steps: the rules with their sources, on or off
 	await open(page, `/tanks/${tankId}/suggestions`);
-	const rule = page.getByRole('checkbox', { name: /Nitrate at 0 in a dosed tank/ });
+	await expect(page.getByRole('checkbox', { name: /Nitrate at 0/ })).toHaveCount(0);
+	const rule = page.getByRole('checkbox', { name: /Ammonia or nitrite in a cycled tank/ });
 	await expect(rule).toBeChecked();
-	await expect(page.getByText(/Source: The Barr Report/)).toBeVisible();
+	await expect(page.getByText(/Source: API and Seachem guidance/)).toBeVisible();
 	await rule.uncheck();
 	await page.getByRole('button', { name: 'Save' }).click();
 	await expect(page.getByRole('status')).toContainText('✓ Suggested steps saved');
 	await open(page, `/?tank=${tankId}`);
 	await expect(attention).toBeVisible();
-	await expect(dose).toHaveCount(0);
+	await expect(step).toHaveCount(0);
 });
 
 // #179: a pause until a reading clears ends with the test that clears it

@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **No more suggestions to dose.** Suggested steps in Needs attention on the [Overview](/tanks/current) never tell you to dose a product anymore: nitrate at 0 no longer offers Dose now, and the green spot algae note just says it often comes with low phosphate. The water changes for ammonia or nitrite stay, and you can still switch any step off under [Tank setup › Suggested steps](/tanks/current/suggestions).
+
 ## 1.19.1 · 2026-10-18
 
 - **Dose now names the right product.** When nitrate reads 0, the suggested step in Needs attention on the [Overview](/tanks/current) now names only a fertilizer that adds nitrogen (such as Thrive or Easy Green), never a water conditioner like Prime, bacteria, a medicine or a fertilizer without nitrogen. A tank dosed only with those isn't told to dose, and when the app can't tell which of your products adds nitrogen it says to dose a fertilizer with nitrogen instead of naming one. A product saved under Settings › Products with a strength of nitrate counts.

@@ -431,31 +431,16 @@ describe('suggested steps for a tank (#179)', async () => {
 		expect(tankSuggestions(user, getTank(user.id, fresh.id), new Map([[freshNh3.id, 0.5]]))).toEqual([]);
 	});
 
-	it('nitrate at 0: Dose now once the tank is dosed, with its routine’s product', () => {
-		const zero = new Map([[no3.id, 0]]);
-		expect(tankSuggestions(user, getTank(user.id, old.id), zero)).toEqual([]);
-		createTask(user.id, old.id, { name: 'Dose Easy Green', kind: 'dosing', product: 'Easy Green', amount: 1, amountUnit: 'pumps', recurring: true, intervalDays: 7, scheduleMode: 'completion', nextDue: today, openFormOnDone: false });
-		expect(tankSuggestions(user, getTank(user.id, old.id), zero)[0]).toMatchObject({ rule: 'dose_nitrate', link: { href: expect.stringContaining('product=Easy+Green') } });
-	});
-
-	it('nitrate at 0: never names a conditioner, and a tank dosed only with one isn’t fertilized', () => {
-		const bowl = createTank(user, { name: 'Prime bowl', type: 'planted', nominalVolumeL: 40, startDate: '2025-01-01' });
-		const bowlNo3 = db.select().from(tankParameters).where(eq(tankParameters.tankId, bowl.id)).all().find((p) => p.key === 'no3')!;
-		const zero = new Map([[bowlNo3.id, 0]]);
-		createTask(user.id, bowl.id, { name: 'Prime', kind: 'dosing', product: 'Seachem Prime', amount: 2, amountUnit: 'mL', recurring: true, intervalDays: 7, scheduleMode: 'completion', nextDue: today, openFormOnDone: false });
-		expect(tankSuggestions(user, getTank(user.id, bowl.id), zero)).toEqual([]);
-		// a fertilizer dosed lately beside it: that's the one named, not the conditioner
-		createEvent(user.id, bowl.id, { category: 'dosing', occurredAt: new Date().toISOString(), note: null, data: { product: 'Thrive S', amount: 2, unit: 'pumps' } }, { timeZone: tz });
-		const [s] = tankSuggestions(user, getTank(user.id, bowl.id), zero);
-		expect(s.text).toBe('Nitrate reads 0, so the plants may go hungry: dose now, with Thrive S.');
-		expect(s).toMatchObject({ link: { href: expect.stringContaining('product=Thrive+S') } });
+	it('nitrate at 0 suggests nothing, even in a dosed tank', () => {
+		createTask(user.id, old.id, { name: 'Dose Prime', kind: 'dosing', product: 'Seachem Prime', amount: 2, amountUnit: 'mL', recurring: true, intervalDays: 7, scheduleMode: 'completion', nextDue: today, openFormOnDone: false });
+		expect(tankSuggestions(user, getTank(user.id, old.id), new Map([[no3.id, 0]]))).toEqual([]);
 	});
 
 	it('switched off for the tank, and back on', () => {
-		const zero = new Map([[no3.id, 0]]);
-		setSuggestion(old.id, 'dose_nitrate', false);
-		expect(tankSuggestions(user, getTank(user.id, old.id), zero)).toEqual([]);
-		setSuggestion(old.id, 'dose_nitrate', true);
-		expect(tankSuggestions(user, getTank(user.id, old.id), zero)).toHaveLength(1);
+		const ammonia = new Map([[nh3.id, 0.5]]);
+		setSuggestion(old.id, 'water_change_until_clear', false);
+		expect(tankSuggestions(user, getTank(user.id, old.id), ammonia)).toEqual([]);
+		setSuggestion(old.id, 'water_change_until_clear', true);
+		expect(tankSuggestions(user, getTank(user.id, old.id), ammonia)).toHaveLength(1);
 	});
 });
