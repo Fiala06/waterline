@@ -4,7 +4,8 @@ import { and, desc, eq, gte, sql } from 'drizzle-orm';
 import { addDays, dateInZone, todayInZone } from '$lib/time';
 import { CLEAR_EVERY, clearText, isSuggestionRule, suggestSteps, type Suggestion, type SuggestionRuleId } from '$lib/suggestions';
 import { db } from './db';
-import { events, tankParameters, tanks, type Tank, type User } from './db/schema';
+import { nitrogenSource } from '$lib/fertilizer';
+import { events, products, tankParameters, tanks, type Tank, type User } from './db/schema';
 import { recentDosingProducts } from './logs';
 import { roleOn } from './tanks';
 import { listTasks } from './tasks';
@@ -28,9 +29,15 @@ export function tankSuggestions(user: User, tank: Tank, readings: Map<string, nu
 	const born = tank.startDate ?? tank.createdAt.slice(0, 10);
 	const open = listTasks(user.id, tank.id).map((r) => r.task);
 	const wc = open.find((t) => t.kind === 'water_change' && t.recurring && t.intervalDays && (t.scheduleMode === 'completion' || t.scheduleMode === 'fixed'));
-	const routine = open.find((t) => t.kind === 'dosing');
-	const lastDose = recentDosingProducts(tank.id, 1)[0];
-	const dosedLately = !!lastDose && dateInZone(lastDose.at, user.timeZone) >= addDays(today, -DOSED_DAYS);
+	// what the tank doses, routines first: only a product that adds nitrogen is
+	// named, and a tank dosed only with conditioner, bacteria or a medicine isn't fertilized
+	const strength = new Map(
+		db.select({ name: products.name, of: products.strengthOf }).from(products).where(eq(products.userId, user.id)).all().map((p) => [p.name.toLowerCase(), p.of])
+	);
+	const doses = [
+		...open.filter((t) => t.kind === 'dosing').map((t) => t.product ?? t.name),
+		...recentDosingProducts(tank.id).filter((d) => dateInZone(d.at, user.timeZone) >= addDays(today, -DOSED_DAYS)).map((d) => d.product)
+	].map((product) => ({ product, n: nitrogenSource(product, strength.get(product.toLowerCase())) }));
 	const spot = db
 		.select({ id: events.id, at: events.occurredAt })
 		.from(events)
@@ -50,8 +57,8 @@ export function tankSuggestions(user: User, tank: Tank, readings: Map<string, nu
 		cycled: !tank.cycling && (tank.cyclingAskDismissed || born < addDays(today, -CYCLE_DAYS)),
 		// already every 2 days or until it clears: nothing to suggest
 		waterChange: wc ? { id: wc.id, name: wc.name, intervalDays: wc.intervalDays!, clearing: !!wc.tempUntilParam || (!!wc.tempIntervalDays && wc.tempIntervalDays <= CLEAR_EVERY) } : null,
-		dosed: !!routine || dosedLately,
-		product: routine?.product ?? lastDose?.product ?? null,
+		dosed: doses.some((d) => d.n !== 'no'),
+		product: doses.find((d) => d.n === 'yes')?.product ?? null,
 		greenSpot: spot ? { eventId: spot.id, date: dateInZone(spot.at, user.timeZone) } : null,
 		off: tank.suggestionsOff
 	});

@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Dose now names the right product.** When nitrate reads 0, the suggested step in Needs attention on the [Overview](/tanks/current) now names only a fertilizer that adds nitrogen (such as Thrive or Easy Green), never a water conditioner like Prime, bacteria, a medicine or a fertilizer without nitrogen. A tank dosed only with those isn't told to dose, and when the app can't tell which of your products adds nitrogen it says to dose a fertilizer with nitrogen instead of naming one. A product saved under Settings › Products with a strength of nitrate counts.
+
 ## 1.19.0 · 2026-10-17
 
 - **Every parameter on one chart:** On [Charts](/charts?p=all), pick All (at the top of the parameter list) to see every parameter you test on a single chart. pH, nitrate, temperature and the rest have no scale in common, so each is drawn against its own target: one shared band is the target, with High above it and Low below. Hover or tap for every reading in that test with its value and status, tap a parameter's key to take its line off the chart or put it back, and the latest of each is listed beside it.

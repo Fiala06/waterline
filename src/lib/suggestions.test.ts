@@ -42,12 +42,15 @@ describe('suggested steps from readings (#179)', () => {
 		expect(suggestSteps(ctx({ readings: [r('nh3', 1)], waterChange: { id: 'wc', name: 'WC', intervalDays: 7, clearing: true } }))).toEqual([]);
 	});
 
-	it('nitrate at 0 in a dosed tank: Dose now with its usual product', () => {
+	it('nitrate at 0 in a dosed tank: Dose now with its usual nitrogen fertilizer', () => {
 		const [s] = suggestSteps(ctx({ readings: [r('no3', 0, 'Nitrate')] }));
 		expect(s).toMatchObject({ rule: 'dose_nitrate', link: { label: 'Dose now', href: '/entries/event/new?tank=t1&category=dosing&product=Thrive+S' } });
 		expect(suggestSteps(ctx({ readings: [r('no3', 0)], dosed: false }))).toEqual([]);
 		expect(suggestSteps(ctx({ readings: [r('no3', 5)] }))).toEqual([]);
-		expect(suggestSteps(ctx({ readings: [r('no3', 0)], product: null }))[0]).toMatchObject({ link: { href: '/entries/event/new?tank=t1&category=dosing' } });
+		expect(suggestSteps(ctx({ readings: [r('no3', 0)], product: null }))[0]).toMatchObject({
+			text: 'Nitrate reads 0, so the plants may go hungry: dose a fertilizer with nitrogen now.',
+			link: { href: '/entries/event/new?tank=t1&category=dosing' }
+		});
 	});
 
 	it('phosphate under 0.1 ppm with green spot algae lately: a note linking the entry', () => {

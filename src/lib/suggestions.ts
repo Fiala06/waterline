@@ -17,8 +17,8 @@ export const SUGGESTION_RULES = [
 	{
 		id: 'dose_nitrate',
 		name: 'Nitrate at 0 in a dosed tank',
-		when: 'Nitrate reads 0 in a tank with dosing',
-		step: 'Dose now, with the tank’s usual product',
+		when: 'Nitrate reads 0 in a tank dosed with fertilizer',
+		step: 'Dose now, with the tank’s usual fertilizer that adds nitrogen',
 		source: 'The Barr Report on Estimative Index dosing; 2Hr Aquarist'
 	},
 	{
@@ -56,8 +56,9 @@ export interface SuggestContext {
 	cycled: boolean;
 	/** the tank's water-change routine that repeats every so many days (its usual cadence), and whether it's already more often */
 	waterChange: { id: string; name: string; intervalDays: number; clearing: boolean } | null;
-	/** dosed: a dosing routine, or a dose logged lately; and the product it usually is */
+	/** dosed: a dosing routine, or a dose logged lately, that may be a fertilizer (not only a conditioner, bacteria or a medicine) */
 	dosed: boolean;
+	/** the tank's usual product that adds nitrogen (src/lib/fertilizer.ts); null when none is known */
 	product: string | null;
 	/** green spot algae logged lately: the entry and its day */
 	greenSpot: { eventId: string; date: string } | null;
@@ -103,7 +104,7 @@ export function suggestSteps(ctx: SuggestContext): Suggestion[] {
 		out.push({
 			rule: 'dose_nitrate',
 			paramId: no3.paramId,
-			text: `Nitrate reads 0, so the plants may go hungry: dose now${ctx.product ? `, with ${ctx.product}` : ''}.`,
+			text: `Nitrate reads 0, so the plants may go hungry: ${ctx.product ? `dose now, with ${ctx.product}` : 'dose a fertilizer with nitrogen now'}.`,
 			link: { label: 'Dose now', href: `/entries/event/new?${q}` }
 		});
 	}
