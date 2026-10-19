@@ -2,11 +2,12 @@
 	// Phone "More": the rest of this tank (Photos, Livestock, Plants, Equipment,
 	// Spending, Setup, share or get help), then everything app-wide.
 	import { page } from '$app/state';
-	import { ui } from '$lib/ui.svelte';
+	import { unreadCount, updateAlert } from '$lib/alerts';
 	import AccountMenu from '$lib/components/AccountMenu.svelte';
 	let { data } = $props();
 	const current = $derived(data.tanks.find((t) => t.id === data.currentTankId));
-	const unread = $derived(data.alerts.length + (data.app.update ? 1 : 0));
+	// what the bell counts (#195): unread, on the account
+	const unread = $derived(unreadCount([...(data.app.update ? [updateAlert(data.app.update.version)] : []), ...data.alerts], data.alertsSeen));
 	const base = $derived(current ? `/tanks/${current.id}` : '');
 	const q = $derived(current ? `?tank=${current.id}` : '');
 </script>
@@ -36,7 +37,7 @@
 			<li><a href="/tanks"><span>Tanks</span><span class="r">{data.tanks.length}</span></a></li>
 			<li><a href="/calculators{q}"><span>Calculators</span><span class="r">Volume, dosing, heater…</span></a></li>
 			<li><a href="/tasks"><span>Tasks</span><span class="r" class:bad={!!data.overdueCount}>{data.overdueCount ? `${data.overdueCount} overdue` : ''}</span></a></li>
-			<li><button type="button" onclick={() => (ui.alerts = true)}><span>Alerts</span><span class="r">{unread ? `${unread} unread` : ''}</span></button></li>
+			<li><a href="/alerts"><span>Alerts</span><span class="r">{unread ? `${unread} unread` : ''}</span></a></li>
 			<li><a href="/settings"><span>Settings</span><span class="r" class:upd={!!data.app.update}>{data.app.update ? `↑ Update to ${data.app.update.version}` : `v${data.app.version}`}</span></a></li>
 		</ul>
 	</section>
@@ -71,8 +72,7 @@
 	li + li {
 		border-top: 1px solid var(--divider-soft);
 	}
-	li a,
-	li button {
+	li a {
 		width: 100%;
 		display: flex;
 		align-items: center;
@@ -84,8 +84,7 @@
 		font-weight: 700;
 		text-align: left;
 	}
-	li a::after,
-	li button::after {
+	li a::after {
 		content: '›';
 		color: var(--text-muted);
 		margin-left: 8px;

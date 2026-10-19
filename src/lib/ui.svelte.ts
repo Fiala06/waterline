@@ -14,8 +14,6 @@ export const ui = $state({
 	palette: false,
 	/** the ? sheet */
 	keys: false,
-	/** the alerts panel, from the bell */
-	alerts: false,
 	/** desktop sidebar: kept open, or a rail that expands on hover; null until the user chooses */
 	navPinned: null as boolean | null,
 	online: true,

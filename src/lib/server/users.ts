@@ -275,3 +275,12 @@ export function markAlertsSeen(userId: string, keys: string[]): string[] {
 	db.update(users).set({ alertsSeen: JSON.stringify(seen) }).where(eq(users.id, userId)).run();
 	return seen;
 }
+
+/** Mark unread (#195): take the keys back out of the account's list. */
+export function unmarkAlertsSeen(userId: string, keys: string[]): string[] {
+	const user = getUser(userId);
+	if (!user) return [];
+	const seen = alertsSeen(user).filter((k) => !keys.includes(k));
+	db.update(users).set({ alertsSeen: JSON.stringify(seen) }).where(eq(users.id, userId)).run();
+	return seen;
+}

@@ -97,7 +97,7 @@
 			);
 		}
 		list.push(
-			{ group: 'Actions', title: 'Alerts', sub: 'Out-of-range readings and overdue tasks', run: () => (ui.alerts = true) },
+			{ group: 'Actions', title: 'Alerts', sub: 'Out-of-range readings and overdue tasks', key: 'G N', run: go('/alerts') },
 			{ group: 'Actions', title: 'Tasks', sub: 'Every tank', run: go('/tasks') },
 			{ group: 'Actions', title: 'Add tank', run: go('/tanks/new') },
 			{ group: 'Actions', title: 'Theme', sub: 'Light, dark or system', run: go('/settings#theme') },

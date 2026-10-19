@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Alerts is a page.** The bell now opens [Alerts](/alerts), a page like Tasks, instead of a box floating over whatever you were doing. It lists every reading out of range and overdue task across your tanks, newest first, each with its tank, target and when, a sparkline of the last readings, and what to do about it right there: Log test (or Open chart for a sensor's reading), Snooze ▾ and Mark done. Filter it to one tank or to Unread, mark one or all read (or unread again), and opening an alert marks it read on the way. Admins see the update notice there too. On a computer, `G` then `N` goes to it; on a phone it's the bell at the top and More › Alerts.
+
 ## 1.19.2 · 2026-10-18
 
 - **No more suggestions to dose.** Suggested steps in Needs attention on the [Overview](/tanks/current) never tell you to dose a product anymore: nitrate at 0 no longer offers Dose now, and the green spot algae note just says it often comes with low phosphate. The water changes for ammonia or nitrite stay, and you can still switch any step off under [Tank setup › Suggested steps](/tanks/current/suggestions).

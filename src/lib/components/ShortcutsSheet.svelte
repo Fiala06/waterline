@@ -28,7 +28,8 @@
 				['G then P', 'Photos'],
 				['G then L', 'Livestock'],
 				['G then E', 'Equipment'],
-				['G then S', 'Tank setup']
+				['G then S', 'Tank setup'],
+				['G then N', 'Alerts']
 			]
 		},
 		{

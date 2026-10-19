@@ -100,7 +100,7 @@ The theme choice is Light / Dark / System (follows `prefers-color-scheme`), stor
   - Log: T test, W water change, D dose, N note.
   - ⌘↵ saves any open form; ⌘P opens the report; Esc closes the top overlay.
   - Shortcuts are ignored while typing in a field.
-- **Alerts panel** (from the bell): out-of-range readings, overdue tasks and update notices, each clickable to its target, with Mark all read.
+- **Alerts panel** (from the bell): out-of-range readings, overdue tasks and update notices, each clickable to its target, with Mark all read. *Built as a page instead (`/alerts`, like Tasks: a tank filter, All / Unread, sparklines and Log test, Snooze and Mark done on the rows), decided in #195; the bell, More › Alerts and G then N lead to it.*
 - **Undo toast**: bottom-centre, ink background, about 6s. Every destructive action (delete entry, delete photo, archive, remove person, snooze, skip, bulk add, set count to 0) shows "… · Undo". Esc dismisses.
 
 ---

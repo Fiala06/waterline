@@ -10,7 +10,7 @@
 	import { navigating, page } from '$app/state';
 	import Logo from '$lib/components/Logo.svelte';
 	import AccountMenu from '$lib/components/AccountMenu.svelte';
-	import AlertsPanel, { type Alert } from '$lib/components/AlertsPanel.svelte';
+	import { alertsKicker, unreadCount, updateAlert } from '$lib/alerts';
 	import CommandPalette from '$lib/components/CommandPalette.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import QuickAdd from '$lib/components/QuickAdd.svelte';
@@ -71,7 +71,7 @@
 	const topLevel = $derived(
 		path === '/' || /^\/(charts|history|photos|more)$/.test(path) || /^\/\(app\)\/tanks\/\[id\]\/\(tabs\)\/?[a-z]*$/.test(routeId)
 	);
-	const barRoutes = ['/tanks', '/tasks', '/settings', '/calculators'];
+	const barRoutes = ['/tanks', '/tasks', '/alerts', '/settings', '/calculators'];
 	const showBar = $derived(topLevel || barRoutes.includes(path));
 	const fullscreen = $derived(path.startsWith('/photos/'));
 
@@ -133,6 +133,7 @@
 		if (id === '/(app)/timeline') return { title: 'Timeline', kicker: 'Photos in date order, with the readings and stock of each moment' };
 		if (id === '/(app)/calculators') return { title: 'Calculators', kicker: current ? `For ${current.name}` : 'Volume, water change, dosing, heater, substrate, CO₂' };
 		if (id === '/(app)/tasks') return { title: 'Tasks', kicker: data.overdueCount ? `${data.overdueCount} overdue` : 'Every tank', actions: [{ label: '+ New task', href: newTaskHref }] };
+		if (id === '/(app)/alerts') return { title: 'Alerts', kicker: alertsKicker(alerts.length, unread) };
 		const taskType = (page.data.values as { type?: string } | undefined)?.type;
 		if (id === '/(app)/tasks/new')
 			return { title: taskType === 'dosing' ? 'New dosing routine' : taskType === 'feeding' ? 'New feeding routine' : 'New task', crumbs: [tasks] };
@@ -200,22 +201,9 @@
 		requestAnimationFrame(listScroll);
 	});
 
-	// ── Alerts: what's new since they were last marked read (kept on the account) ──
-	// what the server knows, plus what was just marked read here before the page refreshes
-	let seenHere = $state<string[]>([]);
-	const seen = $derived([...data.alertsSeen, ...seenHere]);
-	const alerts = $derived.by((): Alert[] => {
-		const list: Alert[] = data.alerts.map((a) => ({ key: a.key, kind: a.kind, title: a.title, sub: a.sub, href: a.href }));
-		if (data.app.update) list.unshift({ key: `update:${data.app.update.version}`, kind: 'update', title: `Update to ${data.app.update.version}`, sub: "See what's new and update the server", href: '/settings/changelog' });
-		return list;
-	});
-	const unread = $derived(alerts.filter((a) => !seen.includes(a.key)).length);
-	function markRead(keys: string[]) {
-		seenHere = [...new Set([...seenHere, ...keys])].slice(-300);
-		fetch('/alerts', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ keys }) }).catch(() => {
-			/* offline: the bell forgets on the next load */
-		});
-	}
+	// ── Alerts (#195): the bell counts what's new since it was marked read (kept on the account) ──
+	const alerts = $derived([...(data.app.update ? [updateAlert(data.app.update.version)] : []), ...data.alerts]);
+	const unread = $derived(unreadCount(alerts, data.alertsSeen));
 
 	// ── Offline queue: sync when the connection comes back or the app is reopened ──
 	async function sync() {
@@ -330,6 +318,12 @@
 		if (goPending) {
 			goPending = false;
 			clearTimeout(goTimer);
+			// G then N: the Alerts page (#195)
+			if (k.toLowerCase() === 'n') {
+				e.preventDefault();
+				goto('/alerts');
+				return;
+			}
 			const to = ({ o: 'overview', c: 'charts', h: 'history', p: 'photos', l: 'livestock', e: 'equipment', s: 'setup' } as Record<string, string | undefined>)[k.toLowerCase()];
 			const tab = tabs.find((t) => t.key === to);
 			if (tab) {
@@ -434,10 +428,10 @@
 			</div>
 			<div class="rule"></div>
 			<nav class="links" aria-label="App">
-				<button type="button" class="link" class:active={ui.alerts} title="Alerts" onclick={() => (ui.alerts = true)}>
+				<a href="/alerts" class="link" class:active={path.startsWith('/alerts')} aria-current={path.startsWith('/alerts') ? 'page' : undefined} title="Alerts">
 					<span class="ic"><Icon name="bell" />{#if unread}<span class="badge" aria-hidden="true">{unread > 9 ? '9+' : unread}</span>{/if}</span>
 					<span class="lbl">Alerts</span>{#if unread}<span class="sr-only">{unread} unread</span>{/if}
-				</button>
+				</a>
 				<a href="/tasks" class="link" class:active={path.startsWith('/tasks')} aria-current={path.startsWith('/tasks') ? 'page' : undefined} title="Tasks">
 					<span class="ic"><Icon name="tasks" /></span>
 					<span class="lbl">Tasks</span>
@@ -571,7 +565,6 @@
 <TankSwitcher bind:open={ui.tankSwitcher} tanks={data.tanks} currentId={data.currentTankId} onpick={pickTank} />
 <CommandPalette bind:open={ui.palette} tanks={data.tanks} currentTankId={data.currentTankId} favorites={data.favorites} routines={data.routines} onpick={pickTank} />
 <ShortcutsSheet bind:open={ui.keys} />
-<AlertsPanel bind:open={ui.alerts} {alerts} onread={markRead} />
 
 {#if showBar}<InstallPrompt />{/if}
 

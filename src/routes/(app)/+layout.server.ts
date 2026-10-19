@@ -1,9 +1,8 @@
 import { coverPosition } from '$lib/media';
 import { dueInfo } from '$lib/tasks';
 import { fmtWhen, todayInZone } from '$lib/time';
-import { statusOf } from '$lib/params';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
-import { fmtValue, shortName } from '$lib/params';
+import { collectAlerts } from '$lib/server/alerts';
 import { listEquipment, listLivestock, listPlants } from '$lib/server/specs';
 import { listMembers, rolesOn } from '$lib/server/members';
 import { db } from '$lib/server/db';
@@ -41,15 +40,10 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 	const tasks = listTasks(user.id);
 	const overdueByTank = new Map<string, number>();
 	let overdueCount = 0;
-	// the alerts panel: overdue tasks and out-of-range readings, each with where to go
-	const alerts: { key: string; kind: 'task' | 'reading'; title: string; sub: string; href: string; tankId: string }[] = [];
-	const nameOf = (id: string) => tanks.find((t) => t.id === id)?.name ?? '';
 	for (const { task } of tasks) {
-		const d = dueInfo(task.due, today, task.graceDays);
-		if (d.section === 'overdue') {
+		if (dueInfo(task.due, today, task.graceDays).section === 'overdue') {
 			overdueCount++;
 			overdueByTank.set(task.tankId, (overdueByTank.get(task.tankId) ?? 0) + 1);
-			alerts.push({ key: `task:${task.id}:${task.due}`, kind: 'task', title: task.name, sub: `${nameOf(task.tankId)} · ${d.text}`, href: `/tasks?filter=${task.tankId}`, tankId: task.tankId });
 		}
 	}
 
@@ -58,24 +52,13 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 	const paramsOf = listParamsFor(ids);
 	const latestOf = latestReadingsFor(ids);
 	const roles = rolesOn(user.id, tanks);
+	// the bell and the Alerts page (#195): readings out of range and overdue tasks, each with where to go
+	const alerts = collectAlerts({ user, tanks, tasks, paramsOf, latestOf, today });
+	const outOfRangeByTank = new Map<string, number>();
+	for (const a of alerts) if (a.kind === 'reading') outOfRangeByTank.set(a.tankId, (outOfRangeByTank.get(a.tankId) ?? 0) + 1);
 	const summaries = tanks.map((t) => {
 		const latest = latestOf.get(t.id)!;
-		let outOfRange = 0;
-		for (const p of paramsOf.get(t.id)!) {
-			const r = latest.get(p.id);
-			const st = statusOf(p, r?.value);
-			if (st.level !== 'bad' || !r) continue;
-			outOfRange++;
-			alerts.push({
-				// a sensor's reading keeps one key while its stretch out of range lasts, so Mark read holds
-				key: `reading:${p.id}:${r.since ?? r.takenAt}`,
-				kind: 'reading',
-				title: `${shortName(p)} ${st.direction === 'low' ? 'low' : 'high'} · ${fmtValue(p, r.value, user)}`,
-				sub: `${t.name} · ${r.sensor ? `${r.sensor} · ` : ''}${fmtWhen(r.takenAt, user.timeZone)}`,
-				href: `/charts?tank=${t.id}&p=${p.id}`,
-				tankId: t.id
-			});
-		}
+		const outOfRange = outOfRangeByTank.get(t.id) ?? 0;
 		return {
 			id: t.id,
 			name: t.name,

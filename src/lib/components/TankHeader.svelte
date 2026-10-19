@@ -107,10 +107,10 @@
 			</div>
 		</div>
 		<!-- phones: the bell; desktop: Share summary, Log water test ▾, More ▾ -->
-		<button type="button" class="bell hide-desk" aria-label="Alerts{unread ? `, ${unread} unread` : ''}" onclick={() => (ui.alerts = true)}>
+		<a href="/alerts" class="bell hide-desk" aria-label="Alerts{unread ? `, ${unread} unread` : ''}">
 			<Icon name="bell" size={22} />
 			{#if unread}<span class="badge" aria-hidden="true">{unread > 9 ? '9+' : unread}</span>{/if}
-		</button>
+		</a>
 		<div class="actions hide-phone">
 			<a class="btn-text" href="{base}/summary">Share summary</a>
 			{#if role !== 'view'}
@@ -264,6 +264,7 @@
 		position: relative;
 		width: 44px;
 		height: 44px;
+		color: var(--text);
 		display: flex;
 		align-items: center;
 		justify-content: center;

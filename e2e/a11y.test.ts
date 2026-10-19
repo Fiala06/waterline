@@ -74,6 +74,7 @@ test('accessibility of representative screens', async ({ page, browser }, info) 
 		['Photos', '/photos'],
 		['A photo', photo],
 		['Tasks', '/tasks'],
+		['Alerts', '/alerts'],
 		['Settings', '/settings'],
 		['Server settings', '/settings/server'],
 		['Server settings › People', '/settings/server/people']
@@ -86,14 +87,10 @@ test('accessibility of representative screens', async ({ page, browser }, info) 
 			await open(page, url);
 			await scan(page, `${name} (${theme})`, found);
 		}
-		// dialogs: Quick add, Alerts, and on a computer the shortcuts
+		// dialogs: Quick add, and on a computer the shortcuts
 		await open(page, `/?tank=${tankId}`);
 		await openQuickAdd(page);
 		await scan(page, `Quick add (${theme})`, found);
-		await page.keyboard.press('Escape');
-		await page.getByRole('button', { name: /^Alerts/ }).first().click();
-		await expect(page.getByRole('dialog').first()).toBeVisible();
-		await scan(page, `Alerts (${theme})`, found);
 		await page.keyboard.press('Escape');
 		if (!phone) {
 			await page.keyboard.press('?');
