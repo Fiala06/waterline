@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.19.3 · 2026-10-19
+
 - **Alerts is a page.** The bell now opens [Alerts](/alerts), a page like Tasks, instead of a box floating over whatever you were doing. It lists every reading out of range and overdue task across your tanks, newest first, each with its tank, target and when, a sparkline of the last readings, and what to do about it right there: Log test (or Open chart for a sensor's reading), Snooze ▾ and Mark done. Filter it to one tank or to Unread, mark one or all read (or unread again), and opening an alert marks it read on the way. Admins see the update notice there too. On a computer, `G` then `N` goes to it; on a phone it's the bell at the top and More › Alerts.
 
 ## 1.19.2 · 2026-10-18
