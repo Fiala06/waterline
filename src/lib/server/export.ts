@@ -11,6 +11,7 @@ import { displayValue, paramDecimals, paramUnit } from '$lib/params';
 import { formatNumber } from '$lib/units';
 import { utcToZoned } from '$lib/time';
 import { db } from './db';
+import { dosesOfTanks } from './dosers';
 import {
 	equipment,
 	expenses,
@@ -121,6 +122,7 @@ function dataFor(user: User, list: Tank[]) {
 		: [];
 	const allPhotos = db.select().from(photos).where(inArray(photos.tankId, ids)).orderBy(asc(photos.takenAt)).all();
 	const allEquipment = byTank(db.select().from(equipment).where(inArray(equipment.tankId, ids)).all());
+	const allDoses = byTank(dosesOfTanks(ids));
 	const allLivestock = byTank(db.select().from(livestock).where(inArray(livestock.tankId, ids)).all());
 	const allPlants = byTank(db.select().from(plants).where(inArray(plants.tankId, ids)).all());
 	// the pets tagged in each photo
@@ -141,6 +143,7 @@ function dataFor(user: User, list: Tank[]) {
 		photosIn: byTank(allPhotos),
 		petsIn,
 		allEquipment,
+		allDoses,
 		allLivestock,
 		allPlants,
 		expensesIn: byTank(allExpenses),
@@ -215,6 +218,8 @@ async function build(id: string, user: User, list: Tank[], format: 'zip' | 'csv'
 			})),
 			events: d.allEvents(t.id).map((e) => ({ ...e, tankId: undefined })),
 			equipment: d.allEquipment(t.id).map((e) => ({ ...e, tankId: undefined })),
+			// what the dosers put in on their own (#196)
+			autoDoses: d.allDoses(t.id).map((x) => ({ ...x, tankId: undefined })),
 			livestock: d.allLivestock(t.id).map((l) => ({ ...l, tankId: undefined })),
 			plants: d.allPlants(t.id).map((p) => ({ ...p, tankId: undefined })),
 			tasks: d.tasksIn(t.id).map((k) => ({ ...k, tankId: undefined, completions: d.completionsOf(k.id) })),

@@ -5,7 +5,10 @@
 	import DateField from '$lib/components/DateField.svelte';
 	import { untrack } from 'svelte';
 	import DayTimeline from '$lib/components/DayTimeline.svelte';
+	import { MAX_DOSES } from '$lib/dosers';
 	import { DEFAULT_SERVICE, EQUIPMENT_TYPE_LABEL, EQUIPMENT_TYPES, hoursText, isCompletePeriod, MAX_PERIODS, RAMP_OPTIONS, SERVICE_CADENCES, SPEC_FIELDS, scheduleTotalHours, serviceVerb, specUnit, type EquipmentType } from '$lib/equipment';
+	import { WEEKDAYS } from '$lib/tasks';
+	import { isTime } from '$lib/time';
 	import type { UnitPrefs } from '$lib/units';
 
 	let {
@@ -13,6 +16,7 @@
 		values,
 		errors = {},
 		brands = [],
+		products = [],
 		prefs,
 		cancelHref,
 		today,
@@ -36,9 +40,13 @@
 			runs: string;
 			periods: { on: string; off: string }[];
 			rampMin: string;
+			/** a doser's doses (#196): what it puts in, how much (mL), when and on which days */
+			doses: { id: string; product: string; amount: string; at: string; seconds: string; weekdays: number[]; paused: boolean }[];
 		};
 		errors?: Record<string, string>;
 		brands?: { brand: string; tankName: string }[];
+		/** products to offer a doser's dose: dosed on this tank before, or saved under Settings › Products */
+		products?: string[];
 		prefs: UnitPrefs;
 		cancelHref: string;
 		/** YYYY-MM-DD in the user's time zone */
@@ -51,6 +59,8 @@
 			task: { id: string; name: string; line: string; due: { text: string; level: 'ok' | 'warn' | 'bad' } | null } | null;
 			/** what it cost (#148): the expenses linked to it, and where to add one */
 			cost: { total: string; rows: { id: string; what: string; day: string; amount: string; receipt: boolean }[]; addHref: string };
+			/** a doser (#196): the doses it logged, newest first */
+			doses?: { id: string; title: string; day: string }[] | null;
 		} | null;
 		/** a new item from the scanner (#147): its barcode, and the listing the lookup found, if any */
 		scanned?: { code: string; title: string | null; source: string | null } | null;
@@ -79,6 +89,10 @@
 	let runs = $state(untrack(() => values.runs));
 	let periods = $state<{ on: string; off: string }[]>(untrack(() => (values.periods.length ? values.periods.map((p) => ({ ...p })) : [{ on: '08:00', off: '16:00' }])));
 	let rampMin = $state(untrack(() => values.rampMin));
+	// a doser's doses (#196): rows the keeper adds and removes; one to start with, blank and skipped if left so
+	const blankDose = () => ({ id: '', product: '', amount: '', at: '', seconds: '', weekdays: WEEKDAYS.map((w) => w.day), paused: false });
+	const doses = $state(untrack(() => (values.doses.length ? values.doses.map((d) => ({ ...d, weekdays: [...d.weekdays] })) : [blankDose()])));
+	const doseMarks = $derived(type === 'doser' ? doses.filter((d) => isTime(d.at) && !d.paused).map((d) => d.at) : []);
 	const complete = $derived(periods.filter(isCompletePeriod));
 	const preview = $derived(runs === 'schedule' && complete.length ? { periods: complete, rampMin: type === 'light' ? Number(rampMin) || null : null } : null);
 	const previewHours = $derived(scheduleTotalHours(preview));
@@ -196,6 +210,77 @@
 			<textarea class="input" id="eq-notes" name="notes" rows="2" maxlength="2000" placeholder="Media, settings, where you bought it" bind:value={notes}></textarea>
 		</div>
 
+		{#if type === 'doser'}
+			<!-- a doser's doses (#196): each a product, an amount, a time and its days; logged by Waterline at its time -->
+			<input type="hidden" name="doses" value="1" />
+			<fieldset class="field doses-set">
+				<legend class="label">Doses</legend>
+				<p class="hint">What it puts in on its own. Waterline logs each dose in History at its time, from the next one, and a dosing reminder for the same product is marked done by it.</p>
+				{#each doses as d, i (i)}
+					<div class="dose">
+						<input type="hidden" name="dose.{i}.id" value={d.id} />
+						<div class="dose-head">
+							<span class="kicker">Dose {i + 1}</span>
+							{#if doses.length > 1}
+								<button type="button" class="btn-text x-dose" onclick={() => doses.splice(i, 1)}>Remove<span class="sr-only"> dose {i + 1}</span></button>
+							{/if}
+						</div>
+						<div class="field">
+							<label class="label" for="dose-{i}-product">Product</label>
+							<input class="input" id="dose-{i}-product" name="dose.{i}.product" list="dose-products" bind:value={d.product} maxlength="80" autocomplete="off" placeholder="Thrive+" aria-invalid={!!errors[`dose.${i}.product`]} />
+							{#if errors[`dose.${i}.product`]}<span class="error-text">✕ {errors[`dose.${i}.product`]}</span>{/if}
+						</div>
+						<div class="dose-row">
+							<div class="field">
+								<label class="label" for="dose-{i}-amount">Amount</label>
+								<div class="unit-input">
+									<input id="dose-{i}-amount" name="dose.{i}.amount" inputmode="decimal" bind:value={d.amount} placeholder="1" aria-invalid={!!errors[`dose.${i}.amount`]} />
+									<span class="unit">mL</span>
+								</div>
+								{#if errors[`dose.${i}.amount`]}<span class="error-text">✕ {errors[`dose.${i}.amount`]}</span>{/if}
+							</div>
+							<div class="field">
+								<label class="label" for="dose-{i}-at">Time</label>
+								<input class="input time" type="time" id="dose-{i}-at" name="dose.{i}.at" bind:value={d.at} aria-invalid={!!errors[`dose.${i}.at`]} />
+								{#if errors[`dose.${i}.at`]}<span class="error-text">✕ {errors[`dose.${i}.at`]}</span>{/if}
+							</div>
+							<div class="field">
+								<label class="label" for="dose-{i}-seconds">Runs for</label>
+								<div class="unit-input">
+									<input id="dose-{i}-seconds" name="dose.{i}.seconds" inputmode="numeric" bind:value={d.seconds} placeholder="30" aria-invalid={!!errors[`dose.${i}.seconds`]} />
+									<span class="unit">s</span>
+								</div>
+								{#if errors[`dose.${i}.seconds`]}<span class="error-text">✕ {errors[`dose.${i}.seconds`]}</span>{/if}
+							</div>
+						</div>
+						<!-- a group, not a fieldset: nested in one, a fieldset shrinks to its content and the chips pile up -->
+						<div class="field" role="group" aria-labelledby="dose-{i}-days">
+							<span class="label" id="dose-{i}-days">On these days</span>
+							<div class="week" class:invalid={!!errors[`dose.${i}.wd`]}>
+								{#each WEEKDAYS as w (w.day)}
+									<label class="day" title={w.name}>
+										<input type="checkbox" name="dose.{i}.wd" value={w.day} bind:group={d.weekdays} aria-label="{w.name}, dose {i + 1}" />
+										<span aria-hidden="true">{w.short}</span>
+									</label>
+								{/each}
+							</div>
+							{#if errors[`dose.${i}.wd`]}<span class="error-text">✕ {errors[`dose.${i}.wd`]}</span>{/if}
+						</div>
+						<label class="check-row"><input type="checkbox" name="dose.{i}.paused" value="1" bind:checked={d.paused} />Paused · nothing is logged until it's on again</label>
+					</div>
+				{/each}
+				{#if doses.length < MAX_DOSES}
+					<button type="button" class="btn-text add-period" onclick={() => doses.push(blankDose())}>+ Add a dose{doses.length === 1 ? ' · another product, or a second time' : ''}</button>
+				{/if}
+				<datalist id="dose-products">{#each products as p (p)}<option value={p}></option>{/each}</datalist>
+				{#if doseMarks.length}
+					<div class="preview">
+						<DayTimeline rows={[{ label: `${doseMarks.length} dose${doseMarks.length === 1 ? '' : 's'}`, schedule: { periods: [], rampMin: null }, marks: doseMarks }]} compact />
+						<span class="hint">Each mark is a dose in the day. Changes are kept in History.</span>
+					</div>
+				{/if}
+			</fieldset>
+		{:else}
 		<!-- when it runs (#25): all day, or periods in the day; lights can ramp -->
 		<fieldset class="field runs">
 			<legend class="label">Runs</legend>
@@ -238,6 +323,7 @@
 				<span class="hint">{type === 'light' || type === 'co2' ? 'A timer? Set its periods here and the tank’s lights and CO₂ times follow.' : 'On a timer? Set its periods here.'}</span>
 			{/if}
 		</fieldset>
+		{/if}
 
 		<!-- the service reminder: a maintenance task for this item, kept in step by Save -->
 		<div class="field service">
@@ -269,6 +355,18 @@
 					{#if about.task.due}<span class="task-due status-{about.task.due.level}">{about.task.due.text}</span>{/if}
 					<span class="task-line">{about.task.line}</span>
 					<a class="ghost" href="/tasks?edit={about.task.id}">Open in Tasks ›</a>
+				</div>
+			{/if}
+			{#if about.doses}
+				<!-- a doser (#196): what it logged -->
+				<div class="log">
+					<span class="kicker rule">Logged by the doser · {about.doses.length}</span>
+					{#each about.doses as h (h.id)}
+						<a class="log-row" href="/entries/event/{h.id}">
+							<span class="log-top"><b>{h.title}</b><span class="log-day">{h.day}</span></span>
+						</a>
+					{/each}
+					{#if !about.doses.length}<span class="none">Nothing logged yet. Each dose is logged at its time.</span>{/if}
 				</div>
 			{/if}
 			<div class="log">
@@ -466,6 +564,88 @@
 		margin-top: 10px;
 		padding-top: 8px;
 		border-top: 1px solid var(--divider);
+	}
+	/* a doser's doses (#196): each under a 1px rule, its fields in a row of three, its days as chips */
+	.doses-set {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+	}
+	.doses-set > .hint {
+		margin-bottom: 2px;
+	}
+	.dose {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		padding-top: 10px;
+		border-top: 1px solid var(--divider);
+	}
+	.dose-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		min-height: 24px;
+	}
+	.x-dose {
+		min-height: 44px;
+		margin: -10px 0;
+		padding: 0 4px;
+		font-size: 13px;
+		color: var(--text-muted);
+	}
+	/* amount and time side by side; how long it runs under them on a phone, beside them with room */
+	.dose-row {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 12px;
+	}
+	.dose-row .time {
+		min-height: 44px;
+	}
+	@media (min-width: 480px) {
+		.dose-row {
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+		}
+	}
+	/* (not .days: that's the service reminder's days box above) */
+	.week {
+		display: grid;
+		grid-template-columns: repeat(7, minmax(0, 1fr));
+		gap: 6px;
+	}
+	.day {
+		position: relative;
+		min-height: 44px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 0;
+		border: 1px solid var(--border);
+		background: var(--surface);
+		font-size: 14px;
+		font-weight: 600;
+		color: var(--text-muted);
+		cursor: pointer;
+	}
+	.day input {
+		position: absolute;
+		inset: 0;
+		opacity: 0;
+		margin: 0;
+		cursor: pointer;
+	}
+	.day:has(input:checked) {
+		background: var(--accent);
+		border-color: var(--accent);
+		color: var(--on-accent);
+	}
+	.day:has(input:focus-visible) {
+		outline: 2px solid var(--accent);
+		outline-offset: 2px;
+	}
+	.week.invalid .day {
+		border-color: var(--bad);
 	}
 	.service-row {
 		display: grid;

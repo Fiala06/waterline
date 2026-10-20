@@ -116,7 +116,8 @@ export const load: PageServerLoad = async ({ locals, parent, url, cookies }) => 
 			at: e.occurredAt,
 			icon: eventIcon(e),
 			title: eventTitle(e, user),
-			sub: `${fmtTime(e.occurredAt, tz)}${e.category === 'water_change' ? '' : ` · ${eventKindLabel(e)}`}${by(e.loggedBy)}`,
+			// a dose a doser made (#196) says so, as an entry someone else logged says who
+			sub: `${fmtTime(e.occurredAt, tz)}${e.category === 'water_change' ? '' : ` · ${eventKindLabel(e)}`}${e.data.auto === true ? ' · by the doser' : by(e.loggedBy)}`,
 			bad: null,
 			thumb: thumbs.get(e.id) ?? null
 		}))

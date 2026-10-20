@@ -127,6 +127,7 @@ const TYPE_PLURAL: Record<EquipmentType, string> = {
 	co2: 'CO₂',
 	pump: 'pumps',
 	skimmer: 'skimmers',
+	doser: 'dosers',
 	other: 'other equipment'
 };
 

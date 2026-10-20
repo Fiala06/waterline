@@ -40,7 +40,9 @@ import { equipmentName } from "$lib/equipment";
 import { listEquipment, scheduledItems, listLivestock, listPlants } from "$lib/server/specs";
 import { dismissCyclingAsk, getTank, listParams, markCycling, markRunning, roleOn, setChecklist } from "$lib/server/tanks";
 import { checklistSteps, showChecklist } from "$lib/checklist";
+import { doseLabel } from "$lib/dosers";
 import { growingRows } from "$lib/growing";
+import { autoDoseLines } from "$lib/server/dosers";
 import { dashboardChoices, resetDashboardChoices, saveDashboardChoices } from "$lib/server/dashboard-prefs";
 import { parseChoices } from "$lib/dashboard";
 import { intervalText } from "$lib/tasks";
@@ -308,6 +310,8 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
             dosing: tasks
               .filter((t) => t.kind === "dosing")
               .map((t) => ({ id: t.id, title: t.name, product: t.product, amount: t.amount, amountUnit: t.amountUnit, nextDue: t.due, interval: intervalText(t) })),
+            // a doser's doses (#196), without how long the pump runs
+            autoDoses: autoDoseLines(tank.id).map((a) => ({ itemId: a.itemId, text: doseLabel({ ...a.dose, seconds: null }) })),
             today,
           });
         })()

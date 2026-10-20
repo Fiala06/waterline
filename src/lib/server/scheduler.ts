@@ -3,6 +3,7 @@
 import { env } from '$env/dynamic/private';
 import { pruneActionTokens } from './action-tokens';
 import { pollAllDevices } from './devices';
+import { logDueDoses } from './dosers';
 import { pruneSamples } from './sensors';
 import { pruneOAuth } from './assistant/oauth';
 import { cleanupExports } from './export';
@@ -21,6 +22,8 @@ export function startScheduler() {
 		if (running) return;
 		running = true;
 		try {
+			// the doses dosers make (#196), logged at their time
+			await logDueDoses();
 			if (getServerSettings().scheduledEmails) await runNotifications();
 			// devices Waterline reads itself, every run: 5 minutes apart
 			await pollAllDevices();

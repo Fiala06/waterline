@@ -66,6 +66,8 @@ events           id, tank_id, category(water_change|dosing|maintenance|livestock
                  -- data examples:
                  -- water_change {percent, volume_l, source: tap|rodi|mix}
                  -- dosing {product, amount, unit, task_id? (logged by a routine's Done)}
+                 -- dosing {product, amount, unit: mL, auto: true, doser_id, dose_id} (#196: logged by
+                 --         Waterline at a doser's dose time; its routine is marked done)
                  -- feeding {food, amount?, unit?, task_id?}
                  -- maintenance {actions:[...], equipment_id?}
                  -- livestock {action: added|removed|moved|status|named, livestock_id, delta,
@@ -74,6 +76,7 @@ events           id, tank_id, category(water_change|dosing|maintenance|livestock
                  --            changes:{field:[old,new]}}
                  -- equipment {action: without|without_off, type, item} ("No heater in this tank")
                  -- equipment {action: schedule, equipment_id, item, schedule, was} (its periods changed)
+                 -- equipment {action: doses, equipment_id, item, doses, was} (#196: a doser's doses changed)
                  -- equipment {action: par, par_id, item: "PAR", spot, value} (a PAR reading)
                  -- observation {tags:[...], recheck_at?}
                  -- observation {kind: plant, plant_ids, plants:[names], observation: thriving|
@@ -139,11 +142,18 @@ task_completions id, task_id, completed_at, event_id?,
                  "Skipped" note in History, removed again by Undo)
 
 ── What's in the tank, and what it costs ──────────────────────────────────────
-equipment        id, tank_id, type(filter|heater|light|co2|pump|skimmer|other), brand?,
+equipment        id, tank_id, type(filter|heater|light|co2|pump|skimmer|doser|other), brand?,
                  model?, specs JSON, schedule? JSON ({periods:[{on,off}], rampMin?}: when it
                  runs; null runs all day; a light's sets the tank's lights times and photoperiod),
                  installed_at?, last_serviced_at?, notes?, removed_at?, barcode? (the product
                  barcode it was scanned from, as a GTIN), import_id?, created_at
+auto_doses       id, tank_id, equipment_id (a doser), product, amount_ml, at ("HH:MM" in the
+                 owner's time zone), seconds? (how long the pump runs), weekdays? ("1,3,5";
+                 null is every day), paused, last_logged_on? (YYYY-MM-DD: the day of the last
+                 dose Waterline logged, so a day's dose is logged once and one set up after its
+                 time starts tomorrow), position, created_at (#196: what a doser doses on its
+                 own; the scheduler logs each in History at its time as a dosing entry with
+                 auto: true, and the doser's page and the Equipment tab show them)
 par_readings     id, tank_id, spot, x, y (0–100 across and front to back), value (µmol/m²/s),
                  note?, measured_at, created_at
 livestock        id, tank_id, kind(fish|invert|coral), common_name, scientific_name?,

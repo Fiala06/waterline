@@ -15,6 +15,8 @@ import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { EVENT_CATEGORIES, type User } from './db/schema';
 import { tankNotes } from './trends';
 import { eventsSince, latestReadings, testsSince } from './logs';
+import { dosesLabel } from '$lib/dosers';
+import { dosesByEquipment } from './dosers';
 import { listEquipment, listLivestock, listPar, listPlants, scheduledItems } from './specs';
 import { careLine, tankTargets, tankWarnings } from '$lib/care';
 import { CARE_SOURCE, careFor, speciesCareOn } from './species-care';
@@ -236,6 +238,7 @@ export function tankSummary(user: User, tankId: string, days: number, now = new 
 			: ['None recorded.']
 	);
 	const gear = listEquipment(user.id, t.id);
+	const doses = dosesByEquipment(t.id);
 	section(
 		'Equipment',
 		gear.length
@@ -244,6 +247,8 @@ export function tankSummary(user: User, tankId: string, days: number, now = new 
 						`- ${EQUIPMENT_TYPE_LABEL[e.type]}: ${equipmentName(e)}`,
 						...specSummary(e.type, e.specs, user),
 						e.schedule ? `runs ${scheduleLabel(e.schedule)}` : null,
+						// a doser (#196): what it puts in on its own, logged in the care log at its time
+						e.type === 'doser' ? `doses ${dosesLabel(doses.get(e.id) ?? [])}` : null,
 						e.installedAt ? `since ${e.installedAt}` : null,
 						e.lastServicedAt ? `last serviced ${day(e.lastServicedAt)}` : null,
 						e.notes ? `note: "${cell(e.notes)}"` : null

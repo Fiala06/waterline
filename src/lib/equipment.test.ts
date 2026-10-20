@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   brandAndModel,
   guessEquipmentType,
+  specSummary,
   specChangeText,
   parseServiceCadence,
   scheduleHours,
@@ -141,6 +142,14 @@ describe("from a product barcode (#147)", () => {
     expect(guessEquipmentType("Tetra Whisper Air Pump for Aquarium Filters")).toBe("filter");
     expect(guessEquipmentType("Reef Octopus Classic 110 Protein Skimmer with pump")).toBe("skimmer");
     expect(guessEquipmentType("Seachem Prime 500 mL")).toBe("other");
+    // a doser (#196), before "pump" has its say
+    expect(guessEquipmentType("Kamoer X1 Pro 2 WiFi Dosing Pump for Aquarium")).toBe("doser");
+    expect(guessEquipmentType("Jebao DOSER 3.4 4-Channel Auto Dosing Pump")).toBe("doser");
+  });
+  it("counts a doser's heads (#196)", () => {
+    const prefs = { unitSystem: "metric", hardnessUnit: "dgh" } as const;
+    expect(specSummary("doser", { heads: 1 }, prefs)).toEqual(["1 head"]);
+    expect(specSummary("doser", { heads: 4 }, prefs)).toEqual(["4 heads"]);
   });
   it("splits a listing's name into brand and model", () => {
     expect(brandAndModel("Fluval 407 Performance Canister Filter, Aquarium Filter for up to 100 Gallons", "FLUVAL")).toEqual({ brand: "Fluval", model: "407 Performance Canister Filter" });

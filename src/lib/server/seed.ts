@@ -9,7 +9,8 @@ import { env } from '$env/dynamic/private';
 import { fToC } from '$lib/units';
 import { addDays, todayInZone, zonedToUtc } from '$lib/time';
 import { db } from './db';
-import { events, notificationPrefs, tanks, taskCompletions, tasks, users, type Tank, type User } from './db/schema';
+import { autoDoses, events, notificationPrefs, tanks, taskCompletions, tasks, users, type Tank, type User } from './db/schema';
+import { syncDoses } from './dosers';
 import { createEvent, createTest } from './logs';
 import { addExpense } from './expenses';
 import { preparePhotos, setCover, storePhotos } from './photos';
@@ -112,6 +113,12 @@ async function seedPlanted(user: User) {
 	addEquipment(user.id, tank.id, { type: 'light', brand: 'Lumora', model: 'Pro 90', specs: { photoperiodH: 8, intensity: 70, spectrum: 'Full spectrum' }, installedAt: day(-DAYS - 20), notes: null }, user.timeZone);
 	addEquipment(user.id, tank.id, { type: 'heater', brand: 'Tidewell', model: '200 W', specs: { watts: 200, setC: fToC(77) }, installedAt: day(-DAYS - 20), notes: null }, user.timeZone);
 	addEquipment(user.id, tank.id, { type: 'co2', brand: 'Dual-stage regulator', model: '+ inline diffuser', specs: { bps: 1, cylinder: '5 lb' }, installedAt: day(-DAYS + 10), notes: null }, user.timeZone);
+	// a doser (#196) took over the fertilizer 40 days ago: Mon, Wed, Fri at 09:00, logged by Waterline from then on
+	const doser = addEquipment(user.id, tank.id, { type: 'doser', brand: 'Kamoer', model: 'X1', specs: { heads: 1 }, installedAt: day(-40), notes: 'Head 1 on the fertilizer, 2 mL/min.' }, user.timeZone);
+	syncDoses(user, doser, [{ id: null, product: 'All-in-one fertilizer', amountMl: 5, at: '09:00', seconds: 150, weekdays: '1,3,5', paused: false }], new Date(at(-40, '12:00')));
+	const doseId = db.select({ id: autoDoses.id }).from(autoDoses).where(eq(autoDoses.equipmentId, doser.id)).get()!.id;
+	// today's is in the loop below, when it's one of its days
+	db.update(autoDoses).set({ lastLoggedOn: day(0) }).where(eq(autoDoses.id, doseId)).run();
 
 	// Livestock arrives over time; one loss along the way.
 	const rasbora = addLivestock(user.id, tank.id, { kind: 'fish', commonName: 'Harlequin rasbora', scientificName: 'Trigonostigma heteromorpha', count: 15, status: 'in_tank', addedAt: day(-DAYS + 5), source: null }, { at: at(-DAYS + 5, '17:30') }).row;
@@ -164,8 +171,9 @@ async function seedPlanted(user: User) {
 			wcEvents.push({ id: wc.id, at: wc.occurredAt });
 		}
 		const dow = new Date(day(d) + 'T12:00:00Z').getUTCDay();
-		if ([1, 3, 5].includes(dow) && rand() > 0.15) {
-			event(user, tank, d, '09:00', 'dosing', { product: 'All-in-one fertilizer', amount: 5, unit: 'mL' });
+		// by hand, with a dose forgotten now and then, until the doser took over
+		if ([1, 3, 5].includes(dow) && (d >= -40 || rand() > 0.15)) {
+			event(user, tank, d, '09:00', 'dosing', { product: 'All-in-one fertilizer', amount: 5, unit: 'mL', ...(d >= -40 ? { auto: true, doser_id: doser.id, dose_id: doseId } : {}) });
 		}
 		// fed most mornings, by hand: flakes, with a wafer for the otos some evenings
 		if (d > -40 && rand() > 0.2) {

@@ -55,6 +55,10 @@
 					{#if e.schedule}
 						<div class="sched"><span class="on-now" class:off={!e.schedule.now.on}>{e.schedule.now.text}</span><span class="sched-label">{e.schedule.label}</span></div>
 					{/if}
+					{#each e.doses as d (d.id)}
+						<!-- a doser's dose (#196): when the next is, and what it is -->
+						<div class="sched"><span class="on-now" class:off={d.paused}>{d.paused ? '○ Paused' : `● ${d.next}`}</span><span class="sched-label">{d.label}{d.last ? ` · ${d.last}` : ''}</span></div>
+					{/each}
 					{#if e.service}<div class="service status-{e.service.level}">{e.service.text}</div>{/if}
 					{#if meta(e)}<div class="meta">{meta(e)}</div>{/if}
 					<div class="acts">

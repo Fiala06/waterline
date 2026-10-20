@@ -16,11 +16,16 @@ import {
   type SpecField,
 } from "$lib/equipment";
 import { normalizeBarcode } from "$lib/barcode";
+import { MAX_DOSES, MAX_SECONDS } from "$lib/dosers";
+import { parseWeekdays, WEEKDAYS } from "$lib/tasks";
 import { addDays, dateInZone, isDate, isTime, todayInZone } from "$lib/time";
 import { formatNumber } from "$lib/units";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { db } from "./db";
 import { tasks, type Equipment, type User } from "./db/schema";
+import { listDoses, syncDoses, type DoseInput } from "./dosers";
+import { recentDosingProducts } from "./logs";
+import { listProducts } from "./products";
 import { setFlash } from "./flash";
 import { num, optStr, str } from "./forms";
 import {
@@ -93,6 +98,42 @@ export function syncServiceTask(user: User, e: Equipment, days: number | null) {
   }
 }
 
+/** A doser's dose as the form holds it (#196): text fields, and the days ticked (every day: all seven). */
+export interface DoseFormRow {
+  id: string;
+  product: string;
+  amount: string;
+  at: string;
+  seconds: string;
+  weekdays: number[];
+  paused: boolean;
+}
+
+/** The doses of a doser for its form, or none for a new item. */
+export function doseFormRows(e: Equipment | null): DoseFormRow[] {
+  if (!e || e.type !== "doser") return [];
+  return listDoses(e.id).map((d) => {
+    const days = parseWeekdays(d.weekdays);
+    return {
+      id: d.id,
+      product: d.product,
+      amount: formatNumber(d.amountMl, 2),
+      at: d.at,
+      seconds: d.seconds ? String(d.seconds) : "",
+      weekdays: days.length ? days : WEEKDAYS.map((w) => w.day),
+      paused: d.paused,
+    };
+  });
+}
+
+/** Products to offer a doser's dose (#196): dosed on the tank before, then saved under Settings › Products. */
+export function doseProducts(userId: string, tankId: string): string[] {
+  const seen = new Set<string>();
+  return [...recentDosingProducts(tankId, 12).map((r) => r.product), ...listProducts(userId).map((p) => p.name.trim())].filter(
+    (name) => name && !seen.has(name.toLowerCase()) && seen.add(name.toLowerCase()),
+  );
+}
+
 /** Form values (display units) for an equipment item. */
 export function equipmentFormValues(e: Equipment | null, user: User) {
   const type = (e?.type ?? "filter") as EquipmentType;
@@ -128,7 +169,54 @@ export function equipmentFormValues(e: Equipment | null, user: User) {
     runs: schedule ? "schedule" : "always",
     periods: schedule?.periods ?? [],
     rampMin: schedule?.rampMin ? String(schedule.rampMin) : "0",
+    // a doser's doses (#196)
+    doses: doseFormRows(e),
   };
+}
+
+/**
+ * A doser's doses from the form (#196): rows dose.<i>.product, .amount (mL),
+ * .at, .seconds, .wd (the days ticked) and .paused, with .id for a row it
+ * already had; a row left blank is skipped. undefined when the form has no
+ * such fields (an older page, another type), so the item keeps what it had.
+ */
+export function parseDosesForm(
+  form: FormData,
+  errors: Record<string, string>,
+): DoseInput[] | undefined {
+  if (!form.has("doses")) return undefined;
+  const out: DoseInput[] = [];
+  for (let i = 0; i < MAX_DOSES; i++) {
+    const key = (k: string) => `dose.${i}.${k}`;
+    if (!form.has(key("product")) && !form.has(key("at"))) continue;
+    const product = str(form, key("product")).slice(0, 80);
+    const amountRaw = str(form, key("amount"));
+    const at = str(form, key("at"));
+    const secondsRaw = str(form, key("seconds"));
+    if (!product && !amountRaw && !at) continue;
+    const amount = num(form, key("amount"));
+    const days = parseWeekdays(form.getAll(key("wd")).map(String).join(","));
+    if (!product) errors[key("product")] = "Enter the product it doses.";
+    if (amount == null || amount <= 0) errors[key("amount")] = "Enter how much, in mL.";
+    if (!isTime(at)) errors[key("at")] = "Pick a time.";
+    let seconds: number | null = null;
+    if (secondsRaw) {
+      const n = Math.round(Number(secondsRaw));
+      if (!Number.isFinite(n) || n < 1 || n > MAX_SECONDS) errors[key("seconds")] = `Enter 1–${MAX_SECONDS} seconds, or leave it out.`;
+      else seconds = n;
+    }
+    if (!days.length) errors[key("wd")] = "Pick at least one day.";
+    out.push({
+      id: optStr(form, key("id"), 64),
+      product,
+      amountMl: amount ?? 0,
+      at,
+      seconds,
+      weekdays: days.length === 7 ? null : days.join(","),
+      paused: str(form, key("paused")) === "1",
+    });
+  }
+  return out;
 }
 
 /**
@@ -199,6 +287,8 @@ function parse(form: FormData, user: User, before: Equipment | null) {
   const installedAt = optStr(form, "installedAt");
   if (installedAt && !isDate(installedAt)) errors.installedAt = "Pick a date.";
   const schedule = parseScheduleForm(form, errors);
+  // a doser's doses (#196); another type keeps none
+  const doses = type === "doser" ? parseDosesForm(form, errors) : before?.type === "doser" ? [] : undefined;
   const input: EquipmentInput = {
     type,
     brand: optStr(form, "brand", 60),
@@ -223,6 +313,7 @@ function parse(form: FormData, user: User, before: Equipment | null) {
     errors,
     input,
     serviceDays: form.has("serviceEvery") ? serviceDays : undefined,
+    doses,
   };
 }
 
@@ -234,15 +325,17 @@ export async function saveEquipmentAction(
   const user = event.locals.user!;
   const form = await event.request.formData();
   const before = equipmentId ? getEquipment(user.id, equipmentId) : null;
-  const { errors, input, serviceDays } = parse(form, user, before);
+  const { errors, input, serviceDays, doses } = parse(form, user, before);
   if (Object.keys(errors).length) return fail(400, { errors });
   if (equipmentId) {
     const e = updateEquipment(user.id, equipmentId, input);
     if (serviceDays !== undefined) syncServiceTask(user, e, serviceDays);
+    if (doses !== undefined) syncDoses(user, e, doses);
     setFlash(event.cookies, "✓ Equipment saved");
   } else {
     const e = addEquipment(user.id, tankId, input, user.timeZone);
     if (serviceDays) syncServiceTask(user, e, serviceDays);
+    if (doses?.length) syncDoses(user, e, doses);
     setFlash(event.cookies, `✓ ${equipmentName(e)} added`);
   }
   redirect(303, `/tanks/${tankId}/equipment`);

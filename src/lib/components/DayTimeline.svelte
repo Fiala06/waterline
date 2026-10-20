@@ -1,6 +1,7 @@
 <script lang="ts">
 	// A day on one line per item (#25): the hours it runs as ink bars on a 24-hour
-	// track, lights' ramps as lighter ends, and a red mark at the time now.
+	// track, lights' ramps as lighter ends, a doser's doses as ticks (#196), and
+	// a red mark at the time now.
 	import type { Schedule } from '$lib/equipment';
 
 	let {
@@ -8,7 +9,7 @@
 		now = null,
 		compact = false
 	}: {
-		rows: { label: string; schedule: Schedule; kind?: string }[];
+		rows: { label: string; schedule: Schedule; kind?: string; /** "HH:MM" moments, drawn as ticks */ marks?: string[] }[];
 		/** "HH:MM" in the keeper's time zone; null draws no mark */
 		now?: string | null;
 		compact?: boolean;
@@ -45,6 +46,7 @@
 						{/if}
 					{/each}
 				{/each}
+				{#each r.marks ?? [] as m (m)}<rect x={mins(m) - 3} y="0" width="6" height={H} class="mark" />{/each}
 				{#if nowX != null}<rect x={nowX - 2} y="0" width="4" height={H} class="now" />{/if}
 			</svg>
 		</div>
@@ -97,6 +99,9 @@
 	}
 	.ramp {
 		fill: var(--neutral-600);
+	}
+	.mark {
+		fill: var(--ink);
 	}
 	.now {
 		fill: var(--accent);
