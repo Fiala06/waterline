@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.20.0 · 2026-10-20
+
 - **Auto dosing.** Have a dosing pump? Add it under [Equipment](/tanks/current/equipment) as a Doser, with what it puts in on its own: the product, how much, at what time, how long the pump runs and on which days. Waterline logs each dose in History at its time (from the next one after you set it up), marked as the doser's, so the last dose, trends, the Dose → ppm calculator and the tank's summary count it, and a dosing reminder for the same product is marked done by it. The doser's card on the Equipment tab shows each dose with when the next is and marks them on The day, the doser's page lists what it has logged, and any change to its doses is kept in History. Pause a dose while a tank is treated, and it says so.
 
 ## 1.19.3 · 2026-10-19
