@@ -11,6 +11,8 @@ import {
   withoutLabel,
 } from "$lib/equipment";
 import { error, fail, redirect } from "@sveltejs/kit";
+import { doseLabel, doseMarks, nextDoseText } from "$lib/dosers";
+import { dosesByEquipment } from "$lib/server/dosers";
 import { setFlash } from "$lib/server/flash";
 import { num, optStr, str } from "$lib/server/forms";
 import { getTank } from "$lib/server/tanks";
@@ -45,7 +47,10 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
     .from(tasks)
     .where(and(eq(tasks.tankId, params.id), isNotNull(tasks.nextDue)))
     .all();
-  const nowTime = utcToZoned(new Date(), user.timeZone).time;
+  const local = utcToZoned(new Date(), user.timeZone);
+  const nowTime = local.time;
+  // a doser's doses (#196), by the doser
+  const dosesOf = dosesByEquipment(params.id);
   const view = (e: ReturnType<typeof listEquipment>[number]) => {
     const name = equipmentName(e);
     const task = openTasks.find((t) => t.equipmentId === e.id);
@@ -54,6 +59,14 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
     return {
       // when it runs (#25): "08:00–12:00, 14:00–18:00 · 8 h" and "● On now · off at 12:00"
       schedule: schedule ? { label: scheduleLabel(schedule), now: onNowText(schedule, nowTime) } : null,
+      // what a doser puts in (#196): "Next today at 10:00" and "Thrive+ 1 mL at 10:00 every day · runs 30 s", with the last day it was logged
+      doses: (e.removedAt ? [] : (dosesOf.get(e.id) ?? [])).map((d) => ({
+        id: d.id,
+        next: nextDoseText(d, local),
+        paused: d.paused,
+        label: doseLabel({ ...d, paused: false }),
+        last: d.lastLoggedOn ? `last logged ${fmtDate(d.lastLoggedOn)}` : null,
+      })),
       id: e.id,
       type: EQUIPMENT_TYPE_LABEL[e.type],
       name,
@@ -83,8 +96,13 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
   const latestBySpot = new Map<string, (typeof par)[number]>();
   for (const r of par) if (!latestBySpot.has(r.spot.toLowerCase())) latestBySpot.set(r.spot.toLowerCase(), r);
   return {
-    // the day timeline (#25): every item on a schedule, and the time now in the keeper's zone
-    timeline: scheduledItems(params.id).map((i) => ({ label: i.name, schedule: i.schedule, kind: i.type })),
+    // the day timeline (#25): every item on a schedule, the dosers' doses as ticks (#196), and the time now in the keeper's zone
+    timeline: [
+      ...scheduledItems(params.id).map((i) => ({ label: i.name, schedule: i.schedule, kind: i.type, marks: [] as string[] })),
+      ...current
+        .filter((e) => e.type === "doser" && doseMarks(dosesOf.get(e.id) ?? []).length)
+        .map((e) => ({ label: equipmentName(e), schedule: { periods: [], rampMin: null }, kind: "doser", marks: doseMarks(dosesOf.get(e.id) ?? []) })),
+    ],
     now: nowTime,
     par:
       tank.type === "reef"

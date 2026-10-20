@@ -16,6 +16,7 @@ export type EquipmentType =
   | "co2"
   | "pump"
   | "skimmer"
+  | "doser"
   | "other";
 
 export const EQUIPMENT_TYPE_LABEL: Record<EquipmentType, string> = {
@@ -25,6 +26,7 @@ export const EQUIPMENT_TYPE_LABEL: Record<EquipmentType, string> = {
   co2: "CO₂",
   pump: "Pump",
   skimmer: "Skimmer",
+  doser: "Doser",
   other: "Other",
 };
 /** What a tank can be marked as going without ("No heater"), so a missing heater reads as a choice, not a gap. */
@@ -98,6 +100,8 @@ export const SPEC_FIELDS: Record<EquipmentType, SpecField[]> = {
   skimmer: [
     { key: "ratedL", label: "Rated for", kind: "number", quantity: "volume" },
   ],
+  // a doser (#196): what it doses, and when, are its own rows (src/lib/dosers.ts)
+  doser: [{ key: "heads", label: "Pump heads", kind: "number", unit: "heads" }],
   other: [],
 };
 
@@ -179,7 +183,7 @@ export function specSummary(
       const n = Number(
         formatNumber(shown, f.quantity === "temp" ? 0 : 1),
       ).toLocaleString("en-US");
-      const u = specUnit(f, prefs);
+      const u = oneOf(n, specUnit(f, prefs));
       out.push(
         f.key === "setC"
           ? `Set ${n} ${u}`
@@ -205,11 +209,14 @@ export function specValueText(
     const n = Number(
       formatNumber(specToDisplay(f, v, prefs), f.quantity === "temp" ? 0 : 1),
     ).toLocaleString("en-US");
-    const u = specUnit(f, prefs);
+    const u = oneOf(n, specUnit(f, prefs));
     return u === "%" ? `${n}%` : u ? `${n} ${u}` : n;
   }
   return String(v);
 }
+
+/** A unit that is a thing counted ("heads") in the singular for one: "1 head", "4 heads". */
+const oneOf = (n: string, u: string) => (n === "1" && u === "heads" ? "head" : u);
 
 const CHANGE_LABELS: Record<string, string> = {
   brand: "Brand",
@@ -498,6 +505,7 @@ export function lightingText(
 
 /** Words in a product's listing that say what it is, in the order they decide. */
 const TYPE_WORDS: [EquipmentType, RegExp][] = [
+  ["doser", /\bdosers?\b|\bdosing pump\b|\bauto[- ]?dos(?:er|ing)\b/i],
   ["co2", /\bco2\b|co₂|\bcarbon dioxide\b|\bregulator\b|\bdiffuser\b|\bsolenoid\b|\bbubble counter\b/i],
   ["skimmer", /\bskimmer\b/i],
   ["heater", /\bheaters?\b|\bthermostat\b/i],

@@ -6,7 +6,9 @@ import { fmtMoney } from "$lib/money";
 import { effectiveDue, intervalText } from "$lib/tasks";
 import { db } from "$lib/server/db";
 import { events, tasks } from "$lib/server/db/schema";
+import { dosesLoggedBy } from "$lib/server/dosers";
 import {
+  doseProducts,
   equipmentFormValues,
   removeEquipmentAction,
   saveEquipmentAction,
@@ -61,6 +63,7 @@ export const load: PageServerLoad = ({ locals, params }) => {
     tankId: e.tankId,
     values: equipmentFormValues(e, user),
     brands: knownBrands(user.id),
+    products: e.type === "doser" ? doseProducts(user.id, e.tankId) : [],
     today,
     about: {
       kicker: [
@@ -97,6 +100,15 @@ export const load: PageServerLoad = ({ locals, params }) => {
         })),
         addHref: `/tanks/${e.tankId}/spending/new?equipment=${e.id}`,
       },
+      // a doser (#196): the doses it logged
+      doses:
+        e.type === "doser"
+          ? dosesLoggedBy(e.id).map((h) => ({
+              id: h.id,
+              title: eventTitle(h, user),
+              day: fmtDate(dateInZone(h.occurredAt, user.timeZone)),
+            }))
+          : null,
     },
   };
 };

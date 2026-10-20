@@ -2,6 +2,7 @@ import { normalizeBarcode } from '$lib/barcode';
 import { brandAndModel, DEFAULT_SERVICE, guessEquipmentType } from '$lib/equipment';
 import { cachedBarcode } from '$lib/server/barcode-lookup';
 import { equipmentFormValues, saveEquipmentAction } from '$lib/server/equipment-form';
+import { doseProducts } from '$lib/server/equipment-form';
 import { knownBrands } from '$lib/server/specs';
 import { getTank } from '$lib/server/tanks';
 import { todayInZone } from '$lib/time';
@@ -26,7 +27,7 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 			scanned = { code, title: found.title, source: found.source };
 		} else scanned = { code, title: null, source: null };
 	}
-	return { tankId: tank.id, values, scanned, brands: knownBrands(user.id), today: todayInZone(user.timeZone) };
+	return { tankId: tank.id, values, scanned, brands: knownBrands(user.id), products: doseProducts(user.id, tank.id), today: todayInZone(user.timeZone) };
 };
 
 export const actions: Actions = { save: (e) => saveEquipmentAction(e, e.params.id, null) };

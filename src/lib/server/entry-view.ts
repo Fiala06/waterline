@@ -1,6 +1,6 @@
 // View data for one entry (water test or event): used by the entry pages
 // and the desktop History detail pane.
-import { specChangeText } from '$lib/equipment';
+import { equipmentName, specChangeText } from '$lib/equipment';
 import {
 	additivesOf,
 	additiveText,
@@ -114,10 +114,16 @@ export function eventView(user: User, id: string): EntryView {
 			add('Source water', labelOf(WATER_SOURCES, d.source));
 			add('Added', additivesOf(d).map(additiveText));
 			break;
-		case 'dosing':
+		case 'dosing': {
 			add('Product', d.product);
 			add('Amount', typeof d.amount === 'number' ? `${formatNumber(d.amount, 2)} ${d.unit ?? ''}` : null);
+			// made by a doser (#196): the item, leading to its page
+			if (d.auto === true) {
+				const item = typeof d.doser_id === 'string' ? db.select().from(equipment).where(eq(equipment.id, d.doser_id)).get() : undefined;
+				rows.push({ label: 'By', value: item ? `${equipmentName(item)} · doser` : 'the doser', ...(item ? { href: `/tanks/${e.tankId}/equipment/${item.id}` } : {}) });
+			}
 			break;
+		}
 		case 'feeding':
 			add('Food', d.food);
 			add('Amount', typeof d.amount === 'number' ? amountText(d.amount, typeof d.unit === 'string' ? d.unit : null) : null);

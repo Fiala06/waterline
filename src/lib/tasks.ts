@@ -43,7 +43,17 @@ export function parseWeekdays(s: string | null | undefined): number[] {
 	return [...days].sort((a, b) => a - b);
 }
 
-const weekdayOf = (date: string) => new Date(date + 'T12:00:00Z').getUTCDay();
+export const weekdayOf = (date: string) => new Date(date + 'T12:00:00Z').getUTCDay();
+
+/** "every day", "Mon, Wed, Fri", "Mon–Fri", "every day but Sun"; "" for no days */
+export function weekdaysText(days: number[]): string {
+	if (days.length === 7) return 'every day';
+	if (days.length === 6) return `every day but ${WEEKDAYS.find((w) => !days.includes(w.day))!.short}`;
+	if (days.length === 5 && !days.includes(0) && !days.includes(6)) return 'Mon–Fri';
+	return WEEKDAYS.filter((w) => days.includes(w.day))
+		.map((w) => w.short)
+		.join(', ');
+}
 
 /** The first of `days` on or after `date` ('YYYY-MM-DD'). */
 export function onOrAfterWeekday(date: string, days: number[]): string {
@@ -284,14 +294,7 @@ export function intervalText(task: { recurring: boolean; intervalDays: number | 
 
 function repeatText(task: { recurring: boolean; intervalDays: number | null; scheduleMode?: string; weekdays?: string | null; kind?: string } & Follows): string {
 	if (task.scheduleMode === 'after') return followText(task);
-	if (task.recurring && task.scheduleMode === 'weekdays') {
-		const days = parseWeekdays(task.weekdays);
-		if (days.length === 7) return 'every day';
-		const on = WEEKDAYS.filter((w) => days.includes(w.day));
-		if (days.length === 6) return `every day but ${WEEKDAYS.find((w) => !days.includes(w.day))!.short}`;
-		if (days.length === 5 && !days.includes(0) && !days.includes(6)) return 'Mon–Fri';
-		return on.map((w) => w.short).join(', ') || 'one-off';
-	}
+	if (task.recurring && task.scheduleMode === 'weekdays') return weekdaysText(parseWeekdays(task.weekdays)) || 'one-off';
 	if (!task.recurring || !task.intervalDays) return 'one-off';
 	const d = task.intervalDays;
 	// the setup review (#30) is set in months

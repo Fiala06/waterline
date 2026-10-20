@@ -435,6 +435,13 @@
       "when": 1792177945008,
       "tag": "0061_reading_suggestions",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "6",
+      "when": 1792531463283,
+      "tag": "0062_auto_doses",
+      "breakpoints": true
     }
   ]
 }

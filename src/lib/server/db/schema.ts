@@ -733,7 +733,7 @@ export type Import = typeof imports.$inferSelect;
 
 // ── Tank specs: equipment, livestock, plants ─────────────────────────────────
 
-export const EQUIPMENT_TYPES = ['filter', 'heater', 'light', 'co2', 'pump', 'skimmer', 'other'] as const;
+export const EQUIPMENT_TYPES = ['filter', 'heater', 'light', 'co2', 'pump', 'skimmer', 'doser', 'other'] as const;
 
 export const equipment = sqliteTable(
 	'equipment',
@@ -759,6 +759,41 @@ export const equipment = sqliteTable(
 	},
 	(t) => [index('equipment_tank').on(t.tankId), index('equipment_barcode').on(t.barcode)]
 );
+
+/**
+ * What a doser doses on its own (#196): each dose a product, how much (mL), a
+ * time of day and the days it's made, kept with the doser as its settings. The
+ * scheduler logs each in History at its time, in the owner's time zone;
+ * last_logged_on is the day of the last one, so a day's dose is logged once
+ * and a dose set up after its time starts tomorrow. Paused, nothing is logged.
+ */
+export const autoDoses = sqliteTable(
+	'auto_doses',
+	{
+		id: id(),
+		tankId: text('tank_id')
+			.notNull()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		equipmentId: text('equipment_id')
+			.notNull()
+			.references(() => equipment.id, { onDelete: 'cascade' }),
+		product: text('product').notNull(),
+		amountMl: real('amount_ml').notNull(),
+		/** "HH:MM" in the owner's time zone */
+		at: text('at').notNull(),
+		/** how long the pump runs, when the keeper notes it */
+		seconds: integer('seconds'),
+		/** "1,3,5": the days it's made (0 Sunday … 6 Saturday); null is every day */
+		weekdays: text('weekdays'),
+		paused: integer('paused', { mode: 'boolean' }).notNull().default(false),
+		/** YYYY-MM-DD in the owner's time zone */
+		lastLoggedOn: text('last_logged_on'),
+		position: integer('position').notNull().default(0),
+		createdAt: createdAt()
+	},
+	(t) => [index('auto_doses_equipment').on(t.equipmentId), index('auto_doses_tank').on(t.tankId)]
+);
+export type AutoDose = typeof autoDoses.$inferSelect;
 
 export const livestock = sqliteTable(
 	'livestock',

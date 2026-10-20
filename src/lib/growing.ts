@@ -22,6 +22,8 @@ export interface GrowingInput {
 	co2: { schedule: Schedule; hours: number | null; itemId: string | null } | null;
 	substrate: string | null;
 	dosing: GrowingDosing[];
+	/** what a doser puts in on its own (#196): "Thrive+ 1 mL at 10:00 every day", leading to the doser */
+	autoDoses?: { itemId: string; text: string }[];
 	/** YYYY-MM-DD in the keeper's time zone */
 	today: string;
 }
@@ -99,6 +101,9 @@ export function growingRows(i: GrowingInput): GrowingRow[] {
 	}
 	for (const d of i.dosing.slice(0, 3)) {
 		rows.push({ key: 'fertilizer', title: 'Fertilizer', text: [doseText(d), d.interval, nextDoseText(d.nextDue, i.today)].filter(Boolean).join(' · '), href: `/tasks/${d.id}` });
+	}
+	for (const a of (i.autoDoses ?? []).slice(0, 3)) {
+		rows.push({ key: 'fertilizer', title: 'Fertilizer', text: `${a.text} · by the doser`, href: `${base}/equipment/${a.itemId}` });
 	}
 	if (i.substrate) rows.push({ key: 'substrate', title: 'Substrate', text: i.substrate, href: `${base}/settings#substrate` });
 	return rows;

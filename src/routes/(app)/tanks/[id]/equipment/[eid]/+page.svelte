@@ -5,4 +5,4 @@
 
 <svelte:head><title>Edit equipment · Waterline</title></svelte:head>
 
-<EquipmentForm mode="edit" values={data.values} errors={form?.errors} brands={data.brands} prefs={data.user} today={data.today} cancelHref="/tanks/{data.tankId}/equipment" about={data.about} />
+<EquipmentForm mode="edit" values={data.values} errors={form?.errors} brands={data.brands} products={data.products} prefs={data.user} today={data.today} cancelHref="/tanks/{data.tankId}/equipment" about={data.about} />
