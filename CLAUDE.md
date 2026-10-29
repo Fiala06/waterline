@@ -10,6 +10,34 @@ You are building **Waterline**, a self-hosted aquarium tank log (PWA). The look 
 - Phone first: min tap target 44px, numeric inputs use `inputmode="decimal"`, primary actions reachable near the bottom.
 - Copy (button labels, empty states, error text) comes from the designs verbatim unless it contains sample data.
 
+## How to work
+These guidelines bias toward caution over speed; for trivial tasks, use judgment.
+
+**Think before coding.** Don't assume, don't hide confusion, surface tradeoffs.
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them; don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
+
+**Simplicity first.** Minimum code that solves the problem, nothing speculative.
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it. Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+**Surgical changes.** Touch only what you must; clean up only your own mess.
+- Don't "improve" adjacent code, comments or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it; don't delete it.
+- Remove imports, variables and functions that *your* changes made unused. Don't remove pre-existing dead code unless asked.
+- The test: every changed line should trace directly to the request.
+
+**Goal-driven execution.** Define success criteria, then loop until verified.
+- Turn tasks into verifiable goals: "Add validation" → write tests for invalid inputs, then make them pass. "Fix the bug" → write a test that reproduces it, then make it pass. "Refactor X" → ensure tests pass before and after.
+- For multi-step tasks, state a brief plan first, one line per step with how you'll verify it.
+
 ## Stack
 SvelteKit (adapter-node) · TypeScript · Drizzle ORM + better-sqlite3 (`/data/waterline.db`, migrations in `drizzle/` via `npm run db:generate`) · Auth.js (Google + credentials for local admin) · Nodemailer (SMTP) + Mailgun HTTP API · web-push (Web Push) + ntfy · a 5-minute scheduler (`src/lib/server/scheduler.ts`) · sharp · satori + resvg (OG images) · yazl (backup ZIPs) · a hand-written service worker (`src/service-worker.ts`) · Vitest + Playwright. Single Dockerfile, volume `/data`.
 
