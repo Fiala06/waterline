@@ -1,6 +1,6 @@
 # CLAUDE.md — Waterline
 
-You are building **Waterline**, a self-hosted aquarium tank log (PWA). The look is the **redesign** in `design_handoff_waterline_redesign/` (the "Modernist" system: Archivo, square corners, one red accent, a sidebar of tanks beside a tank workspace with tabs on desktop, a bottom bar with Log on phones). Read `design_handoff_waterline_redesign/README.md` first; the original `design_handoff_waterline/` still holds `DATA_MODEL.md` and the screens' behaviour where the redesign doesn't say otherwise. Version 1 (`BUILD_PLAN.md`) is done; new work comes from GitHub issues.
+You are building **Waterline**, a self-hosted aquarium tank log (PWA). The look is the **redesign** in `design_handoff_waterline_redesign/` (the "Modernist" system: Archivo, square corners, one red accent, a sidebar of tanks beside a tank workspace with tabs on desktop, a bottom bar with Log on phones). Read `design_handoff_waterline_redesign/README.md` first; the original `design_handoff_waterline/` still holds `DATA_MODEL.md` and the screens' behaviour where the redesign doesn't say otherwise. Version 1 (`design_handoff_waterline/BUILD_PLAN.md`) is done; new work comes from GitHub issues.
 
 ## Ground rules
 - The `*.dc.html` files are **visual references**, not code to copy. Open them in a browser (keep `support.js` and `_ds/` beside them) or read their inline styles for exact values. `screenshots/` has a still of each key state.
@@ -9,9 +9,6 @@ You are building **Waterline**, a self-hosted aquarium tank log (PWA). The look 
 - Status is never color-only: always render icon + word (`✓ OK`, `▲ Near`, `✕ High`, `– No data`).
 - Phone first: min tap target 44px, numeric inputs use `inputmode="decimal"`, primary actions reachable near the bottom.
 - Copy (button labels, empty states, error text) comes from the designs verbatim unless it contains sample data.
-
-## Stack
-SvelteKit (adapter-node) · TypeScript · Drizzle ORM + better-sqlite3 (`/data/waterline.db`, migrations in `drizzle/` via `npm run db:generate`) · Auth.js (Google + credentials for local admin) · Nodemailer (SMTP) + Mailgun HTTP API · web-push (Web Push) + ntfy · a 5-minute scheduler (`src/lib/server/scheduler.ts`) · sharp · satori + resvg (OG images) · yazl (backup ZIPs) · a hand-written service worker (`src/service-worker.ts`) · Vitest + Playwright. Single Dockerfile, volume `/data`.
 
 ## Env vars
 Only `ORIGIN` is required. Google sign-in, the admin, who can sign in, the local admin login and email are set in the app (Settings › Server settings, stored in `server_settings`, secrets encrypted). Optional: `DATA_DIR` (`/data`), `AUTH_SECRET` / `ENCRYPTION_KEY` (otherwise generated into `/data/keys.json`), `LOCAL_ADMIN_PASSWORD_HASH`, `BODY_SIZE_LIMIT`, `ADDRESS_HEADER` / `XFF_DEPTH`, `UPDATE_CHECK_URL`, `STOCK_PHOTOS=off`, `SPECIES_CARE=off` / `SPECIES_CARE_URL` (FishBase care data, downloaded per server into `/data/species-care.json`, never in the repo: CC BY-NC), `BARCODE_LOOKUP=off` (no lookups of scanned barcodes on Open Products Facts and UPCitemdb; `BARCODE_OPF_URL` / `BARCODE_UPCITEMDB_URL` point them at stand-ins in tests), `DEVICE_POLLING=off` (no reading of ESPHome devices from their own web page by the scheduler; tests point Read a device at the stand-in under `/dev/esphome`). The older `AUTH_GOOGLE_*`, `ADMIN_EMAIL`, `ALLOWED_EMAILS`, `OPEN_SIGNUP` still apply until saved in the app. Tests use `AUTH_DEV_LOGIN=true` and `EMAIL_TRANSPORT=outbox` (never in production).
