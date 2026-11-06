@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Long equipment details fit.** A long detail on a piece of equipment, such as a light's spectrum copied from the box, now wraps inside its card on the [Equipment](/tanks/current/equipment) tab instead of running over the card beside it.
+
 ## 1.21.0 · 2026-11-05
 
 - **Smart plugs.** Equipment that runs from a Shelly plug (Gen2 or later, such as the Plug US Gen4) can be tied to it: open the item from [Equipment](/tanks/current/equipment) and choose Link a smart plug. Waterline checks the plug every 5 minutes, shows whether it's on and what it draws on the item's card, and pauses the item while the plug is off, so it waits in Needs attention until it's back on. Turn off and Turn on on the card and the dashboard switch the plug itself, after asking first, and History notes each change.

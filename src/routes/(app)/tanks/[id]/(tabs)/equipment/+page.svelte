@@ -401,6 +401,8 @@
 		min-height: 44px;
 	}
 	.eq-card {
+		/* a grid cell: as narrow as its column, whatever a long spec says */
+		min-width: 0;
 		padding: 12px 0 4px;
 		display: flex;
 		flex-direction: column;
@@ -444,8 +446,12 @@
 		flex-wrap: wrap;
 		gap: 6px;
 	}
+	/* a spec can be a sentence (a light's spectrum): it wraps inside the card, not past it */
 	.specs .tag {
 		font-size: 12px;
+		max-width: 100%;
+		white-space: normal;
+		overflow-wrap: anywhere;
 	}
 	.meta {
 		font-size: 13px;
