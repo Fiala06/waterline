@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.21.1 · 2026-11-05
+
 - **Dosing from a smart plug.** A doser that runs whenever it has power, on a Shelly plug with its schedule in the Shelly app, now has each run logged as a dose: when it ran, for how long, and how much it put in (worked out from the doser's dose setting), in History and on [Charts](/charts) with Dosing. Off between doses isn't counted as paused, Pause switches the plug's schedule off until you resume it, and **Run for…** on any item's card runs its plug for so many seconds or minutes, then the plug switches itself off. Link the plug from the item's page under [Equipment](/tanks/current/equipment).
 - **Long equipment details fit.** A long detail on a piece of equipment, such as a light's spectrum copied from the box, now wraps inside its card on the [Equipment](/tanks/current/equipment) tab instead of running over the card beside it.
 
