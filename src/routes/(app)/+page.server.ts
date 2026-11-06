@@ -394,11 +394,12 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
           const since = pausedSince(dateInZone(e.pausedAt!, tz), today);
           // on a smart plug (#203): Resume turns the plug on, the owner's to do
           const plug = plugs.has(e.id) ? (owner ? ("switch" as const) : ("locked" as const)) : null;
-          return { id: e.id, dose: null, name: equipmentName(e), since: since[0].toUpperCase() + since.slice(1), plug };
+          // a doser's plug (#205): Resume switches its schedule on the plug back on, not the plug
+          return { id: e.id, dose: null, name: equipmentName(e), since: since[0].toUpperCase() + since.slice(1), plug, runs: !!plugs.get(e.id)?.runs };
         }),
       ...autoDoseLines(tank.id)
         .filter((a) => a.dose.paused && !equipmentNow.find((e) => e.id === a.itemId)?.pausedAt)
-        .map((a) => ({ id: a.itemId, dose: a.dose.id, name: `${a.item} · ${a.dose.product}`, since: doseLabel({ ...a.dose, paused: false, seconds: null }), plug: null })),
+        .map((a) => ({ id: a.itemId, dose: a.dose.id, name: `${a.item} · ${a.dose.product}`, since: doseLabel({ ...a.dose, paused: false, seconds: null }), plug: null, runs: false })),
     ],
   };
 };

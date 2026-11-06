@@ -7,12 +7,16 @@ export interface PlugStatus {
 	lastError: string | null;
 }
 
-/** "● On · 4.2 W", "○ Off", "✕ Not answering", "– No reading yet" */
-export function plugText(p: PlugStatus): { text: string; level: 'ok' | 'warn' | 'bad' | 'none' } {
+/**
+ * "● On · 4.2 W", "○ Off", "✕ Not answering", "– No reading yet". A doser on
+ * its plug (#205) runs while it has power: "● Running", and off between doses
+ * is how it should be.
+ */
+export function plugText(p: PlugStatus & { runs?: boolean }): { text: string; level: 'ok' | 'warn' | 'bad' | 'none' } {
 	if (p.lastError) return { text: '✕ Not answering', level: 'bad' };
 	if (p.on == null) return { text: '– No reading yet', level: 'none' };
-	if (!p.on) return { text: '○ Off', level: 'warn' };
-	return { text: `● On${p.watts != null ? ` · ${wattsText(p.watts)}` : ''}`, level: 'ok' };
+	if (!p.on) return { text: '○ Off', level: p.runs ? 'none' : 'warn' };
+	return { text: `● ${p.runs ? 'Running' : 'On'}${p.watts != null ? ` · ${wattsText(p.watts)}` : ''}`, level: 'ok' };
 }
 
 /** "4.2 W", "12 W", "0 W" */

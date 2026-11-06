@@ -15,8 +15,8 @@ import { VERSION } from '$lib/changelog';
 import { preloadsInHead } from '$lib/server/preloads';
 
 const PUBLIC_PATHS = ['/signin', '/first-run', '/auth', '/e', '/invite', '/share', '/unsubscribe', '/t', '/s', '/p', '/public', '/sitemap.xml', '/robots.txt', '/mcp', '/api/v1', '/.well-known', '/oauth/register', '/oauth/token', '/cal'];
-/** For AI assistants (#9): signed in by an access token, never the session cookie. */
-const TOKEN_PATHS = ['/mcp', '/api/v1'];
+/** For AI assistants (#9): signed in by an access token, never the session cookie; and a smart plug's report of a switch (#205), by its plug's token. */
+const TOKEN_PATHS = ['/mcp', '/api/v1', '/plug-hook'];
 /** Where apps register and get tokens (OAuth): no cookies, so any site may call them. */
 const OAUTH_PATHS = ['/oauth/register', '/oauth/token'];
 
@@ -122,7 +122,7 @@ function themeColorMeta(theme: string) {
 	return `${dark.replace(' />', ' media="(prefers-color-scheme: dark)" />')}${light.replace(' />', ' media="(prefers-color-scheme: light)" />')}`;
 }
 
-const isPublic = (path: string) => path === '/dev/seed' || path === '/dev/tick' || path === '/dev/next-release' || path.startsWith('/dev/wiki/') || path.startsWith('/dev/upc/') || path.startsWith('/dev/esphome/') || path.startsWith('/dev/shelly/') || PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + '/'));
+const isPublic = (path: string) => path.startsWith('/plug-hook/') || path === '/dev/seed' || path === '/dev/tick' || path === '/dev/next-release' || path.startsWith('/dev/wiki/') || path.startsWith('/dev/upc/') || path.startsWith('/dev/esphome/') || path.startsWith('/dev/shelly/') || PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + '/'));
 
 const appHandle: Handle = async ({ event, resolve }) => {
 	// Background sync of offline entries: no "Saved" toast per replayed entry.

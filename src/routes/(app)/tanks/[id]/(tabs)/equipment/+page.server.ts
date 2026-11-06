@@ -14,7 +14,9 @@ import {
 import { error, fail, redirect } from "@sveltejs/kit";
 import { doseLabel, doseMarks, nextDoseText } from "$lib/dosers";
 import { dosesByEquipment, resumeDose } from "$lib/server/dosers";
-import { PlugError, plugsOfTank, switchPlug } from "$lib/server/plugs";
+import { MAX_RUN_S, PlugError, plugsOfTank, runPlugFor, switchPlug } from "$lib/server/plugs";
+import { dosesLoggedBy } from "$lib/server/dosers";
+import { runText } from "$lib/events";
 import { plugText } from "$lib/plugs";
 import { setFlash } from "$lib/server/flash";
 import { num, optStr, str } from "$lib/server/forms";
@@ -23,7 +25,7 @@ import { addPar, deletePar, getEquipment, listPar, scheduledItems, setEquipmentP
 import { safeReturn } from "$lib/server/redirect";
 import { PAR_ZONES } from "$lib/par";
 import { effectiveDue } from "$lib/tasks";
-import { dateInZone, daysBetween, fmtDate, fmtDateLong, isDate, todayInZone, utcToZoned, zonedToUtc } from "$lib/time";
+import { dateInZone, daysBetween, fmtWhen, fmtDate, fmtDateLong, isDate, todayInZone, utcToZoned, zonedToUtc } from "$lib/time";
 import { db } from "$lib/server/db";
 import { tasks } from "$lib/server/db/schema";
 import { listEquipment } from "$lib/server/specs";
@@ -92,9 +94,19 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
       // switched off for a while: "‖ Paused since Nov 3", until Resume
       paused: e.pausedAt ? pausedText(dateInZone(e.pausedAt, user.timeZone), today) : null,
       // its smart plug (#203): "● On · 4.2 W"; Pause and Resume switch it
+      // a doser on its plug (#205): "● Running", its last run, and whether the plug reports its runs
       plug: (() => {
         const p = !e.removedAt ? plugs.get(e.id) : undefined;
-        return p ? { ...plugText(p), name: p.name } : null;
+        if (!p) return null;
+        const last = p.runs ? dosesLoggedBy(e.id, 1)[0] : undefined;
+        const secs = typeof last?.data.seconds === "number" ? last.data.seconds : null;
+        return {
+          ...plugText(p),
+          name: p.name,
+          runs: p.runs,
+          lastRun: last ? `Last ran ${fmtWhen(last.occurredAt, user.timeZone)}${secs != null ? ` · ${runText(secs)}` : ""}` : null,
+          unreported: p.runs && !p.hooksAt ? "▲ Runs aren't reported" : null,
+        };
       })(),
     };
   };
@@ -152,8 +164,10 @@ async function pauseAction(
   const e = getEquipment(locals.user!.id, str(form, "id"));
   if (e.tankId !== params.id) error(404, "Equipment not found");
   const name = equipmentName(e);
-  // tied to a smart plug (#203): its plug is switched, and the item follows once it has
-  if (plugsOfTank(params.id).has(e.id)) {
+  // tied to a smart plug (#203): its plug is switched, and the item follows once it has;
+  // a doser's (#205) has its schedules on the plug switched off and on instead
+  const plug = plugsOfTank(params.id).get(e.id);
+  if (plug) {
     try {
       await switchPlug(locals.user!.id, e.id, !paused);
     } catch (err) {
@@ -161,7 +175,16 @@ async function pauseAction(
       setFlash(cookies, `✕ ${err.message}, so ${name} is still ${paused ? "on" : "off"}`);
       redirect(303, safeReturn(form.get("from"), `/tanks/${params.id}/equipment`));
     }
-    setFlash(cookies, paused ? `‖ ${name} turned off at its plug · it stays in Needs attention until you turn it back on` : `✓ ${name} turned back on at its plug`);
+    setFlash(
+      cookies,
+      plug.runs
+        ? paused
+          ? `‖ ${name} paused · its schedule on the plug is off until you resume it`
+          : `✓ ${name} resumed · its schedule on the plug is back on`
+        : paused
+          ? `‖ ${name} turned off at its plug · it stays in Needs attention until you turn it back on`
+          : `✓ ${name} turned back on at its plug`,
+    );
     redirect(303, safeReturn(form.get("from"), `/tanks/${params.id}/equipment`));
   }
   setEquipmentPaused(locals.user!.id, e.id, paused, locals.user!.timeZone);
@@ -173,6 +196,28 @@ export const actions: Actions = {
   /** Switched off for a while on purpose (a doser held back): on the dashboard until it's resumed. */
   pause: (e) => pauseAction(e, true),
   resume: (e) => pauseAction(e, false),
+  /** Run for… (#205): its plug on for a while, off by itself after; a doser's run is logged as a dose. */
+  run: async ({ request, locals, params, cookies }) => {
+    const form = await request.formData();
+    const e = getEquipment(locals.user!.id, str(form, "id"));
+    if (e.tankId !== params.id || e.removedAt) error(404, "Equipment not found");
+    const back = safeReturn(form.get("from"), `/tanks/${params.id}/equipment`);
+    const amount = num(form, "amount");
+    const seconds = amount == null ? NaN : Math.round(amount * (str(form, "unit") === "min" ? 60 : 1));
+    if (!Number.isFinite(seconds) || seconds < 1 || seconds > MAX_RUN_S) {
+      setFlash(cookies, `✕ Run it for 1 second to ${MAX_RUN_S / 60} minutes`);
+      redirect(303, back);
+    }
+    try {
+      await runPlugFor(locals.user!.id, e.id, seconds);
+    } catch (err) {
+      if (!(err instanceof PlugError)) throw err;
+      setFlash(cookies, `✕ ${err.message}, so ${equipmentName(e)} didn't run`);
+      redirect(303, back);
+    }
+    setFlash(cookies, `● ${equipmentName(e)} running for ${runText(seconds)}`);
+    redirect(303, back);
+  },
   /** One paused dose of a doser (#196) back on, from Needs attention: from its next time. */
   resumeDose: async ({ request, locals, params, cookies }) => {
     const user = locals.user!;

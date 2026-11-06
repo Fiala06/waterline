@@ -49,6 +49,8 @@
 		since: string;
 		/** on a smart plug (#203): Resume turns it on, after a confirm ("switch"); someone not the owner can't ("locked") */
 		plug?: 'switch' | 'locked' | null;
+		/** a doser on its plug (#205): Resume switches its schedule on the plug back on */
+		runs?: boolean;
 	}
 	let {
 		items,
@@ -152,14 +154,16 @@
 				</a>
 				<span class="val end">
 					{#if e.plug === 'switch'}
-						<button type="button" class="btn" popovertarget="plug-on-{e.id}" aria-label="Turn on {e.name}">Turn on</button>
+						<button type="button" class="btn" popovertarget="plug-on-{e.id}" aria-label="{e.runs ? 'Resume' : 'Turn on'} {e.name}">{e.runs ? 'Resume' : 'Turn on'}</button>
 						<ConfirmDelete
 							id="plug-on-{e.id}"
 							trigger={false}
-							title="Turn {e.name} back on?"
-							body="Its smart plug is switched on, and it leaves Needs attention."
+							title={e.runs ? `Resume ${e.name}?` : `Turn ${e.name} back on?`}
+							body={e.runs
+								? 'Its schedule on the plug is switched back on, so it doses at its times again.'
+								: 'Its smart plug is switched on, and it leaves Needs attention.'}
 							action="/tanks/{tankId}/equipment?/resume"
-							label="Turn on"
+							label={e.runs ? 'Resume' : 'Turn on'}
 							tone="primary"
 							fields={{ id: e.id, from }}
 						/>

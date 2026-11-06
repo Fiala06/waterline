@@ -828,9 +828,21 @@ export const equipmentPlugs = sqliteTable(
 		lastPolledAt: text('last_polled_at'),
 		lastOkAt: text('last_ok_at'),
 		lastError: text('last_error'),
+		// runs (#205): the plug reports each switch on and off to /plug-hook/<token>, set up on it
+		// as webhooks pointing at Waterline's address (ORIGIN, or report_url when the plug needs another)
+		hookToken: text('hook_token'),
+		reportUrl: text('report_url'),
+		hooksAt: text('hooks_at'),
+		hooksError: text('hooks_error'),
+		// a run under way: since when, and how long it's meant to last (Run for…, or the plug's auto-off)
+		runStartedAt: text('run_started_at'),
+		runPlannedS: integer('run_planned_s'),
+		autoOffS: integer('auto_off_s'),
+		// the plug's own schedules Pause switched off, to switch back on with Resume
+		pausedScheduleIds: text('paused_schedule_ids', { mode: 'json' }).$type<number[]>().notNull().default([]),
 		createdAt: createdAt()
 	},
-	(t) => [index('equipment_plugs_tank').on(t.tankId)]
+	(t) => [index('equipment_plugs_tank').on(t.tankId), uniqueIndex('equipment_plugs_hook').on(t.hookToken)]
 );
 export type EquipmentPlug = typeof equipmentPlugs.$inferSelect;
 

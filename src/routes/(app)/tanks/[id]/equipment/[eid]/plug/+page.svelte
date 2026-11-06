@@ -25,6 +25,8 @@
 				<h2 class="kicker" id="state-h">{data.plug.name ?? 'Shelly plug'}</h2>
 				<div class="row"><span class="k">Now</span><span class="v status-{data.plug.status.level}">{data.plug.status.text}</span></div>
 				{#if data.plug.error}<div class="row"><span class="k">Problem</span><span class="v">{data.plug.error}{data.plug.lastOk ? ` · last answered ${data.plug.lastOk}` : ''}</span></div>{/if}
+				<div class="row"><span class="k">Runs</span><span class="v" class:status-bad={!data.plug.reportsOk}>{data.plug.reports}</span></div>
+				{#if data.plug.autoOff}<div class="row"><span class="k">Auto-off</span><span class="v">{data.plug.autoOff}</span></div>{/if}
 				<div class="row"><span class="k">Address</span><span class="v">{data.plug.url}{data.plug.hasPassword ? ' · with its password' : ''}</span></div>
 				{#if data.plug.checked}<div class="row"><span class="k">Checked</span><span class="v">{data.plug.checked}</span></div>{/if}
 				<div class="acts">
@@ -57,9 +59,20 @@
 				<input class="input" id="plug-password" name="password" type="password" autocomplete="new-password" placeholder={data.plug?.hasPassword ? 'Leave blank to keep it' : ''} />
 				<span class="hint">Only if you set one for the plug in the Shelly app.</span>
 			</div>
-			<p class="hint">
-				Every 5 minutes Waterline reads the plug. When it's off, {data.item.name} is paused and stays in Needs attention; when it's back on, it resumes. Turn off and Turn on on its card switch the plug. Works with Shelly plugs from Gen2 on (Plus, Gen3, Gen4).
-			</p>
+			<div class="field">
+				<label class="label" for="plug-report">Waterline's address for the plug · optional</label>
+				<input class="input" id="plug-report" name="reportUrl" autocomplete="off" inputmode="url" placeholder={data.origin ?? 'http://192.168.1.10:3000'} value={form?.values?.reportUrl ?? data.plug?.reportUrl ?? ''} />
+				<span class="hint">The plug tells Waterline each time it switches, at {data.origin ?? 'this server’s address'}. If the plug can't reach that (a public address, say), enter the one it can on your network.</span>
+			</div>
+			{#if data.item.doser}
+				<p class="hint">
+					Keep the doser's schedule and auto-off in the Shelly app: the plug doses on its own. Each time it runs, Waterline logs a dose with when and how long, the amount worked out from the doser's dose setting, and it shows on Charts with Dosing. Off between doses is how it should be. Pause switches the plug's schedule off, and Resume back on; Run for… on its card runs it for a while. Works with Shelly plugs from Gen2 on (Plus, Gen3, Gen4).
+				</p>
+			{:else}
+				<p class="hint">
+					Waterline hears from the plug each time it switches, and reads it every 5 minutes. When it's off, {data.item.name} is paused and stays in Needs attention; when it's back on, it resumes. Turn off and Turn on on its card switch the plug, and Run for… runs it for a while. Works with Shelly plugs from Gen2 on (Plus, Gen3, Gen4).
+				</p>
+			{/if}
 			<button class="btn btn-primary btn-lg" disabled={busy}>{busy ? 'Reaching the plug…' : data.plug ? 'Save' : 'Link plug'}</button>
 		</form>
 	</div>

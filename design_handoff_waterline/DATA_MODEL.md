@@ -254,9 +254,14 @@ device_polls     id, user_id, tank_id, name (the readings' source), url (scheme,
                  and stores as sensor_readings with no token: Settings › Sensors › Read a device)
 equipment_plugs  id, equipment_id (unique), tank_id, url (scheme, host, port, path), name?,
                  password_enc? (the Shelly app's password; user admin), switch_id (0), on?, watts?,
-                 last_polled_at?, last_ok_at?, last_error?, created_at (a Shelly plug, Gen2+ RPC
-                 API, an item runs from: read every 5 minutes, off pauses the item and on resumes it,
-                 Pause and Resume switch it; not in backups)
+                 last_polled_at?, last_ok_at?, last_error?, hook_token? (unique: the plug reports
+                 each switch to /plug-hook/<token>/on|off, webhooks set up on it when linked),
+                 report_url? (Waterline's address for the plug, when not ORIGIN), hooks_at?,
+                 hooks_error?, run_started_at?, run_planned_s? (Run for…), auto_off_s? (its auto-off),
+                 paused_schedule_ids JSON (its schedules Pause switched off), created_at (a Shelly
+                 plug, Gen2+ RPC API, an item runs from: off pauses the item and on resumes it, and
+                 Pause and Resume switch it; a doser's is off between runs, and each run is a dosing
+                 event with seconds and by: plug; not in backups)
 sensor_hours     tank_id, parameter_id, hour ('YYYY-MM-DDTHH', UTC), n, total, lo, hi
                  (each hour of sensor samples in sum, primary key tank+parameter+hour; kept by
                  triggers on sensor_readings: a sample adds to its hour, a deleted one takes away,

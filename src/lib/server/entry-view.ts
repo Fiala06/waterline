@@ -9,6 +9,7 @@ import {
 	eventTitle,
 	LIVESTOCK_ACTIONS,
 	LIVESTOCK_STATUS,
+	runText,
 	WATER_SOURCES
 } from '$lib/events';
 import { fmtValue, paramUnit, statusOf } from '$lib/params';
@@ -122,6 +123,8 @@ export function eventView(user: User, id: string): EntryView {
 				const item = typeof d.doser_id === 'string' ? db.select().from(equipment).where(eq(equipment.id, d.doser_id)).get() : undefined;
 				rows.push({ label: 'By', value: item ? `${equipmentName(item)} · doser` : 'the doser', ...(item ? { href: `/tanks/${e.tankId}/equipment/${item.id}` } : {}) });
 			}
+			// a run its smart plug reported (#205): how long the pump ran
+			add('Ran for', typeof d.seconds === 'number' ? `${runText(d.seconds)} · reported by its plug` : null);
 			break;
 		}
 		case 'feeding':

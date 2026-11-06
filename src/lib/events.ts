@@ -125,6 +125,14 @@ export function additiveText(a: Additive): string {
 }
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+/** How long a run lasted: "30 s", "2 min", "2 min 5 s" */
+export function runText(seconds: number): string {
+	const s = Math.max(0, Math.round(seconds));
+	if (s < 60) return `${s} s`;
+	const m = Math.floor(s / 60);
+	return s % 60 ? `${m} min ${s % 60} s` : `${m} min`;
+}
+
 const str = (v: unknown) => (typeof v === 'string' ? v : v == null ? '' : String(v));
 
 interface EventLike {
@@ -150,7 +158,9 @@ export function eventTitle(e: EventLike, prefs: UnitPrefs): string {
 		case 'dosing': {
 			const product = str(d.product) || 'product';
 			const amount = typeof d.amount === 'number' ? amountText(d.amount, str(d.unit) || null) : null;
-			return `Dosed ${product}${amount ? ` · ${amount}` : ''}`;
+			// a run its smart plug reported (#205): "Dosed Thrive+ · 2.5 mL · ran 30 s"
+			const ran = typeof d.seconds === 'number' ? ` · ran ${runText(d.seconds)}` : '';
+			return `Dosed ${product}${amount ? ` · ${amount}` : ''}${ran}`;
 		}
 		case 'feeding': {
 			// "Fed 2 pinches of flakes"; a bare count reads "Fed Algae wafer · 1"; no amount, "Fed flakes"
@@ -198,7 +208,8 @@ export function eventTitle(e: EventLike, prefs: UnitPrefs): string {
 			if (d.action === 'schedule') return `${str(d.item) || 'Equipment'} runs ${str(d.schedule) || 'all day'}`;
 			// a doser's doses set or changed (#196): "Kamoer X1 doses Thrive+ 1 mL at 10:00 every day"
 			if (d.action === 'doses') return `${str(d.item) || 'Doser'} doses ${str(d.doses) || 'nothing'}`;
-			if (d.action === 'par') return `PAR ${str(d.value)} at ${str(d.spot) || 'a spot'}`;
+			if (d.action === 'ran') return `${str(d.item) || 'Equipment'} ran${typeof d.seconds === 'number' ? ` ${runText(d.seconds)}` : ''}`;
+						if (d.action === 'par') return `PAR ${str(d.value)} at ${str(d.spot) || 'a spot'}`;
 			// switched off for a while on purpose, and back on
 			// switched at its smart plug (#203): "Paused Jebao Doser · its plug was switched off"
 			if (d.action === 'paused') return `Paused ${str(d.item) || 'equipment'}${d.by === 'plug' ? ' · its plug was switched off' : ''}`;

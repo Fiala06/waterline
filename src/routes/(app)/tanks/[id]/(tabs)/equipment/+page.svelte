@@ -5,6 +5,7 @@
 	import { enhance } from '$app/forms';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import DateField from '$lib/components/DateField.svelte';
+	import RunFor from '$lib/components/RunFor.svelte';
 	import DayTimeline from '$lib/components/DayTimeline.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ImportButton from '$lib/components/ImportButton.svelte';
@@ -62,6 +63,8 @@
 					{#if e.plug}
 						<!-- its smart plug (#203): on or off and what it draws, leading to the plug's page -->
 						<a class="plug" href="{base}/equipment/{e.id}/plug"><span class="status-{e.plug.level}">{e.plug.text}</span><span class="plug-name">{e.plug.name ?? 'Smart plug'} ›</span></a>
+						<!-- a doser's runs (#205): the last one, and a warning when the plug can't report them -->
+						{#if e.plug.lastRun || e.plug.unreported}<div class="meta">{#if e.plug.unreported}<b class="status-warn">{e.plug.unreported}</b>{e.plug.lastRun ? ' · ' : ''}{/if}{e.plug.lastRun ?? ''}</div>{/if}
 					{/if}
 					{#each e.doses as d (d.id)}
 						<!-- a doser's dose (#196): when the next is, and what it is -->
@@ -74,7 +77,12 @@
 						<!-- switched off for a while on purpose: it stays in Needs attention until it's resumed -->
 						{#if e.plug}
 							<!-- on a smart plug: switching it is the owner's, after a confirm -->
-							{#if owner}<button type="button" class="ghost btn-ghost" class:muted-link={!e.paused} popovertarget="plug-{e.id}">{e.paused ? 'Turn on' : 'Turn off'}<span class="sr-only"> {e.name}</span></button>{/if}
+							{#if owner}
+								<button type="button" class="ghost btn-ghost" class:muted-link={!e.paused} popovertarget="plug-{e.id}"
+									>{e.plug.runs ? (e.paused ? 'Resume' : 'Pause') : e.paused ? 'Turn on' : 'Turn off'}<span class="sr-only"> {e.name}</span></button
+								>
+								<RunFor id={e.id} name={e.name} doses={e.plug.runs} />
+							{/if}
 						{:else}
 							<form method="POST" action="?/{e.paused ? 'resume' : 'pause'}" use:enhance>
 								<input type="hidden" name="id" value={e.id} />
@@ -87,12 +95,16 @@
 						<ConfirmDelete
 							id="plug-{e.id}"
 							trigger={false}
-							title={e.paused ? `Turn ${e.name} back on?` : `Turn ${e.name} off?`}
-							body={e.paused
-								? 'Its smart plug is switched on, and it leaves Needs attention.'
-								: 'Its smart plug is switched off. It stays in Needs attention until you turn it back on.'}
+							title={e.plug.runs ? (e.paused ? `Resume ${e.name}?` : `Pause ${e.name}?`) : e.paused ? `Turn ${e.name} back on?` : `Turn ${e.name} off?`}
+							body={e.plug.runs
+								? e.paused
+									? 'Its schedule on the plug is switched back on, so it doses at its times again.'
+									: 'Its plug is switched off and its schedule on the plug is switched off, so it doesn’t dose. It stays in Needs attention until you resume it.'
+								: e.paused
+									? 'Its smart plug is switched on, and it leaves Needs attention.'
+									: 'Its smart plug is switched off. It stays in Needs attention until you turn it back on.'}
 							action="?/{e.paused ? 'resume' : 'pause'}"
-							label={e.paused ? 'Turn on' : 'Turn off'}
+							label={e.plug.runs ? (e.paused ? 'Resume' : 'Pause') : e.paused ? 'Turn on' : 'Turn off'}
 							tone={e.paused ? 'primary' : 'warn'}
 							fields={{ id: e.id }}
 						/>
@@ -466,6 +478,7 @@
 	}
 	.acts {
 		display: flex;
+		flex-wrap: wrap;
 		gap: 8px;
 		padding-top: 8px;
 		border-top: 1px solid var(--divider);

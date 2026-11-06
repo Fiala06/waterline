@@ -8,6 +8,9 @@ describe('a smart plug in words (#203)', () => {
 		expect(plugText({ on: false, watts: 0, lastError: null })).toEqual({ text: '○ Off', level: 'warn' });
 		expect(plugText({ on: true, watts: 3, lastError: "The plug couldn't be reached" })).toEqual({ text: '✕ Not answering', level: 'bad' });
 		expect(plugText({ on: null, watts: null, lastError: null }).text).toBe('– No reading yet');
+		// a doser (#205): running while on, and off between doses is fine
+		expect(plugText({ on: true, watts: 2.4, lastError: null, runs: true })).toEqual({ text: '● Running · 2.4 W', level: 'ok' });
+		expect(plugText({ on: false, watts: 0, lastError: null, runs: true })).toEqual({ text: '○ Off', level: 'none' });
 	});
 	it('rounds the watts', () => {
 		expect(wattsText(0)).toBe('0 W');

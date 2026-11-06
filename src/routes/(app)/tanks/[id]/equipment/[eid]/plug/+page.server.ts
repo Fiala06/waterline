@@ -3,7 +3,8 @@ import { equipmentName } from '$lib/equipment';
 import { plugText } from '$lib/plugs';
 import { setFlash } from '$lib/server/flash';
 import { str } from '$lib/server/forms';
-import { linkPlug, parsePlugUrl, PlugError, plugOf, plugsOff, pollPlug, unlinkPlug } from '$lib/server/plugs';
+import { linkPlug, parsePlugUrl, PlugError, plugOf, plugsOff, pollPlug, reportBase, unlinkPlug } from '$lib/server/plugs';
+import { runText } from '$lib/events';
 import { getEquipment } from '$lib/server/specs';
 import { getTank } from '$lib/server/tanks';
 import { fmtWhen } from '$lib/time';
@@ -25,7 +26,9 @@ export const load: PageServerLoad = ({ locals, params }) => {
 	const p = plugOf(e.id);
 	const tz = locals.user!.timeZone;
 	return {
-		item: { id: e.id, name: equipmentName(e), tankId: e.tankId, paused: !!e.pausedAt },
+		item: { id: e.id, name: equipmentName(e), tankId: e.tankId, paused: !!e.pausedAt, doser: e.type === 'doser' },
+		// where the plug reports each switch (#205): Waterline's own address unless one is given
+		origin: reportBase({ reportUrl: null }),
 		off: plugsOff(),
 		plug: p
 			? {
@@ -33,6 +36,11 @@ export const load: PageServerLoad = ({ locals, params }) => {
 					name: p.name,
 					hasPassword: p.hasPassword,
 					status: plugText(p),
+					// its runs reported (#205): set up on the plug, or why not
+					reports: p.hooksAt ? '✓ The plug tells Waterline each time it switches' : `✕ ${p.hooksError ?? 'Not set up'}`,
+					reportsOk: !!p.hooksAt,
+					reportUrl: p.reportUrl,
+					autoOff: p.autoOffS ? `Switches itself off after ${runText(p.autoOffS)}` : null,
 					error: p.lastError,
 					checked: p.lastPolledAt ? fmtWhen(p.lastPolledAt, tz) : null,
 					lastOk: p.lastOkAt ? fmtWhen(p.lastOkAt, tz) : null
@@ -48,10 +56,13 @@ export const actions: Actions = {
 		const raw = str(form, 'url');
 		const password = str(form, 'password');
 		const url = parsePlugUrl(raw);
-		const values = { url: raw };
+		const rawReport = str(form, 'reportUrl');
+		const reportUrl = rawReport ? parsePlugUrl(rawReport) : null;
+		const values = { url: raw, reportUrl: rawReport };
 		if (!url) return fail(400, { error: 'Enter the plug’s address, such as 192.168.1.40.', values });
+		if (rawReport && !reportUrl) return fail(400, { error: 'Enter Waterline’s address as the plug can reach it, such as http://192.168.1.10:3000.', values });
 		try {
-			const p = await linkPlug(locals.user!.id, e.id, { url, password: password || null });
+			const p = await linkPlug(locals.user!.id, e.id, { url, password: password || null, reportUrl });
 			setFlash(cookies, `✓ ${equipmentName(e)} runs from ${p.name ?? 'its plug'} · ${plugText(p).text}`);
 		} catch (err) {
 			if (err instanceof PlugError) return fail(400, { error: `${err.message}. Check the address, and the password if you set one in the Shelly app.`, values });
@@ -69,7 +80,7 @@ export const actions: Actions = {
 	},
 	unlink: async ({ locals, params, cookies }) => {
 		const e = item(locals, params);
-		unlinkPlug(locals.user!.id, e.id);
+		await unlinkPlug(locals.user!.id, e.id);
 		setFlash(cookies, `${equipmentName(e)} no longer follows its plug`);
 		redirect(303, `/tanks/${params.id}/equipment`);
 	}

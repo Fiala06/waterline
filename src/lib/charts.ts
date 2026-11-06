@@ -122,6 +122,8 @@ export function overlayKind(e: { category: string; data: Record<string, unknown>
 			return actions.includes('Trimmed plants') ? 'trim' : 'maintenance';
 		}
 		case 'equipment': {
+			// a doser with no doses set that its plug says ran (#205): with the doses
+			if (e.data.action === 'ran') return 'dosing';
 			const type = equipmentType(e.data.equipment_id, e.data.item);
 			return type === 'co2' ? 'co2' : type === 'light' ? 'light' : null;
 		}

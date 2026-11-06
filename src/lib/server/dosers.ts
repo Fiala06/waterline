@@ -9,7 +9,7 @@ import { equipmentName } from '$lib/equipment';
 import { logCompletes } from '$lib/tasks';
 import { utcToZoned, zonedToUtc } from '$lib/time';
 import { db } from './db';
-import { autoDoses, equipment, events, tanks, tasks, users, type AutoDose, type Equipment, type User } from './db/schema';
+import { autoDoses, equipment, equipmentPlugs, events, tanks, tasks, users, type AutoDose, type Equipment, type User } from './db/schema';
 import { logger } from './log';
 import { completeTask, followLog, isPaused, lastDoneOn } from './tasks';
 
@@ -155,7 +155,9 @@ export async function logDueDoses(now = new Date()): Promise<number> {
 		.innerJoin(equipment, eq(equipment.id, autoDoses.equipmentId))
 		.innerJoin(tanks, eq(tanks.id, autoDoses.tankId))
 		.innerJoin(users, eq(users.id, tanks.userId))
-		.where(and(eq(autoDoses.paused, false), isNull(equipment.removedAt), isNull(equipment.pausedAt), isNull(tanks.archivedAt)))
+		.leftJoin(equipmentPlugs, eq(equipmentPlugs.equipmentId, equipment.id))
+		// a doser whose smart plug reports its runs (#205) is logged by them, not by the clock
+		.where(and(eq(autoDoses.paused, false), isNull(equipment.removedAt), isNull(equipment.pausedAt), isNull(tanks.archivedAt), isNull(equipmentPlugs.hooksAt)))
 		.all();
 	let logged = 0;
 	for (const r of rows) {
@@ -172,13 +174,38 @@ export async function logDueDoses(now = new Date()): Promise<number> {
 }
 
 /**
+ * A run of a doser its smart plug reported (#205): logged as the dose nearest
+ * its time of day, the amount from its run time at the dose's own rate (2.5 mL
+ * in 30 s: 5 mL a minute), or the dose's amount when either isn't known. A
+ * doser with no doses set gets a line in History that it ran. Returns the entry.
+ */
+export function logPlugRun(user: User, item: Equipment, startedAt: string, seconds: number | null) {
+	const local = utcToZoned(new Date(startedAt), user.timeZone);
+	const mins = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+	const gap = (t: string) => {
+		const d = Math.abs(mins(t) - mins(local.time));
+		return Math.min(d, 1440 - d);
+	};
+	const dose = listDoses(item.id).sort((a, b) => gap(a.at) - gap(b.at))[0];
+	if (!dose)
+		return db
+			.insert(events)
+			.values({ tankId: item.tankId, category: 'equipment', occurredAt: startedAt, note: null, data: { action: 'ran', equipment_id: item.id, item: equipmentName(item), ...(seconds != null ? { seconds } : {}), by: 'plug' } })
+			.returning()
+			.get();
+	const amountMl = seconds != null && dose.seconds ? Math.round(((dose.amountMl * seconds) / dose.seconds) * 100) / 100 : dose.amountMl;
+	return logDose(user, item, dose, local.date, { at: startedAt, amountMl, seconds });
+}
+
+/**
  * One dose, logged for a day at its time: a dosing entry that says the doser
  * made it, the dosing reminder for its product done by it (as a dose logged by
  * hand does, #167), and the tasks that follow a dose due from it (#178).
  */
-function logDose(user: User, item: Equipment, dose: AutoDose, date: string) {
+function logDose(user: User, item: Equipment, dose: AutoDose, date: string, run?: { at: string; amountMl: number; seconds: number | null }) {
 	const tz = user.timeZone;
-	const at = zonedToUtc(date, dose.at, tz).toISOString();
+	// a run its smart plug reported (#205): when it really ran, how long, and what that doses
+	const at = run?.at ?? zonedToUtc(date, dose.at, tz).toISOString();
 	const event = db.transaction((tx) => {
 		const made = tx
 			.insert(events)
@@ -187,11 +214,19 @@ function logDose(user: User, item: Equipment, dose: AutoDose, date: string) {
 				category: 'dosing',
 				occurredAt: at,
 				note: null,
-				data: { product: dose.product, amount: dose.amountMl, unit: 'mL', auto: true, doser_id: item.id, dose_id: dose.id }
+				data: {
+					product: dose.product,
+					amount: run ? run.amountMl : dose.amountMl,
+					unit: 'mL',
+					auto: true,
+					doser_id: item.id,
+					dose_id: dose.id,
+					...(run ? { by: 'plug', ...(run.seconds != null ? { seconds: run.seconds } : {}) } : {})
+				}
 			})
 			.returning()
 			.get();
-		tx.update(autoDoses).set({ lastLoggedOn: date }).where(eq(autoDoses.id, dose.id)).run();
+		if (!dose.lastLoggedOn || dose.lastLoggedOn < date) tx.update(autoDoses).set({ lastLoggedOn: date }).where(eq(autoDoses.id, dose.id)).run();
 		return made;
 	});
 	const product = dose.product.trim().toLowerCase();
