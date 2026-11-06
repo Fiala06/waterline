@@ -7,7 +7,7 @@ import {
   unitLabel,
   type UnitPrefs,
 } from "./units";
-import { isTime } from "./time";
+import { daysBetween, fmtDate, isTime } from "./time";
 
 export type EquipmentType =
   | "filter"
@@ -288,6 +288,18 @@ export function parseServiceCadence(
 }
 
 /** "Service due in 12 days", "▲ Service due today", "✕ Service overdue 3 days". */
+/**
+ * How long an item has been switched off, from the day it was paused (in the
+ * keeper's zone): "today", "since Nov 3 · 2 days".
+ */
+export function pausedSince(day: string, today: string): string {
+  const days = daysBetween(day, today);
+  return days <= 0 ? "today" : `since ${fmtDate(day)} · ${days} day${days === 1 ? "" : "s"}`;
+}
+
+/** "‖ Paused today", "‖ Paused since Nov 3 · 2 days" */
+export const pausedText = (day: string, today: string) => `‖ Paused ${pausedSince(day, today)}`;
+
 export function serviceDueText(daysUntil: number): {
   text: string;
   level: "ok" | "warn" | "bad";

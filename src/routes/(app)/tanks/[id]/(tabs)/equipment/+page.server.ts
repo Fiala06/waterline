@@ -4,6 +4,7 @@ import {
   isWithoutType,
   onNowText,
   parseSchedule,
+  pausedText,
   scheduleLabel,
   serviceDueText,
   specSummary,
@@ -12,11 +13,12 @@ import {
 } from "$lib/equipment";
 import { error, fail, redirect } from "@sveltejs/kit";
 import { doseLabel, doseMarks, nextDoseText } from "$lib/dosers";
-import { dosesByEquipment } from "$lib/server/dosers";
+import { dosesByEquipment, resumeDose } from "$lib/server/dosers";
 import { setFlash } from "$lib/server/flash";
 import { num, optStr, str } from "$lib/server/forms";
 import { getTank } from "$lib/server/tanks";
-import { addPar, deletePar, listPar, scheduledItems, setWithout } from "$lib/server/specs";
+import { addPar, deletePar, getEquipment, listPar, scheduledItems, setEquipmentPaused, setWithout } from "$lib/server/specs";
+import { safeReturn } from "$lib/server/redirect";
 import { PAR_ZONES } from "$lib/par";
 import { effectiveDue } from "$lib/tasks";
 import { dateInZone, daysBetween, fmtDate, fmtDateLong, isDate, todayInZone, utcToZoned, zonedToUtc } from "$lib/time";
@@ -63,7 +65,8 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
       doses: (e.removedAt ? [] : (dosesOf.get(e.id) ?? [])).map((d) => ({
         id: d.id,
         next: nextDoseText(d, local),
-        paused: d.paused,
+        // a paused doser holds every dose back
+        paused: d.paused || !!e.pausedAt,
         label: doseLabel({ ...d, paused: false }),
         last: d.lastLoggedOn ? `last logged ${fmtDate(d.lastLoggedOn)}` : null,
       })),
@@ -82,6 +85,8 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
       // "Service due in 12 days" / "✕ Service overdue 3 days", from its reminder
       service: due ? serviceDueText(daysBetween(today, due)) : null,
       notes: e.notes,
+      // switched off for a while: "‖ Paused since Nov 3", until Resume
+      paused: e.pausedAt ? pausedText(dateInZone(e.pausedAt, user.timeZone), today) : null,
     };
   };
   const sort = readSort(url, SORTS);
@@ -100,7 +105,7 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
     timeline: [
       ...scheduledItems(params.id).map((i) => ({ label: i.name, schedule: i.schedule, kind: i.type, marks: [] as string[] })),
       ...current
-        .filter((e) => e.type === "doser" && doseMarks(dosesOf.get(e.id) ?? []).length)
+        .filter((e) => e.type === "doser" && !e.pausedAt && doseMarks(dosesOf.get(e.id) ?? []).length)
         .map((e) => ({ label: equipmentName(e), schedule: { periods: [], rampMin: null }, kind: "doser", marks: doseMarks(dosesOf.get(e.id) ?? []) })),
     ],
     now: nowTime,
@@ -129,7 +134,35 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
   };
 };
 
+/** Pause or resume one of this tank's items, then back where it was done. */
+async function pauseAction(
+  { request, locals, params, cookies }: Parameters<Actions[string]>[0],
+  paused: boolean,
+) {
+  const form = await request.formData();
+  const e = getEquipment(locals.user!.id, str(form, "id"));
+  if (e.tankId !== params.id) error(404, "Equipment not found");
+  const item = setEquipmentPaused(locals.user!.id, e.id, paused, locals.user!.timeZone);
+  setFlash(cookies, paused ? `‖ ${equipmentName(item)} paused · it stays in Needs attention until you resume it` : `✓ ${equipmentName(item)} resumed`);
+  redirect(303, safeReturn(form.get("from"), `/tanks/${params.id}/equipment`));
+}
+
 export const actions: Actions = {
+  /** Switched off for a while on purpose (a doser held back): on the dashboard until it's resumed. */
+  pause: (e) => pauseAction(e, true),
+  resume: (e) => pauseAction(e, false),
+  /** One paused dose of a doser (#196) back on, from Needs attention: from its next time. */
+  resumeDose: async ({ request, locals, params, cookies }) => {
+    const user = locals.user!;
+    const form = await request.formData();
+    const e = getEquipment(user.id, str(form, "id"));
+    if (e.tankId !== params.id || e.removedAt) error(404, "Equipment not found");
+    // like resuming a paused task: anyone who can log to the tank
+    getTank(user.id, params.id, "log");
+    const dose = resumeDose(user, e, str(form, "dose"));
+    setFlash(cookies, dose ? `✓ ${dose.product} on ${equipmentName(e)} resumed` : "That dose isn't paused");
+    redirect(303, safeReturn(form.get("from"), `/tanks/${params.id}/equipment`));
+  },
   /** PAR readings (#25): a reading at a spot, placed by its zone on the map. */
   par: async ({ request, locals, params, cookies }) => {
     const user = locals.user!;

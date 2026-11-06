@@ -145,7 +145,8 @@ task_completions id, task_id, completed_at, event_id?,
 equipment        id, tank_id, type(filter|heater|light|co2|pump|skimmer|doser|other), brand?,
                  model?, specs JSON, schedule? JSON ({periods:[{on,off}], rampMin?}: when it
                  runs; null runs all day; a light's sets the tank's lights times and photoperiod),
-                 installed_at?, last_serviced_at?, notes?, removed_at?, barcode? (the product
+                 installed_at?, last_serviced_at?, notes?, removed_at?, paused_at? (switched off
+                 for a while on purpose, until Resume: in Needs attention meanwhile), barcode? (the product
                  barcode it was scanned from, as a GTIN), import_id?, created_at
 auto_doses       id, tank_id, equipment_id (a doser), product, amount_ml, at ("HH:MM" in the
                  owner's time zone), seconds? (how long the pump runs), weekdays? ("1,3,5";

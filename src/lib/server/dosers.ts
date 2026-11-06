@@ -107,6 +107,31 @@ export function syncDoses(user: User, e: Equipment, input: DoseInput[], now = ne
 	}
 }
 
+/**
+ * A doser back on after it was paused: each dose starts from its next time, so
+ * a dose whose time passed while it was off isn't logged for today.
+ */
+export function restartDoses(equipmentId: string, timeZone: string, now = new Date()) {
+	const local = utcToZoned(now, timeZone);
+	for (const d of listDoses(equipmentId))
+		db.update(autoDoses).set({ lastLoggedOn: startFrom(d, local, d.lastLoggedOn) }).where(eq(autoDoses.id, d.id)).run();
+}
+
+/**
+ * Resume one paused dose of a doser (#196), as the form would: from its next
+ * time, with the change in History.
+ */
+export function resumeDose(user: User, e: Equipment, doseId: string) {
+	const list = listDoses(e.id);
+	if (!list.some((d) => d.id === doseId && d.paused)) return null;
+	syncDoses(
+		user,
+		e,
+		list.map((d) => ({ id: d.id, product: d.product, amountMl: d.amountMl, at: d.at, seconds: d.seconds, weekdays: d.weekdays, paused: d.id === doseId ? false : d.paused }))
+	);
+	return list.find((d) => d.id === doseId)!;
+}
+
 /** What a doser has logged, newest first, for its page. */
 export function dosesLoggedBy(equipmentId: string, limit = 10) {
 	return db
@@ -121,7 +146,7 @@ export function dosesLoggedBy(equipmentId: string, limit = 10) {
 /**
  * The scheduler's run (every 5 minutes): each dose whose time has come today,
  * on one of its days, in the owner's time zone, is logged once, at its time.
- * Removed dosers and archived tanks dose nothing here.
+ * Removed or paused dosers and archived tanks dose nothing here.
  */
 export async function logDueDoses(now = new Date()): Promise<number> {
 	const rows = db
@@ -130,7 +155,7 @@ export async function logDueDoses(now = new Date()): Promise<number> {
 		.innerJoin(equipment, eq(equipment.id, autoDoses.equipmentId))
 		.innerJoin(tanks, eq(tanks.id, autoDoses.tankId))
 		.innerJoin(users, eq(users.id, tanks.userId))
-		.where(and(eq(autoDoses.paused, false), isNull(equipment.removedAt), isNull(tanks.archivedAt)))
+		.where(and(eq(autoDoses.paused, false), isNull(equipment.removedAt), isNull(equipment.pausedAt), isNull(tanks.archivedAt)))
 		.all();
 	let logged = 0;
 	for (const r of rows) {

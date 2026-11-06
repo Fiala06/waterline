@@ -1,7 +1,7 @@
 import { and, count, desc, eq, inArray, lte, sql } from "drizzle-orm";
 import { redirect } from "@sveltejs/kit";
 import { cyclingStage, staleAfter, type CycleTest } from "$lib/status";
-import { lightingText, tankLighting } from "$lib/equipment";
+import { lightingText, pausedSince, tankLighting } from "$lib/equipment";
 import { displaySamples, isLive, latestSamples, sampleSeries } from "$lib/server/sensors";
 import { fmtValue, paramUnit, statusOf } from "$lib/params";
 import { setFlash } from "$lib/server/flash";
@@ -147,6 +147,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
   );
 
   // "In the tank": what lives in it and what runs it, each opening its tab
+  const equipmentNow = listEquipment(user.id, tank.id);
   const animals = bySpecies(listLivestock(user.id, tank.id));
   const inTank = animals.filter((l) => l.status === "in_tank");
   const contents = {
@@ -159,7 +160,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
       .filter((l) => l.status === "quarantine")
       .reduce((n, l) => n + l.count, 0),
     plants: listPlants(user.id, tank.id).map((p) => p.name),
-    equipment: listEquipment(user.id, tank.id).map(equipmentName),
+    equipment: equipmentNow.map((e) => (e.pausedAt ? `${equipmentName(e)} (paused)` : equipmentName(e))),
     // "Lights 08:00–16:00 · CO₂ 07:00–15:00"
     schedule: lightingText(tank, scheduledItems(tank.id)),
   };
@@ -381,6 +382,19 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
       last: lastWc ? fmtDate(dateInZone(lastWc.occurredAt, tz)) : null,
     },
     activity,
+    // switched off for a while on purpose (a doser held back): in Needs attention until resumed
+    // and a doser's dose paused on its own (#196), with its own Resume
+    paused: [
+      ...equipmentNow
+        .filter((e) => e.pausedAt)
+        .map((e) => {
+          const since = pausedSince(dateInZone(e.pausedAt!, tz), today);
+          return { id: e.id, dose: null, name: equipmentName(e), since: since[0].toUpperCase() + since.slice(1) };
+        }),
+      ...autoDoseLines(tank.id)
+        .filter((a) => a.dose.paused && !equipmentNow.find((e) => e.id === a.itemId)?.pausedAt)
+        .map((a) => ({ id: a.itemId, dose: a.dose.id, name: `${a.item} · ${a.dose.product}`, since: doseLabel({ ...a.dose, paused: false, seconds: null }) })),
+    ],
   };
 };
 

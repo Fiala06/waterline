@@ -22,6 +22,7 @@ import {
 } from "./db/schema";
 import { getTank } from "./tanks";
 import { completeTask } from "./tasks";
+import { restartDoses } from "./dosers";
 
 const now = () => new Date().toISOString();
 
@@ -273,6 +274,31 @@ export function removeEquipment(
     meta,
   );
   return Object.assign(e, { event, tasksRemoved });
+}
+
+/**
+ * Pause or resume an item: switched off on purpose for a while (a doser held
+ * back), so the dashboard keeps it in Needs attention until it's resumed.
+ * History says when, and on resuming, for how long.
+ */
+export function setEquipmentPaused(userId: string, id: string, paused: boolean, timeZone: string, at = now()) {
+  const e = getEquipment(userId, id);
+  requireRoleOn(userId, e.tankId, "log");
+  if (e.removedAt) error(400, "That equipment was removed");
+  if (!!e.pausedAt === paused) return e;
+  db.update(equipment)
+    .set({ pausedAt: paused ? at : null })
+    .where(eq(equipment.id, id))
+    .run();
+  logEvent(e.tankId, "equipment", {
+    action: paused ? "paused" : "resumed",
+    equipment_id: id,
+    item: equipmentName(e),
+    ...(e.pausedAt && !paused ? { paused_at: e.pausedAt } : {}),
+  }, { at });
+  // a doser back on picks its doses up from their next time, not the ones it missed
+  if (!paused && e.type === "doser") restartDoses(id, timeZone, new Date(at));
+  return { ...e, pausedAt: paused ? at : null };
 }
 
 /**

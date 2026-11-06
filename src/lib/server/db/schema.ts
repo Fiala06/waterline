@@ -752,6 +752,8 @@ export const equipment = sqliteTable(
 		lastServicedAt: text('last_serviced_at'),
 		notes: text('notes'),
 		removedAt: text('removed_at'),
+		/** switched off for a while on purpose (a doser held back): when, until Resume; null while it runs */
+		pausedAt: text('paused_at'),
 		/** the product barcode it was scanned from (#147), as a GTIN: EAN-13 (a UPC-A with a 0 in front), EAN-8 or GTIN-14 */
 		barcode: text('barcode'),
 		importId: text('import_id'),

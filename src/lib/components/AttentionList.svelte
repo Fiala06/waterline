@@ -39,10 +39,19 @@
 		/** "Every 7 days", or a routine's line */
 		sub: string;
 	}
+	interface Paused {
+		/** the item, and the dose when only one of a doser's doses is paused */
+		id: string;
+		dose: string | null;
+		name: string;
+		/** "Since Nov 3 · 2 days", "Today"; a dose's own line */
+		since: string;
+	}
 	let {
 		items,
 		wc,
 		overdue = [],
+		paused = [],
 		when,
 		tankId = null
 	}: {
@@ -51,6 +60,8 @@
 		wc: { taskId: string | null; days: number; goal: number; last: string | null } | null;
 		/** tasks past their date, with Done */
 		overdue?: Overdue[];
+		/** equipment switched off for a while on purpose, with Resume */
+		paused?: Paused[];
 		/** "Today, 8:12 AM": when the latest test was */
 		when: string | null;
 		/** the tank, for a suggested step's buttons */
@@ -60,7 +71,7 @@
 	const over = $derived(wc ? Math.max(0, wc.days - wc.goal) : 0);
 	// the goal's share of the bar in ink; what's past it in the accent
 	const fill = $derived(wc ? Math.min(wc.days, wc.goal) / Math.max(wc.days, wc.goal, 1) : 0);
-	const count = $derived(items.length + (wc ? 1 : 0) + overdue.length);
+	const count = $derived(items.length + (wc ? 1 : 0) + overdue.length + paused.length);
 	const from = $derived(page.url.pathname + page.url.search);
 </script>
 
@@ -129,6 +140,23 @@
 				</span>
 			</div>
 		{/each}
+		{#each paused as e (`${e.id}:${e.dose ?? ''}`)}
+			<!-- equipment switched off on purpose: here until it's resumed, so it isn't forgotten -->
+			<div class="row task paused">
+				<a class="text" href="/tanks/{tankId}/equipment/{e.id}">
+					<span class="title"><span class="name">{e.name}</span> <span class="status status-warn">‖ Paused</span></span>
+					<span class="sub">{e.since}</span>
+				</a>
+				<span class="val end">
+					<form method="POST" action="/tanks/{tankId}/equipment?/{e.dose ? 'resumeDose' : 'resume'}" use:enhance>
+						<input type="hidden" name="id" value={e.id} />
+						{#if e.dose}<input type="hidden" name="dose" value={e.dose} />{/if}
+						<input type="hidden" name="from" value={from} />
+						<button class="btn" aria-label="Resume {e.name}">Resume</button>
+					</form>
+				</span>
+			</div>
+		{/each}
 	</div>
 </section>
 
@@ -186,6 +214,12 @@
 	.sub {
 		font-size: 13px;
 		color: var(--text-muted);
+	}
+	/* a paused item's name opens it, in ink like the rest */
+	a.text {
+		color: var(--text);
+		min-height: 44px;
+		justify-content: center;
 	}
 	/* a sensor still reporting reads "● Live" in ink; one gone quiet stays muted, as "○ Last" */
 	.live.fresh {

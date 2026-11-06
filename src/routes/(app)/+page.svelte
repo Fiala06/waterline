@@ -116,7 +116,9 @@
 	const allDone = $derived(dueNow.filter((t) => t.kind !== 'review' && !(t.openFormOnDone && (t.kind === 'water_change' || t.kind === 'test'))));
 	// the fun bits only when nothing's out of range or overdue
 	const calm = $derived(!cards.some((c) => c.level === 'bad') && !overdue.length && !(wcDue && (wcDue.days > wcDue.goal)));
-	const allClear = $derived(hasReadings && !attention.length && !wcDue && !overdue.length);
+	// equipment paused on purpose (a doser held back), so it isn't forgotten
+	const paused = $derived(data.paused ?? []);
+	const allClear = $derived(hasReadings && !attention.length && !wcDue && !overdue.length && !paused.length);
 
 	// Trends: parameters with a reading, or a sensor's samples (#130), in the window; pick one.
 	const trendOf = (id: string) => data.trends?.find((t) => t.parameterId === id);
@@ -234,7 +236,8 @@
 		<div class="grid">
 			<!-- ── Needs attention (span 2) ─────────────────────────────── -->
 			<div class="cell main first">
-				{#if !hasReadings}
+				<!-- paused equipment shows even before the first test, so it isn't forgotten -->
+				{#if !hasReadings && !paused.length}
 					<div class="section-head"><h2>Needs attention</h2></div>
 					<EmptyState
 						icon="test"
@@ -251,7 +254,7 @@
 					<div class="section-head"><h2>Needs attention</h2>{#if data.latestWhen}<span class="meta">{data.latestWhen}</span>{/if}</div>
 					<p class="clear"><b>✓ Nothing needs attention.</b> <span>Every tracked parameter is in range and no task is overdue.</span></p>
 				{:else}
-					<AttentionList items={attention} wc={wcDue} {overdue} when={data.latestWhen} tankId={data.tank?.id ?? null} />
+					<AttentionList items={attention} wc={wcDue} {overdue} {paused} when={data.latestWhen} tankId={data.tank?.id ?? null} />
 				{/if}
 				{#if hasReadings && calm && data.cheers.milestones.length}
 					<ul class="milestones" aria-label="Milestones">

@@ -55,6 +55,7 @@
 					{#if e.schedule}
 						<div class="sched"><span class="on-now" class:off={!e.schedule.now.on}>{e.schedule.now.text}</span><span class="sched-label">{e.schedule.label}</span></div>
 					{/if}
+					{#if e.paused}<div class="service status-warn">{e.paused}</div>{/if}
 					{#each e.doses as d (d.id)}
 						<!-- a doser's dose (#196): when the next is, and what it is -->
 						<div class="sched"><span class="on-now" class:off={d.paused}>{d.paused ? '○ Paused' : `● ${d.next}`}</span><span class="sched-label">{d.label}{d.last ? ` · ${d.last}` : ''}</span></div>
@@ -63,6 +64,11 @@
 					{#if meta(e)}<div class="meta">{meta(e)}</div>{/if}
 					<div class="acts">
 						<a class="ghost" href={serviceHref}>Log service</a>
+						<!-- switched off for a while on purpose: it stays in Needs attention until it's resumed -->
+						<form method="POST" action="?/{e.paused ? 'resume' : 'pause'}" use:enhance>
+							<input type="hidden" name="id" value={e.id} />
+							<button class="ghost btn-ghost" class:muted-link={!e.paused}>{e.paused ? 'Resume' : 'Pause'}<span class="sr-only"> {e.name}</span></button>
+						</form>
 						<a class="ghost muted-link" href="{base}/equipment/{e.id}">Details</a>
 					</div>
 				</article>
@@ -444,6 +450,12 @@
 	}
 	.muted-link {
 		color: var(--text-muted);
+	}
+	.btn-ghost {
+		background: none;
+		border: 0;
+		font-family: inherit;
+		cursor: pointer;
 	}
 	/* "Show past …" works the same on Equipment and Livestock */
 	.past {

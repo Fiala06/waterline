@@ -14,7 +14,7 @@ export const load: PageServerLoad = ({ locals, params }) => {
 	return {
 		// specs, the pinned note, recent notes and routines (shared with Setup › Details)
 		...tankDetails(user, t),
-		equipment: eq.map((e) => ({ id: e.id, type: EQUIPMENT_TYPE_LABEL[e.type], name: equipmentName(e) })),
+		equipment: eq.map((e) => ({ id: e.id, type: EQUIPMENT_TYPE_LABEL[e.type], name: e.pausedAt ? `${equipmentName(e)} (paused)` : equipmentName(e) })),
 		// what it goes without on purpose: "Heater · None"
 		without: t.withoutEquipment.filter(isWithoutType).map((w) => EQUIPMENT_TYPE_LABEL[w]),
 		livestock: ls.map((l) => ({ id: l.id, name: livestockLabel(l), count: l.count, quarantine: l.status === 'quarantine' })),
