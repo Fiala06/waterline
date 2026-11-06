@@ -43,6 +43,7 @@ import { checklistSteps, showChecklist } from "$lib/checklist";
 import { doseLabel } from "$lib/dosers";
 import { growingRows } from "$lib/growing";
 import { autoDoseLines } from "$lib/server/dosers";
+import { plugsOfTank } from "$lib/server/plugs";
 import { dashboardChoices, resetDashboardChoices, saveDashboardChoices } from "$lib/server/dashboard-prefs";
 import { parseChoices } from "$lib/dashboard";
 import { intervalText } from "$lib/tasks";
@@ -148,6 +149,8 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 
   // "In the tank": what lives in it and what runs it, each opening its tab
   const equipmentNow = listEquipment(user.id, tank.id);
+  const plugs = plugsOfTank(tank.id);
+  const owner = roleOn(user.id, tank) === "owner";
   const animals = bySpecies(listLivestock(user.id, tank.id));
   const inTank = animals.filter((l) => l.status === "in_tank");
   const contents = {
@@ -389,11 +392,13 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
         .filter((e) => e.pausedAt)
         .map((e) => {
           const since = pausedSince(dateInZone(e.pausedAt!, tz), today);
-          return { id: e.id, dose: null, name: equipmentName(e), since: since[0].toUpperCase() + since.slice(1) };
+          // on a smart plug (#203): Resume turns the plug on, the owner's to do
+          const plug = plugs.has(e.id) ? (owner ? ("switch" as const) : ("locked" as const)) : null;
+          return { id: e.id, dose: null, name: equipmentName(e), since: since[0].toUpperCase() + since.slice(1), plug };
         }),
       ...autoDoseLines(tank.id)
         .filter((a) => a.dose.paused && !equipmentNow.find((e) => e.id === a.itemId)?.pausedAt)
-        .map((a) => ({ id: a.itemId, dose: a.dose.id, name: `${a.item} · ${a.dose.product}`, since: doseLabel({ ...a.dose, paused: false, seconds: null }) })),
+        .map((a) => ({ id: a.itemId, dose: a.dose.id, name: `${a.item} · ${a.dose.product}`, since: doseLabel({ ...a.dose, paused: false, seconds: null }), plug: null })),
     ],
   };
 };

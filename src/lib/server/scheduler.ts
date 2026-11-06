@@ -3,6 +3,7 @@
 import { env } from '$env/dynamic/private';
 import { pruneActionTokens } from './action-tokens';
 import { pollAllDevices } from './devices';
+import { pollAllPlugs } from './plugs';
 import { logDueDoses } from './dosers';
 import { pruneSamples } from './sensors';
 import { pruneOAuth } from './assistant/oauth';
@@ -27,6 +28,8 @@ export function startScheduler() {
 			if (getServerSettings().scheduledEmails) await runNotifications();
 			// devices Waterline reads itself, every run: 5 minutes apart
 			await pollAllDevices();
+			// smart plugs (#203): an item off at its plug is paused, back on resumes
+			await pollAllPlugs();
 			// a sensor that is a parameter's reading of record, out of range for a while
 			await alertSensorExcursions();
 			pruneLogs();

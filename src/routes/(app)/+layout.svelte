@@ -101,6 +101,7 @@
 				'/(app)/tanks/[id]/plants/health': 'Log plant health',
 				'/(app)/tanks/[id]/algae': 'Log algae',
 				'/(app)/tanks/[id]/equipment/[eid]': 'Edit equipment',
+				'/(app)/tanks/[id]/equipment/[eid]/plug': 'Smart plug',
 				'/(app)/tanks/[id]/livestock/new': 'Add livestock',
 				'/(app)/tanks/[id]/livestock/several': 'Add several',
 				'/(app)/tanks/[id]/plants/several': 'Add several plants',

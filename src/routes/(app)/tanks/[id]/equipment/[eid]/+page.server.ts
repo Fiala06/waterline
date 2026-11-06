@@ -15,6 +15,9 @@ import {
 } from "$lib/server/equipment-form";
 import { expensesForEquipment } from "$lib/server/expenses";
 import { getEquipment, knownBrands } from "$lib/server/specs";
+import { plugOf } from "$lib/server/plugs";
+import { plugText } from "$lib/plugs";
+import { getTank, roleOn } from "$lib/server/tanks";
 import { dateInZone, daysBetween, fmtDate, todayInZone } from "$lib/time";
 import type { Actions, PageServerLoad } from "./$types";
 
@@ -89,6 +92,14 @@ export const load: PageServerLoad = ({ locals, params }) => {
                 : null,
           }
         : null,
+      // its smart plug (#203), or a way to link one: the owner's
+      plug:
+        !e.removedAt && roleOn(user.id, getTank(user.id, e.tankId)) === "owner"
+          ? (() => {
+              const p = plugOf(e.id);
+              return { href: `/tanks/${e.tankId}/equipment/${e.id}/plug`, name: p ? (p.name ?? "Shelly plug") : null, status: p ? plugText(p) : null };
+            })()
+          : null,
       cost: {
         total: fmtMoney(spent.totalCents, user.currency),
         rows: spent.rows.map((x) => ({

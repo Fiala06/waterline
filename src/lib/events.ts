@@ -200,8 +200,9 @@ export function eventTitle(e: EventLike, prefs: UnitPrefs): string {
 			if (d.action === 'doses') return `${str(d.item) || 'Doser'} doses ${str(d.doses) || 'nothing'}`;
 			if (d.action === 'par') return `PAR ${str(d.value)} at ${str(d.spot) || 'a spot'}`;
 			// switched off for a while on purpose, and back on
-			if (d.action === 'paused') return `Paused ${str(d.item) || 'equipment'}`;
-			if (d.action === 'resumed') return `Resumed ${str(d.item) || 'equipment'}`;
+			// switched at its smart plug (#203): "Paused Jebao Doser · its plug was switched off"
+			if (d.action === 'paused') return `Paused ${str(d.item) || 'equipment'}${d.by === 'plug' ? ' · its plug was switched off' : ''}`;
+			if (d.action === 'resumed') return `Resumed ${str(d.item) || 'equipment'}${d.by === 'plug' ? ' · its plug was switched on' : ''}`;
 			const action = EQUIPMENT_ACTIONS.find((a) => a.value === d.action)?.label ?? 'Changed';
 			const base = `${action} ${str(d.item) || 'equipment'}`;
 			// an adjustment says what changed: "Adjusted Twinstar 300S V · Intensity 60% → 80%"

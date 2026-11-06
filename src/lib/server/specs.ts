@@ -8,6 +8,7 @@ import { db } from "./db";
 import { requireRoleOn, visibleTo } from "./members";
 import {
   equipment,
+  equipmentPlugs,
   events,
   livestock,
   parReadings,
@@ -262,6 +263,8 @@ export function removeEquipment(
     .delete(tasks)
     .where(eq(tasks.equipmentId, id))
     .run().changes;
+  // its smart plug (#203) is no longer read
+  db.delete(equipmentPlugs).where(eq(equipmentPlugs.equipmentId, id)).run();
   const event = logEvent(
     e.tankId,
     "equipment",
@@ -281,7 +284,7 @@ export function removeEquipment(
  * back), so the dashboard keeps it in Needs attention until it's resumed.
  * History says when, and on resuming, for how long.
  */
-export function setEquipmentPaused(userId: string, id: string, paused: boolean, timeZone: string, at = now()) {
+export function setEquipmentPaused(userId: string, id: string, paused: boolean, timeZone: string, at = now(), opts: { byPlug?: boolean } = {}) {
   const e = getEquipment(userId, id);
   requireRoleOn(userId, e.tankId, "log");
   if (e.removedAt) error(400, "That equipment was removed");
@@ -295,6 +298,8 @@ export function setEquipmentPaused(userId: string, id: string, paused: boolean, 
     equipment_id: id,
     item: equipmentName(e),
     ...(e.pausedAt && !paused ? { paused_at: e.pausedAt } : {}),
+    // switched at its smart plug (#203), not in Waterline
+    ...(opts.byPlug ? { by: "plug" } : {}),
   }, { at });
   // a doser back on picks its doses up from their next time, not the ones it missed
   if (!paused && e.type === "doser") restartDoses(id, timeZone, new Date(at));

@@ -9,6 +9,7 @@
 	import { page } from '$app/state';
 	import { markDone } from '$lib/splash';
 	import type { StatusLevel } from '$lib/status';
+	import ConfirmDelete from './ConfirmDelete.svelte';
 	import Sparkline from './Sparkline.svelte';
 	import SuggestedStep from './SuggestedStep.svelte';
 	import type { Suggestion } from '$lib/suggestions';
@@ -46,6 +47,8 @@
 		name: string;
 		/** "Since Nov 3 · 2 days", "Today"; a dose's own line */
 		since: string;
+		/** on a smart plug (#203): Resume turns it on, after a confirm ("switch"); someone not the owner can't ("locked") */
+		plug?: 'switch' | 'locked' | null;
 	}
 	let {
 		items,
@@ -148,12 +151,28 @@
 					<span class="sub">{e.since}</span>
 				</a>
 				<span class="val end">
+					{#if e.plug === 'switch'}
+						<button type="button" class="btn" popovertarget="plug-on-{e.id}" aria-label="Turn on {e.name}">Turn on</button>
+						<ConfirmDelete
+							id="plug-on-{e.id}"
+							trigger={false}
+							title="Turn {e.name} back on?"
+							body="Its smart plug is switched on, and it leaves Needs attention."
+							action="/tanks/{tankId}/equipment?/resume"
+							label="Turn on"
+							tone="primary"
+							fields={{ id: e.id, from }}
+						/>
+					{:else if e.plug === 'locked'}
+						<span class="sub">Off at its plug</span>
+					{:else}
 					<form method="POST" action="/tanks/{tankId}/equipment?/{e.dose ? 'resumeDose' : 'resume'}" use:enhance>
 						<input type="hidden" name="id" value={e.id} />
 						{#if e.dose}<input type="hidden" name="dose" value={e.dose} />{/if}
 						<input type="hidden" name="from" value={from} />
 						<button class="btn" aria-label="Resume {e.name}">Resume</button>
 					</form>
+					{/if}
 				</span>
 			</div>
 		{/each}

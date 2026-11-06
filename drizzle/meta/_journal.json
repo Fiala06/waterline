@@ -449,6 +449,13 @@
       "when": 1793930397980,
       "tag": "0063_equipment_paused",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "6",
+      "when": 1793931266813,
+      "tag": "0064_equipment_plugs",
+      "breakpoints": true
     }
   ]
 }

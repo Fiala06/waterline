@@ -61,6 +61,8 @@
 			cost: { total: string; rows: { id: string; what: string; day: string; amount: string; receipt: boolean }[]; addHref: string };
 			/** a doser (#196): the doses it logged, newest first */
 			doses?: { id: string; title: string; day: string }[] | null;
+			/** its smart plug (#203): its state, or a link to tie one; the owner's */
+			plug?: { href: string; name: string | null; status: { text: string; level: string } | null } | null;
 		} | null;
 		/** a new item from the scanner (#147): its barcode, and the listing the lookup found, if any */
 		scanned?: { code: string; title: string | null; source: string | null } | null;
@@ -355,6 +357,20 @@
 					{#if about.task.due}<span class="task-due status-{about.task.due.level}">{about.task.due.text}</span>{/if}
 					<span class="task-line">{about.task.line}</span>
 					<a class="ghost" href="/tasks?edit={about.task.id}">Open in Tasks ›</a>
+				</div>
+			{/if}
+			{#if about.plug}
+				<!-- a smart plug (#203): off pauses the item, and Pause and Resume switch it -->
+				<div class="block">
+					<span class="kicker">Smart plug</span>
+					{#if about.plug.status}
+						<span class="task-name">{about.plug.name}</span>
+						<span class="task-due status-{about.plug.status.level}">{about.plug.status.text}</span>
+						<a class="ghost" href={about.plug.href}>Plug settings ›</a>
+					{:else}
+						<span class="task-line">Runs from a Shelly plug? Link it, and turning it off or on here switches the plug.</span>
+						<a class="ghost" href={about.plug.href}>Link a smart plug ›</a>
+					{/if}
 				</div>
 			{/if}
 			{#if about.doses}

@@ -14,6 +14,8 @@ import {
 import { error, fail, redirect } from "@sveltejs/kit";
 import { doseLabel, doseMarks, nextDoseText } from "$lib/dosers";
 import { dosesByEquipment, resumeDose } from "$lib/server/dosers";
+import { PlugError, plugsOfTank, switchPlug } from "$lib/server/plugs";
+import { plugText } from "$lib/plugs";
 import { setFlash } from "$lib/server/flash";
 import { num, optStr, str } from "$lib/server/forms";
 import { getTank } from "$lib/server/tanks";
@@ -53,6 +55,8 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
   const nowTime = local.time;
   // a doser's doses (#196), by the doser
   const dosesOf = dosesByEquipment(params.id);
+  // the smart plugs items run from (#203), by the item
+  const plugs = plugsOfTank(params.id);
   const view = (e: ReturnType<typeof listEquipment>[number]) => {
     const name = equipmentName(e);
     const task = openTasks.find((t) => t.equipmentId === e.id);
@@ -87,6 +91,11 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
       notes: e.notes,
       // switched off for a while: "‖ Paused since Nov 3", until Resume
       paused: e.pausedAt ? pausedText(dateInZone(e.pausedAt, user.timeZone), today) : null,
+      // its smart plug (#203): "● On · 4.2 W"; Pause and Resume switch it
+      plug: (() => {
+        const p = !e.removedAt ? plugs.get(e.id) : undefined;
+        return p ? { ...plugText(p), name: p.name } : null;
+      })(),
     };
   };
   const sort = readSort(url, SORTS);
@@ -142,8 +151,21 @@ async function pauseAction(
   const form = await request.formData();
   const e = getEquipment(locals.user!.id, str(form, "id"));
   if (e.tankId !== params.id) error(404, "Equipment not found");
-  const item = setEquipmentPaused(locals.user!.id, e.id, paused, locals.user!.timeZone);
-  setFlash(cookies, paused ? `‖ ${equipmentName(item)} paused · it stays in Needs attention until you resume it` : `✓ ${equipmentName(item)} resumed`);
+  const name = equipmentName(e);
+  // tied to a smart plug (#203): its plug is switched, and the item follows once it has
+  if (plugsOfTank(params.id).has(e.id)) {
+    try {
+      await switchPlug(locals.user!.id, e.id, !paused);
+    } catch (err) {
+      if (!(err instanceof PlugError)) throw err;
+      setFlash(cookies, `✕ ${err.message}, so ${name} is still ${paused ? "on" : "off"}`);
+      redirect(303, safeReturn(form.get("from"), `/tanks/${params.id}/equipment`));
+    }
+    setFlash(cookies, paused ? `‖ ${name} turned off at its plug · it stays in Needs attention until you turn it back on` : `✓ ${name} turned back on at its plug`);
+    redirect(303, safeReturn(form.get("from"), `/tanks/${params.id}/equipment`));
+  }
+  setEquipmentPaused(locals.user!.id, e.id, paused, locals.user!.timeZone);
+  setFlash(cookies, paused ? `‖ ${name} paused · it stays in Needs attention until you resume it` : `✓ ${name} resumed`);
   redirect(303, safeReturn(form.get("from"), `/tanks/${params.id}/equipment`));
 }
 

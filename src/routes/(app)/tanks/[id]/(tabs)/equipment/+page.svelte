@@ -3,6 +3,7 @@
 	// Equipment (README → Screens §7): cards with a 2px ink top rule, the type as a
 	// kicker, the name, spec tags, a meta line and Log service / Details.
 	import { enhance } from '$app/forms';
+	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import DateField from '$lib/components/DateField.svelte';
 	import DayTimeline from '$lib/components/DayTimeline.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
@@ -11,6 +12,8 @@
 	let { data, form } = $props();
 	const parErrors = $derived<Record<string, string>>(form?.par?.errors ?? {});
 	const base = $derived(`/tanks/${data.tankHead.id}`);
+	// a smart plug is switched by the tank's owner (#203)
+	const owner = $derived(data.tankHead.role === 'owner');
 	// T2: "Last serviced Sep 3 · linked task: Clean canister filter"
 	function meta(e: { serviced: string | null; task: string | null }) {
 		const s = [e.serviced && `Last serviced ${e.serviced}`, e.task && `linked task: ${e.task}`].filter(Boolean).join(' · ');
@@ -56,6 +59,10 @@
 						<div class="sched"><span class="on-now" class:off={!e.schedule.now.on}>{e.schedule.now.text}</span><span class="sched-label">{e.schedule.label}</span></div>
 					{/if}
 					{#if e.paused}<div class="service status-warn">{e.paused}</div>{/if}
+					{#if e.plug}
+						<!-- its smart plug (#203): on or off and what it draws, leading to the plug's page -->
+						<a class="plug" href="{base}/equipment/{e.id}/plug"><span class="status-{e.plug.level}">{e.plug.text}</span><span class="plug-name">{e.plug.name ?? 'Smart plug'} ›</span></a>
+					{/if}
 					{#each e.doses as d (d.id)}
 						<!-- a doser's dose (#196): when the next is, and what it is -->
 						<div class="sched"><span class="on-now" class:off={d.paused}>{d.paused ? '○ Paused' : `● ${d.next}`}</span><span class="sched-label">{d.label}{d.last ? ` · ${d.last}` : ''}</span></div>
@@ -65,12 +72,31 @@
 					<div class="acts">
 						<a class="ghost" href={serviceHref}>Log service</a>
 						<!-- switched off for a while on purpose: it stays in Needs attention until it's resumed -->
-						<form method="POST" action="?/{e.paused ? 'resume' : 'pause'}" use:enhance>
-							<input type="hidden" name="id" value={e.id} />
-							<button class="ghost btn-ghost" class:muted-link={!e.paused}>{e.paused ? 'Resume' : 'Pause'}<span class="sr-only"> {e.name}</span></button>
-						</form>
+						{#if e.plug}
+							<!-- on a smart plug: switching it is the owner's, after a confirm -->
+							{#if owner}<button type="button" class="ghost btn-ghost" class:muted-link={!e.paused} popovertarget="plug-{e.id}">{e.paused ? 'Turn on' : 'Turn off'}<span class="sr-only"> {e.name}</span></button>{/if}
+						{:else}
+							<form method="POST" action="?/{e.paused ? 'resume' : 'pause'}" use:enhance>
+								<input type="hidden" name="id" value={e.id} />
+								<button class="ghost btn-ghost" class:muted-link={!e.paused}>{e.paused ? 'Resume' : 'Pause'}<span class="sr-only"> {e.name}</span></button>
+							</form>
+						{/if}
 						<a class="ghost muted-link" href="{base}/equipment/{e.id}">Details</a>
 					</div>
+					{#if e.plug && owner}
+						<ConfirmDelete
+							id="plug-{e.id}"
+							trigger={false}
+							title={e.paused ? `Turn ${e.name} back on?` : `Turn ${e.name} off?`}
+							body={e.paused
+								? 'Its smart plug is switched on, and it leaves Needs attention.'
+								: 'Its smart plug is switched off. It stays in Needs attention until you turn it back on.'}
+							action="?/{e.paused ? 'resume' : 'pause'}"
+							label={e.paused ? 'Turn on' : 'Turn off'}
+							tone={e.paused ? 'primary' : 'warn'}
+							fields={{ id: e.id }}
+						/>
+					{/if}
 				</article>
 			{/each}
 		</div>
@@ -450,6 +476,21 @@
 	}
 	.muted-link {
 		color: var(--text-muted);
+	}
+	.plug {
+		display: flex;
+		justify-content: space-between;
+		gap: 12px;
+		min-height: 44px;
+		align-items: center;
+		margin: -8px 0;
+		font-size: 13px;
+		font-weight: 800;
+		color: var(--text);
+	}
+	.plug-name {
+		color: var(--text-muted);
+		font-weight: 600;
 	}
 	.btn-ghost {
 		background: none;

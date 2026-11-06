@@ -797,6 +797,43 @@ export const autoDoses = sqliteTable(
 );
 export type AutoDose = typeof autoDoses.$inferSelect;
 
+/**
+ * A smart plug an equipment item runs from (#203): a Shelly plug on the local
+ * network (its Gen2+ RPC API), read by the scheduler every 5 minutes. Off, the
+ * item is paused; on, it runs. Pause and Resume switch it. Not in backups, as
+ * polled devices aren't: an address on the keeper's network and its password.
+ */
+export const equipmentPlugs = sqliteTable(
+	'equipment_plugs',
+	{
+		id: id(),
+		equipmentId: text('equipment_id')
+			.notNull()
+			.unique()
+			.references(() => equipment.id, { onDelete: 'cascade' }),
+		tankId: text('tank_id')
+			.notNull()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		// "http://192.168.1.40": scheme, host, port and path, nothing else
+		url: text('url').notNull(),
+		// the plug's own name, or its model, as it gives it
+		name: text('name'),
+		// the Shelly app's password, when one is set (its user is always admin)
+		passwordEnc: text('password_enc'),
+		// which of its switches (a plug has one: 0)
+		switchId: integer('switch_id').notNull().default(0),
+		// what it said last: on or off, and the power it drew
+		on: integer('on', { mode: 'boolean' }),
+		watts: real('watts'),
+		lastPolledAt: text('last_polled_at'),
+		lastOkAt: text('last_ok_at'),
+		lastError: text('last_error'),
+		createdAt: createdAt()
+	},
+	(t) => [index('equipment_plugs_tank').on(t.tankId)]
+);
+export type EquipmentPlug = typeof equipmentPlugs.$inferSelect;
+
 export const livestock = sqliteTable(
 	'livestock',
 	{
