@@ -1,7 +1,7 @@
 // Bulk import from a spreadsheet (CSV): each list's template, reading its
 // columns by name in any order, and checking every row before anything is
 // saved. No database here; import.ts compares with the tank and saves.
-import { parseCsv, toCsv } from '$lib/csv';
+import { csvDelimiter, parseCsv, toCsv } from '$lib/csv';
 import {
 	EQUIPMENT_TYPE_LABEL,
 	EQUIPMENT_TYPES,
@@ -86,6 +86,8 @@ export interface ImportContext {
 	currency?: string;
 	/** what the keeper said a word means, by column: { status: { new: 'thriving' } } */
 	words?: WordMap;
+	/** the file writes decimals with a comma: "1,025" is 1.025 (set from the file as it's read) */
+	decimalComma?: boolean;
 }
 
 /** Words chosen on the preview, by column key, then by the word as compared ("new"). */
@@ -226,12 +228,31 @@ export function parseDate(v: string, prefs: UnitPrefs): string | null {
 	return m >= 1 && isDate(iso) ? iso : null;
 }
 
-/** The number a cell starts with: "300", "300 gph", "1,200", "25,5". */
-export function parseAmount(v: string): number | null {
+/**
+ * The number a cell starts with: "300", "300 gph", "1,200", "25,5". A comma
+ * before exactly three digits is a thousands separator ("1,200" gph) unless
+ * the file writes its decimals with a comma (`decimalComma`, see
+ * usesDecimalComma), or the whole part is 0: "0,025" is never 25 (#226).
+ */
+export function parseAmount(v: string, decimalComma = false): number | null {
 	const x = /^\s*(-?\d{1,3}(?:,\d{3})+(?:\.\d+)?|-?\d+(?:[.,]\d+)?)(?![\d,.])/.exec(v);
 	if (!x) return null;
-	const n = Number(/^-?\d{1,3}(?:,\d{3})+/.test(x[1]) ? x[1].replace(/,/g, '') : x[1].replace(',', '.'));
+	const thousands = /^-?\d{1,3}(?:,\d{3})+/.test(x[1]) && !/^-?0+,/.test(x[1]) && !(decimalComma && /^-?\d+,\d+$/.test(x[1]));
+	const n = Number(thousands ? x[1].replace(/,/g, '') : x[1].replace(',', '.'));
 	return Number.isFinite(n) ? n : null;
+}
+
+/** "1,025" and the like: one comma, three digits after it, which is 1025 in one country and 1.025 in another. */
+export const ambiguousAmount = (v: string) => /^\s*-?[1-9]\d{0,2},\d{3}(?![\d,.])/.test(v);
+
+/**
+ * Whether a file writes its decimals with a comma (#226): it separates its
+ * cells with semicolons, as spreadsheets do where the comma is the decimal
+ * mark, or one of its cells is a number with one or two digits after a comma
+ * ("7,25", "0,5"), which can't be thousands.
+ */
+export function usesDecimalComma(text: string, cells: string[]): boolean {
+	return csvDelimiter(text) === ';' || cells.some((c) => /^\s*[~≈]?\s*-?\d+,\d{1,2}(?![\d,.])/.test(c));
 }
 
 /** A word as compared: "In-tank " is "in tank". */
@@ -535,7 +556,7 @@ function checkEquipment(c: Cells, ctx: ImportContext, headers: Record<string, st
 		const v = (c[f.key] ?? '').trim();
 		if (!v) continue;
 		if (f.kind === 'number') {
-			const n = parseAmount(v);
+			const n = parseAmount(v, ctx.decimalComma);
 			if (n == null) problems.push(`${f.label} ${quoted(v)} isn't a number`);
 			else if (n < 0) problems.push(`${f.label} is below 0`);
 			else {
@@ -677,7 +698,9 @@ export function readColumns(text: string, columns: Column[], need: { key: string
 		for (const [i, col] of found) c[col.key] = (cells[i] ?? '').trim();
 		return c;
 	};
-	return { lines, headers, ignored, cellsOf, fileColumns };
+	// decided once for the file, from the cells of the columns that are read
+	const decimalComma = usesDecimalComma(text, lines.flatMap((l) => Object.values(cellsOf(l.cells))));
+	return { lines, headers, ignored, cellsOf, fileColumns, decimalComma };
 }
 
 function check(list: ImportList, c: Cells, ctx: ImportContext, headers: Record<string, string>) {
@@ -699,6 +722,7 @@ export function readImport(
 	const need = list === 'equipment' ? { key: 'type', label: 'Type' } : list === 'expenses' ? { key: 'amount', label: 'Amount' } : { key: 'name', label: 'Name' };
 	const t = readColumns(text, importColumns(list, ctx.prefs), need, MAX_ROWS, map);
 	if ('error' in t) return { error: t.error!, fileColumns: t.fileColumns };
+	ctx = { ...ctx, decimalComma: t.decimalComma };
 	const same = new Set(examples(list, ctx.prefs).map((e) => JSON.stringify(check(list, e, ctx, t.headers).value)));
 	const all = t.lines.map(({ line, cells }) => ({ line, cells: t.cellsOf(cells) }));
 	const rows = all.map(({ line, cells }) => {

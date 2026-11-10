@@ -3,10 +3,16 @@
 // cells with "" for a quote and line breaks inside; CRLF or LF; a BOM.
 
 /** Rows of cells, one per record (a blank line is ['']), so row numbers match the spreadsheet's. The delimiter is the one the first line uses most. */
-export function parseCsv(text: string): string[][] {
+/** What separates a file's cells: the one its first line has most of. */
+export function csvDelimiter(text: string): ',' | ';' | '\t' {
 	const s = text.replace(/^\uFEFF/, '');
 	const first = s.slice(0, s.search(/\r|\n|$/));
-	const delim = [',', ';', '\t'].reduce((best, d) => (first.split(d).length > first.split(best).length ? d : best), ',');
+	return ([',', ';', '\t'] as const).reduce<',' | ';' | '\t'>((best, d) => (first.split(d).length > first.split(best).length ? d : best), ',');
+}
+
+export function parseCsv(text: string): string[][] {
+	const s = text.replace(/^\uFEFF/, '');
+	const delim = csvDelimiter(text);
 	const rows: string[][] = [];
 	let row: string[] = [];
 	let cell = '';

@@ -125,25 +125,57 @@ export function latestSamplesFor(tankIds: string[]): Map<string, Map<string, Lat
 	return out;
 }
 
+/** How long a sensor has to read inside the target before its stretch out of range counts as over. */
+export const SETTLED_MS = 15 * 60_000;
+/** How far back a stretch is followed: one older than this was alerted long ago. */
+const STRETCH_LOOKBACK_MS = 7 * 86_400_000;
+
 /**
- * When a sensor's current run of out-of-range readings began, and how many
- * readings it has: the first reading after the newest one inside the target;
- * null while the latest reading is in range, or the parameter has no target.
+ * When a sensor's current stretch of out-of-range readings began, and how
+ * many readings it has; null while the latest reading is in range, or the
+ * parameter has no target. A stretch ends only once the sensor has read inside
+ * the target for 15 minutes (#228): a dip back in for a reading or two, as a
+ * heater cycling around its limit does, is part of the same stretch, so it
+ * keeps its start (and the one alert that start is the key of). `old` when
+ * the stretch began before the week of readings looked through.
  */
-export function outOfRangeSince(tankId: string, parameterId: string, range: { min: number | null; max: number | null }): { since: string; count: number } | null {
-	const bad = or(range.min != null ? lt(sensorReadings.value, range.min) : undefined, range.max != null ? gt(sensorReadings.value, range.max) : undefined);
+export function outOfRangeSince(tankId: string, parameterId: string, range: { min: number | null; max: number | null }): { since: string; count: number; old: boolean } | null {
 	if (range.min == null && range.max == null) return null;
+	const isBad = (v: number) => (range.min != null && v < range.min) || (range.max != null && v > range.max);
 	const mine = and(eq(sensorReadings.tankId, tankId), eq(sensorReadings.parameterId, parameterId));
-	const newest = db.select({ value: sensorReadings.value }).from(sensorReadings).where(mine).orderBy(desc(sensorReadings.at)).limit(1).get();
-	if (!newest || !((range.min != null && newest.value < range.min) || (range.max != null && newest.value > range.max))) return null;
-	const inRange = and(range.min != null ? gte(sensorReadings.value, range.min) : undefined, range.max != null ? lte(sensorReadings.value, range.max) : undefined);
-	const lastGood = db.select({ at: sensorReadings.at }).from(sensorReadings).where(and(mine, inRange)).orderBy(desc(sensorReadings.at)).limit(1).get();
-	const run = db
-		.select({ since: sql<string>`min(${sensorReadings.at})`, count: sql<number>`count(*)` })
-		.from(sensorReadings)
-		.where(and(mine, bad, lastGood ? gt(sensorReadings.at, lastGood.at) : undefined))
-		.get();
-	return run?.since ? { since: run.since, count: Number(run.count) } : null;
+	const newest = db.select({ value: sensorReadings.value, at: sensorReadings.at }).from(sensorReadings).where(mine).orderBy(desc(sensorReadings.at)).limit(1).get();
+	if (!newest || !isBad(newest.value)) return null;
+	const from = new Date(Date.parse(newest.at) - STRETCH_LOOKBACK_MS).toISOString();
+	let since = newest.at;
+	let count = 0;
+	// the bad reading that follows the in-range readings being walked through, newest first
+	let nextBad = newest.at;
+	// the oldest of those in-range readings so far
+	let quietFrom: string | null = null;
+	const PAGE = 500;
+	for (let before: string | null = null; ; ) {
+		const page: { value: number; at: string }[] = db
+			.select({ value: sensorReadings.value, at: sensorReadings.at })
+			.from(sensorReadings)
+			.where(and(mine, gte(sensorReadings.at, from), before ? lt(sensorReadings.at, before) : undefined))
+			.orderBy(desc(sensorReadings.at))
+			.limit(PAGE)
+			.all();
+		for (const r of page) {
+			if (isBad(r.value)) {
+				// in range for long enough before this stretch: it began after that
+				if (quietFrom && Date.parse(nextBad) - Date.parse(quietFrom) >= SETTLED_MS) return { since, count, old: false };
+				quietFrom = null;
+				nextBad = since = r.at;
+				count++;
+			} else quietFrom = r.at;
+		}
+		if (page.length < PAGE) break;
+		before = page[page.length - 1].at;
+	}
+	// the readings ran out: the stretch began with the sensor's first reading, or before the week looked through
+	const older = db.select({ at: sensorReadings.at }).from(sensorReadings).where(and(mine, lt(sensorReadings.at, from))).limit(1).get();
+	return { since, count, old: !!older && !(quietFrom && Date.parse(nextBad) - Date.parse(quietFrom) >= SETTLED_MS) };
 }
 
 /** A sensor is live for half an hour after a reading, or three times its own gap between readings when it reports more slowly. */

@@ -9,7 +9,7 @@ import { DOSING_UNITS, MAINTENANCE_ACTIONS, OBSERVATION_TAGS, WATER_SOURCES } fr
 import { displayValue, fmtValue, paramDecimals, paramUnit, quantityOf, storedValue, type ParamLike } from '$lib/params';
 import { fmtDateLong, utcToZoned, zonedToUtc } from '$lib/time';
 import { formatNumber, toDisplay, toStored, unitLabel, type UnitPrefs } from '$lib/units';
-import { headerSystem, parseAmount, parseDate, pick, quoted, readColumns, type Cells, type CheckedRow, type Column, type ColumnMap, type FileColumn } from './import-rows';
+import { ambiguousAmount, headerSystem, parseAmount, parseDate, pick, quoted, readColumns, type Cells, type CheckedRow, type Column, type ColumnMap, type FileColumn } from './import-rows';
 
 /** Years of weekly tests fit; a file this long can be split. */
 export const MAX_HISTORY_ROWS = 2000;
@@ -31,6 +31,8 @@ export interface HistoryContext {
 	params: HistoryParam[];
 	/** actual (or nominal) volume in liters, for % ↔ volume */
 	tankVolumeL: number | null;
+	/** the file writes decimals with a comma: "1,025" is 1.025 (set from the file as it's read) */
+	decimalComma?: boolean;
 }
 
 interface When {
@@ -320,15 +322,23 @@ function checkTest(c: Cells, ctx: HistoryContext, headers: Record<string, string
 	for (const p of ctx.params) {
 		const raw = (c[paramKey(p)] ?? '').trim();
 		if (!raw) continue;
-		const n = parseAmount(raw.replace(/^[~≈]\s*/, ''));
+		const cell = raw.replace(/^[~≈]\s*/, '');
+		const n = parseAmount(cell, ctx.decimalComma);
+		const units = unitsFor(p, headers[paramKey(p)] ?? '', ctx.prefs);
+		// "1,025" with nothing else in the file to say which it is (#226): when one reading is
+		// far past the target and the other isn't, it's asked about rather than guessed
+		const other = n != null && !ctx.decimalComma && ambiguousAmount(cell) ? parseAmount(cell, true) : null;
 		if (n == null) {
 			problems.push(`${p.name} ${quoted(raw)} isn't a number`);
 			unread = true;
 		} else if (n < 0 && quantityOf(p.key) !== 'temp') {
 			problems.push(`${p.name} is below 0`);
 			unread = true;
+		} else if (other != null && p.max != null && storedValue(p, n, units) > 10 * p.max && storedValue(p, other, units) <= 10 * p.max) {
+			problems.push(`${p.name} ${quoted(raw)} could be ${other} or ${n}: write it with a decimal point`);
+			unread = true;
 		} else {
-			readings[p.id] = storedValue(p, n, unitsFor(p, headers[paramKey(p)] ?? '', ctx.prefs));
+			readings[p.id] = storedValue(p, n, units);
 			const unit = paramUnit(p, ctx.prefs);
 			shown.push(`${p.name} ${fmtValue(p, readings[p.id], ctx.prefs)}${unit ? ` ${unit}` : ''}`);
 		}
@@ -348,13 +358,13 @@ function checkWaterChange(c: Cells, ctx: HistoryContext, headers: Record<string,
 	let percent: number | null = null;
 	let volumeL: number | null = null;
 	if (rawP) {
-		const n = parseAmount(rawP);
+		const n = parseAmount(rawP, ctx.decimalComma);
 		if (n == null) problems.push(`Amount ${quoted(rawP)} isn't a number`);
 		else if (n <= 0 || n > 100) problems.push('Amount is not between 0 and 100%');
 		else percent = n;
 	}
 	if (rawV) {
-		const n = parseAmount(rawV);
+		const n = parseAmount(rawV, ctx.decimalComma);
 		if (n == null) problems.push(`Volume ${quoted(rawV)} isn't a number`);
 		else if (n <= 0) problems.push('Volume is 0');
 		else {
@@ -389,7 +399,7 @@ function checkDosing(c: Cells, ctx: HistoryContext): Checked {
 	const rawA = (c.amount ?? '').trim();
 	let amount: number | null = null;
 	if (rawA) {
-		const n = parseAmount(rawA);
+		const n = parseAmount(rawA, ctx.decimalComma);
 		if (n == null) problems.push(`Amount ${quoted(rawA)} isn't a number`);
 		else if (n < 0) problems.push('Amount is below 0');
 		else amount = n;
@@ -586,6 +596,7 @@ export function readHistory(
 			fileColumns: t.fileColumns
 		};
 	}
+	ctx = { ...ctx, decimalComma: t.decimalComma };
 	const same = new Set(examples(kind, trackedOnly(ctx)).map((e) => JSON.stringify(check(kind, e, ctx, t.headers).value)));
 	const rows = t.lines.map(({ line, cells }) => {
 		const c = t.cellsOf(cells);

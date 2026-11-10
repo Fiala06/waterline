@@ -3,7 +3,7 @@
 // zone, and the email log makes every send happen at most once. Email and push
 // have their own switches per kind; push is one notice at a time, whatever the
 // email delivery (digests are email only), and doesn't need email set up.
-import { and, desc, eq, isNull, lt } from 'drizzle-orm';
+import { and, desc, eq, gt, isNull, like, lt, or } from 'drizzle-orm';
 import { env } from '$env/dynamic/private';
 import { fmtRange, fmtValue, paramUnit, shortName, statusOf } from '$lib/params';
 import { dueInfo, intervalText, isRoutine } from '$lib/tasks';
@@ -327,21 +327,52 @@ export async function alertOutOfRange(user: User, tankId: string, testId: string
 		.filter(({ p, value }) => p && statusOf(p, value).level === 'bad');
 	if (!bad.length) return;
 	const tank = listTanks(user.id).find((t) => t.id === tankId);
-	if (!tank || !notifiesUser(tank, user.id, 'alert', roleOn(user.id, tank))) return;
-	const today = todayInZone(user.timeZone);
-	const loggedDay = dateInZone(test.takenAt, user.timeZone);
-	await notifyOutOfRange(user, tank, `oor:${testId}`, bad, { at: test.takenAt, logged: `${loggedDay === today ? 'today' : fmtDate(loggedDay)} at ${fmtTime(test.takenAt, user.timeZone)}` }, base);
+	if (!tank) return;
+	// everyone the tank alerts (#229), as a sensor's reading does: on a shared tank that's the owner
+	// and whoever else it's set to, not only the person who typed the reading; times in each one's zone
+	for (const userId of tankPeople(tank).keys()) {
+		const person = userId === user.id ? user : getUser(userId);
+		if (!person || !maySignIn(person) || !notifiesUser(tank, userId, 'alert', roleOn(userId, tank))) continue;
+		const today = todayInZone(person.timeZone);
+		const loggedDay = dateInZone(test.takenAt, person.timeZone);
+		const by = userId === user.id ? '' : ` by ${user.displayName || user.email.split('@')[0]}`;
+		await notifyOutOfRange(
+			person,
+			tank,
+			`oor:${testId}`,
+			bad,
+			{ at: test.takenAt, logged: `${loggedDay === today ? 'today' : fmtDate(loggedDay)} at ${fmtTime(test.takenAt, person.timeZone)}${by}` },
+			base
+		).catch((e) => logger.error('email', "A test's out-of-range alert didn't send", { userId, tankId: tank.id, error: e }));
+	}
 }
 
 /** How long a sensor that is the reading of record reads out of range before its alert goes, and the readings it takes. */
 export const EXCURSION_MS = 15 * 60_000;
 export const EXCURSION_READINGS = 2;
+/** How long after a sensor's alert for a parameter before the next one for it may go to the same person. */
+export const EXCURSION_COOLDOWN_MS = 6 * 3_600_000;
+
+/** Whether this person was sent a sensor's out-of-range alert for the parameter, by email or push, in the last few hours. */
+function alertedLately(userId: string, parameterId: string, now: number): boolean {
+	const since = new Date(now - EXCURSION_COOLDOWN_MS).toISOString();
+	const key = `oor:sensor:${parameterId}:`;
+	return !!db
+		.select({ id: emailLog.id })
+		.from(emailLog)
+		.where(and(eq(emailLog.userId, userId), or(like(emailLog.key, `${key}%`), like(emailLog.key, `push:${key}%`)), gt(emailLog.sentAt, since)))
+		.get();
+}
 
 /**
  * Sensors that are the reading of record (Parameters & targets) and have read
  * out of range for a while: the alert a test would raise, to everyone the
  * tank alerts, once per stretch out of range (its key is when the stretch
- * began). A sensor gone quiet doesn't alert on its last reading.
+ * began). A stretch isn't over at the first reading back inside the target,
+ * only once the sensor has stayed there a while (see outOfRangeSince), and a
+ * parameter alerts a person at most once every few hours (#228), so a heater
+ * cycling around its limit isn't an alert on every cycle. A sensor gone quiet
+ * doesn't alert on its last reading.
  */
 export async function alertSensorExcursions(now = Date.now()) {
 	const base = baseUrl();
@@ -363,10 +394,13 @@ export async function alertSensorExcursions(now = Date.now()) {
 		const r = latestReadings(tank.id).get(p.id);
 		if (!r || !r.sensor) continue;
 		const run = outOfRangeSince(tank.id, p.id, p);
-		if (!run || run.count < EXCURSION_READINGS || now - Date.parse(run.since) < EXCURSION_MS) continue;
+		// one that began before the readings looked through was alerted long ago
+		if (!run || run.old || run.count < EXCURSION_READINGS || now - Date.parse(run.since) < EXCURSION_MS) continue;
 		for (const userId of tankPeople(tank).keys()) {
 			const user = getUser(userId);
 			if (!user || !notifiesUser(tank, userId, 'alert', roleOn(userId, tank))) continue;
+			// and at most one alert per parameter every few hours, however it comes and goes (#228)
+			if (alertedLately(userId, p.id, now)) continue;
 			const direction = st.direction === 'low' ? 'low' : 'high';
 			await notifyOutOfRange(
 				user,
