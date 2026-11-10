@@ -102,7 +102,8 @@ export function completeTask(userId: string, taskId: string, opts: { at?: string
 		const logged = logs
 			? tx
 					.insert(events)
-					.values({ tankId: task.tankId, occurredAt: at, ...(isRoutine(task.kind) ? { note: null, ...routineEntry(task) } : doneEntry(task, item?.lastServicedAt ?? null)) })
+					// by whoever marked it done (#216), as an entry they logged would be
+					.values({ tankId: task.tankId, occurredAt: at, loggedBy: userId, ...(isRoutine(task.kind) ? { note: null, ...routineEntry(task) } : doneEntry(task, item?.lastServicedAt ?? null)) })
 					.returning()
 					.get()
 			: null;

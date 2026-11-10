@@ -3,6 +3,7 @@
 // reading, water change, task, expense or tank, across every tank the token may
 // read unless a tank_id narrows it. Values are in the keeper's units, dates and
 // times in their time zone, so a row reads the same as the app shows it.
+import { safeCell } from '$lib/csv';
 import { and, count, desc, eq, gte, inArray, isNull, max, sql } from 'drizzle-orm';
 import { WATER_SOURCES, additivesOf, additiveText } from '$lib/events';
 import { paramUnit, statusOf } from '$lib/params';
@@ -394,10 +395,8 @@ export const TABLE_TOOLS: Tool[] = [overviewTool, readingRowsTool, waterChangesT
 export function toCsv(columns: string[], rows: Record<string, unknown>[]) {
 	const cell = (v: unknown) => {
 		if (v == null) return '';
-		const s = typeof v === 'boolean' ? (v ? 'yes' : 'no') : String(v);
-		// guard against formulas when the file is opened in a spreadsheet
-		const safe = /^[=+\-@\t\r]/.test(s) && !/^-?\d/.test(s) ? `'${s}` : s;
-		return /[",\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+		// guarded against formulas when the file is opened in a spreadsheet: the one writer the exports share (#221)
+		return safeCell(typeof v === 'boolean' ? (v ? 'yes' : 'no') : String(v));
 	};
 	return [columns.join(','), ...rows.map((r) => columns.map((c) => cell(r[c])).join(','))].join('\r\n') + '\r\n';
 }

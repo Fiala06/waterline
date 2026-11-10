@@ -112,7 +112,7 @@ Everything else is set in the app. These are the environment variables left, for
 | Variable | Needed | What it does |
 |---|---|---|
 | `ORIGIN` | yes | Public URL people open, e.g. `https://tanks.example.com`. Links in emails (Mark done, Snooze, unsubscribe) and public pages use it too |
-| `ADDRESS_HEADER` / `XFF_DEPTH` | behind a proxy | e.g. `X-Forwarded-For` and `1`, so failed logins are limited per visitor rather than for everyone at once |
+| `ADDRESS_HEADER` / `XFF_DEPTH` | behind a proxy | e.g. `X-Forwarded-For` and `1`, so failed logins are limited per visitor rather than for everyone at once (the server log warns when `ORIGIN` is https and this isn't set) |
 | `DATA_DIR` | optional | Defaults to `/data` in Docker, `./data` locally |
 | `BODY_SIZE_LIMIT` | optional | Largest upload. The Docker image sets `64M` so photos fit; outside Docker set it yourself, since Node defaults to 512K |
 | `AUTH_SECRET` / `ENCRYPTION_KEY` | optional | Keys for sign-in sessions and for the stored email and Google passwords. The server makes its own in `/data/keys.json` (readable only by it); set these to keep them outside the data folder. If you set them before, keep them: changing them signs everyone out, and saved passwords need entering again |

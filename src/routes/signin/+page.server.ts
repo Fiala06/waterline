@@ -1,6 +1,6 @@
 import { fail, isRedirect, redirect } from '@sveltejs/kit';
 import { devLoginEnabled, googleEnabled, localAdminEnabled, signInWith } from '../../auth';
-import { clearLoginFailures, loginBlockedMinutes, recordLoginFailure } from '$lib/server/rate-limit';
+import { clearLoginFailures, loginBlockedMinutes, recordLoginFailure, loginWaitSeconds } from '$lib/server/rate-limit';
 import { safeReturn } from '$lib/server/redirect';
 import { setupNeeded } from '$lib/server/setup';
 import { logger } from '$lib/server/log';
@@ -56,6 +56,9 @@ export const actions: Actions = {
 			logger.debug('sign-in', 'Local admin sign-in refused while paused', { address });
 			return fail(429, { error: `Too many tries. Try again in ${wait} minute${wait === 1 ? '' : 's'}.` });
 		}
+		// wrong passwords from many addresses at once: everyone waits a little between tries (#215)
+		const seconds = loginWaitSeconds();
+		if (seconds) return fail(429, { error: `Too many tries. Try again in ${seconds} second${seconds === 1 ? '' : 's'}.` });
 		const username = String((await event.request.clone().formData()).get('username') ?? '').slice(0, 60);
 		try {
 			const failed = await attempt(() => withProvider(event, 'local', ['username', 'password']), 'Wrong username or password.');

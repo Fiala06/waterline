@@ -1,0 +1,1 @@
+ALTER TABLE `action_tokens` ADD `user_id` text;

@@ -1,14 +1,17 @@
 // Single-use links in reminder emails. The raw token only lives in the email;
 // the database keeps a SHA-256 hash.
 import { createHash, randomBytes } from 'node:crypto';
-import { and, eq, isNull, lt } from 'drizzle-orm';
+import { and, eq, inArray, isNull, lt } from 'drizzle-orm';
 import { db } from './db';
-import { actionTokens, tanks, tasks, users } from './db/schema';
+import { actionTokens, tanks, tasks } from './db/schema';
+import { roleAllows, tankRole } from './members';
+import { getUser, maySignIn } from './users';
 
 const TTL_DAYS = 14;
 const hash = (t: string) => createHash('sha256').update(t).digest('hex');
 
-export function createActionToken(taskId: string, action: 'done' | 'snooze', due: string): string {
+/** A link for the person the reminder goes to: it does what they could do themselves (#216). */
+export function createActionToken(taskId: string, action: 'done' | 'snooze', due: string, userId: string): string {
 	const token = randomBytes(24).toString('base64url');
 	db.insert(actionTokens)
 		.values({
@@ -16,6 +19,7 @@ export function createActionToken(taskId: string, action: 'done' | 'snooze', due
 			taskId,
 			action,
 			due,
+			userId,
 			expiresAt: new Date(Date.now() + TTL_DAYS * 86_400_000).toISOString()
 		})
 		.run();
@@ -24,22 +28,36 @@ export function createActionToken(taskId: string, action: 'done' | 'snooze', due
 
 export type TokenState = 'ok' | 'used' | 'expired' | 'stale' | 'missing';
 
-/** Look up a token with its task and owner. `stale` = the task has moved on since the email. */
+/**
+ * Look up a token with its task, and the person it acts as: whoever the
+ * reminder was sent to (#216), or the tank's owner for a link from before
+ * that was recorded. `stale` = the task has moved on since the email;
+ * `expired` also when that person may no longer log on the tank (removed, or
+ * made view-only) or sign in at all.
+ */
 export function readActionToken(token: string) {
-	const row = db
-		.select({ t: actionTokens, task: tasks, tank: tanks, user: users })
+	const found = db
+		.select({ t: actionTokens, task: tasks, tank: tanks })
 		.from(actionTokens)
 		.innerJoin(tasks, eq(tasks.id, actionTokens.taskId))
 		.innerJoin(tanks, eq(tanks.id, tasks.tankId))
-		.innerJoin(users, eq(users.id, tanks.userId))
 		.where(eq(actionTokens.tokenHash, hash(token)))
 		.get();
-	if (!row) return { state: 'missing' as TokenState, row: null };
+	const user = found ? getUser(found.t.userId ?? found.tank.userId) : undefined;
+	if (!found || !user) return { state: 'missing' as TokenState, row: null };
+	const row = { ...found, user };
 	let state: TokenState = 'ok';
 	if (row.t.usedAt) state = 'used';
 	else if (row.t.expiresAt < new Date().toISOString()) state = 'expired';
+	else if (!maySignIn(user) || !roleAllows(tankRole(user.id, row.tank), 'log')) state = 'expired';
 	else if (row.task.nextDue !== row.t.due) state = 'stale';
 	return { state, row };
+}
+
+/** Someone's links for a tank's tasks stop working: they were removed from it, or may only view it now (#216). */
+export function revokeActionTokens(userId: string, tankId: string) {
+	const ids = db.select({ id: tasks.id }).from(tasks).where(eq(tasks.tankId, tankId)).all().map((t) => t.id);
+	if (ids.length) db.delete(actionTokens).where(and(eq(actionTokens.userId, userId), inArray(actionTokens.taskId, ids))).run();
 }
 
 /** Mark a token used; returns false if it was already used (double click, second tab). */

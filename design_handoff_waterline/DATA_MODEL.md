@@ -271,7 +271,8 @@ wishes           id, tank_id, kind(fish|invert|coral|plant|equipment), name, sci
                  count, equipment_type?, note?, price_cents?, url?, created_at, added_at?
                  (the wish list; Add to tank writes the livestock, plant or equipment row,
                  its event and, when asked, the expense, then sets added_at)
-action_tokens    token_hash, task_id, action(done|snooze), due, expires_at, used_at?
+action_tokens    token_hash, task_id, action(done|snooze), due, expires_at, used_at?,
+                 user_id? (who the reminder went to: the link acts as them)
 email_log        id, user_id, key, created_at, error? (so nothing is sent twice; pushes
                  are "push:<key>")
 logs             id, created_at, level(error|warn|info|debug), area, message, details?,

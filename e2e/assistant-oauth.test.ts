@@ -143,7 +143,15 @@ test('the consent page: Cancel tells the app, and a bad request never leaves Wat
 	await open(page, url({ redirect_uri: 'https://evil.example/cb' }));
 	await expect(page.getByRole('heading', { name: "Can't connect" })).toBeVisible();
 	await expect(page).toHaveURL(new RegExp(`^${base}/oauth/authorize`));
-	// no PKCE: back to the app with an error
-	const noPkce = await callbackQuery(page, () => page.goto(url({ code_challenge_method: 'plain' })));
-	expect(noPkce.get('error')).toBe('invalid_request');
+	// a request the app got wrong is shown here too, never followed to the app's address (#219):
+	// apps register themselves, so that address is whatever anyone says it is
+	const wrongs: Record<string, string>[] = [{ code_challenge_method: 'plain' }, { response_type: 'x' }, { scope: 'write' }];
+	for (const wrong of wrongs) {
+		const res = await page.goto(url(wrong));
+		expect(res!.status()).toBe(200);
+		await expect(page).toHaveURL(new RegExp(`^${base}/oauth/authorize`));
+		await expect(page.getByRole('heading', { name: "Can't connect" })).toBeVisible();
+		await expect(page.getByRole('alert')).toContainText("Other App sent a request Waterline can't use");
+		await expect(page.getByRole('alert')).toContainText("You haven't been sent on to");
+	}
 });

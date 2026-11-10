@@ -11,6 +11,11 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Reminder links act as you.** Mark done and Snooze in a reminder email or notification now work as the person the reminder was sent to. On a shared tank they stop working once that person is removed or can only view, and History shows who marked a task done: [Tasks](/tasks).
+- **Sign-in limits that hold up.** The limit on wrong local admin passwords now counts a whole IPv6 network as one visitor, and wrong passwords arriving from many addresses at once make every try wait a little, up to half a minute, without locking the admin out. Behind a reverse proxy with `ADDRESS_HEADER` unset, the server log now says so: [Server settings › Logs](/settings/server/logs).
+- **Connecting an app can't bounce you elsewhere.** If an app's request to connect is wrong, Waterline now shows the problem on its own page instead of sending you on to the app's address: [Settings › AI assistant](/settings/assistant).
+- **Exports open safely in spreadsheets.** A note or name that starts with =, +, - or @ could run as a formula when water-tests.csv was opened in Excel or LibreOffice. Such cells are now written so they show as text, and import back as you typed them: [Settings › Export](/settings/export).
+
 - **History in pages.** A long History, with All time chosen, used to load every entry on each visit. It now shows 100 at a time with **Show older** at the bottom, so it opens quickly however long you've kept the tank; the count at the top is still the whole range's: [History](/history).
 - **Photos don't fill your phone.** The app used to keep every photo you'd opened at full size on the device, for good. It now keeps only thumbnails for offline use, up to a limit, and clears the full-size ones it had kept. Entries logged offline are also better protected from the browser clearing storage: [Photos](/photos).
 - **A cancelled share takes its invitation back.** Sharing a tank with someone not yet on the server invites them to it. Cancelling that share before they accept now withdraws the invitation too, so they can't sign in afterwards: [Sharing](/tanks/current/sharing).

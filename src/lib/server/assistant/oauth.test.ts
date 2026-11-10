@@ -18,6 +18,8 @@ describe('validRedirectUri', () => {
 
 	it("takes an app's own scheme, never one that runs script", () => {
 		expect(validRedirectUri('cursor://anysphere.cursor-mcp/oauth/callback')).toBe(true);
+		// not an app's own scheme: the device acts on these itself (#219)
+		for (const u of ['intent://evil#Intent;end', 'tel:+15551234567', 'sms:+15551234567', 'mailto:a@b.co', 'ms-settings:privacy', 'market://details?id=x']) expect(validRedirectUri(u), u).toBe(false);
 		for (const bad of ['javascript:alert(1)', 'data:text/html,hi', 'file:///etc/passwd', 'vbscript:x']) expect(validRedirectUri(bad)).toBe(false);
 	});
 
