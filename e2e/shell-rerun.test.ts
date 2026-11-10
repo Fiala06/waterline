@@ -3,10 +3,11 @@ import { newKeeperWithTank, open } from './helpers';
 
 // #242: moving between pages doesn't gather the shell's data again (tanks, alerts,
 // counts); arriving on another tank, or saving a form, does.
+// the data request says which loads it wants: one flag per layout and page, root first, then the app's shell
 const shellFetched = (page: Page, path: string) =>
 	page
-		.waitForResponse((r) => new URL(r.url()).pathname === `${path}/__data.json`)
-		.then(async (r) => (await r.text()).includes('alertsSeen'));
+		.waitForRequest((r) => new URL(r.url()).pathname === `${path}/__data.json`)
+		.then((r) => new URL(r.url()).searchParams.get('x-sveltekit-invalidated')?.[1] === '1');
 
 test("the shell's data is fetched again only when the tank changes", async ({ page }, info) => {
 	test.skip(info.project.name !== 'desktop', 'the sidebar links');
