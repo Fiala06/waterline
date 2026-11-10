@@ -11,7 +11,14 @@
 	import TankDetailsSections from '$lib/components/TankDetailsSections.svelte';
 	import { hoursText, scheduleHours } from '$lib/equipment';
 	import { GROWING_STYLE_LABEL } from '$lib/types';
+	import { setupHref, SETUP_NAV, type SetupItem } from '$lib/shell';
 	let { data, form } = $props();
+	// what the phone's setup list says beside each section
+	const setupMeta = $derived<Partial<Record<SetupItem['key'], string>>>({
+		targets: `${data.paramSummary.tracked} tracked`,
+		public: data.publicLive ? '● Live' : 'Off',
+		sharing: data.counts.members ? `${data.counts.members} ${data.counts.members === 1 ? 'person' : 'people'}` : ''
+	});
 	// the lighting and CO₂ schedule; with both lights times set the photoperiod is the hours between
 	let lightsOn = $state(untrack(() => data.tank.lightsOn));
 	let lightsOff = $state(untrack(() => data.tank.lightsOff));
@@ -349,14 +356,11 @@
 			<a class="ghost" href="/tanks/{data.tank.id}">Cancel</a>
 		</div>
 
-		<!-- phones: the setup sections the desktop nav lists -->
+		<!-- phones: the setup sections the desktop nav lists (the same list, src/lib/shell.ts) -->
 		<nav class="more hide-desk" aria-label="More setup">
-			<a href="/tanks/{data.tank.id}/targets"><span>Parameters &amp; targets</span><span class="muted">{data.paramSummary.tracked} tracked ›</span></a>
-			<a href="/tanks/{data.tank.id}/public"><span>Public page</span><span class="muted">{data.publicLive ? '● Live' : 'Off'} ›</span></a>
-			<a href="/tanks/{data.tank.id}/remind"><span>Reminders</span><span class="muted">›</span></a>
-			<a href="/tanks/{data.tank.id}/review"><span>Setup review</span><span class="muted">›</span></a>
-			<a href="/tanks/{data.tank.id}/suggestions"><span>Suggested steps</span><span class="muted">›</span></a>
-			<a href="/tanks/{data.tank.id}/sharing"><span>Sharing</span><span class="muted">{data.counts.members ? `${data.counts.members} ${data.counts.members === 1 ? 'person' : 'people'}` : ''} ›</span></a>
+			{#each SETUP_NAV.filter((s) => s.key !== 'details') as s (s.key)}
+				<a href={setupHref(data.tank.id, s)}><span>{s.label}</span><span class="muted">{setupMeta[s.key] ?? ''} ›</span></a>
+			{/each}
 		</nav>
 
 		{#if !data.tank.archived}

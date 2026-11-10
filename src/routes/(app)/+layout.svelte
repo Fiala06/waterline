@@ -23,7 +23,7 @@
 	import TankThumb from '$lib/components/TankThumb.svelte';
 	import Toast from '$lib/components/Toast.svelte';
 	import { logHref, toast, typing, ui } from '$lib/ui.svelte';
-	import { IMPORTS, importKindOf } from '$lib/imports';
+	import { pageHeader, routeInfo, setupHref, SETUP_NAV } from '$lib/shell';
 	import { todayInZone } from '$lib/time';
 
 	let { data, children } = $props();
@@ -33,124 +33,60 @@
 	const current = $derived(data.tanks.find((t) => t.id === data.currentTankId));
 	const today = $derived(todayInZone(data.user.timeZone));
 
-	// ── Where we are ──────────────────────────────────────────────────────
-	// The tank workspace: Overview (/), Charts, History, Photos, the tank's tabs
-	// and everything under /tanks/[id]; entries belong to History.
-	const tankTabRoute = $derived(routeId.startsWith('/(app)/tanks/[id]/'));
-	const tankScoped = $derived(
-		!!current && (path === '/' || /^\/(charts|history|photos|timeline)(\/|$)/.test(path) || /^\/entries\//.test(path) || routeId.startsWith('/(app)/tanks/[id]'))
-	);
-	const logForm = $derived(/^\/entries\/(test|event)\/new$/.test(path));
+	// ── Alerts (#195): the bell counts what's new since it was marked read (kept on the account) ──
+	const alerts = $derived([...(data.app.update ? [updateAlert(data.app.update.version)] : []), ...data.alerts]);
+	const unread = $derived(unreadCount(alerts, data.alertsSeen));
+
+	// ── Where we are: what this page is to the shell (src/lib/shell.ts, #262) ──
+	const info = $derived(routeInfo(routeId));
+	// the tank workspace: Overview, Charts, History, Photos, the tank's tabs and its pages
+	const tankScoped = $derived(!!current && info.tankPage);
+	const logForm = $derived(info.logForm);
 	const tabs = $derived.by((): Tab[] => {
 		if (!current) return [];
 		const id = current.id;
 		const base = `/tanks/${id}`;
-		const under = (part: string) => routeId.startsWith(`/(app)/tanks/[id]/${part}`) || routeId.startsWith(`/(app)/tanks/[id]/(tabs)/${part}`);
-		return [
-			{ key: 'overview', label: 'Overview', href: `/?tank=${id}`, active: path === '/' },
-			{ key: 'charts', label: 'Charts', href: `/charts?tank=${id}`, active: path.startsWith('/charts') },
-			{ key: 'history', label: 'History', href: `/history?tank=${id}`, active: path.startsWith('/history') || path.startsWith('/entries/') },
-			{ key: 'photos', label: 'Photos', href: `/photos?tank=${id}`, count: data.counts.photos, active: path.startsWith('/photos') || path === '/timeline' },
-			{ key: 'livestock', label: 'Livestock', href: `${base}/livestock`, count: data.counts.livestock, active: under('livestock') },
-			{ key: 'plants', label: 'Plants', href: `${base}/plants`, count: data.counts.plants, active: under('plants') },
-			{ key: 'equipment', label: 'Equipment', href: `${base}/equipment`, count: data.counts.equipment, active: under('equipment') },
-			{ key: 'spending', label: 'Spending', href: `${base}/spending`, active: under('spending') },
+		const list: Tab[] = [
+			{ key: 'overview', label: 'Overview', href: `/?tank=${id}` },
+			{ key: 'charts', label: 'Charts', href: `/charts?tank=${id}` },
+			{ key: 'history', label: 'History', href: `/history?tank=${id}` },
+			{ key: 'photos', label: 'Photos', href: `/photos?tank=${id}`, count: data.counts.photos },
+			{ key: 'livestock', label: 'Livestock', href: `${base}/livestock`, count: data.counts.livestock },
+			{ key: 'plants', label: 'Plants', href: `${base}/plants`, count: data.counts.plants },
+			{ key: 'equipment', label: 'Equipment', href: `${base}/equipment`, count: data.counts.equipment },
+			{ key: 'spending', label: 'Spending', href: `${base}/spending` },
 			// Setup is the owner's (#22): a tank shared with you has no Setup tab
-			...(current.role === 'owner'
-				? [
-						{
-							key: 'setup',
-							label: 'Tank setup',
-							href: `${base}/settings`,
-							// Notes & routines (/tanks/[id]) is a Setup page too
-							active: under('settings') || under('targets') || under('public') || under('review') || under('suggestions') || under('remind') || under('import') || under('sharing') || routeId === '/(app)/tanks/[id]/(tabs)'
-						}
-					]
-				: [])
-		];
+			...(current.role === 'owner' ? [{ key: 'setup', label: 'Tank setup', href: `${base}/settings` }] : [])
+		].map((t) => ({ ...t, active: t.key === info.tab }));
+		return list;
 	});
 	const setupTab = $derived(tabs.find((t) => t.key === 'setup')?.active ?? false);
 	// the top-level tank pages: the phone header and bottom bar belong to these
-	const topLevel = $derived(
-		path === '/' || /^\/(charts|history|photos|more)$/.test(path) || /^\/\(app\)\/tanks\/\[id\]\/\(tabs\)\/?[a-z]*$/.test(routeId)
-	);
-	const barRoutes = ['/tanks', '/tasks', '/alerts', '/settings', '/calculators'];
-	const showBar = $derived(topLevel || barRoutes.includes(path));
-	const fullscreen = $derived(path.startsWith('/photos/'));
+	const topLevel = $derived(info.topLevel);
+	const showBar = $derived(info.phoneBar);
+	const fullscreen = $derived(info.fullscreen);
 
-	// Desktop sub-page heads (crumbs + title) for pages that aren't a tank tab.
-	const tankName = $derived(
-		(page.data.tankHead?.name ?? page.data.tank?.name ?? data.tanks.find((t) => t.id === page.params.id)?.name ?? 'Tank') as string
-	);
 	const newTaskHref = $derived.by(() => {
 		const q = new URLSearchParams(page.url.searchParams);
 		q.delete('edit');
 		q.set('new', '');
 		return `/tasks?${q}`;
 	});
-	type Header = { title: string; kicker?: string; crumbs?: { label: string; href: string }[]; actions?: { label: string; href: string }[] };
-	const header = $derived.by((): Header | null => {
-		const id = routeId;
-		const tanks = { label: 'Tanks', href: '/tanks' };
-		const tasks = { label: 'Tasks', href: '/tasks' };
-		if (id === '/(app)/tanks') return { title: 'Tanks', kicker: `${data.tanks.length} active`, actions: [{ label: '+ Add tank', href: '/tanks/new' }] };
-		if (id === '/(app)/tanks/new') return { title: 'Add tank', crumbs: [tanks] };
-		const tankPage = (
-			{
-				'/(app)/tanks/[id]/(tabs)': 'Notes & routines',
-				'/(app)/tanks/[id]/equipment/new': 'Add equipment',
-				'/(app)/tanks/[id]/equipment/scan': 'Scan a barcode',
-				'/(app)/tanks/[id]/health': 'Log health',
-				'/(app)/tanks/[id]/plants/health': 'Log plant health',
-				'/(app)/tanks/[id]/algae': 'Log algae',
-				'/(app)/tanks/[id]/equipment/[eid]': 'Edit equipment',
-				'/(app)/tanks/[id]/equipment/[eid]/plug': 'Smart plug',
-				'/(app)/tanks/[id]/livestock/new': 'Add livestock',
-				'/(app)/tanks/[id]/livestock/several': 'Add several',
-				'/(app)/tanks/[id]/plants/several': 'Add several plants',
-				'/(app)/tanks/[id]/remind': 'Remind me',
-				'/(app)/tanks/[id]/pause': 'Pause tasks',
-				'/(app)/tanks/[id]/plans': 'Treatment plans',
-				'/(app)/tanks/[id]/plans/new': 'Start a plan',
-				'/(app)/tanks/[id]/review': 'Setup review',
-				'/(app)/tanks/[id]/suggestions': 'Suggested steps',
-				'/(app)/tanks/[id]/spending/new': 'Add expense',
-				'/(app)/tanks/[id]/spending/[eid]': 'Edit expense',
-				'/(app)/tanks/[id]/targets': 'Parameters & targets',
-				'/(app)/tanks/[id]/public': 'Public page',
-				'/(app)/tanks/[id]/sharing': 'Sharing',
-				'/(app)/tanks/[id]/wishlist': 'Wish list',
-				'/(app)/tanks/[id]/routines': 'Maintenance routines',
-				'/(app)/tanks/[id]/routines/[rid]/run': 'Run routine',
-				'/(app)/tanks/[id]/summary': 'Share summary'
-			} as Record<string, string | undefined>
-		)[id];
-		if (tankPage) return { title: tankPage };
-		// a treatment plan (#177): its own name
-		if (id === '/(app)/tanks/[id]/plans/[rid]') return { title: (page.data.run as { name?: string } | undefined)?.name ?? 'Plan' };
-		// a pet's page has its own name hero
-		if (id === '/(app)/tanks/[id]/livestock/[lid]') return null;
-		if (id === '/(app)/tanks/[id]/import/[list=importList]') {
-			const kind = importKindOf(page.params.list ?? '');
-			return { title: kind ? IMPORTS[kind].title : 'Import' };
-		}
-		if (id === '/(app)/timeline') return { title: 'Timeline', kicker: 'Photos in date order, with the readings and stock of each moment' };
-		if (id === '/(app)/calculators') return { title: 'Calculators', kicker: current ? `For ${current.name}` : 'Volume, water change, dosing, heater, substrate, CO₂' };
-		if (id === '/(app)/tasks') return { title: 'Tasks', kicker: data.overdueCount ? `${data.overdueCount} overdue` : 'Every tank', actions: [{ label: '+ New task', href: newTaskHref }] };
-		if (id === '/(app)/alerts') return { title: 'Alerts', kicker: alertsKicker(alerts.length, unread) };
-		const taskType = (page.data.values as { type?: string } | undefined)?.type;
-		if (id === '/(app)/tasks/new')
-			return { title: taskType === 'dosing' ? 'New dosing routine' : taskType === 'feeding' ? 'New feeding routine' : 'New task', crumbs: [tasks] };
-		if (id === '/(app)/tasks/[id]') return { title: taskType === 'dosing' || taskType === 'feeding' ? 'Edit routine' : 'Edit task', crumbs: [tasks] };
-		if (id.startsWith('/(app)/entries/') && !logForm) {
-			return { title: id.endsWith('/edit') ? 'Edit entry' : ((page.data.entry?.kindLabel as string | undefined) ?? 'Entry') };
-		}
-		if (id.startsWith('/(app)/settings')) return { title: 'Settings', kicker: [data.user.displayName, data.user.email].filter(Boolean).join(' · ') };
-		if (id === '/(app)/more') return null;
-		return null;
-	});
+	// Desktop sub-page heads (crumbs + title) for pages that aren't a tank tab.
+	const header = $derived(
+		pageHeader(routeId, {
+			data: page.data as Record<string, unknown>,
+			params: page.params,
+			tanks: data.tanks.length,
+			tankName: current?.name ?? null,
+			overdue: data.overdueCount,
+			alerts: alertsKicker(alerts.length, unread),
+			newTaskHref,
+			user: data.user
+		})
+	);
 	// in the tank workspace, a sub-page's title sits under the tabs
-	const subHead = $derived(tankScoped && header && !tabs.some((t) => t.active && (path === '/' || /^\/(charts|history|photos)$/.test(path) || /\/\(tabs\)\/[a-z]+$/.test(routeId))) ? header : null);
+	const subHead = $derived(tankScoped && header && !(info.tabPage && tabs.some((t) => t.active)) ? header : null);
 
 	// "1 reading out of range · 2 tasks overdue"
 	function attentionText(t: { outOfRange: number; overdue: number }) {
@@ -165,8 +101,7 @@
 		const u = new URL(page.url);
 		u.searchParams.set('tank', id);
 		u.searchParams.delete('task');
-		const keepPage = path === '/' || /^\/(charts|history|photos|timeline|tasks|more)$/.test(path) || logForm;
-		goto(keepPage ? `${u.pathname}?${u.searchParams}` : `/?tank=${id}`);
+		goto(info.keepOnTankChange ? `${u.pathname}?${u.searchParams}` : `/?tank=${id}`);
 	}
 
 	// ── Sidebar: pinned or an auto-hiding rail (stored on this device, per user) ──
@@ -204,10 +139,6 @@
 		wide;
 		requestAnimationFrame(listScroll);
 	});
-
-	// ── Alerts (#195): the bell counts what's new since it was marked read (kept on the account) ──
-	const alerts = $derived([...(data.app.update ? [updateAlert(data.app.update.version)] : []), ...data.alerts]);
-	const unread = $derived(unreadCount(alerts, data.alertsSeen));
 
 	// ── Offline queue: sync when the connection comes back or the app is reopened ──
 	async function sync() {
@@ -609,17 +540,11 @@
 				<div class="setup-grid">
 					<nav class="setup-nav hide-phone" aria-label="Tank setup">
 						<span class="caps">Tank setup</span>
-						{#each [
-							{ href: `/tanks/${current.id}/settings`, label: 'Details', on: routeId.endsWith('/(tabs)/settings') },
-							{ href: `/tanks/${current.id}/targets`, label: 'Parameters & targets', on: routeId.endsWith('/targets') },
-							{ href: `/tanks/${current.id}/public`, label: 'Public page', on: routeId.endsWith('/public') },
-							{ href: `/tanks/${current.id}/sharing`, label: `Sharing${data.counts.members ? ` · ${data.counts.members}` : ''}`, on: routeId.endsWith('/sharing') },
-							{ href: `/tanks/${current.id}/remind`, label: 'Remind me', on: routeId.endsWith('/remind') },
-							{ href: `/tanks/${current.id}`, label: 'Notes & routines', on: routeId === '/(app)/tanks/[id]/(tabs)' },
-							{ href: `/tanks/${current.id}/review`, label: 'Setup review', on: routeId.endsWith('/review') },
-							{ href: `/tanks/${current.id}/suggestions`, label: 'Suggested steps', on: routeId.endsWith('/suggestions') }
-						] as s (s.href)}
-							<a href={s.href} class:active={s.on} aria-current={s.on ? 'page' : undefined}>{s.label}</a>
+						{#each SETUP_NAV as s (s.key)}
+							{@const on = routeId === s.route}
+							<a href={setupHref(current.id, s)} class:active={on} aria-current={on ? 'page' : undefined}
+								>{s.label}{s.key === 'sharing' && data.counts.members ? ` · ${data.counts.members}` : ''}</a
+							>
 						{/each}
 						<a class="archive" href="/tanks/{current.id}/settings#archive">Archive</a>
 					</nav>
