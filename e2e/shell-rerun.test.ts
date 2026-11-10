@@ -12,7 +12,8 @@ test("the shell's data is fetched again only when the tank changes", async ({ pa
 	test.skip(info.project.name !== 'desktop', 'the sidebar links');
 	await newKeeperWithTank(page, 'shell-rerun');
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
-	await open(page, '/history');
+	// the sidebar's links carry the tank (?tank=), as the page they're on does
+	await open(page, `/history?tank=${tankId}`);
 
 	// History to Charts: the page's data only
 	let fetched = shellFetched(page, '/charts');
