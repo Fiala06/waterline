@@ -8,9 +8,10 @@ import { describe, expect, it, vi } from 'vitest';
 // Who may reach what (#106): every guard in the server modules, tried by
 // someone who shouldn't pass it. A database of its own, with every migration.
 const dir = mkdtempSync(join(tmpdir(), 'wl-security-'));
-vi.mock('$env/dynamic/private', () => ({ env: { DATA_DIR: dir } }));
+// anyone may sign in here, so accounts and their tokens are good unless a test locks one out
+vi.mock('$env/dynamic/private', () => ({ env: { DATA_DIR: dir, OPEN_SIGNUP: 'true' } }));
 const { db } = await import('./db');
-const { exports, oauthCodes, photos } = await import('./db/schema');
+const { assistantTokens, calendarFeeds, exports, oauthCodes, photos, serverSettings } = await import('./db/schema');
 const { upsertUser } = await import('./users');
 const { createTank, getTank, listParams, listTanks, setArchived, updateParams, updateTank } = await import('./tanks');
 const { inviteMember, requireRole, requireRoleOn, tankRole } = await import('./members');
@@ -26,7 +27,10 @@ const { getExport } = await import('./export');
 const { createShare, getPublicPage, getShareForPhoto, revokeShare, updatePublicPage, updateShare } = await import('./public');
 const { authenticateAssistant, authenticateSensor, createAssistantToken, revokeAssistantToken, setTokenTanks } = await import('./assistant/tokens');
 const { runTool, photoFor, ToolError } = await import('./assistant/tools');
-const { approve, exchangeCode, readAuthorize, registerClient, getClient } = await import('./assistant/oauth');
+const { approve, exchangeCode, readAuthorize, refreshTokens, registerClient, getClient } = await import('./assistant/oauth');
+const { makeFeed, readFeed } = await import('./calendar');
+const { signOutEverywhere } = await import('./people');
+const { getServerSettings } = await import('./mail');
 
 /** The HTTP status a guard stopped with, or null when it let the call through. */
 function statusOf(fn: () => unknown): number | null {
@@ -542,5 +546,75 @@ describe('credentials expire and are single-use (OAuth sign-in)', () => {
 		const { client, code } = signIn();
 		const { access_token } = exchangeCode(client, form({ code, code_verifier: verifier }), origin);
 		expect(authenticateAssistant(bearer(access_token), Date.now() + 61 * 60_000)).toBeNull();
+	});
+});
+
+// ── Locked out, or signed out everywhere (#209) ─────────────────────────────
+
+describe('what is signed in by a token ends with the account’s access (#209)', () => {
+	const K = upsertUser({ email: 'keeper-k@example.com', name: 'Keeper K', googleSub: 'g-k' });
+	const KT = createTank(K, { name: 'K’s tank', type: 'freshwater', nominalVolumeL: 60 });
+	/** Who may sign in besides the admin: nobody ('admin'), or anybody (null: the test's OPEN_SIGNUP). */
+	const setMode = (signupMode: 'admin' | null) => {
+		getServerSettings();
+		db.update(serverSettings).set({ signupMode }).where(eq(serverSettings.id, 1)).run();
+	};
+	const redirectUri = 'https://claude.ai/api/mcp/auth_callback';
+	function connectK() {
+		const client = getClient(registerClient({ client_name: 'Claude', redirect_uris: [redirectUri] }).client_id)!;
+		const q = new URLSearchParams({ client_id: client.id, redirect_uri: redirectUri, response_type: 'code', code_challenge: challenge, code_challenge_method: 'S256' });
+		const read = readAuthorize(q, origin);
+		if (!('ok' in read)) throw new Error('authorize refused');
+		const code = new URL(approve(K.id, read.ok, [KT.id], origin)).searchParams.get('code')!;
+		return { client, code };
+	}
+	const refreshForm = (t: string) => new URLSearchParams({ grant_type: 'refresh_token', refresh_token: t });
+
+	it('someone taken off the list: tokens, connected apps and the calendar link stop, and work again when they’re let back in', () => {
+		const a = createAssistantToken(K.id, 'Claude', [KT.id]);
+		const s = createAssistantToken(K.id, 'Probe', [KT.id], 'sensor');
+		const feed = makeFeed(K.id);
+		const { client, code } = connectK();
+		const app = exchangeCode(client, form({ code, code_verifier: verifier }), origin);
+		const pending = connectK();
+		try {
+			setMode('admin');
+			expect(K.isAdmin).toBe(false);
+			expect(authenticateAssistant(bearer(a.token))).toBeNull();
+			expect(authenticateSensor(bearer(s.token))).toBeNull();
+			expect(authenticateAssistant(bearer(app.access_token))).toBeNull();
+			expect(readFeed(feed)).toBeNull();
+			expect(grantError(() => refreshTokens(client, refreshForm(app.refresh_token)))).toBe('invalid_grant');
+			expect(grantError(() => exchangeCode(pending.client, form({ code: pending.code, code_verifier: verifier }), origin))).toBe('invalid_grant');
+		} finally {
+			setMode(null);
+		}
+		expect(authenticateAssistant(bearer(a.token))?.user.id).toBe(K.id);
+		expect(authenticateSensor(bearer(s.token))?.user.id).toBe(K.id);
+		expect(readFeed(feed)?.id).toBe(K.id);
+		// the refusal didn't spend the refresh token
+		expect(refreshTokens(client, refreshForm(app.refresh_token))).toHaveProperty('access_token');
+	});
+
+	it('Sign out everywhere ends access tokens, connected apps, sign-ins in progress and the calendar link; sensors keep reporting', () => {
+		const a = createAssistantToken(K.id, 'Claude', [KT.id]);
+		const s = createAssistantToken(K.id, 'Probe', [KT.id], 'sensor');
+		const feed = makeFeed(K.id);
+		const { client, code } = connectK();
+		const app = exchangeCode(client, form({ code, code_verifier: verifier }), origin);
+		const pending = connectK();
+		// someone else's are untouched
+		const others = createAssistantToken(A.id, 'Claude', [T.id]);
+
+		signOutEverywhere(A, K.id);
+		expect(authenticateAssistant(bearer(a.token))).toBeNull();
+		expect(authenticateAssistant(bearer(app.access_token))).toBeNull();
+		expect(grantError(() => refreshTokens(client, refreshForm(app.refresh_token)))).toBe('invalid_grant');
+		expect(grantError(() => exchangeCode(pending.client, form({ code: pending.code, code_verifier: verifier }), origin))).toBe('invalid_grant');
+		expect(readFeed(feed)).toBeNull();
+		expect(db.select().from(assistantTokens).where(eq(assistantTokens.userId, K.id)).all().every((t) => t.kind === 'sensor')).toBe(true);
+		expect(db.select().from(calendarFeeds).where(eq(calendarFeeds.userId, K.id)).all()).toEqual([]);
+		expect(authenticateSensor(bearer(s.token))?.user.id).toBe(K.id);
+		expect(authenticateAssistant(bearer(others.token))?.user.id).toBe(A.id);
 	});
 });

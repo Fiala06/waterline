@@ -8,6 +8,7 @@ import { intervalText } from '$lib/tasks';
 import { daysBetween, fmtDate, todayInZone } from '$lib/time';
 import { db } from './db';
 import { calendarFeeds, users, type User } from './db/schema';
+import { maySignIn } from './users';
 import { listTasks } from './tasks';
 import { notifiesUser } from './members';
 import { listTanks, roleOn } from './tanks';
@@ -35,7 +36,8 @@ export function removeFeed(userId: string) {
 export function readFeed(token: string, now = Date.now()): User | null {
 	if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) return null;
 	const row = db.select({ feed: calendarFeeds, user: users }).from(calendarFeeds).innerJoin(users, eq(users.id, calendarFeeds.userId)).where(eq(calendarFeeds.token, token)).get();
-	if (!row) return null;
+	// a locked-out keeper's link stops too (#209)
+	if (!row || !maySignIn(row.user)) return null;
 	if (!row.feed.lastFetchedAt || now - Date.parse(row.feed.lastFetchedAt) > TOUCH_MS) {
 		db.update(calendarFeeds).set({ lastFetchedAt: new Date(now).toISOString() }).where(eq(calendarFeeds.token, token)).run();
 	}

@@ -11,6 +11,11 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **A lock-out locks everything.** Taking someone off the list of who may sign in, or revoking their invitation, now also stops their AI assistant tokens and connected apps, their sensor tokens, their calendar link and their reminders, until they're let back in. **Sign out everywhere** under [Server settings › People](/settings/server/people) also ends that person's AI assistant tokens, connected apps and calendar link, so nothing set up on a stolen account keeps working; they make new ones under Settings. Sensors keep reporting.
+- **Backups survive a deleted photo.** Deleting a photo while a backup was being packed could stop the whole server. Now that backup fails with a message and the next one builds: [Settings › Export](/settings/export).
+- **Local admin sign-in limit.** The pause after 5 wrong passwords could be sidestepped by a differently written address. Every attempt now counts, and each wrong one is noted in [Server settings › Logs](/settings/server/logs).
+- **AI assistant requests have a size.** An assistant can send at most 20 requests in one batch and 1 MB at a time, so one connection can't slow Waterline down for everyone: [Settings › AI assistant](/settings/assistant).
+
 ## 1.21.1 · 2026-11-05
 
 - **Dosing from a smart plug.** A doser that runs whenever it has power, on a Shelly plug with its schedule in the Shelly app, now has each run logged as a dose: when it ran, for how long, and how much it put in (worked out from the doser's dose setting), in History and on [Charts](/charts) with Dosing. Off between doses isn't counted as paused, Pause switches the plug's schedule off until you resume it, and **Run for…** on any item's card runs its plug for so many seconds or minutes, then the plug switches itself off. Link the plug from the item's page under [Equipment](/tanks/current/equipment).

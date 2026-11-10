@@ -4,7 +4,7 @@
 // connected by signing in (OAuth, see $lib/server/assistant/oauth).
 import { json } from '@sveltejs/kit';
 import { authenticateAssistant } from '$lib/server/assistant/tokens';
-import { handleBody, PARSE_ERROR, PROTOCOL_VERSIONS } from '$lib/server/assistant/mcp';
+import { handleBody, INVALID_REQUEST, MAX_BODY_BYTES, PARSE_ERROR, PROTOCOL_VERSIONS, readJsonBody } from '$lib/server/assistant/mcp';
 import { bearerChallenge } from '$lib/server/assistant/discovery';
 import type { RequestHandler } from './$types';
 
@@ -23,13 +23,14 @@ export const POST: RequestHandler = async ({ request, url }) => {
 	if (version && !PROTOCOL_VERSIONS.includes(version)) {
 		return json({ error: `Unsupported MCP-Protocol-Version ${version}; this server speaks ${PROTOCOL_VERSIONS.join(', ')}.` }, { status: 400 });
 	}
-	let body: unknown;
-	try {
-		body = await request.json();
-	} catch {
+	const read = await readJsonBody(request);
+	if ('error' in read) {
+		if (read.error === 'too-large') {
+			return json({ jsonrpc: '2.0', id: null, error: { code: INVALID_REQUEST, message: `Request too large: at most ${MAX_BODY_BYTES / 1024 / 1024} MB` } }, { status: 413 });
+		}
 		return json({ jsonrpc: '2.0', id: null, error: { code: PARSE_ERROR, message: 'Parse error' } }, { status: 400 });
 	}
-	const out = await handleBody(access, body);
+	const out = await handleBody(access, read.body);
 	// only notifications (or responses): accepted, nothing to say
 	if (out === null) return new Response(null, { status: 202 });
 	return json(out, { headers: { 'cache-control': 'no-store' } });

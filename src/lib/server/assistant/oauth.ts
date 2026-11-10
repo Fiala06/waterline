@@ -9,6 +9,7 @@ import { db } from '../db';
 import { assistantTokens, oauthClients, oauthCodes, type OAuthClient } from '../db/schema';
 import { hash, newToken, ownTanks } from './tokens';
 import { logger } from '../log';
+import { getUser, maySignIn } from '../users';
 
 export const SCOPE = 'read';
 const ACCESS_TTL_S = 3600;
@@ -192,6 +193,12 @@ export function authenticateClient(form: URLSearchParams, authorization: string 
 	return client;
 }
 
+/** A locked-out keeper's apps get no new tokens (#209). */
+function accountOpen(userId: string) {
+	const u = getUser(userId);
+	return !!u && maySignIn(u);
+}
+
 function tokenResponse(access: string, refresh: string) {
 	return { access_token: access, token_type: 'Bearer', expires_in: ACCESS_TTL_S, refresh_token: refresh, scope: SCOPE };
 }
@@ -206,6 +213,7 @@ export function exchangeCode(client: OAuthClient, form: URLSearchParams, origin:
 	const redirect = form.get('redirect_uri');
 	if (redirect && redirect !== row.redirectUri) throw new OAuthError('invalid_grant', 'redirect_uri differs from the one used to sign in.');
 	if (!pkceOk(form.get('code_verifier') ?? '', row.codeChallenge)) throw new OAuthError('invalid_grant', 'code_verifier does not match.');
+	if (!accountOpen(row.userId)) throw new OAuthError('invalid_grant', 'That account can no longer sign in.');
 	const resource = form.get('resource');
 	if (resource && !isOurResource(resource, origin)) throw new OAuthError('invalid_target', 'That resource is not this server.');
 	// single use, even if what follows fails
@@ -248,6 +256,7 @@ export function refreshTokens(client: OAuthClient, form: URLSearchParams, now = 
 		throw new OAuthError('invalid_grant', 'Unknown refresh token: connect again.');
 	}
 	if (!row.refreshExpiresAt || row.refreshExpiresAt <= iso(now)) throw new OAuthError('invalid_grant', 'The refresh token has expired: connect again.');
+	if (!accountOpen(row.userId)) throw new OAuthError('invalid_grant', 'That account can no longer sign in.');
 	const access = newToken();
 	const next = newToken('wlr_');
 	const swapped = db

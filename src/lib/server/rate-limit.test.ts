@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clearLoginFailures, loginBlockedMinutes, recordLoginFailure } from './rate-limit';
+import { clearLoginFailures, isLocalLoginPath, loginBlockedMinutes, recordLoginFailure } from './rate-limit';
 
 describe('local admin sign-in limit', () => {
 	it('blocks after 5 failures for 15 minutes', () => {
@@ -17,5 +17,15 @@ describe('local admin sign-in limit', () => {
 		expect(loginBlockedMinutes('9.9.9.9')).toBeGreaterThan(0);
 		clearLoginFailures('9.9.9.9');
 		expect(loginBlockedMinutes('9.9.9.9')).toBe(0);
+	});
+});
+
+describe('which paths are the local admin sign-in (#208)', () => {
+	it('counts every spelling Auth.js takes for the same endpoint', () => {
+		for (const p of ['/auth/callback/local', '/auth/callback/local/', '/auth/callback//local', '/auth//callback/local//']) expect(isLocalLoginPath(p), p).toBe(true);
+	});
+
+	it('leaves other paths alone', () => {
+		for (const p of ['/auth/callback/google', '/auth/callback/local/x', '/auth/signin/local', '/callback/local', '/x/auth/callback/local', '//auth/callback/local']) expect(isLocalLoginPath(p), p).toBe(false);
 	});
 });

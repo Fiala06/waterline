@@ -12,6 +12,13 @@ function recent(key: string, now: number): number[] {
 	return list;
 }
 
+/**
+ * Whether a path is Auth.js's local admin sign-in. Auth.js drops the empty
+ * parts of a path, so /auth/callback/local/ and /auth/callback//local reach
+ * the same endpoint as /auth/callback/local (#208).
+ */
+export const isLocalLoginPath = (pathname: string) => pathname.startsWith('/auth/') && pathname.split('/').filter(Boolean).join('/') === 'auth/callback/local';
+
 /** Minutes until this address may try again, or 0 when it may try now. */
 export function loginBlockedMinutes(key: string, now = Date.now()): number {
 	const list = recent(key, now);

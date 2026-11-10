@@ -7,7 +7,8 @@ import { describe, expect, it, vi } from 'vitest';
 // its id. The functions' own queries are recorded and their plans read, over
 // a few thousand photos in several tanks.
 const dir = mkdtempSync(join(tmpdir(), 'wl-photo-queries-'));
-vi.mock('$env/dynamic/private', () => ({ env: { DATA_DIR: dir } }));
+// anyone may sign in here, so accounts and their tokens are good unless a test locks one out
+vi.mock('$env/dynamic/private', () => ({ env: { DATA_DIR: dir, OPEN_SIGNUP: 'true' } }));
 const { db } = await import('./db');
 const { events, photos, tests } = await import('./db/schema');
 const { entryPhotos, removeEntryPhotoFiles, tankPhotos, thumbsFor } = await import('./photos');

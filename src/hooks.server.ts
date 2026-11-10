@@ -4,9 +4,9 @@ import { building } from '$app/environment';
 import { startScheduler } from '$lib/server/scheduler';
 import { failInterruptedExports } from '$lib/server/export';
 import { sequence } from '@sveltejs/kit/hooks';
-import { checkAuthConfig, devLoginEnabled, handle as authHandle } from './auth';
-import { clearLoginFailures, loginBlockedMinutes, recordLoginFailure } from '$lib/server/rate-limit';
-import { getUser, isEmailAllowed } from '$lib/server/users';
+import { checkAuthConfig, handle as authHandle } from './auth';
+import { clearLoginFailures, isLocalLoginPath, loginBlockedMinutes, recordLoginFailure } from '$lib/server/rate-limit';
+import { getUser, maySignIn } from '$lib/server/users';
 import { touchLastSeen } from '$lib/server/people';
 import { publicSettings } from '$lib/server/public';
 import { announceSetup } from '$lib/server/setup';
@@ -77,15 +77,21 @@ const httpCookies: Handle = ({ event, resolve }) => {
 /**
  * Auth.js also takes local admin logins at /auth/callback/local directly; the
  * sign-in page's own action applies the same limit with a friendlier message.
+ * Auth.js drops empty parts of the path, so /auth/callback/local/ and
+ * /auth/callback//local are the same endpoint and are counted the same (#208).
  */
 const loginLimit: Handle = async ({ event, resolve }) => {
-	if (event.request.method !== 'POST' || event.url.pathname !== '/auth/callback/local') return resolve(event);
+	if (event.request.method !== 'POST' || !isLocalLoginPath(event.url.pathname)) return resolve(event);
 	const address = event.getClientAddress();
 	const wait = loginBlockedMinutes(address);
 	if (wait) return new Response('Too many sign-in attempts. Try again later.', { status: 429, headers: { 'retry-after': String(wait * 60) } });
 	const res = await resolve(event);
 	if (/session-token=[^;]/.test(res.headers.get('set-cookie') ?? '')) clearLoginFailures(address);
-	else recordLoginFailure(address);
+	else {
+		recordLoginFailure(address);
+		logger.warn('sign-in', 'Local admin sign-in failed: wrong username or password', { address });
+		if (loginBlockedMinutes(address)) logger.warn('sign-in', 'Local admin sign-in paused for 15 minutes after 5 wrong tries', { address });
+	}
 	return res;
 };
 
@@ -140,7 +146,7 @@ const appHandle: Handle = async ({ event, resolve }) => {
 	const signedInAt = (session?.user as { signedInAt?: number } | undefined)?.signedInAt;
 	if (found?.sessionsRevokedAt && typeof signedInAt === 'number' && signedInAt * 1000 < Date.parse(found.sessionsRevokedAt)) found = null;
 	// Someone taken off ALLOWED_EMAILS, or whose invitation was revoked, is signed out on their next request.
-	event.locals.user = found && (devLoginEnabled() || isEmailAllowed(found.email)) ? found : null;
+	event.locals.user = found && maySignIn(found) ? found : null;
 	if (event.locals.user) touchLastSeen(event.locals.user);
 
 	const path = event.url.pathname;

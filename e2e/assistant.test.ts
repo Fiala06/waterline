@@ -54,6 +54,14 @@ test('an AI assistant: a token from Settings reads the tank over MCP and the API
 	expect(tools).toEqual(expect.arrayContaining(['list_tanks', 'get_tank_summary', 'get_readings', 'get_history', 'get_livestock', 'list_photos', 'get_photo']));
 	const listed = await rpc('tools/call', { name: 'list_tanks', arguments: {} });
 	expect(listed.structuredContent.tanks).toEqual([expect.objectContaining({ id: tankId, name: 'Riverbed 40', type: 'Planted' })]);
+	// a batch is answered in order, up to 20 messages; a longer one, or a body over 1 MB, is refused (#210)
+	const ping = (id: number) => ({ jsonrpc: '2.0', id, method: 'ping' });
+	const pair = await page.request.post('/mcp', { headers, data: [ping(1), ping(2)] });
+	expect((await pair.json()).map((r: { id: number }) => r.id)).toEqual([1, 2]);
+	const long = await page.request.post('/mcp', { headers, data: Array.from({ length: 21 }, (_, i) => ping(i)) });
+	expect(await long.json()).toMatchObject({ id: null, error: { code: -32600, message: 'Too many messages in one batch: at most 20' } });
+	const big = await page.request.post('/mcp', { headers, data: { ...ping(1), params: { pad: 'x'.repeat(1024 * 1024) } } });
+	expect(big.status()).toBe(413);
 	const summary = await rpc('tools/call', { name: 'get_tank_summary', arguments: { tank_id: tankId } });
 	expect(summary.content[0].text).toContain('# Riverbed 40: aquarium summary from Waterline');
 	// a test's readings in the tank's order

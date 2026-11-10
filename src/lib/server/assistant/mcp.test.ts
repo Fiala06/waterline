@@ -23,7 +23,7 @@ vi.mock('./tools', () => {
 		}
 	};
 });
-const { handleBody, handleMessage, PROTOCOL_VERSIONS } = await import('./mcp');
+const { handleBody, handleMessage, MAX_BATCH, PROTOCOL_VERSIONS, readJsonBody } = await import('./mcp');
 
 const access = { user: { id: 'u1' }, token: {}, tankIds: new Set(['t1']) } as never;
 const req = (method: string, params?: unknown, id: number | string = 1) => ({ jsonrpc: '2.0', id, method, ...(params ? { params } : {}) });
@@ -68,6 +68,45 @@ describe('messages', () => {
 		]);
 		expect(await handleBody(access, [{ jsonrpc: '2.0', method: 'notifications/initialized' }])).toBeNull();
 		expect(await handleBody(access, [])).toMatchObject({ error: { code: -32600 } });
+	});
+
+	it('refuses a batch longer than the limit, running none of it (#210)', async () => {
+		const pings = (n: number) => Array.from({ length: n }, (_, i) => req('ping', undefined, i));
+		expect(await handleBody(access, pings(MAX_BATCH))).toHaveLength(MAX_BATCH);
+		expect(await handleBody(access, pings(MAX_BATCH + 1))).toMatchObject({ id: null, error: { code: -32600 } });
+	});
+
+	it('runs a batch one message after another, in order (#210)', async () => {
+		const out = (await handleBody(access, [req('ping', undefined, 'a'), req('resources/list', undefined, 'b'), req('ping', undefined, 'c')])) as { id: string }[];
+		expect(out.map((r) => r.id)).toEqual(['a', 'b', 'c']);
+	});
+});
+
+describe('the request body (#210)', () => {
+	const post = (body: BodyInit, headers: Record<string, string> = {}) => new Request('https://waterline.example.com/mcp', { method: 'POST', body, headers });
+
+	it('reads JSON', async () => {
+		expect(await readJsonBody(post('{"jsonrpc":"2.0","id":1,"method":"ping"}'))).toEqual({ body: { jsonrpc: '2.0', id: 1, method: 'ping' } });
+		expect(await readJsonBody(post('not json'))).toEqual({ error: 'invalid' });
+	});
+
+	it('refuses a body over the limit from its content-length, without reading it', async () => {
+		const r = post('{}', { 'content-length': '5000' });
+		expect(await readJsonBody(r, 1000)).toEqual({ error: 'too-large' });
+		expect(r.bodyUsed).toBe(false);
+	});
+
+	it('stops reading a body that turns out longer than the limit', async () => {
+		let sent = 0;
+		const stream = new ReadableStream<Uint8Array>({
+			pull(c) {
+				sent++;
+				c.enqueue(new Uint8Array(400).fill(32));
+			}
+		});
+		const r = new Request('https://waterline.example.com/mcp', { method: 'POST', body: stream, duplex: 'half' } as RequestInit);
+		expect(await readJsonBody(r, 1000)).toEqual({ error: 'too-large' });
+		expect(sent).toBeLessThan(10);
 	});
 });
 

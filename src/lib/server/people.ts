@@ -5,7 +5,7 @@ import { and, count, eq, inArray, isNotNull, ne } from 'drizzle-orm';
 import { join } from 'node:path';
 import { env } from '$env/dynamic/private';
 import { db } from './db';
-import { invites, photos, tanks, users, type User } from './db/schema';
+import { assistantTokens, calendarFeeds, invites, oauthCodes, photos, tanks, users, type User } from './db/schema';
 import { avatarFile, ownAvatarFile } from './avatar';
 import { removeFiles } from './files';
 import { logger } from './log';
@@ -58,9 +58,20 @@ export function setAdmin(by: User, userId: string, isAdmin: boolean): User {
 	return out;
 }
 
-/** Sign them out on every device: sessions from before now stop working on their next request. */
+/**
+ * Sign them out on every device: sessions from before now stop working on
+ * their next request. What an intruder could have set up to stay in goes too
+ * (#209): access tokens, connected apps and sign-ins in progress, and the
+ * calendar link. Sensor tokens stay: they can only add readings, and each one
+ * lives in a device that would have to be set up again.
+ */
 export function signOutEverywhere(by: User, userId: string): User {
-	const u = db.update(users).set({ sessionsRevokedAt: new Date().toISOString() }).where(eq(users.id, userId)).returning().get();
+	const u = db.transaction((tx) => {
+		tx.delete(assistantTokens).where(and(eq(assistantTokens.userId, userId), eq(assistantTokens.kind, 'assistant'))).run();
+		tx.delete(oauthCodes).where(eq(oauthCodes.userId, userId)).run();
+		tx.delete(calendarFeeds).where(eq(calendarFeeds.userId, userId)).run();
+		return tx.update(users).set({ sessionsRevokedAt: new Date().toISOString() }).where(eq(users.id, userId)).returning().get();
+	});
 	if (!u) error(404, 'Person not found');
 	logger.info('sign-in', `${u.email} signed out everywhere by an admin`, { userId: by.id, person: u.id });
 	return u;

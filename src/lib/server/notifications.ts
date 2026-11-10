@@ -21,7 +21,7 @@ import { tankNotes } from './trends';
 import { sign } from './secrets';
 import { notifiesUser, tankPeople } from './members';
 import { isLive, latestSamplesFor, outOfRangeSince } from './sensors';
-import { getUser } from './users';
+import { getUser, maySignIn } from './users';
 import { listParams, listTanks, roleOn } from './tanks';
 import { listTasks, settleTasks } from './tasks';
 import { tankTypeLabel } from '$lib/types';
@@ -299,6 +299,8 @@ export async function runNotifications(now = new Date()) {
 	if (!baseUrl()) return { sent: 0 };
 	let sent = 0;
 	for (const user of db.select().from(users).all()) {
+		// nothing goes to someone who was locked out, least of all working Mark done / Snooze links (#209)
+		if (!maySignIn(user)) continue;
 		try {
 			sent += (await notifyUser(user, now)).sent;
 		} catch (e) {

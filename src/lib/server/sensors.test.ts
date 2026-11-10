@@ -4,7 +4,8 @@ import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 const dir = mkdtempSync(join(tmpdir(), 'wl-sensors-'));
-vi.mock('$env/dynamic/private', () => ({ env: { DATA_DIR: dir } }));
+// anyone may sign in here, so accounts and their tokens are good unless a test locks one out
+vi.mock('$env/dynamic/private', () => ({ env: { DATA_DIR: dir, OPEN_SIGNUP: 'true' } }));
 const { isLive, latestSamples, parseSamples, pruneSamples, recordSamples, sampleSeries, toStoredSample } = await import('./sensors');
 const { createTank, listParams } = await import('./tanks');
 const { upsertUser } = await import('./users');
