@@ -21,7 +21,6 @@
 	import { enhance } from '$app/forms';
 	import { dueInfo, intervalText, isRoutine, routineLine } from '$lib/tasks';
 	import { invalidateAll } from '$app/navigation';
-	import { discard, retry } from '$lib/offline';
 	import { toast, ui } from '$lib/ui.svelte';
 	import { photoUrl } from '$lib/media';
 	import { hscroll } from '$lib/actions';
@@ -35,13 +34,6 @@
 	/** "Rotala, Ludwigia, Java fern +3" */
 	const preview = (items: string[], n = 3) => items.slice(0, n).join(', ') + (items.length > n ? ` +${items.length - n}` : '');
 
-	// An entry the server refused while syncing: send it again, or drop it.
-	async function retryEntry(id: string) {
-		if ((await retry(id)) > 0) {
-			toast('✓ Synced');
-			invalidateAll();
-		}
-	}
 
 	const cards = $derived(
 		prioritize(data.params ?? [], choices.priority).map((p) => {
@@ -310,20 +302,15 @@
 					<span class="links"><a href="/photos">Photos</a><a href="/history">History ›</a></span>
 				</div>
 				<ul class="feed">
-					{#each ui.queue.filter((q) => q.tankId === data.tank?.id) as q (q.id)}
+					<!-- waiting to sync; one the server refused is in the shell's banner, on every page (#225) -->
+					{#each ui.queue.filter((q) => q.tankId === data.tank?.id && !q.error) as q (q.id)}
 						<li>
 							<div class="queued">
 								<CategoryIcon kind={q.title.startsWith('Water test') ? 'test' : 'note'} size={28} />
 								<span class="f-text">
 									<span class="f-title">{q.title}</span>
-									<span class="f-sub" class:status-warn={!q.error} class:status-bad={!!q.error}>{q.error ? `✕ ${q.error}` : '▲ Waiting to sync'}</span>
+									<span class="f-sub status-warn">▲ Waiting to sync</span>
 								</span>
-								{#if q.error}
-									<span class="q-actions">
-										<button type="button" class="btn" onclick={() => retryEntry(q.id)}>Retry</button>
-										<button type="button" class="btn" onclick={() => discard(q.id)}>Discard</button>
-									</span>
-								{/if}
 							</div>
 						</li>
 					{/each}
@@ -341,7 +328,7 @@
 							</a>
 						</li>
 					{:else}
-						{#if !ui.queue.some((q) => q.tankId === data.tank?.id)}
+						{#if !ui.queue.some((q) => q.tankId === data.tank?.id && !q.error)}
 							<li class="none">Nothing logged yet.</li>
 						{/if}
 					{/each}
@@ -1022,14 +1009,6 @@
 	}
 	.queued .f-sub {
 		font-weight: 600;
-	}
-	.q-actions {
-		display: flex;
-		gap: 6px;
-	}
-	.q-actions .btn {
-		padding: 0 12px;
-		font-size: 13px;
 	}
 	.f-thumb {
 		width: 36px;

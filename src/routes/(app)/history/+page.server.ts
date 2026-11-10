@@ -10,12 +10,11 @@ import { isShared, tankPeople } from '$lib/server/members';
 import { getTank, listParams, roleOn } from '$lib/server/tanks';
 import type { EventCategory } from '$lib/types';
 import { FILTERS, RANGES } from '$lib/history';
+import { RANGE_COOKIE, rememberOptions } from '$lib/remember';
 import type { PageServerLoad } from './$types';
 
 // the range picked last time, so History opens the way it was left (All time, once chosen, stays)
-const RANGE_COOKIE = 'wl_history_range';
-
-export const load: PageServerLoad = async ({ locals, parent, url, cookies }) => {
+export const load: PageServerLoad = async ({ locals, parent, url, cookies, isDataRequest }) => {
 	const user = locals.user!;
 	const { currentTankId } = await parent();
 	if (!currentTankId) return { tank: null };
@@ -26,9 +25,10 @@ export const load: PageServerLoad = async ({ locals, parent, url, cookies }) => 
 	const cat = FILTERS.some((f) => f.key === url.searchParams.get('cat')) ? url.searchParams.get('cat')! : 'all';
 	const valid = (v: string | null | undefined) => !!v && RANGES.some((r) => r.key === v);
 	const asked = url.searchParams.get('range');
-	if (valid(asked)) cookies.set(RANGE_COOKIE, asked!, { path: '/', httpOnly: true, sameSite: 'lax', maxAge: 60 * 60 * 24 * 365 });
 	const saved = cookies.get(RANGE_COOKIE);
 	const range = valid(asked) ? asked! : valid(saved) ? saved! : '30';
+	// kept on a real visit only (#223), as the current tank is: see $lib/remember
+	if (!isDataRequest && (valid(asked) || valid(saved))) cookies.set(RANGE_COOKIE, range, rememberOptions);
 	const since = range === 'all' ? '0000' : new Date(Date.now() - Number(range) * 86_400_000).toISOString();
 
 	const allTests = db

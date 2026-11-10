@@ -5,6 +5,7 @@ import type { SubmitFunction } from '@sveltejs/kit';
 import { toast, ui } from './ui.svelte';
 import { clearAllDrafts } from './draft';
 import { utcToZoned } from './time';
+import { neverAnswered, syncOutcome, wasPassing } from './offline-sync';
 
 const DB = 'waterline';
 const STORE = 'queue';
@@ -108,7 +109,7 @@ export function queueable(o: {
 	onsaved?: () => void;
 }): SubmitFunction {
 	return ({ formData, action, cancel }) => {
-		const queue = async () => {
+		const queue = async (why = "You're offline. Saved, and it'll sync when you're back on dry land.") => {
 			try {
 				await enqueue(formData, action.pathname + action.search, o.title(), o.timeZone);
 			} catch {
@@ -118,7 +119,7 @@ export function queueable(o: {
 			}
 			o.onsaved?.();
 			try {
-				sessionStorage.setItem('wl_toast', "You're offline. Saved, and it'll sync when you're back on dry land.");
+				sessionStorage.setItem('wl_toast', why);
 			} catch {
 				/* storage blocked */
 			}
@@ -131,7 +132,11 @@ export function queueable(o: {
 		}
 		o.busy(true);
 		return async ({ result, update }) => {
-			if (o.offline && result.type === 'error' && !navigator.onLine) await queue();
+			// no answer at all: offline, or a connection that's up with no way through to the server (#224).
+			// The entry's clientId makes the replay safe if the first post did arrive.
+			if (o.offline && result.type === 'error' && (!navigator.onLine || neverAnswered(result))) {
+				await queue(navigator.onLine ? "Waterline couldn't be reached. Saved on this device, and it'll sync when it can." : undefined);
+			}
 			else {
 				if (result.type === 'redirect' || result.type === 'success') o.onsaved?.();
 				await update({ reset: false });
@@ -150,14 +155,15 @@ let flushing = false;
  */
 export const currentUrl = (url: string) => url.replace(/^\/log\/(test|event)(?=[?#]|$)/, '/entries/$1/new');
 
-/** Post queued entries in order. Stops at the first network failure. */
+/** Post queued entries in order. Stops at the first network failure, or anything else that will pass. */
 export async function flushQueue(): Promise<number> {
 	if (flushing || !navigator.onLine) return 0;
 	flushing = true;
 	let synced = 0;
 	try {
 		for (const item of await listQueued()) {
-			if (item.error) continue; // refused before: waits for Retry or Discard
+			// refused before: waits for Retry or Discard, unless what it was kept for would have passed (#225)
+			if (item.error && !wasPassing(item.error)) continue;
 			const body = new FormData();
 			for (const [k, v] of item.fields) {
 				if (typeof v === 'string') body.append(k, v);
@@ -174,19 +180,17 @@ export async function flushQueue(): Promise<number> {
 			} catch {
 				break; // still offline
 			}
-			const result = await res.json().catch(() => null);
-			if (result?.type === 'redirect' || result?.type === 'success') {
+			const outcome = syncOutcome(res, await res.json().catch(() => null));
+			if (outcome.kind === 'synced') {
 				await tx('readwrite', (s) => s.delete(item.id));
 				synced++;
-			} else {
+			} else if (outcome.kind === 'refused') {
 				// The server refused it (e.g. the tank was deleted); keep it so the user can see and discard it.
-				const message =
-					res.status === 409
-						? 'Logged by another account. Sign in as them to sync it.'
-						: result?.data
-							? "The server couldn't save this entry."
-							: `Sync failed (${res.status}).`;
-				await tx('readwrite', (s) => s.put({ ...item, error: message }));
+				await tx('readwrite', (s) => s.put({ ...item, error: outcome.message }));
+			} else {
+				// signed out meanwhile, or the server is restarting: this one and the rest wait for the next sync
+				if (item.error) await tx('readwrite', (s) => s.put({ ...item, error: undefined }));
+				break;
 			}
 		}
 	} finally {

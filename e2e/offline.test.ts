@@ -49,6 +49,79 @@ test('logging offline saves on the device and syncs later', async ({ page, conte
 	await expect(page.locator('a.row', { hasText: 'Water test · 2 readings' })).toHaveCount(1);
 });
 
+// #224: Wi-Fi up, but no way through to the server. The browser still says it's online.
+test('an entry that never reaches the server is kept on the device and syncs later', async ({ page }, info) => {
+	await newKeeperWithTank(page, `unreachable-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, `/entries/test/new?tank=${tankId}`);
+	// the post dies on the way; everything else still works
+	let lost = 0;
+	const dead = (r: import('@playwright/test').Route) => (r.request().method() === 'POST' ? (lost++, r.abort('connectionfailed')) : r.fallback());
+	await page.route('**/entries/test/new**', dead);
+	await page.getByLabel('pH', { exact: true }).fill('7.1');
+	await page.getByRole('button', { name: 'Save 1 reading' }).click();
+	await expect(page.getByText("Waterline couldn't be reached. Saved on this device, and it'll sync when it can.")).toBeVisible();
+	await expect(page.getByText('Something went wrong')).toHaveCount(0);
+	await expect(page.getByText('1 entry waiting')).toBeVisible();
+
+	// the app tries to sync as soon as it's back on the dashboard, and that is lost on the way too
+	await expect.poll(() => lost).toBe(2);
+	await expect(page.getByText('1 entry waiting')).toBeVisible();
+
+	// the way through is back: the next time the app is looked at, it syncs
+	await page.unroute('**/entries/test/new**', dead);
+	await page.reload();
+	await expect(page.getByText('✓ Synced 1 entry')).toBeVisible({ timeout: 10_000 });
+	await open(page, '/history');
+	await expect(page.locator('a.row', { hasText: 'Water test · 1 reading' })).toHaveCount(1);
+});
+
+// #225: a failure that passes by itself is tried again; one that stands is shown on every page.
+test('sync waits out a passing failure, and shows an entry the server refused wherever you are', async ({ page }, info) => {
+	await newKeeperWithTank(page, `refused-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, `/entries/test/new?tank=${tankId}`);
+	let answer: 'dead' | 'proxy' | 'refuse' | 'through' = 'dead';
+	let posts = 0;
+	await page.route('**/entries/test/new**', (r) => {
+		if (r.request().method() !== 'POST' || answer === 'through') return r.fallback();
+		posts++;
+		if (answer === 'dead') return r.abort('connectionfailed');
+		if (answer === 'proxy') return r.fulfill({ status: 502, contentType: 'text/html', body: '<h1>502 Bad Gateway</h1>' });
+		return r.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ type: 'failure', status: 400, data: '[{}]' }) });
+	});
+	await page.getByLabel('pH', { exact: true }).fill('6.9');
+	await page.getByRole('button', { name: 'Save 1 reading' }).click();
+	await expect(page.getByText('1 entry waiting')).toBeVisible();
+	// the form's post, then the sync the dashboard tries on opening: both lost on the way
+	await expect.poll(() => posts).toBe(2);
+	const unsynced = page.getByRole('status', { name: "Entries that couldn't sync" });
+
+	// a proxy answering for a server that's restarting: still waiting, not given up on
+	answer = 'proxy';
+	const tried = page.waitForResponse((r) => r.status() === 502);
+	await page.reload();
+	await tried;
+	await expect(page.getByText('1 entry waiting')).toBeVisible();
+	await expect(unsynced).toHaveCount(0);
+
+	// the server says no: the entry is shown with Retry and Discard, on a page of no tank too
+	answer = 'refuse';
+	await page.reload();
+	await expect(unsynced).toContainText("✕ 1 entry couldn't sync");
+	await expect(unsynced).toContainText("The server couldn't save this entry.");
+	await open(page, '/settings');
+	await expect(unsynced).toContainText('Water test · 1 reading');
+
+	// Retry sends it again
+	answer = 'through';
+	await unsynced.getByRole('button', { name: /^Retry/ }).click();
+	await expect(page.getByText('✓ Synced')).toBeVisible();
+	await expect(unsynced).toHaveCount(0);
+	await open(page, '/history');
+	await expect(page.locator('a.row', { hasText: 'Water test · 1 reading' })).toHaveCount(1);
+});
+
 // #108: what's kept on the device for offline use belongs to one person, and can be removed.
 test('offline data stays with one person, and can be removed from the device', async ({ page, context }, info) => {
 	await newKeeperWithTank(page, `forget-${info.project.name}`);

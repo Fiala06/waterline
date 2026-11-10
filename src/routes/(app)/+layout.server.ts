@@ -19,9 +19,10 @@ import { listFavorites } from '$lib/server/favorites';
 import { listRoutinesFor } from '$lib/server/routines';
 import { favoriteSub } from '$lib/favorites';
 import { availableUpdate, projectPage } from '$lib/server/updates';
+import { rememberOptions, TANK_COOKIE } from '$lib/remember';
 import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) => {
+export const load: LayoutServerLoad = ({ locals, url, cookies, params, route, isDataRequest }) => {
 	const user = locals.user!;
 	const tanks = listTanks(user.id);
 	const today = todayInZone(user.timeZone);
@@ -29,10 +30,12 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route }) 
 	// A tank's own pages make it the current tank, as picking it in the switcher does.
 	const routeTank = route.id?.startsWith('/(app)/tanks/[id]') ? params.id : undefined;
 	const requested = url.searchParams.get('tank') ?? routeTank ?? null;
-	let currentTankId = requested ?? cookies.get('wl_tank') ?? null;
+	let currentTankId = requested ?? cookies.get(TANK_COOKIE) ?? null;
 	if (!tanks.some((t) => t.id === currentTankId)) currentTankId = tanks[0]?.id ?? null;
-	if (requested && currentTankId === requested) {
-		cookies.set('wl_tank', requested, { path: '/', httpOnly: true, sameSite: 'lax', maxAge: 31536000 });
+	// Remembered on a real visit only (#223): a page asked for outright here, and by the app itself
+	// after it navigates (see $lib/remember). Data fetched ahead for a link under the mouse changes nothing.
+	if (!isDataRequest && currentTankId && (requested === currentTankId || cookies.get(TANK_COOKIE) === currentTankId)) {
+		cookies.set(TANK_COOKIE, currentTankId, rememberOptions);
 	}
 
 	// pauses that are up resume, and a cadence for a while that ran its time ends (#171, #172)
