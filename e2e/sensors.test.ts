@@ -198,10 +198,16 @@ test('a device is read from its own web page', async ({ page }, info) => {
 	await open(page, '/settings/sensors');
 	await expect(page.getByText('No device is read directly yet.')).toBeVisible();
 
-	// nothing there
+	// nothing there: someone who isn't the admin is told the same thing whatever went wrong (#212)
 	await page.getByLabel('Device address').fill('http://localhost:65530/');
 	await page.getByRole('button', { name: 'Find sensors' }).click();
-	await expect(page.getByText('✕ Nothing is listening at http://localhost:65530.')).toBeVisible();
+	const general = (url: string) => `✕ Waterline couldn't read an ESPHome device at ${url}. Check the address, that its web server is on, and its username and password if it has them.`;
+	await expect(page.getByText(general('http://localhost:65530'))).toBeVisible();
+	// something answers there, but it's no device: the same words
+	const notADevice = `${new URL(page.url()).origin}/signin`;
+	await page.getByLabel('Device address').fill(notADevice);
+	await page.getByRole('button', { name: 'Find sensors' }).click();
+	await expect(page.getByText(general(notADevice))).toBeVisible();
 
 	// the probe: its sensors, the one in the water ticked and read as the temperature
 	await page.getByLabel('Device address').fill(`${new URL(page.url()).origin}/dev/esphome`);
