@@ -1,4 +1,4 @@
-import { and, count as countRows, desc, eq, gte, lt } from 'drizzle-orm';
+import { and, count as countRows, eq, inArray, lt } from 'drizzle-orm';
 import { eventIcon, eventKindLabel, eventTitle } from '$lib/events';
 import { shortName, statusOf, fmtValue } from '$lib/params';
 import { dateInZone, daysBetween, fmtDate, fmtTime, todayInZone } from '$lib/time';
@@ -6,6 +6,7 @@ import { db } from '$lib/server/db';
 import { events, testReadings, tests } from '$lib/server/db/schema';
 import { eventView, testView, type EntryView } from '$lib/server/entry-view';
 import { thumbsFor } from '$lib/server/photos';
+import { cursorText, historyCounts, historyPage, parseCursor } from '$lib/server/history-page';
 import { isShared, tankPeople } from '$lib/server/members';
 import { getTank, listParams, roleOn } from '$lib/server/tanks';
 import type { EventCategory } from '$lib/types';
@@ -31,21 +32,12 @@ export const load: PageServerLoad = async ({ locals, parent, url, cookies, isDat
 	if (!isDataRequest && (valid(asked) || valid(saved))) cookies.set(RANGE_COOKIE, range, rememberOptions);
 	const since = range === 'all' ? '0000' : new Date(Date.now() - Number(range) * 86_400_000).toISOString();
 
-	const allTests = db
-		.select()
-		.from(tests)
-		.where(and(eq(tests.tankId, tank.id), gte(tests.takenAt, since)))
-		.orderBy(desc(tests.takenAt))
-		.all();
-	const allEvents = db
-		.select()
-		.from(events)
-		.where(and(eq(events.tankId, tank.id), gte(events.occurredAt, since)))
-		.orderBy(desc(events.occurredAt))
-		.all();
-
-	const counts: Record<string, number> = { all: allTests.length + allEvents.length, test: allTests.length };
-	for (const e of allEvents) counts[e.category] = (counts[e.category] ?? 0) + 1;
+	// counted and filtered in SQL, and a page at a time (#240): see $lib/server/history-page
+	const counts = historyCounts(tank.id, since);
+	const before = parseCursor(url.searchParams.get('before'));
+	const listed = historyPage({ tankId: tank.id, since, cat, before });
+	const shownTests = listed.entries.flatMap((x) => (x.kind === 'test' ? [x.row] : []));
+	const shownEvents = listed.entries.flatMap((x) => (x.kind === 'event' ? [x.row] : []));
 
 	const showTests = cat === 'all' || cat === 'test';
 	// what's before the range, so a short range never looks like missing data: "42 older entries · Show all time"
@@ -64,8 +56,6 @@ export const load: PageServerLoad = async ({ locals, parent, url, cookies, isDat
 						.get()?.n ?? 0);
 		if (olderTests + olderEvents) older = { count: olderTests + olderEvents, before: fmtDate(dateInZone(since, tz)) };
 	}
-	const shownEvents = cat === 'all' ? allEvents : cat === 'test' ? [] : allEvents.filter((e) => e.category === (cat as EventCategory));
-	const shownTests = showTests ? allTests : [];
 	const thumbs = thumbsFor(
 		shownEvents.map((e) => e.id),
 		shownTests.map((t) => t.id)
@@ -79,8 +69,8 @@ export const load: PageServerLoad = async ({ locals, parent, url, cookies, isDat
 		const rows = db
 			.select({ testId: testReadings.testId, parameterId: testReadings.parameterId, value: testReadings.value })
 			.from(testReadings)
-			.innerJoin(tests, eq(tests.id, testReadings.testId))
-			.where(and(eq(tests.tankId, tank.id), gte(tests.takenAt, since)))
+			// this page's tests only
+			.where(inArray(testReadings.testId, shownTests.map((t) => t.id)))
 			.all();
 		for (const r of rows) {
 			countByTest.set(r.testId, (countByTest.get(r.testId) ?? 0) + 1);
@@ -95,8 +85,10 @@ export const load: PageServerLoad = async ({ locals, parent, url, cookies, isDat
 	const people = isShared(tank.id) ? tankPeople(tank) : null;
 	const by = (userId: string | null) => (people && userId && people.has(userId) ? ` · by ${people.get(userId)}` : '');
 	type Item = { key: string; href: string; at: string; icon: string; title: string; sub: string; bad: string | null; thumb: string | null };
-	const items: Item[] = [
-		...shownTests.map((t) => {
+	// in the page's order: newest first, tests before events at the same moment
+	const items: Item[] = listed.entries.map((x): Item => {
+		if (x.kind === 'test') {
+			const t = x.row;
 			const n = countByTest.get(t.id) ?? 0;
 			const bad = badByTest.get(t.id);
 			return {
@@ -109,8 +101,9 @@ export const load: PageServerLoad = async ({ locals, parent, url, cookies, isDat
 				bad: bad ? bad.join(', ') : null,
 				thumb: thumbs.get(t.id) ?? null
 			};
-		}),
-		...shownEvents.map((e) => ({
+		}
+		const e = x.row;
+		return {
 			key: `event:${e.id}`,
 			href: `/entries/event/${e.id}`,
 			at: e.occurredAt,
@@ -120,8 +113,8 @@ export const load: PageServerLoad = async ({ locals, parent, url, cookies, isDat
 			sub: `${fmtTime(e.occurredAt, tz)}${e.category === 'water_change' ? '' : ` · ${eventKindLabel(e)}`}${e.data.auto === true ? ' · by the doser' : by(e.loggedBy)}`,
 			bad: null,
 			thumb: thumbs.get(e.id) ?? null
-		}))
-	].sort((a, b) => b.at.localeCompare(a.at));
+		};
+	});
 
 	const today = todayInZone(tz);
 	const groups: { day: string; label: string; items: Item[] }[] = [];
@@ -158,7 +151,12 @@ export const load: PageServerLoad = async ({ locals, parent, url, cookies, isDat
 		range,
 		counts,
 		groups,
-		total: items.length,
+		// every entry of the range in this category, however many are on the page
+		total: counts[cat] ?? 0,
+		// "Show older": the entries of the range after this page
+		more: listed.next ? { before: cursorText(listed.next), count: listed.remaining } : null,
+		// on a later page: where it starts, for the way back to the newest
+		from: before ? fmtDate(dateInZone(before.at, tz)) : null,
 		older,
 		rangeLabel: RANGES.find((r) => r.key === range)!.label,
 		selected: detail ? `${detail.kind}:${detail.id}` : null,

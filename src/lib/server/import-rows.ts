@@ -621,12 +621,17 @@ export function importTemplate(list: ImportList, prefs: UnitPrefs): string {
 
 // ── Reading a file ──────────────────────────────────────────────────────────
 
-/** A column name as compared: "Flow rate (gph)" is "flowrate". */
+/**
+ * A column name as compared: "Flow rate (gph)" is "flowrate". Letters and
+ * digits of any script are kept (#227): "Йод (ppm)" is "йод", not nothing,
+ * so two parameters named in Cyrillic or Chinese aren't taken for each other.
+ */
 export const headerKey = (s: string) =>
 	s
+		.normalize('NFKC')
 		.toLowerCase()
 		.replace(/\(.*?\)/g, '')
-		.replace(/[^a-z0-9]+/g, '');
+		.replace(/[^\p{L}\p{N}]+/gu, '');
 
 /** A column of the file as the preview lists it: its name, and what it's read as (null: not read). */
 export interface FileColumn {
@@ -678,7 +683,10 @@ export function readColumns(text: string, columns: Column[], need: { key: string
 		const c =
 			picked !== undefined
 				? byKey.get(picked)
-				: columns.find((c) => !(c.key in headers) && [c.header, ...(c.aliases ?? [])].some((a) => headerKey(a) === k));
+				: // a header with nothing to compare (blank, or only signs) is never a match
+					k
+					? columns.find((c) => !(c.key in headers) && [c.header, ...(c.aliases ?? [])].some((a) => headerKey(a) === k))
+					: undefined;
 		if (c && c.key in headers) twice ??= c.header;
 		if (c && !(c.key in headers)) {
 			found.set(i, c);

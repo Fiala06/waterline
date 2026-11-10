@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { IMPORT_LISTS, importTemplate, parseAmount, parseDate, usesDecimalComma, readImport, validValue, type CheckedRow, type EquipmentValue } from './import-rows';
+import { IMPORT_LISTS, headerKey, importTemplate, parseAmount, parseDate, usesDecimalComma, readImport, validValue, type CheckedRow, type EquipmentValue } from './import-rows';
 
 const us = { unitSystem: 'imperial', hardnessUnit: 'dgh' } as const;
 const eu = { unitSystem: 'metric', hardnessUnit: 'dgh' } as const;
@@ -226,3 +226,16 @@ describe('validValue', () => {
 		expect(validValue('plants', 'Java fern', today)).toBeNull();
 	});
 });
+
+describe('headerKey (#227)', () => {
+	it('keeps letters and digits of any script, and drops the rest', () => {
+		expect(headerKey('Flow rate (gph)')).toBe('flowrate');
+		expect(headerKey('Йод (ppm)')).toBe('йод');
+		expect(headerKey('Медь')).not.toBe(headerKey('Йод'));
+		expect(headerKey('硬度')).toBe('硬度');
+		// full-width letters are the same letters
+		expect(headerKey('ＰＨ')).toBe('ph');
+		expect(headerKey(' — ')).toBe('');
+	});
+});
+

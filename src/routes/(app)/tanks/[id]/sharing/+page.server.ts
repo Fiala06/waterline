@@ -5,11 +5,11 @@ import { env } from '$env/dynamic/private';
 import { TANK_ROLES, type TankRole } from '$lib/server/db/schema';
 import { setFlash } from '$lib/server/flash';
 import { str } from '$lib/server/forms';
-import { createInvite, validEmail } from '$lib/server/invites';
+import { createInvite, revokeShareInvite, validEmail } from '$lib/server/invites';
 import { logger } from '$lib/server/log';
 import { emailConfigured, getServerSettings, MailError, sendMail } from '$lib/server/mail';
 import { shareEmail } from '$lib/server/mail/templates';
-import { getMember, hasAccess, inviteMember, listMembers, MEMBER_INVITE_DAYS, removeMember, resendMember, restoreMember, setMemberRole } from '$lib/server/members';
+import { getMember, hasAccess, inviteMember, listMembers, MEMBER_INVITE_DAYS, pendingShares, removeMember, resendMember, restoreMember, setMemberRole } from '$lib/server/members';
 import { signupRules } from '$lib/server/sign-in';
 import { getTank, updateTank } from '$lib/server/tanks';
 import { getUser, isEmailAllowed } from '$lib/server/users';
@@ -113,6 +113,12 @@ export const actions: Actions = {
 		const tank = getTank(user.id, params.id, 'owner');
 		const m = removeMember(tank.id, str(await request.formData(), 'id'));
 		logger.info('settings', `${m.email} removed from ${tank.name}`, { userId: user.id, tankId: tank.id });
+		// a share cancelled before it was accepted: the way onto the server that came with it goes too (#217),
+		// unless another tank of theirs is still waiting on the same address
+		if (!m.acceptedAt && !pendingShares(user.id, m.email)) {
+			const revoked = revokeShareInvite(m.email, user.id);
+			if (revoked.length) logger.info('sign-in', `Invitation to ${m.email} withdrawn with the cancelled share of ${tank.name}`, { userId: user.id, tankId: tank.id });
+		}
 		setFlash(cookies, m.acceptedAt ? `${m.email} removed` : `Invitation to ${m.email} cancelled`, { undo: { action: `/tanks/${tank.id}/sharing?/restore`, name: 'id', value: m.id } });
 		redirect(303, `/tanks/${tank.id}/sharing`);
 	},
@@ -120,6 +126,8 @@ export const actions: Actions = {
 		const user = locals.user!;
 		const tank = getTank(user.id, params.id, 'owner');
 		const m = restoreMember(tank.id, str(await request.formData(), 'id'));
+		// Undo of a cancelled share: its way onto the server comes back, on the same terms as when it was first shared
+		if (!m.acceptedAt && !m.revokedAt && !getUser(m.userId ?? '') && !isEmailAllowed(m.email) && signupRules(getServerSettings()).mode !== 'admin') createInvite(m.email, user.id);
 		setFlash(cookies, `✓ ${m.email} is back`);
 		redirect(303, `/tanks/${tank.id}/sharing`);
 	},

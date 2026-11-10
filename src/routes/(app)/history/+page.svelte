@@ -48,7 +48,7 @@
 	const submit = (e: Event) => (e.currentTarget as HTMLSelectElement).form?.requestSubmit();
 	function pickCat(e: Event) {
 		const v = (e.currentTarget as HTMLSelectElement).value;
-		goto(q({ cat: v === 'all' ? null : v, entry: null }), { noScroll: true });
+		goto(q({ cat: v === 'all' ? null : v, entry: null, before: null }), { noScroll: true });
 	}
 
 	// A note's first line is already its title: don't repeat it as the body.
@@ -88,7 +88,7 @@
 							class="chip filter"
 							class:selected={data.cat === f.key}
 							aria-current={data.cat === f.key ? 'true' : undefined}
-							href={q({ cat: f.key === 'all' ? null : f.key, entry: null })}
+							href={q({ cat: f.key === 'all' ? null : f.key, entry: null, before: null })}
 						>
 							<span class="f-label">{'short' in f ? f.short : f.label}</span><span class="f-long">{f.label}</span>
 							<span class="f-count">{count(f.key)}</span>
@@ -113,10 +113,17 @@
 					</label>
 					<noscript><button class="btn apply">Apply</button></noscript>
 					<span class="total"
-						>{data.total} entr{data.total === 1 ? 'y' : 'ies'}{#if data.older}{' · '}<a class="older-count" href={q({ range: 'all', entry: null })}>{data.older.count} older</a>{/if}</span
+						>{data.total} entr{data.total === 1 ? 'y' : 'ies'}{#if data.older}{' · '}<a class="older-count" href={q({ range: 'all', entry: null, before: null })}>{data.older.count} older</a>{/if}</span
 					>
 				</form>
 
+				{#if data.from}
+					<!-- a later page (#240): the way back to the newest -->
+					<p class="older newer">
+						<span>Entries up to {data.from}</span>
+						<a class="older-link" href={q({ before: null, entry: null })}>Show newest</a>
+					</p>
+				{/if}
 				{#each data.groups ?? [] as g (g.day)}
 					<section>
 						<h2 class="day">{g.label}</h2>
@@ -138,10 +145,15 @@
 						</div>
 					</section>
 				{/each}
-				{#if data.groups?.length && data.older}
+				{#if data.groups?.length && data.more}
+					<p class="older">
+						<span>{data.more.count} more entr{data.more.count === 1 ? 'y' : 'ies'}</span>
+						<a class="older-link" href={q({ before: data.more.before, entry: null })}>Show older</a>
+					</p>
+				{:else if data.groups?.length && data.older}
 					<p class="older">
 						<span>{data.older.count} older entr{data.older.count === 1 ? 'y' : 'ies'} before {data.older.before}</span>
-						<a class="older-link" href={q({ range: 'all', entry: null })}>Show all time</a>
+						<a class="older-link" href={q({ range: 'all', entry: null, before: null })}>Show all time</a>
 					</p>
 				{/if}
 				{#if data.groups?.length && importHref}<ImportButton href={importHref} />{/if}
@@ -154,7 +166,7 @@
 						<!-- older entries exist: the range is what's empty, not the tank's history -->
 						<h2 class="e-title">Nothing in the {data.rangeLabel.toLowerCase()}</h2>
 						<p class="e-text">{data.older.count} older entr{data.older.count === 1 ? 'y' : 'ies'} before {data.older.before}.</p>
-						<a class="btn" href={q({ range: 'all', entry: null })}>Show all time</a>
+						<a class="btn" href={q({ range: 'all', entry: null, before: null })}>Show all time</a>
 					{:else}
 						<h2 class="e-title">Nothing logged here yet</h2>
 						<p class="e-text"><span class="hide-desk">Try a longer date range or another category.</span><span class="hide-phone">{emptyText}</span></p>
@@ -305,6 +317,11 @@
 		gap: 4px 12px;
 		font-size: 14px;
 		color: var(--text-muted);
+	}
+	.older.newer {
+		margin: 0 0 4px;
+		border-top: 0;
+		border-bottom: 1px solid var(--border);
 	}
 	.older-count {
 		color: var(--accent);
