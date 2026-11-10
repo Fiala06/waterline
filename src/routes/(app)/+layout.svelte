@@ -5,7 +5,9 @@
 	import { afterNavigate, goto, invalidateAll } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import InstallPrompt from '$lib/components/InstallPrompt.svelte';
-	import { flushQueue, refreshQueue } from '$lib/offline';
+	import { discard, flushQueue, refreshQueue, retry } from '$lib/offline';
+	import { RANGE_COOKIE, remember, TANK_COOKIE } from '$lib/remember';
+	import { RANGES } from '$lib/history';
 	import { listenForInstall } from '$lib/install.svelte';
 	import { navigating, page } from '$app/state';
 	import Logo from '$lib/components/Logo.svelte';
@@ -247,6 +249,19 @@
 		};
 	});
 	const waiting = $derived(ui.queue.filter((q) => !q.error).length);
+	// refused by the server: shown whatever tank is on screen, until sent again or dropped (#225)
+	const refused = $derived(ui.queue.filter((q) => q.error));
+	/** " · Reef 24" for an entry logged to a tank other than the one on screen */
+	const inTank = (id: string | null) => {
+		const t = id && id !== data.currentTankId ? data.tanks.find((x) => x.id === id) : null;
+		return t ? ` · ${t.name}` : '';
+	};
+	async function retryEntry(id: string) {
+		if ((await retry(id)) > 0) {
+			toast('✓ Synced');
+			invalidateAll();
+		}
+	}
 
 	// The server sets data-theme on first load; keep it in step when the saved
 	// theme changes without a full reload (e.g. saving Settings).
@@ -270,6 +285,16 @@
 
 	// Where an entry was opened from, so its Back link and Delete return there.
 	// Forms and single photos aren't places to go back to.
+	// The tank and History range a page was opened with are remembered once it's really
+	// on screen (#223), never when its data was only fetched ahead for a link under the mouse.
+	afterNavigate(({ to }) => {
+		if (!to) return;
+		const tank = to.url.searchParams.get('tank') ?? (to.route.id?.startsWith('/(app)/tanks/[id]') ? to.params?.id : null);
+		if (tank && tank === data.currentTankId) remember(TANK_COOKIE, tank);
+		const range = to.url.pathname === '/history' ? to.url.searchParams.get('range') : null;
+		if (range && RANGES.some((r) => r.key === range)) remember(RANGE_COOKIE, range);
+	});
+
 	afterNavigate(({ from, to }) => {
 		const f = from?.url;
 		if (!f || f.pathname === to?.url.pathname) return;
@@ -475,6 +500,22 @@
 				<span>{ui.online ? 'Syncing…' : waiting ? "Saved on this phone. They'll sync when you're back on dry land." : "New entries are saved on this phone until you're back on dry land."}</span>
 			</div>
 		{/if}
+		{#if refused.length}
+			<div class="offline unsynced" role="status" aria-label="Entries that couldn't sync">
+				<strong class="status-bad">✕ {refused.length} entr{refused.length === 1 ? 'y' : 'ies'} couldn't sync</strong>
+				<ul>
+					{#each refused as q (q.id)}
+						<li>
+							<span class="u-text"><span class="u-title">{q.title}{inTank(q.tankId)}</span><span class="u-why">{q.error}</span></span>
+							<span class="u-actions">
+								<button type="button" class="btn" onclick={() => retryEntry(q.id)}>Retry<span class="sr-only"> {q.title}</span></button>
+								<button type="button" class="btn" onclick={() => discard(q.id)}>Discard<span class="sr-only"> {q.title}</span></button>
+							</span>
+						</li>
+					{/each}
+				</ul>
+			</div>
+		{/if}
 
 		{#if tankScoped && current}
 			<div class:hide-phone={!topLevel}>
@@ -647,6 +688,42 @@
 	}
 	.offline strong {
 		font-size: 14px;
+	}
+	.unsynced {
+		border-left-color: var(--accent);
+	}
+	.unsynced ul {
+		list-style: none;
+		margin: 4px 0 0;
+		padding: 0;
+	}
+	.unsynced li {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px 16px;
+		padding: 8px 0;
+		border-top: 1px solid var(--border);
+	}
+	.unsynced .u-text {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		min-width: 0;
+	}
+	.unsynced .u-title {
+		font-weight: 600;
+	}
+	.unsynced .u-why {
+		color: var(--text-muted);
+	}
+	.unsynced .u-actions {
+		display: flex;
+		gap: 8px;
+	}
+	.unsynced .btn {
+		min-height: 44px;
 	}
 	.fullscreen .navslot {
 		display: none !important;

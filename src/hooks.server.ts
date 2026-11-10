@@ -113,8 +113,8 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
 	set('x-frame-options', 'DENY');
 	set('x-content-type-options', 'nosniff');
 	set('referrer-policy', 'same-origin');
-	// the app never uses these browser features (photos come through <input type=file>)
-	set('permissions-policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
+	// the camera is for Scan a barcode, on this site's own pages only (#222); the app never uses the others
+	set('permissions-policy', 'camera=(self), microphone=(), geolocation=(), payment=(), usb=()');
 	if (url.protocol === 'https:') set('strict-transport-security', 'max-age=31536000');
 	return res;
 };

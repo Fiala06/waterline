@@ -1,3 +1,4 @@
+import { rememberOptions, TANK_COOKIE } from '$lib/remember';
 import { fail, redirect, type RequestEvent } from '@sveltejs/kit';
 import { setFlash } from './flash';
 import { parseTankForm } from './forms';
@@ -12,7 +13,7 @@ export async function createTankAction({ request, locals, cookies }: RequestEven
 		return fail(400, { errors, values: Object.fromEntries([...form].map(([k, v]) => [k, String(v)])) });
 	}
 	const tank = createTank(user, values);
-	cookies.set('wl_tank', tank.id, { path: '/', httpOnly: true, sameSite: 'lax', maxAge: 31536000 });
+	cookies.set(TANK_COOKIE, tank.id, rememberOptions);
 	setFlash(cookies, '✓ Tank created');
 	redirect(303, `/?tank=${tank.id}`);
 }
