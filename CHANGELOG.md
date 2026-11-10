@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.21.7 · 2026-11-10
+
 - **Failed reminders are retried sensibly.** An email or notification that couldn't be sent, to an address that refuses mail say, used to be tried again every 5 minutes for good. It's now tried again after 15 minutes, then 30, an hour and so on, and given up after 6 tries, with one line in the log to say so. An email that didn't go no longer leaves working Mark done and Snooze links behind: [Server settings › Logs](/settings/server/logs).
 
 ## 1.21.6 · 2026-11-10
