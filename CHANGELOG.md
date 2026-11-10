@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.21.4 · 2026-11-10
+
 - **Calendar titles with a semicolon.** A task or tank named like "Dose; trim" was written into the calendar feed in a way strict calendar apps could cut short or refuse. Semicolons and every kind of line break are now written the way calendars expect: [Settings › Calendar](/settings#calendar).
 - **Only your own tanks to pick for an assistant.** An AI assistant reads the tanks you own, but tanks shared with you were offered too, so a token could be made that saw nothing. The pickers now list your own tanks, and say so when none is picked: [Settings › AI assistant](/settings/assistant).
 - **An assistant sees an entry's older photos.** Asking an assistant for History left out a photo taken before the days asked for, even when it was attached to an entry inside them. Every entry now comes with all its photos: [Settings › AI assistant](/settings/assistant).
