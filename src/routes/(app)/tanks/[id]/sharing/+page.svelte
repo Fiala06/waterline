@@ -57,16 +57,12 @@
 		{#if !data.signupOpen}<span class="hint">▲ Sign-in is set to Only the admin, so someone not on this server yet can't sign in to accept. An admin can change that under Server settings › Sign-in.</span>{/if}
 		{#if invited}
 			<div class="sent" role="status">
-				{#if invited.joined}
-					<span class="sent-h">✓ {invited.email} has access now · the tank is in their list</span>
-				{:else}
-					<span class="sent-h">{invited.sent ? `✓ Invitation sent to ${invited.email}` : invited.error ? `✕ ${invited.error}` : `✓ Invite link for ${invited.email}`}</span>
-					<div class="link-row">
-						<input class="input mono" readonly value={invited.link ?? ''} aria-label="Invite link" onfocus={(e) => e.currentTarget.select()} />
-						<button type="button" class="btn" onclick={copy}>{copied ? '✓ Copied' : 'Copy invite link'}</button>
-					</div>
-					<span class="hint">{invited.sent ? 'Or send them this link yourself. ' : ''}It works for {data.inviteDays} days, for their Google account with this address.</span>
-				{/if}
+				<span class="sent-h">{invited.sent ? `✓ Invitation sent to ${invited.email}` : invited.error ? `✕ ${invited.error}` : `✓ Invite link for ${invited.email}`}</span>
+				<div class="link-row">
+					<input class="input mono" readonly value={invited.link ?? ''} aria-label="Invite link" onfocus={(e) => e.currentTarget.select()} />
+					<button type="button" class="btn" onclick={copy}>{copied ? '✓ Copied' : 'Copy invite link'}</button>
+				</div>
+				<span class="hint">{invited.sent ? 'Or send them this link yourself. ' : ''}It works for {data.inviteDays} days, for their Google account with this address.</span>
 			</div>
 		{/if}
 	</form>

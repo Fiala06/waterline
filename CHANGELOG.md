@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Shared tanks wait for a yes, and you can leave one.** Sharing a tank with someone who already has an account now sends them an invitation to accept, as it does for someone new, instead of adding the tank to their list straight away. A tank someone shared with you has **Leave tank** under its card, which takes it out of your list and stops its reminders: [Tanks](/tanks).
+
 ## 1.21.8 · 2026-11-10
 
 - **Moving around the app is quicker.** Going from page to page, or between a tank's tabs, no longer gathers every tank's tasks, readings and alerts again each time, which kept a server with many tanks or several people busy. They're refreshed when you change tank, save something, or come back to the app after a while: [Tanks](/tanks).

@@ -5,6 +5,7 @@
 	// Archived, with Restore. The desktop title and "+ Add tank" are the shell's.
 	import { tankTypeLabel } from '$lib/types';
 	import { enhance } from '$app/forms';
+	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import TankThumb from '$lib/components/TankThumb.svelte';
 	import { photoUrl } from '$lib/media';
@@ -27,30 +28,46 @@
 	{#if data.tankCards.length}
 		<div class="grid">
 			{#each data.tankCards as t (t.id)}
-				<a class="tank" href="/tanks/{t.id}">
-					<div class="cover" class:photo-placeholder={!t.cover}>
-						{#if t.cover}<img
-								src={photoUrl(t.cover, 'medium')}
-								width={t.coverSize?.width}
-								height={t.coverSize?.height}
-								alt=""
-								loading="lazy"
-								decoding="async"
-								style:object-position={t.coverPos}
-							/>{/if}
-					</div>
-					<div class="info">
-						<div class="row">
-							<h2>{t.name}</h2>
-							<span class="kicker spec">{spec(t)}</span>
+				<div class="card">
+					<a class="tank" href="/tanks/{t.id}">
+						<div class="cover" class:photo-placeholder={!t.cover}>
+							{#if t.cover}<img
+									src={photoUrl(t.cover, 'medium')}
+									width={t.coverSize?.width}
+									height={t.coverSize?.height}
+									alt=""
+									loading="lazy"
+									decoding="async"
+									style:object-position={t.coverPos}
+								/>{/if}
 						</div>
-						<div class="tags">
-							<span class="tag {t.status.level === 'bad' ? 'tag-accent' : 'tag-neutral'} status-tag tag-{t.status.level}">{t.status.text}</span>
-							{#if t.task}<span class="tag tag-neutral status-tag tag-{t.task.level}">{t.task.text}</span>{/if}
+						<div class="info">
+							<div class="row">
+								<h2>{t.name}</h2>
+								<span class="kicker spec">{spec(t)}</span>
+							</div>
+							<div class="tags">
+								<span class="tag {t.status.level === 'bad' ? 'tag-accent' : 'tag-neutral'} status-tag tag-{t.status.level}">{t.status.text}</span>
+								{#if t.task}<span class="tag tag-neutral status-tag tag-{t.task.level}">{t.task.text}</span>{/if}
+							</div>
+							<p class="meta">{t.meta}</p>
 						</div>
-						<p class="meta">{t.meta}</p>
-					</div>
-				</a>
+					</a>
+					{#if t.sharer}
+						<!-- someone else's tank, shared with you (#218): you can leave it -->
+						<button type="button" class="btn-text leave" popovertarget="leave-{t.id}">Leave tank<span class="sr-only"> {t.name}</span></button>
+						<ConfirmDelete
+							id="leave-{t.id}"
+							trigger={false}
+							tone="warn"
+							title={`Leave ${t.name}?`}
+							body={`It goes from your list, and its reminders stop. ${t.sharer} can share it with you again.`}
+							action="?/leave"
+							fields={{ tankId: t.id }}
+							label="Leave tank"
+						/>
+					{/if}
+				</div>
 			{/each}
 			<a class="add-tile" href="/tanks/new">
 				<span class="plus" aria-hidden="true">+</span>
@@ -119,6 +136,14 @@
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
 		gap: 24px;
+	}
+	.card {
+		display: flex;
+		flex-direction: column;
+	}
+	.leave {
+		align-self: flex-start;
+		padding: 0 12px;
 	}
 	/* The whole card opens the tank: a 2px ink rule, the cover, then the text. */
 	.tank {

@@ -14,7 +14,7 @@ const { db } = await import('./db');
 const { assistantTokens, calendarFeeds, exports, oauthCodes, photos, serverSettings } = await import('./db/schema');
 const { upsertUser } = await import('./users');
 const { createTank, getTank, listParams, listTanks, setArchived, updateParams, updateTank } = await import('./tanks');
-const { inviteMember, requireRole, requireRoleOn, tankRole } = await import('./members');
+const { acceptMemberInvites, inviteMember, requireRole, requireRoleOn, tankRole } = await import('./members');
 const { createEvent, createTest, deleteEvent, deleteTest, getEvent, getTest, updateEvent, updateTest } = await import('./logs');
 const { completeTask, createTask, deleteTask, getTask, listTasks, skipTask, snoozeTask, updateTask } = await import('./tasks');
 const { addExpense, deleteExpense, getExpense, listExpenses, updateExpense } = await import('./expenses');
@@ -73,8 +73,10 @@ const U = createTank(B, { name: 'Reef 24', type: 'reef', nominalVolumeL: 90 });
 // the logger and the viewer have tanks of their own, to move things into
 const LX = createTank(L, { name: 'Logger’s own', type: 'freshwater', nominalVolumeL: 60 });
 const VX = createTank(V, { name: 'Viewer’s own', type: 'freshwater', nominalVolumeL: 60 });
-inviteMember(T, V.email, 'view', A.id);
-inviteMember(T, L.email, 'log', A.id);
+/** Share a tank and accept it as them (#218: a share waits for its Accept). */
+const share = (t: Parameters<typeof inviteMember>[0], who: { id: string; email: string }, role: 'log' | 'view', by: string) => acceptMemberInvites(who.email, who.id, { id: inviteMember(t, who.email, role, by).member.id });
+share(T, V, 'view', A.id);
+share(T, L, 'log', A.id);
 
 // ── A's records on T, one of each kind ──────────────────────────────────────
 
@@ -373,7 +375,7 @@ describe('owner-only actions are the owner’s', () => {
 		await expectStatusAsync(() => updateExpense(A.id, expense.id, { date: '2026-10-01', amountCents: 1, category: 'other', what: 'x', note: null, tankId: U.id }), 404);
 		// nor into a tank they only log to
 		const own = createTank(L, { name: 'Logger’s second', type: 'freshwater', nominalVolumeL: 40 });
-		inviteMember(own, A.email, 'log', L.id);
+		share(own, A, 'log', L.id);
 		await expectStatusAsync(() => updateExpense(A.id, expense.id, { date: '2026-10-01', amountCents: 1, category: 'other', what: 'x', note: null, tankId: own.id }), 403);
 	});
 

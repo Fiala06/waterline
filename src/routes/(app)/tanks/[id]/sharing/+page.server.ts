@@ -13,7 +13,7 @@ import { shareEmail } from '$lib/server/mail/templates';
 import { getMember, hasAccess, inviteMember, listMembers, MEMBER_INVITE_DAYS, pendingShares, removeMember, resendMember, restoreMember, setMemberRole } from '$lib/server/members';
 import { signupRules } from '$lib/server/sign-in';
 import { getTank, updateTank } from '$lib/server/tanks';
-import { getUser, isEmailAllowed } from '$lib/server/users';
+import { getUserByEmail, isEmailAllowed } from '$lib/server/users';
 import { dateInZone, fmtDateLong, fmtWhen } from '$lib/time';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -75,20 +75,16 @@ export const actions: Actions = {
 		if (!validEmail(email)) return fail(400, { inviteError: 'Enter an email address.', email, role });
 		if (email === user.email) return fail(400, { inviteError: "That's you.", email, role });
 		if (hasAccess(tank.id, email)) return fail(400, { inviteError: `${email} already has access.`, email, role });
+		// the share waits for them to accept, on the server already or not, and the answer is the same either way (#218)
+		const newToServer = !getUserByEmail(email) && !isEmailAllowed(email);
 		const { member, token } = inviteMember(tank, email, role, user.id);
 		const origin = (env.ORIGIN || url.origin).replace(/\/+$/, '');
 		const inviter = user.displayName || user.email;
-		if (!token) {
-			// on the server already: the tank is in their list from now
-			logger.info('settings', `${tank.name} shared with ${email} (${role})`, { userId: user.id, tankId: tank.id });
-			return { invited: { id: member.id, email, link: null, sent: false, error: null, joined: true } };
-		}
 		// not on the server yet: the share link lets them sign in too, when sign-in isn't the admin's alone
-		const newToServer = !getUser(member.userId ?? '') && !isEmailAllowed(email);
 		if (newToServer && signupRules(getServerSettings()).mode !== 'admin') createInvite(email, user.id);
 		const sent = await sendShare(origin, email, token, inviter, tank.name, role, newToServer);
 		logger.info('settings', `${tank.name} shared with ${email} (${role})${sent === 'sent' ? ' by email' : ' (link to copy)'}`, { userId: user.id, tankId: tank.id });
-		return { invited: { id: member.id, email, link: `${origin}/share/${token}`, sent: sent === 'sent', error: sent && sent !== 'sent' ? sent : null, joined: false } };
+		return { invited: { id: member.id, email, link: `${origin}/share/${token}`, sent: sent === 'sent', error: sent && sent !== 'sent' ? sent : null } };
 	},
 	resend: async ({ request, locals, params, url }) => {
 		const user = locals.user!;
@@ -96,9 +92,8 @@ export const actions: Actions = {
 		const old = getMember(tank.id, str(await request.formData(), 'id'));
 		const { member, token } = resendMember(tank, old.id, user.id);
 		const origin = (env.ORIGIN || url.origin).replace(/\/+$/, '');
-		if (!token) return { invited: { id: member.id, email: member.email, link: null, sent: false, error: null, joined: true } };
-		const sent = await sendShare(origin, member.email, token, user.displayName || user.email, tank.name, member.role, !isEmailAllowed(member.email));
-		return { invited: { id: member.id, email: member.email, link: `${origin}/share/${token}`, sent: sent === 'sent', error: sent && sent !== 'sent' ? sent : null, joined: false } };
+		const sent = await sendShare(origin, member.email, token, user.displayName || user.email, tank.name, member.role, !getUserByEmail(member.email) && !isEmailAllowed(member.email));
+		return { invited: { id: member.id, email: member.email, link: `${origin}/share/${token}`, sent: sent === 'sent', error: sent && sent !== 'sent' ? sent : null } };
 	},
 	role: async ({ request, locals, params, cookies }) => {
 		const user = locals.user!;
@@ -132,7 +127,7 @@ export const actions: Actions = {
 		const tank = getTank(user.id, params.id, 'owner');
 		const m = restoreMember(tank.id, str(await request.formData(), 'id'));
 		// Undo of a cancelled share: its way onto the server comes back, on the same terms as when it was first shared
-		if (!m.acceptedAt && !m.revokedAt && !getUser(m.userId ?? '') && !isEmailAllowed(m.email) && signupRules(getServerSettings()).mode !== 'admin') createInvite(m.email, user.id);
+		if (!m.acceptedAt && !m.revokedAt && !getUserByEmail(m.email) && !isEmailAllowed(m.email) && signupRules(getServerSettings()).mode !== 'admin') createInvite(m.email, user.id);
 		setFlash(cookies, `✓ ${m.email} is back`);
 		redirect(303, `/tanks/${tank.id}/sharing`);
 	},

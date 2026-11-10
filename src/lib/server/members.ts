@@ -2,7 +2,7 @@
 // may do. The owner invites someone by email with a role: "log" (tests, water
 // changes, dosing, notes, photos and tasks done) or "view" (read-only). Only
 // the owner changes setup, targets and sharing, or archives the tank. The
-// invite link's token is kept hashed; accepting (signing in as that address)
+// invite link's token is kept hashed; accepting (Accept on the link, or signing up as that address, #218)
 // fills in the member's user id, and from then the tank is in their list.
 import { error } from '@sveltejs/kit';
 import { createHash, randomBytes } from 'node:crypto';
@@ -150,18 +150,17 @@ export function tankPeople(tank: Pick<Tank, 'id' | 'userId'>): Map<string, strin
 
 /**
  * Invite someone to a tank (a pending invite for the same address is replaced).
- * If they're on the server already, the invite is accepted for them straight
- * away: the tank is in their list on their next visit. Otherwise the token goes
- * in the link, and signing in as that address accepts it.
+ * It waits for them to accept, whether or not they're on the server already
+ * (#218): nobody is joined to a tank without saying yes, and the sharer can't
+ * tell from the answer who has an account. The token goes in the link.
  */
-export function inviteMember(tank: Tank, email: string, role: TankRole, invitedBy: string): { member: TankMember; token: string | null } {
+export function inviteMember(tank: Tank, email: string, role: TankRole, invitedBy: string): { member: TankMember; token: string } {
 	const e = norm(email);
 	const owner = db.select({ email: users.email }).from(users).where(eq(users.id, tank.userId)).get();
 	if (owner && owner.email === e) error(400, "That's the tank's owner.");
 	// one active membership each (#117): their role is changed in the list, not by inviting again
 	if (hasAccess(tank.id, e)) error(400, `${e} already has access.`);
 	db.update(tankMembers).set({ revokedAt: now() }).where(and(eq(tankMembers.tankId, tank.id), eq(tankMembers.email, e), isNull(tankMembers.acceptedAt), isNull(tankMembers.revokedAt))).run();
-	const existing = db.select({ id: users.id }).from(users).where(eq(users.email, e)).get();
 	const token = randomBytes(24).toString('base64url');
 	const member = db
 		.insert(tankMembers)
@@ -169,15 +168,15 @@ export function inviteMember(tank: Tank, email: string, role: TankRole, invitedB
 			tankId: tank.id,
 			email: e,
 			role,
-			userId: existing?.id ?? null,
+			userId: null,
 			tokenHash: hash(token),
 			invitedBy,
 			expiresAt: new Date(Date.now() + MEMBER_INVITE_DAYS * 86_400_000).toISOString(),
-			acceptedAt: existing ? now() : null
+			acceptedAt: null
 		})
 		.returning()
 		.get();
-	return { member, token: existing ? null : token };
+	return { member, token };
 }
 
 /** The invite behind a link, with the tank and who sent it. */
@@ -192,8 +191,14 @@ export function readMemberToken(token: string) {
 	return row ? { ...row, state: memberState(row.member) } : null;
 }
 
-/** Signing in as the invited address accepts every pending tank invitation for it. */
-export function acceptMemberInvites(email: string, userId: string): TankMember[] {
+/**
+ * Accept pending tank invitations for this address. Which ones (#218):
+ * - `{ id }`: the one behind the Accept link they opened (the Accept button);
+ * - `{ sentBefore }`: signing in, only those sent before the account existed,
+ *   that is, the ones that brought them to the server. A share sent to someone
+ *   already here waits for their Accept.
+ */
+export function acceptMemberInvites(email: string, userId: string, which: { id: string } | { sentBefore: string }): TankMember[] {
 	const e = norm(email);
 	const at = now();
 	const pending = db
@@ -201,7 +206,7 @@ export function acceptMemberInvites(email: string, userId: string): TankMember[]
 		.from(tankMembers)
 		.where(and(eq(tankMembers.email, e), isNull(tankMembers.acceptedAt), isNull(tankMembers.revokedAt)))
 		.all()
-		.filter((m) => m.expiresAt >= at);
+		.filter((m) => m.expiresAt >= at && ('id' in which ? m.id === which.id : m.createdAt <= which.sentBefore));
 	db.transaction((tx) => {
 		for (const m of pending) {
 			const current = activeMembership(m.tankId, userId);
@@ -214,6 +219,16 @@ export function acceptMemberInvites(email: string, userId: string): TankMember[]
 		}
 	});
 	return pending;
+}
+
+/**
+ * Leave a tank someone shared with you (#218): your membership ends, as if the
+ * owner had removed you. Gives the membership, or null when there was none.
+ */
+export function leaveTank(tankId: string, userId: string): TankMember | null {
+	const m = activeMembership(tankId, userId);
+	if (!m) return null;
+	return db.update(tankMembers).set({ revokedAt: now() }).where(eq(tankMembers.id, m.id)).returning().get();
 }
 
 export function getMember(tankId: string, id: string): TankMember {
