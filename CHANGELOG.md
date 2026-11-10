@@ -11,6 +11,13 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **⌘↵ saves the form.** ⌘↵ (Ctrl+Enter on Windows and Linux) now saves the form you're in, as the shortcuts sheet always said, including the water test, where Enter moves on to the next reading: [Log water test](/entries/test/new).
+- **Mark done counts once.** A quick double tap on Mark done used to mark the task done twice, with two entries in History. The button now waits for the first tap to finish: [Tasks](/tasks).
+- **Charts opens on your range.** Charts now opens on the time range you chose last time, as History does: [Charts](/charts).
+- **Filters keep your place.** Choosing a filter on History, Tasks or Alerts, or picking the first photo to compare on Timeline, no longer jumps back to the top of the page: [Timeline](/timeline).
+- **Tank setup fits a phone.** On a planted tank with a fertilizer routine, Tank setup was wider than a phone's screen. The routine's schedule now goes under its name: [Tank setup](/tanks/current/settings).
+- **Favorites and Sharing easier to find.** Favorites is now in the Settings menu beside Products and Test kits, and on a phone Tank setup links to Sharing: [Settings › Favorites](/settings/favorites).
+
 ## 1.21.4 · 2026-11-10
 
 - **Calendar titles with a semicolon.** A task or tank named like "Dose; trim" was written into the calendar feed in a way strict calendar apps could cut short or refuse. Semicolons and every kind of line break are now written the way calendars expect: [Settings › Calendar](/settings#calendar).

@@ -33,7 +33,7 @@
 	const on = (id: string) => path === '/settings' && section === id;
 	const themeWord = $derived(data.user.theme === 'dark' ? 'Dark' : data.user.theme === 'light' ? 'Light' : 'System');
 	// counts the settings page already loads; blank elsewhere
-	const count = (k: 'products' | 'assistants' | 'kits' | 'sensors') => {
+	const count = (k: 'favorites' | 'products' | 'assistants' | 'kits' | 'sensors') => {
 		const n = page.data[k];
 		return typeof n === 'number' && n > 0 ? String(n) : '';
 	};
@@ -45,6 +45,7 @@
 			active: on(s.id),
 			badge: s.id === 'theme' ? themeWord : ''
 		})),
+		{ href: '/settings/favorites', label: 'Favorites', active: path.startsWith('/settings/favorites'), badge: count('favorites') },
 		{ href: '/settings/products', label: 'Products', active: path.startsWith('/settings/products'), badge: count('products') },
 		{ href: '/settings/test-kits', label: 'Test kits', active: path.startsWith('/settings/test-kits'), badge: count('kits') },
 		{ href: '/settings/export', label: 'Import & export', active: path.startsWith('/settings/export') },

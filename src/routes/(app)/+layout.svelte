@@ -6,7 +6,8 @@
 	import { onMount } from 'svelte';
 	import InstallPrompt from '$lib/components/InstallPrompt.svelte';
 	import { discard, flushQueue, refreshQueue, retry } from '$lib/offline';
-	import { RANGE_COOKIE, remember, TANK_COOKIE } from '$lib/remember';
+	import { CHART_RANGE_COOKIE, RANGE_COOKIE, remember, TANK_COOKIE } from '$lib/remember';
+	import { CHART_RANGES } from '$lib/charts';
 	import { RANGES } from '$lib/history';
 	import { listenForInstall } from '$lib/install.svelte';
 	import { navigating, page } from '$app/state';
@@ -293,6 +294,8 @@
 		if (tank && tank === data.currentTankId) remember(TANK_COOKIE, tank);
 		const range = to.url.pathname === '/history' ? to.url.searchParams.get('range') : null;
 		if (range && RANGES.some((r) => r.key === range)) remember(RANGE_COOKIE, range);
+		const chartRange = to.url.pathname === '/charts' ? to.url.searchParams.get('r') : null;
+		if (chartRange && CHART_RANGES.some((r) => r.key === chartRange)) remember(CHART_RANGE_COOKIE, chartRange);
 	});
 
 	afterNavigate(({ from, to }) => {
@@ -326,11 +329,32 @@
 	// ── Keyboard (README → Global overlays): ignored while typing in a field ──
 	let goPending = $state(false);
 	let goTimer: ReturnType<typeof setTimeout> | undefined;
+	const shown = (el: Element) => !el.closest('dialog:not([open]), [popover]:not(:popover-open), [hidden], [inert]');
+	const primary = (f: HTMLFormElement) =>
+		f.querySelector<HTMLButtonElement>('button.btn-primary:not([type]), button.btn-primary[type="submit"]') ?? undefined;
+	function saveOpenForm(): boolean {
+		const active = document.activeElement;
+		let form: HTMLFormElement | null | undefined =
+			active instanceof HTMLButtonElement || active instanceof HTMLInputElement || active instanceof HTMLSelectElement || active instanceof HTMLTextAreaElement
+				? active.form
+				: active?.closest('form');
+		if (!form) form = [...document.querySelectorAll<HTMLFormElement>('main form')].find((f) => f.method === 'post' && primary(f) && shown(f));
+		if (!form || !shown(form)) return false;
+		const submitter = primary(form);
+		if (submitter?.disabled) return true;
+		form.requestSubmit(submitter);
+		return true;
+	}
 	function onkeydown(e: KeyboardEvent) {
 		const k = e.key;
 		if ((k === 'k' || k === 'K') && (e.metaKey || e.ctrlKey)) {
 			e.preventDefault();
 			ui.palette = !ui.palette;
+			return;
+		}
+		// ⌘↵ / Ctrl+Enter: save the form you're in, or the page's main form (#257)
+		if (k === 'Enter' && (e.metaKey || e.ctrlKey) && !e.altKey && !e.isComposing) {
+			if (saveOpenForm()) e.preventDefault();
 			return;
 		}
 		if (typing(e) || e.metaKey || e.ctrlKey) return;

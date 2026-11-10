@@ -75,6 +75,9 @@ function doneEntry(task: Task, prevServicedAt: string | null) {
 	return { category: 'note' as const, note: `Done: ${task.name}`, data: { system: 'task_done', task_id: task.id, task_done: true } };
 }
 
+/** How soon after a Done another one for the same task counts as a repeat of it. */
+const REPEAT_DONE_MS = 10_000;
+
 /**
  * Mark a task done at `at` (ISO instant) and move it to its next occurrence.
  * The previous schedule is kept on the completion so it can be undone. Done
@@ -88,6 +91,19 @@ export function completeTask(userId: string, taskId: string, opts: { at?: string
 	requireRoleOn(userId, task.tankId, 'log');
 	const at = opts.at ?? new Date().toISOString();
 	const nextDue = nextDueAfterCompletion(task, dateInZone(at, opts.timeZone), todayInZone(opts.timeZone));
+	// a second Done straight after the first (a double tap, or a resent form without
+	// scripts) that would leave the same schedule is the same Done, not another (#255)
+	if (!opts.at && !opts.eventId && !opts.logged) {
+		const last = db
+			.select()
+			.from(taskCompletions)
+			.where(and(eq(taskCompletions.taskId, taskId), eq(taskCompletions.skipped, false)))
+			.orderBy(desc(taskCompletions.completedAt))
+			.limit(1)
+			.get();
+		if (last && Date.parse(at) - Date.parse(last.completedAt) < REPEAT_DONE_MS && (task.nextDue ?? null) === (nextDue ?? null))
+			return { ...task, nextDue, completionId: last.id, eventId: last.eventId };
+	}
 	// the last of a course: it's done, and History says so
 	const finished = task.recurring && task.endsOn && !nextDue;
 	const completion = db.transaction((tx) => {

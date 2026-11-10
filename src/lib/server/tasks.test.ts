@@ -28,6 +28,24 @@ const newTask = (name: string, kind: 'water_change' | 'test' | 'maintenance' | '
 	createTask(user.id, tank.id, { name, kind, recurring: true, intervalDays: 7, scheduleMode: 'completion', nextDue: today, openFormOnDone: false, ...extra });
 const entriesOf = (taskId: string) => db.select().from(events).where(eq(events.tankId, tank.id)).all().filter((e) => e.data.task_id === taskId);
 
+describe('a second Done straight after the first (#255)', () => {
+	it('is the same Done: one completion and one entry', () => {
+		const task = newTask('Top off', 'other');
+		const first = completeTask(user.id, task.id, { timeZone: tz });
+		const again = completeTask(user.id, task.id, { timeZone: tz });
+		expect(again.completionId).toBe(first.completionId);
+		expect(entriesOf(task.id)).toHaveLength(1);
+		expect(getTask(user.id, task.id).nextDue).toBe(first.nextDue);
+	});
+
+	it('still counts a Done at a time of its own', () => {
+		const task = newTask('Trim', 'other');
+		completeTask(user.id, task.id, { timeZone: tz });
+		completeTask(user.id, task.id, { at: new Date().toISOString(), timeZone: tz });
+		expect(entriesOf(task.id)).toHaveLength(2);
+	});
+});
+
 describe('Done leaves an entry in History (#161)', () => {
 	it('logs a maintenance task as a Maintenance entry, and Undo takes it out', () => {
 		const task = newTask('Clean glass', 'maintenance');

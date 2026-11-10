@@ -3,6 +3,7 @@
 // page, so it plays out even as the task's row moves away. Nothing for
 // reduced motion, and nothing when Mark done opens a log form instead.
 import type { SubmitFunction } from '@sveltejs/kit';
+import { once } from './forms';
 
 export function splash(at: { x: number; y: number }) {
 	if (typeof document === 'undefined' || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -19,11 +20,12 @@ export function splash(at: { x: number; y: number }) {
 }
 
 /** use:enhance for a Mark done form: the splash when it's done (not when it opens the water change or test form, or the setup review). */
-export const markDone: SubmitFunction = ({ submitter }) => {
+export const markDone: SubmitFunction = (input) => {
+	const { submitter } = input;
 	const r = submitter?.getBoundingClientRect();
 	const at = r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
-	return async ({ result, update }) => {
+	return once(input, async ({ result, update }) => {
 		if (at && result.type === 'redirect' && !result.location.startsWith('/entries/') && !result.location.endsWith('/review')) splash(at);
 		await update();
-	};
+	});
 };

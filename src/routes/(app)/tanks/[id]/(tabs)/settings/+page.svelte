@@ -356,6 +356,7 @@
 			<a href="/tanks/{data.tank.id}/remind"><span>Reminders</span><span class="muted">›</span></a>
 			<a href="/tanks/{data.tank.id}/review"><span>Setup review</span><span class="muted">›</span></a>
 			<a href="/tanks/{data.tank.id}/suggestions"><span>Suggested steps</span><span class="muted">›</span></a>
+			<a href="/tanks/{data.tank.id}/sharing"><span>Sharing</span><span class="muted">{data.counts.members ? `${data.counts.members} ${data.counts.members === 1 ? 'person' : 'people'}` : ''} ›</span></a>
 		</nav>
 
 		{#if !data.tank.archived}
@@ -420,10 +421,31 @@
 	.d-text {
 		font-weight: 700;
 	}
+	.d-text,
+	.d-when {
+		min-width: 0;
+	}
 	.d-when {
 		font-size: 13px;
 		color: var(--text-muted);
-		white-space: nowrap;
+		text-align: right;
+	}
+	/* phones: the schedule goes under the routine's name rather than past the edge (#256) */
+	@media (max-width: 599px) {
+		.dosing a {
+			flex-direction: column;
+			align-items: flex-start;
+			justify-content: center;
+			gap: 2px;
+		}
+		.d-when {
+			text-align: left;
+		}
+	}
+	@media (min-width: 600px) {
+		.d-when {
+			white-space: nowrap;
+		}
 	}
 	.start-again {
 		display: flex;

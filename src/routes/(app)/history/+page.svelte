@@ -82,7 +82,7 @@
 		<div class="layout">
 			<nav class="cats" aria-label="Category">
 				<span class="caps kicker hide-phone">Category</span>
-				<div class="filters hscroll" use:hscroll={data.cat}>
+				<div class="filters hscroll" use:hscroll={data.cat} data-sveltekit-noscroll data-sveltekit-keepfocus>
 					{#each FILTERS as f (f.key)}
 						<a
 							class="chip filter"

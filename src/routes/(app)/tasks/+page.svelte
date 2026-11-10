@@ -103,7 +103,7 @@
 			<a class="btn btn-primary new" href={data.filter ? `/tasks/new?tank=${data.filter}` : '/tasks/new'}>New task</a>
 		</div>
 		{#if data.tanks.length > 1}
-			<div class="seg-links hscroll tank-filter" role="group" aria-label="Filter by tank" use:hscroll={data.filter}>
+			<div class="seg-links hscroll tank-filter" role="group" aria-label="Filter by tank" use:hscroll={data.filter} data-sveltekit-noscroll data-sveltekit-keepfocus>
 				<a class="seg-link" class:selected={!data.filter} aria-current={!data.filter ? 'true' : undefined} href={q({ filter: null, edit: null })}>All tanks</a>
 				{#each data.tanks as t (t.id)}
 					<a
