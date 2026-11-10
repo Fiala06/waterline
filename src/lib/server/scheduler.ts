@@ -8,6 +8,7 @@ import { logDueDoses } from './dosers';
 import { pruneSamples } from './sensors';
 import { pruneOAuth } from './assistant/oauth';
 import { cleanupExports } from './export';
+import { pruneShareImages } from './og-cache';
 import { getServerSettings } from './mail';
 import { logger, pruneLogs } from './log';
 import { alertSensorExcursions, runNotifications } from './notifications';
@@ -16,6 +17,45 @@ import { ensureCare } from './species-care';
 const EVERY_MS = 5 * 60_000;
 const g = globalThis as { __waterlineScheduler?: ReturnType<typeof setInterval> };
 
+type Job = [name: string, run: () => unknown];
+
+const JOBS: Job[] = [
+	// the doses dosers make (#196), logged at their time
+	['dosers', () => logDueDoses()],
+	['reminders', () => (getServerSettings().scheduledEmails ? runNotifications() : undefined)],
+	// devices Waterline reads itself, every run: 5 minutes apart
+	['devices', () => pollAllDevices()],
+	// smart plugs (#203): an item off at its plug is paused, back on resumes
+	['plugs', () => pollAllPlugs()],
+	// a sensor that is a parameter's reading of record, out of range for a while
+	['sensor alerts', () => alertSensorExcursions()],
+	['logs', () => pruneLogs()],
+	['links', () => pruneActionTokens()],
+	['readings', () => pruneSamples()],
+	['connections', () => pruneOAuth()],
+	['exports', () => cleanupExports()],
+	['share images', () => pruneShareImages()],
+	// species care data from FishBase (#20), once, when the server hasn't got it
+	['species care', () => ensureCare()]
+];
+
+/**
+ * A run: each job in turn, and one that fails is logged and doesn't stop the
+ * ones after it (#211). Gives the names of those that failed.
+ */
+export async function runJobs(jobs: Job[]): Promise<string[]> {
+	const failed: string[] = [];
+	for (const [name, run] of jobs) {
+		try {
+			await run();
+		} catch (e) {
+			failed.push(name);
+			logger.error('server', `The scheduled run's ${name} step failed`, { error: e });
+		}
+	}
+	return failed;
+}
+
 export function startScheduler() {
 	if (env.EMAIL_SCHEDULER === 'off' || g.__waterlineScheduler) return;
 	let running = false;
@@ -23,24 +63,7 @@ export function startScheduler() {
 		if (running) return;
 		running = true;
 		try {
-			// the doses dosers make (#196), logged at their time
-			await logDueDoses();
-			if (getServerSettings().scheduledEmails) await runNotifications();
-			// devices Waterline reads itself, every run: 5 minutes apart
-			await pollAllDevices();
-			// smart plugs (#203): an item off at its plug is paused, back on resumes
-			await pollAllPlugs();
-			// a sensor that is a parameter's reading of record, out of range for a while
-			await alertSensorExcursions();
-			pruneLogs();
-			pruneActionTokens();
-			pruneSamples();
-			pruneOAuth();
-			cleanupExports();
-			// species care data from FishBase (#20), once, when the server hasn't got it
-			await ensureCare();
-		} catch (e) {
-			logger.error('server', 'The scheduled run failed', { error: e });
+			await runJobs(JOBS);
 		} finally {
 			running = false;
 		}

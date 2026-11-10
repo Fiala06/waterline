@@ -7,7 +7,7 @@ import { setFlash } from '$lib/server/flash';
 import { str } from '$lib/server/forms';
 import { logger } from '$lib/server/log';
 import { createAssistantToken, listAssistantTokens, MAX_TOKENS, revokeAssistantToken, setTokenTanks } from '$lib/server/assistant/tokens';
-import { createDevicePoll, type DeviceAuth, discoverEsphome, guessParameter, listDevicePolls, MAX_DEVICES, parseDeviceUrl, pollDevice, pollingOff, removeDevicePoll } from '$lib/server/devices';
+import { createDevicePoll, type DeviceAuth, discoverEsphome, DISCOVER_MS, guessParameter, listDevicePolls, MAX_DEVICES, MAX_SENSORS, parseDeviceUrl, pollDevice, pollingOff, removeDevicePoll } from '$lib/server/devices';
 import { decrypt, encrypt } from '$lib/server/secrets';
 import { latestSamples, MIN_GAP_MS, sampleCounts } from '$lib/server/sensors';
 import { listParams, listTanks } from '$lib/server/tanks';
@@ -172,7 +172,7 @@ export const actions: Actions = {
 		const auth: DeviceAuth | null = username ? { username, password } : null;
 		let found: Awaited<ReturnType<typeof discoverEsphome>>;
 		try {
-			found = await discoverEsphome(url, auth);
+			found = await discoverEsphome(url, auth, fetch, DISCOVER_MS, user.isAdmin);
 		} catch (e) {
 			return fail(400, { find: { errors: { url: e instanceof Error ? e.message : String(e) }, ...back } });
 		}
@@ -216,15 +216,15 @@ export const actions: Actions = {
 				auth = null;
 			}
 		}
-		const sensors: PolledSensor[] = form
-			.getAll('sensor')
-			.map(String)
-			.filter(isObjectId)
+		const sensors: PolledSensor[] = [...new Set(form.getAll('sensor').map(String).filter(isObjectId))]
+			// a few past the limit is enough to say so
+			.slice(0, MAX_SENSORS + 1)
 			.map((objectId) => ({ objectId, name: (str(form, `name-${objectId}`) || objectId).slice(0, 80), parameter: str(form, `param-${objectId}`).slice(0, 80), unit: str(form, `unit-${objectId}`).slice(0, 20) || null }));
 		const errors: Record<string, string> = {};
 		const labels = new Set(listParams(tank.id, { all: true }).map(paramLabel));
 		if (!name) errors.name = "Name the device: it's shown as the readings' source.";
 		if (!sensors.length) errors.sensors = 'Tick at least one sensor.';
+		else if (sensors.length > MAX_SENSORS) errors.sensors = `That's more than ${MAX_SENSORS} sensors: tick the ones this tank needs.`;
 		else if (sensors.some((s) => !labels.has(s.parameter))) errors.sensors = 'Pick which parameter each ticked sensor is.';
 		if (listDevicePolls(user.id).length >= MAX_DEVICES) errors.sensors = `That's ${MAX_DEVICES} devices already: remove one you don't read first.`;
 		if (Object.keys(errors).length) return fail(400, { found: foundFromForm(form, tank, url), add: { errors } });

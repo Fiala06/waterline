@@ -24,7 +24,7 @@ export interface PushResult {
 
 /** Push one notice everywhere this person gets them. */
 export async function sendPush(user: User, prefs: Prefs, notice: Notice, origin: string, fetcher: typeof fetch = fetch): Promise<PushResult> {
-	type Outcome = { to: string; ok: true } | { to: string; ok: false; error: string } | null;
+	type Outcome = { to: string; ok: true } | { to: string; ok: false; error: string; detail?: string } | null;
 	const why = (e: unknown) => (e instanceof Error ? e.message : String(e));
 	const jobs: Promise<Outcome>[] = listSubscriptions(user.id).map(async (sub): Promise<Outcome> => {
 		try {
@@ -39,7 +39,8 @@ export async function sendPush(user: User, prefs: Prefs, notice: Notice, origin:
 		jobs.push(
 			sendNtfy(prefs.ntfyUrl, decrypt(prefs.ntfyTokenEnc), notice, fetcher).then(
 				(): Outcome => ({ to: 'ntfy', ok: true }),
-				(e): Outcome => ({ to: 'ntfy', ok: false, error: why(e) })
+				// why exactly is for an admin and the log; anyone else could map the server's network with it (#212)
+				(e): Outcome => ({ to: 'ntfy', ok: false, error: user.isAdmin ? why(e) : "The ntfy server couldn't be reached, or didn't take the message", detail: why(e) })
 			)
 		);
 	}
@@ -49,7 +50,7 @@ export async function sendPush(user: User, prefs: Prefs, notice: Notice, origin:
 		sent: done.filter((o) => o.ok).map((o) => o.to),
 		failed: done.flatMap((o) => (o.ok ? [] : [{ to: o.to, error: o.error }]))
 	};
-	for (const f of out.failed) logger.warn('push', `A notification to ${f.to} didn't send`, { userId: user.id, kind: notice.kind, error: f.error });
+	for (const o of done) if (!o.ok) logger.warn('push', `A notification to ${o.to} didn't send`, { userId: user.id, kind: notice.kind, error: o.detail ?? o.error });
 	return out;
 }
 

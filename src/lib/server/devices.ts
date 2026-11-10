@@ -5,10 +5,11 @@
 // connecting); each run then asks /sensor/<id> for the ones mapped to a tank
 // parameter and stores what they report as sensor readings, apart from tests.
 // DEVICE_POLLING=off hides the feature and stops the reading.
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 import { env } from '$env/dynamic/private';
 import { db } from './db';
-import { devicePolls, type DevicePoll, type PolledSensor } from './db/schema';
+import { BodyTooLarge, readCappedText } from './capped-body';
+import { devicePolls, tanks, users, type DevicePoll, type PolledSensor } from './db/schema';
 import { logger } from './log';
 import { decrypt, encrypt } from './secrets';
 import { recordSamples } from './sensors';
@@ -22,6 +23,13 @@ const READ_MS = 8_000;
 const MAX_BYTES = 256 * 1024;
 /** Devices one keeper may read. */
 export const MAX_DEVICES = 20;
+/** Sensors read from one device (#211): each is a request of its own, every run. */
+export const MAX_SENSORS = 32;
+/** How long one device gets for all its sensors in a run. */
+const DEVICE_MS = 20_000;
+/** How long a run spends on devices before leaving the rest for the next one, and how many it reads at once. */
+const RUN_MS = 120_000;
+const AT_ONCE = 4;
 
 export interface FoundSensor {
 	objectId: string;
@@ -98,9 +106,20 @@ function headers(auth: DeviceAuth | null, accept: string): Record<string, string
 	return h;
 }
 
+/** The device couldn't be reached at all (as opposed to answering something unexpected): its other sensors won't answer either. */
+export class DeviceUnreachable extends Error {}
+
+/**
+ * What everyone but an admin is told when a device can't be read (#212): the
+ * same words whether nothing is there, something else answered, or it timed
+ * out, so the messages can't be used to map the server's network.
+ */
+const general = (url: string) => `Waterline couldn't read an ESPHome device at ${url}. Check the address, that its web server is on, and its username and password if it has them.`;
+
 /** What went wrong reaching the device, in the keeper's words. */
 function reason(e: unknown, url: string): string {
 	if (e instanceof Error) {
+		if (e instanceof TypeError && /redirect/i.test(String((e as Error & { cause?: unknown }).cause ?? e.message))) return `${url} sends Waterline somewhere else, which it doesn't follow.`;
 		if (e.name === 'AbortError' || e.name === 'TimeoutError') return `${url} didn't answer in time.`;
 		const cause = (e as Error & { cause?: { code?: string } }).cause;
 		if (cause?.code === 'ECONNREFUSED') return `Nothing is listening at ${url}.`;
@@ -123,7 +142,16 @@ function statusProblem(status: number, url: string): string {
  * ESPHome web server sends the title and every entity's current state on
  * connecting. Throws, in plain words, when it can't be read.
  */
-export async function discoverEsphome(base: string, auth: DeviceAuth | null, fetcher: typeof fetch = fetch, waitMs = DISCOVER_MS): Promise<{ title: string | null; sensors: FoundSensor[] }> {
+export async function discoverEsphome(base: string, auth: DeviceAuth | null, fetcher: typeof fetch = fetch, waitMs = DISCOVER_MS, detail = true): Promise<{ title: string | null; sensors: FoundSensor[] }> {
+	try {
+		return await discover(base, auth, fetcher, waitMs);
+	} catch (e) {
+		if (detail) throw e;
+		throw new Error(general(base));
+	}
+}
+
+async function discover(base: string, auth: DeviceAuth | null, fetcher: typeof fetch, waitMs: number): Promise<{ title: string | null; sensors: FoundSensor[] }> {
 	// the stream never ends on its own: the wait is the deadline for connecting and for reading
 	const ctl = new AbortController();
 	let timer: ReturnType<typeof setTimeout> | undefined;
@@ -139,7 +167,7 @@ export async function discoverEsphome(base: string, auth: DeviceAuth | null, fet
 	try {
 		let res: Response;
 		try {
-			res = await Promise.race([fetcher(`${base}/events`, { headers: headers(auth, 'text/event-stream'), signal: ctl.signal }), deadline]);
+			res = await Promise.race([fetcher(`${base}/events`, { headers: headers(auth, 'text/event-stream'), signal: ctl.signal, redirect: 'error' }), deadline]);
 		} catch (e) {
 			throw new Error(reason(e instanceof Error && e.message === 'deadline' ? Object.assign(new Error(), { name: 'TimeoutError' }) : e, base));
 		}
@@ -183,19 +211,36 @@ export async function discoverEsphome(base: string, auth: DeviceAuth | null, fet
 }
 
 /** One sensor's current value, from the device's web page. */
-export async function readEsphomeSensor(base: string, s: Pick<PolledSensor, 'objectId' | 'name' | 'unit'>, auth: DeviceAuth | null, fetcher: typeof fetch = fetch): Promise<FoundSensor> {
+export async function readEsphomeSensor(base: string, s: Pick<PolledSensor, 'objectId' | 'name' | 'unit'>, auth: DeviceAuth | null, fetcher: typeof fetch = fetch, detail = true): Promise<FoundSensor> {
+	try {
+		return await readSensor(base, s, auth, fetcher);
+	} catch (e) {
+		if (detail) throw e;
+		// the same words for everything, but still known as unreachable to whoever is counting
+		throw e instanceof DeviceUnreachable ? new DeviceUnreachable(general(base)) : new Error(general(base));
+	}
+}
+
+async function readSensor(base: string, s: Pick<PolledSensor, 'objectId' | 'name' | 'unit'>, auth: DeviceAuth | null, fetcher: typeof fetch): Promise<FoundSensor> {
 	const url = `${base}/sensor/${s.objectId}`;
 	let res: Response;
 	try {
-		res = await fetcher(`${url}?detail=all`, { headers: headers(auth, 'application/json'), signal: AbortSignal.timeout(READ_MS) });
+		res = await fetcher(`${url}?detail=all`, { headers: headers(auth, 'application/json'), signal: AbortSignal.timeout(READ_MS), redirect: 'error' });
 	} catch (e) {
-		throw new Error(reason(e, base));
+		throw new DeviceUnreachable(reason(e, base));
 	}
-	if (!res.ok) throw new Error(res.status === 404 ? `The device has no sensor "${s.name}" any more.` : statusProblem(res.status, url));
+	if (!res.ok) {
+		await res.body?.cancel().catch(() => {});
+		throw new Error(res.status === 404 ? `The device has no sensor "${s.name}" any more.` : statusProblem(res.status, url));
+	}
 	let j: unknown;
 	try {
-		j = await res.json();
-	} catch {
+		// a sensor's JSON is a few hundred bytes: anything long isn't one, and isn't read to its end
+		j = JSON.parse(await readCappedText(res, MAX_BYTES));
+	} catch (e) {
+		if (e instanceof BodyTooLarge) throw new Error(`${url} sent far more than a sensor's JSON.`);
+		// the connection dropped or timed out while it was answering
+		if (!(e instanceof SyntaxError)) throw new DeviceUnreachable(reason(e, base));
 		throw new Error(`${url} didn't answer with a sensor's JSON.`);
 	}
 	const found = sensorFromJson(j, { name: s.name, unit: s.unit });
@@ -243,6 +288,12 @@ export function listDevicePolls(userId: string): DevicePollView[] {
 	return db.select().from(devicePolls).where(eq(devicePolls.userId, userId)).orderBy(desc(devicePolls.createdAt)).all().map(view);
 }
 
+/** Each sensor once, the first time it's named. */
+export function uniqueSensors<T extends { objectId: string }>(sensors: T[]): T[] {
+	const seen = new Set<string>();
+	return sensors.filter((s) => !seen.has(s.objectId) && seen.add(s.objectId));
+}
+
 export function createDevicePoll(userId: string, input: { tankId: string; name: string; url: string; sensors: PolledSensor[]; auth: DeviceAuth | null }): DevicePollView {
 	const row = db
 		.insert(devicePolls)
@@ -253,7 +304,7 @@ export function createDevicePoll(userId: string, input: { tankId: string; name: 
 			url: input.url,
 			username: input.auth?.username || null,
 			passwordEnc: input.auth ? encrypt(input.auth.password) : null,
-			sensors: input.sensors
+			sensors: uniqueSensors(input.sensors).slice(0, MAX_SENSORS)
 		})
 		.returning()
 		.get();
@@ -281,23 +332,36 @@ export interface PollResult {
 /**
  * One run for a device: read each mapped sensor and store what it reports as
  * the tank's sensor readings, with the device's name as the source. A sensor
- * with no value (ESPHome's NA) stores nothing and isn't a problem.
+ * with no value (ESPHome's NA) stores nothing and isn't a problem. A device
+ * that can't be reached is given up on at its first sensor, and one that
+ * answers slowly gets 20 seconds in all (#211), so a dead device costs a run
+ * one wait, not one per sensor. Readings are stamped when they were read
+ * (`when` sets the time in tests).
  */
-export async function pollDevice(id: string, fetcher: typeof fetch = fetch, now = Date.now()): Promise<PollResult> {
+export async function pollDevice(id: string, fetcher: typeof fetch = fetch, when?: number): Promise<PollResult> {
 	const row = db.select().from(devicePolls).where(eq(devicePolls.id, id)).get();
 	if (!row) return { ok: false, stored: 0, error: 'Not found' };
 	const auth = authOf(row);
+	// what went wrong is spelled out for an admin; everyone else gets one general message (#212)
+	const detail = !!db.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, row.userId)).get()?.isAdmin;
 	const samples: { parameter: string; value: number; unit: string | null }[] = [];
 	const problems: string[] = [];
-	for (const s of row.sensors) {
+	const started = Date.now();
+	for (const s of row.sensors.slice(0, MAX_SENSORS)) {
+		if (Date.now() - started > DEVICE_MS) {
+			problems.push(`${row.name} took too long to answer: not all of its sensors were read.`);
+			break;
+		}
 		try {
-			const found = await readEsphomeSensor(row.url, s, auth, fetcher);
+			const found = await readEsphomeSensor(row.url, s, auth, fetcher, detail);
 			if (found.value == null) continue;
 			samples.push({ parameter: s.parameter, value: found.value, unit: found.unit ?? s.unit });
 		} catch (e) {
 			problems.push(e instanceof Error ? e.message : String(e));
+			if (e instanceof DeviceUnreachable) break;
 		}
 	}
+	const now = when ?? Date.now();
 	let stored = 0;
 	if (samples.length) {
 		for (const r of recordSamples(row.tankId, samples, row.name, null, now)) {
@@ -314,13 +378,35 @@ export async function pollDevice(id: string, fetcher: typeof fetch = fetch, now 
 	return { ok, stored, error: ok ? null : problems[0] };
 }
 
-/** Every polled device, one after another: the scheduler's run. Logged once when a device stops answering. */
-export async function pollAllDevices(fetcher: typeof fetch = fetch, now = Date.now()): Promise<void> {
+/**
+ * Every polled device of a tank that isn't archived: the scheduler's run. A
+ * few at a time, each stamped when it was read, and for two minutes at most:
+ * what's left then waits for the next run, the ones read longest ago first
+ * (#211). Logged once when a device stops answering.
+ */
+export async function pollAllDevices(fetcher: typeof fetch = fetch, when?: number, budgetMs = RUN_MS): Promise<void> {
 	if (pollingOff()) return;
-	const rows = db.select({ id: devicePolls.id, name: devicePolls.name, userId: devicePolls.userId, tankId: devicePolls.tankId, lastError: devicePolls.lastError }).from(devicePolls).all();
-	for (const row of rows) {
-		const r = await pollDevice(row.id, fetcher, now);
-		if (!r.ok && !row.lastError) logger.warn('sensors', `Couldn't read ${row.name}: ${r.error}`, { userId: row.userId, tankId: row.tankId });
-		else if (r.ok && row.lastError) logger.info('sensors', `${row.name} answers again`, { userId: row.userId, tankId: row.tankId });
-	}
+	const rows = db
+		.select({ id: devicePolls.id, name: devicePolls.name, userId: devicePolls.userId, tankId: devicePolls.tankId, lastError: devicePolls.lastError })
+		.from(devicePolls)
+		.innerJoin(tanks, eq(tanks.id, devicePolls.tankId))
+		.where(isNull(tanks.archivedAt))
+		.orderBy(devicePolls.lastPolledAt)
+		.all();
+	const started = Date.now();
+	let next = 0;
+	const worker = async () => {
+		while (next < rows.length && Date.now() - started < budgetMs) {
+			const row = rows[next++];
+			try {
+				const r = await pollDevice(row.id, fetcher, when);
+				if (!r.ok && !row.lastError) logger.warn('sensors', `Couldn't read ${row.name}: ${r.error}`, { userId: row.userId, tankId: row.tankId });
+				else if (r.ok && row.lastError) logger.info('sensors', `${row.name} answers again`, { userId: row.userId, tankId: row.tankId });
+			} catch (e) {
+				logger.error('sensors', `Reading ${row.name} failed`, { userId: row.userId, tankId: row.tankId, error: e });
+			}
+		}
+	};
+	await Promise.all(Array.from({ length: Math.min(AT_ONCE, rows.length) }, worker));
+	if (next < rows.length) logger.warn('sensors', `Reading devices took over ${Math.round(budgetMs / 60_000)} minutes: ${rows.length - next} wait for the next run`);
 }

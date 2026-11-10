@@ -7,12 +7,17 @@ import { describe, expect, it, vi } from 'vitest';
 // minutes, with no token or Home Assistant in between.
 const dir = mkdtempSync(join(tmpdir(), 'wl-devices-'));
 vi.mock('$env/dynamic/private', () => ({ env: { DATA_DIR: dir } }));
-const { createDevicePoll, discoverEsphome, guessParameter, listDevicePolls, parseDeviceUrl, parseEvents, pollAllDevices, pollDevice, readEsphomeSensor, removeDevicePoll, sensorFromJson } = await import('./devices');
+const { db } = await import('./db');
+const { users } = await import('./db/schema');
+const { eq } = await import('drizzle-orm');
+const { createDevicePoll, DeviceUnreachable, MAX_SENSORS, discoverEsphome, guessParameter, listDevicePolls, parseDeviceUrl, parseEvents, pollAllDevices, pollDevice, readEsphomeSensor, removeDevicePoll, sensorFromJson } = await import('./devices');
 const { latestSamples } = await import('./sensors');
-const { createTank, listParams } = await import('./tanks');
+const { createTank, listParams, setArchived } = await import('./tanks');
 const { upsertUser } = await import('./users');
 
 const user = upsertUser({ email: 'apollo@example.com', name: 'Apollo', googleSub: 'g-apollo' });
+// an admin is told exactly what went wrong with a device; what everyone else is told is further down
+db.update(users).set({ isAdmin: true }).where(eq(users.id, user.id)).run();
 const tank = createTank(user, { name: 'Shrimp bowl', type: 'freshwater', nominalVolumeL: 10 });
 const temp = listParams(tank.id).find((p) => p.key === 'temp')!;
 
@@ -162,5 +167,130 @@ describe('polled devices', () => {
 		expect(removeDevicePoll('someone-else', row.id)).toBeNull();
 		expect(listDevicePolls(user.id)).toEqual([]);
 		expect(await pollDevice(row.id, d.fetcher)).toMatchObject({ ok: false, error: 'Not found' });
+	});
+});
+
+// ── What a signed-in person who isn't the admin can do with it (#211, #212) ──
+
+const keeper = upsertUser({ email: 'keeper@example.com', name: 'Keeper', googleSub: 'g-keeper' });
+const bowl = createTank(keeper, { name: 'Bowl', type: 'freshwater', nominalVolumeL: 10 });
+const sensorsNamed = (...ids: string[]) => ids.map((objectId) => ({ objectId, name: objectId, parameter: 'temp', unit: '°C' }));
+/** A fetcher that fails as fetch does when nothing answers. */
+const refused = () => {
+	let calls = 0;
+	const fetcher = (async () => {
+		calls++;
+		throw Object.assign(new TypeError('fetch failed'), { cause: { code: 'ECONNREFUSED' } });
+	}) as unknown as typeof fetch;
+	return { fetcher, calls: () => calls };
+};
+const GENERAL = "Waterline couldn't read an ESPHome device at http://probe. Check the address, that its web server is on, and its username and password if it has them.";
+
+describe('a device is read without following it elsewhere or taking all it sends (#212)', () => {
+	it('never follows a redirect, when finding a device or reading it', async () => {
+		const seen: (string | undefined)[] = [];
+		const d = device();
+		const fetcher = ((input: string | URL | Request, init?: RequestInit) => {
+			seen.push(init?.redirect);
+			return d.fetcher(input, init);
+		}) as typeof fetch;
+		await discoverEsphome('http://probe', null, fetcher);
+		await readEsphomeSensor('http://probe', { objectId: 'temperature_probe', name: 'T', unit: null }, null, fetcher);
+		expect(seen).toEqual(['error', 'error']);
+	});
+
+	it('stops reading an answer far longer than a sensor’s JSON', async () => {
+		let sent = 0;
+		const fetcher = (async () =>
+			new Response(
+				new ReadableStream<Uint8Array>({
+					pull(c) {
+						sent++;
+						c.enqueue(new Uint8Array(64 * 1024).fill(32));
+					}
+				})
+			)) as unknown as typeof fetch;
+		await expect(readEsphomeSensor('http://probe', { objectId: 'x', name: 'X', unit: null }, null, fetcher)).rejects.toThrow("sent far more than a sensor's JSON");
+		expect(sent).toBeLessThan(10);
+	});
+
+	it('tells an admin what went wrong, and everyone else the same thing whatever it was', async () => {
+		const s = { objectId: 'temperature_probe', name: 'T', unit: null };
+		await expect(readEsphomeSensor('http://probe', s, null, refused().fetcher)).rejects.toThrow('Nothing is listening at http://probe.');
+		const told: string[] = [];
+		const why = (e: unknown) => told.push((e as Error).message);
+		await readEsphomeSensor('http://probe', s, null, refused().fetcher, false).catch(why);
+		await readEsphomeSensor('http://probe', s, null, device({ status: 500 }).fetcher, false).catch(why);
+		await readEsphomeSensor('http://probe', { ...s, objectId: 'gone' }, null, device().fetcher, false).catch(why);
+		await discoverEsphome('http://probe', null, refused().fetcher, 200, false).catch(why);
+		await discoverEsphome('http://probe', null, device({ status: 404 }).fetcher, 200, false).catch(why);
+		await discoverEsphome('http://probe', null, device({ auth: 'Basic nope' }).fetcher, 200, false).catch(why);
+		await discoverEsphome('http://probe', null, (async () => new Response('<html>hello</html>')) as unknown as typeof fetch, 200, false).catch(why);
+		expect(told).toEqual(Array(7).fill(GENERAL));
+	});
+
+	it('keeps that general message with the device of someone who isn’t an admin', async () => {
+		const row = createDevicePoll(keeper.id, { tankId: bowl.id, name: 'Probe', url: 'http://probe', sensors: sensorsNamed('temperature_probe'), auth: null });
+		expect(await pollDevice(row.id, device({ status: 500 }).fetcher)).toMatchObject({ ok: false, error: GENERAL });
+		expect(listDevicePolls(keeper.id)[0].lastError).toBe(GENERAL);
+		removeDevicePoll(keeper.id, row.id);
+	});
+});
+
+describe('one device can’t hold a run up (#211)', () => {
+	it('keeps each sensor once, and 32 at most', () => {
+		const many = sensorsNamed('a', 'b', 'a', ...Array.from({ length: 50 }, (_, i) => `s${i}`));
+		const row = createDevicePoll(keeper.id, { tankId: bowl.id, name: 'Many', url: 'http://probe', sensors: many, auth: null });
+		expect(row.sensors).toHaveLength(MAX_SENSORS);
+		expect(row.sensors.slice(0, 3).map((s) => s.objectId)).toEqual(['a', 'b', 's0']);
+		removeDevicePoll(keeper.id, row.id);
+	});
+
+	it('gives up on a device that can’t be reached at its first sensor', async () => {
+		const row = createDevicePoll(keeper.id, { tankId: bowl.id, name: 'Dead', url: 'http://probe', sensors: sensorsNamed('a', 'b', 'c', 'd', 'e'), auth: null });
+		const dead = refused();
+		expect(await pollDevice(row.id, dead.fetcher)).toMatchObject({ ok: false, stored: 0 });
+		expect(dead.calls()).toBe(1);
+		await expect(readEsphomeSensor('http://probe', { objectId: 'a', name: 'A', unit: null }, null, dead.fetcher, false)).rejects.toBeInstanceOf(DeviceUnreachable);
+		// one that answers, just not with a sensor, is asked for each: the others may be fine
+		const odd = device({ status: 500 });
+		await pollDevice(row.id, odd.fetcher);
+		expect(odd.calls).toHaveLength(5);
+		removeDevicePoll(keeper.id, row.id);
+	});
+
+	it('reads a few devices at a time, stamps each when it was read, and leaves an archived tank’s alone', async () => {
+		const shelf = createTank(keeper, { name: 'Shelf', type: 'freshwater', nominalVolumeL: 10 });
+		const rows = Array.from({ length: 9 }, (_, i) => createDevicePoll(keeper.id, { tankId: bowl.id, name: `Probe ${i}`, url: `http://probe-${i}`, sensors: sensorsNamed('temperature_probe'), auth: null }));
+		const archived = createDevicePoll(keeper.id, { tankId: shelf.id, name: 'Shelved', url: 'http://shelved', sensors: sensorsNamed('temperature_probe'), auth: null });
+		setArchived(keeper.id, shelf.id, true);
+		let inFlight = 0;
+		let most = 0;
+		const hosts: string[] = [];
+		const d = device();
+		const fetcher = (async (input: string | URL | Request, init?: RequestInit) => {
+			hosts.push(new URL(String(input)).hostname);
+			most = Math.max(most, ++inFlight);
+			await new Promise((r) => setTimeout(r, 15));
+			inFlight--;
+			return d.fetcher(input, init);
+		}) as typeof fetch;
+		const before = Date.now();
+		await pollAllDevices(fetcher);
+		expect(hosts.toSorted()).toEqual(rows.map((_, i) => `probe-${i}`));
+		expect(most).toBeGreaterThan(1);
+		expect(most).toBeLessThanOrEqual(4);
+		const polled = listDevicePolls(keeper.id);
+		expect(polled.find((p) => p.id === archived.id)?.lastPolledAt).toBeNull();
+		const times = polled.filter((p) => p.id !== archived.id).map((p) => Date.parse(p.lastPolledAt!));
+		expect(Math.min(...times)).toBeGreaterThanOrEqual(before);
+		// not one time for the whole run: the last was read after the first
+		expect(Math.max(...times)).toBeGreaterThan(Math.min(...times));
+
+		// out of time: none is started, and they wait for the next run
+		hosts.length = 0;
+		await pollAllDevices(fetcher, undefined, 0);
+		expect(hosts).toEqual([]);
+		for (const r of [...rows, archived]) removeDevicePoll(keeper.id, r.id);
 	});
 });
