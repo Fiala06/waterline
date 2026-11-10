@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.21.6 · 2026-11-10
+
 - **Late doses and reminders aren't skipped.** A doser's dose set for the last few minutes before midnight could be missed every day; it's now logged just after midnight, for its own day. A weekly digest the server missed on Monday now comes on Tuesday instead of not at all: [Equipment](/tanks/current/equipment).
 - **A refused save keeps what you typed.** If Equipment or a water test can't be saved, the form comes back as you filled it in, with the note, even without scripts. A plant's sheet stays open with its error, and the first field that needs fixing is brought into view: [Plants](/tanks/current/plants).
 - **Undo a plant's Remove.** Removing a plant now offers Undo in the message that follows, and History drops the removal: [Plants](/tanks/current/plants).
