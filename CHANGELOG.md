@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.21.5 · 2026-11-10
+
 - **⌘↵ saves the form.** ⌘↵ (Ctrl+Enter on Windows and Linux) now saves the form you're in, as the shortcuts sheet always said, including the water test, where Enter moves on to the next reading: [Log water test](/entries/test/new).
 - **Mark done counts once.** A quick double tap on Mark done used to mark the task done twice, with two entries in History. The button now waits for the first tap to finish: [Tasks](/tasks).
 - **Charts opens on your range.** Charts now opens on the time range you chose last time, as History does: [Charts](/charts).
