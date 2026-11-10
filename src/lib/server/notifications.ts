@@ -138,10 +138,10 @@ function badReadings(tankId: string, user: User) {
 const reviewUrl = (t: { tankId: string }, base: string) => `${base}/tanks/${t.tankId}/review`;
 
 /** A task's push notification, with Mark done and Snooze (one-time links, made only when it's sent). */
-function taskNotice(t: { id: string; name: string; kind: string; tankId: string; tankName: string; nextDue: string | null }, days: number, lastDoneText: string | null, base: string): Notice {
+function taskNotice(user: Pick<User, 'id'>, t: { id: string; name: string; kind: string; tankId: string; tankName: string; nextDue: string | null }, days: number, lastDoneText: string | null, base: string): Notice {
 	const overdue = days < 0;
 	const review = t.kind === 'review';
-	const snooze = { action: 'snooze' as const, title: 'Snooze', url: `${base}/e/${createActionToken(t.id, 'snooze', t.nextDue!)}`, result: `Snoozed ${t.name} for a day` };
+	const snooze = { action: 'snooze' as const, title: 'Snooze', url: `${base}/e/${createActionToken(t.id, 'snooze', t.nextDue!, user.id)}`, result: `Snoozed ${t.name} for a day` };
 	return {
 		kind: overdue ? 'overdue' : 'reminder',
 		title: `${whenText(days)}: ${t.name}`,
@@ -151,7 +151,7 @@ function taskNotice(t: { id: string; name: string; kind: string; tankId: string;
 		tag: `task-${t.id}`,
 		actions: review
 			? [snooze]
-			: [{ action: 'done', title: 'Mark done', url: `${base}/e/${createActionToken(t.id, 'done', t.nextDue!)}`, result: `✓ ${t.name} done` }, snooze]
+			: [{ action: 'done', title: 'Mark done', url: `${base}/e/${createActionToken(t.id, 'done', t.nextDue!, user.id)}`, result: `✓ ${t.name} done` }, snooze]
 	};
 }
 
@@ -196,7 +196,7 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 			if (overdue ? !prefs.pushOverdueAlerts : !prefs.pushTaskReminders || d.days > leadFor(t)) continue;
 			if (overdue && isRoutine(t.kind)) continue;
 			const key = `${overdue ? 'overdue' : 'reminder'}:${t.id}:${t.due}`;
-			const ok = await pushOnce(user, prefs, key, () => taskNotice(t, d.days, overdue ? lastDone(t.id, today, tz) : null, base), base);
+			const ok = await pushOnce(user, prefs, key, () => taskNotice(user, t, d.days, overdue ? lastDone(t.id, today, tz) : null, base), base);
 			if (ok) sent++;
 		}
 	}
@@ -223,9 +223,9 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 						dueDate: longDate(t.due),
 						repeats: cap(intervalText(t)),
 						lastDone: overdue ? lastDone(t.id, today, tz) : null,
-						doneUrl: t.kind === 'review' ? reviewUrl(t, base) : `${base}/e/${createActionToken(t.id, 'done', t.nextDue!)}`,
+						doneUrl: t.kind === 'review' ? reviewUrl(t, base) : `${base}/e/${createActionToken(t.id, 'done', t.nextDue!, user.id)}`,
 						review: t.kind === 'review',
-						snoozeUrl: `${base}/e/${createActionToken(t.id, 'snooze', t.nextDue!)}`,
+						snoozeUrl: `${base}/e/${createActionToken(t.id, 'snooze', t.nextDue!, user.id)}`,
 						dashboardUrl: `${base}/?tank=${t.tankId}`,
 						footer: footer(user, `You're getting this because ${overdue ? 'overdue alerts' : 'task reminders'} are on.`, base)
 					}),
@@ -262,7 +262,7 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 				due: d.section === 'overdue' ? `✕ ${whenText(d.days).replace('Overdue by', 'Overdue')}` : d.days < 0 ? d.text : d.days === 0 ? '▲ Due today' : `▲ Due ${longDate(t.due)}`,
 				level: d.section === 'overdue' ? ('bad' as const) : ('warn' as const),
 				// a function, so tokens are only made when the digest is really sent
-				doneUrl: () => (t.kind === 'review' ? reviewUrl(t, base) : `${base}/e/${createActionToken(t.id, 'done', t.nextDue!)}`),
+				doneUrl: () => (t.kind === 'review' ? reviewUrl(t, base) : `${base}/e/${createActionToken(t.id, 'done', t.nextDue!, user.id)}`),
 				review: t.kind === 'review'
 			})),
 			readings,

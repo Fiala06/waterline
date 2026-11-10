@@ -7,6 +7,7 @@ import { createWriteStream, mkdirSync, readdirSync, rmSync, statSync } from 'nod
 import { join } from 'node:path';
 import yazl from 'yazl';
 import { env } from '$env/dynamic/private';
+import { safeCell } from '$lib/csv';
 import { displayValue, paramDecimals, paramUnit } from '$lib/params';
 import { formatNumber } from '$lib/units';
 import { utcToZoned } from '$lib/time';
@@ -314,10 +315,6 @@ const slug = (s: string) =>
 		.replace(/^-|-$/g, '')
 		.slice(0, 40) || 'tank';
 
-function csvCell(v: string) {
-	return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
-}
-
 /** One row per test, values in the user's units. Columns: date, time, tank, each parameter, note. */
 export function testsCsv(user: User, list: Tank[], d: ReturnType<typeof dataFor>) {
 	const cols: { key: string; header: string }[] = [];
@@ -331,7 +328,7 @@ export function testsCsv(user: User, list: Tank[], d: ReturnType<typeof dataFor>
 			cols.push({ key, header: `${p.name}${unit ? ` (${unit})` : ''}` });
 		}
 	}
-	const lines = [['Date', 'Time', 'Tank', ...cols.map((c) => c.header), 'Note'].map(csvCell).join(',')];
+	const lines = [['Date', 'Time', 'Tank', ...cols.map((c) => c.header), 'Note'].map(safeCell).join(',')];
 	const tankName = new Map(list.map((t) => [t.id, t.name]));
 	for (const t of d.allTests) {
 		const byParam = new Map(d.params(t.tankId).map((p) => [p.id, p]));
@@ -344,7 +341,7 @@ export function testsCsv(user: User, list: Tank[], d: ReturnType<typeof dataFor>
 		}
 		const when = utcToZoned(t.takenAt, user.timeZone);
 		lines.push(
-			[when.date, when.time, tankName.get(t.tankId) ?? '', ...cols.map((c) => values.get(c.key) ?? ''), t.note ?? ''].map(csvCell).join(',')
+			[when.date, when.time, tankName.get(t.tankId) ?? '', ...cols.map((c) => values.get(c.key) ?? ''), t.note ?? ''].map(safeCell).join(',')
 		);
 	}
 	return lines.join('\n') + '\n';

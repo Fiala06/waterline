@@ -7,6 +7,8 @@ import type { Actions, PageServerLoad } from './$types';
 
 // Mark done / Snooze links from reminder emails. GET only shows a confirm page,
 // because mail scanners open links; the POST does the work. No sign-in needed.
+// The link acts as the person the reminder was sent to (#216), for as long as
+// they may still log on the tank: History says who marked it done.
 export const load: PageServerLoad = ({ params }) => {
 	const { state, row } = readActionToken(params.token);
 	if (!row) return { state, task: null };

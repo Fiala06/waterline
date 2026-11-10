@@ -1,7 +1,7 @@
 // Bulk import from a spreadsheet (CSV): each list's template, reading its
 // columns by name in any order, and checking every row before anything is
 // saved. No database here; import.ts compares with the tank and saves.
-import { csvDelimiter, parseCsv, toCsv } from '$lib/csv';
+import { csvDelimiter, parseCsv, toCsv, unguardCell } from '$lib/csv';
 import {
 	EQUIPMENT_TYPE_LABEL,
 	EQUIPMENT_TYPES,
@@ -703,7 +703,8 @@ export function readColumns(text: string, columns: Column[], need: { key: string
 	if (lines.length > maxRows) return { error: `That's more than ${maxRows} rows. Split it into smaller files.` };
 	const cellsOf = (cells: string[]) => {
 		const c: Cells = {};
-		for (const [i, col] of found) c[col.key] = (cells[i] ?? '').trim();
+		// a cell the export guarded against running as a formula comes back as it was typed (#221)
+		for (const [i, col] of found) c[col.key] = unguardCell((cells[i] ?? '').trim());
 		return c;
 	};
 	// decided once for the file, from the cells of the columns that are read

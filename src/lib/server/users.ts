@@ -3,6 +3,7 @@ import { and, eq, inArray, isNotNull, isNull, notInArray } from 'drizzle-orm';
 import { VERSION } from '$lib/changelog';
 import { db } from './db';
 import {
+	actionTokens,
 	assistantTokens,
 	devicePolls,
 	calendarFeeds,
@@ -96,6 +97,8 @@ export const USER_LINKS = {
 	'invites.invited_by': 'move',
 	'invites.accepted_user_id': 'move',
 	'tank_members.invited_by': 'move',
+	// the Mark done and Snooze links in reminders they were sent (#216): still theirs
+	'action_tokens.user_id': 'move',
 	// access to other keepers' tanks: one active membership per tank, the higher role; none on a tank they now own
 	'tank_members.user_id': 'merge',
 	// one calendar feed each: the kept account's, or the other's when it has none
@@ -133,6 +136,7 @@ function joinAccounts(keep: User, from: User): User {
 		tx.update(invites).set({ invitedBy: keep.id }).where(eq(invites.invitedBy, from.id)).run();
 		tx.update(invites).set({ acceptedUserId: keep.id }).where(eq(invites.acceptedUserId, from.id)).run();
 		tx.update(tankMembers).set({ invitedBy: keep.id }).where(eq(tankMembers.invitedBy, from.id)).run();
+		tx.update(actionTokens).set({ userId: keep.id }).where(eq(actionTokens.userId, from.id)).run();
 
 		// memberships: the kept account owns every tank either owned, and has one active membership per other tank
 		const owned = new Set(tx.select({ id: tanks.id }).from(tanks).where(eq(tanks.userId, keep.id)).all().map((t) => t.id));

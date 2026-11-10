@@ -4,7 +4,7 @@
 // a one-time code it swaps for an hour's access token plus a refresh token.
 // PKCE (S256) always; redirect addresses must match exactly.
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
-import { and, eq, isNotNull, isNull, lt, notExists, or } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, isNull, lt, notExists, or } from 'drizzle-orm';
 import { db } from '../db';
 import { assistantTokens, oauthClients, oauthCodes, type OAuthClient } from '../db/schema';
 import { hash, newToken, ownTanks } from './tokens';
@@ -29,6 +29,8 @@ export class OAuthError extends Error {
 
 const iso = (ms: number) => new Date(ms).toISOString();
 
+const NOT_AN_APP = ['javascript', 'data', 'file', 'vbscript', 'blob', 'about', 'ftp', 'ws', 'wss', 'intent', 'tel', 'sms', 'mailto', 'market', 'itms', 'itms-apps', 'view-source', 'chrome', 'edge'];
+
 /**
  * Where an app may be sent back to: https anywhere, http only on this
  * computer (apps on the desktop), or an app's own scheme; never one that runs
@@ -46,12 +48,30 @@ export function validRedirectUri(value: unknown): value is string {
 	const scheme = u.protocol.slice(0, -1);
 	if (scheme === 'https') return !!u.hostname;
 	if (scheme === 'http') return ['localhost', '127.0.0.1', '[::1]'].includes(u.hostname);
-	return /^[a-z][a-z0-9+.-]*$/.test(scheme) && !['javascript', 'data', 'file', 'vbscript', 'blob', 'about', 'ftp', 'ws', 'wss'].includes(scheme);
+	// an app's own scheme (cursor://, vscode://), never one the device itself acts on: a call, a message, another app's launcher
+	return /^[a-z][a-z0-9+.-]*$/.test(scheme) && !NOT_AN_APP.includes(scheme) && !scheme.startsWith('ms-');
 }
 
 // ── Registration (RFC 7591) ─────────────────────────────────────────────────
 
 const AUTH_METHODS = ['none', 'client_secret_post', 'client_secret_basic'] as const;
+
+/** Apps that may register in an hour, from everywhere together, and how many that never connected are kept (#215). */
+export const REGISTRATIONS_AN_HOUR = 200;
+export const MAX_UNCONNECTED = 500;
+
+const unconnected = () =>
+	and(
+		notExists(db.select().from(assistantTokens).where(eq(assistantTokens.clientId, oauthClients.id))),
+		notExists(db.select().from(oauthCodes).where(eq(oauthCodes.clientId, oauthClients.id)))
+	);
+
+/** Registered apps nobody connected are only kept so many deep: the oldest make room for a new one. */
+function trimUnconnected() {
+	const rows = db.select({ id: oauthClients.id }).from(oauthClients).where(unconnected()).orderBy(desc(oauthClients.createdAt), desc(oauthClients.id)).all();
+	const extra = rows.slice(MAX_UNCONNECTED - 1).map((r) => r.id);
+	if (extra.length) db.delete(oauthClients).where(inArray(oauthClients.id, extra)).run();
+}
 
 /** An app registers itself; the answer is what it needs to use. */
 export function registerClient(body: unknown) {
@@ -69,6 +89,7 @@ export function registerClient(body: unknown) {
 	}
 	const name = (typeof b.client_name === 'string' ? b.client_name : '').replace(/\s+/g, ' ').trim().slice(0, 80) || 'AI assistant';
 	const secret = method === 'none' ? null : randomBytes(32).toString('base64url');
+	trimUnconnected();
 	const client = db
 		.insert(oauthClients)
 		.values({ id: `wlc_${randomBytes(16).toString('base64url')}`, name, redirectUris: [...new Set(uris as string[])], secretHash: secret ? hash(secret) : null })
@@ -100,23 +121,20 @@ export interface AuthorizeRequest {
 }
 
 /**
- * Checks /oauth/authorize's query. A bad app or return address is shown on the
- * page (never redirected to); anything else goes back to the app as an error.
+ * Checks /oauth/authorize's query. Whatever is wrong with it is shown on the
+ * page, never sent back by redirect (#219): apps register themselves, so "the
+ * app's own address" is whatever anyone says it is, and a link that bounced
+ * straight there would make this server a trusted-looking hop to it. The only
+ * redirects are the keeper's own Allow and Cancel.
  */
-export function readAuthorize(q: URLSearchParams, origin: string): { ok: AuthorizeRequest } | { page: string } | { back: string } {
+export function readAuthorize(q: URLSearchParams, origin: string): { ok: AuthorizeRequest } | { page: string } {
 	const client = getClient(q.get('client_id'));
 	if (!client) return { page: "This app isn't registered with Waterline. Try connecting it again." };
 	const redirectUri = q.get('redirect_uri') ?? (client.redirectUris.length === 1 ? client.redirectUris[0] : '');
 	if (!client.redirectUris.includes(redirectUri)) return { page: "This app asked to return to an address it didn't register, so Waterline stopped here." };
 	const state = q.get('state');
-	const back = (error: string, description: string) => {
-		const u = new URL(redirectUri);
-		u.searchParams.set('error', error);
-		u.searchParams.set('error_description', description);
-		if (state) u.searchParams.set('state', state);
-		u.searchParams.set('iss', origin);
-		return { back: u.toString() };
-	};
+	const to = new URL(redirectUri).host || redirectUri.split(':')[0];
+	const back = (_error: string, description: string) => ({ page: `${client.name} sent a request Waterline can't use: ${description} You haven't been sent on to ${to}. Try connecting it again from the app.` });
 	if (q.get('response_type') !== 'code') return back('unsupported_response_type', 'Only response_type=code is supported.');
 	const challenge = q.get('code_challenge') ?? '';
 	if (q.get('code_challenge_method') !== 'S256' || !/^[A-Za-z0-9._~-]{43,128}$/.test(challenge)) {
@@ -276,17 +294,11 @@ export function refreshTokens(client: OAuthClient, form: URLSearchParams, now = 
 	return tokenResponse(access, next);
 }
 
-/** Tidy up: used or old codes, connections whose refresh token ran out, and apps with no connection for 30 days. */
+/** Tidy up: used or old codes, connections whose refresh token ran out, and apps registered over a day ago that nobody is connected with. */
 export function pruneOAuth(now = Date.now()) {
 	db.delete(oauthCodes).where(or(lt(oauthCodes.expiresAt, iso(now)), isNotNull(oauthCodes.usedAt))).run();
 	db.delete(assistantTokens).where(and(isNotNull(assistantTokens.clientId), lt(assistantTokens.refreshExpiresAt, iso(now)))).run();
 	db.delete(oauthClients)
-		.where(
-			and(
-				lt(oauthClients.createdAt, iso(now - 30 * 86_400_000)),
-				notExists(db.select().from(assistantTokens).where(eq(assistantTokens.clientId, oauthClients.id))),
-				notExists(db.select().from(oauthCodes).where(eq(oauthCodes.clientId, oauthClients.id)))
-			)
-		)
+		.where(and(lt(oauthClients.createdAt, iso(now - 86_400_000)), unconnected()))
 		.run();
 }

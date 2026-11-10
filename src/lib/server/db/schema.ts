@@ -500,7 +500,12 @@ export const actionTokens = sqliteTable('action_tokens', {
 	action: text('action', { enum: ['done', 'snooze'] }).notNull(),
 	due: text('due').notNull(), // the occurrence the email was about
 	expiresAt: text('expires_at').notNull(),
-	usedAt: text('used_at')
+	usedAt: text('used_at'),
+	/**
+	 * who the reminder went to (#216): the link acts as them; null on links from before. Not a
+	 * foreign key (a column added to a table can't cascade in SQLite): a link whose person is gone reads as invalid
+	 */
+	userId: text('user_id')
 });
 
 /** What was emailed, so the scheduler never sends the same thing twice. */

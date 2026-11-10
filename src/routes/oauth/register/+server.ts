@@ -1,16 +1,20 @@
 // An app registers itself before sending the keeper to sign in (RFC 7591).
 import { json } from '@sveltejs/kit';
 import { CORS, preflight } from '$lib/server/assistant/discovery';
-import { OAuthError, registerClient } from '$lib/server/assistant/oauth';
+import { OAuthError, registerClient, REGISTRATIONS_AN_HOUR } from '$lib/server/assistant/oauth';
 import { logger } from '$lib/server/log';
-import { allowRate } from '$lib/server/rate-limit';
+import { addressKey, allowRate } from '$lib/server/rate-limit';
 import type { RequestHandler } from './$types';
 
 const headers = { ...CORS, 'cache-control': 'no-store' };
 
 export const POST: RequestHandler = async ({ request, getClientAddress }) => {
-	if (!allowRate(`register:${getClientAddress()}`, 20)) {
+	if (!allowRate(`register:${addressKey(getClientAddress())}`, 20)) {
 		return json({ error: 'slow_down', error_description: 'Too many registrations from this address. Try again in an hour.' }, { status: 429, headers });
+	}
+	// and from everywhere together (#215): a pool of addresses doesn't get a fresh allowance each
+	if (!allowRate('register:*', REGISTRATIONS_AN_HOUR)) {
+		return json({ error: 'slow_down', error_description: 'Too many apps are registering. Try again in an hour.' }, { status: 429, headers });
 	}
 	let body: unknown;
 	try {

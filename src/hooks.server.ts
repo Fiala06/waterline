@@ -5,7 +5,7 @@ import { startScheduler } from '$lib/server/scheduler';
 import { cleanupExports, failInterruptedExports } from '$lib/server/export';
 import { sequence } from '@sveltejs/kit/hooks';
 import { checkAuthConfig, handle as authHandle } from './auth';
-import { clearLoginFailures, isLocalLoginPath, loginBlockedMinutes, recordLoginFailure } from '$lib/server/rate-limit';
+import { clearLoginFailures, isLocalLoginPath, loginBlockedMinutes, loginWaitSeconds, recordLoginFailure } from '$lib/server/rate-limit';
 import { getUser, maySignIn } from '$lib/server/users';
 import { touchLastSeen } from '$lib/server/people';
 import { publicSettings } from '$lib/server/public';
@@ -83,8 +83,8 @@ const httpCookies: Handle = ({ event, resolve }) => {
 const loginLimit: Handle = async ({ event, resolve }) => {
 	if (event.request.method !== 'POST' || !isLocalLoginPath(event.url.pathname)) return resolve(event);
 	const address = event.getClientAddress();
-	const wait = loginBlockedMinutes(address);
-	if (wait) return new Response('Too many sign-in attempts. Try again later.', { status: 429, headers: { 'retry-after': String(wait * 60) } });
+	const wait = loginBlockedMinutes(address) * 60 || loginWaitSeconds();
+	if (wait) return new Response('Too many sign-in attempts. Try again later.', { status: 429, headers: { 'retry-after': String(wait) } });
 	const res = await resolve(event);
 	if (/session-token=[^;]/.test(res.headers.get('set-cookie') ?? '')) clearLoginFailures(address);
 	else {

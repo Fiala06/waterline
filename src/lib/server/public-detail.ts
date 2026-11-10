@@ -5,6 +5,7 @@
 // log by day. Only what the owner's switches allow: with "Detail for people
 // helping me" off, days only (no times), no notes, no observations and no
 // schedule, as the page has always been.
+import { safeCell } from '$lib/csv';
 import { and, eq, isNull } from 'drizzle-orm';
 import { tankLighting, equipmentName, specSummary, scheduleLabel, hoursText, EQUIPMENT_TYPE_LABEL, type Schedule } from '$lib/equipment';
 import { eventKindLabel, eventTitle, WATER_SOURCES } from '$lib/events';
@@ -543,8 +544,8 @@ export function forumSummary(d: PublicDetail, v: { name: string; type: string; v
 
 /** The tests as CSV, one row per test and a column per parameter, for a spreadsheet. */
 export function testsCsv(d: PublicDetail) {
-	const q = (s: string) => (/[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
 	const head = ['When', ...d.testLog.columns.map((c) => (c.unit ? `${c.name} (${c.unit})` : c.name)), ...(d.details ? ['Note', 'Water change before'] : ['Water change before'])];
 	const rows = [...d.testLog.rows].reverse().map((r) => [r.when.replace(' · ', ' '), ...r.cells.map((c) => c?.v ?? ''), ...(d.details ? [r.note ?? ''] : []), r.changeBefore ? 'yes' : '']);
-	return [head, ...rows].map((r) => r.map(q).join(',')).join('\r\n') + '\r\n';
+	// notes and names are someone's typing: guarded as every export's are (#221)
+	return [head, ...rows].map((r) => r.map(safeCell).join(',')).join('\r\n') + '\r\n';
 }

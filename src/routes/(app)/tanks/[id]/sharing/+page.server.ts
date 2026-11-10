@@ -3,6 +3,7 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { TANK_ROLES, type TankRole } from '$lib/server/db/schema';
+import { revokeActionTokens } from '$lib/server/action-tokens';
 import { setFlash } from '$lib/server/flash';
 import { str } from '$lib/server/forms';
 import { createInvite, revokeShareInvite, validEmail } from '$lib/server/invites';
@@ -104,6 +105,8 @@ export const actions: Actions = {
 		const tank = getTank(user.id, params.id, 'owner');
 		const form = await request.formData();
 		const m = setMemberRole(tank.id, str(form, 'id'), parseRole(str(form, 'role')));
+		// view only now: the Mark done and Snooze links they were sent stop working (#216)
+		if (m.role === 'view' && m.userId) revokeActionTokens(m.userId, tank.id);
 		logger.info('settings', `${m.email} can now ${m.role === 'log' ? 'log care on' : 'view'} ${tank.name}`, { userId: user.id, tankId: tank.id });
 		setFlash(cookies, `✓ ${m.email} can ${m.role === 'log' ? 'log care' : 'view'}`);
 		redirect(303, `/tanks/${tank.id}/sharing`);
@@ -112,6 +115,8 @@ export const actions: Actions = {
 		const user = locals.user!;
 		const tank = getTank(user.id, params.id, 'owner');
 		const m = removeMember(tank.id, str(await request.formData(), 'id'));
+		// and so do the Mark done and Snooze links from reminders they were sent (#216)
+		if (m.userId) revokeActionTokens(m.userId, tank.id);
 		logger.info('settings', `${m.email} removed from ${tank.name}`, { userId: user.id, tankId: tank.id });
 		// a share cancelled before it was accepted: the way onto the server that came with it goes too (#217),
 		// unless another tank of theirs is still waiting on the same address

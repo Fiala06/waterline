@@ -27,7 +27,7 @@ const { getExport } = await import('./export');
 const { createShare, getPublicPage, getShareForPhoto, revokeShare, updatePublicPage, updateShare } = await import('./public');
 const { authenticateAssistant, authenticateSensor, createAssistantToken, revokeAssistantToken, setTokenTanks } = await import('./assistant/tokens');
 const { runTool, photoFor, ToolError } = await import('./assistant/tools');
-const { approve, exchangeCode, readAuthorize, refreshTokens, registerClient, getClient } = await import('./assistant/oauth');
+const { approve, exchangeCode, MAX_UNCONNECTED, readAuthorize, refreshTokens, registerClient, getClient } = await import('./assistant/oauth');
 const { makeFeed, readFeed } = await import('./calendar');
 const { signOutEverywhere } = await import('./people');
 const { getServerSettings } = await import('./mail');
@@ -497,6 +497,31 @@ const grantError = (fn: () => unknown) => {
 	}
 	return null;
 };
+
+describe('a request to connect that is wrong is shown, never sent on (#219)', () => {
+	it('answers with a page for every kind of bad request, and with the request when it is fine', () => {
+		const redirectUri = 'https://evil.example/landing';
+		const client = getClient(registerClient({ client_name: 'Friendly', redirect_uris: [redirectUri] }).client_id)!;
+		const ask = (over: Record<string, string>) =>
+			readAuthorize(new URLSearchParams({ client_id: client.id, redirect_uri: redirectUri, response_type: 'code', code_challenge: challenge, code_challenge_method: 'S256', ...over }), origin);
+		expect(ask({})).toHaveProperty('ok');
+		const wrongs: Record<string, string>[] = [{ response_type: 'x' }, { code_challenge_method: 'plain' }, { code_challenge: 'short' }, { scope: 'write' }, { resource: 'https://elsewhere.example/mcp' }];
+		for (const wrong of wrongs) {
+			const r = ask(wrong);
+			expect(r).not.toHaveProperty('back');
+			expect(r).toMatchObject({ page: expect.stringContaining("You haven't been sent on to evil.example") });
+		}
+	});
+
+	it('keeps only so many apps that never connected: the oldest make room', () => {
+		const first = registerClient({ client_name: 'Oldest', redirect_uris: ['https://a.example/cb'] }).client_id;
+		// one that someone is connecting stays, however old
+		const { client: connected } = signIn();
+		for (let i = 0; i < MAX_UNCONNECTED; i++) registerClient({ client_name: `App ${i}`, redirect_uris: ['https://a.example/cb'] });
+		expect(getClient(first)).toBeUndefined();
+		expect(getClient(connected.id)).toBeDefined();
+	});
+});
 
 describe('credentials expire and are single-use (OAuth sign-in)', () => {
 	it('a code is spent once: the second exchange is invalid_grant', async () => {

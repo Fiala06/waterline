@@ -31,6 +31,10 @@ export function checkAuthConfig() {
 	if (origin.startsWith('http://') && !/^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/.test(origin)) {
 		logger.warn('server', 'ORIGIN is plain http. Fine for a LAN-only server, but Google sign-in, offline logging and the install prompt need HTTPS.');
 	}
+	// behind a reverse proxy every visitor arrives from the proxy's address, so the sign-in limits would count them as one (#215)
+	if (origin.startsWith('https://') && !env.ADDRESS_HEADER) {
+		logger.warn('server', "ORIGIN is https, so there's probably a reverse proxy in front, but ADDRESS_HEADER isn't set: sign-in limits count every visitor as one. Set ADDRESS_HEADER=X-Forwarded-For and XFF_DEPTH=1.");
+	}
 	if (env.LOCAL_ADMIN_PASSWORD_HASH && !isValidPasswordHash(env.LOCAL_ADMIN_PASSWORD_HASH)) {
 		logger.error('server', "LOCAL_ADMIN_PASSWORD_HASH isn't a valid hash, so it's ignored. Create one with: hash-password (in the Docker container) or npm run hash-password");
 	}

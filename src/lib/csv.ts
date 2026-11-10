@@ -46,6 +46,18 @@ export function parseCsv(text: string): string[][] {
 
 const cell = (v: string) => (/[",\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
 
+/**
+ * A cell of text someone typed (a note, a name), for a file that will be
+ * opened in a spreadsheet (#221): one that starts with =, +, -, @, a tab or a
+ * return would run as a formula there, so it gets a leading apostrophe, which
+ * spreadsheets show as text. A number ("-0.5") is left as it is. Quoted as
+ * any cell is. `unguardCell` takes the apostrophe off again on import.
+ */
+export const safeCell = (v: string) => cell(/^[=+\-@\t\r]/.test(v) && !/^-?\d/.test(v) ? `'${v}` : v);
+
+/** A cell as it was before safeCell guarded it: "'=1+1" is "=1+1". Anything else is untouched. */
+export const unguardCell = (v: string) => (/^'[=+\-@\t\r]/.test(v) ? v.slice(1) : v);
+
 /** A CSV file, with a BOM so Excel reads it as UTF-8 ("°F", "CO₂"). */
 export function toCsv(rows: string[][]): string {
 	return '\uFEFF' + rows.map((r) => r.map(cell).join(',')).join('\r\n') + '\r\n';
