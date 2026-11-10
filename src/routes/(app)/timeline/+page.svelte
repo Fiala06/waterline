@@ -103,11 +103,11 @@
 							{@render readings(e.readings, e.tested, e.testId)}
 							<div class="acts">
 								{#if data.selected === e.id}
-									<span class="picked">✓ Picked · <a href={base}>Cancel</a></span>
+									<span class="picked">✓ Picked · <a href={base} data-sveltekit-noscroll>Cancel</a></span>
 								{:else if data.selected}
 									<a class="btn-text" href={link({ a: data.selected, b: e.id })}>Compare with this</a>
 								{:else}
-									<a class="btn-text" href={link({ a: e.id })}>Compare</a>
+									<a class="btn-text" href={link({ a: e.id })} data-sveltekit-noscroll>Compare</a>
 								{/if}
 							</div>
 						</div>

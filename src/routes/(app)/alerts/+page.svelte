@@ -66,7 +66,7 @@
 		<h1>Alerts</h1>
 	</div>
 
-	<div class="bar">
+	<div class="bar" data-sveltekit-noscroll data-sveltekit-keepfocus>
 		{#if data.tanks.length > 1}
 			<div class="seg-links hscroll tank-filter" role="group" aria-label="Filter by tank" use:hscroll={data.tank}>
 				<a class="seg-link" class:selected={!data.tank} aria-current={!data.tank ? 'true' : undefined} href={q({ tank: null })}>All tanks</a>

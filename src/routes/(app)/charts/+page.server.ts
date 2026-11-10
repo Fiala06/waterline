@@ -15,9 +15,10 @@ import { CHART_RANGES, equipmentTypeLookup, overlayKind, parseCompare } from '$l
 import { equipmentName } from '$lib/equipment';
 import { whatChanged } from '$lib/what-changed';
 import { listEquipment } from '$lib/server/specs';
+import { CHART_RANGE_COOKIE, rememberOptions } from '$lib/remember';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals, parent, url }) => {
+export const load: PageServerLoad = async ({ locals, parent, url, cookies, isDataRequest }) => {
 	const user = locals.user!;
 	const { currentTankId } = await parent();
 	if (!currentTankId) return { tank: null };
@@ -25,7 +26,11 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 	const latest = latestReadings(tank.id);
 	const params = listParams(tank.id, { all: true }).filter((p) => p.tracked || latest.has(p.id));
 
-	const range = CHART_RANGES.find((r) => r.key === url.searchParams.get('r')) ?? CHART_RANGES[1];
+	// the range chosen last time, as History's is (#266); kept on a real visit only, see $lib/remember
+	const asked = CHART_RANGES.find((r) => r.key === url.searchParams.get('r'));
+	const saved = CHART_RANGES.find((r) => r.key === cookies.get(CHART_RANGE_COOKIE));
+	const range = asked ?? saved ?? CHART_RANGES[1];
+	if (!isDataRequest && (asked || saved)) cookies.set(CHART_RANGE_COOKIE, range.key, rememberOptions);
 	const now = Date.now();
 	const since = range.days ? new Date(now - range.days * 86_400_000).toISOString() : '0000';
 
