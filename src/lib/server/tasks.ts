@@ -455,6 +455,26 @@ export function resumeTask(userId: string, taskId: string, timeZone: string) {
  * scheduler): pauses that are up resume, on the day they ended, and a cadence
  * for a while that has run its time goes back to the usual one, saying so in History.
  */
+// who has been settled today, and which day that was in their time zone (#242)
+const settledOn = new Map<string, string>();
+
+/**
+ * settleTasks at most once a day for each person (#242): the shell asks on
+ * every page, and the scheduler settles everyone every few minutes besides
+ * (settleEveryone), so a pause that ends during the day still ends.
+ */
+export function settleTasksDaily(userId: string, timeZone: string) {
+	const today = todayInZone(timeZone);
+	if (settledOn.get(userId) === today) return;
+	settleTasks(userId, timeZone);
+	settledOn.set(userId, today);
+}
+
+/** The scheduler's run: everyone's pauses, cadences for a while and plans that are up. */
+export function settleEveryone() {
+	for (const u of db.select({ id: users.id, timeZone: users.timeZone }).from(users).all()) settleTasks(u.id, u.timeZone);
+}
+
 export function settleTasks(userId: string, timeZone: string) {
 	const today = todayInZone(timeZone);
 	const mine = db

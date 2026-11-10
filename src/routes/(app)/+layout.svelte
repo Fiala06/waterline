@@ -2,7 +2,7 @@
 	// The app shell (redesign README → App shell): on desktop a sidebar of tanks
 	// and app-wide links beside a tank workspace with its header and tabs; on
 	// phones a header with the tank's name and a bottom bar with Log in the middle.
-	import { afterNavigate, goto, invalidateAll } from '$app/navigation';
+	import { afterNavigate, goto, invalidate, invalidateAll } from '$app/navigation';
 	import { onMount, tick } from 'svelte';
 	import InstallPrompt from '$lib/components/InstallPrompt.svelte';
 	import { discard, flushQueue, refreshQueue, retry } from '$lib/offline';
@@ -296,6 +296,26 @@
 		if (range && RANGES.some((r) => r.key === range)) remember(RANGE_COOKIE, range);
 		const chartRange = to.url.pathname === '/charts' ? to.url.searchParams.get('r') : null;
 		if (chartRange && CHART_RANGES.some((r) => r.key === chartRange)) remember(CHART_RANGE_COOKIE, chartRange);
+	});
+
+	// The shell's data (alerts, overdue counts, the tank list) isn't fetched again on every page
+	// any more (#242): back on the app after a while, it is, so the badges don't go stale.
+	let shellAt = Date.now();
+	$effect(() => {
+		// a new list only when the shell's load ran again
+		void data.alerts;
+		shellAt = Date.now();
+	});
+	onMount(() => {
+		const back = () => {
+			if (document.visibilityState === 'visible' && Date.now() - shellAt > 5 * 60_000) invalidate('app:shell');
+		};
+		document.addEventListener('visibilitychange', back);
+		const every = setInterval(() => document.visibilityState === 'visible' && Date.now() - shellAt > 5 * 60_000 && invalidate('app:shell'), 60_000);
+		return () => {
+			document.removeEventListener('visibilitychange', back);
+			clearInterval(every);
+		};
 	});
 
 	afterNavigate(({ from, to }) => {

@@ -3,7 +3,7 @@ import { dueInfo } from '$lib/tasks';
 import { fmtWhen, todayInZone } from '$lib/time';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { collectAlerts } from '$lib/server/alerts';
-import { listEquipment, listLivestock, listPlants } from '$lib/server/specs';
+import { tankTabCounts } from '$lib/server/specs';
 import { listMembers, rolesOn } from '$lib/server/members';
 import { db } from '$lib/server/db';
 import { photos, wishes } from '$lib/server/db/schema';
@@ -14,7 +14,7 @@ import { latestReadingsFor, latestTest } from '$lib/server/logs';
 import { listParamsFor, listTanks } from '$lib/server/tanks';
 import { shownAvatar } from '$lib/server/avatar-image';
 import { alertsSeen } from '$lib/server/users';
-import { listTasks, settleTasks } from '$lib/server/tasks';
+import { listTasks, settleTasksDaily } from '$lib/server/tasks';
 import { listFavorites } from '$lib/server/favorites';
 import { listRoutinesFor } from '$lib/server/routines';
 import { favoriteSub } from '$lib/favorites';
@@ -22,15 +22,22 @@ import { availableUpdate, projectPage } from '$lib/server/updates';
 import { rememberOptions, TANK_COOKIE } from '$lib/remember';
 import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutServerLoad = ({ locals, url, cookies, params, route, isDataRequest, depends }) => {
-	// the alerts read (#267): refreshed once an alert opened is marked read
-	depends('app:alerts');
+export const load: LayoutServerLoad = ({ locals, url, cookies, params, route, isDataRequest, depends, untrack }) => {
+	// the alerts read (#267): refreshed once an alert opened is marked read; and the whole shell
+	// when the app comes back to it after a while (see +layout.svelte)
+	depends('app:alerts', 'app:shell');
 	const user = locals.user!;
 	const tanks = listTanks(user.id);
 	const today = todayInZone(user.timeZone);
 
 	// A tank's own pages make it the current tank, as picking it in the switcher does.
-	const routeTank = route.id?.startsWith('/(app)/tanks/[id]') ? params.id : undefined;
+	// Only the tank in the address is followed (#242): moving between pages, or a link's data
+	// fetched ahead under the mouse, doesn't run all of this again unless the tank changes.
+	// A form's save refreshes it as before.
+	// (the id is always read, so arriving on or leaving a tank's page runs it, as a new tank does)
+	const id = params.id;
+	const onTankPage = untrack(() => route.id?.startsWith('/(app)/tanks/[id]') ?? false);
+	const routeTank = onTankPage ? id : undefined;
 	const requested = url.searchParams.get('tank') ?? routeTank ?? null;
 	let currentTankId = requested ?? cookies.get(TANK_COOKIE) ?? null;
 	if (!tanks.some((t) => t.id === currentTankId)) currentTankId = tanks[0]?.id ?? null;
@@ -41,7 +48,7 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route, is
 	}
 
 	// pauses that are up resume, and a cadence for a while that ran its time ends (#171, #172)
-	settleTasks(user.id, user.timeZone);
+	settleTasksDaily(user.id, user.timeZone);
 	const tasks = listTasks(user.id);
 	const overdueByTank = new Map<string, number>();
 	let overdueCount = 0;
@@ -92,9 +99,8 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route, is
 	const counts = currentTankId
 		? {
 				photos: db.select({ n: count() }).from(photos).where(eq(photos.tankId, currentTankId)).get()?.n ?? 0,
-				livestock: listLivestock(user.id, currentTankId).reduce((n, l) => n + (l.status === 'in_tank' || l.status === 'quarantine' ? l.count : 0), 0),
-				plants: listPlants(user.id, currentTankId).length,
-				equipment: listEquipment(user.id, currentTankId).length,
+				// counted, not listed (#242)
+				...tankTabCounts(currentTankId),
 				// people the tank is shared with (#22), for Setup › Sharing
 				members: listMembers(currentTankId).filter((m) => m.state === 'accepted' || m.state === 'pending').length,
 				// still planned on the wish list (#24), for More on a phone

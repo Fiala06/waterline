@@ -11,6 +11,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Moving around the app is quicker.** Going from page to page, or between a tank's tabs, no longer gathers every tank's tasks, readings and alerts again each time, which kept a server with many tanks or several people busy. They're refreshed when you change tank, save something, or come back to the app after a while: [Tanks](/tanks).
 - **Photos and pages load faster.** A tank's cover on its public page and on the Tanks cards, and the photos side by side when comparing on Timeline, now load a smaller copy instead of the full-size photo, and the page no longer jumps as they arrive. The app's typeface is fetched with the page, so a first visit doesn't flash a different font: [Tanks](/tanks).
 
 ## 1.21.7 · 2026-11-10

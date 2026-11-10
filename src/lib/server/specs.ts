@@ -1,7 +1,7 @@
 // Equipment, livestock and plants for a tank. Every change also writes an
 // event, so History shows what was added, removed, counted or trimmed.
 import { error } from "@sveltejs/kit";
-import { and, asc, desc, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { EQUIPMENT_TYPE_LABEL, equipmentName, parseSchedule, scheduleLabel, scheduleTotalHours, withoutLabel, type EquipmentType, type Schedule, type WithoutType } from "$lib/equipment";
 import { MAX_LIVESTOCK_COUNT } from "$lib/livestock";
 import { zonedToUtc } from "$lib/time";
@@ -57,6 +57,23 @@ function logEvent(
     })
     .returning()
     .get();
+}
+
+/**
+ * The counts on a tank's tabs (#242): animals in the tank or in quarantine,
+ * plants and equipment still there. A query each, counted in the database
+ * rather than by loading every row, since the shell shows them on every page.
+ * The tank is one the caller already may see.
+ */
+export function tankTabCounts(tankId: string) {
+  const animals = db
+    .select({ n: sql<number>`coalesce(sum(${livestock.count}), 0)` })
+    .from(livestock)
+    .where(and(eq(livestock.tankId, tankId), isNull(livestock.removedAt), sql`${livestock.status} in ('in_tank', 'quarantine')`))
+    .get();
+  const plantRows = db.select({ n: count() }).from(plants).where(and(eq(plants.tankId, tankId), isNull(plants.removedAt))).get();
+  const items = db.select({ n: count() }).from(equipment).where(and(eq(equipment.tankId, tankId), isNull(equipment.removedAt))).get();
+  return { livestock: Number(animals?.n ?? 0), plants: plantRows?.n ?? 0, equipment: items?.n ?? 0 };
 }
 
 // ── Equipment ───────────────────────────────────────────────────────────────

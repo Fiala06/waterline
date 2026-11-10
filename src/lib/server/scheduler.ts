@@ -13,6 +13,7 @@ import { getServerSettings } from './mail';
 import { logger, pruneLogs } from './log';
 import { alertSensorExcursions, runNotifications } from './notifications';
 import { ensureCare } from './species-care';
+import { settleEveryone } from './tasks';
 
 const EVERY_MS = 5 * 60_000;
 const g = globalThis as { __waterlineScheduler?: ReturnType<typeof setInterval> };
@@ -22,6 +23,8 @@ type Job = [name: string, run: () => unknown];
 const JOBS: Job[] = [
 	// the doses dosers make (#196), logged at their time
 	['dosers', () => logDueDoses()],
+	// pauses and cadences for a while that are up, and plans past their last day (#242): the shell settles once a day
+	['tasks', () => settleEveryone()],
 	['reminders', () => (getServerSettings().scheduledEmails ? runNotifications() : undefined)],
 	// devices Waterline reads itself, every run: 5 minutes apart
 	['devices', () => pollAllDevices()],
