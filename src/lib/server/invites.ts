@@ -93,6 +93,24 @@ export function revokeInvite(id: string): Invite | undefined {
 	return db.update(invites).set({ revokedAt: now() }).where(and(eq(invites.id, id), isNull(invites.revokedAt))).returning().get();
 }
 
+/**
+ * A share of a tank that was cancelled before it was accepted takes back the
+ * invitation to the server that came with it (#217): the one the sharer made
+ * for that address, while it's still waiting. An admin's own invitations stay
+ * (those are managed under People), and so does one already accepted. Gives
+ * the invitations revoked.
+ */
+export function revokeShareInvite(email: string, sharerId: string): Invite[] {
+	const sharer = db.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, sharerId)).get();
+	if (!sharer || sharer.isAdmin) return [];
+	return db
+		.update(invites)
+		.set({ revokedAt: now() })
+		.where(and(eq(invites.email, norm(email)), eq(invites.invitedBy, sharerId), isNull(invites.acceptedAt), isNull(invites.revokedAt)))
+		.returning()
+		.all();
+}
+
 /** Resend: a fresh link and another 7 days for the same address. */
 export function resendInvite(id: string, invitedBy: string | null) {
 	const old = getInvite(id);

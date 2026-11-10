@@ -79,6 +79,8 @@ export async function enqueue(form: FormData, url: string, title: string, timeZo
 		createdAt: new Date().toISOString()
 	};
 	await tx('readwrite', (s) => s.put(item));
+	// an entry that exists only here: ask the browser not to clear this site's storage when it runs short (#241)
+	void navigator.storage?.persist?.().catch(() => false);
 	await refreshQueue();
 }
 

@@ -11,6 +11,11 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **History in pages.** A long History, with All time chosen, used to load every entry on each visit. It now shows 100 at a time with **Show older** at the bottom, so it opens quickly however long you've kept the tank; the count at the top is still the whole range's: [History](/history).
+- **Photos don't fill your phone.** The app used to keep every photo you'd opened at full size on the device, for good. It now keeps only thumbnails for offline use, up to a limit, and clears the full-size ones it had kept. Entries logged offline are also better protected from the browser clearing storage: [Photos](/photos).
+- **A cancelled share takes its invitation back.** Sharing a tank with someone not yet on the server invites them to it. Cancelling that share before they accept now withdraws the invitation too, so they can't sign in afterwards: [Sharing](/tanks/current/sharing).
+- **Parameter names in any alphabet import correctly.** Custom parameters named in Cyrillic, Chinese or another non-Latin script were matched to the wrong spreadsheet columns on import. Each column is now matched by its own name: [History](/history) › Import.
+
 ## 1.21.2 · 2026-11-09
 
 - **Decimal commas import right.** A spreadsheet that writes 0,025 or 1,025 no longer imports as 25 or 1025. A file with semicolons, or with any number like 7,25 in it, is read with the comma as the decimal mark throughout, and a lone value that could be read either way and would land far outside the target is flagged in the preview instead of guessed: [History](/history) › Import.

@@ -37,3 +37,37 @@ test('older entries are pointed out, and the range chosen is remembered', async 
 	await expect(page.getByRole('link', { name: /older$/ })).toHaveCount(0);
 });
 
+
+// #240: a long History comes a page at a time, and "Show older" goes on from where the page ended.
+test('a long history is shown a hundred entries at a time', async ({ page }) => {
+	await newKeeperWithTank(page, 'hist-pages');
+	const tankId = (await page.content()).match(/\/tanks\/([0-9a-f-]{36})/)![1];
+	// 130 feedings, one every hour up to an hour ago, straight into the database
+	const { default: Database } = await import('better-sqlite3');
+	const db = new Database('.e2e-data/waterline.db');
+	const add = db.prepare("insert into events (id, tank_id, category, occurred_at, data) values (?, ?, 'feeding', ?, '{}')");
+	const hourAgo = Date.now() - 3_600_000;
+	for (let i = 0; i < 130; i++) add.run(crypto.randomUUID(), tankId, new Date(hourAgo - i * 3_600_000).toISOString());
+	db.close();
+
+	await open(page, '/history?cat=feeding&range=all');
+	await expect(page.getByText('130 entries')).toBeVisible();
+	await expect(page.locator('a.row')).toHaveCount(100);
+	await expect(page.getByText('30 more entries')).toBeVisible();
+	const firstPage = await page.locator('a.row').evaluateAll((rows) => rows.map((r) => r.getAttribute('href')));
+
+	// the rest, and none of the first page again
+	await page.getByRole('link', { name: 'Show older' }).click();
+	await expect(page).toHaveURL(/before=/);
+	await expect(page.locator('a.row')).toHaveCount(30);
+	const second = await page.locator('a.row').evaluateAll((rows) => rows.map((r) => r.getAttribute('href')));
+	expect(second.filter((h) => firstPage.includes(h))).toEqual([]);
+	await expect(page.getByRole('link', { name: 'Show older' })).toHaveCount(0);
+	// the count is still the whole range's
+	await expect(page.getByText('130 entries')).toBeVisible();
+
+	// back to the newest; another category starts from its own newest too
+	await page.getByRole('link', { name: 'Show newest' }).click();
+	await expect(page).not.toHaveURL(/before=/);
+	await expect(page.locator('a.row')).toHaveCount(100);
+});

@@ -14,6 +14,11 @@ const SHELL = `shell-${version}`;
 // never answers with the last version's HTML or __data.json
 const PAGES = `pages-${version}`;
 const MEDIA = 'media-v1';
+// How much is kept (#241): the caches are trimmed to their newest entries, so they
+// stop growing and the browser has less reason to clear this site's storage, which
+// would take entries logged offline with it.
+const MEDIA_MAX = 400;
+const PAGES_MAX = 150;
 // whose pages and photos are kept (#108)
 const OWNER = 'owner-v1';
 // the install screenshots are for the browser's install sheet, not for offline use;
@@ -49,6 +54,8 @@ sw.addEventListener('activate', (event) => {
 			.keys()
 			// the last version's shell and pages go (pages-v1 included, from before #114); photos stay
 			.then((keys) => Promise.all(keys.filter((k) => (k.startsWith('shell-') && k !== SHELL) || (k.startsWith('pages-') && k !== PAGES)).map((k) => caches.delete(k))))
+			// full-size photos kept by earlier versions go (#241), and the thumbnails are brought within the limit
+			.then(() => dropFullSize())
 			.then(() => sw.clients.claim())
 	);
 });
@@ -86,7 +93,9 @@ sw.addEventListener('fetch', (event) => {
 	}
 
 	if (url.pathname.startsWith('/media/')) {
-		event.respondWith(cacheFirst(req, MEDIA));
+		// thumbnails are kept here, for the dashboard and lists offline; a full-size photo is left to the
+		// browser's own cache (it's served immutable for a year), so viewing photos doesn't fill the device (#241)
+		if (isThumb(url)) event.respondWith(cacheFirst(req, MEDIA, MEDIA_MAX));
 		return;
 	}
 
@@ -94,12 +103,39 @@ sw.addEventListener('fetch', (event) => {
 	if (isPage) event.respondWith(networkFirst(req));
 });
 
-async function cacheFirst(req: Request, name: string) {
+const isThumb = (url: URL) => url.searchParams.get('size') === 'thumb';
+
+/** Keep a cache to its newest `max` entries: keys() lists them oldest first. */
+async function trim(cache: Cache, max: number) {
+	const keys = await cache.keys();
+	await Promise.all(keys.slice(0, Math.max(0, keys.length - max)).map((k) => cache.delete(k)));
+}
+
+/** Store, then trim. An entry stored again moves to the newest end. */
+async function keep(cache: Cache, req: Request, res: Response, max: number) {
+	try {
+		await cache.delete(req);
+		await cache.put(req, res);
+		await trim(cache, max);
+	} catch {
+		/* out of room, or the response can't be stored: nothing kept */
+	}
+}
+
+async function dropFullSize() {
+	if (!(await caches.has(MEDIA))) return;
+	const cache = await caches.open(MEDIA);
+	const keys = await cache.keys();
+	await Promise.all(keys.filter((k) => !isThumb(new URL(k.url))).map((k) => cache.delete(k)));
+	await trim(cache, MEDIA_MAX);
+}
+
+async function cacheFirst(req: Request, name: string, max: number) {
 	const cache = await caches.open(name);
 	const hit = await cache.match(req);
 	if (hit) return hit;
 	const res = await fetch(req);
-	if (res.ok) cache.put(req, res.clone());
+	if (res.ok) void keep(cache, req, res.clone(), max);
 	return res;
 }
 
@@ -110,7 +146,7 @@ async function networkFirst(req: Request) {
 		// Signed out, or the session was revoked (#108): what's kept for them goes on the first contact
 		if (res.redirected && new URL(res.url).pathname.startsWith('/signin')) await clearUserCaches();
 		// Only keep real pages, not redirects to sign-in or errors.
-		else if (res.ok && !res.redirected && res.type === 'basic') cache.put(req, res.clone());
+		else if (res.ok && !res.redirected && res.type === 'basic') void keep(cache, req, res.clone(), PAGES_MAX);
 		return res;
 	} catch {
 		const hit = await cache.match(req, { ignoreVary: true });

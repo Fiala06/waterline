@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { newKeeperWithTank, open } from './helpers';
+import { jpeg, newKeeperWithTank, open } from './helpers';
 
 test.use({ serviceWorkers: 'allow' });
 
@@ -47,6 +47,35 @@ test('logging offline saves on the device and syncs later', async ({ page, conte
 	await open(page, '/history');
 	// Exactly one row: replays can't duplicate it (clientId dedupe)
 	await expect(page.locator('a.row', { hasText: 'Water test · 2 readings' })).toHaveCount(1);
+});
+
+// #241: the worker keeps thumbnails for offline use, and leaves full-size photos to the browser.
+test('only thumbnails are kept on the device, not every photo opened at full size', async ({ page }, info) => {
+	await newKeeperWithTank(page, `media-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, `/entries/event/new?tank=${tankId}&category=note`);
+	await page.getByLabel('Note').fill('Trimmed the rotala');
+	await page.locator('input[type=file][name=photos]').setInputFiles(await jpeg());
+	await page.getByRole('button', { name: 'Save note' }).click();
+	await expect(page.getByRole('status')).toContainText('Note saved');
+	await page.evaluate(() => navigator.serviceWorker.ready);
+	await page.reload();
+	await page.evaluate(async () => {
+		// wait for the worker to be the one answering this page
+		if (!navigator.serviceWorker.controller) await new Promise((r) => navigator.serviceWorker.addEventListener('controllerchange', r, { once: true }));
+	});
+	await open(page, '/photos');
+	const photoId = (await page.locator('a.tile').first().getAttribute('href'))!.split('/').pop()!.split('?')[0];
+	// the photo at both sizes, as the viewer and the lists ask for it
+	const sizes = await page.evaluate(async (id) => {
+		const full = await fetch(`/media/${id}`);
+		const thumb = await fetch(`/media/${id}?size=thumb`);
+		return [full.ok, thumb.ok];
+	}, photoId);
+	expect(sizes).toEqual([true, true]);
+	const kept = () => page.evaluate(async () => (await (await caches.open('media-v1')).keys()).map((r) => new URL(r.url).search));
+	await expect.poll(kept).toContain('?size=thumb');
+	expect((await kept()).every((q) => q === '?size=thumb')).toBe(true);
 });
 
 // #224: Wi-Fi up, but no way through to the server. The browser still says it's online.

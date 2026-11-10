@@ -75,6 +75,16 @@ export function hasAccess(tankId: string, email: string): boolean {
 		.get();
 }
 
+/** Whether any of this owner's tanks still has a share waiting on that address (not accepted, not cancelled). */
+export function pendingShares(ownerId: string, email: string): boolean {
+	return !!db
+		.select({ id: tankMembers.id })
+		.from(tankMembers)
+		.innerJoin(tanks, eq(tanks.id, tankMembers.tankId))
+		.where(and(eq(tanks.userId, ownerId), eq(tankMembers.email, norm(email)), isNull(tankMembers.acceptedAt), isNull(tankMembers.revokedAt)))
+		.get();
+}
+
 export const roleAllows = (role: Role | null, need: Role) => role != null && RANK[role] >= RANK[need];
 
 /** What the role can't do: the message a page shows instead of a form. */

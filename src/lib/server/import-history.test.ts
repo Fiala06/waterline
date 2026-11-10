@@ -338,3 +338,23 @@ describe('decimal commas (#226)', () => {
 	});
 });
 
+describe('parameters named in another script (#227)', () => {
+	const cyr: HistoryContext = {
+		...ctx,
+		prefs: eu,
+		params: [...PARAMS, param({ id: 'cu', key: 'custom', name: 'Медь', unit: 'ppm', decimals: 2, isCustom: true }), param({ id: 'iod', key: 'custom', name: 'Йод', unit: 'ppm', decimals: 2, isCustom: true })]
+	};
+
+	it('matches each column by its name, whatever order the file has them in', () => {
+		const [r] = rows('tests', 'Date;Йод (ppm);Медь\n2026-09-20;0.06;0.01\n', cyr);
+		expect(value<TestValue>(r).readings).toEqual({ iod: 0.06, cu: 0.01 });
+	});
+
+	it('never takes a blank column name for one of them', () => {
+		const r = readHistory('tests', 'Date,,Медь,\n2026-09-20,9,0.01,8\n', cyr);
+		if ('error' in r) throw new Error(r.error);
+		expect(value<TestValue>(r.rows[0]).readings).toEqual({ cu: 0.01 });
+		expect(r.fileColumns.filter((c) => c.key).map((c) => c.header)).toEqual(['Date', 'Медь']);
+	});
+});
+

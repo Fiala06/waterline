@@ -10,7 +10,7 @@ vi.mock('$env/dynamic/private', () => ({ env: { DATA_DIR: dir } }));
 const { db } = await import('./db');
 const { invites, serverSettings, users } = await import('./db/schema');
 const { getServerSettings } = await import('./mail');
-const { acceptInvite, createInvite, inviteAllows, inviteState, listInvites, readInvite, resendInvite, revokeInvite } = await import('./invites');
+const { acceptInvite, createInvite, inviteAllows, inviteState, listInvites, readInvite, resendInvite, revokeInvite, revokeShareInvite } = await import('./invites');
 const { isEmailAllowed, upsertUser } = await import('./users');
 const { adminCount, removePerson, setAdmin, signOutEverywhere } = await import('./people');
 
@@ -68,6 +68,37 @@ describe('invitations (#27)', () => {
 		setMode('admin');
 		expect(isEmailAllowed('listed@example.com')).toBe(false);
 		expect(isEmailAllowed('owner@example.com')).toBe(true);
+	});
+});
+
+describe('an invitation that came with sharing a tank (#217)', () => {
+	it('is taken back with the cancelled share, when the sharer made it and it is still waiting', () => {
+		setMode('invited');
+		const sharer = upsertUser({ email: 'sharer@example.com', name: 'Sharer', googleSub: 'g-sharer' });
+		expect(sharer.isAdmin).toBe(false);
+		createInvite('friend@example.com', sharer.id);
+		expect(isEmailAllowed('friend@example.com')).toBe(true);
+		expect(revokeShareInvite('Friend@Example.com', sharer.id)).toHaveLength(1);
+		expect(isEmailAllowed('friend@example.com')).toBe(false);
+		// nothing left to take back
+		expect(revokeShareInvite('friend@example.com', sharer.id)).toEqual([]);
+	});
+
+	it('leaves alone one already accepted, one someone else made, and an admin’s own', () => {
+		setMode('invited');
+		const sharer = upsertUser({ email: 'sharer@example.com', name: 'Sharer', googleSub: 'g-sharer' });
+		const admin = upsertUser({ email: 'owner@example.com', name: 'Owner' });
+		expect(admin.isAdmin).toBe(true);
+		// accepted: they have signed in, so who stays on the server is the admin's call
+		createInvite('joined@example.com', sharer.id);
+		acceptInvite('joined@example.com', upsertUser({ email: 'joined@example.com', name: 'Joined', googleSub: 'g-joined' }).id);
+		expect(revokeShareInvite('joined@example.com', sharer.id)).toEqual([]);
+		// the admin invited them from People: a sharer's cancelled share doesn't undo that
+		createInvite('guest@example.com', admin.id);
+		expect(revokeShareInvite('guest@example.com', sharer.id)).toEqual([]);
+		// and an admin cancelling their own share keeps their invitation
+		expect(revokeShareInvite('guest@example.com', admin.id)).toEqual([]);
+		expect(isEmailAllowed('guest@example.com')).toBe(true);
 	});
 });
 
