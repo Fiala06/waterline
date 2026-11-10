@@ -1,12 +1,14 @@
 import { error } from '@sveltejs/kit';
-import { readFile } from 'node:fs/promises';
-import { photoFilePath, type Photo } from './photos';
+import { photoFile, type Photo, type PhotoSize } from './photos';
+
+/** The size a photo URL asks for (?size=thumb, ?size=medium), full otherwise. */
+export const sizeParam = (v: string | null): PhotoSize => (v === 'thumb' || v === 'medium' ? v : 'full');
 
 /** Serve a photo file to the public (no private caching headers). */
-export async function servePhoto(p: Photo, size: 'full' | 'thumb') {
+export async function servePhoto(p: Photo, size: PhotoSize) {
 	let body: Buffer;
 	try {
-		body = await readFile(photoFilePath(p, size));
+		body = await photoFile(p, size);
 	} catch {
 		error(404, 'Not found');
 	}

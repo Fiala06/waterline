@@ -96,7 +96,7 @@
 	<div class="top">
 		<div class="who">
 			<span class="cover hide-phone" class:photo-placeholder={!tank.cover} aria-hidden="true">
-				{#if tank.cover}<img src={photoUrl(tank.cover)} alt="" style:object-position={tank.coverPos} />{/if}
+				{#if tank.cover}<img src={photoUrl(tank.cover)} alt="" decoding="async" style:object-position={tank.coverPos} />{/if}
 			</span>
 			<div class="names">
 				<span class="kicker">{kicker}<span class="hide-phone"> · {lastTest}</span></span>

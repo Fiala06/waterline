@@ -67,7 +67,11 @@ test('sign in, log, add a photo, read the chart, share: the essentials work here
 		// from the top of the dashboard: the phone's bar slides away while scrolling down
 		await open(page, `/?tank=${tankId}`);
 		if (isMobile) {
+			// opening the page again can bring back where the chart step had scrolled to, and the bar
+			// is away while the page is scrolled down: start from the top, where it's always shown
+			await page.evaluate(() => scrollTo(0, 0));
 			const bar = page.getByRole('navigation', { name: 'Main' });
+			await expect(bar.getByRole('link', { name: 'History' })).toBeInViewport();
 			await bar.getByRole('link', { name: 'History' }).click();
 			await expect(page).toHaveURL(/\/history/);
 			await expect(page.getByText('Smoke test note').first()).toBeVisible();

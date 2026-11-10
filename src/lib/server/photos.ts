@@ -3,6 +3,7 @@
 import { error } from '@sveltejs/kit';
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import { removeFiles, writeThen } from './files';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import sharp from 'sharp';
 import { env } from '$env/dynamic/private';
@@ -170,8 +171,50 @@ export function getPhoto(userId: string, photoId: string): Photo {
 	return row.photo;
 }
 
-export function photoFilePath(p: Photo, size: 'full' | 'thumb') {
+export type PhotoSize = 'full' | 'medium' | 'thumb';
+
+export function photoFilePath(p: Photo, size: PhotoSize) {
+	if (size === 'medium') return join(root(), p.path.replace(/\.jpg$/, '_m.jpg'));
 	return join(root(), size === 'thumb' ? p.thumbPath : p.path);
+}
+
+/** Photos' stored sizes, for the width and height an <img> is given so the page doesn't move when it arrives (#243). */
+export function photoSizes(ids: (string | null | undefined)[]): Map<string, { width: number; height: number }> {
+	const want = [...new Set(ids.filter((id): id is string => !!id))];
+	if (!want.length) return new Map();
+	return new Map(
+		db
+			.select({ id: photos.id, width: photos.width, height: photos.height })
+			.from(photos)
+			.where(inArray(photos.id, want))
+			.all()
+			.map((r) => [r.id, { width: r.width, height: r.height }])
+	);
+}
+
+/** The longer edge of the medium size (#243): sharp on a card or a phone's hero, a fraction of the full file. */
+export const MEDIUM = 1024;
+
+/**
+ * A photo file to serve. The medium size is made from the full one the first
+ * time it's asked for and kept beside it (#243), so photos from before it
+ * existed get one too; a photo no bigger than that is served full size.
+ */
+export async function photoFile(p: Photo, size: PhotoSize): Promise<Buffer> {
+	if (size !== 'medium' || Math.max(p.width, p.height) <= MEDIUM) return readFile(photoFilePath(p, size === 'medium' ? 'full' : size));
+	const path = photoFilePath(p, 'medium');
+	try {
+		return await readFile(path);
+	} catch {
+		/* not made yet */
+	}
+	const medium = await sharp(await readFile(photoFilePath(p, 'full')))
+		.resize(MEDIUM, MEDIUM, { fit: 'inside', withoutEnlargement: true })
+		.jpeg({ quality: 80, mozjpeg: true })
+		.toBuffer();
+	// kept for next time; if it can't be written, it's made again then
+	await writeFile(path, medium).catch(() => {});
+	return medium;
 }
 
 /** A photo is going away: stop using it as a tank cover or public share image. */
@@ -180,8 +223,8 @@ function unlinkPhoto(id: string) {
 	db.update(publicPages).set({ ogPhotoId: null }).where(eq(publicPages.ogPhotoId, id)).run();
 }
 
-/** A photo's two files, to remove once its row has gone. */
-const filesOf = (p: Photo) => [photoFilePath(p, 'full'), photoFilePath(p, 'thumb')];
+/** A photo's files, to remove once its row has gone (the medium one may never have been made). */
+const filesOf = (p: Photo) => [photoFilePath(p, 'full'), photoFilePath(p, 'medium'), photoFilePath(p, 'thumb')];
 
 export async function deletePhoto(userId: string, photoId: string) {
 	const p = getPhoto(userId, photoId);

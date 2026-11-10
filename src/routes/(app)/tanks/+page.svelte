@@ -29,7 +29,15 @@
 			{#each data.tankCards as t (t.id)}
 				<a class="tank" href="/tanks/{t.id}">
 					<div class="cover" class:photo-placeholder={!t.cover}>
-						{#if t.cover}<img src={photoUrl(t.cover, 'full')} alt="" loading="lazy" style:object-position={t.coverPos} />{/if}
+						{#if t.cover}<img
+								src={photoUrl(t.cover, 'medium')}
+								width={t.coverSize?.width}
+								height={t.coverSize?.height}
+								alt=""
+								loading="lazy"
+								decoding="async"
+								style:object-position={t.coverPos}
+							/>{/if}
 					</div>
 					<div class="info">
 						<div class="row">

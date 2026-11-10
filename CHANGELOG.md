@@ -11,6 +11,11 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.21.8 · 2026-11-10
+
+- **Moving around the app is quicker.** Going from page to page, or between a tank's tabs, no longer gathers every tank's tasks, readings and alerts again each time, which kept a server with many tanks or several people busy. They're refreshed when you change tank, save something, or come back to the app after a while: [Tanks](/tanks).
+- **Photos and pages load faster.** A tank's cover on its public page and on the Tanks cards, and the photos side by side when comparing on Timeline, now load a smaller copy instead of the full-size photo, and the page no longer jumps as they arrive. The app's typeface is fetched with the page, so a first visit doesn't flash a different font: [Tanks](/tanks).
+
 ## 1.21.7 · 2026-11-10
 
 - **Failed reminders are retried sensibly.** An email or notification that couldn't be sent, to an address that refuses mail say, used to be tried again every 5 minutes for good. It's now tried again after 15 minutes, then 30, an hour and so on, and given up after 6 tries, with one line in the log to say so. An email that didn't go no longer leaves working Mark done and Snooze links behind: [Server settings › Logs](/settings/server/logs).

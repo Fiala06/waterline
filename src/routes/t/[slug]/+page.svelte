@@ -15,7 +15,7 @@
 	let { data } = $props();
 	const v = $derived(data.view);
 	const d = $derived(data.detail);
-	const photo = (id: string, size: 'thumb' | 'full' = 'thumb') => `/p/${v.slug}/${id}${size === 'thumb' ? '?size=thumb' : ''}`;
+	const photo = (id: string, size: 'thumb' | 'medium' | 'full' = 'thumb') => `/p/${v.slug}/${id}${size === 'full' ? '' : `?size=${size}`}`;
 
 	// scripts on: the care log's filters and "Copy summary" work in place
 	let mounted = $state(false);
@@ -168,7 +168,17 @@
 		<section class="intro">
 			{#if v.cover}
 				<!-- the cover opens full size in the lightbox, like any photo on the page -->
-				<a class="hero" href={photo(v.cover, 'full')} onclick={(e) => openShot(e, coverShot, 0)}><img src={photo(v.cover, 'full')} alt="{v.name} aquarium" style:object-position={v.coverPos} /></a>
+				<a class="hero" href={photo(v.cover, 'full')} onclick={(e) => openShot(e, coverShot, 0)}><img
+						src={photo(v.cover, 'medium')}
+						srcset="{photo(v.cover, 'medium')} 1024w, {photo(v.cover, 'full')} 2048w"
+						sizes="(min-width: 760px) 240px, 100vw"
+						width={v.coverSize?.width}
+						height={v.coverSize?.height}
+						fetchpriority="high"
+						alt="{v.name} aquarium"
+						style:object-position={v.coverPos}
+					/></a
+				>
 			{:else}
 				<div class="hero photo-placeholder"></div>
 			{/if}
