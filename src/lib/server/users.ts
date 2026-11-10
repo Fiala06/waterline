@@ -1,3 +1,4 @@
+import { env } from '$env/dynamic/private';
 import { and, eq, inArray, isNotNull, isNull, notInArray } from 'drizzle-orm';
 import { VERSION } from '$lib/changelog';
 import { db } from './db';
@@ -48,6 +49,14 @@ export function isEmailAllowed(email: string): boolean {
 	// an admin always can, so changing the admin's address never locks them out
 	return !!db.select({ id: users.id }).from(users).where(and(eq(users.email, e), eq(users.isAdmin, true))).get();
 }
+
+/**
+ * Whether this account may still be used: by a browser session, and by
+ * everything signed in with a token instead (access and sensor tokens, app
+ * connections, the calendar link, reminders), so a lock-out ends those too
+ * (#209). Test servers with AUTH_DEV_LOGIN let anyone in.
+ */
+export const maySignIn = (user: Pick<User, 'email'>) => env.AUTH_DEV_LOGIN === 'true' || isEmailAllowed(user.email);
 
 /**
  * True when this email belongs to an account linked to a different Google

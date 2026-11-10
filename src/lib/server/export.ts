@@ -177,100 +177,116 @@ async function build(id: string, user: User, list: Tank[], format: 'zip' | 'csv'
 	const done = new Promise<void>((resolve, reject) => {
 		out.on('close', resolve).on('error', reject);
 		zip.outputStream.on('error', reject);
+		// a queued file that can't be opened when its turn comes (a photo deleted meanwhile) is reported here (#207)
+		zip.on('error', reject);
 	});
+	// a failure is handled where the build is awaited; until then it must not count as unhandled
+	done.catch(() => {});
 	zip.outputStream.pipe(out);
-
-	progress(id, 5, 'Writing entries…');
-	const prefs = db.select().from(notificationPrefs).where(eq(notificationPrefs.userId, user.id)).get();
-	const json = {
-		format: 'waterline-backup',
-		version: 1,
-		exportedAt: new Date().toISOString(),
-		note: 'Measurements are stored metric: volume in liters, temperature in °C, lengths in cm, hardness in dGH. Times are UTC.',
-		account: {
-			email: user.email,
-			displayName: user.displayName,
-			unitSystem: user.unitSystem,
-			hardnessUnit: user.hardnessUnit,
-			timeZone: user.timeZone,
-			notifications: prefs ? { ...prefs, userId: undefined } : null,
-			products: db
-				.select()
-				.from(products)
-				.where(eq(products.userId, user.id))
-				.all()
-				.map((p) => ({ ...p, userId: undefined })),
-			favorites: db
-				.select()
-				.from(quickFavorites)
-				.where(eq(quickFavorites.userId, user.id))
-				.all()
-				.map((f) => ({ ...f, userId: undefined }))
-		},
-		tanks: list.map((t) => ({
-			...t,
-			userId: undefined,
-			parameters: d.params(t.id).map((p) => ({ ...p, tankId: undefined })),
-			tests: d.testsIn(t.id).map((x) => ({
-				...x,
-				tankId: undefined,
-				readings: d.readingsOf(x.id).map((r) => ({ parameterId: r.parameterId, value: r.value }))
-			})),
-			events: d.allEvents(t.id).map((e) => ({ ...e, tankId: undefined })),
-			equipment: d.allEquipment(t.id).map((e) => ({ ...e, tankId: undefined })),
-			// what the dosers put in on their own (#196)
-			autoDoses: d.allDoses(t.id).map((x) => ({ ...x, tankId: undefined })),
-			livestock: d.allLivestock(t.id).map((l) => ({ ...l, tankId: undefined })),
-			plants: d.allPlants(t.id).map((p) => ({ ...p, tankId: undefined })),
-			tasks: d.tasksIn(t.id).map((k) => ({ ...k, tankId: undefined, completions: d.completionsOf(k.id) })),
-			photos: d.photosIn(t.id).map((p) => ({
-				id: p.id,
-				eventId: p.eventId,
-				testId: p.testId,
-				takenAt: p.takenAt,
-				width: p.width,
-				height: p.height,
-				file: `photos/${p.path}`,
-				livestock: d.petsIn.get(p.id) ?? []
-			})),
-			// in hundredths of the currency the keeper chose
-			expenses: d.expensesIn(t.id).map(({ receiptPath, tankId: _, ...e }) => ({ ...e, currency: user.currency, receipt: receiptPath ? `receipts/${receiptPath}` : null }))
-		}))
-	};
-	zip.addBuffer(Buffer.from(JSON.stringify(json, null, 2)), 'waterline.json');
-	zip.addBuffer(Buffer.from(testsCsv(user, list, d)), 'water-tests.csv');
-	zip.addBuffer(
-		Buffer.from(
-			`Waterline backup — ${stamp}\n\nwaterline.json   everything: tanks, parameters, tests, events, tasks, spending, photo list\nwater-tests.csv  one row per water test, in your units\nphotos/          full-size photos, by tank\nreceipts/        receipts for spending, by tank\n`
-		),
-		'README.txt'
-	);
-
-	const total = d.allPhotos.length;
-	for (let i = 0; i < total; i++) {
-		const p = d.allPhotos[i];
-		try {
-			statSync(photoFilePath(p, 'full'));
-			// JPEGs are already compressed
-			zip.addFile(photoFilePath(p, 'full'), `photos/${p.path}`, { compress: false });
-		} catch {
-			/* skip missing file */
-		}
-		if (i % 5 === 0 || i === total - 1) progress(id, 10 + (80 * (i + 1)) / total, `Packing photos · ${i + 1} of ${total}`);
+	try {
+		await pack();
+	} catch (e) {
+		// the half-written archive goes, once its file is closed
+		zip.outputStream.unpipe(out);
+		await new Promise<void>((resolve) => (out.closed ? resolve() : out.once('close', () => resolve()).destroy()));
+		rmSync(path, { force: true });
+		throw e;
 	}
-	for (const e of d.allExpenses) {
-		if (!e.receiptPath) continue;
-		try {
-			statSync(receiptFilePath(e.receiptPath));
-			zip.addFile(receiptFilePath(e.receiptPath), `receipts/${e.receiptPath}`);
-		} catch {
-			/* skip missing file */
+	finish(id, path, name, `${d.allPhotos.length} photo${d.allPhotos.length === 1 ? '' : 's'}, ${entries} entr${entries === 1 ? 'y' : 'ies'}`);
+
+	async function pack() {
+
+		progress(id, 5, 'Writing entries…');
+		const prefs = db.select().from(notificationPrefs).where(eq(notificationPrefs.userId, user.id)).get();
+		const json = {
+			format: 'waterline-backup',
+			version: 1,
+			exportedAt: new Date().toISOString(),
+			note: 'Measurements are stored metric: volume in liters, temperature in °C, lengths in cm, hardness in dGH. Times are UTC.',
+			account: {
+				email: user.email,
+				displayName: user.displayName,
+				unitSystem: user.unitSystem,
+				hardnessUnit: user.hardnessUnit,
+				timeZone: user.timeZone,
+				notifications: prefs ? { ...prefs, userId: undefined } : null,
+				products: db
+					.select()
+					.from(products)
+					.where(eq(products.userId, user.id))
+					.all()
+					.map((p) => ({ ...p, userId: undefined })),
+				favorites: db
+					.select()
+					.from(quickFavorites)
+					.where(eq(quickFavorites.userId, user.id))
+					.all()
+					.map((f) => ({ ...f, userId: undefined }))
+			},
+			tanks: list.map((t) => ({
+				...t,
+				userId: undefined,
+				parameters: d.params(t.id).map((p) => ({ ...p, tankId: undefined })),
+				tests: d.testsIn(t.id).map((x) => ({
+					...x,
+					tankId: undefined,
+					readings: d.readingsOf(x.id).map((r) => ({ parameterId: r.parameterId, value: r.value }))
+				})),
+				events: d.allEvents(t.id).map((e) => ({ ...e, tankId: undefined })),
+				equipment: d.allEquipment(t.id).map((e) => ({ ...e, tankId: undefined })),
+				// what the dosers put in on their own (#196)
+				autoDoses: d.allDoses(t.id).map((x) => ({ ...x, tankId: undefined })),
+				livestock: d.allLivestock(t.id).map((l) => ({ ...l, tankId: undefined })),
+				plants: d.allPlants(t.id).map((p) => ({ ...p, tankId: undefined })),
+				tasks: d.tasksIn(t.id).map((k) => ({ ...k, tankId: undefined, completions: d.completionsOf(k.id) })),
+				photos: d.photosIn(t.id).map((p) => ({
+					id: p.id,
+					eventId: p.eventId,
+					testId: p.testId,
+					takenAt: p.takenAt,
+					width: p.width,
+					height: p.height,
+					file: `photos/${p.path}`,
+					livestock: d.petsIn.get(p.id) ?? []
+				})),
+				// in hundredths of the currency the keeper chose
+				expenses: d.expensesIn(t.id).map(({ receiptPath, tankId: _, ...e }) => ({ ...e, currency: user.currency, receipt: receiptPath ? `receipts/${receiptPath}` : null }))
+			}))
+		};
+		zip.addBuffer(Buffer.from(JSON.stringify(json, null, 2)), 'waterline.json');
+		zip.addBuffer(Buffer.from(testsCsv(user, list, d)), 'water-tests.csv');
+		zip.addBuffer(
+			Buffer.from(
+				`Waterline backup — ${stamp}\n\nwaterline.json   everything: tanks, parameters, tests, events, tasks, spending, photo list\nwater-tests.csv  one row per water test, in your units\nphotos/          full-size photos, by tank\nreceipts/        receipts for spending, by tank\n`
+			),
+			'README.txt'
+		);
+
+		const total = d.allPhotos.length;
+		for (let i = 0; i < total; i++) {
+			const p = d.allPhotos[i];
+			try {
+				statSync(photoFilePath(p, 'full'));
+				// JPEGs are already compressed
+				zip.addFile(photoFilePath(p, 'full'), `photos/${p.path}`, { compress: false });
+			} catch {
+				/* skip missing file */
+			}
+			if (i % 5 === 0 || i === total - 1) progress(id, 10 + (80 * (i + 1)) / total, `Packing photos · ${i + 1} of ${total}`);
 		}
+		for (const e of d.allExpenses) {
+			if (!e.receiptPath) continue;
+			try {
+				statSync(receiptFilePath(e.receiptPath));
+				zip.addFile(receiptFilePath(e.receiptPath), `receipts/${e.receiptPath}`);
+			} catch {
+				/* skip missing file */
+			}
+		}
+		progress(id, 95, 'Finishing…');
+		zip.end();
+		await done;
 	}
-	progress(id, 95, 'Finishing…');
-	zip.end();
-	await done;
-	finish(id, path, name, `${total} photo${total === 1 ? '' : 's'}, ${entries} entr${entries === 1 ? 'y' : 'ies'}`);
 }
 
 function finish(id: string, path: string, fileName: string, summary: string) {

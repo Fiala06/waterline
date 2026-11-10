@@ -4,6 +4,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { and, desc, eq } from 'drizzle-orm';
 import { db } from '../db';
+import { maySignIn } from '../users';
 import { assistantTokens, tanks, users, type AssistantToken, type User } from '../db/schema';
 
 const PREFIX = 'wl_';
@@ -79,7 +80,7 @@ export function authenticateAssistant(authorization: string | null, now = Date.n
 		.innerJoin(users, eq(users.id, assistantTokens.userId))
 		.where(eq(assistantTokens.tokenHash, hash(m[1])))
 		.get();
-	if (!row || row.token.kind !== 'assistant') return null;
+	if (!row || row.token.kind !== 'assistant' || !maySignIn(row.user)) return null;
 	// connected by signing in: the access token lasts an hour, then the app renews it
 	if (row.token.expiresAt && row.token.expiresAt <= new Date(now).toISOString()) return null;
 	if (!row.token.lastUsedAt || now - Date.parse(row.token.lastUsedAt) > TOUCH_MS) {
@@ -100,7 +101,7 @@ export function authenticateSensor(authorization: string | null, now = Date.now(
 		.innerJoin(users, eq(users.id, assistantTokens.userId))
 		.where(eq(assistantTokens.tokenHash, hash(m[1])))
 		.get();
-	if (!row || row.token.kind !== 'sensor') return null;
+	if (!row || row.token.kind !== 'sensor' || !maySignIn(row.user)) return null;
 	if (!row.token.lastUsedAt || now - Date.parse(row.token.lastUsedAt) > TOUCH_MS) {
 		const at = new Date(now).toISOString();
 		db.update(assistantTokens).set({ lastUsedAt: at }).where(eq(assistantTokens.id, row.token.id)).run();

@@ -28,7 +28,7 @@ const ok = (id: Id, result: unknown): JsonRpcResponse => ({ jsonrpc: '2.0', id, 
 const fail = (id: Id, code: number, message: string): JsonRpcResponse => ({ jsonrpc: '2.0', id, error: { code, message } });
 
 export const PARSE_ERROR = -32700;
-const INVALID_REQUEST = -32600;
+export const INVALID_REQUEST = -32600;
 const METHOD_NOT_FOUND = -32601;
 const INVALID_PARAMS = -32602;
 const INTERNAL_ERROR = -32603;
@@ -96,11 +96,49 @@ export async function handleMessage(access: AssistantAccess, msg: unknown): Prom
 	}
 }
 
+/** The most messages one batch may hold, and the largest body /mcp reads (#210): requests are small. */
+export const MAX_BATCH = 20;
+export const MAX_BODY_BYTES = 1024 * 1024;
+
+/**
+ * The request's JSON, read no further than the limit whatever content-length
+ * says (or doesn't): 'too-large' past it, 'invalid' when it isn't JSON.
+ */
+export async function readJsonBody(request: Request, limit = MAX_BODY_BYTES): Promise<{ body: unknown } | { error: 'too-large' | 'invalid' }> {
+	if (Number(request.headers.get('content-length') ?? 0) > limit) return { error: 'too-large' };
+	const reader = request.body?.getReader();
+	if (!reader) return { error: 'invalid' };
+	const chunks: Uint8Array[] = [];
+	let size = 0;
+	for (;;) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		size += value.byteLength;
+		if (size > limit) {
+			await reader.cancel().catch(() => {});
+			return { error: 'too-large' };
+		}
+		chunks.push(value);
+	}
+	try {
+		return { body: JSON.parse(Buffer.concat(chunks).toString('utf8')) };
+	} catch {
+		return { error: 'invalid' };
+	}
+}
+
 /** A POST's body: one message, or a batch (clients on 2025-03-26 may send those). */
 export async function handleBody(access: AssistantAccess, body: unknown): Promise<JsonRpcResponse | JsonRpcResponse[] | null> {
 	if (Array.isArray(body)) {
 		if (!body.length) return fail(null, INVALID_REQUEST, 'Empty batch');
-		const out = (await Promise.all(body.map((m) => handleMessage(access, m)))).filter((r): r is JsonRpcResponse => r !== null);
+		if (body.length > MAX_BATCH) return fail(null, INVALID_REQUEST, `Too many messages in one batch: at most ${MAX_BATCH}`);
+		// one after another, so other requests get a turn between them (#210)
+		const out: JsonRpcResponse[] = [];
+		for (const m of body) {
+			const r = await handleMessage(access, m);
+			if (r) out.push(r);
+			await new Promise((next) => setImmediate(next));
+		}
 		return out.length ? out : null;
 	}
 	return handleMessage(access, body);
