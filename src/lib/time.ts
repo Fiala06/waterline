@@ -9,15 +9,19 @@ export interface When {
 	time: string; // HH:MM
 }
 
+/**
+ * "Sat, Sep 27" for a calendar date ('YYYY-MM-DD'), the same in every time
+ * zone. `{ year: true }` adds the year: "Sat, Sep 27, 2025".
+ */
+export function fmtWeekday(date: string, opts: { year?: boolean } = {}): string {
+	const kind = opts.year ? 'weekday-year' : 'weekday';
+	return formatter(kind, 'en-US', { weekday: 'short', month: 'short', day: 'numeric', ...(opts.year ? { year: 'numeric' } : {}), timeZone: 'UTC' }).format(new Date(date + 'T12:00:00Z'));
+}
+
 /** "Now" or "Wed, Sep 24 · 7:15 PM". */
 export function whenLabel(w: When | null): string {
 	if (!w) return 'Now';
-	const d = new Date(w.date + 'T12:00:00Z').toLocaleDateString('en-US', {
-		weekday: 'short',
-		month: 'short',
-		day: 'numeric',
-		timeZone: 'UTC'
-	});
+	const d = fmtWeekday(w.date);
 	const [h, m] = w.time.split(':').map(Number);
 	const t = new Date(Date.UTC(2000, 0, 1, h, m)).toLocaleTimeString('en-US', {
 		hour: 'numeric',

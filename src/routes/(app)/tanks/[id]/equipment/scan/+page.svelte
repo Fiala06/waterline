@@ -3,6 +3,7 @@
 	// or the number typed, all landing on ?code=… with what was found.
 	import { goto } from '$app/navigation';
 	import BarcodeScanner from '$lib/components/BarcodeScanner.svelte';
+	import { refusal } from '$lib/forms';
 	let { data, form } = $props();
 	const base = $derived(`/tanks/${data.tankId}`);
 	const r = $derived(data.result);
@@ -75,7 +76,7 @@
 			</section>
 		{/if}
 		{#if !r || r.status !== 'found'}
-			<BarcodeScanner onCode={read} {looking} error={form?.photoError ?? null} />
+			<BarcodeScanner onCode={read} {looking} error={refusal(form, 'photo').message || null} />
 			<form method="GET" class="typed">
 				<div class="field">
 					<label class="label" for="code">Or type the number under the barcode</label>

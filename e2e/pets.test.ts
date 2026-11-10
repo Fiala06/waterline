@@ -153,7 +153,10 @@ test('pet photos: tag one from the viewer, its gallery, and the public page swit
 
 	// names on: the pet by name, and its photo
 	await page.getByLabel(/Pet names and photos/).check({ force: true });
+	// the first save's message may still be up: wait for this save itself
+	const saved = page.waitForResponse((r) => r.url().includes('/public?/save') && r.request().method() === 'POST');
 	await page.getByRole('button', { name: 'Save' }).first().click();
+	await saved;
 	await expect(page.getByText('✓ Public page saved')).toBeVisible();
 	await v.goto(`/t/${slug}`);
 	await expect(v.locator('section#life th', { hasText: 'Captain · Betta' })).toBeVisible();

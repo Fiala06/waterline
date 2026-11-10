@@ -36,8 +36,44 @@ export interface TaskPreset {
 
 export const taskType = (v: string | null | undefined): TaskType => (v === 'dosing' || v === 'feeding' ? v : 'task');
 
+/**
+ * What the task form shows (15 / D5): built for a new task, from a saved one,
+ * or from a refused post, all three to this one shape (#269).
+ */
+export interface TaskFormValues {
+	type: TaskType;
+	name: string;
+	fromEvent: string;
+	tankId: string;
+	recurring: boolean;
+	repeat: Repeat;
+	every: string;
+	unit: 'days' | 'weeks';
+	weekdays: number[];
+	nextDue: string;
+	scheduleMode: 'completion' | 'fixed';
+	onDone: OnDone;
+	product: string;
+	amount: string;
+	amountUnit: string;
+	ends: Ends;
+	endsOn: string;
+	endsTimes: string;
+	tempOn: boolean;
+	tempEvery: string;
+	tempUntil: string;
+	tempClear: string | null;
+	graceDays: string;
+	triggerKind: TriggerKind;
+	triggerOffset: string;
+	triggerProduct: string;
+	avoidWaterChange: boolean;
+	movedFrom: string | null;
+	scheduled: string | null;
+}
+
 /** Form values for a task (15 / D5). */
-export function taskFormValues(task: Task | null, user: User, tankId: string | null, type: TaskType = 'task', preset: TaskPreset = {}) {
+export function taskFormValues(task: Task | null, user: User, tankId: string | null, type: TaskType = 'task', preset: TaskPreset = {}): TaskFormValues {
 	if (!task) {
 		const routine = type !== 'task';
 		const every = preset.every && /^\d{1,3}$/.test(preset.every) && Number(preset.every) >= 1 ? preset.every : null;
@@ -232,7 +268,7 @@ function parse(form: FormData, existing: Task | null) {
 	return { errors, input, moveOne: moveOne ? str(form, 'nextDue') : null, picked: str(form, 'nextDue') };
 }
 
-const formValues = (form: FormData, existing: Task | null) => {
+const formValues = (form: FormData, existing: Task | null): TaskFormValues => {
 	const repeat = repeatOf(form);
 	return {
 		type: existing ? taskType(existing.kind) : taskType(str(form, 'type')),

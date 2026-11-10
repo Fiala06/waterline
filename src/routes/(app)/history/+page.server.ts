@@ -1,7 +1,7 @@
 import { and, count as countRows, eq, inArray, lt } from 'drizzle-orm';
 import { eventIcon, eventKindLabel, eventTitle } from '$lib/events';
 import { shortName, statusOf, fmtValue } from '$lib/params';
-import { dateInZone, daysBetween, fmtDate, fmtTime, todayInZone } from '$lib/time';
+import { dateInZone, daysBetween, fmtDate, fmtTime, fmtWeekday, todayInZone } from '$lib/time';
 import { db } from '$lib/server/db';
 import { events, testReadings, tests } from '$lib/server/db/schema';
 import { eventView, testView, type EntryView } from '$lib/server/entry-view';
@@ -122,10 +122,7 @@ export const load: PageServerLoad = async ({ locals, parent, url, cookies, isDat
 		const day = dateInZone(it.at, tz);
 		let g = groups.at(-1);
 		if (!g || g.day !== day) {
-			const long = new Date(day + 'T12:00:00Z')
-				.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
-				.replace(',', '')
-				.toUpperCase();
+			const long = fmtWeekday(day).replace(',', '').toUpperCase();
 			const diff = daysBetween(day, today);
 			g = { day, label: diff === 0 ? `TODAY · ${long}` : diff === 1 ? `YESTERDAY · ${long}` : long, items: [] };
 			groups.push(g);

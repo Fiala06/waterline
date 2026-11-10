@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Public page saves say so everywhere.** Saving a tank's public page now shows ✓ Public page saved even in a browser with scripts off, as other settings do: [Public page](/tanks/current/public).
+
 - **You decide whether sharing a tank lets new people in.** When only invited people, or the people you list, can sign in, sharing a tank with someone new no longer lets them onto the server unless you turn on **Sharing a tank invites people too**. Otherwise they need an invitation from an admin first, and the Sharing page says so. A tank an admin shares still invites them: [Server settings › Who can sign in](/settings/server#who-can-sign-in).
 
 - **Shared tanks wait for a yes, and you can leave one.** Sharing a tank with someone who already has an account now sends them an invitation to accept, as it does for someone new, instead of adding the tank to their list straight away. A tank someone shared with you has **Leave tank** under its card, which takes it out of your list and stops its reminders: [Tanks](/tanks).

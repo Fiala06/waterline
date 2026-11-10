@@ -7,6 +7,7 @@
 	import Sheet from './Sheet.svelte';
 	import { paramStatus, statusMedium } from '$lib/status';
 	import { parseNumber } from '$lib/units';
+	import { refusal } from '$lib/forms';
 
 	let {
 		open = $bindable(false),
@@ -68,7 +69,7 @@
 			await update();
 			if (added) reset();
 		} else if (result.type === 'failure') {
-			failed = (result.data?.custom as { error?: string } | undefined)?.error ?? "Couldn't add it. Try again.";
+			failed = refusal(result.data, 'custom').message || "Couldn't add it. Try again.";
 		} else if (added) {
 			open = false;
 			reset();

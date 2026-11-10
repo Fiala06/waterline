@@ -36,3 +36,27 @@ export function once(input: Input, after: After): After | undefined {
 		}
 	};
 }
+
+// ── A refused form (#269) ────────────────────────────────────────────────────
+// Every action that turns a form down answers in one shape, built on the server
+// by `refuse()` (src/lib/server/forms.ts): which form it was, a message for the
+// form as a whole, one per field, and what was typed so it can be put back.
+
+export interface Refusal {
+	/** which form on the page was refused, e.g. 'par' */
+	form: string;
+	/** for the form as a whole ('' when only fields are at fault) */
+	message: string;
+	/** per field, by the input's name */
+	errors: Record<string, string>;
+	/** what was typed, to fill the form in again */
+	values: Record<string, unknown>;
+}
+
+const NONE: Refusal = { form: '', message: '', errors: {}, values: {} };
+
+/** The page's `form` prop, read for one form: its refusal, or an empty one when it was another form or none. */
+export function refusal(form: unknown, name: string): Refusal {
+	const r = (form as { refused?: Refusal } | null | undefined)?.refused;
+	return r && r.form === name ? r : NONE;
+}

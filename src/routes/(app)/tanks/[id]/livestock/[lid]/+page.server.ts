@@ -1,4 +1,4 @@
-import { error, fail, redirect } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import { and, desc, eq, or, sql } from 'drizzle-orm';
 import { eventTitle } from '$lib/events';
 import { outcomeOpen, outcomeText } from '$lib/livestock';
@@ -7,7 +7,7 @@ import { dateInZone, fmtDate, fmtDateLong } from '$lib/time';
 import { db } from '$lib/server/db';
 import { events } from '$lib/server/db/schema';
 import { setFlash } from '$lib/server/flash';
-import { optStr } from '$lib/server/forms';
+import { optStr, refuse } from '$lib/server/forms';
 import { checkPhotoFiles, photoFiles, datePhotos, preparePhotos, storePhotos } from '$lib/server/photos';
 import { speciesPhotos } from '$lib/server/stock-photos';
 import { getLivestock, nameLivestock, petPhotos, updateLivestockDetails } from '$lib/server/specs';
@@ -109,8 +109,8 @@ export const actions: Actions = {
 		const user = locals.user!;
 		const l = entry(user.id, params.id, params.lid);
 		const nickname = optStr(await request.formData(), 'nickname', 60);
-		if (!nickname) return fail(400, { nameError: 'Enter a name.' });
-		if (l.removedAt) return fail(400, { nameError: 'These have left the tank.' });
+		if (!nickname) return refuse('name', 'Enter a name.');
+		if (l.removedAt) return refuse('name', 'These have left the tank.');
 		const pet = nameLivestock(user.id, l.id, nickname);
 		setFlash(cookies, `✓ Named ${nickname}`);
 		redirect(303, back(params.id, pet.id));
@@ -120,11 +120,11 @@ export const actions: Actions = {
 		const l = entry(user.id, params.id, params.lid);
 		getTank(user.id, l.tankId, 'log');
 		const files = photoFiles(await request.formData(), 'photo').slice(0, 1);
-		if (!files.length) return fail(400, { photoError: 'Choose a photo.' });
+		if (!files.length) return refuse('photo', 'Choose a photo.');
 		const tooBig = checkPhotoFiles(files);
-		if (tooBig) return fail(400, { photoError: tooBig });
+		if (tooBig) return refuse('photo', tooBig);
 		const prepared = await preparePhotos(files);
-		if ('error' in prepared) return fail(400, { photoError: prepared.error });
+		if ('error' in prepared) return refuse('photo', prepared.error);
 		// one of the tank's photos, so it's in Photos and the backup too
 		const [photo] = await storePhotos(l.tankId, datePhotos(prepared, user.timeZone), { takenAt: new Date().toISOString() });
 		updateLivestockDetails(user.id, l.id, { photoId: photo.id });

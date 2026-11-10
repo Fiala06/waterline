@@ -34,6 +34,7 @@
 	import { toast, ui } from '$lib/ui.svelte';
 	import { forgetDevice, queuedOnDevice } from '$lib/offline';
 	import { fmtWhen } from '$lib/time';
+	import { refusal } from '$lib/forms';
 	let installHelp = $state(false);
 	let { data, form } = $props();
 	const u = $derived(data.user);
@@ -159,7 +160,7 @@
 		<section id="profile" class="sec" aria-labelledby="profile-h">
 			<h2 id="profile-h">Profile<SectionLink id="profile" label="Profile" /></h2>
 			<div class="rows">
-				<div class="row photo-row"><ProfilePhoto user={u} error={form?.photoError} /></div>
+				<div class="row photo-row"><ProfilePhoto user={u} error={refusal(form, 'photo').message || undefined} /></div>
 			</div>
 			<div class="field">
 				<label class="label" for="displayName">Name</label>

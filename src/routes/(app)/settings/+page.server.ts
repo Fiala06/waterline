@@ -5,7 +5,7 @@ import { saveOwnAvatar, setAvatarChoice } from '$lib/server/avatar';
 import { db } from '$lib/server/db';
 import { notificationPrefs } from '$lib/server/db/schema';
 import { setFlash } from '$lib/server/flash';
-import { parseTimeZone, str } from '$lib/server/forms';
+import { parseTimeZone, refuse, str } from '$lib/server/forms';
 import { emailConfigured } from '$lib/server/mail';
 import { baseUrl, prefsFor } from '$lib/server/notifications';
 import { sendPush } from '$lib/server/push';
@@ -86,12 +86,12 @@ export const actions: Actions = {
 	photo: async ({ request, locals, cookies }) => {
 		const file = (await request.formData()).get('photo');
 		const failed = await saveOwnAvatar(locals.user!.id, file instanceof File ? file : new File([], ''));
-		if (failed) return fail(400, { photoError: failed.error });
+		if (failed) return refuse('photo', failed.error);
 		setFlash(cookies, '✓ Photo saved');
 		redirect(303, '/settings#profile');
 	},
 	googlePhoto: async ({ locals, cookies }) => {
-		if (!locals.user!.avatarAt) return fail(400, { photoError: "There's no Google photo for this account." });
+		if (!locals.user!.avatarAt) return refuse('photo', "There's no Google photo for this account.");
 		await setAvatarChoice(locals.user!.id, 'google');
 		setFlash(cookies, '✓ Using your Google photo');
 		redirect(303, '/settings#profile');

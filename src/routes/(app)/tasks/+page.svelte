@@ -13,7 +13,7 @@
 	import TaskForm from '$lib/components/TaskForm.svelte';
 	import { cadenceText, dueInfo, isRoutine, routineLine } from '$lib/tasks';
 	import { REVIEW_ABOUT } from '$lib/review';
-	import { fmtDate } from '$lib/time';
+	import { fmtDate, fmtWeekday } from '$lib/time';
 
 	let { data } = $props();
 	// a routine's line has its amount too: "1 pump · Mon, Wed, Fri"; a task's says how it repeats
@@ -74,8 +74,7 @@
 		snoozeOpen = true;
 	}
 
-	const longDue = (d: string) =>
-		new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
+	const longDue = (d: string) => fmtWeekday(d);
 	// "✕ Overdue 1 day", "▲ Due today", "▲ Sat, Sep 27", "Fri, Oct 3"
 	const dueLabel = (t: T) => {
 		const d = dueInfo(t.due, data.today, t.graceDays);

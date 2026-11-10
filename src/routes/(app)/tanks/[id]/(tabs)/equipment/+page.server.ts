@@ -11,7 +11,7 @@ import {
   WITHOUT_TYPES,
   withoutLabel,
 } from "$lib/equipment";
-import { error, fail, redirect } from "@sveltejs/kit";
+import { error, redirect } from "@sveltejs/kit";
 import { doseLabel, doseMarks, nextDoseText } from "$lib/dosers";
 import { dosesByEquipment, resumeDose } from "$lib/server/dosers";
 import { MAX_RUN_S, PlugError, plugsOfTank, runPlugFor, switchPlug } from "$lib/server/plugs";
@@ -19,7 +19,7 @@ import { dosesLoggedBy } from "$lib/server/dosers";
 import { runText } from "$lib/events";
 import { plugText } from "$lib/plugs";
 import { setFlash } from "$lib/server/flash";
-import { num, optStr, str } from "$lib/server/forms";
+import { num, optStr, refuse, str } from "$lib/server/forms";
 import { getTank } from "$lib/server/tanks";
 import { addPar, deletePar, getEquipment, listPar, scheduledItems, setEquipmentPaused, setWithout } from "$lib/server/specs";
 import { safeReturn } from "$lib/server/redirect";
@@ -204,6 +204,7 @@ export const actions: Actions = {
     const back = safeReturn(form.get("from"), `/tanks/${params.id}/equipment`);
     const amount = num(form, "amount");
     const seconds = amount == null ? NaN : Math.round(amount * (str(form, "unit") === "min" ? 60 : 1));
+    // a flash, not refuse(): Run for… is posted from Overview's Needs attention as well as from here (#269)
     if (!Number.isFinite(seconds) || seconds < 1 || seconds > MAX_RUN_S) {
       setFlash(cookies, `✕ Run it for 1 second to ${MAX_RUN_S / 60} minutes`);
       redirect(303, back);
@@ -242,7 +243,7 @@ export const actions: Actions = {
     if (value == null || value < 0 || value > 5000) errors.value = "Enter the PAR reading (0–5000).";
     if (!zone) errors.zone = "Pick where in the tank.";
     if (!isDate(day) || day > todayInZone(user.timeZone)) errors.day = "Pick a day up to today.";
-    if (Object.keys(errors).length) return fail(400, { par: { errors } });
+    if (Object.keys(errors).length) return refuse("par", errors);
     addPar(user.id, params.id, {
       spot: spot || zone!.label,
       x: zone!.x,

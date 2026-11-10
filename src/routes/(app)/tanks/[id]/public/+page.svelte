@@ -2,9 +2,10 @@
 	import { enhance } from '$app/forms';
 	import { untrack } from 'svelte';
 	import { photoUrl } from '$lib/media';
-	import { toast } from '$lib/ui.svelte';
+	import { refusal } from '$lib/forms';
 	let { data, form } = $props();
 	const p = $derived(data.page);
+	const slugError = $derived(refusal(form, 'slug').errors.slug);
 
 	let enabled = $state(untrack(() => data.page.enabled));
 	let slug = $state(untrack(() => data.page.slug));
@@ -53,10 +54,7 @@
 	use:enhance={() =>
 		async ({ result, update }) => {
 			await update({ reset: false });
-			if (result.type === 'success') {
-				slug = data.page.slug; // as the server cleaned it up
-				toast('✓ Public page saved');
-			}
+			if (result.type === 'redirect') slug = data.page.slug; // as the server cleaned it up
 		}}
 >
 	<!-- on desktop the header has "Tanks › {tank} › Public page"; Save stays in a slim toolbar -->
@@ -95,9 +93,9 @@
 					<label class="label" for="pp-slug">URL</label>
 					<div class="unit-input slug">
 						<span class="unit mono">{data.host}/t/</span>
-						<input id="pp-slug" class="mono" name="slug" bind:value={slug} maxlength="60" autocomplete="off" aria-invalid={!!form?.slugError} />
+						<input id="pp-slug" class="mono" name="slug" bind:value={slug} maxlength="60" autocomplete="off" aria-invalid={!!slugError} />
 					</div>
-					{#if form?.slugError}<span class="error-text">✕ {form.slugError}</span>{/if}
+					{#if slugError}<span class="error-text">✕ {slugError}</span>{/if}
 					<div class="links">
 						<button type="button" class="btn" onclick={copy}>{copied ? '✓ Copied' : 'Copy link'}</button>
 						<button class="btn" formaction="?/check" formnovalidate>Check the link works</button>

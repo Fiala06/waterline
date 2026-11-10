@@ -1,8 +1,9 @@
-import { fail } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import { desc, eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { photos } from '$lib/server/db/schema';
-import { optStr, str } from '$lib/server/forms';
+import { setFlash } from '$lib/server/flash';
+import { optStr, refuse, str } from '$lib/server/forms';
 import { displayNameFor, getPublicPage, ogVersion, publicSettings, slugify, updatePublicPage, viewsThisWeek } from '$lib/server/public';
 import { getTank } from '$lib/server/tanks';
 import { logger } from '$lib/server/log';
@@ -46,7 +47,7 @@ function internalHost(host: string) {
 }
 
 export const actions: Actions = {
-	save: async ({ request, locals, params }) => {
+	save: async ({ request, locals, params, cookies }) => {
 		const user = locals.user!;
 		const form = await request.formData();
 		const seoTitle = optStr(form, 'seoTitle', 60);
@@ -76,8 +77,10 @@ export const actions: Actions = {
 				ogPhotoId && db.select().from(photos).where(eq(photos.id, ogPhotoId)).get()?.tankId === params.id ? ogPhotoId : null,
 			ogPlain: str(form, 'ogStyle') === 'plain'
 		});
-		if ('error' in result) return fail(400, { slugError: result.error });
-		return { saved: true };
+		if ('error' in result) return refuse('slug', { slug: result.error });
+		// saved: a message and back to the page, as other settings do, with or without scripts (#269)
+		setFlash(cookies, '✓ Public page saved');
+		redirect(303, `/tanks/${params.id}/public`);
 	},
 	// Is the public link reachable? Fetched from this server through the public address, so it
 	// catches a wrong Public site URL, a proxy that isn't passing /t/, or pages turned off; a

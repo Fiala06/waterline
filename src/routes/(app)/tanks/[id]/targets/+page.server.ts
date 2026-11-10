@@ -1,9 +1,9 @@
-import { fail, redirect } from "@sveltejs/kit";
+import { redirect } from "@sveltejs/kit";
 import { paramTip, whenToTest } from "$lib/tips";
 import { parseTestEvery } from "$lib/status";
 import { defaultParameters, fmtTarget, paramDecimals, paramGroup, paramLevel, paramUnit, storedValue } from "$lib/params";
 import { setFlash } from "$lib/server/flash";
-import { num, str } from "$lib/server/forms";
+import { num, refuse, str } from "$lib/server/forms";
 import {
   addCustomParam,
   deleteCustomParam,
@@ -100,7 +100,7 @@ export const actions: Actions = {
           : {}),
       };
     });
-    if (Object.keys(errors).length) return fail(400, { errors });
+    if (Object.keys(errors).length) return refuse("targets", errors);
     updateParams(user.id, params.id, rows);
     setFlash(cookies, "✓ Targets saved");
     // from the setup review (#30): the ranges are right now, and back to it
@@ -134,12 +134,9 @@ export const actions: Actions = {
     const values = Object.fromEntries(
       [...form].map(([k, v]) => [k, String(v)]),
     );
-    if (!name)
-      return fail(400, {
-        custom: { error: "Give the parameter a name.", values },
-      });
+    if (!name) return refuse("custom", "Give the parameter a name.", values);
     if (min != null && max != null && min > max)
-      return fail(400, { custom: { error: "Min must be below max.", values } });
+      return refuse("custom", "Min must be below max.", values);
     addCustomParam(locals.user!.id, params.id, {
       name,
       unit,

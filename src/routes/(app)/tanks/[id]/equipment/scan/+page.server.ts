@@ -1,4 +1,5 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
+import { refuse } from '$lib/server/forms';
 import { normalizeBarcode } from '$lib/barcode';
 import { brandAndModel, EQUIPMENT_TYPE_LABEL, guessEquipmentType } from '$lib/equipment';
 import { decodeBarcodeImage } from '$lib/server/barcode-decode';
@@ -62,16 +63,16 @@ export const actions: Actions = {
 		getTank(user.id, params.id, 'owner');
 		const form = await request.formData();
 		const file = form.get('photo');
-		if (!(file instanceof File) || !file.size) return fail(400, { photoError: 'Choose a photo of the barcode.' });
-		if (file.size > MAX_PHOTO_BYTES) return fail(400, { photoError: 'That photo is over 20 MB.' });
+		if (!(file instanceof File) || !file.size) return refuse('photo', 'Choose a photo of the barcode.');
+		if (file.size > MAX_PHOTO_BYTES) return refuse('photo', 'That photo is over 20 MB.');
 		let found: Awaited<ReturnType<typeof decodeBarcodeImage>>;
 		try {
 			found = await decodeBarcodeImage(Buffer.from(await file.arrayBuffer()));
 		} catch (e) {
 			logger.info('barcodes', "A photo couldn't be read for a barcode", { userId: user.id, error: e });
-			return fail(400, { photoError: "That file couldn't be read as a photo. Try a JPEG or PNG." });
+			return refuse('photo', "That file couldn't be read as a photo. Try a JPEG or PNG.");
 		}
-		if (!found) return fail(400, { photoError: 'No barcode found in that photo. Fill the frame with the barcode, in good light, and try again.' });
+		if (!found) return refuse('photo', 'No barcode found in that photo. Fill the frame with the barcode, in good light, and try again.');
 		redirect(303, `${url.pathname}?code=${found.code}`);
 	}
 };

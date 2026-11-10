@@ -7,7 +7,7 @@ import { and, desc, eq, gt, isNull, like, lt, or } from 'drizzle-orm';
 import { env } from '$env/dynamic/private';
 import { fmtRange, fmtValue, paramUnit, shortName, statusOf } from '$lib/params';
 import { dueInfo, intervalText, isRoutine } from '$lib/tasks';
-import { addDays, dateInZone, daysBetween, fmtDate, fmtTime, fmtWhen, todayInZone, utcToZoned } from '$lib/time';
+import { addDays, dateInZone, daysBetween, fmtDate, fmtTime, fmtWeekday, fmtWhen, todayInZone, utcToZoned } from '$lib/time';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { collectTokens, createActionToken } from './action-tokens';
 import { claimSend, sendFailed, sendSucceeded } from './send-log';
@@ -100,8 +100,7 @@ function emailKind(key: string) {
 	);
 }
 
-const longDate = (d: string) =>
-	new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
+const longDate = (d: string) => fmtWeekday(d);
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 function whenText(days: number) {
