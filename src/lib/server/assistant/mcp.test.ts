@@ -50,6 +50,12 @@ describe('messages', () => {
 		expect(await handleMessage(access, { jsonrpc: '2.0', id: 5, result: {} })).toBeNull();
 	});
 
+	it('answers a request whose id or method is unusable, so nobody waits on it', async () => {
+		expect(await handleMessage(access, { jsonrpc: '2.0', id: 7, method: 5 })).toMatchObject({ id: 7, error: { code: -32600 } });
+		expect(await handleMessage(access, { jsonrpc: '2.0', id: null, method: 'ping' })).toMatchObject({ id: null, error: { code: -32600 } });
+		expect(await handleMessage(access, { jsonrpc: '2.0', id: { a: 1 }, method: 'ping' })).toMatchObject({ id: null, error: { code: -32600 } });
+	});
+
 	it('refuses what is not JSON-RPC 2.0', async () => {
 		expect(await handleMessage(access, { id: 1, method: 'ping' })).toMatchObject({ id: 1, error: { code: -32600 } });
 		expect(await handleMessage(access, 'hello')).toMatchObject({ id: null, error: { code: -32600 } });

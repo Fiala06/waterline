@@ -327,11 +327,11 @@
 						{#if d.schedules.length}
 							<div class="block">
 								<h3>Daily schedule</h3>
-								{#each d.schedules as s (s.name)}
+								{#each d.schedules as s, i (i)}
 									<div class="sched">
 										<span class="sname">{s.name}</span>
 										<div class="day" role="img" aria-label="{s.name} {s.bars.map((b) => b.label).filter(Boolean).join(', ')}">
-											{#each s.bars as b, i (i)}<i class:co2={s.name !== 'Light'} style:left="{b.from * 100}%" style:width="{(b.to - b.from) * 100}%"></i>{/each}
+											{#each s.bars as b, j (j)}<i class:co2={s.name !== 'Light'} style:left="{b.from * 100}%" style:width="{(b.to - b.from) * 100}%"></i>{/each}
 										</div>
 										<span class="stext">{s.bars.map((b) => b.label).filter(Boolean).join(', ')}{s.text ? ` · ${s.text}` : ''}</span>
 									</div>
@@ -381,7 +381,7 @@
 							<div class="block">
 								<h3>Schedule</h3>
 								<ul class="rows">
-									{#each d.schedule as t (t.name)}<li class="two-col"><span>{t.name} · {t.every}</span><span class:overdue={t.overdue}>{t.due}</span></li>{/each}
+									{#each d.schedule as t, i (i)}<li class="two-col"><span>{t.name} · {t.every}</span><span class:overdue={t.overdue}>{t.due}</span></li>{/each}
 								</ul>
 							</div>
 						{/if}
@@ -416,7 +416,7 @@
 								</ul>
 							</div>
 						{/if}
-						{#each d.care as c (c.name)}<p class="muted small"><b>{c.name}:</b> {c.line}</p>{/each}
+						{#each d.care as c, i (i)}<p class="muted small"><b>{c.name}:</b> {c.line}</p>{/each}
 					</div>
 					{#if d.plants.length}
 						<div class="col">
@@ -497,7 +497,7 @@
 									</span>
 									{#if e.readings?.length && !e.repeat}
 										<ul class="tl-readings">
-											{#each e.readings as r (r.name)}
+											{#each e.readings as r, j (j)}
 												<li><span class="muted">{r.name}</span> <span class="num">{r.value}{r.unit ? ` ${r.unit}` : ''}</span> <span class="rs status-{r.level}">{r.status}</span></li>
 											{/each}
 										</ul>

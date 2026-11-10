@@ -12,7 +12,7 @@ export interface CalendarEvent {
 
 /** TEXT values: backslash, semicolon, comma and newline escaped. */
 export function escapeText(s: string) {
-	return s.replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+	return s.replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\r\n|\r|\n/g, '\\n');
 }
 
 /** A content line folded to 75 octets, continuing with a space; never splits a character. */

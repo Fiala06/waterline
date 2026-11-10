@@ -84,7 +84,7 @@
 		<section class="reuse" aria-labelledby="reuse-h">
 			<h3 id="reuse-h">From your other tanks</h3>
 			<ul>
-				{#each reusable as r (r.name)}
+				{#each reusable as r, i (i)}
 					<li>
 						<form method="POST" {action} use:enhance={submit}>
 							<input type="hidden" name="name" value={r.name} />

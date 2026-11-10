@@ -4,6 +4,7 @@
 // rides along in the query (and a refused Allow shows the page again).
 import { fail, redirect } from '@sveltejs/kit';
 import { approve, deny, readAuthorize } from '$lib/server/assistant/oauth';
+import { ownTanks } from '$lib/server/assistant/tokens';
 import { logger } from '$lib/server/log';
 import { listTanks } from '$lib/server/tanks';
 import type { Actions, PageServerLoad } from './$types';
@@ -21,7 +22,8 @@ export const load: PageServerLoad = ({ locals, url }) => {
 		// the app's request, without the action's own ?/allow
 		q: new URLSearchParams([...url.searchParams].filter(([k]) => !k.startsWith('/'))).toString(),
 		email: user.email,
-		tanks: listTanks(user.id).map((t) => ({ id: t.id, name: t.name }))
+		// a connection reads the keeper's own tanks only
+		tanks: listTanks(user.id, { own: true }).map((t) => ({ id: t.id, name: t.name }))
 	};
 };
 
@@ -31,7 +33,7 @@ export const actions: Actions = {
 		const form = await req.formData();
 		const r = request(url.searchParams, url.origin);
 		if ('page' in r) return fail(400, { error: r.page, picked: null as string[] | null });
-		const tankIds = form.getAll('tank').map(String);
+		const tankIds = ownTanks(user.id, form.getAll('tank').map(String));
 		if (!tankIds.length) return fail(400, { error: 'Pick at least one tank.', picked: [] as string[] | null });
 		logger.info('assistant', `"${r.ok.client.name}" connected by signing in`, { userId: user.id, returnsTo: new URL(r.ok.redirectUri).origin });
 		redirect(303, approve(user.id, r.ok, tankIds, url.origin));

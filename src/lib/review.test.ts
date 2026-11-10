@@ -51,6 +51,12 @@ describe('equipment that wants servicing', () => {
 		// just installed: nothing to say yet
 		expect(serviceFlag({ type: 'co2', installedAt: '2026-08-01', lastServicedAt: null }, today, fmt)).toBeNull();
 	});
+	it("reads the day of a service in the keeper's time zone", () => {
+		// 7 pm on 1 March in Los Angeles is already 2 March in UTC
+		const evening = { type: 'filter', installedAt: '2025-01-01', lastServicedAt: '2026-03-02T03:00:00Z' };
+		expect(serviceFlag(evening, today, fmt, 'America/Los_Angeles')).toBe('▲ Not serviced since 2026-03-01');
+		expect(serviceFlag(evening, today, fmt)).toBe('▲ Not serviced since 2026-03-02');
+	});
 	it("leaves lights and heaters alone: they aren't serviced", () => {
 		expect(serviceFlag({ type: 'light', installedAt: '2020-01-01', lastServicedAt: null }, today, fmt)).toBeNull();
 		expect(serviceFlag({ type: 'heater', installedAt: '2020-01-01', lastServicedAt: null }, today, fmt)).toBeNull();

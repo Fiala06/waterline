@@ -24,6 +24,8 @@
 		title: string;
 		sub?: string;
 		key?: string;
+		/** what the row is keyed by, when its title could repeat: two tanks, favorites or routines can share a name */
+		id?: string;
 		cover?: string | null;
 		run: () => void;
 	}
@@ -59,6 +61,7 @@
 			group: 'Tanks',
 			title: t.name,
 			sub: `${tankTypeLabel(t.type)}${t.volume ? ` · ${t.volume}` : ''}${t.outOfRange ? ` · ✕ ${t.outOfRange}` : ''}${t.overdue ? ` · ▲ ${t.overdue}` : ''}`,
+			id: `tank:${t.id}`,
 			cover: t.cover,
 			run: () => onpick(t.id)
 		}));
@@ -77,11 +80,11 @@
 			for (const [title, href, key] of tabs) list.push({ group: 'Go to', title, sub: current.name, key, run: go(href) });
 			for (const f of favorites) {
 				if (f.tankId && f.tankId !== current.id) continue;
-				list.push({ group: 'Actions', title: `★ ${f.label}`, sub: [current.name, f.sub].filter(Boolean).join(' · '), run: go(favoriteHref(f, current.id)) });
+				list.push({ group: 'Actions', title: `★ ${f.label}`, sub: [current.name, f.sub].filter(Boolean).join(' · '), id: `fav:${f.id}`, run: go(favoriteHref(f, current.id)) });
 			}
 			for (const r of routines) {
 				if (r.tankId !== current.id) continue;
-				list.push({ group: 'Actions', title: `Run ${r.name}`, sub: `${current.name} · ${r.steps} step${r.steps === 1 ? '' : 's'}`, run: go(`${base}/routines/${r.id}/run`) });
+				list.push({ group: 'Actions', title: `Run ${r.name}`, sub: `${current.name} · ${r.steps} step${r.steps === 1 ? '' : 's'}`, id: `routine:${r.id}`, run: go(`${base}/routines/${r.id}/run`) });
 			}
 			list.push(
 				{ group: 'Actions', title: 'Log water test', sub: current.name, key: 'T', run: go(logHref('test', current.id)) },
@@ -183,7 +186,7 @@
 		<div class="list" role="listbox" aria-label="Results">
 			{#each groups as g (g.name)}
 				<div class="group">{g.name}</div>
-				{#each g.items as { item, i } (`${g.name}:${item.title}`)}
+				{#each g.items as { item, i } (item.id ?? `${g.name}:${item.title}`)}
 					<button
 						type="button"
 						class="row"

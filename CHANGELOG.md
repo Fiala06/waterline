@@ -11,6 +11,14 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Calendar titles with a semicolon.** A task or tank named like "Dose; trim" was written into the calendar feed in a way strict calendar apps could cut short or refuse. Semicolons and every kind of line break are now written the way calendars expect: [Settings › Calendar](/settings#calendar).
+- **Only your own tanks to pick for an assistant.** An AI assistant reads the tanks you own, but tanks shared with you were offered too, so a token could be made that saw nothing. The pickers now list your own tanks, and say so when none is picked: [Settings › AI assistant](/settings/assistant).
+- **An assistant sees an entry's older photos.** Asking an assistant for History left out a photo taken before the days asked for, even when it was attached to an entry inside them. Every entry now comes with all its photos: [Settings › AI assistant](/settings/assistant).
+- **Assistant apps get an answer to a bad request.** A malformed request from a connected app got no reply, so the app could wait for good, and unreadable sign-in details from an app were logged as a server error. Both now get a proper refusal: [Settings › AI assistant](/settings/assistant).
+- **A failed photo upload leaves nothing behind.** If photos added from the gallery couldn't be stored (a full disk, say), History kept an empty note for each day. Now nothing is added and the page says so, so trying again doesn't repeat the days that had saved: [Photos](/photos).
+- **Two tanks with the same name in ⌘K.** With two tanks, favorites or routines sharing a name, the palette could drop a row or highlight the wrong one. The same went for tasks with the same name on a public tank page. Each now has its own row: [Tanks](/tanks).
+- **"Not serviced since" shows your date.** A filter serviced in the evening west of UTC was shown as serviced the next day on the setup review. It now uses your time zone: [Review tank setup](/tanks/current/review).
+
 ## 1.21.3 · 2026-11-10
 
 - **Reminder links act as you.** Mark done and Snooze in a reminder email or notification now work as the person the reminder was sent to. On a shared tank they stop working once that person is removed or can only view, and History shows who marked a task done: [Tasks](/tasks).
