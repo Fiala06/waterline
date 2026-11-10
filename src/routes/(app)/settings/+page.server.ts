@@ -20,7 +20,7 @@ import { getFeed, makeFeed, removeFeed } from '$lib/server/calendar';
 import { listTanks } from '$lib/server/tanks';
 import { updateUser } from '$lib/server/users';
 import { isCurrency } from '$lib/money';
-import { LEAD_OPTIONS } from '$lib/notify-options';
+import { LEAD_OPTIONS, SEND_TIMES } from '$lib/notify-options';
 import type { Actions, PageServerLoad } from './$types';
 
 /** "Chrome on Android, Firefox on Windows and ntfy" */
@@ -121,7 +121,7 @@ export const actions: Actions = {
 				outOfRangeAlerts: on('outOfRangeAlerts'),
 				delivery: delivery === 'daily' || delivery === 'weekly' ? delivery : 'individual',
 				leadDays: LEAD_OPTIONS.some((o) => o.days === lead) ? lead : 1,
-				sendTime: /^\d{2}:\d{2}$/.test(sendTime) ? sendTime : '08:00',
+				sendTime: SEND_TIMES.some((t) => t.value === sendTime) ? sendTime : '08:00',
 				notifyEmail: notifyEmail || null,
 				pushTaskReminders: on('pushTaskReminders'),
 				pushOverdueAlerts: on('pushOverdueAlerts'),

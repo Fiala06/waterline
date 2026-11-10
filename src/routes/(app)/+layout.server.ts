@@ -22,7 +22,9 @@ import { availableUpdate, projectPage } from '$lib/server/updates';
 import { rememberOptions, TANK_COOKIE } from '$lib/remember';
 import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutServerLoad = ({ locals, url, cookies, params, route, isDataRequest }) => {
+export const load: LayoutServerLoad = ({ locals, url, cookies, params, route, isDataRequest, depends }) => {
+	// the alerts read (#267): refreshed once an alert opened is marked read
+	depends('app:alerts');
 	const user = locals.user!;
 	const tanks = listTanks(user.id);
 	const today = todayInZone(user.timeZone);

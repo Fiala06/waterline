@@ -4,6 +4,7 @@
 	import { enhance } from '$app/forms';
 	import { untrack } from 'svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	let { data, form } = $props();
 	let editing = $state<string | null>(untrack(() => form?.edit?.id ?? data.edit ?? null));
 	const addErr = $derived<Record<string, string>>(form?.add?.errors ?? {});
@@ -88,11 +89,12 @@
 							<input type="hidden" name="id" value={k.id} />
 							{@render fields(`e-${k.id}`, form?.edit?.id === k.id ? form.edit.values : { name: k.name, ...splitKey(k.paramKey), stepsText: k.stepsText }, form?.edit?.id === k.id ? editErr : {})}
 							<div class="edit-acts">
-								<button class="btn btn-danger del" formaction="?/delete">Delete</button>
+								<button class="btn btn-danger del" type="button" popovertarget="confirm-del-{k.id}">Delete</button>
 								<a class="btn" href="/settings/test-kits" onclick={(e) => (e.preventDefault(), (editing = null))}>Cancel</a>
 								<button class="btn btn-primary">Save</button>
 							</div>
 						</form>
+						<ConfirmDelete id="confirm-del-{k.id}" trigger={false} title={`Delete ${k.name}?`} body="Tests already logged stay in History." fields={{ id: k.id }} label="Delete" />
 					{/if}
 				</li>
 			{/each}

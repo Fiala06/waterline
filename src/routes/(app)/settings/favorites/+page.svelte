@@ -6,6 +6,7 @@
 	import { untrack } from 'svelte';
 	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import { DOSING_UNITS, MAINTENANCE_ACTIONS, WATER_SOURCES } from '$lib/events';
 	import { FAVORITE_KIND_LABEL, FAVORITE_KINDS } from '$lib/favorites';
 	let { data, form } = $props();
@@ -164,11 +165,12 @@
 							<input type="hidden" name="id" value={f.id} />
 							{@render fields(`e-${f.id}`, form?.edit?.id === f.id ? form.edit.values : f, form?.edit?.id === f.id ? editErr : {})}
 							<div class="edit-acts">
-								<button class="btn btn-danger del" formaction="?/delete">Remove</button>
+								<button class="btn btn-danger del" type="button" popovertarget="confirm-del-{f.id}">Remove</button>
 								<a class="btn" href="/settings/favorites" onclick={(e) => (e.preventDefault(), (editing = null))}>Cancel</a>
 								<button class="btn btn-primary">Save</button>
 							</div>
 						</form>
+						<ConfirmDelete id="confirm-del-{f.id}" trigger={false} title={`Remove ${f.label}?`} body="It goes from Quick add. Entries logged with it stay in History." fields={{ id: f.id }} label="Remove" />
 					{/if}
 				</li>
 			{/each}

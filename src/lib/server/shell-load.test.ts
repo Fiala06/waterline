@@ -40,7 +40,7 @@ interface Shell {
 	tanks: { name: string; role: string; outOfRange: number; tested: boolean }[];
 	alerts: { kind: string }[];
 }
-const run = (user: typeof keeper) => load({ locals: { user }, url: new URL('http://x/'), cookies, params: {}, route: { id: '/(app)' } } as never) as unknown as Shell;
+const run = (user: typeof keeper) => load({ locals: { user }, url: new URL('http://x/'), cookies, params: {}, route: { id: '/(app)' }, depends: () => {} } as never) as unknown as Shell;
 
 /** How many SQL statements the shell's load runs. */
 function statements(user: typeof keeper) {

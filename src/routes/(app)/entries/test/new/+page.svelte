@@ -12,6 +12,7 @@
 		params={data.params}
 		kits={data.kits}
 		values={form?.values ?? data.filled ?? {}}
+		initialNote={form?.note ?? ''}
 		initialWhen={data.when}
 		timeZone={data.user.timeZone}
 		closeHref={data.returnTo ?? `/?tank=${data.tank.id}`}

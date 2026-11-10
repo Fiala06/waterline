@@ -4,7 +4,7 @@
 // reminder for the same product is marked done by one, and the tasks that
 // follow a dose move with it.
 import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
-import { doseDue, doseLabel, dosesLabel, startFrom, type DoseSpec } from '$lib/dosers';
+import { doseDueOn, doseLabel, dosesLabel, startFrom, type DoseSpec } from '$lib/dosers';
 import { equipmentName } from '$lib/equipment';
 import { logCompletes } from '$lib/tasks';
 import { utcToZoned, zonedToUtc } from '$lib/time';
@@ -162,9 +162,10 @@ export async function logDueDoses(now = new Date()): Promise<number> {
 	let logged = 0;
 	for (const r of rows) {
 		const local = utcToZoned(now, r.user.timeZone);
-		if (!doseDue(r.dose, local)) continue;
+		const day = doseDueOn(r.dose, local);
+		if (!day) continue;
 		try {
-			logDose(r.user, r.item, r.dose, local.date);
+			logDose(r.user, r.item, r.dose, day);
 			logged++;
 		} catch (e) {
 			logger.error('server', "A doser's dose couldn't be logged", { tankId: r.tank.id, equipmentId: r.item.id, error: e });

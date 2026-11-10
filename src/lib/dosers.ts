@@ -66,6 +66,21 @@ export function doseDue(d: DoseSpec & { lastLoggedOn: string | null }, local: Lo
 	return !d.paused && isDoseDay(d, local.date) && local.time >= d.at && (d.lastLoggedOn ?? '') < local.date;
 }
 
+/** Later than this, a dose's time can fall after the day's last run of the scheduler (every 5 minutes). */
+const LAST_RUN = '23:55';
+
+/**
+ * The day whose dose is to be logged now, if any (#231): today's, as `doseDue`
+ * says, or, in the first minutes after midnight, yesterday's when its time was
+ * so late in the day that no run of the scheduler came after it.
+ */
+export function doseDueOn(d: DoseSpec & { lastLoggedOn: string | null }, local: LocalNow): string | null {
+	if (d.paused) return null;
+	const yesterday = addDays(local.date, -1);
+	if (d.at > LAST_RUN && local.time < '00:15' && isDoseDay(d, yesterday) && (d.lastLoggedOn ?? '') < yesterday) return yesterday;
+	return doseDue(d, local) ? local.date : null;
+}
+
 /**
  * The last-logged day a dose starts with when it's made, its time changed or
  * it's resumed: today when its time has passed (so it's logged from the next

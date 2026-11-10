@@ -70,6 +70,7 @@ test('favorites open a form filled in from Quick add, and are managed in Setting
 	await page.getByRole('link', { name: /Quick log favorites/ }).click();
 	await page.getByRole('link', { name: 'Edit Daily ferts' }).click();
 	await page.getByRole('button', { name: 'Remove' }).click();
+	await page.getByRole('alertdialog').getByRole('button', { name: 'Remove' }).click();
 	await expect(page.getByRole('status')).toContainText('Daily ferts removed');
 	await expect(list.getByText('Daily ferts')).toHaveCount(0);
 });

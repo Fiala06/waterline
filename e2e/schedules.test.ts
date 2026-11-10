@@ -76,5 +76,6 @@ test('PAR readings on a reef tank', async ({ page }, info) => {
 	await expect(page.getByText('PAR 320 at Acro ledge').first()).toBeVisible();
 	await open(page, `/tanks/${tankId}/equipment`);
 	await page.getByRole('button', { name: /Delete the reading at Front left/ }).click();
+	await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click();
 	await expect(page.locator('.dot')).toHaveCount(1);
 });

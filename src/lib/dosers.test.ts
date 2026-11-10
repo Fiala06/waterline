@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { doseDue, doseLabel, dosesLabel, doseMarks, isDoseDay, nextDoseText, startFrom, type DoseSpec } from './dosers';
+import { doseDue, doseDueOn, doseLabel, dosesLabel, doseMarks, isDoseDay, nextDoseText, startFrom, type DoseSpec } from './dosers';
 
 const thrive: DoseSpec = { product: 'Thrive+', amountMl: 1, at: '10:00', seconds: 30, weekdays: null, paused: false };
 const mwf: DoseSpec = { ...thrive, product: 'Excel', amountMl: 2.5, seconds: null, weekdays: '1,3,5' };
@@ -34,6 +34,23 @@ describe("a doser's doses (#196)", () => {
 		// not a Tuesday
 		expect(doseDue({ ...mwf, lastLoggedOn: null }, { date: '2026-10-20', time: '12:00' })).toBe(false);
 		expect(doseDue({ ...mwf, lastLoggedOn: null }, { date: '2026-10-21', time: '12:00' })).toBe(true);
+	});
+
+	it("logs a dose set for the day's last minutes just after midnight (#231)", () => {
+		const late = { ...thrive, at: '23:58', lastLoggedOn: '2026-10-18' };
+		// the last run of the 19th came at 23:56: nothing then
+		expect(doseDueOn(late, { date: '2026-10-19', time: '23:56' })).toBeNull();
+		// the first run of the 20th logs the 19th's
+		expect(doseDueOn(late, { date: '2026-10-20', time: '00:01' })).toBe('2026-10-19');
+		expect(doseDueOn({ ...late, lastLoggedOn: '2026-10-19' }, { date: '2026-10-20', time: '00:06' })).toBeNull();
+		// a run that did come after it logged it on the day
+		expect(doseDueOn(late, { date: '2026-10-19', time: '23:59' })).toBe('2026-10-19');
+		// a day the server missed entirely, or a dose at an ordinary time, isn't made up
+		expect(doseDueOn(late, { date: '2026-10-20', time: '09:00' })).toBeNull();
+		expect(doseDueOn({ ...thrive, lastLoggedOn: '2026-10-18' }, { date: '2026-10-20', time: '00:01' })).toBeNull();
+		// not on a day it isn't made
+		expect(doseDueOn({ ...mwf, at: '23:58', lastLoggedOn: null }, { date: '2026-10-21', time: '00:01' })).toBeNull();
+		expect(doseDueOn({ ...late, paused: true }, { date: '2026-10-20', time: '00:01' })).toBeNull();
 	});
 
 	it('starts from the next time: a dose set up after its time is not logged for today', () => {

@@ -4,7 +4,7 @@ import { dateInZone, fmtDate } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
 import { optStr, str } from '$lib/server/forms';
 import { checkPhotoFiles, photoFiles, datePhotos, preparePhotos, storePhotos } from '$lib/server/photos';
-import { addPlant, getPlant, listPlants, logTrim, removePlant, updatePlant } from '$lib/server/specs';
+import { addPlant, getPlant, listPlants, logTrim, removePlant, restorePlant, updatePlant } from '$lib/server/specs';
 import { plantHealthEvents } from '$lib/server/log-plants';
 import { isPlantObservation, plantObservationText, PLANT_OBSERVATIONS } from '$lib/plants';
 import { PLANT_SYMPTOM_CHECKS, resolveChecks } from '$lib/symptoms';
@@ -129,8 +129,19 @@ export const actions: Actions = {
 	},
 	remove: async ({ request, locals, params, cookies }) => {
 		const form = await request.formData();
-		const p = removePlant(locals.user!.id, str(form, 'id'));
-		setFlash(cookies, `${p.name} removed`);
+		const id = str(form, 'id');
+		if (getPlant(locals.user!.id, id).tankId !== params.id) return fail(404);
+		const p = removePlant(locals.user!.id, id);
+		setFlash(cookies, `${p.name} removed`, { undo: { action: `/tanks/${params.id}/plants?/restore`, name: 'id', value: p.id } });
+		redirect(303, `/tanks/${params.id}/plants`);
+	},
+	/** Undo of Remove (#258) */
+	restore: async ({ request, locals, params, cookies }) => {
+		const id = str(await request.formData(), 'id');
+		if (getPlant(locals.user!.id, id).tankId !== params.id) return fail(404);
+		const p = restorePlant(locals.user!.id, id);
+		if (!p) return fail(410);
+		setFlash(cookies, `✓ ${p.name} is back`);
 		redirect(303, `/tanks/${params.id}/plants`);
 	},
 	trim: async ({ request, locals, params, cookies }) => {

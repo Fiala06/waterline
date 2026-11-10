@@ -49,6 +49,7 @@ test('saved product links, and reordering from a dosing entry', async ({ page },
 	await expect(page.getByText('shop.example.com · 1 L')).toBeVisible();
 	await page.getByRole('link', { name: 'Edit Easy Green' }).click();
 	await page.getByRole('button', { name: 'Delete' }).click();
+	await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click();
 	await expect(page.getByRole('status')).toContainText('Easy Green deleted');
 	await expect(page.getByText('No products yet')).toBeVisible();
 

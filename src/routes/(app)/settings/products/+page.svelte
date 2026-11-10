@@ -4,6 +4,7 @@
 	import { enhance } from '$app/forms';
 	import { untrack } from 'svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import { fmtDateLong } from '$lib/time';
 	let { data, form } = $props();
 
@@ -115,11 +116,12 @@
 							<input type="hidden" name="id" value={p.id} />
 							{@render fields(`e-${p.id}`, form?.edit?.id === p.id ? form.edit.values : p, form?.edit?.id === p.id ? editErr : {})}
 							<div class="edit-acts">
-								<button class="btn btn-danger del" formaction="?/delete">Delete</button>
+								<button class="btn btn-danger del" type="button" popovertarget="confirm-del-{p.id}">Delete</button>
 								<a class="btn" href="/settings/products" onclick={(e) => (e.preventDefault(), (editing = null))}>Cancel</a>
 								<button class="btn btn-primary">Save</button>
 							</div>
 						</form>
+						<ConfirmDelete id="confirm-del-{p.id}" trigger={false} title={`Delete ${p.name}?`} body="Doses and purchases already logged stay in History." fields={{ id: p.id }} label="Delete" />
 					{/if}
 				</li>
 			{/each}

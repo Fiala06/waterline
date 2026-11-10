@@ -180,16 +180,31 @@
 		<label class="search">
 			<Icon name="search" size={18} />
 			<span class="sr-only">Search tanks or type an action</span>
-			<input bind:this={search} bind:value={q} placeholder="Search tanks or type an action" autocomplete="off" spellcheck="false" />
+			<!-- the combobox pattern (#267): focus stays here, and the highlighted row is announced -->
+			<input
+				bind:this={search}
+				bind:value={q}
+				placeholder="Search tanks or type an action"
+				autocomplete="off"
+				spellcheck="false"
+				role="combobox"
+				aria-controls="palette-results"
+				aria-expanded="true"
+				aria-autocomplete="list"
+				aria-activedescendant={shown[cursor] ? `palette-option-${cursor}` : undefined}
+			/>
 			<kbd>Esc</kbd>
 		</label>
-		<div class="list" role="listbox" aria-label="Results">
-			{#each groups as g (g.name)}
-				<div class="group">{g.name}</div>
+		<div class="list" id="palette-results" role="listbox" aria-label="Results">
+			{#each groups as g, gi (g.name)}
+				<div class="g" role="group" aria-labelledby="palette-group-{gi}">
+				<div class="group" id="palette-group-{gi}">{g.name}</div>
 				{#each g.items as { item, i } (item.id ?? `${g.name}:${item.title}`)}
 					<button
 						type="button"
 						class="row"
+						id="palette-option-{i}"
+						tabindex="-1"
 						role="option"
 						aria-selected={cursor === i}
 						data-cursor={cursor === i}
@@ -204,6 +219,7 @@
 						{#if item.key}<kbd>{item.key}</kbd>{/if}
 					</button>
 				{/each}
+				</div>
 			{:else}
 				<p class="none">No tank or action matches “{q}”</p>
 			{/each}
@@ -219,6 +235,9 @@
 </dialog>
 
 <style>
+	.g {
+		display: contents;
+	}
 	.pal {
 		padding: 0;
 		border: none;

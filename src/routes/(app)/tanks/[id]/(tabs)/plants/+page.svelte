@@ -56,17 +56,20 @@
 	let editOpen = $state(false);
 	// a row's Trim button opens the sheet with that plant ticked
 	let trimPick = $state<string | null>(null);
-	const close = () => async ({ update }: { update: () => Promise<void> }) => {
+	// a sheet closes once its save goes through; one that's refused stays open with what was typed (#261)
+	const close = () => async ({ result, update }: { result: { type: string }; update: (o?: { reset?: boolean }) => Promise<void> }) => {
+		if (result.type === 'failure') return update({ reset: false });
 		sheets.add = sheets.trim = editOpen = false;
 		trimPick = null;
 		await update();
 	};
+	const sheetOpen = $derived(sheets.add || sheets.trim || editOpen);
 </script>
 
 <svelte:head><title>Plants · {data.tankHead.name}</title></svelte:head>
 
 <div class="body">
-	{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
+	{#if form?.error && !sheetOpen}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
 
 	{#if !data.plants.length}
 		<EmptyState icon="plant" title="No plants yet" text="Add stems, carpets, epiphytes and mosses to track how they're doing.">
@@ -155,6 +158,7 @@
 
 <Sheet bind:open={sheets.add} title="Add plant" width={480}>
 	<form method="POST" action="?/add" class="sheet-form" use:enhance={close}>
+		{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
 		<SpeciesInput id="plant-name" kind="plant" water="fresh" label="Plant" />
 		<fieldset class="field">
 			<legend class="label">Position</legend>
@@ -222,6 +226,7 @@
 				{/if}
 			</section>
 			<form method="POST" action="?/update" class="sheet-form" use:enhance={close}>
+				{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
 				<input type="hidden" name="id" value={editing.id} />
 				<fieldset class="field">
 					<legend class="label">Status</legend>
@@ -246,6 +251,7 @@
 
 <Sheet bind:open={sheets.trim} title="Log trim" width={480}>
 	<form method="POST" action="?/trim" class="sheet-form" use:enhance={close}>
+		{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
 		<fieldset class="field">
 			<legend class="label">What did you trim?</legend>
 			<div class="chips">

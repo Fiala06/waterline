@@ -3,7 +3,7 @@
 	// and app-wide links beside a tank workspace with its header and tabs; on
 	// phones a header with the tank's name and a bottom bar with Log in the middle.
 	import { afterNavigate, goto, invalidateAll } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import InstallPrompt from '$lib/components/InstallPrompt.svelte';
 	import { discard, flushQueue, refreshQueue, retry } from '$lib/offline';
 	import { CHART_RANGE_COOKIE, RANGE_COOKIE, remember, TANK_COOKIE } from '$lib/remember';
@@ -325,6 +325,18 @@
 		lastY = y;
 	}
 	afterNavigate(() => (barHidden = false));
+
+	// A save that's refused (#261): the first field it refused gets the focus, so its
+	// error isn't left off screen far up a long form. Without scripts, once the page is up.
+	$effect(() => {
+		if (!page.form) return;
+		tick().then(() => {
+			const field = [...document.querySelectorAll<HTMLElement>('main [aria-invalid="true"], dialog[open] [aria-invalid="true"]')].find((el) => el.getClientRects().length);
+			if (!field || field.contains(document.activeElement)) return;
+			field.focus({ preventScroll: true });
+			field.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+		});
+	});
 
 	// ── Keyboard (README → Global overlays): ignored while typing in a field ──
 	let goPending = $state(false);
