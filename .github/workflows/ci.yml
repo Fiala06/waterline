@@ -1,17 +1,22 @@
-# One branch, main. Every push and pull request is checked and tested, and
-# every push to main builds the Docker image. It's published to
-# ghcr.io/fiala06/waterline only for a release: when main reaches a version in
-# package.json that has no v<version> tag yet, the image is pushed as :latest,
-# :<version>, :<major>.<minor> and :sha-xxxxxxx, and a GitHub release is made
-# with that version's section of CHANGELOG.md. So :latest is always a release,
-# and the version a server shows is the one it runs.
+# One branch, main. Every push and pull request gets the quick set: the type
+# check, the unit tests and the end-to-end tests in Chromium (three machines
+# at once).
+#
+# The full set adds the smoke tests in Safari and Firefox, the performance
+# budgets, and the Docker image with its vulnerability scan. It runs for a
+# release (package.json has a version with no v<version> tag yet, on main or
+# on the pull request that brings it), every Monday, and when started by hand
+# (Actions › CI › Run workflow). These break rarely and cost about as much as
+# the quick set, so an ordinary push doesn't wait for them.
+#
+# The image is published to ghcr.io/fiala06/waterline only for a release: once
+# every job has passed on main, it is pushed as :latest, :<version>,
+# :<major>.<minor> and :sha-xxxxxxx, and a GitHub release is made with that
+# version's section of CHANGELOG.md. So :latest is always a release, and the
+# version a server shows is the one it runs.
 #
 # The image is scanned for known vulnerabilities before anything is pushed,
 # and a release carries its SBOM (see SECURITY.md; more checks in security.yml).
-#
-# For speed: the end-to-end tests run on three machines at once, and the image
-# is built while the tests run. Publishing waits for every test, then pushes
-# the same build from the cache.
 name: CI
 
 on:
@@ -19,6 +24,9 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # the full set weekly, so a break in it shows within days, not at the next release
+  schedule:
+    - cron: '43 6 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -29,6 +37,40 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Is this a release (package.json's version has no v<version> tag yet), and
+  # does the full set run? A few seconds; the jobs of the full set wait for it.
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      minor: ${{ steps.version.outputs.minor }}
+      new: ${{ steps.version.outputs.new }}
+      full: ${{ steps.version.outputs.full }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: version
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          v=$(node -p "require('./package.json').version")
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "minor=${v%.*}" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "refs/tags/v$v" > /dev/null; then
+            new=false
+          else
+            new=true
+          fi
+          echo "new=$new" >> "$GITHUB_OUTPUT"
+          if [ "$new" = true ] || [ "$EVENT" = schedule ] || [ "$EVENT" = workflow_dispatch ]; then
+            full=true
+          else
+            full=false
+          fi
+          echo "full=$full" >> "$GITHUB_OUTPUT"
+          echo "Version $v: release $new, full set $full" >> "$GITHUB_STEP_SUMMARY"
+
   check:
     name: Check and unit tests
     runs-on: ubuntu-latest
@@ -75,9 +117,11 @@ jobs:
           retention-days: 14
 
   # The essentials on an iPhone and desktop Safari (WebKit) and Firefox (#104);
-  # the full suite above is Chromium's.
+  # the full suite above is Chromium's. Part of the full set.
   browsers:
     name: Smoke tests (iPhone, Safari, Firefox)
+    needs: plan
+    if: needs.plan.outputs.full == 'true'
     runs-on: ubuntu-latest
     # a stuck step (a crawling package mirror) fails the job instead of holding a release for hours
     timeout-minutes: 20
@@ -104,8 +148,11 @@ jobs:
   # Performance budgets (#110): the main pages' load time, layout shift, server
   # response and size, a tap on Quick add, and the gzipped JavaScript bundle,
   # against e2e/perf-budgets.json. The numbers go in the run's summary.
+  # Part of the full set.
   perf:
     name: Performance budgets
+    needs: plan
+    if: needs.plan.outputs.full == 'true'
     runs-on: ubuntu-latest
     # a stuck step (a crawling package mirror) fails the job instead of holding a release for hours
     timeout-minutes: 25
@@ -131,32 +178,17 @@ jobs:
             test-results/
           retention-days: 14
 
-  # Built alongside the tests, on every push, so a broken image shows before a
-  # release. Nothing is pushed here.
+  # Built alongside the tests, as part of the full set (not on a pull request),
+  # so a broken image shows before it's published. Nothing is pushed here.
   docker:
     name: Docker image
-    if: github.event_name != 'pull_request'
+    needs: plan
+    if: needs.plan.outputs.full == 'true' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     # a stuck step (a crawling package mirror) fails the job instead of holding a release for hours
     timeout-minutes: 30
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-      minor: ${{ steps.version.outputs.minor }}
-      new: ${{ steps.version.outputs.new }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # Is package.json's version a new release (no v<version> tag yet)?
-      - id: version
-        run: |
-          v=$(node -p "require('./package.json').version")
-          echo "version=$v" >> "$GITHUB_OUTPUT"
-          echo "minor=${v%.*}" >> "$GITHUB_OUTPUT"
-          if git ls-remote --exit-code --tags origin "refs/tags/v$v" > /dev/null; then
-            echo "new=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "new=true" >> "$GITHUB_OUTPUT"
-          fi
-
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -184,7 +216,7 @@ jobs:
 
       # A release's bill of materials (SPDX), attached to its GitHub release
       - name: SBOM
-        if: steps.version.outputs.new == 'true'
+        if: needs.plan.outputs.new == 'true'
         uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
           image: waterline:ci
@@ -194,7 +226,7 @@ jobs:
           upload-release-assets: false
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: steps.version.outputs.new == 'true'
+        if: needs.plan.outputs.new == 'true'
         with:
           name: sbom
           path: waterline-sbom.spdx.json
@@ -204,8 +236,8 @@ jobs:
   # from the build's cache) is pushed to ghcr.io.
   publish:
     name: Publish image
-    needs: [check, e2e, browsers, perf, docker]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.docker.outputs.new == 'true'
+    needs: [plan, check, e2e, browsers, perf, docker]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.plan.outputs.new == 'true'
     runs-on: ubuntu-latest
     # a stuck step (a crawling package mirror) fails the job instead of holding a release for hours
     timeout-minutes: 20
@@ -228,8 +260,8 @@ jobs:
           tags: |
             type=raw,value=latest
             type=sha
-            type=raw,value=${{ needs.docker.outputs.version }}
-            type=raw,value=${{ needs.docker.outputs.minor }}
+            type=raw,value=${{ needs.plan.outputs.version }}
+            type=raw,value=${{ needs.plan.outputs.minor }}
 
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -245,8 +277,8 @@ jobs:
 
   release:
     name: GitHub release
-    needs: [docker, publish]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.docker.outputs.new == 'true'
+    needs: [plan, docker, publish]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.plan.outputs.new == 'true'
     runs-on: ubuntu-latest
     # a stuck step (a crawling package mirror) fails the job instead of holding a release for hours
     timeout-minutes: 10
@@ -256,7 +288,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Release notes from CHANGELOG.md
         env:
-          VERSION: ${{ needs.docker.outputs.version }}
+          VERSION: ${{ needs.plan.outputs.version }}
         run: |
           # the section, with in-app links ([Charts](/charts)) as their words: on GitHub they'd point at github.com
           awk -v h="## $VERSION " 'index($0, h) == 1 { f = 1; next } /^## / { f = 0 } f' CHANGELOG.md \
@@ -275,7 +307,7 @@ jobs:
       - name: Tag and release
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ needs.docker.outputs.version }}
+          VERSION: ${{ needs.plan.outputs.version }}
         run: |
           mv waterline-sbom.spdx.json "waterline-$VERSION-sbom.spdx.json"
           gh release create "v$VERSION" --target "$GITHUB_SHA" --title "$VERSION" --notes-file notes.md "waterline-$VERSION-sbom.spdx.json"

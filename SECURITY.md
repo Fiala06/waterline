@@ -8,14 +8,14 @@ Waterline is self-hosted: run the newest release, keep `ORIGIN` on HTTPS, and ke
 
 ## What CI checks
 
-Every push and pull request runs these beside the tests. A failing check stops a release, because the image is only published once every job on `main` has passed.
+These run for every release, every Monday, and whenever a push or pull request changes the dependencies or the workflows; an ordinary push runs only the tests. A failing image scan stops a release, because the image is only published once every job of the release's CI run on `main` has passed.
 
 | Check | Where | Blocks on |
 |---|---|---|
-| **CodeQL** (security-extended queries) for the TypeScript/Svelte code and the workflows | [`security.yml`](.github/workflows/security.yml), also weekly | Findings appear under the repository's Security › Code scanning; review them before a release |
-| **Dependency review**: packages a pull request adds or changes | `security.yml`, pull requests | A new dependency with a **high** or **critical** advisory |
-| **npm audit** of production dependencies (dev tools aren't in the image) | `security.yml`, also weekly | Any **high** or **critical** advisory not on the allow list |
-| **Image scan** with [Grype](https://github.com/anchore/grype): the image as it ships, OS packages and Node modules | [`ci.yml`](.github/workflows/ci.yml), before publishing | Any **high** or **critical** vulnerability that has a fix |
+| **CodeQL** (security-extended queries) for the TypeScript/Svelte code and the workflows | [`security.yml`](.github/workflows/security.yml): releases, changes to dependencies or workflows, and weekly | Findings appear under the repository's Security › Code scanning; review them before a release |
+| **Dependency review**: packages a pull request adds or changes | `security.yml`, pull requests that change dependencies | A new dependency with a **high** or **critical** advisory |
+| **npm audit** of production dependencies (dev tools aren't in the image) | `security.yml`: releases, changes to dependencies or workflows, and weekly | Any **high** or **critical** advisory not on the allow list |
+| **Image scan** with [Grype](https://github.com/anchore/grype): the image as it ships, OS packages and Node modules | [`ci.yml`](.github/workflows/ci.yml), before publishing, and weekly | Any **high** or **critical** vulnerability that has a fix |
 | **SBOM** (SPDX) of the image | `ci.yml`, each release | Attached to the GitHub release; the image in ghcr.io also carries its SBOM and build provenance |
 | **Dependabot**: npm, GitHub Actions and the Docker base image | [`dependabot.yml`](.github/dependabot.yml) | Weekly pull requests, security updates as soon as there's an advisory |
 

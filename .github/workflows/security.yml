@@ -6,14 +6,28 @@
 #   (dev tools aside), unless it's listed with a reason in
 #   .github/security/npm-audit-allow.json.
 # The image itself is scanned in CI (ci.yml), before a release can publish.
-# Weekly too, so a new advisory shows up without a push.
+#
+# These run when a push or pull request changes package.json, the lockfile,
+# the workflows or the audit's allow list: so for every release (it changes
+# the version) and every change of dependencies, not for every push.
+# Weekly too, so a new advisory or finding shows up without one.
 name: Security
 
 on:
   push:
     branches: [main]
+    paths:
+      - package.json
+      - package-lock.json
+      - .github/workflows/**
+      - .github/security/**
   pull_request:
     branches: [main]
+    paths:
+      - package.json
+      - package-lock.json
+      - .github/workflows/**
+      - .github/security/**
   schedule:
     - cron: '17 6 * * 1'
   workflow_dispatch:
