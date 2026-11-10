@@ -11,6 +11,11 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Decimal commas import right.** A spreadsheet that writes 0,025 or 1,025 no longer imports as 25 or 1025. A file with semicolons, or with any number like 7,25 in it, is read with the comma as the decimal mark throughout, and a lone value that could be read either way and would land far outside the target is flagged in the preview instead of guessed: [History](/history) › Import.
+- **Everyone who should hear about a bad test does.** On a shared tank, a water test with a reading out of range now alerts everyone the tank alerts, not just the person who logged it, and says who logged it. Who that is stays under the tank's [Sharing](/tanks/current/sharing).
+- **A sensor at its limit alerts once.** A heater cycling just over and under its target used to send an alert on every cycle. A reading or two back in range no longer counts as the end of it (15 minutes in range does), and a sensor alerts for a parameter at most once every 6 hours: [Settings › Sensors](/settings/sensors).
+- **Doser runs aren't logged twice.** A dose from a doser on a smart plug could show twice in History when the plug's own report and Waterline's check of it landed together. It's logged once: [Equipment](/tanks/current/equipment).
+
 - **Scan a barcode opens the camera.** On Chrome, Edge and Android the scanner never asked for the camera and said it wasn't allowed. It asks now, and scans live: [Equipment](/tanks/current/equipment) › Scan barcode.
 - **Hovering doesn't switch tanks.** Passing the mouse over another tank in the sidebar could quietly make it the current tank, so Tasks, Quick add or a shortcut key then worked on the wrong one, and hovering a History range could change the range you'd saved. Now only going there changes it: [History](/history).
 - **Saved when the server can't be reached.** A log entry saved while the phone had Wi-Fi but no way through to Waterline used to end on an error page. It's now kept on the device and synced later, as when you're offline: [Log a water test](/entries/test/new).

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { IMPORT_LISTS, importTemplate, parseAmount, parseDate, readImport, validValue, type CheckedRow, type EquipmentValue } from './import-rows';
+import { IMPORT_LISTS, importTemplate, parseAmount, parseDate, usesDecimalComma, readImport, validValue, type CheckedRow, type EquipmentValue } from './import-rows';
 
 const us = { unitSystem: 'imperial', hardnessUnit: 'dgh' } as const;
 const eu = { unitSystem: 'metric', hardnessUnit: 'dgh' } as const;
@@ -45,6 +45,33 @@ describe('parseAmount', () => {
 		expect(parseAmount('1,200')).toBe(1200);
 		expect(parseAmount('25,5')).toBe(25.5);
 		expect(parseAmount('about 300')).toBeNull();
+	});
+
+	it('never reads a comma after 0 as thousands (#226)', () => {
+		expect(parseAmount('0,025')).toBe(0.025);
+		expect(parseAmount('0,125 ppm')).toBe(0.125);
+		expect(parseAmount('-0,500')).toBe(-0.5);
+		// still thousands: a flow rate, and the long form
+		expect(parseAmount('1,025')).toBe(1025);
+		expect(parseAmount('1,234,567')).toBe(1234567);
+		expect(parseAmount('1,200.5')).toBe(1200.5);
+	});
+
+	it('reads a comma as the decimal mark in a file that writes decimals so (#226)', () => {
+		expect(parseAmount('1,025', true)).toBe(1.025);
+		expect(parseAmount('8,125', true)).toBe(8.125);
+		expect(parseAmount('7,25', true)).toBe(7.25);
+		expect(parseAmount('300', true)).toBe(300);
+		// two commas can't be a decimal, even there
+		expect(parseAmount('1,234,567', true)).toBe(1234567);
+	});
+
+	it('tells a decimal-comma file by its semicolons, or by a cell that can only be a decimal (#226)', () => {
+		expect(usesDecimalComma('Date;Phosphate\n2026-11-01;1,025\n', ['2026-11-01', '1,025'])).toBe(true);
+		expect(usesDecimalComma('Date,pH\n2026-11-01,"7,25"\n', ['2026-11-01', '7,25'])).toBe(true);
+		expect(usesDecimalComma('Date,pH\n2026-11-01,"~ 0,5"\n', ['~ 0,5'])).toBe(true);
+		expect(usesDecimalComma('Type,Flow\nFilter,"1,200 gph"\n', ['Filter', '1,200 gph'])).toBe(false);
+		expect(usesDecimalComma('Date,pH\n2026-11-01,7.25\n', ['2026-11-01', '7.25'])).toBe(false);
 	});
 });
 

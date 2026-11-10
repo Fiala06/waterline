@@ -17,7 +17,7 @@
 // The scheduler also reads each plug every 5 minutes, for its state and power,
 // and to close a run whose off report was missed. DEVICE_POLLING=off stops it.
 import { createHash, randomBytes } from 'node:crypto';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { BodyTooLarge, readCappedText } from './capped-body';
@@ -304,12 +304,23 @@ function follow(equipmentId: string, on: boolean, at: string) {
 	setEquipmentPaused(row.owner.id, equipmentId, !on, row.owner.timeZone, at, { byPlug: true });
 }
 
-/** A run of a doser comes to an end: logged as a dose, with how long when it's known. */
+/**
+ * A run of a doser comes to an end: logged as a dose, with how long when it's
+ * known. The run is claimed first, by the start time the caller saw (#230):
+ * a read of the plug and the plug's own off report can both come to close the
+ * same run, and only the one that gets there first logs it.
+ */
 function closeRun(p: EquipmentPlug, seconds: number | null) {
 	const row = itemAndOwner(p.equipmentId);
 	const startedAt = p.runStartedAt;
-	db.update(equipmentPlugs).set({ runStartedAt: null, runPlannedS: null }).where(eq(equipmentPlugs.id, p.id)).run();
-	if (!row || row.e.removedAt || !startedAt) return null;
+	if (!startedAt) return null;
+	const claimed = db
+		.update(equipmentPlugs)
+		.set({ runStartedAt: null, runPlannedS: null })
+		.where(and(eq(equipmentPlugs.id, p.id), eq(equipmentPlugs.runStartedAt, startedAt)))
+		.run();
+	if (!claimed.changes) return null;
+	if (!row || row.e.removedAt) return null;
 	return logPlugRun(row.owner, row.e, startedAt, seconds);
 }
 

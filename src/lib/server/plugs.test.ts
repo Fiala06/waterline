@@ -226,6 +226,39 @@ describe('smart plugs (#203)', () => {
 			expect(doses()[0].data).toMatchObject({ amount: 2.5, seconds: 30 });
 		});
 
+		it("a run is logged once when the plug's off report arrives while a read of it is under way (#230)", async () => {
+			const { p, token, plug, doses } = await setup('Doser2b');
+			const t0 = Date.parse('2026-11-05T12:00:00Z');
+			plugReported(token, true, t0);
+			plug.state.on = true;
+			// the read has the plug's row, with the run in it, and is waiting on the plug when it switches off and says so
+			const fetcher = (async (input: RequestInfo | URL, init?: RequestInit) => {
+				if (plug.state.on && String(init?.body).includes('Switch.GetStatus')) {
+					plug.state.on = false;
+					plugReported(token, false, t0 + 20_000);
+				}
+				return plug.fetcher(input, init);
+			}) as typeof fetch;
+			await pollPlug(p.id, fetcher, t0 + 21_000);
+			expect(doses()).toHaveLength(1);
+			expect(doses()[0].data).toMatchObject({ seconds: 20 });
+			expect(db.select().from(equipmentPlugs).where(eq(equipmentPlugs.id, p.id)).get()).toMatchObject({ runStartedAt: null });
+			// and a run that began after the read took its row isn't closed by it
+			plugReported(token, true, t0 + 60_000);
+			plug.state.on = true;
+			const stale = (async (input: RequestInfo | URL, init?: RequestInit) => {
+				if (String(init?.body).includes('Switch.GetStatus')) {
+					plugReported(token, false, t0 + 70_000);
+					plugReported(token, true, t0 + 80_000);
+					plug.state.on = false;
+				}
+				return plug.fetcher(input, init);
+			}) as typeof fetch;
+			await pollPlug(p.id, stale, t0 + 81_000);
+			expect(doses()).toHaveLength(2);
+			expect(db.select().from(equipmentPlugs).where(eq(equipmentPlugs.id, p.id)).get()?.runStartedAt).toBe(new Date(t0 + 80_000).toISOString());
+		});
+
 		it('Pause switches its schedules on the plug off (and the plug), Resume back on, never switching it on', async () => {
 			const { e, plug } = await setup('Doser3');
 			await switchPlug(user.id, e.id, false, plug.fetcher);

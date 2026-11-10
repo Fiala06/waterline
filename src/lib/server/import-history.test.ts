@@ -302,3 +302,39 @@ describe('a file with several kinds of entry', () => {
 		expect(r[7].problems).toEqual(['No type']);
 	});
 });
+
+describe('decimal commas (#226)', () => {
+	const reading = (csv: string, id: string) => value<TestValue>(rows('tests', csv, { ...ctx, prefs: eu })[0])?.readings[id];
+
+	it('reads a semicolon file with decimal commas, three decimals too', () => {
+		const csv = 'Date;Phosphate;Ammonia;pH\n2026-09-20;0,025;0,125;7,25\n';
+		expect(reading(csv, 'po4')).toBe(0.025);
+		expect(reading(csv, 'nh3')).toBe(0.125);
+		expect(reading(csv, 'ph')).toBe(7.25);
+		// a whole part that isn't 0: still a decimal in such a file
+		expect(reading('Date;pH\n2026-09-20;8,125\n', 'ph')).toBe(8.125);
+	});
+
+	it('reads the same in a comma file once a cell shows the comma is the decimal mark', () => {
+		expect(reading('Date,pH,Nitrate\n2026-09-20,"7,5","8,125"\n', 'no3')).toBe(8.125);
+		// and a 0 in front is enough by itself
+		expect(reading('Date,Phosphate\n2026-09-20,"0,025"\n', 'po4')).toBe(0.025);
+	});
+
+	it('asks rather than guesses when a lone "8,125" would be far past the target one way and fine the other', () => {
+		const [r] = rows('tests', 'Date,pH\n2026-09-20,"8,125"\n', { ...ctx, prefs: eu });
+		expect(r.value).toBeNull();
+		expect(r.problems).toEqual(['pH “8,125” could be 8.125 or 8125: write it with a decimal point']);
+		// no target to judge by: read as it always was
+		expect(reading('Date,TDS\n2026-09-20,"1,025"\n', 'tds')).toBe(1025);
+	});
+
+	it('reads water change and dosing amounts the same way', () => {
+		const wc = rows('water_changes', 'Date;Volume (L)\n2026-09-20;12,500\n', { ...ctx, prefs: eu })[0];
+		expect(wc.problems).toEqual([]);
+		expect(wc.value).toMatchObject({ volumeL: 12.5 });
+		const dose = rows('dosing', 'Date;Product;Amount\n2026-09-20;Thrive;2,500\n', { ...ctx, prefs: eu })[0];
+		expect(dose.value).toMatchObject({ amount: 2.5 });
+	});
+});
+
