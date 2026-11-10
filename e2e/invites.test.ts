@@ -16,6 +16,14 @@ test('invitations and People', async ({ page, browser }, info) => {
 	// Server settings: Who can sign in has the new choice; People is a section with a sub-page
 	await open(page, '/settings/server');
 	await expect(page.locator('label', { hasText: 'Invited people only' })).toBeVisible();
+	// #217: whether sharing a tank invites people too is asked only when sign-in is limited to some
+	const shareSwitch = page.getByLabel(/Sharing a tank invites people too/);
+	await page.locator('label', { hasText: 'Only the admin' }).click();
+	await expect(shareSwitch).toBeHidden();
+	await page.locator('label', { hasText: 'Invited people only' }).click();
+	await expect(shareSwitch).toBeVisible();
+	await expect(shareSwitch).not.toBeChecked();
+	await page.reload();
 	await page.locator('a.row', { hasText: 'People' }).click();
 	await expect(page).toHaveURL(/\/settings\/server\/people$/);
 

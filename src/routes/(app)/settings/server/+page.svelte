@@ -233,6 +233,14 @@
 				<span class="hint">@family.example lets in everyone at that domain. Someone taken off is signed out on their next visit.</span>
 				{#if accessErrors.allowedEmails}<span class="error-text">✕ {accessErrors.allowedEmails}</span>{/if}
 			</div>
+			<div class="row share-field">
+				<label for="a-share" class="ttext"
+					><span class="tt">Sharing a tank invites people too</span><span class="td"
+						>When someone shares a tank with an address not on this server, the share lets that address sign in. Off: you invite them under People first. Shares by an admin always do.</span
+					></label
+				>
+				<span class="switch"><input id="a-share" type="checkbox" name="shareInvites" defaultChecked={data.signIn.shareInvites} /><span></span></span>
+			</div>
 			<div class="field narrow">
 				<label class="label" for="a-admin">Admin's Google account</label>
 				<input
@@ -981,6 +989,14 @@
 		display: none;
 	}
 	.access:has(input[name='signupMode'][value='list']:checked) .list-field {
+		display: flex;
+	}
+	/* whether sharing invites people: only when sign-in is limited to some (#217) */
+	.share-field {
+		display: none;
+	}
+	.access:has(input[name='signupMode'][value='list']:checked) .share-field,
+	.access:has(input[name='signupMode'][value='invited']:checked) .share-field {
 		display: flex;
 	}
 	.logs .chev {

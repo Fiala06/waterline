@@ -94,6 +94,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
 			needsAdmin: !!google && !googleAdminPossible(),
 			mode: rules.mode,
 			list: rules.list.join('\n'),
+			shareInvites: s.shareInvites,
 			accessFromEnv: rules.from === 'env',
 			local: { on: !!local, username: local?.username ?? s.localAdminUsername ?? 'admin', fromApp: !!local?.fromApp, fromEnv: !!local?.fromEnv }
 		},
@@ -197,7 +198,9 @@ export const actions: Actions = {
 		if (bad.length) errors.allowedEmails = `Not an email or @domain: ${bad.slice(0, 3).join(', ')}${bad.length > 3 ? '…' : ''}`;
 		else if (mode === 'list' && !entries.length) errors.allowedEmails = 'Add someone, or choose Only the admin.';
 		if (Object.keys(errors).length) return fail(400, { accessErrors: errors });
-		setSettings({ adminEmail: adminEmail || null, signupMode: mode, allowedEmails: entries.join('\n') || null });
+		// sharing a tank lets new people in too (#217): only asked with a list or invited people only
+		const shareInvites = form.get('shareInvites') === 'on';
+		setSettings({ adminEmail: adminEmail || null, signupMode: mode, allowedEmails: entries.join('\n') || null, shareInvites });
 		logger.info('settings', 'Who can sign in saved', { userId: locals.user!.id, mode, listed: entries.length });
 		return { accessSaved: true };
 	},

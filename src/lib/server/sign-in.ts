@@ -12,6 +12,7 @@ import { isValidPasswordHash } from './password';
 import { decrypt } from './secrets';
 
 export { listAllows, parseAllowed, signupRules, validAllowed, type SignupMode } from './sign-in-rules';
+import { signupRules } from './sign-in-rules';
 
 /** The Google account that becomes the admin. */
 export function adminEmail(): string | null {
@@ -35,6 +36,19 @@ export function localAdminLogin(): { username: string; hashes: string[]; fromApp
 	const hashes = [app, fromEnv].filter((h): h is string => !!h);
 	if (!hashes.length) return null;
 	return { username: s.localAdminUsername || env.LOCAL_ADMIN_USERNAME?.trim() || 'admin', hashes, fromApp: !!app, fromEnv: !!fromEnv };
+}
+
+/**
+ * Whether sharing a tank with someone not on the server lets them sign in too
+ * (#217): never when sign-in is the admin's alone; always when anyone may, or
+ * when an admin shares; otherwise only if the admin turned on "Sharing a tank
+ * invites people" under Who can sign in.
+ */
+export function shareMayInvite(sharer: { isAdmin: boolean }): boolean {
+	const s = getServerSettings();
+	const { mode } = signupRules(s);
+	if (mode === 'admin') return false;
+	return mode === 'open' || sharer.isAdmin || s.shareInvites;
 }
 
 /** An admin could sign in with Google: it's set up, for the admin's address or an admin who signed in with it before. */

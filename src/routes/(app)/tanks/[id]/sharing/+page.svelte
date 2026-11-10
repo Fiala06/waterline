@@ -54,7 +54,7 @@
 		{#if form?.inviteError}<span class="error-text">✕ {form.inviteError}</span>{:else if email && duplicate}<span class="error-text">✕ They have access already.</span>{/if}
 		<p class="help"><b>Can log</b> = tests, water changes, dosing, notes, photos and task done. <b>Can view</b> = read-only and no email.</p>
 		{#if !data.emailOn}<span class="hint">Email isn't set up on this server, so you'll copy the link and send it yourself.</span>{/if}
-		{#if !data.signupOpen}<span class="hint">▲ Sign-in is set to Only the admin, so someone not on this server yet can't sign in to accept. An admin can change that under Server settings › Sign-in.</span>{/if}
+		{#if data.newcomers === 'admin'}<span class="hint">▲ Sign-in is set to Only the admin, so someone not on this server yet can't sign in to accept. An admin can change that under Server settings › Sign-in.</span>{:else if data.newcomers === 'invite'}<span class="hint">▲ Someone not on this server yet needs an invitation from an admin, under Server settings › People, before they can accept.</span>{/if}
 		{#if invited}
 			<div class="sent" role="status">
 				<span class="sent-h">{invited.sent ? `✓ Invitation sent to ${invited.email}` : invited.error ? `✕ ${invited.error}` : `✓ Invite link for ${invited.email}`}</span>

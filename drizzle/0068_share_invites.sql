@@ -1,0 +1,1 @@
+ALTER TABLE `server_settings` ADD `share_invites` integer DEFAULT false NOT NULL;
