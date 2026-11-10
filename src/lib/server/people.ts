@@ -8,6 +8,7 @@ import { db } from './db';
 import { assistantTokens, calendarFeeds, invites, oauthCodes, photos, tanks, users, type User } from './db/schema';
 import { avatarFile, ownAvatarFile } from './avatar';
 import { removeFiles } from './files';
+import { exportIdsOf, removeExportFiles } from './export';
 import { logger } from './log';
 import { adminEmail } from './sign-in';
 import { LOCAL_ADMIN_FALLBACK_EMAIL } from './users';
@@ -91,6 +92,7 @@ export async function removePerson(by: User, userId: string): Promise<User> {
 	if (u.id === by.id) error(400, "You can't remove your own account from here.");
 	if (u.isAdmin && adminCount() <= 1) error(400, 'The server needs at least one admin.');
 	const { tankIds, tanks: n, photos: p } = personFootprint(userId);
+	const exportIds = exportIdsOf(userId);
 	// their invitation goes too, so the address can't sign back in by itself
 	db.update(invites).set({ revokedAt: new Date().toISOString() }).where(and(eq(invites.email, u.email), ne(invites.email, ''))).run();
 	db.delete(users).where(eq(users.id, userId)).run(); // cascades to everything else
@@ -101,6 +103,8 @@ export async function removePerson(by: User, userId: string): Promise<User> {
 		'settings',
 		{ recursive: true }
 	);
+	// and the backups they had built, which hold all of it (#213)
+	removeExportFiles(exportIds);
 	logger.info('settings', `${u.email} removed from the server with ${n} tank${n === 1 ? '' : 's'} and ${p} photo${p === 1 ? '' : 's'}`, { userId: by.id });
 	return u;
 }

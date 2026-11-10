@@ -20,6 +20,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
+import { BodyTooLarge, readCappedText } from './capped-body';
 import { db } from './db';
 import { equipment, equipmentPlugs, tanks, users, type Equipment, type EquipmentPlug } from './db/schema';
 import { parseDeviceUrl, pollingOff } from './devices';
@@ -111,8 +112,13 @@ export async function shellyRpc(base: string, method: string, params: Record<str
 		if (res.status === 401) throw new PlugError("The plug's password isn't right");
 	}
 	if (res.status === 404) throw new PlugError(NOT_A_PLUG);
-	const text = await res.text();
-	if (text.length > MAX_BYTES) throw new PlugError('The plug sent too much');
+	let text: string;
+	try {
+		// counted as it arrives, so a plug (or something posing as one) can't have it all buffered first (#212)
+		text = await readCappedText(res, MAX_BYTES);
+	} catch (e) {
+		throw new PlugError(e instanceof BodyTooLarge ? 'The plug sent too much' : "The plug didn't answer in time");
+	}
 	let data: { result?: unknown; error?: { message?: unknown } } | null = null;
 	try {
 		data = JSON.parse(text);
@@ -452,8 +458,9 @@ export async function pollPlug(id: string, fetcher: typeof fetch = fetch, now = 
 }
 
 /** Every plug, one after another: the scheduler's run. Logged once when a plug stops answering. */
-export async function pollAllPlugs(fetcher: typeof fetch = fetch, now = Date.now()): Promise<void> {
+export async function pollAllPlugs(fetcher: typeof fetch = fetch, now = Date.now(), budgetMs = 120_000): Promise<void> {
 	if (pollingOff()) return;
+	const started = Date.now();
 	const rows = db
 		.select({ id: equipmentPlugs.id, tankId: equipmentPlugs.tankId, lastError: equipmentPlugs.lastError, userId: tanks.userId, archivedAt: tanks.archivedAt, removedAt: equipment.removedAt })
 		.from(equipmentPlugs)
@@ -462,6 +469,11 @@ export async function pollAllPlugs(fetcher: typeof fetch = fetch, now = Date.now
 		.all();
 	for (const row of rows) {
 		if (row.archivedAt || row.removedAt) continue;
+		// plugs that don't answer can't hold the rest of the run up for long (#211): the others wait for the next one
+		if (Date.now() - started > budgetMs) {
+			logger.warn('sensors', `Reading smart plugs took over ${Math.round(budgetMs / 60_000)} minutes: the rest wait for the next run`);
+			break;
+		}
 		const r = await pollPlug(row.id, fetcher, now);
 		if (!r.ok && !row.lastError) logger.warn('sensors', `A smart plug stopped answering: ${r.error}`, { userId: row.userId, tankId: row.tankId });
 		else if (r.ok && row.lastError) logger.info('sensors', 'A smart plug answers again', { userId: row.userId, tankId: row.tankId });

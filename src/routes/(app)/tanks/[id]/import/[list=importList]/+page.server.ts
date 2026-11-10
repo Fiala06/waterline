@@ -5,7 +5,7 @@ import { setFlash } from '$lib/server/flash';
 import { str } from '$lib/server/forms';
 import { applyHistory, applyImport, historyContext, listImports, previewHistory, previewImport, undoImport, undoneText } from '$lib/server/import';
 import { historyColumns, readHistory, trackedOnly } from '$lib/server/import-history';
-import { columnMapOf, importColumns, validValue, wordMapOf, type FileColumn, type ImportValue, type LivestockValue } from '$lib/server/import-rows';
+import { columnMapOf, importColumns, MAX_ROWS, validValue, wordMapOf, type FileColumn, type ImportValue, type LivestockValue } from '$lib/server/import-rows';
 import { safeReturn } from '$lib/server/redirect';
 import { getTank } from '$lib/server/tanks';
 import type { Tank, User } from '$lib/server/db/schema';
@@ -122,8 +122,10 @@ export const actions: Actions = {
 		}
 
 		const today = todayInZone(user.timeZone);
-		// the rows come back from the preview as it showed them; check them again
-		const values = form.getAll('row').map((raw) => {
+		// the rows come back from the preview as it showed them; check them again, and how many (#214)
+		const rows = form.getAll('row');
+		if (rows.length > MAX_ROWS) return fail(400, { error: `That's more than ${MAX_ROWS} rows. Split the file.` });
+		const values = rows.map((raw) => {
 			try {
 				return validValue(kind, JSON.parse(String(raw)), today);
 			} catch {

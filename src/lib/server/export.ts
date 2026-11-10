@@ -3,7 +3,7 @@
 // files are kept in DATA_DIR/exports for 24 hours.
 import { error } from '@sveltejs/kit';
 import { and, asc, desc, eq, inArray, lt } from 'drizzle-orm';
-import { createWriteStream, mkdirSync, rmSync, statSync } from 'node:fs';
+import { createWriteStream, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import yazl from 'yazl';
 import { env } from '$env/dynamic/private';
@@ -96,6 +96,8 @@ export function startExport(user: User, scope: 'tank' | 'account', tankId: strin
 		.catch((e) => {
 		logger.error('export', `A ${format === 'zip' ? 'backup' : 'CSV'} export failed`, { userId: user.id, scope, error: e });
 		db.update(exports).set({ status: 'failed', error: 'The export failed. Try again.' }).where(eq(exports.id, row.id)).run();
+		// whatever it had written goes (#213)
+		removeExportFiles([row.id]);
 	});
 	return row;
 }
@@ -348,13 +350,41 @@ export function testsCsv(user: User, list: Tank[], d: ReturnType<typeof dataFor>
 	return lines.join('\n') + '\n';
 }
 
-/** Delete expired export files (run by the scheduler). Interrupted builds are marked failed on start. */
+/** An export's files, whichever it made: <id>.zip, <id>.csv. */
+export function removeExportFiles(ids: string[]) {
+	for (const id of ids) for (const ext of ['zip', 'csv']) rmSync(join(dir(), `${id}.${ext}`), { force: true });
+}
+
+/** The exports someone has had built: their files go with the person (#213). */
+export const exportIdsOf = (userId: string) => db.select({ id: exports.id }).from(exports).where(eq(exports.userId, userId)).all().map((r) => r.id);
+
+/**
+ * Delete expired export files (run by the scheduler, and on start, after
+ * interrupted builds are marked failed). Then the folder itself is gone
+ * through (#213): a file is kept only while its export is being built or is
+ * ready and within its 24 hours, so one whose build failed, or whose person
+ * was removed, doesn't stay behind.
+ */
 export function cleanupExports() {
 	const now = new Date().toISOString();
 	for (const r of db.select().from(exports).where(and(eq(exports.status, 'ready'), lt(exports.expiresAt, now))).all()) {
 		if (r.filePath) rmSync(r.filePath, { force: true });
 		db.update(exports).set({ status: 'expired', filePath: null }).where(eq(exports.id, r.id)).run();
 	}
+	let names: string[];
+	try {
+		names = readdirSync(dir());
+	} catch {
+		return; // nothing was ever exported
+	}
+	const keep = new Set(db.select({ id: exports.id }).from(exports).where(inArray(exports.status, ['building', 'ready'])).all().map((r) => r.id));
+	let removed = 0;
+	for (const name of names) {
+		if (keep.has(name.replace(/\.[^.]+$/, ''))) continue;
+		rmSync(join(dir(), name), { force: true, recursive: true });
+		removed++;
+	}
+	if (removed) logger.info('export', `Removed ${removed} export file${removed === 1 ? '' : 's'} nobody can download any more`);
 }
 
 export function failInterruptedExports() {

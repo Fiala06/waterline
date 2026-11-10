@@ -2,7 +2,7 @@ import { json, redirect, type Handle, type HandleServerError, type ServerInit } 
 import { randomBytes } from 'node:crypto';
 import { building } from '$app/environment';
 import { startScheduler } from '$lib/server/scheduler';
-import { failInterruptedExports } from '$lib/server/export';
+import { cleanupExports, failInterruptedExports } from '$lib/server/export';
 import { sequence } from '@sveltejs/kit/hooks';
 import { checkAuthConfig, handle as authHandle } from './auth';
 import { clearLoginFailures, isLocalLoginPath, loginBlockedMinutes, recordLoginFailure } from '$lib/server/rate-limit';
@@ -225,5 +225,6 @@ export const init: ServerInit = () => {
 	checkAuthConfig();
 	announceSetup();
 	failInterruptedExports();
+	cleanupExports();
 	startScheduler();
 };

@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import satori from 'satori';
 import sharp from 'sharp';
 import { env } from '$env/dynamic/private';
+import { ogCacheDir } from './og-cache';
 import type { Photo } from './photos';
 import { photoFilePath } from './photos';
 import type { PublicView } from './public';
@@ -41,7 +42,6 @@ const h = (type: string, style: Record<string, unknown>, ...children: (Node | st
 });
 const img = (src: string, style: Record<string, unknown>): Node => ({ type: 'img', props: { src, style } });
 
-const cacheDir = () => join(env.DATA_DIR ?? './data', 'og');
 // Bump when the card layout changes so cached images are rebuilt (3: the text, boxes in 1.14.1).
 const TEMPLATE = 3;
 
@@ -71,7 +71,7 @@ async function render(node: Node) {
 }
 
 async function cached(key: string, make: () => Promise<Buffer | Uint8Array>) {
-	const dir = cacheDir();
+	const dir = ogCacheDir();
 	const file = join(dir, `v${TEMPLATE}-${key.replace(/[^a-z0-9-]/gi, '_')}.png`);
 	if (existsSync(file)) return readFileSync(file);
 	mkdirSync(dir, { recursive: true });

@@ -52,8 +52,11 @@ export async function sendNtfy(topicUrl: string, token: string | null, notice: N
 		method: 'POST',
 		headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
 		body: JSON.stringify(ntfyMessage(t.topic, notice)),
-		signal: AbortSignal.timeout(10_000)
+		signal: AbortSignal.timeout(10_000),
+		// a topic's address that bounces the server somewhere else isn't followed (#212)
+		redirect: 'error'
 	});
+	await res.body?.cancel().catch(() => {});
 	if (!res.ok) {
 		const why = res.status === 401 || res.status === 403 ? ': it needs an access token, or this one is wrong' : '';
 		throw new Error(`The ntfy server answered ${res.status}${why}`);

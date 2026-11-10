@@ -3,6 +3,7 @@
 import { error } from "@sveltejs/kit";
 import { and, asc, desc, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { EQUIPMENT_TYPE_LABEL, equipmentName, parseSchedule, scheduleLabel, scheduleTotalHours, withoutLabel, type EquipmentType, type Schedule, type WithoutType } from "$lib/equipment";
+import { MAX_LIVESTOCK_COUNT } from "$lib/livestock";
 import { zonedToUtc } from "$lib/time";
 import { db } from "./db";
 import { requireRoleOn, visibleTo } from "./members";
@@ -482,7 +483,7 @@ export function addLivestock(
   const row = same
     ? db
         .update(livestock)
-        .set({ count: same.count + input.count })
+        .set({ count: Math.min(same.count + input.count, MAX_LIVESTOCK_COUNT) })
         .where(eq(livestock.id, same.id))
         .returning()
         .get()

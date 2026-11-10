@@ -5,7 +5,7 @@ import { parseSeveralList } from '$lib/several';
 import { todayInZone } from '$lib/time';
 import type { User } from './db/schema';
 import { applyImport } from './import';
-import { validValue, type LivestockValue, type PlantValue } from './import-rows';
+import { MAX_ROWS, validValue, type LivestockValue, type PlantValue } from './import-rows';
 import { exactSpecies } from './species';
 
 export type SeveralList = 'livestock' | 'plants';
@@ -29,13 +29,17 @@ export function linesToValues(list: SeveralList, text: string, water: 'fresh' | 
 	return out;
 }
 
+const tooMany = (list: SeveralList) => `That's more than ${MAX_ROWS} ${list === 'plants' ? 'plants' : 'species'} at once. Add them in smaller lots.`;
+
 /** Check what the page sent and add it all. Null when there's nothing, or something's off. */
 export function addSeveral(list: SeveralList, form: FormData, user: User, tankId: string, water: 'fresh' | 'marine' | null) {
 	const today = todayInZone(user.timeZone);
 	const added = String(form.get('addedAt') ?? '') || today;
 	const status = form.get('status') === 'quarantine' ? 'quarantine' : 'in_tank';
 	const source = String(form.get('source') ?? '').trim().slice(0, 120) || null;
-	let values: unknown[] = form.getAll('row').map((raw) => {
+	const rows = form.getAll('row');
+	if (rows.length > MAX_ROWS) return { error: tooMany(list) };
+	let values: unknown[] = rows.map((raw) => {
 		try {
 			return JSON.parse(String(raw));
 		} catch {
@@ -45,6 +49,7 @@ export function addSeveral(list: SeveralList, form: FormData, user: User, tankId
 	const lines = String(form.get('lines') ?? '');
 	if (!values.length && lines.trim()) values = linesToValues(list, lines, water, { status, added });
 	if (!values.length) return { error: list === 'plants' ? 'Pick at least one plant.' : 'Pick at least one species.' };
+	if (values.length > MAX_ROWS) return { error: tooMany(list) };
 	// the date, status and source apply to all of them
 	const shared = list === 'livestock' ? { added, status, source } : { added };
 	const checked = values.map((v) => (v && typeof v === 'object' ? validValue(list, { ...v, ...shared }, today) : null));
