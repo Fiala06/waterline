@@ -70,7 +70,7 @@
 				<div class="pair">
 					{#each [c.a, c.b] as e, i (e.id)}
 						<div class="side">
-							<a class="shot" href="/photos/{e.id}"><img src={photoUrl(e.id, 'full')} alt="{e.date}, {i ? 'after' : 'before'}" /></a>
+							<a class="shot" href="/photos/{e.id}"><img src={photoUrl(e.id, 'medium')} alt="{e.date}, {i ? 'after' : 'before'}" decoding="async" /></a>
 							<span class="when"><b>{i ? 'After' : 'Before'} · {e.date}</b>{stats(e) ? ` · ${stats(e)}` : ''}</span>
 							{@render readings(e.readings, e.tested, e.testId)}
 						</div>

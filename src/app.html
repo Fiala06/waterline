@@ -12,6 +12,9 @@
 		<meta name="apple-mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 		<meta name="apple-mobile-web-app-title" content="Waterline" />
+		<!-- the weights on every first screen (body text and headings), fetched with the page so a first visit doesn't reflow as they arrive (#243) -->
+		<link rel="preload" href="%sveltekit.assets%/fonts/Archivo-400.woff2" as="font" type="font/woff2" crossorigin />
+		<link rel="preload" href="%sveltekit.assets%/fonts/Archivo-800.woff2" as="font" type="font/woff2" crossorigin />
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

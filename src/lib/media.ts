@@ -1,6 +1,6 @@
 /** URL for a photo file (served by /media/[id], owner only). */
-export const photoUrl = (id: string, size: 'full' | 'thumb' = 'thumb') =>
-	`/media/${id}${size === 'thumb' ? '?size=thumb' : ''}`;
+export const photoUrl = (id: string, size: 'full' | 'medium' | 'thumb' = 'thumb') =>
+	`/media/${id}${size === 'full' ? '' : `?size=${size}`}`;
 
 /** The cover photo's focus as CSS object-position ("50% 30%"); the middle when it's never been moved. */
 export const coverPosition = (x: number | null | undefined, y: number | null | undefined) => `${clampPct(x)}% ${clampPct(y)}%`;

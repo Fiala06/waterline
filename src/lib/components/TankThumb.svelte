@@ -6,7 +6,7 @@
 </script>
 
 <span class="thumb" class:photo-placeholder={!cover} style:width="{size}px" style:height="{size}px" style:border-radius="{radius}px">
-	{#if cover}<img src={photoUrl(cover)} alt="" />{/if}
+	{#if cover}<img src={photoUrl(cover)} alt="" width={size} height={size} loading="lazy" decoding="async" />{/if}
 </span>
 
 <style>

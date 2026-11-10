@@ -67,6 +67,12 @@ test('public tank page and photo share link', async ({ page, browser }, info) =>
 	await expect(log.locator('tbody tr')).toHaveCount(2);
 	await expect(log.locator('td.bad').first()).toHaveText(/^35/);
 	await expect(log.locator('tbody th').first()).toHaveText(/^\w{3} \d{1,2}$/);
+	// the cover is the medium size, with its shape, and it loads (#243)
+	const hero = v.locator('a.hero img');
+	await expect(hero).toHaveAttribute('src', /\?size=medium$/);
+	await expect(hero).toHaveAttribute('width', '640');
+	await expect(hero).toHaveAttribute('height', '480');
+	await expect.poll(() => hero.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
 	// the cover opens full size in the lightbox
 	await v.locator('a.hero').click();
 	const box = v.getByRole('dialog', { name: 'Photo' });

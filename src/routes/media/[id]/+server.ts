@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
-import { readFile } from 'node:fs/promises';
-import { getPhoto, photoFilePath } from '$lib/server/photos';
+import { getPhoto, photoFile } from '$lib/server/photos';
+import { sizeParam } from '$lib/server/public-files';
 import type { RequestHandler } from './$types';
 
 // Photo files for the signed-in owner. Photos never change once written,
@@ -8,10 +8,10 @@ import type { RequestHandler } from './$types';
 export const GET: RequestHandler = async ({ locals, params, url }) => {
 	if (!locals.user) error(401);
 	const photo = getPhoto(locals.user.id, params.id);
-	const size = url.searchParams.get('size') === 'thumb' ? 'thumb' : 'full';
+	const size = sizeParam(url.searchParams.get('size'));
 	let body: Buffer;
 	try {
-		body = await readFile(photoFilePath(photo, size));
+		body = await photoFile(photo, size);
 	} catch {
 		error(404, 'Photo file missing');
 	}

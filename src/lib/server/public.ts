@@ -292,7 +292,9 @@ export function publicView(page: PublicPage, tank: Tank, owner: User, ranges: Pu
 
 	const names = page.showPetNames;
 	// the cover opens full size in the lightbox, captioned with its day
-	const coverShot = tank.coverPhotoId ? db.select({ takenAt: photos.takenAt }).from(photos).where(eq(photos.id, tank.coverPhotoId)).get() : null;
+	const coverShot = tank.coverPhotoId
+		? db.select({ takenAt: photos.takenAt, width: photos.width, height: photos.height }).from(photos).where(eq(photos.id, tank.coverPhotoId)).get()
+		: null;
 	// the latest photos, each with the day it was taken (dates are fine, times never); with the
 	// timeline on, the photos it carries aren't shown twice: the grid keeps the others (close-ups)
 	const photoIds = page.showPhotos
@@ -389,6 +391,7 @@ export function publicView(page: PublicPage, tank: Tank, owner: User, ranges: Pu
 		cover: tank.coverPhotoId,
 		coverPos: coverPosition(tank.coverX, tank.coverY),
 		coverDate: coverShot ? fmtDateLong(dateInZone(coverShot.takenAt, tz)) : null,
+		coverSize: coverShot ? { width: coverShot.width, height: coverShot.height } : null,
 		// status and test date are readings too: hidden with them
 		summary:
 			page.showReadings && cards.length

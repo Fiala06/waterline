@@ -9,6 +9,7 @@ import { lastEventOf, latestReadings, latestTest } from '$lib/server/logs';
 import { getTank, listParams, listTanks, roleOn, setArchived } from '$lib/server/tanks';
 import { tankPeople } from '$lib/server/members';
 import { listTasks } from '$lib/server/tasks';
+import { photoSizes } from '$lib/server/photos';
 import type { Actions, PageServerLoad } from './$types';
 
 const relDay = (d: string) => (d === 'Today' || d === 'Yesterday' ? d.toLowerCase() : d);
@@ -75,7 +76,10 @@ export const load: PageServerLoad = ({ locals }) => {
 		archivedOn: t.archivedAt ? monthYear(dateInZone(t.archivedAt, tz)) : ''
 	}));
 
-	return { tankCards: tanks, archived };
+	// each cover's own shape, so the cards don't move as their photos load (#243)
+	const sizes = photoSizes([...tanks, ...archived].map((t) => t.cover));
+	const sized = <T extends { cover: string | null }>(t: T) => ({ ...t, coverSize: t.cover ? (sizes.get(t.cover) ?? null) : null });
+	return { tankCards: tanks.map(sized), archived: archived.map(sized) };
 };
 
 export const actions: Actions = {
