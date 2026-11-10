@@ -1,9 +1,10 @@
 // One interface for push notifications (#16), next to email's: each person's
 // devices (Web Push) and their ntfy topic, if they added one. Which notices
 // are pushed is decided in notifications.ts, per kind.
-import { and, eq } from 'drizzle-orm';
 import { db } from '../db';
-import { emailLog, notificationPrefs, type User } from '../db/schema';
+import { notificationPrefs, type User } from '../db/schema';
+import { collectTokens } from '../action-tokens';
+import { claimSend, sendFailed, sendSucceeded } from '../send-log';
 import { logger } from '../log';
 import { decrypt } from '../secrets';
 import { sendNtfy } from './ntfy';
@@ -56,26 +57,32 @@ export async function sendPush(user: User, prefs: Prefs, notice: Notice, origin:
 
 /**
  * Push once per (user, key), kept in the email log as "push:<key>" beside
- * the emails. When nothing got through, it's forgotten, so the next run retries.
+ * the emails. When nothing got through, it's tried again later, waiting longer
+ * each time, and given up after a few tries (#232): see send-log.ts.
  */
 export async function pushOnce(user: User, prefs: Prefs, key: string, notice: () => Notice, origin: string): Promise<boolean> {
 	const logKey = `push:${key}`;
 	if (!hasPushTarget(user.id, prefs)) return false;
-	const inserted = db.insert(emailLog).values({ userId: user.id, key: logKey }).onConflictDoNothing().run();
-	if (inserted.changes === 0) return false;
+	if (!claimSend(user.id, logKey)) return false;
 	let result: PushResult;
+	let drop = () => {};
+	let problem: unknown = null;
 	try {
-		result = await sendPush(user, prefs, notice(), origin);
+		const made = collectTokens(notice);
+		drop = made.drop;
+		result = await sendPush(user, prefs, made.value, origin);
 	} catch (e) {
-		logger.error('push', "A notification couldn't be made", { userId: user.id, key, error: e });
+		problem = e;
 		result = { sent: [], failed: [] };
 	}
 	if (!result.sent.length) {
-		db.delete(emailLog)
-			.where(and(eq(emailLog.userId, user.id), eq(emailLog.key, logKey)))
-			.run();
+		// tried again later, and its Mark done and Snooze links taken back (#232)
+		drop();
+		const why = problem ?? (result.failed.map((f) => `${f.to}: ${f.error}`).join('; ') || 'Nowhere to send it');
+		sendFailed(user.id, logKey, why, { area: 'push', what: 'a notification' });
 		return false;
 	}
+	sendSucceeded(user.id, logKey);
 	logger.info('push', `Pushed ${key.split(':')[0]} to ${result.sent.join(', ')}`, { userId: user.id });
 	return true;
 }
