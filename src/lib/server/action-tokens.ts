@@ -10,9 +10,32 @@ import { getUser, maySignIn } from './users';
 const TTL_DAYS = 14;
 const hash = (t: string) => createHash('sha256').update(t).digest('hex');
 
+// the links made while a message is put together, so they can be taken back if it doesn't go (#232)
+let made: string[] | null = null;
+
+/** Run `render`, noting the links it makes: `drop()` deletes them, for a message that wasn't sent. */
+export function collectTokens<T>(render: () => T): { value: T; drop: () => void } {
+	const outer = made;
+	const mine: string[] = [];
+	made = mine;
+	const drop = () => {
+		if (mine.length) db.delete(actionTokens).where(inArray(actionTokens.tokenHash, mine)).run();
+	};
+	try {
+		return { value: render(), drop };
+	} catch (e) {
+		drop();
+		throw e;
+	} finally {
+		made = outer;
+		outer?.push(...mine);
+	}
+}
+
 /** A link for the person the reminder goes to: it does what they could do themselves (#216). */
 export function createActionToken(taskId: string, action: 'done' | 'snooze', due: string, userId: string): string {
 	const token = randomBytes(24).toString('base64url');
+	made?.push(hash(token));
 	db.insert(actionTokens)
 		.values({
 			tokenHash: hash(token),

@@ -57,8 +57,9 @@ test('a plant keeps a health journal, and algae is logged on the tank', async ({
 
 	// both in History, under Observations
 	await open(page, '/history');
-	await expect(page.getByText('Red stem bunch · pinholes')).toBeVisible();
-	await expect(page.getByText('Algae · Black beard · some · on driftwood')).toBeVisible();
+	// the list's links: an entry open beside the list repeats its title (and its Delete confirm quotes it)
+	await expect(page.getByRole('link', { name: /Red stem bunch · pinholes/ })).toBeVisible();
+	await expect(page.getByRole('link', { name: /Algae · Black beard · some · on driftwood/ })).toBeVisible();
 });
 
 // #174: algae starts a treatment course, which shows where it stands, links back, and ends early with Undo

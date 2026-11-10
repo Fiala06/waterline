@@ -273,8 +273,9 @@ wishes           id, tank_id, kind(fish|invert|coral|plant|equipment), name, sci
                  its event and, when asked, the expense, then sets added_at)
 action_tokens    token_hash, task_id, action(done|snooze), due, expires_at, used_at?,
                  user_id? (who the reminder went to: the link acts as them)
-email_log        id, user_id, key, created_at, error? (so nothing is sent twice; pushes
-                 are "push:<key>")
+email_log        id, user_id, key, created_at, error?, attempts, retry_at? (so nothing is
+                 sent twice; pushes are "push:<key>"; a failed send is tried again at
+                 retry_at, waiting longer each time, and given up after 6 tries)
 logs             id, created_at, level(error|warn|info|debug), area, message, details?,
                  user_id?, ref?
 ```

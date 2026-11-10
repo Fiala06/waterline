@@ -518,7 +518,10 @@ export const emailLog = sqliteTable(
 			.references(() => users.id, { onDelete: 'cascade' }),
 		key: text('key').notNull(), // e.g. reminder:<task>:<due>, daily-digest:<date>
 		sentAt: createdAt(),
-		error: text('error')
+		error: text('error'),
+		// a send that failed (#232): how many tries so far, and when the next is due; null once it went or was given up
+		attempts: integer('attempts').notNull().default(0),
+		retryAt: text('retry_at')
 	},
 	(t) => [uniqueIndex('email_log_key').on(t.userId, t.key)]
 );

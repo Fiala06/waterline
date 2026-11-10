@@ -9,7 +9,8 @@ import { fmtRange, fmtValue, paramUnit, shortName, statusOf } from '$lib/params'
 import { dueInfo, intervalText, isRoutine } from '$lib/tasks';
 import { addDays, dateInZone, daysBetween, fmtDate, fmtTime, fmtWhen, todayInZone, utcToZoned } from '$lib/time';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
-import { createActionToken } from './action-tokens';
+import { collectTokens, createActionToken } from './action-tokens';
+import { claimSend, sendFailed, sendSucceeded } from './send-log';
 import { db } from './db';
 import { logger } from './log';
 import { emailLog, notificationPrefs, tankParameters, tanks, taskCompletions, tests, testReadings, users, type Tank, type TankParameter, type User } from './db/schema';
@@ -59,12 +60,18 @@ function footer(user: User, reason: string, base: string, settingsLabel?: string
 	};
 }
 
-/** Send once per (user, key). A failed send is forgotten so the next run retries it. */
+/**
+ * Send once per (user, key). A failed send is tried again later, waiting longer
+ * each time, and given up after a few tries (#232); its Mark done and Snooze
+ * links are taken back, so only a sent email leaves any.
+ */
 async function sendOnce(user: User, to: string, key: string, render: () => Rendered, base: string) {
-	const inserted = db.insert(emailLog).values({ userId: user.id, key }).onConflictDoNothing().run();
-	if (inserted.changes === 0) return false;
+	if (!claimSend(user.id, key)) return false;
+	let drop = () => {};
 	try {
-		const r = render();
+		const made = collectTokens(render);
+		drop = made.drop;
+		const r = made.value;
 		const unsub = `${base}/unsubscribe/${unsubscribeToken(user.id)}`;
 		await sendMail({
 			to,
@@ -73,11 +80,12 @@ async function sendOnce(user: User, to: string, key: string, render: () => Rende
 			text: r.text,
 			headers: { 'List-Unsubscribe': `<${unsub}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' }
 		});
+		sendSucceeded(user.id, key);
 		logger.info('email', `Sent ${emailKind(key)}`, { userId: user.id });
 		return true;
 	} catch (e) {
-		db.delete(emailLog).where(and(eq(emailLog.userId, user.id), eq(emailLog.key, key))).run();
-		logger.error('email', `${cap(emailKind(key))} didn't send`, { userId: user.id, error: e });
+		drop();
+		sendFailed(user.id, key, e, { area: 'email', what: emailKind(key) });
 		return false;
 	}
 }
@@ -371,7 +379,8 @@ function alertedLately(userId: string, parameterId: string, now: number): boolea
 	return !!db
 		.select({ id: emailLog.id })
 		.from(emailLog)
-		.where(and(eq(emailLog.userId, userId), or(like(emailLog.key, `${key}%`), like(emailLog.key, `push:${key}%`)), gt(emailLog.sentAt, since)))
+		// a send still waiting to be tried again (#232) hasn't alerted anyone
+		.where(and(eq(emailLog.userId, userId), or(like(emailLog.key, `${key}%`), like(emailLog.key, `push:${key}%`)), gt(emailLog.sentAt, since), isNull(emailLog.retryAt)))
 		.get();
 }
 
