@@ -794,6 +794,33 @@ export function removePlant(userId: string, id: string, meta: EntryMeta = {}) {
 }
 
 /** "Log trim": one maintenance entry, and the trimmed plants remember the date. */
+/**
+ * Undo of a plant's Remove (#258): it's back in the tank, and the removal is
+ * taken out of History. Only a plant removed in the last few minutes.
+ */
+export function restorePlant(userId: string, id: string): Plant | null {
+  const p = getPlant(userId, id);
+  requireRoleOn(userId, p.tankId, "log");
+  if (!p.removedAt || Date.now() - Date.parse(p.removedAt) > 10 * 60_000) return null;
+  return db.transaction((tx) => {
+    const removal = tx
+      .select({ id: events.id })
+      .from(events)
+      .where(
+        and(
+          eq(events.tankId, p.tankId),
+          eq(events.category, "livestock"),
+          sql`json_extract(${events.data}, '$.action') = 'removed'`,
+          sql`json_extract(${events.data}, '$.plant_id') = ${id}`,
+        ),
+      )
+      .orderBy(desc(events.occurredAt))
+      .get();
+    if (removal) tx.delete(events).where(eq(events.id, removal.id)).run();
+    return tx.update(plants).set({ removedAt: null }).where(eq(plants.id, id)).returning().get();
+  });
+}
+
 export function logTrim(
   userId: string,
   tankId: string,

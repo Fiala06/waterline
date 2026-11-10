@@ -70,6 +70,18 @@
 	// the mark a visitor pointed at, tapped or tabbed to: its words show under the chart
 	let chosen = $state<string | null>(null);
 	const show = (label: string) => () => (chosen = label);
+	// one tab stop per lane, the latest mark (#267); the arrow keys, Home and End move along it
+	function rove(e: KeyboardEvent) {
+		if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+		const marks = [...(e.currentTarget as SVGElement).querySelectorAll<SVGElement>('[data-mark]')];
+		const i = marks.indexOf(document.activeElement as SVGElement);
+		if (i < 0) return;
+		e.preventDefault();
+		const j = e.key === 'Home' ? 0 : e.key === 'End' ? marks.length - 1 : Math.max(0, Math.min(marks.length - 1, i + (e.key === 'ArrowRight' ? 1 : -1)));
+		marks[i].setAttribute('tabindex', '-1');
+		marks[j].setAttribute('tabindex', '0');
+		marks[j].focus();
+	}
 	const wc = $derived(markers.waterChanges.map((m) => ({ ...m, x: x(m.t) })));
 	// the cleanest way to keep two water changes on one day readable: one label for both
 	const wcLabels = $derived.by(() => {
@@ -106,7 +118,7 @@
 				{#if l.latest}<span class="lv status-{l.level}">{l.latest} <span class="ls">{l.status}</span></span>{/if}
 			</div>
 			<div class="plot">
-				<svg width="100%" height={H} viewBox="0 0 {width} {H}" role="group" aria-label="{l.name}: {l.points.length} readings{l.target ? `, target ${l.target}` : ''}">
+				<svg width="100%" height={H} viewBox="0 0 {width} {H}" role="toolbar" tabindex="-1" aria-label="{l.name}: {l.points.length} readings{l.target ? `, target ${l.target}` : ''}" onkeydown={rove}>
 					{#if band}<rect class="band" x={PAD} y={band.y} width={width - PAD - PADR} height={band.h} />{/if}
 					{#each wc as m (m.t + m.label)}<line class="guide" x1={m.x} x2={m.x} y1="0" y2={H} />{/each}
 					<line class="now" x1={x(axis.now)} x2={x(axis.now)} y1="0" y2={H} />
@@ -115,7 +127,7 @@
 					{#if l.sensor.length > 1}<polyline class="sensor" points={l.sensor.map((p) => `${x(p.t)},${yOf(l, p.v)}`).join(' ')} />{/if}
 					{#if l.points.length > 1}<polyline class="line" points={l.points.map((p) => `${x(p.t)},${yOf(l, p.v)}`).join(' ')} />{/if}
 					{#each l.points as p, i (i)}
-						<circle class="pt {p.level}" cx={x(p.t)} cy={yOf(l, p.v)} r={p.level === 'bad' ? 4.5 : 3.5} tabindex="0" role="button" aria-label="{l.name} {p.label}" onpointerenter={show(`${l.name} · ${p.label}`)} onfocus={show(`${l.name} · ${p.label}`)}>
+						<circle class="pt {p.level}" cx={x(p.t)} cy={yOf(l, p.v)} r={p.level === 'bad' ? 4.5 : 3.5} data-mark tabindex={i === l.points.length - 1 ? 0 : -1} role="button" aria-label="{l.name} {p.label}" onpointerenter={show(`${l.name} · ${p.label}`)} onfocus={show(`${l.name} · ${p.label}`)}>
 							<title>{l.name} · {p.label}</title>
 						</circle>
 					{/each}
@@ -128,10 +140,10 @@
 		<div class="lane ev first">
 			<div class="lab"><span class="ln">Water changes</span><span class="lt">{markers.waterChanges.length} in this period</span></div>
 			<div class="plot">
-				<svg width="100%" height="40" viewBox="0 0 {width} 40" role="group" aria-label="{markers.waterChanges.length} water changes">
+				<svg width="100%" height="40" viewBox="0 0 {width} 40" role="toolbar" tabindex="-1" aria-label="{markers.waterChanges.length} water changes" onkeydown={rove}>
 					{#each wcLabels as w (w.x)}<text class="wl" x={w.x} y="12" text-anchor="middle">{w.text}</text>{/each}
-					{#each wc as m (m.t + m.label)}
-						<rect class="wc" x={m.x - 4} y="20" width="8" height="8" tabindex="0" role="button" aria-label={m.label} onpointerenter={show(m.label)} onfocus={show(m.label)}><title>{m.label}</title></rect>
+					{#each wc as m, i (m.t + m.label)}
+						<rect class="wc" x={m.x - 4} y="20" width="8" height="8" data-mark tabindex={i === wc.length - 1 ? 0 : -1} role="button" aria-label={m.label} onpointerenter={show(m.label)} onfocus={show(m.label)}><title>{m.label}</title></rect>
 					{/each}
 				</svg>
 			</div>
@@ -139,9 +151,9 @@
 		<div class="lane ev">
 			<div class="lab"><span class="ln">Dosing</span><span class="lt">{markers.doses.length} doses</span></div>
 			<div class="plot">
-				<svg width="100%" height="28" viewBox="0 0 {width} 28" role="group" aria-label="{markers.doses.length} doses">
+				<svg width="100%" height="28" viewBox="0 0 {width} 28" role="toolbar" tabindex="-1" aria-label="{markers.doses.length} doses" onkeydown={rove}>
 					{#each markers.doses as m, i (i)}
-						<path class="dose" d="M{x(m.t)} 8l6 6-6 6-6-6z" tabindex="0" role="button" aria-label={m.label} onpointerenter={show(m.label)} onfocus={show(m.label)}><title>{m.label}</title></path>
+						<path class="dose" d="M{x(m.t)} 8l6 6-6 6-6-6z" data-mark tabindex={i === markers.doses.length - 1 ? 0 : -1} role="button" aria-label={m.label} onpointerenter={show(m.label)} onfocus={show(m.label)}><title>{m.label}</title></path>
 					{/each}
 				</svg>
 			</div>
@@ -149,9 +161,9 @@
 		<div class="lane ev">
 			<div class="lab"><span class="ln">Tank changes</span><span class="lt">numbered below</span></div>
 			<div class="plot">
-				<svg width="100%" height="42" viewBox="0 0 {width} 42" role="group" aria-label="{markers.changes.length} days with changes to the tank">
-					{#each chg as c (c.n)}
-						<g class="chg" class:loss={c.loss} tabindex="0" role="button" aria-label="{c.n}: {c.day} · {c.text}" onpointerenter={show(`${c.n} · ${c.day} · ${c.text}`)} onfocus={show(`${c.n} · ${c.day} · ${c.text}`)}>
+				<svg width="100%" height="42" viewBox="0 0 {width} 42" role="toolbar" tabindex="-1" aria-label="{markers.changes.length} days with changes to the tank" onkeydown={rove}>
+					{#each chg as c, i (c.n)}
+						<g class="chg" class:loss={c.loss} data-mark tabindex={i === chg.length - 1 ? 0 : -1} role="button" aria-label="{c.n}: {c.day} · {c.text}" onpointerenter={show(`${c.n} · ${c.day} · ${c.text}`)} onfocus={show(`${c.n} · ${c.day} · ${c.text}`)}>
 							<title>{c.day} · {c.text}</title>
 							<circle cx={c.cx} cy={c.cy} r="10" />
 							<text x={c.cx} y={c.cy + 4} text-anchor="middle">{c.n}</text>

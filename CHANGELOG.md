@@ -11,6 +11,15 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.21.6 · 2026-11-10
+
+- **Late doses and reminders aren't skipped.** A doser's dose set for the last few minutes before midnight could be missed every day; it's now logged just after midnight, for its own day. A weekly digest the server missed on Monday now comes on Tuesday instead of not at all: [Equipment](/tanks/current/equipment).
+- **A refused save keeps what you typed.** If Equipment or a water test can't be saved, the form comes back as you filled it in, with the note, even without scripts. A plant's sheet stays open with its error, and the first field that needs fixing is brought into view: [Plants](/tanks/current/plants).
+- **Undo a plant's Remove.** Removing a plant now offers Undo in the message that follows, and History drops the removal: [Plants](/tanks/current/plants).
+- **Asked first.** Resetting a tank's targets to the defaults, deleting a PAR reading, a favorite, a product or a test kit, and making a new calendar link or turning it off now ask before they go ahead: [Parameters & targets](/tanks/current/targets).
+- **Easier with a screen reader.** The ⌘K palette now says which row is highlighted as you arrow through it, each chart has a table of its readings, and Charts' event lanes are one stop each for Tab, moved along with the arrow keys: [Charts](/charts).
+- **Alerts open at once.** Opening an alert no longer waits for it to be marked read first: [Alerts](/alerts).
+
 ## 1.21.5 · 2026-11-10
 
 - **⌘↵ saves the form.** ⌘↵ (Ctrl+Enter on Windows and Linux) now saves the form you're in, as the shortcuts sheet always said, including the water test, where Enter moves on to the next reading: [Log water test](/entries/test/new).

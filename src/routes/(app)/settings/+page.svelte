@@ -22,6 +22,7 @@
 	// 2px ink rule and rows with 1px dividers. Changes save as they're made.
 	import { enhance } from '$app/forms';
 	import SectionLink from '$lib/components/SectionLink.svelte';
+	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import { invalidateAll } from '$app/navigation';
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import { untrack } from 'svelte';
@@ -323,9 +324,11 @@
 					{/if}
 					<div class="cal-acts">
 						<a class="btn" href={calUrl.replace(/^https?:/, 'webcal:')}>Open in my calendar app</a>
-						<form method="POST" action="?/calendarNew" use:enhance><button class="btn-text">Make a new link</button></form>
-						<form method="POST" action="?/calendarOff" use:enhance><button class="btn-text cal-off">Turn off</button></form>
+						<button type="button" class="btn-text" popovertarget="confirm-cal-new">Make a new link</button>
+						<button type="button" class="btn-text cal-off" popovertarget="confirm-cal-off">Turn off</button>
 					</div>
+					<ConfirmDelete id="confirm-cal-new" trigger={false} title="Make a new link?" body="The link you have now stops working, so calendars subscribed to it stop updating. Add the new one to them." action="?/calendarNew" label="Make a new link" tone="warn" />
+					<ConfirmDelete id="confirm-cal-off" trigger={false} title="Turn off the calendar feed?" body="The link stops working, and calendars subscribed to it stop updating." action="?/calendarOff" label="Turn off" tone="warn" />
 					<p class="hint">
 						In Google Calendar, choose Other calendars › From URL and paste the link. Apple Calendar and Outlook open it from Open in my calendar app. Calendars check
 						for changes every few hours{data.calendar.lastFetchedAt ? `; yours last checked ${fmtWhen(data.calendar.lastFetchedAt, u.timeZone)}` : ''}. Anyone with the

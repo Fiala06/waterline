@@ -90,6 +90,10 @@ test('accessibility of representative screens', async ({ page, browser }, info) 
 		// dialogs: Quick add, and on a computer the shortcuts
 		await open(page, `/?tank=${tankId}`);
 		await openQuickAdd(page);
+		// scan the sheet once it has faded in: half-way, its text reads as low contrast
+		await page.getByRole('dialog', { name: 'Quick add' }).evaluate((el) =>
+			Promise.race([Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished.catch(() => {}))), new Promise((r) => setTimeout(r, 2000))])
+		);
 		await scan(page, `Quick add (${theme})`, found);
 		await page.keyboard.press('Escape');
 		if (!phone) {

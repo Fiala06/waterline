@@ -317,6 +317,57 @@ function parse(form: FormData, user: User, before: Equipment | null) {
   };
 }
 
+/**
+ * The form as it was sent, for a save that's refused (#261): without scripts the
+ * page is drawn again from these, so nothing typed is lost. Fields the form
+ * didn't send keep the item's own values.
+ */
+export function sentValues(
+  form: FormData,
+  base: ReturnType<typeof equipmentFormValues>,
+): ReturnType<typeof equipmentFormValues> {
+  const has = (k: string) => form.has(k);
+  const type = EQUIPMENT_TYPES.includes(str(form, "type") as EquipmentType)
+    ? (str(form, "type") as EquipmentType)
+    : base.type;
+  const specs = { ...base.specs };
+  for (const f of SPEC_FIELDS[type] ?? [])
+    if (has(`spec.${f.key}`)) specs[`${type}.${f.key}`] = str(form, `spec.${f.key}`);
+  const doses: DoseFormRow[] = [];
+  if (has("doses"))
+    for (let i = 0; i < MAX_DOSES; i++) {
+      const key = (k: string) => `dose.${i}.${k}`;
+      if (!has(key("product")) && !has(key("at"))) continue;
+      doses.push({
+        id: str(form, key("id")),
+        product: str(form, key("product")),
+        amount: str(form, key("amount")),
+        at: str(form, key("at")),
+        seconds: str(form, key("seconds")),
+        weekdays: form.getAll(key("wd")).map(Number).filter((d) => Number.isInteger(d)),
+        paused: has(key("paused")),
+      });
+    }
+  const ons = form.getAll("periodOn").map(String);
+  const offs = form.getAll("periodOff").map(String);
+  return {
+    ...base,
+    type,
+    brand: has("brand") ? str(form, "brand") : base.brand,
+    model: has("model") ? str(form, "model") : base.model,
+    barcode: has("barcode") ? str(form, "barcode") : base.barcode,
+    installedAt: has("installedAt") ? str(form, "installedAt") : base.installedAt,
+    notes: has("notes") ? str(form, "notes") : base.notes,
+    specs,
+    serviceEvery: has("serviceEvery") ? str(form, "serviceEvery") : base.serviceEvery,
+    serviceDays: has("serviceDays") ? str(form, "serviceDays") : base.serviceDays,
+    runs: has("runs") ? (str(form, "runs") === "schedule" ? "schedule" : "always") : base.runs,
+    periods: has("periodOn") ? ons.map((on, i) => ({ on, off: offs[i] ?? "" })) : base.periods,
+    rampMin: has("rampMin") ? str(form, "rampMin") : base.rampMin,
+    doses: has("doses") ? doses : base.doses,
+  };
+}
+
 export async function saveEquipmentAction(
   event: RequestEvent,
   tankId: string,
@@ -326,7 +377,8 @@ export async function saveEquipmentAction(
   const form = await event.request.formData();
   const before = equipmentId ? getEquipment(user.id, equipmentId) : null;
   const { errors, input, serviceDays, doses } = parse(form, user, before);
-  if (Object.keys(errors).length) return fail(400, { errors });
+  if (Object.keys(errors).length)
+    return fail(400, { errors, values: sentValues(form, equipmentFormValues(before, user)) });
   if (equipmentId) {
     const e = updateEquipment(user.id, equipmentId, input);
     if (serviceDays !== undefined) syncServiceTask(user, e, serviceDays);

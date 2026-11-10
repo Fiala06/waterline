@@ -7,7 +7,7 @@ import { and, desc, eq, gt, isNull, like, lt, or } from 'drizzle-orm';
 import { env } from '$env/dynamic/private';
 import { fmtRange, fmtValue, paramUnit, shortName, statusOf } from '$lib/params';
 import { dueInfo, intervalText, isRoutine } from '$lib/tasks';
-import { dateInZone, daysBetween, fmtDate, fmtTime, fmtWhen, todayInZone, utcToZoned } from '$lib/time';
+import { addDays, dateInZone, daysBetween, fmtDate, fmtTime, fmtWhen, todayInZone, utcToZoned } from '$lib/time';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { createActionToken } from './action-tokens';
 import { db } from './db';
@@ -155,6 +155,9 @@ function taskNotice(user: Pick<User, 'id'>, t: { id: string; name: string; kind:
 	};
 }
 
+/** The latest a day's emails and pushes can be set to go: the scheduler runs every 5 minutes. */
+const LATEST_SEND = '23:50';
+
 /** One user's scheduled emails and pushes. `force` ignores the send time (for tests and "send now"). */
 export async function notifyUser(user: User, now = new Date(), force = false) {
 	const base = baseUrl();
@@ -166,7 +169,8 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 
 	const tz = user.timeZone;
 	const local = utcToZoned(now, tz);
-	if (!force && local.time < prefs.sendTime) return { sent: 0 };
+	// the send time is on the hour; one saved later than the day's last run of the scheduler would never come (#231)
+	if (!force && local.time < (prefs.sendTime > LATEST_SEND ? LATEST_SEND : prefs.sendTime)) return { sent: 0 };
 	const today = local.date;
 	let sent = 0;
 
@@ -236,9 +240,12 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 		return { sent };
 	}
 
-	// Digest: daily, or weekly on Mondays.
+	// Digest: daily, or weekly on Mondays. A Monday the server missed after the send time
+	// is made up on Tuesday (#231): the week's digest is sent once, keyed by its Monday.
 	const weekly = prefs.delivery === 'weekly';
-	if (weekly && new Date(today + 'T12:00:00Z').getUTCDay() !== 1 && !force) return { sent };
+	const weekday = new Date(today + 'T12:00:00Z').getUTCDay();
+	if (weekly && weekday !== 1 && weekday !== 2 && !force) return { sent };
+	const digestDay = weekly && weekday === 2 ? addDays(today, -1) : today;
 	const horizon = weekly ? 7 : Math.max(prefs.leadDays, 0);
 	type Pending = Omit<DigestTank, 'tasks'> & { tasks: (Omit<DigestTank['tasks'][number], 'doneUrl'> & { doneUrl: () => string })[] };
 	const tanksOut: Pending[] = [];
@@ -269,7 +276,11 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 			noticed
 		});
 	}
-	if (!tanksOut.length) return { sent };
+	if (!tanksOut.length) {
+		// a Monday with nothing to say still counts as the week's digest, so Tuesday doesn't send one
+		if (weekly && !force) db.insert(emailLog).values({ userId: user.id, key: `weekly-digest:${digestDay}` }).onConflictDoNothing().run();
+		return { sent };
+	}
 	// "Pacific" as in E3 ("Pacific Time" → "Pacific"), not the abbreviation "PT"
 	const tzName = (
 		new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'longGeneric' }).formatToParts(now).find((p) => p.type === 'timeZoneName')?.value ?? tz
@@ -279,7 +290,7 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 	const ok = await sendOnce(
 		user,
 		to,
-		`${weekly ? 'weekly' : 'daily'}-digest:${today}`,
+		`${weekly ? 'weekly' : 'daily'}-digest:${digestDay}`,
 		() =>
 			digestEmail({
 				dateLabel: new Date(today + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' }),

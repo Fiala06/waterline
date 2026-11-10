@@ -208,10 +208,8 @@
 							<span class="par-spot">{r.spot}</span>
 							<span class="par-val"><b>{r.value}</b> µmol · {parBand(r.value)}</span>
 							<span class="par-day">{r.day}</span>
-							<form method="POST" action="?/parDelete" use:enhance>
-								<input type="hidden" name="id" value={r.id} />
-								<button class="btn-text del">Delete<span class="sr-only"> the reading at {r.spot} from {r.day}</span></button>
-							</form>
+							<button type="button" class="btn-text del" popovertarget="confirm-par-{r.id}">Delete<span class="sr-only"> the reading at {r.spot} from {r.day}</span></button>
+							<ConfirmDelete id="confirm-par-{r.id}" trigger={false} title="Delete this PAR reading?" body="{r.value} µmol at {r.spot}, {r.day}." action="?/parDelete" fields={{ id: r.id }} />
 						</li>
 					{/each}
 				</ul>
@@ -372,7 +370,7 @@
 		color: var(--text-muted);
 		font-size: 12px;
 	}
-	.par-list form {
+	.par-list > li > .del {
 		grid-column: 2;
 		grid-row: 1 / span 3;
 	}

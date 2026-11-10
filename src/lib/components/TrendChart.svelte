@@ -396,6 +396,18 @@
 			{@render popover(chosen)}
 		</div>
 	{/if}
+	<!-- the readings as a table, for screen readers (#267): the picture is hidden from them -->
+	{#if points.length}
+		<table class="sr-only">
+			<caption>{label}</caption>
+			<thead><tr><th scope="col">When</th><th scope="col">Reading</th></tr></thead>
+			<tbody>
+				{#each points as p, i (i)}
+					<tr><td>{when(p.t)}</td><td>{value(p)}{status(p) ? `, ${status(p).replace(/^\S+ /, '')}` : ''}</td></tr>
+				{/each}
+			</tbody>
+		</table>
+	{/if}
 </div>
 
 <style>

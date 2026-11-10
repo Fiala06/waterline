@@ -6,7 +6,7 @@
 	// every tank or one, all or unread. Opening an alert marks it read on the
 	// way; without JavaScript the links and forms still work.
 	import { enhance } from '$app/forms';
-	import { goto } from '$app/navigation';
+	import { goto, invalidate } from '$app/navigation';
 	import { page } from '$app/state';
 	import { hscroll } from '$lib/actions';
 	import { alertSections, alertsKicker, isUnread, unreadCount, type Alert, type TaskAlert } from '$lib/alerts';
@@ -31,16 +31,17 @@
 	};
 
 	// Opening an alert marks it read on the way; a plain link without JavaScript, or in a new tab.
-	async function openAlert(e: MouseEvent, a: Alert) {
+	// The page opens straight away (#267) and the read is sent beside it, the badge following once it lands.
+	function openAlert(e: MouseEvent, a: Alert) {
 		if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0 || !isUnread(a, seen)) return;
 		e.preventDefault();
 		const body = new FormData();
 		body.set('key', a.key);
-		try {
-			await fetch('/alerts?/read', { method: 'POST', body, headers: { 'x-sveltekit-action': 'true' } });
-		} catch {
-			/* offline: it stays unread */
-		}
+		fetch('/alerts?/read', { method: 'POST', body, headers: { 'x-sveltekit-action': 'true' }, keepalive: true })
+			.then((r) => (r.ok ? invalidate('app:alerts') : undefined))
+			.catch(() => {
+				/* offline: it stays unread */
+			});
 		goto(a.href);
 	}
 

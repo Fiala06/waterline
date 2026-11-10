@@ -33,6 +33,8 @@ test('tasks calendar: a private link, for all tanks or one, replaced or turned o
 	await page.reload();
 	await expect(page.getByText(/yours last checked/)).toBeVisible();
 	await page.getByRole('button', { name: 'Make a new link' }).click();
+	// it asks first: subscribed calendars stop updating (#258)
+	await page.getByRole('alertdialog').getByRole('button', { name: 'Make a new link' }).click();
 	await expect(page.getByRole('status')).toContainText('the old one no longer works');
 	const next = await page.locator('#cal-url').inputValue();
 	expect(next).not.toBe(url);
@@ -41,6 +43,7 @@ test('tasks calendar: a private link, for all tanks or one, replaced or turned o
 
 	// turned off
 	await page.getByRole('button', { name: 'Turn off' }).click();
+	await page.getByRole('alertdialog').getByRole('button', { name: 'Turn off' }).click();
 	await expect(page.getByRole('button', { name: 'Make a calendar link' })).toBeVisible();
 	expect((await page.request.get(next)).status()).toBe(404);
 });

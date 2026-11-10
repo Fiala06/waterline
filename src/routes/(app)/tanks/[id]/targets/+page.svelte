@@ -101,10 +101,20 @@
 		<div class="foot">
 			<button type="button" class="btn add" onclick={() => (addOpen = true)}>+ Add custom parameter</button>
 			<button class="btn btn-primary save">Save targets</button>
-			<button class="reset" formaction="?/reset" formnovalidate>Reset to {tankTypeLabel(data.tank.type)} defaults</button>
+			<button type="button" class="reset" popovertarget="confirm-reset">Reset to {tankTypeLabel(data.tank.type)} defaults</button>
 		</div>
 	</form>
 </div>
+
+<ConfirmDelete
+	id="confirm-reset"
+	trigger={false}
+	title="Reset to {tankTypeLabel(data.tank.type)} defaults?"
+	body="Every target range goes back to the {tankTypeLabel(data.tank.type)} preset. Readings already logged stay as they are."
+	action="?/reset"
+	label="Reset"
+	tone="warn"
+/>
 
 {#each data.rows.filter((r) => r.isCustom) as r (r.id)}
 	<ConfirmDelete

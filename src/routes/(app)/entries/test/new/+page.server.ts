@@ -63,6 +63,8 @@ export const actions: Actions = {
 		const wc = withWc ? parseEventData('water_change', form, tank, user) : null;
 		const back = {
 			values,
+			// the note too, so a refused save without scripts keeps it (#261)
+			note: str(form, 'note'),
 			wc: { on: withWc, amountMode: str(form, 'amountMode') || 'percent', amount: str(form, 'amount'), source: str(form, 'source') || 'tap' }
 		};
 		if (wc) Object.assign(errors, wc.errors);
