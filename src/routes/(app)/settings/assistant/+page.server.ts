@@ -3,12 +3,13 @@ import { setFlash } from '$lib/server/flash';
 import { str } from '$lib/server/forms';
 import { logger } from '$lib/server/log';
 import { listTanks } from '$lib/server/tanks';
-import { createAssistantToken, listAssistantTokens, MAX_TOKENS, revokeAssistantToken, setTokenTanks } from '$lib/server/assistant/tokens';
+import { createAssistantToken, listAssistantTokens, MAX_TOKENS, ownTanks, revokeAssistantToken, setTokenTanks } from '$lib/server/assistant/tokens';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals, url }) => {
 	const user = locals.user!;
-	const tanks = [...listTanks(user.id), ...listTanks(user.id, { archived: true })].map((t) => ({ id: t.id, name: t.name, archived: !!t.archivedAt }));
+	const tanks = // a token reads the keeper's own tanks only, so those are the ones to pick from
+[...listTanks(user.id, { own: true }), ...listTanks(user.id, { own: true, archived: true })].map((t) => ({ id: t.id, name: t.name, archived: !!t.archivedAt }));
 	const names = new Map(tanks.map((t) => [t.id, t.name]));
 	return {
 		tanks,
@@ -30,14 +31,15 @@ export const load: PageServerLoad = ({ locals, url }) => {
 	};
 };
 
-const picked = (form: FormData) => form.getAll('tank').map(String);
+/** The ticked tanks that are the keeper's own: the only ones a token can read. */
+const picked = (form: FormData, userId: string) => ownTanks(userId, form.getAll('tank').map(String));
 
 export const actions: Actions = {
 	create: async ({ request, locals }) => {
 		const user = locals.user!;
 		const form = await request.formData();
 		const name = str(form, 'name').slice(0, 60);
-		const tankIds = picked(form);
+		const tankIds = picked(form, user.id);
 		const errors: Record<string, string> = {};
 		if (!tankIds.length) errors.tanks = 'Pick at least one tank.';
 		if (listAssistantTokens(user.id).length >= MAX_TOKENS) errors.name = `That's ${MAX_TOKENS} already: revoke one you don't use first.`;
@@ -50,7 +52,7 @@ export const actions: Actions = {
 	tanks: async ({ request, locals, cookies }) => {
 		const form = await request.formData();
 		const id = str(form, 'id');
-		const tankIds = picked(form);
+		const tankIds = picked(form, locals.user!.id);
 		if (!tankIds.length) return fail(400, { edit: { id, errors: { tanks: 'Pick at least one tank, or revoke it.' } } });
 		const row = setTokenTanks(locals.user!.id, id, tankIds);
 		if (row) setFlash(cookies, `✓ ${row.name} saved`);

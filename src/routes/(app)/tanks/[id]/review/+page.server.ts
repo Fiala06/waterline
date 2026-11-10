@@ -66,7 +66,7 @@ export const load: PageServerLoad = ({ locals, params }) => {
 			installed: e.installedAt ? day(e.installedAt) : null,
 			serviced: e.lastServicedAt ? day(e.lastServicedAt) : null,
 			serviceable: isServiced(e.type),
-			flag: serviceFlag(e, today, (d) => fmtDate(d))
+			flag: serviceFlag(e, today, (d) => fmtDate(d), user.timeZone)
 		})),
 		targets: listParams(tank.id).map((p) => ({ name: p.name, range: p.min == null && p.max == null ? null : fmtRange(p, user) })),
 		livestock: bySpecies(listLivestock(user.id, tank.id)).map((l) => ({

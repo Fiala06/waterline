@@ -201,9 +201,15 @@ export function authenticateClient(form: URLSearchParams, authorization: string 
 	let secret = form.get('client_secret');
 	const basic = /^Basic\s+(\S+)$/i.exec(authorization ?? '');
 	if (basic) {
-		const [u, p] = Buffer.from(basic[1], 'base64').toString().split(':');
-		id = decodeURIComponent(u ?? '');
-		secret = decodeURIComponent(p ?? '');
+		// percent-encoded id and secret around the first colon (a secret may hold more)
+		try {
+			const raw = Buffer.from(basic[1], 'base64').toString();
+			const i = raw.indexOf(':');
+			id = decodeURIComponent(i < 0 ? raw : raw.slice(0, i));
+			secret = decodeURIComponent(i < 0 ? '' : raw.slice(i + 1));
+		} catch {
+			throw new OAuthError('invalid_client', 'Unreadable client credentials.', 401);
+		}
 	}
 	const client = getClient(id);
 	if (!client) throw new OAuthError('invalid_client', 'Unknown client_id.', 401);

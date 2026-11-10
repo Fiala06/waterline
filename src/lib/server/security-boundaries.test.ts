@@ -27,7 +27,7 @@ const { getExport } = await import('./export');
 const { createShare, getPublicPage, getShareForPhoto, revokeShare, updatePublicPage, updateShare } = await import('./public');
 const { authenticateAssistant, authenticateSensor, createAssistantToken, revokeAssistantToken, setTokenTanks } = await import('./assistant/tokens');
 const { runTool, photoFor, ToolError } = await import('./assistant/tools');
-const { approve, exchangeCode, MAX_UNCONNECTED, readAuthorize, refreshTokens, registerClient, getClient } = await import('./assistant/oauth');
+const { approve, authenticateClient, exchangeCode, MAX_UNCONNECTED, readAuthorize, refreshTokens, registerClient, getClient } = await import('./assistant/oauth');
 const { makeFeed, readFeed } = await import('./calendar');
 const { signOutEverywhere } = await import('./people');
 const { getServerSettings } = await import('./mail');
@@ -449,6 +449,28 @@ describe('tokens: each kind opens only its own door, for only its own tanks', ()
 		}
 		expect(() => photoFor(access, photoU.id)).toThrow(ToolError);
 		expect(photoFor(access, photo.id).photo.id).toBe(photo.id);
+	});
+
+	it('get_history gives an entry its photos however old the photo is (#235)', async () => {
+		const { token } = createAssistantToken(A.id, 'Claude', [T.id]);
+		const access = authenticateAssistant(bearer(token))!;
+		const { event } = createEvent(A.id, T.id, { category: 'note', occurredAt: new Date().toISOString(), note: 'Old photo, new note', data: {} }, tz);
+		const old = new Date(Date.now() - 60 * 86_400_000).toISOString();
+		const p = db.insert(photos).values({ tankId: T.id, eventId: event.id, path: `${T.id}/old.jpg`, thumbPath: `${T.id}/old_t.jpg`, width: 10, height: 10, takenAt: old }).returning().get();
+		const history = JSON.stringify(await runTool(access, 'get_history', { tank_id: T.id }));
+		expect(history).toContain(p.id);
+		// a photo of that age on no entry in the window stays out
+		const loose = db.insert(photos).values({ tankId: T.id, path: `${T.id}/loose.jpg`, thumbPath: `${T.id}/loose_t.jpg`, width: 10, height: 10, takenAt: old }).returning().get();
+		expect(history).not.toContain(loose.id);
+	});
+
+	it('unreadable Basic credentials are refused as invalid_client, not an error of ours (#220)', () => {
+		const basic = (s: string) => `Basic ${Buffer.from(s).toString('base64')}`;
+		expect(() => authenticateClient(new URLSearchParams(), basic('%zz:x'))).toThrow(expect.objectContaining({ code: 'invalid_client', status: 401 }));
+		// a secret keeps its colons
+		const reg = registerClient({ client_name: 'Colons', redirect_uris: ['https://colons.example/cb'], token_endpoint_auth_method: 'client_secret_basic' });
+		if (reg.client_secret) expect(authenticateClient(new URLSearchParams(), basic(`${reg.client_id}:${encodeURIComponent(reg.client_secret)}`)).id).toBe(reg.client_id);
+		expect(() => authenticateClient(new URLSearchParams(), basic(`${reg.client_id}:a:b`))).toThrow(expect.objectContaining({ code: 'invalid_client' }));
 	});
 
 	it('a token loses a tank when it stops being the keeper’s', async () => {

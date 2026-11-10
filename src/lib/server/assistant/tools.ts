@@ -3,7 +3,7 @@
 // keeper's units and time zone. Nothing here writes, except "last used".
 import sharp from 'sharp';
 import { readFile } from 'node:fs/promises';
-import { and, desc, eq, gte, inArray } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, or } from 'drizzle-orm';
 import { livestockLabel } from '$lib/livestock';
 import { CATEGORY_LABEL, eventTitle } from '$lib/events';
 import { displayValue, fmtRange, paramDecimals, paramUnit, statusOf } from '$lib/params';
@@ -200,7 +200,16 @@ const historyTool: Tool = {
 				? db
 						.select({ id: photos.id, eventId: photos.eventId, testId: photos.testId })
 						.from(photos)
-						.where(and(eq(photos.tankId, t.id), gte(photos.takenAt, since)))
+						// by the entries found, not the photo's own date: a photo can be older than its entry
+						.where(
+							and(
+								eq(photos.tankId, t.id),
+								or(
+									evs.length ? inArray(photos.eventId, evs.map((e) => e.id)) : undefined,
+									tst.length ? inArray(photos.testId, tst.map((x) => x.id)) : undefined
+								)
+							)
+						)
 						.all()
 				: [];
 		const photosOf = (key: 'eventId' | 'testId', id: string) => photoRows.filter((p) => p[key] === id).map((p) => p.id);

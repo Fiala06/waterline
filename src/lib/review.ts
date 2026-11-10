@@ -2,7 +2,7 @@
 // settings are still right (the light timer moved, a heater was replaced,
 // the shrimp are gone). Its page checks four parts; these are the rules
 // shared by the page, the task and its History entry.
-import { addDays } from './time';
+import { addDays, dateInZone } from './time';
 
 export const REVIEW_SECTIONS = [
 	{ key: 'details', label: 'Tank details' },
@@ -73,11 +73,13 @@ export const isServiced = (type: string) => SERVICED_TYPES.has(type);
 export function serviceFlag(
 	item: { type: string; installedAt: string | null; lastServicedAt: string | null },
 	today: string,
-	fmt: (date: string) => string
+	fmt: (date: string) => string,
+	timeZone = 'UTC'
 ): string | null {
 	if (!isServiced(item.type)) return null;
 	const cutoff = addDays(today, -SERVICE_FLAG_DAYS);
-	const last = item.lastServicedAt?.slice(0, 10) ?? null;
+	// an instant: its day is the keeper's, not UTC's
+	const last = item.lastServicedAt ? dateInZone(item.lastServicedAt, timeZone) : null;
 	if (last) return last < cutoff ? `▲ Not serviced since ${fmt(last)}` : null;
 	// never serviced: only worth saying once it's been in a while
 	const installed = item.installedAt?.slice(0, 10) ?? null;

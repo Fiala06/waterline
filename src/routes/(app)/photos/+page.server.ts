@@ -2,7 +2,8 @@ import { fail, redirect } from '@sveltejs/kit';
 import { dateInZone, fmtDate, isDate, todayInZone, zonedToUtc } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
 import { str } from '$lib/server/forms';
-import { createEvent } from '$lib/server/logs';
+import { logger } from '$lib/server/log';
+import { createEvent, deleteEvent } from '$lib/server/logs';
 import { datePhotos, photoDate, photoFiles, photoHints, preparePhotos, storePhotos, tankPhotos } from '$lib/server/photos';
 import { getTank } from '$lib/server/tanks';
 import { readSort } from '$lib/sort';
@@ -60,10 +61,20 @@ export const actions: Actions = {
 			const day = dateInZone(p.takenAt!, user.timeZone);
 			days.set(day, [...(days.get(day) ?? []), p]);
 		}
-		for (const group of days.values()) {
-			const at = group.map((p) => p.takenAt!).sort()[0];
-			const { event } = createEvent(user.id, tank.id, { category: 'note', occurredAt: at, note: null, data: {} }, { timeZone: user.timeZone });
-			await storePhotos(tank.id, group, { eventId: event.id, takenAt: at });
+		// all the days or none: if a day's photos can't be stored, the notes made so far go too,
+		// so History has no empty note and trying again doesn't repeat the days that did save
+		const made: string[] = [];
+		try {
+			for (const group of days.values()) {
+				const at = group.map((p) => p.takenAt!).sort()[0];
+				const { event, duplicate } = createEvent(user.id, tank.id, { category: 'note', occurredAt: at, note: null, data: {} }, { timeZone: user.timeZone });
+				if (!duplicate) made.push(event.id);
+				await storePhotos(tank.id, group, { eventId: event.id, takenAt: at });
+			}
+		} catch (err) {
+			for (const id of made) deleteEvent(user.id, id);
+			logger.error('photos', "Photos couldn't be stored", { userId: user.id, tankId: tank.id, error: err });
+			return fail(500, { error: "The photos couldn't be saved. Nothing was added: try again." });
 		}
 		const n = files.length;
 		const dated = undated === n ? ` · dated ${taken === today ? 'today' : fmtDate(taken)}` : '';

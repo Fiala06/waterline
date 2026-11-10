@@ -42,8 +42,10 @@ export async function handleMessage(access: AssistantAccess, msg: unknown): Prom
 	if (m.jsonrpc !== '2.0' || (m.method === undefined && !('result' in m) && !('error' in m))) {
 		return fail(isId(m.id) ? m.id : null, INVALID_REQUEST, 'Not a JSON-RPC 2.0 message');
 	}
-	// notifications (initialized, cancelled) and responses: nothing to answer
-	if (typeof m.method !== 'string' || !isId(m.id)) return null;
+	// responses to us, and notifications (initialized, cancelled: no id at all): nothing to answer
+	if (m.method === undefined || (typeof m.method === 'string' && m.id === undefined)) return null;
+	// a request whose id or method can't be used still gets an answer, so nobody waits on it
+	if (typeof m.method !== 'string' || !isId(m.id)) return fail(isId(m.id) ? m.id : null, INVALID_REQUEST, 'Not a valid request');
 	const id = m.id;
 	const params = obj(m.params);
 

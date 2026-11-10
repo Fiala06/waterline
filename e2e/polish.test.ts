@@ -128,6 +128,26 @@ test('phones reach Charts and Photos from the dashboard', async ({ page }, info)
 	await expect(page).toHaveURL(/\/photos/);
 });
 
+test('the command palette lists two tanks of the same name, each on its own row', async ({ page }, info) => {
+	test.skip(info.project.name !== 'desktop', 'desktop keyboard');
+	await newKeeperWithTank(page, `twins-${info.project.name}`);
+	const first = new URL(page.url()).searchParams.get('tank');
+	await open(page, '/tanks/new');
+	await page.getByLabel('Tank name').fill('Riverbed 40');
+	await page.locator('label', { hasText: 'Freshwater' }).click();
+	await page.getByLabel('Volume').fill('20');
+	await page.getByRole('button', { name: 'Create tank' }).click();
+	await expect(page).toHaveURL(/\?tank=/);
+	await page.keyboard.press('Control+k');
+	const menu = page.getByRole('dialog', { name: 'Search' });
+	await menu.getByPlaceholder('Search tanks or type an action').fill('riverbed 40');
+	const rows = menu.getByRole('option').filter({ hasText: /Planted|Freshwater/ });
+	await expect(rows).toHaveCount(2);
+	// ↵ opens the row the cursor is on: the first tank
+	await page.keyboard.press('Enter');
+	await expect(page).toHaveURL(new RegExp(`tank=${first}`));
+});
+
 test('the command palette opens with the keyboard and finds a tank', async ({ page }, info) => {
 	test.skip(info.project.name !== 'desktop', 'desktop keyboard');
 	await newKeeperWithTank(page, `menu-${info.project.name}`);
