@@ -100,7 +100,7 @@
 				{#if tank.cover}<img src={photoUrl(tank.cover)} alt="" decoding="async" style:object-position={tank.coverPos} />{/if}
 			</span>
 			<div class="names">
-				<span class="kicker"><span class="hide-phone">{lastTest} · </span>{kicker}</span>
+				<span class="kicker"><span class="hide-phone">{`${lastTest} · `}</span>{kicker}</span>
 				<h1 class="hide-phone">{tank.name}</h1>
 				<button type="button" class="name hide-desk" aria-label="{tank.name}, switch tank" onclick={() => (ui.tankSwitcher = true)}>
 					{tank.name} <span class="caret" aria-hidden="true">▾</span>

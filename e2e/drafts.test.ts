@@ -80,9 +80,9 @@ test('a restored water change draft keeps "Also complete task" ticked', async ({
 	await page.locator('a[aria-label="Close"]:visible, a.cancel:visible').first().click();
 	await expect(page).not.toHaveURL(/\/entries\/event\/new/);
 
-	// Mark done opens the form with the box ticked; the draft comes back without unticking it
+	// Log water change (Done, #271) opens the form with the box ticked; the draft comes back without unticking it
 	await open(page, `/?tank=${tankId}`);
-	await page.getByRole('region', { name: 'Due' }).getByRole('button', { name: 'Mark Water change 25% done early' }).click();
+	await page.getByRole('region', { name: 'Due' }).getByRole('button', { name: 'Log water change for Water change 25%' }).click();
 	await expect(page).toHaveURL(/\/entries\/event\/new\?.*task=/);
 	await expect(page.getByText(/^▲ Restored/)).toBeVisible();
 	await expect(page.getByLabel('Amount', { exact: true })).toHaveValue('36');
