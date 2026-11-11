@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { entryHref, joinNames, photoOtherDay, splitTask } from './entry-form';
+import { chipScrollLeft, entryHref, eventTypes, joinNames, photoOtherDay, restoredText, splitTask, testTypes } from './entry-form';
 import { attentionSummary, cleanReading, readingRow, shortStatus, statusWord, testSaveLabel, waterChangeSummary, type TestParam } from './test-form';
 import { doseHint, eventSaveLabel, eventTitle, lastDoseOf, livestockPreview, productChoices, stepCount } from './event-form';
 
@@ -23,6 +23,44 @@ describe('what the log forms share', () => {
 		expect(splitTask({ label: 'Water test', sub: 'due today' })).toEqual({ main: 'Water test', next: 'due today' });
 		expect(joinNames([{ name: 'pH' }, { name: 'KH' }, { name: 'GH' }])).toBe('pH, KH and GH');
 		expect(joinNames([{ name: 'pH' }, { name: 'KH' }])).toBe('pH and KH');
+	});
+
+	it('lists the log types: the test’s four and More, an event’s every kind', () => {
+		const q = new URLSearchParams('tank=t1&date=2026-10-07&time=09:00&fill=last');
+		const test = testTypes(q);
+		expect(test.map((t) => [t.label, t.key ?? ''])).toEqual([
+			['Test', 'T'],
+			['Water change', 'W'],
+			['Dose', 'D'],
+			['Note', 'N'],
+			['More', '']
+		]);
+		// this one is on and no link; the others keep the tank and time
+		expect(test[0]).toEqual({ label: 'Test', key: 'T', on: true });
+		expect(test[2].href).toBe('/entries/event/new?tank=t1&date=2026-10-07&time=09%3A00&category=dosing');
+		expect(test.at(-1)!.href).toContain('category=maintenance');
+
+		const ev = eventTypes(q, 'feeding', (c) => `/entries/event/new?category=${c}`);
+		expect(ev[0]).toEqual({ label: 'Test', key: 'T', href: '/entries/test/new?tank=t1&date=2026-10-07&time=09%3A00' });
+		expect(ev.filter((t) => t.on).map((t) => t.label)).toEqual(['Feeding']);
+		expect(ev.find((t) => t.label === 'Feeding')!.href).toBe('/entries/event/new?category=feeding');
+		expect(ev).toHaveLength(10);
+	});
+
+	it('scrolls the type chips just enough to show this one', () => {
+		// Test, first, already shows
+		expect(chipScrollLeft(20, 70, 390, 20)).toBe(0);
+		// a chip ending right at the padding needs nothing
+		expect(chipScrollLeft(300, 50, 390, 20)).toBe(0);
+		// Equipment on a phone: its far side, past the 20px padding
+		expect(chipScrollLeft(700, 110.4, 390, 20)).toBe(441);
+	});
+
+	it('says what a restored draft brought back', () => {
+		expect(restoredText()).toBe("Restored what you hadn't saved");
+		expect(restoredText(0)).toBe("Restored what you hadn't saved");
+		expect(restoredText(1)).toBe('Restored 1 unsaved reading');
+		expect(restoredText(3)).toBe('Restored 3 unsaved readings');
 	});
 });
 
