@@ -6,7 +6,8 @@ import { env } from '$env/dynamic/private';
 import { setFlash } from '$lib/server/flash';
 import { str } from '$lib/server/forms';
 import { logger } from '$lib/server/log';
-import { createAssistantToken, listAssistantTokens, MAX_TOKENS, revokeAssistantToken, setTokenTanks } from '$lib/server/assistant/tokens';
+import { listAssistantTokens } from '$lib/server/assistant/tokens';
+import { tokenActions } from '$lib/server/assistant/token-actions';
 import { createDevicePoll, type DeviceAuth, discoverEsphome, DISCOVER_MS, guessParameter, listDevicePolls, MAX_DEVICES, MAX_SENSORS, parseDeviceUrl, pollDevice, pollingOff, removeDevicePoll } from '$lib/server/devices';
 import { decrypt, encrypt } from '$lib/server/secrets';
 import { latestSamples, MIN_GAP_MS, sampleCounts } from '$lib/server/sensors';
@@ -77,8 +78,6 @@ export const load: PageServerLoad = ({ locals, url }) => {
 	};
 };
 
-const picked = (form: FormData) => form.getAll('tank').map(String);
-
 const paramLabel = (p: { key: string; name: string }) => (p.key === 'custom' ? p.name : p.key);
 const isObjectId = (s: string) => /^[a-z0-9_]+$/i.test(s);
 
@@ -118,38 +117,13 @@ function foundFromForm(form: FormData, tank: { id: string; name: string }, url: 
 }
 
 export const actions: Actions = {
-	create: async ({ request, locals }) => {
-		const user = locals.user!;
-		const form = await request.formData();
-		const name = str(form, 'name').slice(0, 60);
-		const tankIds = picked(form);
-		const errors: Record<string, string> = {};
-		if (!name) errors.name = 'Name the device, e.g. Apex or ESPHome.';
-		if (!tankIds.length) errors.tanks = 'Pick at least one tank.';
-		if (listAssistantTokens(user.id, 'sensor').length >= MAX_TOKENS) errors.name = `That's ${MAX_TOKENS} already: revoke one you don't use first.`;
-		if (Object.keys(errors).length) return fail(400, { create: { errors, name, tankIds } });
-		const { token, row } = createAssistantToken(user.id, name, tankIds, 'sensor');
-		logger.info('assistant', `Sensor token "${row.name}" made`, { userId: user.id });
-		return { created: { id: row.id, name: row.name, token, tankId: row.tankIds[0] ?? '' } };
-	},
-	tanks: async ({ request, locals, cookies }) => {
-		const form = await request.formData();
-		const id = str(form, 'id');
-		const tankIds = picked(form);
-		if (!tankIds.length) return fail(400, { edit: { id, errors: { tanks: 'Pick at least one tank, or revoke it.' } } });
-		const row = setTokenTanks(locals.user!.id, id, tankIds);
-		if (row) setFlash(cookies, `✓ ${row.name} saved`);
-		redirect(303, '/settings/sensors');
-	},
-	revoke: async ({ request, locals, cookies }) => {
-		const form = await request.formData();
-		const row = revokeAssistantToken(locals.user!.id, str(form, 'id'));
-		if (row) {
-			logger.info('assistant', `Sensor token "${row.name}" revoked`, { userId: locals.user!.id });
-			setFlash(cookies, `${row.name} can't send readings any more`);
-		}
-		redirect(303, '/settings/sensors');
-	},
+	...tokenActions({
+		kind: 'sensor',
+		page: '/settings/sensors',
+		label: 'Sensor token',
+		nameRequired: 'Name the device, e.g. Apex or ESPHome.',
+		revoked: (name) => `${name} can't send readings any more`
+	}),
 
 	// ── Devices read from their own web page ──────────────────────────────
 	/** Step one: listen to the device for its sensors, and show them with a parameter guessed for each. */

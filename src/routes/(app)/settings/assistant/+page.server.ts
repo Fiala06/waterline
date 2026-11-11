@@ -1,9 +1,6 @@
-import { fail, redirect } from '@sveltejs/kit';
-import { setFlash } from '$lib/server/flash';
-import { str } from '$lib/server/forms';
-import { logger } from '$lib/server/log';
 import { listTanks } from '$lib/server/tanks';
-import { createAssistantToken, listAssistantTokens, MAX_TOKENS, ownTanks, revokeAssistantToken, setTokenTanks } from '$lib/server/assistant/tokens';
+import { listAssistantTokens } from '$lib/server/assistant/tokens';
+import { tokenActions } from '$lib/server/assistant/token-actions';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals, url }) => {
@@ -31,40 +28,9 @@ export const load: PageServerLoad = ({ locals, url }) => {
 	};
 };
 
-/** The ticked tanks that are the keeper's own: the only ones a token can read. */
-const picked = (form: FormData, userId: string) => ownTanks(userId, form.getAll('tank').map(String));
-
-export const actions: Actions = {
-	create: async ({ request, locals }) => {
-		const user = locals.user!;
-		const form = await request.formData();
-		const name = str(form, 'name').slice(0, 60);
-		const tankIds = picked(form, user.id);
-		const errors: Record<string, string> = {};
-		if (!tankIds.length) errors.tanks = 'Pick at least one tank.';
-		if (listAssistantTokens(user.id).length >= MAX_TOKENS) errors.name = `That's ${MAX_TOKENS} already: revoke one you don't use first.`;
-		if (Object.keys(errors).length) return fail(400, { create: { errors, name, tankIds } });
-		const { token, row } = createAssistantToken(user.id, name, tankIds);
-		logger.info('assistant', `Access token "${row.name}" made`, { userId: user.id });
-		// shown this once: the page renders it from the action's result
-		return { created: { id: row.id, name: row.name, token } };
-	},
-	tanks: async ({ request, locals, cookies }) => {
-		const form = await request.formData();
-		const id = str(form, 'id');
-		const tankIds = picked(form, locals.user!.id);
-		if (!tankIds.length) return fail(400, { edit: { id, errors: { tanks: 'Pick at least one tank, or revoke it.' } } });
-		const row = setTokenTanks(locals.user!.id, id, tankIds);
-		if (row) setFlash(cookies, `✓ ${row.name} saved`);
-		redirect(303, '/settings/assistant');
-	},
-	revoke: async ({ request, locals, cookies }) => {
-		const form = await request.formData();
-		const row = revokeAssistantToken(locals.user!.id, str(form, 'id'));
-		if (row) {
-			logger.info('assistant', `Access token "${row.name}" revoked`, { userId: locals.user!.id });
-			setFlash(cookies, `${row.name} can't read your tanks any more`);
-		}
-		redirect(303, '/settings/assistant');
-	}
-};
+export const actions: Actions = tokenActions({
+	kind: 'assistant',
+	page: '/settings/assistant',
+	label: 'Access token',
+	revoked: (name) => `${name} can't read your tanks any more`
+});

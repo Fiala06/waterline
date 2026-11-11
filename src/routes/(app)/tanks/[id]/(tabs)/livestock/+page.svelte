@@ -1,8 +1,8 @@
 <script lang="ts">
 	// Livestock (README → Screens §6): a table of species with inline − / + counts,
 	// past livestock with Restore, and a 240px column of equipment and recent changes.
+	import { reloadWhilePhotosPending } from '$lib/photos-pending.svelte';
 	import { enhance } from '$app/forms';
-	import { invalidateAll } from '$app/navigation';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ImportButton from '$lib/components/ImportButton.svelte';
 	import SortHeader from '$lib/components/SortHeader.svelte';
@@ -10,15 +10,7 @@
 	import { MAX_LIVESTOCK_COUNT } from '$lib/livestock';
 	let { data, form } = $props();
 	// species photos still on their way from Wikimedia: look again in a moment, a few times
-	let tries = 0;
-	$effect(() => {
-		if (!data.photosPending || tries >= 4) return;
-		const t = setTimeout(() => {
-			tries++;
-			invalidateAll();
-		}, 2500);
-		return () => clearTimeout(t);
-	});
+	reloadWhilePhotosPending(() => !!data.photosPending);
 	const base = $derived(`/tanks/${data.tankHead.id}`);
 	// pending count per row, confirmed by choosing a reason
 	let pending = $state<Record<string, number>>({});

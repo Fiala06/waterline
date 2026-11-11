@@ -3,6 +3,7 @@
 	// and entry, Set as cover and Delete. The stage is dark in both themes; the
 	// panel, caption and sheet use the normal theme colors.
 	import { enhance } from '$app/forms';
+	import { keepValues } from '$lib/forms';
 	import { goto } from '$app/navigation';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import Sheet from '$lib/components/Sheet.svelte';
@@ -27,8 +28,6 @@
 			field?.select(); // clipboard blocked: select it so it can be copied by hand
 		}
 	}
-	// Options save as they change: keep what was just ticked instead of resetting the form.
-	const keep: SubmitFunction = () => async ({ update }) => update({ reset: false });
 	const closeMenu: SubmitFunction = () => {
 		menu = false;
 		return async ({ update }) => update();
@@ -83,7 +82,8 @@
 					/>
 					<button type="button" class="btn btn-primary s-copy" onclick={copy}>{copied ? '✓ Copied' : 'Copy'}</button>
 				</div>
-				<form method="POST" action="?/shareOptions" use:enhance={keep} class="s-opts">
+				<!-- options save as they change: keep what was just ticked instead of resetting the form -->
+				<form method="POST" action="?/shareOptions" use:enhance={keepValues} class="s-opts">
 					<label class="check-row">
 						<input type="checkbox" name="includeNote" checked={share.includeNote} onchange={(e) => e.currentTarget.form?.requestSubmit()} />
 						<span>Include note and date</span>
@@ -153,7 +153,7 @@
 					<span class="pets-h" id="pets-h">In this photo</span>
 					<div class="chips">
 						{#each data.pets as pet (pet.id)}
-							<form method="POST" action="?/tag" use:enhance={keep}>
+							<form method="POST" action="?/tag" use:enhance={keepValues}>
 								<input type="hidden" name="livestockId" value={pet.id} />
 								<input type="hidden" name="on" value={pet.tagged ? '0' : '1'} />
 								<button class="chip" aria-pressed={pet.tagged} title={pet.species}>{pet.tagged ? '✓ ' : ''}{pet.name}</button>

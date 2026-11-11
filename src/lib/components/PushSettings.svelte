@@ -3,6 +3,7 @@
 	// (Web Push, needs scripts and HTTPS), every device that has it, an ntfy
 	// topic, and a test. Removing a device, ntfy and the test work without scripts.
 	import { enhance } from '$app/forms';
+	import { keepValues } from '$lib/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { fmtDate, dateInZone } from '$lib/time';
@@ -150,7 +151,7 @@
 			</form>
 		{/each}
 
-		<form method="POST" action="?/ntfy" class="row stack" use:enhance={() => async ({ update }) => update({ reset: false })}>
+		<form method="POST" action="?/ntfy" class="row stack" use:enhance={keepValues}>
 			<label class="ttext" for="ntfy-url"
 				><span class="tt">ntfy</span><span class="td"
 					>Or get them in the <a href="https://ntfy.sh" target="_blank" rel="noopener noreferrer">ntfy app<span aria-hidden="true"> ↗</span></a>, on
@@ -188,7 +189,7 @@
 	</div>
 
 	{#if any}
-		<form method="POST" action="?/pushTest" class="test" use:enhance={() => async ({ update }) => update({ reset: false })}>
+		<form method="POST" action="?/pushTest" class="test" use:enhance={keepValues}>
 			<button class="btn">Send a test</button>
 			{#if pushError}<p class="error-text status-bad" role="alert">{pushError}</p>{/if}
 		</form>

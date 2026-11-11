@@ -1,7 +1,7 @@
 <script lang="ts">
+	import { reloadWhilePhotosPending } from '$lib/photos-pending.svelte';
 	import WorthChecking from '$lib/components/WorthChecking.svelte';
 	import { enhance } from '$app/forms';
-	import { invalidateAll } from '$app/navigation';
 	import { getContext, onDestroy } from 'svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ImportButton from '$lib/components/ImportButton.svelte';
@@ -39,15 +39,7 @@
 	});
 	let editing = $state<(typeof data.plants)[number] | null>(null);
 	// species photos still on their way from Wikimedia: look again in a moment, a few times
-	let tries = 0;
-	$effect(() => {
-		if (!data.photosPending || tries >= 4) return;
-		const t = setTimeout(() => {
-			tries++;
-			invalidateAll();
-		}, 2500);
-		return () => clearTimeout(t);
-	});
+	reloadWhilePhotosPending(() => !!data.photosPending);
 	// keep the open sheet in step when the list comes back
 	$effect(() => {
 		const now = editing && data.plants.find((p) => p.id === editing!.id);

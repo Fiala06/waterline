@@ -3,7 +3,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import { dateInZone, fmtDate } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
 import { optStr, str } from '$lib/server/forms';
-import { checkPhotoFiles, photoFiles, datePhotos, preparePhotos, storePhotos } from '$lib/server/photos';
+import { storeOnePhoto } from '$lib/server/photos';
 import { addPlant, getPlant, listPlants, logTrim, removePlant, renamePlant, restorePlant, updatePlant } from '$lib/server/specs';
 import { plantHealthEvents } from '$lib/server/log-plants';
 import { isPlantObservation, plantObservationText, PLANT_OBSERVATIONS } from '$lib/plants';
@@ -114,14 +114,9 @@ export const actions: Actions = {
 		const id = str(form, 'id');
 		if (getPlant(locals.user!.id, id).tankId !== params.id) return fail(404);
 		getTank(locals.user!.id, params.id, 'log');
-		const files = photoFiles(form, 'photo').slice(0, 1);
-		if (!files.length) return fail(400, { error: 'Choose a photo.' });
-		const tooBig = checkPhotoFiles(files);
-		if (tooBig) return fail(400, { error: tooBig });
-		const prepared = await preparePhotos(files);
-		if ('error' in prepared) return fail(400, { error: prepared.error });
-		const [photo] = await storePhotos(params.id, datePhotos(prepared, locals.user!.timeZone), { takenAt: new Date().toISOString() });
-		updatePlant(locals.user!.id, id, { photoId: photo.id });
+		const stored = await storeOnePhoto(form, params.id, locals.user!.timeZone);
+		if ('error' in stored) return fail(400, { error: stored.error });
+		updatePlant(locals.user!.id, id, { photoId: stored.photo.id });
 		setFlash(cookies, '✓ Photo saved');
 		redirect(303, `/tanks/${params.id}/plants`);
 	},

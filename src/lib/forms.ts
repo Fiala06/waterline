@@ -60,3 +60,30 @@ export function refusal(form: unknown, name: string): Refusal {
 	const r = (form as { refused?: Refusal } | null | undefined)?.refused;
 	return r && r.form === name ? r : NONE;
 }
+
+// ── What a form does once it's answered (#268) ──────────────────────────────
+
+/** Keep what was typed: the page stays, with its fields as they were. */
+export const keepValues: SubmitFunction = () => async ({ update }) => update({ reset: false });
+
+/** An inline editor closes once its change is saved (the action redirects back). */
+export const closeOnRedirect =
+	(close: () => void): SubmitFunction =>
+	() =>
+	async ({ result, update }) => {
+		if (result.type === 'redirect') close();
+		await update();
+	};
+
+/**
+ * An add form empties its fields once saved, ready for the next one (the page
+ * stays, so they'd keep what was typed). Choices (radios, checkboxes) and hidden
+ * fields stay as they are.
+ */
+export const clearOnRedirect: SubmitFunction =
+	({ formElement }) =>
+	async ({ result, update }) => {
+		await update();
+		if (result.type !== 'redirect') return;
+		for (const el of formElement.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input:not([type=hidden]):not([type=radio]):not([type=checkbox]), textarea')) el.value = '';
+	};

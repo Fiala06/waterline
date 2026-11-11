@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Copier } from '$lib/copy.svelte';
 	import { enhance } from '$app/forms';
 	import { untrack } from 'svelte';
 	import { photoUrl } from '$lib/media';
@@ -14,7 +15,7 @@
 	let blurb = $state(untrack(() => data.page.description ?? ''));
 	let question = $state(untrack(() => data.page.question ?? ''));
 	let ogPhotoId = $state(untrack(() => data.page.ogPhotoId ?? ''));
-	let copied = $state(false);
+	const copier = new Copier();
 
 	const url = $derived(`${data.base}/t/${slug}`);
 	const shownTitle = $derived(title || `${data.tank.name} · aquarium log`);
@@ -34,15 +35,6 @@
 		{ k: 'showDetails', t: 'Detail for people helping me', d: 'Times of tests and care, notes on entries, observations and your maintenance schedule, so someone diagnosing a problem sees everything' }
 	] as const;
 
-	async function copy() {
-		try {
-			await navigator.clipboard.writeText(url);
-			copied = true;
-			setTimeout(() => (copied = false), 2000);
-		} catch {
-			/* clipboard blocked */
-		}
-	}
 </script>
 
 <svelte:head><title>Public page · {data.tank.name}</title></svelte:head>
@@ -97,7 +89,7 @@
 					</div>
 					{#if slugError}<span class="error-text">✕ {slugError}</span>{/if}
 					<div class="links">
-						<button type="button" class="btn" onclick={copy}>{copied ? '✓ Copied' : 'Copy link'}</button>
+						<button type="button" class="btn" onclick={() => copier.copy('link', url)}>{copier.which === 'link' ? '✓ Copied' : 'Copy link'}</button>
 						<button class="btn" formaction="?/check" formnovalidate>Check the link works</button>
 					</div>
 					{#if form?.check}

@@ -3,6 +3,7 @@
 	// (and in ⌘K). Each opens its log form filled in; nothing is saved until
 	// they save. For one tank or every tank; in the order kept here.
 	import { enhance } from '$app/forms';
+	import { clearOnRedirect, closeOnRedirect } from '$lib/forms';
 	import { untrack } from 'svelte';
 	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
@@ -114,7 +115,7 @@
 	</div>
 {/snippet}
 
-<div class="page sub-page">
+<div class="page sub-page saved-list saved-list-edit">
 	<div class="head">
 		<a class="back sub-back" href="/settings">‹ Settings</a>
 		<div class="title-row">
@@ -156,11 +157,7 @@
 							method="POST"
 							action="?/update"
 							class="edit"
-							use:enhance={() =>
-								async ({ result, update }) => {
-									if (result.type === 'redirect') editing = null;
-									await update();
-								}}
+							use:enhance={closeOnRedirect(() => (editing = null))}
 						>
 							<input type="hidden" name="id" value={f.id} />
 							{@render fields(`e-${f.id}`, form?.edit?.id === f.id ? form.edit.values : f, form?.edit?.id === f.id ? editErr : {})}
@@ -204,12 +201,7 @@
 		action="?/add"
 		class="add"
 		id="add"
-		use:enhance={({ formElement }) =>
-			async ({ result, update }) => {
-				await update();
-				// pinned: empty the fields for the next one (the page stays, so they'd keep what was typed)
-				if (result.type === 'redirect') for (const el of formElement.querySelectorAll('input:not([type=radio]):not([type=checkbox])')) (el as HTMLInputElement).value = '';
-			}}
+		use:enhance={clearOnRedirect}
 	>
 		<h2>Add a favorite</h2>
 		{@render fields('add', addVal, addErr)}
@@ -225,66 +217,12 @@
 		gap: 20px;
 		max-width: 820px;
 	}
-	.head {
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
-	}
-	.title-row {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 12px;
-	}
-	h1 {
-		margin: 0;
-		font-size: 28px;
-	}
-	.lede {
-		margin: 0;
-		font-size: 14px;
-		line-height: 1.5;
-		max-width: 620px;
-	}
-	/* the list: a 2px ink rule, then a row per favorite */
-	.list {
-		list-style: none;
-		margin: 0;
-		padding: 0;
-		border-top: 2px solid var(--ink);
-	}
-	.list li {
-		border-bottom: 1px solid var(--divider);
-	}
-	.item {
-		display: flex;
-		align-items: center;
-		flex-wrap: wrap;
-		gap: 8px 12px;
-		padding: 10px 0;
-	}
 	.t {
 		flex: 1;
 		min-width: 160px;
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
-	}
-	.name {
-		font-size: 15px;
-		font-weight: 600;
-		overflow-wrap: anywhere;
-	}
-	.meta {
-		font-size: 12px;
-		color: var(--text-muted);
-		overflow-wrap: anywhere;
-	}
-	.acts {
-		flex-shrink: 0;
-		display: flex;
-		align-items: center;
-		gap: 4px;
 	}
 	.move {
 		display: flex;
@@ -296,25 +234,6 @@
 	.arrow:disabled {
 		opacity: 0.35;
 	}
-	.edit-link {
-		color: var(--text-muted);
-	}
-	.edit {
-		display: flex;
-		flex-direction: column;
-		gap: 14px;
-		padding: 4px 0 16px;
-	}
-	.edit-acts {
-		display: flex;
-		gap: 10px;
-	}
-	.edit-acts .btn-primary {
-		flex: 1;
-	}
-	.del {
-		margin-right: auto;
-	}
 	.suggest {
 		display: flex;
 		flex-direction: column;
@@ -324,19 +243,6 @@
 		min-height: 44px;
 	}
 
-	/* adding: the same fields, under a rule of their own */
-	.add {
-		display: flex;
-		flex-direction: column;
-		gap: 14px;
-		padding-top: 14px;
-		border-top: 2px solid var(--ink);
-		scroll-margin-top: 16px;
-	}
-	h2 {
-		margin: 0;
-		font-size: 17px;
-	}
 	fieldset {
 		margin: 0;
 		padding: 0;
@@ -381,9 +287,6 @@
 			display: flex;
 		}
 	}
-	.go {
-		min-height: 48px;
-	}
 
 	@media (hover: hover) {
 		.edit-link:hover,
@@ -399,18 +302,6 @@
 	@media (min-width: 1024px) {
 		.page {
 			gap: 22px;
-		}
-		h1 {
-			font-size: 22px;
-		}
-		.go {
-			align-self: flex-start;
-			min-height: 44px;
-			padding: 0 22px;
-		}
-		.edit-acts .btn-primary {
-			flex: none;
-			padding: 0 22px;
 		}
 	}
 </style>

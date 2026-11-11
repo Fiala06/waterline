@@ -3,6 +3,7 @@
 	// and All still right at the end. Every button is a form, so it works
 	// without scripts too.
 	import { enhance } from '$app/forms';
+	import { keepValues } from '$lib/forms';
 
 	let { data } = $props();
 
@@ -14,7 +15,6 @@
 	});
 	const left = $derived(data.sections.filter((s) => !s.checked).length);
 	// keep the page where it is after a ✓ (its section moves on to "Checked")
-	const stay = () => async ({ update }: { update: (o?: { reset?: boolean }) => Promise<void> }) => update({ reset: false });
 </script>
 
 <svelte:head><title>Review tank setup · {data.tank.name}</title></svelte:head>
@@ -67,7 +67,7 @@
 								</a>
 								{#if !e.serviceable}<span class="chev" aria-hidden="true">›</span>{/if}
 								{#if e.serviceable}
-									<form method="POST" action="?/serviced" use:enhance={stay}>
+									<form method="POST" action="?/serviced" use:enhance={keepValues}>
 										<input type="hidden" name="equipmentId" value={e.id} />
 										<button class="btn sm-btn" aria-label="{e.name} serviced today">Serviced today</button>
 									</form>
@@ -111,7 +111,7 @@
 
 			<div class="acts">
 				{#if !s.checked}
-					<form method="POST" action="?/check" use:enhance={stay}>
+					<form method="POST" action="?/check" use:enhance={keepValues}>
 						<input type="hidden" name="section" value={s.key} />
 						<button class="btn btn-primary" aria-label="{s.label} still right">✓ Still right</button>
 					</form>
