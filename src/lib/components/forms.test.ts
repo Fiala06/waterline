@@ -1,7 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { chipScrollLeft, entryHref, eventTypes, joinNames, photoOtherDay, restoredText, splitTask, testTypes } from './entry-form';
 import { attentionSummary, cleanReading, readingRow, shortStatus, statusWord, testSaveLabel, waterChangeSummary, type TestParam } from './test-form';
-import { doseHint, eventSaveLabel, eventTitle, lastDoseOf, livestockPreview, productChoices, stepCount } from './event-form';
+import {
+	doseHint,
+	eventQueueTitle,
+	eventSaveLabel,
+	eventTitle,
+	lastDoseOf,
+	listOf,
+	livestockPreview,
+	notePlaceholder,
+	productChoices,
+	stepCount,
+	targetAnimal,
+	valueOf
+} from './event-form';
 
 // The log forms' logic, apart from their markup (#120).
 
@@ -155,5 +168,41 @@ describe('the event form', () => {
 		expect(eventTitle('edit', 'note')).toBe('Edit note');
 		expect(eventSaveLabel('new', 'equipment')).toBe('Save equipment change');
 		expect(eventSaveLabel('edit', 'equipment')).toBe('Save changes');
+	});
+
+	it('reads a field back from what was sent, one value or a list', () => {
+		const values = { product: 'Prime', tags: ['Algae', 'Cloudy'], actions: 'Filter cleaned' };
+		expect(valueOf(values, 'product')).toBe('Prime');
+		expect(valueOf(values, 'tags')).toBe('');
+		expect(valueOf(values, 'missing')).toBe('');
+		expect(listOf(values, 'tags')).toEqual(['Algae', 'Cloudy']);
+		expect(listOf(values, 'actions')).toEqual(['Filter cleaned']);
+		expect(listOf(values, 'missing')).toEqual([]);
+		expect(listOf({ actions: '' }, 'actions')).toEqual([]);
+	});
+
+	it('finds the animal picked to take away, not a plant', () => {
+		const tank = [{ id: 'a', name: 'Neon tetra' }];
+		expect(targetAnimal(tank, 'livestock:a')).toBe(tank[0]);
+		expect(targetAnimal(tank, 'livestock:b')).toBeUndefined();
+		expect(targetAnimal(tank, 'plant:a')).toBeUndefined();
+		expect(targetAnimal(tank, '')).toBeUndefined();
+	});
+
+	it('names the entry in the offline queue', () => {
+		const o = { amount: '', amountMode: 'percent', volUnit: 'gal', product: '', food: '' };
+		expect(eventQueueTitle('water_change', { ...o, amount: '25' })).toBe('Water change · 25%');
+		expect(eventQueueTitle('water_change', { ...o, amount: '10', amountMode: 'volume' })).toBe('Water change · 10 gal');
+		expect(eventQueueTitle('water_change', o)).toBe('Water change');
+		expect(eventQueueTitle('dosing', { ...o, product: 'Prime' })).toBe('Dosed Prime');
+		expect(eventQueueTitle('feeding', { ...o, food: 'Flakes' })).toBe('Fed Flakes');
+		// another category's field doesn't name it
+		expect(eventQueueTitle('maintenance', { ...o, product: 'Prime' })).toBe('Maintenance');
+	});
+
+	it('gives the Note field a placeholder, except on a note', () => {
+		expect(notePlaceholder('maintenance')).toBe('e.g. swapped sponge, kept ceramic');
+		expect(notePlaceholder('dosing')).toBe('Optional');
+		expect(notePlaceholder('note')).toBeUndefined();
 	});
 });
