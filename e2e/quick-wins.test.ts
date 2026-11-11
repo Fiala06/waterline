@@ -17,6 +17,12 @@ test('Tank setup fits a phone with a dosing routine', async ({ page }, info) => 
 	expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
 	// #259: Sharing is in the phone's setup links
 	await expect(page.getByRole('navigation', { name: 'More setup' }).getByRole('link', { name: /^Sharing/ })).toHaveAttribute('href', `/tanks/${tankId}/sharing`);
+	// #270: the setup links come first, above the form, and the page doesn't repeat Notes & routines
+	const links = (await page.getByRole('navigation', { name: 'More setup' }).boundingBox())!;
+	const details = (await page.getByRole('heading', { name: 'Tank details' }).boundingBox())!;
+	expect(links.y).toBeLessThan(details.y);
+	await expect(page.getByRole('heading', { name: /^Specs$/ })).toHaveCount(0);
+	await expect(page.getByRole('heading', { name: /^Routines/ })).toHaveCount(0);
 });
 
 // #259: Favorites is in the desktop Settings menu

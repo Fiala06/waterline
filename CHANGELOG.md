@@ -11,6 +11,10 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.21.12 · 2026-11-11
+
+- **Tank setup is shorter on a phone.** The list of setup sections (Parameters & targets, Public page, Sharing, Notes & routines and the rest) now comes first, above the tank's details, so changing a target is one tap away. The page no longer repeats the specs, notes and routines under the form; they're on Notes & routines: [Tank setup](/tanks/current/settings).
+
 ## 1.21.11 · 2026-11-11
 
 - **The water change is listed once on Overview.** When a water change is due, it's in Needs attention and no longer in Due as well: [Overview](/).
