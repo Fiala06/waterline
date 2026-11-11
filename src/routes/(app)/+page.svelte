@@ -529,12 +529,6 @@
 		padding: 4px 0 8px;
 		max-width: 640px;
 	}
-	.cz fieldset {
-		margin: 0;
-		padding: 0;
-		border: 0;
-		min-width: 0;
-	}
 	.cz-chips {
 		display: flex;
 		flex-wrap: wrap;

@@ -485,13 +485,7 @@
 		flex-direction: column;
 		gap: 16px;
 	}
-	fieldset {
-		border: none;
-		margin: 0;
-		padding: 0;
-	}
 	legend {
-		padding: 0;
 		margin-bottom: 8px;
 	}
 	.row {

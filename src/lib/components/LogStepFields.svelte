@@ -105,12 +105,6 @@
 </div>
 
 <style>
-	fieldset {
-		margin: 0;
-		padding: 0;
-		border: 0;
-		min-width: 0;
-	}
 	.chips {
 		display: flex;
 		flex-wrap: wrap;

@@ -327,12 +327,6 @@ sensor:
 		font-weight: 800;
 	}
 	/* a device's sensors, each with the parameter it feeds */
-	.sensors {
-		margin: 0;
-		padding: 0;
-		border: 0;
-		min-width: 0;
-	}
 	.sensor-list {
 		list-style: none;
 		margin: 8px 0 0;

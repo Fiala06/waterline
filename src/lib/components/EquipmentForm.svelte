@@ -5,6 +5,8 @@
 	import DateField from '$lib/components/DateField.svelte';
 	import { untrack } from 'svelte';
 	import DayTimeline from '$lib/components/DayTimeline.svelte';
+	import FormBar from '$lib/components/FormBar.svelte';
+	import WeekdayPicker from '$lib/components/WeekdayPicker.svelte';
 	import { MAX_DOSES } from '$lib/dosers';
 	import { DEFAULT_SERVICE, EQUIPMENT_TYPE_LABEL, EQUIPMENT_TYPES, hoursText, isCompletePeriod, MAX_PERIODS, RAMP_OPTIONS, SERVICE_CADENCES, SPEC_FIELDS, scheduleTotalHours, serviceVerb, specUnit, type EquipmentType } from '$lib/equipment';
 	import { WEEKDAYS } from '$lib/tasks';
@@ -123,11 +125,7 @@
 	}}
 >
 	<!-- phones; on desktop the header has the title -->
-	<div class="bar hide-desk">
-		<a class="cancel" href={cancelHref}>Cancel</a>
-		<h1>{mode === 'edit' ? 'Edit equipment' : 'Add equipment'}</h1>
-		<button class="save-top" disabled={busy}>Save</button>
-	</div>
+	<FormBar title={mode === 'edit' ? 'Edit equipment' : 'Add equipment'} {cancelHref} disabled={busy} />
 
 	{#if about}
 		<div class="about-head hide-phone">
@@ -258,14 +256,7 @@
 						<!-- a group, not a fieldset: nested in one, a fieldset shrinks to its content and the chips pile up -->
 						<div class="field" role="group" aria-labelledby="dose-{i}-days">
 							<span class="label" id="dose-{i}-days">On these days</span>
-							<div class="week" class:invalid={!!errors[`dose.${i}.wd`]}>
-								{#each WEEKDAYS as w (w.day)}
-									<label class="day" title={w.name}>
-										<input type="checkbox" name="dose.{i}.wd" value={w.day} bind:group={d.weekdays} aria-label="{w.name}, dose {i + 1}" />
-										<span aria-hidden="true">{w.short}</span>
-									</label>
-								{/each}
-							</div>
+							<WeekdayPicker name="dose.{i}.wd" bind:value={d.weekdays} invalid={!!errors[`dose.${i}.wd`]} labelSuffix="dose {i + 1}" />
 							{#if errors[`dose.${i}.wd`]}<span class="error-text">✕ {errors[`dose.${i}.wd`]}</span>{/if}
 						</div>
 						<label class="check-row"><input type="checkbox" name="dose.{i}.paused" value="1" bind:checked={d.paused} />Paused · nothing is logged until it's on again</label>
@@ -439,32 +430,6 @@
 		flex-direction: column;
 		min-height: 100dvh;
 	}
-	.bar {
-		display: grid;
-		grid-template-columns: 1fr auto 1fr;
-		align-items: center;
-		padding: 8px 20px;
-	}
-	.cancel {
-		font-size: 15px;
-		color: var(--text-muted);
-		min-height: 44px;
-		display: flex;
-		align-items: center;
-		justify-self: start;
-	}
-	h1 {
-		margin: 0;
-		font-size: 17px;
-		font-weight: 800;
-	}
-	.save-top {
-		justify-self: end;
-		color: var(--accent-text);
-		font-weight: 800;
-		font-size: 16px;
-		min-height: 44px;
-	}
 	.about-head {
 		display: none;
 	}
@@ -480,13 +445,7 @@
 		flex-direction: column;
 		gap: 18px;
 	}
-	fieldset {
-		border: none;
-		margin: 0;
-		padding: 0;
-	}
 	legend {
-		padding: 0;
 		margin-bottom: 8px;
 	}
 	.brand {
@@ -623,45 +582,6 @@
 		.dose-row {
 			grid-template-columns: repeat(3, minmax(0, 1fr));
 		}
-	}
-	/* (not .days: that's the service reminder's days box above) */
-	.week {
-		display: grid;
-		grid-template-columns: repeat(7, minmax(0, 1fr));
-		gap: 6px;
-	}
-	.day {
-		position: relative;
-		min-height: 44px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		border-radius: 0;
-		border: 1px solid var(--border);
-		background: var(--surface);
-		font-size: 14px;
-		font-weight: 600;
-		color: var(--text-muted);
-		cursor: pointer;
-	}
-	.day input {
-		position: absolute;
-		inset: 0;
-		opacity: 0;
-		margin: 0;
-		cursor: pointer;
-	}
-	.day:has(input:checked) {
-		background: var(--accent);
-		border-color: var(--accent);
-		color: var(--on-accent);
-	}
-	.day:has(input:focus-visible) {
-		outline: 2px solid var(--accent);
-		outline-offset: 2px;
-	}
-	.week.invalid .day {
-		border-color: var(--bad);
 	}
 	.service-row {
 		display: grid;

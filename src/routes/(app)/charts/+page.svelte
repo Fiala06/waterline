@@ -469,11 +469,6 @@
 		font-size: 14px;
 		color: var(--text-muted);
 	}
-	fieldset {
-		border: none;
-		margin: 0;
-		padding: 0;
-	}
 	.ranges label {
 		min-height: 40px;
 		font-size: 13px;
@@ -708,9 +703,6 @@
 		box-shadow: var(--shadow-lg);
 	}
 	.compare-menu fieldset {
-		margin: 0;
-		padding: 0;
-		border: 0;
 		display: flex;
 		flex-direction: column;
 	}

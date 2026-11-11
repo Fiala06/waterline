@@ -81,15 +81,11 @@
 		color: var(--text);
 	}
 	fieldset {
-		border: none;
-		margin: 0;
-		padding: 0;
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
 	}
 	legend {
-		padding: 0;
 		margin-bottom: 6px;
 	}
 	.small {

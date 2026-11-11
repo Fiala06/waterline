@@ -7,9 +7,11 @@
 	import { goto } from '$app/navigation';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import DateField from '$lib/components/DateField.svelte';
+	import FormBar from '$lib/components/FormBar.svelte';
+	import WeekdayPicker from '$lib/components/WeekdayPicker.svelte';
 	import { untrack } from 'svelte';
 	import { DOSING_UNITS } from '$lib/events';
-	import { endsAfterTimes, FEED_UNITS, scheduleExamples, TRIGGER_KINDS, TRIGGER_OFFSETS, waitingText, WEEKDAYS, type TriggerKind } from '$lib/tasks';
+	import { endsAfterTimes, FEED_UNITS, scheduleExamples, TRIGGER_KINDS, TRIGGER_OFFSETS, waitingText, type TriggerKind } from '$lib/tasks';
 	import { addDays, fmtDate, fmtWeekday } from '$lib/time';
 	import { parseNumber } from '$lib/units';
 
@@ -149,11 +151,7 @@
 			{#if mode === 'new'}<a class="close" href={cancelHref}>Close ✕</a>{/if}
 		</div>
 	{:else}
-		<div class="bar hide-desk">
-			<a class="cancel" href={cancelHref}>Cancel</a>
-			<h1>{title}</h1>
-			<button class="save-top" disabled={busy}>Save</button>
-		</div>
+		<FormBar {title} {cancelHref} disabled={busy} variant="log" />
 	{/if}
 
 	<div class="body">
@@ -234,14 +232,7 @@
 		{#if repeat === 'days'}
 			<fieldset class="field">
 				<legend class="label">On these days</legend>
-				<div class="days" class:invalid={!!errors.weekdays}>
-					{#each WEEKDAYS as w (w.day)}
-						<label class="day" title={w.name}>
-							<input type="checkbox" name="weekday" value={w.day} bind:group={weekdays} aria-label={w.name} />
-							<span aria-hidden="true">{w.short}</span>
-						</label>
-					{/each}
-				</div>
+				<WeekdayPicker name="weekday" bind:value={weekdays} invalid={!!errors.weekdays} />
 				{#if errors.weekdays}<span class="error-text">✕ {errors.weekdays}</span>{/if}
 			</fieldset>
 		{/if}
@@ -457,39 +448,6 @@
 		max-width: 560px;
 		margin-inline: auto;
 	}
-	/* 15: Cancel · Edit task · Save */
-	.bar {
-		display: grid;
-		grid-template-columns: 1fr auto 1fr;
-		align-items: center;
-		padding: 4px 20px 8px;
-	}
-	.cancel {
-		justify-self: start;
-		font-size: 16px;
-		color: var(--text-muted);
-		min-height: 44px;
-		display: flex;
-		align-items: center;
-	}
-	.cancel:hover {
-		color: var(--text);
-	}
-	h1 {
-		margin: 0;
-		font-size: 17px;
-		font-weight: 800;
-	}
-	.save-top {
-		justify-self: end;
-		color: var(--accent-text);
-		font-weight: 700;
-		font-size: 16px;
-		min-height: 44px;
-	}
-	.save-top:disabled {
-		opacity: 0.45;
-	}
 	.body {
 		padding: 8px 20px 12px;
 		display: flex;
@@ -497,16 +455,10 @@
 		gap: 20px;
 		flex: 1;
 	}
-	fieldset {
-		border: none;
-		margin: 0;
-		padding: 0;
-	}
 	.field :global(.input[aria-invalid='true']) {
 		border-color: var(--bad);
 	}
 	legend {
-		padding: 0;
 		margin-bottom: 8px;
 	}
 	.every {
@@ -521,45 +473,6 @@
 	}
 	.dose .product {
 		grid-column: 1 / -1;
-	}
-	/* On these days: seven toggles, Mon first */
-	.days {
-		display: grid;
-		grid-template-columns: repeat(7, minmax(0, 1fr));
-		gap: 6px;
-	}
-	.day {
-		position: relative;
-		min-height: 44px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		border-radius: 0;
-		border: 1px solid var(--border);
-		background: var(--surface);
-		font-size: 14px;
-		font-weight: 600;
-		color: var(--text-muted);
-		cursor: pointer;
-	}
-	.day input {
-		position: absolute;
-		inset: 0;
-		opacity: 0;
-		margin: 0;
-		cursor: pointer;
-	}
-	.day:has(input:checked) {
-		background: var(--accent);
-		border-color: var(--accent);
-		color: var(--on-accent);
-	}
-	.day:has(input:focus-visible) {
-		outline: 2px solid var(--accent);
-		outline-offset: 2px;
-	}
-	.days.invalid .day {
-		border-color: var(--bad);
 	}
 	.hint {
 		margin: 0;

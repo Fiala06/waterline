@@ -92,11 +92,6 @@
 		flex-direction: column;
 		gap: 18px;
 	}
-	fieldset {
-		border: none;
-		padding: 0;
-		margin: 0;
-	}
 	legend {
 		padding: 0 0 6px;
 	}

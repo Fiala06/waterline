@@ -321,13 +321,7 @@
 		font-size: 12px;
 		color: var(--text-muted);
 	}
-	fieldset {
-		border: none;
-		margin: 0;
-		padding: 0;
-	}
 	legend {
-		padding: 0;
 		margin-bottom: 6px;
 		width: 100%;
 	}

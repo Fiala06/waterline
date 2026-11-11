@@ -4,6 +4,7 @@
 	import { enhance } from '$app/forms';
 	import { untrack } from 'svelte';
 	import DateField from '$lib/components/DateField.svelte';
+	import FormBar from '$lib/components/FormBar.svelte';
 
 	let { data, form } = $props();
 	const v = $derived(form?.values);
@@ -28,11 +29,7 @@
 	}}
 >
 	<input type="hidden" name="from" value={data.from} />
-	<div class="bar hide-desk">
-		<a class="cancel" href={data.from}>Cancel</a>
-		<h1>Log algae</h1>
-		<button class="save-top" disabled={busy}>Save</button>
-	</div>
+	<FormBar title="Log algae" cancelHref={data.from} disabled={busy} variant="log" />
 
 	<div class="body">
 		{#if errors.when}<p class="banner banner-bad" role="alert">✕ {errors.when}</p>{/if}
@@ -102,48 +99,13 @@
 		flex-direction: column;
 		max-width: 560px;
 	}
-	.bar {
-		display: grid;
-		grid-template-columns: 1fr auto 1fr;
-		align-items: center;
-		padding: 4px 20px 8px;
-	}
-	.cancel {
-		justify-self: start;
-		font-size: 16px;
-		color: var(--text-muted);
-		min-height: 44px;
-		display: flex;
-		align-items: center;
-	}
-	h1 {
-		margin: 0;
-		font-size: 17px;
-		font-weight: 800;
-	}
-	.save-top {
-		justify-self: end;
-		color: var(--accent-text);
-		font-weight: 700;
-		font-size: 16px;
-		min-height: 44px;
-	}
-	.save-top:disabled {
-		opacity: 0.45;
-	}
 	.body {
 		padding: 8px 20px 12px;
 		display: flex;
 		flex-direction: column;
 		gap: 20px;
 	}
-	fieldset {
-		border: none;
-		margin: 0;
-		padding: 0;
-	}
 	legend {
-		padding: 0;
 		margin-bottom: 8px;
 	}
 	.hint {

@@ -350,10 +350,17 @@ button {
 	padding: 0;
 }
 
-/* Form parts must be able to shrink on narrow phones: fieldsets default to
+/* A fieldset only groups: no box, no inset, and its legend sits flush.
+   Form parts must be able to shrink on narrow phones: fieldsets default to
    min-width: min-content and inputs to a ~20ch intrinsic width. */
 fieldset {
+	border: none;
+	margin: 0;
+	padding: 0;
 	min-width: 0;
+}
+legend {
+	padding: 0;
 }
 input,
 select,

@@ -829,13 +829,7 @@
 	.input.mono {
 		font-size: 14px;
 	}
-	fieldset {
-		border: none;
-		margin: 0;
-		padding: 0;
-	}
 	legend {
-		padding: 0;
 		margin-bottom: 6px;
 	}
 	.uri-line {
