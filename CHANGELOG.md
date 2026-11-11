@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.21.10 · 2026-11-11
+
 - **Chart readings fit their box on a phone.** Pointing at a reading on a chart shows its status, such as ✕ 0.25 over target, on a line of its own under the date when both don't fit, instead of running past the edge of the box: [Charts](/charts).
 
 ## 1.21.9 · 2026-11-10
