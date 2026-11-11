@@ -26,7 +26,12 @@ export const POST: RequestHandler = async ({ request, url }) => {
 	const read = await readJsonBody(request);
 	if ('error' in read) {
 		if (read.error === 'too-large') {
-			return json({ jsonrpc: '2.0', id: null, error: { code: INVALID_REQUEST, message: `Request too large: at most ${MAX_BODY_BYTES / 1024 / 1024} MB` } }, { status: 413 });
+			// the rest of the body is never read, so this connection can't carry another request:
+			// say so, or the client sends its next one down it and gets a reset (#280)
+			return json(
+				{ jsonrpc: '2.0', id: null, error: { code: INVALID_REQUEST, message: `Request too large: at most ${MAX_BODY_BYTES / 1024 / 1024} MB` } },
+				{ status: 413, headers: { connection: 'close' } }
+			);
 		}
 		return json({ jsonrpc: '2.0', id: null, error: { code: PARSE_ERROR, message: 'Parse error' } }, { status: 400 });
 	}

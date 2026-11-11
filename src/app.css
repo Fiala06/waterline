@@ -350,10 +350,17 @@ button {
 	padding: 0;
 }
 
-/* Form parts must be able to shrink on narrow phones: fieldsets default to
+/* A fieldset only groups: no box, no inset, and its legend sits flush.
+   Form parts must be able to shrink on narrow phones: fieldsets default to
    min-width: min-content and inputs to a ~20ch intrinsic width. */
 fieldset {
+	border: none;
+	margin: 0;
+	padding: 0;
 	min-width: 0;
+}
+legend {
+	padding: 0;
 }
 input,
 select,
@@ -1370,4 +1377,110 @@ a.btn:visited {
 }
 a.btn-primary:visited {
 	color: var(--on-accent);
+}
+
+/* ── Saved lists in Settings: Favorites, Products, Test kits (#268) ──────────
+   A heading, the list with each item's inline editor, then an add form. */
+.saved-list .head {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+.saved-list .title-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+}
+.saved-list h1 {
+	margin: 0;
+	font-size: 28px;
+}
+.saved-list .list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	border-top: 2px solid var(--ink);
+}
+.saved-list .list li {
+	border-bottom: 1px solid var(--divider);
+}
+.saved-list .item {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px 12px;
+	padding: 10px 0;
+}
+.saved-list .meta {
+	font-size: 12px;
+	color: var(--text-muted);
+	overflow-wrap: anywhere;
+}
+.saved-list .del {
+	margin-right: auto;
+}
+/* Favorites and Products also share their editor and add form */
+.saved-list-edit .lede {
+	margin: 0;
+	font-size: 14px;
+	line-height: 1.5;
+	max-width: 620px;
+}
+.saved-list-edit .name {
+	font-size: 15px;
+	font-weight: 600;
+	overflow-wrap: anywhere;
+}
+.saved-list-edit .acts {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+.saved-list-edit .edit-link {
+	color: var(--text-muted);
+}
+.saved-list-edit .edit {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	padding: 4px 0 16px;
+}
+.saved-list-edit .edit-acts {
+	display: flex;
+	gap: 10px;
+}
+.saved-list-edit .edit-acts .btn-primary {
+	flex: 1;
+}
+.saved-list-edit .add {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	padding-top: 14px;
+	border-top: 2px solid var(--ink);
+	scroll-margin-top: 16px;
+}
+.saved-list-edit h2 {
+	margin: 0;
+	font-size: 17px;
+}
+.saved-list-edit .go {
+	min-height: 48px;
+}
+@media (min-width: 1024px) {
+	.saved-list-edit h1 {
+		font-size: 22px;
+	}
+	.saved-list-edit .go {
+		align-self: flex-start;
+		min-height: 44px;
+		padding: 0 22px;
+	}
+	/* Delete on the left, Cancel and Save at the end, as in the other desktop forms */
+	.saved-list-edit .edit-acts .btn-primary {
+		flex: none;
+		padding: 0 22px;
+	}
 }

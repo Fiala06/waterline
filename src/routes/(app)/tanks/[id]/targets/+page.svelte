@@ -6,7 +6,7 @@
 	import CustomParamSheet from '$lib/components/CustomParamSheet.svelte';
 	import { TEST_CADENCES } from '$lib/status';
 	import { LEVEL_LABEL, PARAM_GROUPS } from '$lib/params';
-	import { refusal } from '$lib/forms';
+	import { keepValues, refusal } from '$lib/forms';
 
 	let { data, form } = $props();
 	const errors = $derived(refusal(form, 'targets').errors);
@@ -37,7 +37,7 @@
 		</p>
 	</div>
 
-	<form method="POST" action="?/save" use:enhance={() => ({ update }) => update({ reset: false })}>
+	<form method="POST" action="?/save" use:enhance={keepValues}>
 		{#if data.fromReview}<input type="hidden" name="from" value="review" />{:else if data.returnTo}<input type="hidden" name="from" value={data.returnTo} />{/if}
 		<div class="rows">
 			<!-- desktop: one table like D4 -->

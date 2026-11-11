@@ -6,6 +6,9 @@
 	import { enhance } from '$app/forms';
 	import { untrack } from 'svelte';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
+	import CopyField from '$lib/components/CopyField.svelte';
+	import TankChecks from '$lib/components/TankChecks.svelte';
+	import TokenList from '$lib/components/TokenList.svelte';
 	import { fmtWhen } from '$lib/time';
 	let { data, form } = $props();
 
@@ -15,16 +18,6 @@
 	const createPicked = $derived(new Set<string>(form?.create?.tankIds ?? data.tanks.slice(0, 1).map((t) => t.id)));
 	let editing = $state<string | null>(untrack(() => form?.edit?.id ?? data.edit ?? null));
 	const editErr = $derived<Record<string, string>>(form?.edit?.errors ?? {});
-	let copied = $state('');
-	async function copy(what: string, text: string) {
-		try {
-			await navigator.clipboard.writeText(text);
-			copied = what;
-			setTimeout(() => (copied = ''), 2000);
-		} catch {
-			/* the field can still be selected */
-		}
-	}
 	const token = $derived(created?.token ?? '<your token>');
 	// the tank the examples carry: one picked here (while the token it was picked beside is
 	// still the one shown), else the token just made's first tank, else the server's choice
@@ -56,7 +49,6 @@ sensor:
               Authorization: "Bearer ${token}"
               Content-Type: application/json
             body: !lambda 'return "{\\"parameter\\":\\"temp\\",\\"value\\":" + to_string(x) + ",\\"unit\\":\\"°C\\"}";'`);
-	const tankList = (names: string[]) => (names.length ? names.join(', ') : 'No tanks');
 	// a device read from its own web page: what Find sensors turned up, and the forms' slips
 	const found = $derived(form?.found ?? null);
 	const findErr = $derived<Record<string, string>>(form?.find?.errors ?? {});
@@ -65,28 +57,6 @@ sensor:
 </script>
 
 <svelte:head><title>Sensors · Settings · Waterline</title></svelte:head>
-
-{#snippet tankChecks(prefix: string, picked: Set<string>, err: string | undefined)}
-	<fieldset class="tanks" aria-describedby={err ? `${prefix}-tanks-e` : undefined}>
-		<legend class="label">Tanks it can add readings to</legend>
-		<div class="checks">
-			{#each data.tanks as t (t.id)}
-				<label class="check-row"><input type="checkbox" name="tank" value={t.id} checked={picked.has(t.id)} /><span>{t.name}</span></label>
-			{/each}
-		</div>
-		{#if err}<span class="error-text" id="{prefix}-tanks-e">✕ {err}</span>{/if}
-	</fieldset>
-{/snippet}
-
-{#snippet copyField(id: string, label: string, text: string, pre = false)}
-	<div class="field">
-		<div class="label-row copy-row">
-			<span class="label">{label}</span>
-			<button type="button" class="btn-text copy" onclick={() => copy(id, text)}>{copied === id ? '✓ Copied' : 'Copy'}<span class="sr-only"> {label}</span></button>
-		</div>
-		<code class="code mono" class:pre {id}>{text}</code>
-	</div>
-{/snippet}
 
 <div class="page sub-page">
 	<div class="head">
@@ -102,61 +72,24 @@ sensor:
 		<section class="made" aria-labelledby="made-h">
 			<h2 id="made-h">✓ Sensor token for {created.name}</h2>
 			<p class="warn-text status-warn">▲ Copy it now: it's shown only this once.</p>
-			{@render copyField('made-token', 'Sensor token', created.token)}
+			<CopyField id="made-token" label="Sensor token" text={created.token} />
 		</section>
 	{/if}
 
 	<section aria-labelledby="list-h" class="block">
 		<h2 id="list-h" class="kicker">Connected · {data.tokens.length}</h2>
-		{#if data.tokens.length}
-			<ul class="list">
-				{#each data.tokens as t (t.id)}
-					<li>
-						<div class="item">
-							<div class="t">
-								<span class="name">{t.name} <span class="mono hint-code">…{t.hint}</span></span>
-								<span class="meta">Adds readings to {tankList(t.tankNames)}</span>
-								<span class="meta">Made {fmtWhen(t.createdAt, tz)} · {t.lastUsedAt ? `Last heard ${fmtWhen(t.lastUsedAt, tz)}` : 'Nothing received yet'}</span>
-							</div>
-							<div class="acts">
-								<a
-									class="btn-text"
-									href="?edit={t.id}"
-									aria-expanded={editing === t.id}
-									onclick={(e) => {
-										e.preventDefault();
-										editing = editing === t.id ? null : t.id;
-									}}>Tanks<span class="sr-only"> {t.name} can add readings to</span></a
-								>
-								<button type="button" class="btn btn-danger" popovertarget="revoke-{t.id}">Revoke<span class="sr-only"> {t.name}</span></button>
-							</div>
-						</div>
-						{#if editing === t.id}
-							<form
-								method="POST"
-								action="?/tanks"
-								class="edit"
-								use:enhance={() =>
-									async ({ result, update }) => {
-										if (result.type === 'redirect') editing = null;
-										await update();
-									}}
-							>
-								<input type="hidden" name="id" value={t.id} />
-								{@render tankChecks(`e-${t.id}`, new Set(t.tankIds), form?.edit?.id === t.id ? editErr.tanks : undefined)}
-								<div class="edit-acts">
-									<a class="btn" href="/settings/sensors" onclick={(e) => (e.preventDefault(), (editing = null))}>Cancel</a>
-									<button class="btn btn-primary">Save</button>
-								</div>
-							</form>
-						{/if}
-						<ConfirmDelete id="revoke-{t.id}" trigger={false} title="Revoke {t.name}'s token?" body="It stops sending readings straight away. Readings already received stay." action="?/revoke" label="Revoke" fields={{ id: t.id }} />
-					</li>
-				{/each}
-			</ul>
-		{:else}
-			<p class="none">No sensor connected. Nothing can add readings until you make a token.</p>
-		{/if}
+		<TokenList
+			tokens={data.tokens}
+			tanks={data.tanks}
+			page="/settings/sensors"
+			bind:editing
+			editError={form?.edit ? { id: form.edit.id, message: editErr.tanks } : null}
+			legend="Tanks it can add readings to"
+			reach={(names) => `Adds readings to ${names}`}
+			meta={(t) => `Made ${fmtWhen(t.createdAt, tz)} · ${t.lastUsedAt ? `Last heard ${fmtWhen(t.lastUsedAt, tz)}` : 'Nothing received yet'}`}
+			revokeBody="It stops sending readings straight away. Readings already received stay."
+			empty="No sensor connected. Nothing can add readings until you make a token."
+		/>
 	</section>
 
 	<form method="POST" action="?/create" class="block create" id="create" use:enhance>
@@ -166,7 +99,7 @@ sensor:
 			<input class="input" id="s-name" name="name" maxlength="60" value={form?.create?.name ?? ''} placeholder="e.g. Apex, ESPHome, Home Assistant" autocomplete="off" aria-invalid={!!createErr.name} />
 			{#if createErr.name}<span class="error-text">✕ {createErr.name}</span>{/if}
 		</div>
-		{@render tankChecks('c', createPicked, createErr.tanks)}
+		<TankChecks prefix="c" legend="Tanks it can add readings to" tanks={data.tanks} picked={createPicked} error={createErr.tanks} />
 		<button class="btn btn-primary go">Create sensor token</button>
 	</form>
 
@@ -198,14 +131,14 @@ sensor:
 				{/if}
 			</div>
 		{/if}
-		{@render copyField('how-curl', 'curl', curl, true)}
+		<CopyField id="how-curl" label="curl" text={curl} pre />
 		<details>
 			<summary>Home Assistant</summary>
-			{@render copyField('how-ha', 'configuration.yaml · a rest_command to call from an automation', ha, true)}
+			<CopyField id="how-ha" label="configuration.yaml · a rest_command to call from an automation" text={ha} pre />
 		</details>
 		<details>
 			<summary>ESPHome</summary>
-			{@render copyField('how-esp', 'A temperature probe posting every 5 minutes', esphome, true)}
+			<CopyField id="how-esp" label="A temperature probe posting every 5 minutes" text={esphome} pre />
 		</details>
 	</section>
 
@@ -394,12 +327,6 @@ sensor:
 		font-weight: 800;
 	}
 	/* a device's sensors, each with the parameter it feeds */
-	.sensors {
-		margin: 0;
-		padding: 0;
-		border: 0;
-		min-width: 0;
-	}
 	.sensor-list {
 		list-style: none;
 		margin: 8px 0 0;

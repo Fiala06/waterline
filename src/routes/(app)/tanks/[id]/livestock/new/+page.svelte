@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { untrack } from 'svelte';
 	import DateField from '$lib/components/DateField.svelte';
+	import FormBar from '$lib/components/FormBar.svelte';
 	import SpeciesInput from '$lib/components/SpeciesInput.svelte';
 	let { data, form } = $props();
 	let kind = $state<'fish' | 'invert' | 'coral'>('fish');
@@ -36,11 +37,7 @@
 
 <form method="POST" class="lform" use:enhance>
 	<!-- phones; on desktop the header has the title -->
-	<div class="bar hide-desk">
-		<a class="cancel" href="/tanks/{data.tank.id}/livestock">Cancel</a>
-		<h1>Add livestock</h1>
-		<button class="save-top">Add</button>
-	</div>
+	<FormBar title="Add livestock" cancelHref="/tanks/{data.tank.id}/livestock" saveLabel="Add" />
 	<div class="body">
 		{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
 		<div class="segmented" role="group" aria-label="Kind">
@@ -110,32 +107,6 @@
 		display: flex;
 		flex-direction: column;
 	}
-	.bar {
-		display: grid;
-		grid-template-columns: 1fr auto 1fr;
-		align-items: center;
-		padding: 8px 20px;
-	}
-	.cancel {
-		font-size: 15px;
-		color: var(--text-muted);
-		min-height: 44px;
-		display: flex;
-		align-items: center;
-		justify-self: start;
-	}
-	h1 {
-		margin: 0;
-		font-size: 17px;
-		font-weight: 800;
-	}
-	.save-top {
-		justify-self: end;
-		color: var(--accent-text);
-		font-weight: 800;
-		font-size: 16px;
-		min-height: 44px;
-	}
 	.body {
 		flex: 1;
 		padding: 8px 20px 12px;
@@ -143,13 +114,7 @@
 		flex-direction: column;
 		gap: 18px;
 	}
-	fieldset {
-		border: none;
-		margin: 0;
-		padding: 0;
-	}
 	legend {
-		padding: 0;
 		margin-bottom: 8px;
 	}
 	.pair {

@@ -2,6 +2,7 @@
 	// Import & export (redesign README § 15): scope, format, a build with its
 	// progress, then the download; and a spreadsheet in, one kind at a time.
 	import { enhance } from '$app/forms';
+	import { keepValues } from '$lib/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { untrack } from 'svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
@@ -73,7 +74,7 @@
 	{:else}
 		<section class="block" aria-labelledby="export-h">
 			<h2 class="kicker" id="export-h">Export</h2>
-			<form id="export-form" method="POST" use:enhance={() => async ({ update }) => update({ reset: false })} class="stack">
+			<form id="export-form" method="POST" use:enhance={keepValues} class="stack">
 				<fieldset class="scope-row">
 					<legend class="sr-only">Scope</legend>
 					<div class="segmented scope">
@@ -226,9 +227,6 @@
 		gap: 14px;
 	}
 	fieldset {
-		border: none;
-		margin: 0;
-		padding: 0;
 		display: flex;
 		flex-direction: column;
 		gap: 10px;

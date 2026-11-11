@@ -1,7 +1,7 @@
 <script lang="ts">
+	import { reloadWhilePhotosPending } from '$lib/photos-pending.svelte';
 	import WorthChecking from '$lib/components/WorthChecking.svelte';
 	import { enhance } from '$app/forms';
-	import { invalidateAll } from '$app/navigation';
 	import { getContext, onDestroy } from 'svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ImportButton from '$lib/components/ImportButton.svelte';
@@ -39,15 +39,7 @@
 	});
 	let editing = $state<(typeof data.plants)[number] | null>(null);
 	// species photos still on their way from Wikimedia: look again in a moment, a few times
-	let tries = 0;
-	$effect(() => {
-		if (!data.photosPending || tries >= 4) return;
-		const t = setTimeout(() => {
-			tries++;
-			invalidateAll();
-		}, 2500);
-		return () => clearTimeout(t);
-	});
+	reloadWhilePhotosPending(() => !!data.photosPending);
 	// keep the open sheet in step when the list comes back
 	$effect(() => {
 		const now = editing && data.plants.find((p) => p.id === editing!.id);
@@ -228,6 +220,11 @@
 			<form method="POST" action="?/update" class="sheet-form" use:enhance={close}>
 				{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
 				<input type="hidden" name="id" value={editing.id} />
+				<!-- renamed here (#265): a cultivar, or a better guess at what it is -->
+				<div class="field">
+					<label class="label" for="plant-rename">Name</label>
+					<input class="input" id="plant-rename" name="name" required maxlength="80" autocomplete="off" defaultValue={editing.name} />
+				</div>
 				<fieldset class="field">
 					<legend class="label">Status</legend>
 					<div class="chips">
@@ -488,13 +485,7 @@
 		flex-direction: column;
 		gap: 16px;
 	}
-	fieldset {
-		border: none;
-		margin: 0;
-		padding: 0;
-	}
 	legend {
-		padding: 0;
 		margin-bottom: 8px;
 	}
 	.row {

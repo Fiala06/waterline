@@ -7,6 +7,7 @@
 	import { enhance } from '$app/forms';
 	import { onMount, untrack } from 'svelte';
 	import DateField from './DateField.svelte';
+	import FormBar from './FormBar.svelte';
 	import { parseSeveralList, severalSaveLabel } from '$lib/several';
 
 	type Kind = 'fish' | 'invert' | 'coral';
@@ -154,11 +155,7 @@
 	}}
 >
 	<!-- phones; on desktop the header has the title -->
-	<div class="bar hide-desk">
-		<a class="cancel" href={back}>Cancel</a>
-		<h1>{plants ? 'Add several plants' : 'Add several'}</h1>
-		<button class="save-top" disabled={busy || (js && !items)}>Add</button>
-	</div>
+	<FormBar title={plants ? 'Add several plants' : 'Add several'} cancelHref={back} saveLabel="Add" disabled={busy || (js && !items)} />
 	<div class="body">
 		{#if error}<p class="banner banner-bad" role="alert">✕ {error}</p>{/if}
 
@@ -314,35 +311,6 @@
 		display: flex;
 		flex-direction: column;
 	}
-	.bar {
-		display: grid;
-		grid-template-columns: 1fr auto 1fr;
-		align-items: center;
-		padding: 8px 20px;
-	}
-	.cancel {
-		font-size: 15px;
-		color: var(--text-muted);
-		min-height: 44px;
-		display: flex;
-		align-items: center;
-		justify-self: start;
-	}
-	h1 {
-		margin: 0;
-		font-size: 17px;
-		font-weight: 800;
-	}
-	.save-top {
-		justify-self: end;
-		color: var(--accent-text);
-		font-weight: 800;
-		font-size: 16px;
-		min-height: 44px;
-	}
-	.save-top:disabled {
-		opacity: 0.45;
-	}
 	.body {
 		flex: 1;
 		padding: 8px 20px 12px;
@@ -356,13 +324,7 @@
 	.modes label {
 		padding: 0 16px;
 	}
-	fieldset {
-		border: none;
-		margin: 0;
-		padding: 0;
-	}
 	legend {
-		padding: 0;
 		margin-bottom: 6px;
 	}
 	.ghost {

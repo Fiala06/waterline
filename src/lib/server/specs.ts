@@ -794,6 +794,22 @@ export function updatePlant(
     .get();
 }
 
+/** Rename a plant (#265), logged in History as "Renamed Java fern to …". */
+export function renamePlant(userId: string, id: string, name: string, meta: EntryMeta = {}) {
+  const p = getPlant(userId, id);
+  requireRoleOn(userId, p.tankId, "log");
+  name = name.trim().slice(0, 80);
+  if (!name || name === p.name) return p;
+  const renamed = db.update(plants).set({ name }).where(eq(plants.id, id)).returning().get();
+  logEvent(
+    p.tankId,
+    "livestock",
+    { action: "renamed", plant_id: id, name, previous: p.name, kind: "plant" },
+    meta,
+  );
+  return renamed;
+}
+
 export function removePlant(userId: string, id: string, meta: EntryMeta = {}) {
   const p = getPlant(userId, id);
   requireRoleOn(userId, p.tankId, "log");

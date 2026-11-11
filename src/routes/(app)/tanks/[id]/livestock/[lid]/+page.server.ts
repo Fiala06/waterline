@@ -8,9 +8,9 @@ import { db } from '$lib/server/db';
 import { events } from '$lib/server/db/schema';
 import { setFlash } from '$lib/server/flash';
 import { optStr, refuse } from '$lib/server/forms';
-import { checkPhotoFiles, photoFiles, datePhotos, preparePhotos, storePhotos } from '$lib/server/photos';
+import { storeOnePhoto } from '$lib/server/photos';
 import { speciesPhotos } from '$lib/server/stock-photos';
-import { getLivestock, nameLivestock, petPhotos, updateLivestockDetails } from '$lib/server/specs';
+import { changeCount, getLivestock, nameLivestock, petPhotos, updateLivestockDetails } from '$lib/server/specs';
 import { getTank } from '$lib/server/tanks';
 import { careLine, groupWarning, tankTargets, targetWarnings } from '$lib/care';
 import { CARE_SOURCE, careFor, speciesCareOn } from '$lib/server/species-care';
@@ -119,17 +119,23 @@ export const actions: Actions = {
 		const user = locals.user!;
 		const l = entry(user.id, params.id, params.lid);
 		getTank(user.id, l.tankId, 'log');
-		const files = photoFiles(await request.formData(), 'photo').slice(0, 1);
-		if (!files.length) return refuse('photo', 'Choose a photo.');
-		const tooBig = checkPhotoFiles(files);
-		if (tooBig) return refuse('photo', tooBig);
-		const prepared = await preparePhotos(files);
-		if ('error' in prepared) return refuse('photo', prepared.error);
 		// one of the tank's photos, so it's in Photos and the backup too
-		const [photo] = await storePhotos(l.tankId, datePhotos(prepared, user.timeZone), { takenAt: new Date().toISOString() });
-		updateLivestockDetails(user.id, l.id, { photoId: photo.id });
+		const stored = await storeOnePhoto(await request.formData(), l.tankId, user.timeZone);
+		if ('error' in stored) return refuse('photo', stored.error);
+		updateLivestockDetails(user.id, l.id, { photoId: stored.photo.id });
 		setFlash(cookies, '✓ Photo saved');
 		redirect(303, back(params.id, l.id));
+	},
+	/** Out of the tank (#265): a loss or rehomed, the whole entry, as − to 0 on the list does. */
+	remove: async ({ request, locals, params, cookies }) => {
+		const user = locals.user!;
+		const l = entry(user.id, params.id, params.lid);
+		const reason = (await request.formData()).get('reason');
+		if (reason !== 'loss' && reason !== 'rehomed') return refuse('remove', 'Choose Loss or Rehomed.');
+		if (l.removedAt || l.count === 0) return refuse('remove', 'Already out of the tank.');
+		changeCount(user.id, l.id, 0, reason);
+		setFlash(cookies, `✓ ${l.nickname ?? l.commonName} removed · ${reason === 'loss' ? 'loss' : 'rehomed'}`);
+		redirect(303, `/tanks/${params.id}/livestock`);
 	},
 	/** Stops using the photo here; it stays in Photos. */
 	removePhoto: ({ locals, params, cookies }) => {

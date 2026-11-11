@@ -2,6 +2,7 @@
 	// Settings › Test kits (#21): a kit for each parameter, its steps one per line
 	// with the waits read off the end ("Wait 5 min"), presets to start from.
 	import { enhance } from '$app/forms';
+	import { clearOnRedirect, closeOnRedirect } from '$lib/forms';
 	import { untrack } from 'svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
@@ -44,7 +45,7 @@
 	</div>
 {/snippet}
 
-<div class="page sub-page">
+<div class="page sub-page saved-list">
 	<div class="head">
 		<a class="back sub-back" href="/settings">‹ Settings</a>
 		<div class="title-row">
@@ -80,11 +81,7 @@
 							method="POST"
 							action="?/update"
 							class="edit"
-							use:enhance={() =>
-								async ({ result, update }) => {
-									if (result.type === 'redirect') editing = null;
-									await update();
-								}}
+							use:enhance={closeOnRedirect(() => (editing = null))}
 						>
 							<input type="hidden" name="id" value={k.id} />
 							{@render fields(`e-${k.id}`, form?.edit?.id === k.id ? form.edit.values : { name: k.name, ...splitKey(k.paramKey), stepsText: k.stepsText }, form?.edit?.id === k.id ? editErr : {})}
@@ -123,11 +120,7 @@
 		action="?/add"
 		class="add"
 		id="add"
-		use:enhance={({ formElement }) =>
-			async ({ result, update }) => {
-				await update();
-				if (result.type === 'redirect') for (const el of formElement.querySelectorAll('input, textarea')) (el as HTMLInputElement).value = '';
-			}}
+		use:enhance={clearOnRedirect}
 	>
 		<h2>{data.prefill ? `Add ${data.prefill.name}` : 'Add a kit'}</h2>
 		{#key data.prefill?.name}
@@ -145,21 +138,6 @@
 		gap: 24px;
 		max-width: 820px;
 	}
-	.head {
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
-	}
-	.title-row {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 12px;
-	}
-	h1 {
-		margin: 0;
-		font-size: 28px;
-	}
 	h2 {
 		margin: 0;
 		padding-bottom: 6px;
@@ -173,22 +151,6 @@
 		line-height: 1.5;
 		color: var(--text-2);
 		max-width: 620px;
-	}
-	.list {
-		list-style: none;
-		margin: 0;
-		padding: 0;
-		border-top: 2px solid var(--ink);
-	}
-	.list li {
-		border-bottom: 1px solid var(--divider);
-	}
-	.item {
-		display: flex;
-		align-items: center;
-		flex-wrap: wrap;
-		gap: 8px 12px;
-		padding: 10px 0;
 	}
 	.t {
 		flex: 1;
@@ -212,11 +174,6 @@
 		font-size: 12px;
 		font-weight: 400;
 		color: var(--text-muted);
-	}
-	.meta {
-		font-size: 12px;
-		color: var(--text-muted);
-		overflow-wrap: anywhere;
 	}
 	.acts .btn-text {
 		min-height: 44px;
@@ -257,9 +214,6 @@
 		display: flex;
 		gap: 10px;
 		justify-content: flex-end;
-	}
-	.del {
-		margin-right: auto;
 	}
 	.go {
 		align-self: flex-start;

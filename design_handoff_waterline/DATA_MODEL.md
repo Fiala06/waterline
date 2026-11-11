@@ -72,6 +72,8 @@ events           id, tank_id, category(water_change|dosing|maintenance|livestock
                  -- maintenance {actions:[...], equipment_id?}
                  -- livestock {action: added|removed|moved|status|named, livestock_id, delta,
                  --            reason: loss|rehomed|recount}
+                 -- livestock {action: added|removed|renamed, kind: plant, plant_id, name, previous?}
+                 --            (a plant planted, removed or renamed)
                  -- equipment {action: installed|replaced|adjusted|removed, equipment_id,
                  --            changes:{field:[old,new]}}
                  -- equipment {action: without|without_off, type, item} ("No heater in this tank")

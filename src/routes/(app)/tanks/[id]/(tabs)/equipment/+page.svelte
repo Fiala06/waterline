@@ -10,7 +10,7 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ImportButton from '$lib/components/ImportButton.svelte';
 	import { parBand } from '$lib/par';
-	import { refusal } from '$lib/forms';
+	import { clearOnRedirect, refusal } from '$lib/forms';
 	let { data, form } = $props();
 	const parErrors = $derived(refusal(form, 'par').errors);
 	const base = $derived(`/tanks/${data.tankHead.id}`);
@@ -169,12 +169,7 @@
 					method="POST"
 					action="?/par"
 					class="par-form"
-					use:enhance={({ formElement }) =>
-						async ({ result, update }) => {
-							await update();
-							// saved: clear the reading and its spot name for the next one
-							if (result.type === 'redirect') for (const el of formElement.querySelectorAll('input:not([type=hidden])')) (el as HTMLInputElement).value = '';
-						}}
+					use:enhance={clearOnRedirect}
 				>
 					<div class="field">
 						<label class="label" for="par-zone">Where</label>

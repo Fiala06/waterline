@@ -182,7 +182,11 @@ export function eventTitle(e: EventLike, prefs: UnitPrefs): string {
 		case 'livestock': {
 			const name = str(d.name) || (d.kind === 'plant' ? 'plant' : 'livestock');
 			const n = typeof d.count === 'number' && d.count > 0 ? d.count : null;
-			if (d.kind === 'plant') return d.action === 'removed' ? `Removed ${name}` : `Planted ${name}`;
+			if (d.kind === 'plant') {
+				// renamed on its sheet (#265): "Renamed Java fern to Java fern 'Windelov'"
+				if (d.action === 'renamed') return str(d.previous) ? `Renamed ${str(d.previous)} to ${name}` : `Renamed ${name}`;
+				return d.action === 'removed' ? `Removed ${name}` : `Planted ${name}`;
+			}
 			const pet = str(d.nickname);
 			if (d.action === 'named') {
 				const before = str(d.previous);

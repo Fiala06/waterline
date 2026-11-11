@@ -3,6 +3,7 @@
 	import { enhance } from '$app/forms';
 	import ConfirmDelete from './ConfirmDelete.svelte';
 	import DateField from './DateField.svelte';
+	import FormBar from './FormBar.svelte';
 	import { untrack } from 'svelte';
 
 	let {
@@ -65,11 +66,7 @@
 	}}
 >
 	<!-- phones; on desktop the header has the title -->
-	<div class="bar hide-desk">
-		<a class="cancel" href={cancelHref}>Cancel</a>
-		<h1>{mode === 'edit' ? 'Edit expense' : 'Add expense'}</h1>
-		<button class="save-top" disabled={busy}>Save</button>
-	</div>
+	<FormBar title={mode === 'edit' ? 'Edit expense' : 'Add expense'} {cancelHref} disabled={busy} />
 
 	<div class="body">
 		<input type="hidden" name="productId" value={values.productId} />
@@ -201,32 +198,6 @@
 		display: flex;
 		flex-direction: column;
 	}
-	.bar {
-		display: grid;
-		grid-template-columns: 1fr auto 1fr;
-		align-items: center;
-		padding: 8px 20px;
-	}
-	.cancel {
-		font-size: 15px;
-		color: var(--text-muted);
-		min-height: 44px;
-		display: flex;
-		align-items: center;
-		justify-self: start;
-	}
-	h1 {
-		margin: 0;
-		font-size: 17px;
-		font-weight: 800;
-	}
-	.save-top {
-		justify-self: end;
-		color: var(--accent-text);
-		font-weight: 800;
-		font-size: 16px;
-		min-height: 44px;
-	}
 	.body {
 		flex: 1;
 		padding: 8px 20px 12px;
@@ -234,13 +205,7 @@
 		flex-direction: column;
 		gap: 18px;
 	}
-	fieldset {
-		border: none;
-		margin: 0;
-		padding: 0;
-	}
 	legend {
-		padding: 0;
 		margin-bottom: 8px;
 	}
 	.pair {

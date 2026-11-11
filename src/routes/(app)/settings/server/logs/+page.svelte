@@ -168,9 +168,6 @@
 		gap: 12px;
 	}
 	fieldset {
-		margin: 0;
-		padding: 0;
-		border: none;
 		display: flex;
 		flex-direction: column;
 	}
