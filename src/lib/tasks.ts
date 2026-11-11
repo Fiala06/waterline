@@ -414,3 +414,13 @@ export function routineLine(task: { kind: string; amount: number | null; amountU
 }
 
 export const isRoutine = (kind: string) => kind === 'dosing' || kind === 'feeding';
+
+/**
+ * Done's words for a water change or test that opens its log form instead of
+ * finishing (#176), so the button says what it does (#271): "Log water change",
+ * "Log test". Null when Done finishes the task.
+ */
+export function formDoneLabel(task: { kind?: string; openFormOnDone?: boolean }): string | null {
+	if (!task.openFormOnDone) return null;
+	return task.kind === 'water_change' ? 'Log water change' : task.kind === 'test' ? 'Log test' : null;
+}

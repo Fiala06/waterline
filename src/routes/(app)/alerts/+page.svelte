@@ -14,6 +14,7 @@
 	import SnoozeSheet from '$lib/components/SnoozeSheet.svelte';
 	import Sparkline from '$lib/components/Sparkline.svelte';
 	import { markDone } from '$lib/splash';
+	import { formDoneLabel } from '$lib/tasks';
 
 	let { data } = $props();
 	const seen = $derived(data.alertsSeen);
@@ -165,7 +166,9 @@
 							<form method="POST" action="/tasks?/done" use:enhance={markDone}>
 								<input type="hidden" name="taskId" value={a.taskId} />
 								<input type="hidden" name="from" value={from} />
-								<button class="btn btn-primary mark" aria-label={a.task.kind === 'review' ? a.title : `Mark ${a.title} done`}>{a.task.kind === 'review' ? 'Review' : 'Mark done'}</button>
+								<button class="btn btn-primary mark" aria-label={a.task.kind === 'review' ? a.title : formDoneLabel(a.task) ? `${formDoneLabel(a.task)} for ${a.title}` : `Mark ${a.title} done`}
+									>{a.task.kind === 'review' ? 'Review' : (formDoneLabel(a.task) ?? 'Mark done')}</button
+								>
 							</form>
 						</div>
 					</div>

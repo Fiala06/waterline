@@ -51,9 +51,9 @@ test('the dashboard opens the tank settings, and a 2.5 gal tank says 2.5 gal', a
 	await expect(page.getByText('Planted · 2.5 gal').first()).toBeVisible();
 });
 
-// Due lists the tank's tasks as the Tasks page does: a water change that's due by the days
-// since the last one (its row in Needs attention) is still in Due, not only in Needs attention
-test('Due lists the water change when Needs attention has its row too', async ({ page }, info) => {
+// A water change that's due by the days since the last one is listed once (#271): in Needs
+// attention, whose button says it logs one; Due lists the tank's other tasks as Tasks does
+test('the water change is listed once, in Needs attention, with Log water change', async ({ page }, info) => {
 	await newKeeperWithTank(page, `due-wc-${info.project.name}`);
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
 
@@ -79,9 +79,23 @@ test('Due lists the water change when Needs attention has its row too', async ({
 	await expect(page.getByRole('status')).toContainText('✓ Saved 1 reading');
 
 	await open(page, `/?tank=${tankId}`);
-	await expect(page.getByRole('region', { name: 'Needs attention' })).toContainText('Water change');
+	const attention = page.getByRole('region', { name: 'Needs attention' });
+	await expect(attention).toContainText('Water change');
+	await expect(attention.getByRole('button', { name: 'Log water change' })).toBeVisible();
 	const due = page.getByRole('region', { name: 'Due' });
-	await expect(due.locator('.row', { hasText: 'Water change 25%' })).toBeVisible();
-	// the same tasks, first to last, as the Tasks page lists for the tank
-	await expect(due.locator('.row').first()).toContainText('Water change 25%');
+	await expect(due.locator('.row').first()).toBeVisible();
+	await expect(due.locator('.row', { hasText: 'Water change 25%' })).toHaveCount(0);
+
+	// the desktop tank header leads with the last test, so a narrow window cuts off the static facts
+	if (info.project.name === 'desktop') await expect(page.locator('.kicker').first()).toHaveText(/^Last test today.* · Planted · /i);
+
+	// on a phone, Tasks puts Snooze and the button under the task's name, which gets the row's width
+	if (info.project.name === 'phone') {
+		await open(page, `/tasks?filter=${tankId}`);
+		const row = page.locator('.row', { hasText: 'Water change 25%' });
+		const text = (await row.locator('.t-link').boundingBox())!;
+		const acts = (await row.locator('.acts').boundingBox())!;
+		expect(acts.y).toBeGreaterThanOrEqual(text.y + text.height - 1);
+		expect(text.width).toBeGreaterThan(300);
+	}
 });

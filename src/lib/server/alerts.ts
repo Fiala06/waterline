@@ -88,7 +88,8 @@ export function collectAlerts(opts: {
 				scheduleMode: task.scheduleMode ?? undefined,
 				nextDue: task.nextDue,
 				weekdays: task.weekdays,
-				endsOn: task.endsOn
+				endsOn: task.endsOn,
+				openFormOnDone: task.openFormOnDone
 			}
 		});
 	}
