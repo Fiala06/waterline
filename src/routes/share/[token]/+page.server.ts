@@ -31,7 +31,7 @@ export const actions: Actions = {
 	accept: ({ params, locals }) => {
 		const found = readMemberToken(params.token);
 		if (!found || !locals.user || found.member.email !== locals.user.email || found.state !== 'pending') redirect(303, `/share/${params.token}`);
-		acceptMemberInvites(locals.user.email, locals.user.id);
+		acceptMemberInvites(locals.user.email, locals.user.id, { id: found.member.id });
 		logger.info('sign-in', `${locals.user.email} joined ${found.tank.name}`, { userId: locals.user.id, tankId: found.tank.id });
 		redirect(303, `/?tank=${found.tank.id}`);
 	}

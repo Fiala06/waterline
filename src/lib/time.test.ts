@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isDate, isTime, quickWhens, tankAge, utcToZoned, zonedToUtc } from './time';
+import { fmtWeekday, isDate, isTime, quickWhens, tankAge, utcToZoned, zonedToUtc } from './time';
 
 describe('isDate / isTime', () => {
 	it('accepts real dates and times only', () => {
@@ -101,5 +101,15 @@ describe('tankAge', () => {
 		expect(tankAge('2026-11-01', '2026-10-02')).toEqual({ day: null, since: 'Nov 2026', label: 'since Nov 2026' });
 		expect(tankAge(null, '2026-10-02')).toEqual({ day: null, since: null, label: null });
 		expect(tankAge('nope', '2026-10-02').label).toBeNull();
+	});
+});
+
+describe('fmtWeekday (#269)', () => {
+	it('reads a calendar date the same in any zone, with the year when asked', () => {
+		expect(fmtWeekday('2025-09-27')).toBe('Sat, Sep 27');
+		expect(fmtWeekday('2026-01-01')).toBe('Thu, Jan 1');
+		expect(fmtWeekday('2025-09-27', { year: true })).toBe('Sat, Sep 27, 2025');
+		// the year's format is kept apart from the plain one
+		expect(fmtWeekday('2025-09-27')).toBe('Sat, Sep 27');
 	});
 });

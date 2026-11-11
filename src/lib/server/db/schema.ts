@@ -452,6 +452,8 @@ export const serverSettings = sqliteTable('server_settings', {
 	// invited (#27): only people with an accepted invitation
 	signupMode: text('signup_mode', { enum: ['admin', 'list', 'invited', 'open'] }),
 	allowedEmails: text('allowed_emails'), // one email or @domain per line
+	// with the admin and a list, or invited people only: whether sharing a tank lets a new address sign in too (#217)
+	shareInvites: integer('share_invites', { mode: 'boolean' }).notNull().default(false),
 	localAdminUsername: text('local_admin_username'),
 	localAdminPasswordHash: text('local_admin_password_hash'), // scrypt, like LOCAL_ADMIN_PASSWORD_HASH
 	scheduledEmails: integer('scheduled_emails', { mode: 'boolean' }).notNull().default(true),

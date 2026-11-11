@@ -10,7 +10,7 @@
 	import { untrack } from 'svelte';
 	import { DOSING_UNITS } from '$lib/events';
 	import { endsAfterTimes, FEED_UNITS, scheduleExamples, TRIGGER_KINDS, TRIGGER_OFFSETS, waitingText, WEEKDAYS, type TriggerKind } from '$lib/tasks';
-	import { addDays, fmtDate } from '$lib/time';
+	import { addDays, fmtDate, fmtWeekday } from '$lib/time';
 	import { parseNumber } from '$lib/units';
 
 	interface Values {
@@ -106,7 +106,7 @@
 	let scope = $state('one');
 	// the examples follow the schedule that stays when only this one moves
 	const examples = $derived(days > 0 && nextDue ? scheduleExamples(askScope && scope === 'one' ? values.scheduled! : nextDue, days) : null);
-	const dayDate = (d: string) => new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
+	const dayDate = (d: string) => fmtWeekday(d);
 	const routine = $derived(type !== 'task');
 	const title = $derived(
 		mode === 'edit' ? (routine ? 'Edit routine' : 'Edit task') : type === 'dosing' ? 'New dosing routine' : type === 'feeding' ? 'New feeding routine' : 'New task'

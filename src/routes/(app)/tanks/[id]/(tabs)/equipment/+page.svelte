@@ -10,8 +10,9 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ImportButton from '$lib/components/ImportButton.svelte';
 	import { parBand } from '$lib/par';
+	import { refusal } from '$lib/forms';
 	let { data, form } = $props();
-	const parErrors = $derived<Record<string, string>>(form?.par?.errors ?? {});
+	const parErrors = $derived(refusal(form, 'par').errors);
 	const base = $derived(`/tanks/${data.tankHead.id}`);
 	// a smart plug is switched by the tank's owner (#203)
 	const owner = $derived(data.tankHead.role === 'owner');

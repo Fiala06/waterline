@@ -7,7 +7,9 @@ import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { setFlash } from '$lib/server/flash';
 import { lastEventOf, latestReadings, latestTest } from '$lib/server/logs';
 import { getTank, listParams, listTanks, roleOn, setArchived } from '$lib/server/tanks';
-import { tankPeople } from '$lib/server/members';
+import { leaveTank, tankPeople } from '$lib/server/members';
+import { revokeActionTokens } from '$lib/server/action-tokens';
+import { logger } from '$lib/server/log';
 import { listTasks } from '$lib/server/tasks';
 import { photoSizes } from '$lib/server/photos';
 import type { Actions, PageServerLoad } from './$types';
@@ -62,8 +64,9 @@ export const load: PageServerLoad = ({ locals }) => {
 
 		// shared with this person (#22): "Shared by Cory · can log"
 		const role = roleOn(user.id, t);
-		const shared = role === 'owner' ? null : `Shared by ${tankPeople(t).get(t.userId) ?? 'someone'} · ${role === 'log' ? 'can log' : 'can view'}`;
-		return { id: t.id, name: t.name, type: t.type, cover: t.coverPhotoId, coverPos: coverPosition(t.coverX, t.coverY), volume: vol(t.nominalVolumeL), status, task, meta: shared ? `${shared} · ${meta}` : meta };
+		const sharer = role === 'owner' ? null : (tankPeople(t).get(t.userId) ?? 'someone');
+		const shared = sharer && `Shared by ${sharer} · ${role === 'log' ? 'can log' : 'can view'}`;
+		return { id: t.id, name: t.name, type: t.type, cover: t.coverPhotoId, coverPos: coverPosition(t.coverX, t.coverY), volume: vol(t.nominalVolumeL), status, task, meta: shared ? `${shared} · ${meta}` : meta, sharer };
 	});
 
 	const archived = listTanks(user.id, { archived: true }).map((t) => ({
@@ -88,6 +91,19 @@ export const actions: Actions = {
 		const tank = getTank(locals.user!.id, id);
 		setArchived(locals.user!.id, id, false);
 		setFlash(cookies, `✓ ${tank.name} restored`);
+		redirect(303, '/tanks');
+	},
+	/** A tank someone shared with you (#218): leave it, and its reminders stop. */
+	leave: async ({ request, locals, cookies }) => {
+		const user = locals.user!;
+		const id = String((await request.formData()).get('tankId') ?? '');
+		const tank = getTank(user.id, id);
+		if (leaveTank(tank.id, user.id)) {
+			// the Mark done and Snooze links from reminders they were sent stop working too (#216)
+			revokeActionTokens(user.id, tank.id);
+			logger.info('settings', `${user.email} left ${tank.name}`, { userId: user.id, tankId: tank.id });
+			setFlash(cookies, `✓ You left ${tank.name}`);
+		}
 		redirect(303, '/tanks');
 	}
 };

@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 // a database of its own, with every migration
 const dir = mkdtempSync(join(tmpdir(), 'wl-members-'));
 vi.mock('$env/dynamic/private', () => ({ env: { DATA_DIR: dir } }));
-const { acceptMemberInvites, inviteMember, isShared, listMembers, notifiesUser, readMemberToken, removeMember, requireRole, roleAllows, setMemberRole, tankPeople, tankRole } = await import('./members');
+const { acceptMemberInvites, inviteMember, isShared, leaveTank, listMembers, notifiesUser, readMemberToken, removeMember, requireRole, roleAllows, setMemberRole, tankPeople, tankRole } = await import('./members');
 const { createTank, getTank, listTanks, roleOn, updateTank } = await import('./tanks');
 const { createTest } = await import('./logs');
 const { upsertUser } = await import('./users');
@@ -24,27 +24,62 @@ describe('sharing a tank (#22)', () => {
 		expect(isShared(tank.id)).toBe(false);
 	});
 
-	it('someone already on the server gets access straight away; a newcomer through the link', () => {
+	it('waits for an Accept, on the server already or not, and answers the same either way (#218)', () => {
 		const { member, token } = inviteMember(tank, 'Helper@Example.com', 'log', owner.id);
 		expect(member.email).toBe('helper@example.com');
-		expect(token).toBeNull();
-		expect(member.acceptedAt).toBeTruthy();
+		expect(token).toBeTruthy();
+		expect(member.acceptedAt).toBeNull();
+		expect(member.userId).toBeNull();
+		expect(tankRole(helper.id, tank)).toBeNull();
+		expect(listTanks(helper.id)).toHaveLength(0);
+		expect(isShared(tank.id)).toBe(false);
+		// signing in again doesn't accept it for them: the account was here before the share
+		expect(acceptMemberInvites('helper@example.com', helper.id, { sentBefore: helper.createdAt })).toHaveLength(0);
+		expect(tankRole(helper.id, tank)).toBeNull();
+		// Accept on the link does
+		expect(acceptMemberInvites('helper@example.com', helper.id, { id: member.id })).toHaveLength(1);
 		expect(tankRole(helper.id, tank)).toBe('log');
 		expect(listTanks(helper.id).map((t) => t.id)).toEqual([tank.id]);
 		expect(listTanks(helper.id, { own: true })).toHaveLength(0);
 		expect(roleOn(helper.id, getTank(helper.id, tank.id))).toBe('log');
 		expect(isShared(tank.id)).toBe(true);
 
+		// a newcomer: signing up through the share accepts it
 		const { token: t2 } = inviteMember(tank, 'new@example.com', 'view', owner.id);
 		expect(t2).toBeTruthy();
-		expect(readMemberToken(t2!)?.state).toBe('pending');
+		expect(readMemberToken(t2)?.state).toBe('pending');
 		expect(readMemberToken('nope')).toBeNull();
 		const newcomer = upsertUser({ email: 'new@example.com', name: 'New', googleSub: 'g-new' });
-		expect(acceptMemberInvites('new@example.com', newcomer.id)).toHaveLength(1);
-		expect(readMemberToken(t2!)?.state).toBe('accepted');
+		expect(acceptMemberInvites('new@example.com', newcomer.id, { sentBefore: newcomer.createdAt })).toHaveLength(1);
+		expect(readMemberToken(t2)?.state).toBe('accepted');
 		expect(tankRole(newcomer.id, tank)).toBe('view');
 		expect(listMembers(tank.id).filter((m) => m.state === 'accepted')).toHaveLength(2);
 		expect(() => inviteMember(tank, 'owner@example.com', 'log', owner.id)).toThrow();
+	});
+
+	it('Accept on one link joins that tank only', () => {
+		const other = createTank(owner, { name: 'Other 20', type: 'freshwater', nominalVolumeL: 75 });
+		const third = createTank(owner, { name: 'Third 10', type: 'freshwater', nominalVolumeL: 38 });
+		const a = inviteMember(other, 'new@example.com', 'log', owner.id);
+		inviteMember(third, 'new@example.com', 'log', owner.id);
+		const newcomer = upsertUser({ email: 'new@example.com', googleSub: 'g-new' });
+		expect(acceptMemberInvites('new@example.com', newcomer.id, { id: a.member.id }).map((m) => m.tankId)).toEqual([other.id]);
+		expect(tankRole(newcomer.id, other)).toBe('log');
+		expect(tankRole(newcomer.id, third)).toBeNull();
+	});
+
+	it('a member can leave; the owner can share it with them again', () => {
+		const newcomer = upsertUser({ email: 'new@example.com', googleSub: 'g-new' });
+		expect(leaveTank(tank.id, newcomer.id)?.revokedAt).toBeTruthy();
+		expect(tankRole(newcomer.id, tank)).toBeNull();
+		expect(listTanks(newcomer.id).map((t) => t.id)).not.toContain(tank.id);
+		// leaving twice, or a tank that isn't shared with them, changes nothing
+		expect(leaveTank(tank.id, newcomer.id)).toBeNull();
+		expect(leaveTank(tank.id, owner.id)).toBeNull();
+		expect(tankRole(owner.id, tank)).toBe('owner');
+		const { member } = inviteMember(tank, 'new@example.com', 'view', owner.id);
+		acceptMemberInvites('new@example.com', newcomer.id, { id: member.id });
+		expect(tankRole(newcomer.id, tank)).toBe('view');
 	});
 
 	it('lets "log" log and never change setup; "view" only looks', () => {
@@ -101,6 +136,7 @@ describe('one active membership per person and tank (#117)', async () => {
 
 	it('inviting or resending someone who is in does not add a second membership', () => {
 		const { member } = inviteMember(t2, 'friend@example.com', 'view', keeper.id);
+		acceptMemberInvites(friend.email, friend.id, { id: member.id });
 		expect(() => inviteMember(t2, 'FRIEND@example.com', 'log', keeper.id)).toThrow();
 		expect(() => resendMember(t2, member.id, keeper.id)).toThrow();
 		expect(active(friend.id)).toHaveLength(1);
@@ -112,6 +148,7 @@ describe('one active membership per person and tank (#117)', async () => {
 		removeMember(t2.id, m.id);
 		expect(() => resendMember(t2, m.id, keeper.id)).toThrow();
 		const { member: again } = inviteMember(t2, 'friend@example.com', 'log', keeper.id);
+		acceptMemberInvites(friend.email, friend.id, { id: again.id });
 		// Undo of the old Remove: the new membership stands, no second row comes back
 		expect(restoreMember(t2.id, m.id).id).toBe(again.id);
 		expect(getMember(t2.id, m.id).revokedAt).toBeTruthy();
@@ -134,10 +171,10 @@ describe('one active membership per person and tank (#117)', async () => {
 	it('accepting an invitation to a tank they are already in keeps one membership, with the higher role', () => {
 		// invited at an old address of theirs before it was theirs, then the account got the tank another way
 		const pal = upsertUser({ email: 'pal@example.com', name: 'Pal', googleSub: 'g-pal' });
-		inviteMember(t2, 'pal@example.com', 'view', keeper.id);
-		const { token } = inviteMember(t2, 'pal.old@example.com', 'log', keeper.id);
+		acceptMemberInvites(pal.email, pal.id, { id: inviteMember(t2, 'pal@example.com', 'view', keeper.id).member.id });
+		const { member, token } = inviteMember(t2, 'pal.old@example.com', 'log', keeper.id);
 		expect(token).toBeTruthy();
-		acceptMemberInvites('pal.old@example.com', pal.id);
+		acceptMemberInvites('pal.old@example.com', pal.id, { id: member.id });
 		expect(active(pal.id)).toHaveLength(1);
 		expect(tankRole(pal.id, t2)).toBe('log');
 	});

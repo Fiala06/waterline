@@ -13,14 +13,14 @@ const { actionTokens, events, serverSettings } = await import('./db/schema');
 const { getServerSettings } = await import('./mail');
 const { upsertUser } = await import('./users');
 const { createTank } = await import('./tanks');
-const { getMember, inviteMember, listMembers, removeMember, setMemberRole } = await import('./members');
+const { acceptMemberInvites, getMember, inviteMember, listMembers, removeMember, setMemberRole } = await import('./members');
 const { completeTask, listTasks } = await import('./tasks');
 const { consumeActionToken, createActionToken, readActionToken, revokeActionTokens } = await import('./action-tokens');
 
 const owner = upsertUser({ email: 'owner@example.com', name: 'Owner', googleSub: 'g-owner' });
 const helper = upsertUser({ email: 'helper@example.com', name: 'Helper', googleSub: 'g-helper' });
 const tank = createTank(owner, { name: 'Shared 40', type: 'freshwater', nominalVolumeL: 150 });
-inviteMember(tank, helper.email, 'log', owner.id);
+acceptMemberInvites(helper.email, helper.id, { id: inviteMember(tank, helper.email, 'log', owner.id).member.id });
 const membership = () => listMembers(tank.id).find((m) => m.member.userId === helper.id)!.member;
 const task = () => listTasks(owner.id, tank.id)[0].task;
 const link = (userId: string, action: 'done' | 'snooze' = 'done') => createActionToken(task().id, action, task().nextDue!, userId);

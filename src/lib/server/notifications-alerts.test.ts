@@ -12,7 +12,7 @@ const { db } = await import('./db');
 const { emailLog, tanks } = await import('./db/schema');
 const { upsertUser } = await import('./users');
 const { createTank, getTank, listParams, updateParams } = await import('./tanks');
-const { inviteMember } = await import('./members');
+const { acceptMemberInvites, inviteMember } = await import('./members');
 const { createTest } = await import('./logs');
 const { recordSamples } = await import('./sensors');
 const { alertOutOfRange, alertSensorExcursions } = await import('./notifications');
@@ -20,6 +20,9 @@ const { alertOutOfRange, alertSensorExcursions } = await import('./notifications
 const owner = upsertUser({ email: 'owner@example.com', name: 'Owner', googleSub: 'g-owner' });
 const helper = upsertUser({ email: 'helper@example.com', name: 'Helper', googleSub: 'g-helper' });
 const viewer = upsertUser({ email: 'viewer@example.com', name: 'Viewer', googleSub: 'g-viewer' });
+
+/** Share a tank and accept it as them (#218: a share waits for its Accept). */
+const share = (t: Parameters<typeof inviteMember>[0], who: { id: string; email: string }, role: 'log' | 'view', by: string) => acceptMemberInvites(who.email, who.id, { id: inviteMember(t, who.email, role, by).member.id });
 
 /** The emails written since the last look: who to, and the subject. */
 let seen = 0;
@@ -38,8 +41,8 @@ const to = () => mail().map((m) => m.to).toSorted();
 
 describe('an out-of-range test on a shared tank (#229)', () => {
 	const tank = createTank(owner, { name: 'Shared 40', type: 'freshwater', nominalVolumeL: 150 });
-	inviteMember(tank, helper.email, 'log', owner.id);
-	inviteMember(tank, viewer.email, 'view', owner.id);
+	share(tank, helper, 'log', owner.id);
+	share(tank, viewer, 'view', owner.id);
 	const no3 = listParams(tank.id).find((p) => p.key === 'no3')!;
 	updateParams(owner.id, tank.id, [{ id: no3.id, min: 5, max: 20, tracked: true }]);
 	const bad = (by: typeof owner) => createTest(by.id, tank.id, { takenAt: new Date().toISOString(), note: null, readings: new Map([[no3.id, 500]]) }, { timeZone: 'UTC' }).test;

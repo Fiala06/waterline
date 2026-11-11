@@ -11,7 +11,7 @@ vi.mock('$env/dynamic/private', () => ({ env: { DATA_DIR: dir, UPDATE_CHECK: 'of
 const { db } = await import('./db');
 const { testReadings, tests } = await import('./db/schema');
 const { createTank, listParams } = await import('./tanks');
-const { inviteMember } = await import('./members');
+const { acceptMemberInvites, inviteMember } = await import('./members');
 const { upsertUser } = await import('./users');
 const { load } = await import('../../routes/(app)/+layout.server');
 
@@ -65,8 +65,7 @@ function statements(user: typeof keeper) {
 
 describe('the app shell over many tanks (#105)', () => {
 	const shared = [createTank(friend, { name: 'Friend view', type: 'planted', nominalVolumeL: 60 }), createTank(friend, { name: 'Friend log', type: 'reef', nominalVolumeL: 200 })];
-	inviteMember(shared[0], keeper.email, 'view', friend.id);
-	inviteMember(shared[1], keeper.email, 'log', friend.id);
+	for (const [t, role] of [[shared[0], 'view'], [shared[1], 'log']] as const) acceptMemberInvites(keeper.email, keeper.id, { id: inviteMember(t, keeper.email, role, friend.id).member.id });
 
 	const counts: Record<number, number> = {};
 	let have = 0;

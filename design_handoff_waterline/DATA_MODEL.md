@@ -196,7 +196,9 @@ public_pages     tank_id, enabled, slug, show_readings, show_charts, show_photos
                  seo_description?, og_photo_id?, og_plain, view_count
 public_page_views tank_id, day, views
 tank_members     id, tank_id, email, user_id? (once accepted), role(log|view), token_hash,
-                 invited_by?, created_at, expires_at (7 days), accepted_at?, revoked_at?
+                 invited_by?, created_at, expires_at (7 days), accepted_at?, revoked_at? (removed,
+                 cancelled, or left by the member; always pending until accepted on the link, or
+                 by signing up when the share came before the account)
                  (people a tank is shared with: "log" logs tests, water changes, dosing, notes,
                  photos and tasks done; "view" is read-only; only the owner changes setup;
                  one active row (accepted, not revoked) per tank and user_id, unique; removed
@@ -228,7 +230,8 @@ server_settings  singleton: email_provider?(mailgun|smtp), mailgun_api_key_enc?,
                  mailgun_domain?, mailgun_region(us|eu), smtp_host?, smtp_port?,
                  smtp_secure, smtp_user?, smtp_password_enc?, sender?,
                  google_client_id?, google_client_secret_enc?, admin_email?,
-                 signup_mode?(admin|list|invited|open), allowed_emails?,
+                 signup_mode?(admin|list|invited|open), allowed_emails?, share_invites (whether
+                 sharing a tank lets a new address sign in, with list or invited; admins' shares do),
                  local_admin_username?, local_admin_password_hash?,
                  allow_public_pages, public_home_enabled, public_base_url?, ga4_id?,
                  consent_banner, search_console_tag?, scheduled_emails, update_check,

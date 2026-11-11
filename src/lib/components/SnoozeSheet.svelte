@@ -9,7 +9,7 @@
 	import { page } from '$app/state';
 	import DateField from './DateField.svelte';
 	import { skipTo, snoozeOptions } from '$lib/tasks';
-	import { addDays, fmtDate } from '$lib/time';
+	import { addDays, fmtDate, fmtWeekday } from '$lib/time';
 
 	let {
 		open = $bindable(false),
@@ -71,8 +71,7 @@
 			: null
 	);
 	const from = $derived(page.url.pathname + page.url.search);
-	const longDate = (d: string) =>
-		new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
+	const longDate = (d: string) => fmtWeekday(d);
 	// the menu's place on desktop: under the button, right-aligned, kept on screen
 	const menuStyle = $derived.by(() => {
 		if (!anchor) return '';

@@ -1,4 +1,6 @@
 // Form parsing shared by several actions.
+import { fail } from "@sveltejs/kit";
+import type { Refusal } from "$lib/forms";
 import { TANK_TYPES, type TankType } from "./db/schema";
 import { scheduleHours } from "$lib/equipment";
 import { GROWING_STYLES, type GrowingStyle } from "$lib/types";
@@ -19,6 +21,25 @@ export function num(form: FormData, key: string): number | null {
 
 export interface FieldErrors {
   [field: string]: string;
+}
+
+/**
+ * Turn a form down (#269), in the one shape every page reads with `refusal()`
+ * from $lib/forms: a message for the whole form, or errors by field, and what
+ * was typed. `refuse('par', { value: 'Enter the PAR reading.' })`,
+ * `refuse('name', 'Enter a name.')`.
+ */
+export function refuse(
+  form: string,
+  errors: FieldErrors | string,
+  values: Record<string, unknown> = {},
+  status = 400,
+) {
+  const refused: Refusal =
+    typeof errors === "string"
+      ? { form, message: errors, errors: {}, values }
+      : { form, message: "", errors, values };
+  return fail(status, { refused });
 }
 
 export function parseTankForm(form: FormData, prefs: UnitPrefs) {

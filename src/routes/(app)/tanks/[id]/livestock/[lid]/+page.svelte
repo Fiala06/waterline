@@ -6,8 +6,11 @@
 	import { onMount } from 'svelte';
 	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
 	import { photoUrl, shrinkImage } from '$lib/media';
+	import { refusal } from '$lib/forms';
 
 	let { data, form } = $props();
+	const nameError = $derived(refusal(form, 'name').message);
+	const photoError = $derived(refusal(form, 'photo').message);
 	const a = $derived(data.animal);
 	const list = $derived(`/tanks/${data.tank.id}/livestock`);
 	const here = $derived(`/tanks/${data.tank.id}/livestock/${a.id}`);
@@ -104,7 +107,7 @@
 						<form method="POST" action="?/removePhoto" use:enhance={saving}><button class="btn-text" disabled={busy}>Remove photo</button></form>
 					{/if}
 				</div>
-				{#if form?.photoError}<p class="error-text" role="alert">✕ {form.photoError}</p>{/if}
+				{#if photoError}<p class="error-text" role="alert">✕ {photoError}</p>{/if}
 			{/if}
 
 			{#if data.care}
@@ -124,10 +127,10 @@
 				<form class="name-one" method="POST" action="?/nameOne" use:enhance={saving}>
 					<label class="label" for="name-one">Name one of them</label>
 					<div class="inline">
-						<input class="input" id="name-one" name="nickname" maxlength="60" autocomplete="off" placeholder="Pepper" aria-invalid={!!form?.nameError} />
+						<input class="input" id="name-one" name="nickname" maxlength="60" autocomplete="off" placeholder="Pepper" aria-invalid={!!nameError} />
 						<button class="btn btn-primary" disabled={busy}>Name</button>
 					</div>
-					{#if form?.nameError}<p class="error-text" role="alert">✕ {form.nameError}</p>{/if}
+					{#if nameError}<p class="error-text" role="alert">✕ {nameError}</p>{/if}
 					<p class="hint">Takes one of your {a.count} {a.commonName} into its own entry, with its own photo, notes and history.</p>
 				</form>
 			{/if}

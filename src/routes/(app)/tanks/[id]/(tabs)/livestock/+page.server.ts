@@ -106,8 +106,12 @@ export const actions: Actions = {
 	},
 	status: async ({ request, locals, params, cookies }) => {
 		const form = await request.formData();
-		const l = setLivestockStatus(locals.user!.id, str(form, 'id'), str(form, 'status') === 'quarantine' ? 'quarantine' : 'in_tank');
-		setFlash(cookies, `✓ ${l.commonName} moved into the tank`);
+		const id = str(form, 'id');
+		// this tank's, like the count's (#269)
+		if (getLivestock(locals.user!.id, id).tankId !== params.id) return fail(404);
+		const status = str(form, 'status') === 'quarantine' ? 'quarantine' : 'in_tank';
+		const l = setLivestockStatus(locals.user!.id, id, status);
+		setFlash(cookies, status === 'quarantine' ? `✓ ${l.commonName} moved to quarantine` : `✓ ${l.commonName} moved into the tank`);
 		redirect(303, `/tanks/${params.id}/livestock`);
 	}
 };

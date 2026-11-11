@@ -3,7 +3,7 @@
 	// opens a calendar sheet (G9 look). Without JS it is the browser's own date input.
 	import { onMount } from 'svelte';
 	import Sheet from './Sheet.svelte';
-	import { addDays } from '$lib/time';
+	import { addDays, fmtWeekday } from '$lib/time';
 
 	let {
 		name,
@@ -46,7 +46,7 @@
 		const d = noon(value);
 		const sameYear = today ? value.slice(0, 4) === today.slice(0, 4) : false;
 		return format === 'weekday'
-			? d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }), timeZone: 'UTC' })
+			? fmtWeekday(value, { year: !sameYear })
 			: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 	});
 

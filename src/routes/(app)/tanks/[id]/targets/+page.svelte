@@ -6,17 +6,19 @@
 	import CustomParamSheet from '$lib/components/CustomParamSheet.svelte';
 	import { TEST_CADENCES } from '$lib/status';
 	import { LEVEL_LABEL, PARAM_GROUPS } from '$lib/params';
+	import { refusal } from '$lib/forms';
 
 	let { data, form } = $props();
-	const errors = $derived((form?.errors ?? {}) as Record<string, string>);
+	const errors = $derived(refusal(form, 'targets').errors);
 
 	// Derived (not an effect) so the server-rendered page shows the saved switches.
 	let tracked = $derived<Record<string, boolean>>(Object.fromEntries(data.rows.map((r) => [r.id, r.tracked])));
 
 	// G7 · custom parameter sheet
 	let addOpen = $state(false);
+	const custom = $derived(refusal(form, 'custom'));
 	$effect(() => {
-		if (form?.custom) addOpen = true;
+		if (custom.message) addOpen = true;
 	});
 </script>
 
@@ -130,7 +132,7 @@
 	/>
 {/each}
 
-<CustomParamSheet bind:open={addOpen} tankName={data.tank.name} error={form?.custom?.error ?? null} reusable={data.reusable} />
+<CustomParamSheet bind:open={addOpen} tankName={data.tank.name} error={custom.message || null} reusable={data.reusable} />
 
 <style>
 	.wrap {

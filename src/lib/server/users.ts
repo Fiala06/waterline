@@ -261,6 +261,11 @@ export function getUser(id: string): User | undefined {
 	return db.select().from(users).where(eq(users.id, id)).get();
 }
 
+/** The account with this address, if there is one. */
+export function getUserByEmail(email: string): User | undefined {
+	return db.select().from(users).where(eq(users.email, email.trim().toLowerCase())).get();
+}
+
 export function updateUser(id: string, patch: Partial<Omit<User, 'id' | 'email' | 'createdAt'>>) {
 	return db.update(users).set(patch).where(eq(users.id, id)).returning().get();
 }

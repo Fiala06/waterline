@@ -68,6 +68,28 @@ test('share a tank with someone', async ({ page, browser }, info) => {
 	await page.getByRole('button', { name: 'Undo' }).click();
 	await expect(page.getByRole('status')).toContainText('is back');
 	await expect(page.getByRole('heading', { name: /People with access · 2/ })).toBeVisible();
+
+	// #218: they can leave it themselves, from Tanks
+	await theirs.goto('/tanks');
+	await theirs.locator('html[data-ready="true"]').waitFor();
+	await theirs.getByRole('button', { name: 'Leave tank Riverbed 40' }).click();
+	await theirs.getByRole('alertdialog').getByRole('button', { name: 'Leave tank' }).click();
+	await expect(theirs.getByRole('status')).toContainText('✓ You left Riverbed 40');
+	await expect(theirs.getByRole('heading', { name: 'Riverbed 40' })).toHaveCount(0);
+	await open(page, `/tanks/${tankId}/sharing`);
+	await expect(page.getByRole('heading', { name: /People with access · 1/ })).toBeVisible();
+
+	// #218: shared again, now that they have an account, it waits for their Accept, and the answer is the same as for a newcomer
+	await page.getByLabel('Email').fill(helperEmail);
+	await page.getByRole('button', { name: 'Send invite' }).click();
+	await expect(page.getByRole('status').filter({ hasText: 'Invitation sent' })).toContainText(`✓ Invitation sent to ${helperEmail}`);
+	await expect(page.getByRole('textbox', { name: 'Invite link' })).toHaveValue(/\/share\//);
+	const again = linkIn(await waitForMail(helperEmail, (m) => m.subject.includes('shared Riverbed 40 with you') && !m.text.includes(link)), '/share/');
+	await theirs.goto('/tanks');
+	await expect(theirs.getByText('Riverbed 40')).toHaveCount(0);
+	await theirs.goto(again);
+	await theirs.getByRole('button', { name: 'Accept · open Riverbed 40' }).click();
+	await expect(theirs).toHaveURL(new RegExp(`tank=${tankId}`));
 	await them.close();
 	void ownerEmail;
 	void jpeg;

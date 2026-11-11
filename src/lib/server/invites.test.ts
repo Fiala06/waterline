@@ -102,6 +102,36 @@ describe('an invitation that came with sharing a tank (#217)', () => {
 	});
 });
 
+describe('whether sharing a tank may let a new address in (#217)', async () => {
+	const { shareMayInvite } = await import('./sign-in');
+	const setShare = (on: boolean) => db.update(serverSettings).set({ shareInvites: on }).where(eq(serverSettings.id, 1)).run();
+	const member = { isAdmin: false };
+	const admin = { isAdmin: true };
+
+	it('is off by default when sign-in is limited, and turned on by the admin', () => {
+		for (const mode of ['invited', 'list'] as const) {
+			setMode(mode, mode === 'list' ? 'me@example.com' : null);
+			expect(getServerSettings().shareInvites).toBe(false);
+			expect(shareMayInvite(member)).toBe(false);
+			// an admin's share is an admin's invitation
+			expect(shareMayInvite(admin)).toBe(true);
+			setShare(true);
+			expect(shareMayInvite(member)).toBe(true);
+			setShare(false);
+		}
+	});
+
+	it('never when sign-in is the admin’s alone; always when anyone may sign in', () => {
+		setShare(true);
+		setMode('admin');
+		expect(shareMayInvite(member)).toBe(false);
+		expect(shareMayInvite(admin)).toBe(false);
+		setShare(false);
+		setMode('open');
+		expect(shareMayInvite(member)).toBe(true);
+	});
+});
+
 describe('people (#27)', () => {
 	it('keeps at least one admin, signs out everywhere and removes a person with their invitation', async () => {
 		setMode('invited');
