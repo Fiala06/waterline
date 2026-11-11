@@ -15,7 +15,6 @@ import { doseText, nextDoseText } from '$lib/growing';
 import { parseReviewEvery, REVIEW_INTERVALS } from '$lib/review';
 import { checkSection, reviewTask, setReviewEvery } from '$lib/server/review';
 import { todayInZone } from '$lib/time';
-import { tankDetails } from '$lib/server/tank-details';
 import { scheduledItems } from '$lib/server/specs';
 import { periodsText, tankLighting } from '$lib/equipment';
 import type { Actions, PageServerLoad } from './$types';
@@ -88,8 +87,6 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 		fromReview: url.searchParams.get('from') === 'review',
 		publicLive: !!db.select().from(publicPages).where(eq(publicPages.tankId, tank.id)).get()?.enabled,
 		today: todayInZone(user.timeZone),
-		// specs, the pinned note, recent notes and routines, shown after the form
-		details: tankDetails(user, tank),
 		volUnit: unitLabel('volume', user),
 		lenUnit: unitLabel('length', user)
 	};
