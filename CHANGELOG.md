@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **The log types are one row.** At the top of a log form, Water change, Dose, Feeding and the other kinds now sit in one row you swipe sideways, as they do on the water test, instead of two or three rows, so the form starts higher; the kind you're logging is scrolled into view: [Log a note](/entries/event/new?category=note).
+
 ## 1.22.0 · 2026-11-11
 
 - **One push per tank.** When several of a tank's tasks are due together, your phone gets one notification, such as "Riverbed 40 · 4 tasks due", with Open and Snooze all, instead of one for each. Turn it off under [Settings › Notifications](/settings#notifications) to get them one by one.
