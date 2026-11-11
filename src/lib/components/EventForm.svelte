@@ -1,26 +1,24 @@
 <script lang="ts">
-	import { tick, untrack } from 'svelte';
+	import { untrack } from 'svelte';
 	// 14 / G2–G5 / D13 · Log event: one layout that adapts to the category.
+	// The frame is LogFormShell; each category's fields are their own (event-fields/,
+	// WaterChangeFields). This keeps what they share: the Note, the photos, the
+	// livestock preview, the equipment hint and "Remind me to check again".
 	import { page } from '$app/state';
 	import LogFormShell from './LogFormShell.svelte';
 	import PhotoPicker from './PhotoPicker.svelte';
-	import SpeciesInput from './SpeciesInput.svelte';
 	import WaterChangeFields from './WaterChangeFields.svelte';
-	import {
-		CATEGORY_LABEL,
-		DOSING_UNITS,
-		EQUIPMENT_ACTIONS,
-		EQUIPMENT_REASONS,
-		LIVESTOCK_ACTIONS,
-		LIVESTOCK_STATUS,
-		MAINTENANCE_ACTIONS,
-		OBSERVATION_TAGS,
-		RECHECK_OPTIONS
-	} from '$lib/events';
-	import { FEED_UNITS, logCompletes, type ReminderTask } from '$lib/tasks';
+	import DosingFields from './event-fields/DosingFields.svelte';
+	import EquipmentFields from './event-fields/EquipmentFields.svelte';
+	import FeedingFields from './event-fields/FeedingFields.svelte';
+	import LivestockFields from './event-fields/LivestockFields.svelte';
+	import MaintenanceFields from './event-fields/MaintenanceFields.svelte';
+	import ObservationFields from './event-fields/ObservationFields.svelte';
+	import { RECHECK_OPTIONS } from '$lib/events';
+	import { logCompletes, type ReminderTask } from '$lib/tasks';
 	import type { When } from '$lib/time';
 	import { eventTypes } from './entry-form';
-	import { doseHint as hintFor, eventSaveLabel, eventTitle, lastDoseOf, livestockPreview, productChoices as choicesOf, stepCount } from './event-form';
+	import { eventQueueTitle, eventSaveLabel, eventTitle, listOf, livestockPreview, notePlaceholder, targetAnimal, valueOf, type FormValues } from './event-form';
 	import type { EventCategory } from '$lib/types';
 
 	let {
@@ -62,7 +60,7 @@
 		volUnit: string;
 		tankVolume: number | null;
 		tankVolumeIsActual: boolean;
-		values?: Record<string, string | string[]>;
+		values?: FormValues;
 		initialNote?: string;
 		initialWhen?: When | null;
 		timeZone: string;
@@ -99,86 +97,50 @@
 		draftKey?: string | null;
 	} = $props();
 
-	const v = (k: string) => (typeof values[k] === 'string' ? (values[k] as string) : '');
-	const list = (k: string) => (Array.isArray(values[k]) ? (values[k] as string[]) : values[k] ? [values[k] as string] : []);
+	const v = (k: string) => valueOf(values, k);
+	const list = (k: string) => listOf(values, k);
 
-	// Livestock / plants (G3): new entries add to or take from the tank's lists.
+	let when = $state<When | null>(untrack(() => initialWhen));
+	let note = $state(untrack(() => initialNote));
+	let recheck = $state('3');
+	// New entries add to or take from the tank's lists (G3), and pick its equipment.
+	const linked = $derived(mode === 'new' && !!inventory);
+	const tankEquipment = $derived(linked ? (inventory?.equipment ?? []) : []);
+
+	// What the categories' fields hold that the rest of the form reads: the
+	// queue's title, the dose's routine, the livestock preview, the equipment hint.
+	// Water change
+	let amountMode = $state(untrack(() => v('amountMode') || lastAmountMode));
+	let amount = $state(untrack(() => v('amount') || (mode === 'new' ? lastAmount || '25' : '')));
+	const initialAdditives = untrack(() =>
+		list('additive_product').map((product, i) => ({ product, amount: list('additive_amount')[i] ?? '', unit: list('additive_unit')[i] ?? '' }))
+	);
+	// Dosing
+	let product = $state(untrack(() => v('product')));
+	// Feeding
+	let food = $state(untrack(() => v('food')));
+	// Livestock / plants
 	let lsAction = $state(untrack(() => v('action') || 'added'));
 	let lsKind = $state<'fish' | 'invert' | 'coral' | 'plant'>('fish');
 	let lsTarget = $state('');
 	let lsStatus = $state(untrack(() => v('status') || 'in_tank'));
 	let count = $state(untrack(() => v('count') || (mode === 'new' ? '1' : '')));
 	let species = $state({ name: '', scientific: '' });
-	let speciesBox: HTMLElement | undefined = $state();
+	// Equipment
 	let eqId = $state(untrack(() => inventory?.equipment[0]?.id ?? ''));
 	let eqAction = $state(untrack(() => v('action') || 'adjusted'));
-	const linked = $derived(mode === 'new' && !!inventory);
-	const targetIsLivestock = $derived(lsTarget.startsWith('livestock:'));
-	const targetAnimal = $derived(
-		targetIsLivestock ? inventory?.livestock.find((l) => l.id === lsTarget.slice('livestock:'.length)) : undefined
-	);
-
-	let when = $state<When | null>(untrack(() => initialWhen));
-
-	// Water change
-	let amountMode = $state(untrack(() => v('amountMode') || lastAmountMode));
-	let amount = $state(untrack(() => v('amount') || (mode === 'new' ? lastAmount || '25' : '')));
-
-	let note = $state(untrack(() => initialNote));
-	let recheck = $state('3');
-
-	// Feeding
-	let food = $state(v('food'));
-	let feedUnit = $state(untrack(() => v('unit') || (mode === 'new' ? 'pinches' : '')));
-	function pickFood(r: (typeof recentFoods)[number]) {
-		food = r.food;
-		if (typeof r.unit === 'string' && r.unit) feedUnit = r.unit;
-	}
-	// Water change: what went in
-	const initialAdditives = untrack(() =>
-		list('additive_product').map((product, i) => ({ product, amount: list('additive_amount')[i] ?? '', unit: list('additive_unit')[i] ?? '' }))
-	);
-
-	// Dosing
-	let product = $state(v('product'));
-	let dosingUnit = $state(v('unit') || 'mL');
-	const lastDose = $derived(lastDoseOf(recentProducts, product));
-	// what the Product field offers (#73): recently dosed first, then saved products not dosed yet
-	const productChoices = $derived(choicesOf(recentProducts, productLinks));
-	function pickProduct(name: string) {
-		product = name;
-		const r = recentProducts.find((x) => x.product === name);
-		if (typeof r?.unit === 'string') dosingUnit = r.unit;
-	}
-	const savedLink = $derived(productLinks.find((l) => l.name.trim().toLowerCase() === product.trim().toLowerCase()));
-	const doseHint = $derived(hintFor(recentProducts, product, productChoices.length, timeZone));
-
-	// − 10 + (G3). Adding starts at 1; taking away can't go past what's in the tank.
-	const countMin = $derived(linked ? 1 : 0);
-	const countMax = $derived(linked && lsAction === 'removed' ? (targetAnimal?.count ?? null) : null);
-	const countN = $derived(parseInt(count, 10));
-	const step = (d: number) => (count = stepCount(count, d, countMin, countMax));
-
-	// The species field is its own component: read what it holds after each change.
-	function readSpecies() {
-		setTimeout(() => {
-			const box = speciesBox;
-			if (!box) return;
-			const name = box.querySelector<HTMLInputElement>('input[name="name"]')?.value.trim() ?? '';
-			const scientific = box.querySelector<HTMLInputElement>('input[name="scientificName"]')?.value ?? '';
-			species = { name, scientific };
-		});
-	}
-	$effect(() => {
-		void lsKind;
-		void lsAction;
-		tick().then(readSpecies);
-	});
 
 	// G3: "Livestock tab: Ember tetra 0 → 10 · 41 animals total"
 	const preview = $derived(
 		linked && inventory
-			? livestockPreview(inventory.livestock, { action: lsAction, kind: lsKind, status: lsStatus, count, species, target: targetAnimal })
+			? livestockPreview(inventory.livestock, {
+					action: lsAction,
+					kind: lsKind,
+					status: lsStatus,
+					count,
+					species,
+					target: targetAnimal(inventory.livestock, lsTarget)
+				})
 			: null
 	);
 
@@ -220,14 +182,7 @@
 	{closeHref}
 	{returnTo}
 	{draftKey}
-	queueTitle={() =>
-		category === 'water_change' && amount
-			? `Water change · ${amount}${amountMode === 'percent' ? '%' : ` ${volUnit}`}`
-			: category === 'dosing' && product
-				? `Dosed ${product}`
-				: category === 'feeding' && food
-					? `Fed ${food}`
-					: CATEGORY_LABEL[category]}
+	queueTitle={() => eventQueueTitle(category, { amount, amountMode, volUnit, product, food })}
 	{meta}
 	{error}
 	task={offered}
@@ -249,261 +204,28 @@
 				{errors}
 			/>
 		{:else if category === 'dosing'}
-			<div class="dose">
-				<div class="field product">
-					<label class="label" for="product">Product</label>
-					<input class="input" id="product" name="product" bind:value={product} list="recent-products" maxlength="80" autocomplete="off" placeholder="e.g. All-in-one fertilizer" aria-invalid={!!errors.product} />
-					<datalist id="recent-products">
-						{#each productChoices as name (name)}<option value={name}></option>{/each}
-					</datalist>
-					{#if productChoices.length && !product}
-						<div class="chips">
-							{#each productChoices.slice(0, 8) as name (name)}
-								<button type="button" class="chip" onclick={() => pickProduct(name)}>{name}</button>
-							{/each}
-						</div>
-					{/if}
-					{#if errors.product}<span class="error-text">✕ {errors.product}</span>{/if}
-				</div>
-				<div class="field">
-					<label class="label" for="amount">Amount</label>
-					<input class="input" id="amount" name="amount" inputmode="decimal" autocomplete="off" defaultValue={v('amount')} aria-invalid={!!errors.amount} />
-					{#if errors.amount}<span class="error-text">✕ {errors.amount}</span>{/if}
-				</div>
-				<div class="field">
-					<label class="label" for="unit">Unit</label>
-					<select class="input" id="unit" name="unit" bind:value={dosingUnit}>
-						{#each DOSING_UNITS as u (u)}<option value={u}>{u}</option>{/each}
-					</select>
-				</div>
-			</div>
-			{#if doseHint}<span class="hint">{doseHint}</span>{/if}
-			{#if mode === 'new'}<a class="hint calc-link" href="/calculators?tank={page.url.searchParams.get('tank') ?? ''}#dose">What does this dose add? Dose → ppm ›</a>{/if}
-			{#if mode === 'new'}<a class="hint calc-link" href="/settings/products">Manage products ›</a>{/if}
-			{#if mode === 'new' && savedLink}
-				<a class="reorder" href={savedLink.url} target="_blank" rel="noopener noreferrer"
-					>Reorder {savedLink.name}<span aria-hidden="true"> ↗</span><span class="sr-only"> (opens in a new tab)</span></a
-				>
-			{:else if mode === 'new' && lastDose}
-				<!-- a product dosed before is one worth a link -->
-				<a class="reorder" href="/settings/products?name={encodeURIComponent(product.trim())}#add">Save a reorder link</a>
-			{/if}
-			{:else if category === 'feeding'}
-			<!-- by hand here, or logged by a feeding routine's Done (#17): the same food / amount / unit -->
-			<div class="dose">
-				<div class="field product">
-					<label class="label" for="food">Food</label>
-					<input class="input" id="food" name="food" bind:value={food} list="recent-foods" maxlength="80" autocomplete="off" placeholder="e.g. Micro pellets" aria-invalid={!!errors.food} />
-					<datalist id="recent-foods">
-						{#each recentFoods as r (r.food)}<option value={r.food}></option>{/each}
-					</datalist>
-					{#if recentFoods.length && !food}
-						<div class="chips">
-							{#each recentFoods as r (r.food)}
-								<button type="button" class="chip" onclick={() => pickFood(r)}>{r.food}</button>
-							{/each}
-						</div>
-					{/if}
-					{#if errors.food}<span class="error-text">✕ {errors.food}</span>{/if}
-				</div>
-				<div class="field">
-					<label class="label" for="amount">Amount</label>
-					<input class="input" id="amount" name="amount" inputmode="decimal" autocomplete="off" defaultValue={v('amount')} placeholder="e.g. 2" aria-invalid={!!errors.amount} />
-					{#if errors.amount}<span class="error-text">✕ {errors.amount}</span>{/if}
-				</div>
-				<div class="field">
-					<label class="label" for="unit">Unit</label>
-					<input class="input" id="unit" name="unit" bind:value={feedUnit} list="feed-units" maxlength="20" autocomplete="off" placeholder="pinches, cubes, mL, g" />
-					<datalist id="feed-units">
-						{#each FEED_UNITS as u (u)}<option value={u}></option>{/each}
-						<option value="mL"></option>
-						<option value="tablets"></option>
-					</datalist>
-				</div>
-			</div>
-			{:else if category === 'maintenance'}
-			<fieldset class="field">
-				<legend class="label">What did you do?</legend>
-				<div class="chips">
-					{#each MAINTENANCE_ACTIONS as a (a)}
-						<label class="chip pick"><input type="checkbox" name="actions" value={a} defaultChecked={list('actions').includes(a)} />{a}</label>
-					{/each}
-				</div>
-				{#if errors.actions}<span class="error-text">✕ {errors.actions}</span>{/if}
-			</fieldset>
-			{#if linked && inventory?.equipment.length}
-				<div class="field">
-					<label class="label" for="m-equipment">Equipment · optional</label>
-					<select class="input" id="m-equipment" name="equipmentId">
-						<option value="">—</option>
-						{#each inventory.equipment as e (e.id)}<option value={e.id}>{e.name}</option>{/each}
-					</select>
-				</div>
-			{/if}
-		{:else if category === 'livestock' && linked && inventory}
-			<input type="hidden" name="linked" value="1" />
-			<fieldset class="seg-field">
-				<legend class="sr-only">Change</legend>
-				<div class="segmented">
-					{#each LIVESTOCK_ACTIONS as a (a.value)}
-						<label><input type="radio" name="action" value={a.value} bind:group={lsAction} onchange={() => (count = '1')} />{a.label}</label>
-					{/each}
-				</div>
-			</fieldset>
-			{#if lsAction === 'added'}
-				<div class="segmented" role="group" aria-label="Kind">
-					{#each [['fish', 'Fish'], ['invert', 'Invert'], ['coral', 'Coral'], ['plant', 'Plant']] as [k, l] (k)}
-						<label><input type="radio" name="kind" value={k} bind:group={lsKind} />{l}</label>
-					{/each}
-				</div>
-				<div class="species" bind:this={speciesBox} oninput={readSpecies} onclick={readSpecies} onkeyup={readSpecies} onfocusout={readSpecies} role="presentation">
-					{#key lsKind}<SpeciesInput kind={lsKind} water={lsKind === 'plant' ? 'fresh' : water} invalid={!!errors.name} />{/key}
-				</div>
-				{#if errors.name}<span class="error-text">✕ {errors.name}</span>{/if}
-				{#if lsKind === 'plant'}
-					<div class="field">
-						<label class="label" for="position">Position</label>
-						<select class="input" id="position" name="position">
-							<option value="background">Background</option>
-							<option value="midground" selected>Midground</option>
-							<option value="foreground">Foreground</option>
-							<option value="epiphyte">Epiphyte</option>
-							<option value="floating">Floating</option>
-						</select>
-					</div>
-				{:else}
-					<div class="pair">
-						<div class="field">
-							<label class="label" for="count">Count</label>
-							<div class="count-stepper stepper">
-								<button type="button" aria-label="One fewer" disabled={!Number.isNaN(countN) && countN <= countMin} onclick={() => step(-1)}>−</button>
-								<input id="count" name="count" inputmode="numeric" autocomplete="off" bind:value={count} aria-invalid={!!errors.count} />
-								<button type="button" aria-label="One more" onclick={() => step(1)}>+</button>
-							</div>
-							{#if errors.count}<span class="error-text">✕ {errors.count}</span>{/if}
-						</div>
-						<div class="field">
-							<label class="label" for="status">Status</label>
-							<select class="input" id="status" name="status" bind:value={lsStatus}>
-								{#each LIVESTOCK_STATUS as s (s.value)}<option value={s.value}>{s.label}</option>{/each}
-							</select>
-						</div>
-					</div>
-				{/if}
-			{:else}
-				<div class="field">
-					<label class="label" for="target">Which one?</label>
-					<select class="input" id="target" name="target" bind:value={lsTarget} aria-invalid={!!errors.target}>
-						<option value="" disabled>Choose…</option>
-						{#if inventory.livestock.length}
-							<optgroup label="Livestock">
-								{#each inventory.livestock as l (l.id)}<option value="livestock:{l.id}">{l.name} ({l.count})</option>{/each}
-							</optgroup>
-						{/if}
-						{#if inventory.plants.length}
-							<optgroup label="Plants">
-								{#each inventory.plants as p (p.id)}<option value="plant:{p.id}">{p.name}</option>{/each}
-							</optgroup>
-						{/if}
-					</select>
-					{#if !inventory.livestock.length && !inventory.plants.length}<span class="hint">Nothing in this tank yet.</span>{/if}
-					{#if errors.target}<span class="error-text">✕ {errors.target}</span>{/if}
-				</div>
-				{#if lsAction === 'removed' && targetIsLivestock}
-					<div class="pair">
-						<div class="field">
-							<label class="label" for="count">How many</label>
-							<div class="count-stepper stepper">
-								<button type="button" aria-label="One fewer" disabled={!Number.isNaN(countN) && countN <= countMin} onclick={() => step(-1)}>−</button>
-								<input id="count" name="count" inputmode="numeric" autocomplete="off" bind:value={count} aria-invalid={!!errors.count} />
-								<button type="button" aria-label="One more" disabled={countMax != null && !Number.isNaN(countN) && countN >= countMax} onclick={() => step(1)}>+</button>
-							</div>
-							{#if errors.count}<span class="error-text">✕ {errors.count}</span>{/if}
-						</div>
-						<fieldset class="field">
-							<legend class="label">Why</legend>
-							<div class="segmented">
-								<label><input type="radio" name="reason" value="loss" defaultChecked />Loss</label>
-								<label><input type="radio" name="reason" value="rehomed" />Rehomed</label>
-							</div>
-						</fieldset>
-					</div>
-				{/if}
-			{/if}
+			<DosingFields {mode} bind:product {values} {errors} {recentProducts} {productLinks} {timeZone} />
+		{:else if category === 'feeding'}
+			<FeedingFields {mode} bind:food {values} {errors} {recentFoods} />
+		{:else if category === 'maintenance'}
+			<MaintenanceFields {values} {errors} equipment={tankEquipment} />
 		{:else if category === 'livestock'}
-			<fieldset class="seg-field">
-				<legend class="sr-only">Change</legend>
-				<div class="segmented">
-					{#each LIVESTOCK_ACTIONS as a (a.value)}
-						<label><input type="radio" name="action" value={a.value} defaultChecked={(v('action') || 'added') === a.value} />{a.label}</label>
-					{/each}
-				</div>
-				{#if errors.action}<span class="error-text">✕ {errors.action}</span>{/if}
-			</fieldset>
-			<div class="field">
-				<label class="label" for="name">Species</label>
-				<input class="input" id="name" name="name" defaultValue={v('name')} maxlength="80" placeholder="e.g. Ember tetra" aria-invalid={!!errors.name} />
-				{#if errors.name}<span class="error-text">✕ {errors.name}</span>{/if}
-			</div>
-			<div class="pair">
-				<div class="field">
-					<label class="label" for="count">Count</label>
-					<div class="count-stepper stepper">
-						<button type="button" aria-label="One fewer" disabled={!Number.isNaN(countN) && countN <= countMin} onclick={() => step(-1)}>−</button>
-						<input id="count" name="count" inputmode="numeric" autocomplete="off" bind:value={count} aria-invalid={!!errors.count} />
-						<button type="button" aria-label="One more" onclick={() => step(1)}>+</button>
-					</div>
-					{#if errors.count}<span class="error-text">✕ {errors.count}</span>{/if}
-				</div>
-				<div class="field">
-					<label class="label" for="status">Status</label>
-					<select class="input" id="status" name="status" bind:value={lsStatus}>
-						{#each LIVESTOCK_STATUS as s (s.value)}<option value={s.value}>{s.label}</option>{/each}
-					</select>
-				</div>
-			</div>
+			<LivestockFields
+				bind:action={lsAction}
+				bind:kind={lsKind}
+				bind:status={lsStatus}
+				bind:count
+				bind:target={lsTarget}
+				bind:species
+				{values}
+				{errors}
+				inventory={linked ? inventory : null}
+				{water}
+			/>
 		{:else if category === 'equipment'}
-			<fieldset class="seg-field">
-				<legend class="sr-only">Change</legend>
-				<div class="segmented">
-					{#each EQUIPMENT_ACTIONS as a (a.value)}
-						<label><input type="radio" name="action" value={a.value} bind:group={eqAction} />{a.label}</label>
-					{/each}
-				</div>
-				{#if errors.action}<span class="error-text">✕ {errors.action}</span>{/if}
-			</fieldset>
-			{#if linked && inventory?.equipment.length}
-				<div class="field">
-					<label class="label" for="equipmentId">Item</label>
-					<select class="input" id="equipmentId" name="equipmentId" bind:value={eqId}>
-						{#each inventory.equipment as e (e.id)}<option value={e.id}>{e.name}</option>{/each}
-						<option value="">Something else…</option>
-					</select>
-				</div>
-			{/if}
-			<div class="field" hidden={linked && !!inventory?.equipment.length && eqId !== ''}>
-				<label class="label" for="item">{linked && inventory?.equipment.length ? 'Name' : 'Item'}</label>
-				<input class="input" id="item" name="item" defaultValue={v('item')} maxlength="80" placeholder="e.g. Canister filter" aria-invalid={!!errors.item} />
-				{#if errors.item}<span class="error-text">✕ {errors.item}</span>{/if}
-			</div>
-			<fieldset class="field">
-				<legend class="label">Why</legend>
-				<div class="chips">
-					{#each EQUIPMENT_REASONS as r (r)}
-						<label class="chip pick"><input type="checkbox" name="reasons" value={r} defaultChecked={list('reasons').includes(r)} />{r}</label>
-					{/each}
-				</div>
-			</fieldset>
+			<EquipmentFields bind:action={eqAction} bind:item={eqId} {values} {errors} equipment={tankEquipment} />
 		{:else if category === 'observation'}
-			<fieldset class="field">
-				<legend class="label">What did you notice?</legend>
-				<div class="chips">
-					{#each OBSERVATION_TAGS as t (t)}
-						<label class="chip pick"><input type="checkbox" name="tags" value={t} defaultChecked={list('tags').includes(t)} />{t}</label>
-					{/each}
-				</div>
-				{#if errors.tags}<span class="error-text">✕ {errors.tags}</span>{/if}
-			</fieldset>
+			<ObservationFields {values} {errors} />
 		{/if}
 
 		<div class="field">
@@ -515,7 +237,7 @@
 				name="note"
 				rows={category === 'note' ? 5 : 1}
 				maxlength="2000"
-				placeholder={category === 'maintenance' ? 'e.g. swapped sponge, kept ceramic' : category === 'note' ? undefined : 'Optional'}
+				placeholder={notePlaceholder(category)}
 				aria-invalid={!!errors.note}
 				bind:value={note}
 				use:autosize
@@ -558,68 +280,10 @@
 	:global(html:has(.eform)) {
 		scroll-padding-bottom: 112px;
 	}
-	legend {
-		margin-bottom: 8px;
-	}
 	.hint {
 		margin: 0;
 		font-size: 13px;
 		color: var(--text-muted);
-	}
-	/* "Reorder Seachem Prime ↗" under the dosing fields */
-	.reorder {
-		align-self: flex-start;
-		display: inline-flex;
-		align-items: center;
-		min-height: 44px;
-		margin: -12px 0 -8px;
-		font-size: 14px;
-		font-weight: 800;
-	}
-
-	/* ── Dosing: product, amount, unit (one row on desktop) ── */
-	.dose {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 18px 12px;
-		align-items: start;
-	}
-	.product {
-		grid-column: 1 / -1;
-	}
-
-	/* ── Pick-any chips ── */
-	.pick {
-		height: 40px;
-	}
-
-	/* ── Segmented choices ── */
-	.segmented label {
-		min-height: 40px;
-		font-size: 14px;
-	}
-	.pair {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 10px;
-	}
-	.stepper {
-		display: flex;
-		width: 100%;
-		height: 48px;
-	}
-	.stepper button {
-		width: 48px;
-		flex-shrink: 0;
-		font-size: 22px;
-	}
-	.stepper input {
-		flex: 1;
-		align-self: stretch; /* the whole middle is the tap target */
-		width: auto;
-		min-width: 0;
-		font-size: 18px;
-		font-weight: 800;
 	}
 	.preview {
 		margin: 0;
@@ -696,15 +360,12 @@
 		:global(html:has(.eform)) {
 			scroll-padding-bottom: 96px;
 		}
-		/* the frame's .fields hold this form's fields and WaterChangeFields' */
+		/* the frame's .fields hold this form's fields and its categories' (event-fields/, WaterChangeFields) */
 		:global(.eform .fields .field) {
 			gap: 6px;
 		}
 		:global(.eform .fields .field > .label) {
 			font-size: 13px;
-		}
-		legend {
-			margin-bottom: 6px;
 		}
 		.note,
 		:global(.eform .fields) .note {
@@ -714,13 +375,6 @@
 		}
 		.note.long {
 			min-height: 120px;
-		}
-		.dose {
-			grid-template-columns: minmax(0, 1fr) 120px 110px;
-			gap: 12px;
-		}
-		.product {
-			grid-column: auto;
 		}
 	}
 </style>

@@ -1,6 +1,7 @@
 // The event form's logic (#120): dosing's product list and hint, the count
-// stepper, the livestock preview, the title and button. Pure, so
-// EventForm.svelte only wires it up, and event-form.test.ts covers it.
+// stepper, the livestock preview, the title and button, the fields' values.
+// Pure, so EventForm.svelte and its event-fields/ only wire it up, and
+// forms.test.ts covers it.
 import { CATEGORY_LABEL } from '$lib/events';
 import type { EventCategory } from '$lib/types';
 
@@ -100,4 +101,36 @@ export function eventTitle(mode: 'new' | 'edit', category: EventCategory): strin
 	if (category === 'note') return 'Add note or photo';
 	if (category === 'dosing') return 'Log a dose';
 	return `Log ${label}`;
+}
+
+/** What a refused save sent back, or the entry being edited, by field name. */
+export type FormValues = Record<string, string | string[]>;
+
+/** One field's value: '' when it's missing or a list. */
+export const valueOf = (values: FormValues, k: string): string => (typeof values[k] === 'string' ? (values[k] as string) : '');
+
+/** A field's values (the ticked chips): one value is a list of one. */
+export const listOf = (values: FormValues, k: string): string[] =>
+	Array.isArray(values[k]) ? (values[k] as string[]) : values[k] ? [values[k] as string] : [];
+
+/** The animal "Which one?" picked (`livestock:<id>`, not a plant), while it's in the tank. */
+export function targetAnimal<T extends { id: string }>(livestock: T[], target: string): T | undefined {
+	return target.startsWith('livestock:') ? livestock.find((l) => l.id === target.slice('livestock:'.length)) : undefined;
+}
+
+/** What the offline queue calls the entry: "Water change · 25%", "Dosed Prime", "Fed Flakes", else the category. */
+export function eventQueueTitle(
+	category: EventCategory,
+	o: { amount: string; amountMode: string; volUnit: string; product: string; food: string }
+): string {
+	if (category === 'water_change' && o.amount) return `Water change · ${o.amount}${o.amountMode === 'percent' ? '%' : ` ${o.volUnit}`}`;
+	if (category === 'dosing' && o.product) return `Dosed ${o.product}`;
+	if (category === 'feeding' && o.food) return `Fed ${o.food}`;
+	return CATEGORY_LABEL[category];
+}
+
+/** The Note field's placeholder: on a note, the note is the entry, so none. */
+export function notePlaceholder(category: EventCategory): string | undefined {
+	if (category === 'maintenance') return 'e.g. swapped sponge, kept ceramic';
+	return category === 'note' ? undefined : 'Optional';
 }
