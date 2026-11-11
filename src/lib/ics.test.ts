@@ -49,4 +49,9 @@ describe('buildCalendar', () => {
 		const y = buildCalendar({ name: 'x', events: [{ uid: 'u', date: '2026-12-31', summary: 's' }] });
 		expect(y).toContain('DTEND;VALUE=DATE:20270101');
 	});
+	it('puts a task with a time of day at that moment, 15 minutes long (#180)', () => {
+		const t = buildCalendar({ name: 'x', events: [{ uid: 'u', date: '2026-11-11', start: new Date('2026-11-11T05:30:00Z'), summary: 'Dose iron' }] });
+		expect(t).toContain('DTSTART:20261111T053000Z\r\nDTEND:20261111T054500Z');
+		expect(t).not.toContain('VALUE=DATE');
+	});
 });

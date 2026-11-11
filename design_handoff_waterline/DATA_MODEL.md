@@ -21,7 +21,9 @@ notification_prefs user_id, task_reminders, overdue_alerts, out_of_range_alerts,
                  delivery(individual|daily|weekly), lead_days, send_time,
                  notify_email?, unsubscribed_at? (those three switches are email's);
                  push_task_reminders, push_overdue_alerts, push_out_of_range_alerts,
-                 ntfy_url? (an ntfy topic's address), ntfy_token_enc?
+                 ntfy_url? (an ntfy topic's address), ntfy_token_enc?,
+                 push_grouped (one push per tank for the tasks due together, #180),
+                 quiet_start?, quiet_end? ('HH:MM' both or neither: nothing pushed between)
 push_subscriptions id, user_id, endpoint (unique), p256dh, auth, label ("Chrome on Android"),
                  created_at, last_sent_at? (a device that gets Web Push)
 
@@ -132,7 +134,9 @@ tasks            id, tank_id, name, kind(water_change|test|maintenance|other|dos
                  the next day by snoozed_until), equipment_id? (the item's service reminder: the
                  equipment form sets its cadence, and a logged service completes it),
                  open_form_on_done, product?, amount?, amount_unit? (a dosing or feeding
-                 routine: Done logs the dose or feeding, and Undo removes it), created_at
+                 routine: Done logs the dose or feeding, and Undo removes it),
+                 remind_at? (#180: when on its day it's pushed, and its time in the calendar
+                 feed: null at the send time, before_lights, lights_off, or 'HH:MM'), created_at
 plan_runs        id, tank_id, template (a starter's key, src/lib/plans.ts), name, started_on,
                  ends_on, ended_at?, ended_early, paused_task_ids (json: the tank's tasks it
                  held back, resumed when it ends early), from_event_id? (#177: a treatment

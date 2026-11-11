@@ -1,10 +1,13 @@
-// iCalendar (RFC 5545) for the task calendar feed (#23): all-day events,
-// text escaped, lines folded at 75 octets, CRLF line ends.
+// iCalendar (RFC 5545) for the task calendar feed (#23): all-day events, or
+// at a time for a task that has one (#180), text escaped, lines folded at 75
+// octets, CRLF line ends.
 
 export interface CalendarEvent {
 	uid: string;
 	/** YYYY-MM-DD: an all-day event on that date */
 	date: string;
+	/** a task with a time of day (#180): an event at that moment instead, 15 minutes long, in UTC */
+	start?: Date;
 	summary: string;
 	description?: string;
 	url?: string;
@@ -59,8 +62,9 @@ export function buildCalendar(opts: { name: string; description?: string; events
 			'BEGIN:VEVENT',
 			`UID:${e.uid}`,
 			`DTSTAMP:${stamp(now)}`,
-			`DTSTART;VALUE=DATE:${dateValue(e.date)}`,
-			`DTEND;VALUE=DATE:${dateValue(nextDay(e.date))}`,
+			...(e.start
+				? [`DTSTART:${stamp(e.start)}`, `DTEND:${stamp(new Date(e.start.getTime() + 15 * 60_000))}`]
+				: [`DTSTART;VALUE=DATE:${dateValue(e.date)}`, `DTEND;VALUE=DATE:${dateValue(nextDay(e.date))}`]),
 			`SUMMARY:${escapeText(e.summary)}`,
 			...(e.description ? [`DESCRIPTION:${escapeText(e.description)}`] : []),
 			...(e.url ? [`URL:${e.url}`] : []),

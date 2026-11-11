@@ -2,6 +2,7 @@
 	// Tasks (README → Screens §10): Overdue / Due soon / Later across all tanks,
 	// each row with its name, the when (✕/▲), tank · cadence, Done and Snooze ▾
 	// (on tasks due within a day). On desktop the selected task edits in a pane.
+	import { remindAtText } from '$lib/remind-time';
 	import { enhance } from '$app/forms';
 	import { markDone } from '$lib/splash';
 	import { goto } from '$app/navigation';
@@ -160,7 +161,7 @@
 									<span class="line">
 										<span class="when {d.level === 'ok' ? 'plain' : `status-${d.level}`}">{dueLabel(t)}</span>
 										<span class="meta"
-											>{tankNames[t.tankId]}{#if t.snoozedUntil && t.nextDue && t.snoozedUntil !== t.nextDue}{` · moved from ${longDue(t.nextDue)}`}{/if} · {every(t)}</span
+											>{tankNames[t.tankId]}{#if t.snoozedUntil && t.nextDue && t.snoozedUntil !== t.nextDue}{` · moved from ${longDue(t.nextDue)}`}{/if} · {every(t)}{#if remindAtText(t.remindAt)}{` · ${remindAtText(t.remindAt)!.replace(/^./, (c) => c.toLowerCase())}`}{/if}</span
 										>
 									</span>
 								</a>

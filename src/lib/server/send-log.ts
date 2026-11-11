@@ -52,3 +52,13 @@ export function sendFailed(userId: string, key: string, error: unknown, opts: { 
 	if (giveUp) logger.error(opts.area, `${what} didn't send after ${attempts} tries, and won't be tried again`, { userId, key, error });
 	else logger.error(opts.area, `${what} didn't send; trying again in ${Math.round(retryWait(attempts) / 60_000)} minutes`, { userId, key, attempt: attempts, error });
 }
+
+/** Whether `key` has gone, or is being tried again (#180): the grouped push leaves out what its tasks' own pushes covered. */
+export function wasClaimed(userId: string, key: string): boolean {
+	return !!db.select({ id: emailLog.id }).from(emailLog).where(where(userId, key)).get();
+}
+
+/** `key` went as part of something else (a tank's grouped push, #180): never sent on its own, or tried again, after. */
+export function markSent(userId: string, key: string) {
+	if (!db.insert(emailLog).values({ userId, key }).onConflictDoNothing().run().changes) sendSucceeded(userId, key);
+}

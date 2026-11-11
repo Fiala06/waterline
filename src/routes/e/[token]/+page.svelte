@@ -21,8 +21,15 @@
 			<h1 class="status-ok">{doneText}</h1>
 			{#if form.next}<p class="muted">Next due {form.next}.</p>{/if}
 		{:else if state === 'ok' && data.task}
-			<p class="muted small">{data.task.tankName}{data.task.due ? ` · due ${data.task.due}` : ''} · {data.task.repeats}</p>
-			<h1>{data.action === 'done' ? `Mark “${data.task.name}” done?` : `Snooze “${data.task.name}” 1 day?`}</h1>
+			{#if data.many}
+				<!-- a tank's grouped push (#180): every task in it -->
+				<p class="muted small">{data.task.tankName}</p>
+				<h1>Snooze {data.task.name} 1 day?</h1>
+				<p class="muted">{data.many.join(', ')}</p>
+			{:else}
+				<p class="muted small">{data.task.tankName}{data.task.due ? ` · due ${data.task.due}` : ''} · {data.task.repeats}</p>
+				<h1>{data.action === 'done' ? `Mark “${data.task.name}” done?` : `Snooze “${data.task.name}” 1 day?`}</h1>
+			{/if}
 			<form method="POST">
 				<button class="btn btn-primary btn-lg">{data.action === 'done' ? 'Mark done' : 'Snooze 1 day'}</button>
 			</form>
