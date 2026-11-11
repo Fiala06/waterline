@@ -3,24 +3,21 @@
 	// 05 / 08 / G6 · Water test form. Every field is optional; numeric keypad;
 	// previous reading shown faintly; inline status as you type. New tests can
 	// start from the last readings and log a water change alongside.
-	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
-	import { queueable } from '$lib/offline';
-	import { clearDraft, logDraft, type Restored } from '$lib/draft';
-	import ConfirmDelete from './ConfirmDelete.svelte';
 	import CustomParamSheet from './CustomParamSheet.svelte';
-	import { ui } from '$lib/ui.svelte';
-	import DateTimePicker from './DateTimePicker.svelte';
 	import KitRun from './KitRun.svelte';
+	import LogFormShell from './LogFormShell.svelte';
+	import PhotoDateOffer from './PhotoDateOffer.svelte';
 	import PhotoPicker from './PhotoPicker.svelte';
+	import TaskCheckRow from './TaskCheckRow.svelte';
 	import Tip from './Tip.svelte';
 	import WaterChangeFields from './WaterChangeFields.svelte';
 	import { statusLong, statusShort } from '$lib/status';
-	import { fmtWhenShort, type ExifDate } from '$lib/exif';
-	import { whenLabel, type When } from '$lib/time';
+	import type { ExifDate } from '$lib/exif';
+	import type { When } from '$lib/time';
 	import { kitKeyFor, type KitStep } from '$lib/kits';
-	import { entryHref, photoOtherDay, splitTask } from './entry-form';
+	import { entryHref } from './entry-form';
 	import { attentionSummary, cleanReading, readingRow, shortStatus, statusWord, testSaveLabel, waterChangeSummary, type TestParam as Param } from './test-form';
 	let {
 		mode = 'new',
@@ -94,17 +91,12 @@
 	let saved = $state<Record<string, string>>(untrack(() => ({ ...values })));
 	let note = $state(untrack(() => initialNote));
 	let when = $state<When | null>(untrack(() => initialWhen));
-	let picking = $state(false);
 	// A photo taken on another day than the test (#42): offer its date, without changing the test by itself.
 	let photoDates = $state<(ExifDate | null)[]>([]);
-	const photoWhen = $derived(photoOtherDay(photoDates, when, timeZone));
 	// "+ Add parameter" opens G7 here, so the test in progress stays on screen
 	let addOpen = $state(false);
-	let clientId = $state('');
-	let busy = $state(false);
 	let desk = $state(false);
 	onMount(() => {
-		clientId = crypto.randomUUID();
 		const mq = matchMedia('(min-width: 1024px)');
 		const sync = () => (desk = mq.matches);
 		sync();
@@ -120,7 +112,8 @@
 	const filled = $derived(rows.filter((r) => r.v != null).length);
 
 	// the other log types, with the tank and time this one has (README § 11)
-	const typeHref = (category: string) => entryHref(page.url.searchParams, '/entries/event/new', category);
+	const typeHref = (t: string) =>
+		t === 'test' ? entryHref(page.url.searchParams, '/entries/test/new') : entryHref(page.url.searchParams, '/entries/event/new', t);
 	function clearAll() {
 		for (const p of params) draft[p.id] = '';
 		copied = null;
@@ -156,24 +149,10 @@
 	const wcSummary = $derived(waterChangeSummary(wcAmount, wcMode, waterChange?.volUnit ?? '', wcSource));
 	const withWc = $derived(mode === 'new' && !!waterChange && wcOn);
 
-	// A test that was left before it was saved comes back, with Discard.
-	let restored = $state<{ readings: number; discard: () => Promise<void> } | null>(null);
-	function onrestore(r: Restored) {
-		if (r.date && r.time) when = { date: r.date, time: r.time };
-		restored = {
-			readings: filled,
-			discard: async () => {
-				restored = null;
-				when = initialWhen;
-				await r.discard();
-			}
-		};
-	}
+	// A test that was left before it was saved comes back, saying how much
+	const restoredLabel = () => (filled ? `Restored ${filled} unsaved reading${filled === 1 ? '' : 's'}` : "Restored what you hadn't saved");
 	const outOfRange = $derived(rows.filter((r) => r.st?.level === 'bad').length);
 	const saveLabel = $derived(testSaveLabel(mode, filled, withWc));
-	// "Also mark the reminder “Water test” done", with where it stands on its own line
-	const taskText = $derived(splitTask(task, when?.date));
-	const wcTaskText = $derived(splitTask(waterChange?.task, when?.date));
 
 	function clean(id: string, e: Event) {
 		const el = e.currentTarget as HTMLInputElement;
@@ -300,316 +279,132 @@
 {/snippet}
 
 
-<form
-	method="POST"
-	enctype="multipart/form-data"
-	class="tform"
-	class:edit={mode === 'edit'}
-	use:enhance={queueable({
-		offline: mode === 'new',
-		title: () => `Water test · ${filled} reading${filled === 1 ? '' : 's'}${withWc ? ' + water change' : ''}`,
-		closeHref: () => closeHref,
-		timeZone,
-		busy: (b) => (busy = b),
-		onsaved: () => draftKey && clearDraft(draftKey)
-	})}
-	use:logDraft={{ key: mode === 'new' ? draftKey : null, onrestore, watch: when }}
+<LogFormShell
+	{mode}
+	current="test"
+	typeHref={mode === 'new' ? typeHref : null}
+	{tankName}
+	title={mode === 'edit' ? 'Edit water test' : 'Log water test'}
+	bind:when
+	{timeZone}
+	{closeHref}
+	{returnTo}
+	{saveLabel}
+	queueTitle={() => `Water test · ${filled} reading${filled === 1 ? '' : 's'}${withWc ? ' + water change' : ''}`}
+	{draftKey}
+	{restoredLabel}
+	{meta}
+	{error}
+	{remove}
+	{ontankclick}
 >
-	{#if returnTo}<input type="hidden" name="from" value={returnTo} />{/if}
-	<input type="hidden" name="clientId" value={clientId} />
-	<input type="hidden" name="date" value={when?.date ?? ''} />
-	<input type="hidden" name="time" value={when?.time ?? ''} />
-
-	<div class="panel">
-		<header class="top">
-			<div class="kick">
-				<button type="button" class="kicker tank" onclick={() => ontankclick?.()} disabled={!ontankclick}
-					>{mode === 'edit' ? 'Edit' : 'Log for'} {tankName}{#if ontankclick}<span aria-hidden="true"> ▾</span>{/if}</button
+	{#if mode === 'new'}
+		<div class="use-last" aria-live="polite">
+			{#if copied}
+				<span class="filled-note">✓ Filled {Object.keys(copied).length} from last readings</span>
+				<button type="button" class="btn-text" onclick={undoLast}>Undo</button>
+			{:else if fillable.length}
+				<a
+					class="btn-text use"
+					href={fillHref}
+					onclick={(e) => {
+						e.preventDefault();
+						useLast();
+					}}>Use last readings</a
 				>
-				<a class="btn-icon close" href={closeHref} aria-label="Close">✕</a>
-			</div>
-			{#if mode === 'new'}
-				<!-- the type: this one, and the others as links (README § 11) -->
-				<nav class="types" aria-label="Log type">
-					<span class="ty on" aria-current="page">Test<kbd aria-hidden="true">T</kbd></span>
-					<a class="ty" href={typeHref('water_change')}>Water change<kbd aria-hidden="true">W</kbd></a>
-					<a class="ty" href={typeHref('dosing')}>Dose<kbd aria-hidden="true">D</kbd></a>
-					<a class="ty" href={typeHref('note')}>Note<kbd aria-hidden="true">N</kbd></a>
-					<a class="ty" href={typeHref('maintenance')}>More</a>
-				</nav>
+			{:else}
+				<span class="filled-note">All fields optional</span>
 			{/if}
-			<div class="trow">
-				<h1>{mode === 'edit' ? 'Edit water test' : 'Log water test'}</h1>
-				<button type="button" class="when" onclick={() => (picking = true)}><span class="when-k">When</span>{' '}<b>{whenLabel(when)}</b>{' '}<span class="when-c">▾</span></button>
-			</div>
-		</header>
-
-		<div class="body">
-			{#if meta}<p class="meta">{meta}</p>{/if}
-			{#if error}<p class="banner banner-bad" role="alert">✕ {error}</p>{/if}
-			{#if restored}
-				<div class="draft-note" role="status">
-					<span
-						>▲ {restored.readings
-							? `Restored ${restored.readings} unsaved reading${restored.readings === 1 ? '' : 's'}`
-							: "Restored what you hadn't saved"}</span
-					>
-					<button type="button" class="btn-text" onclick={() => restored?.discard()}>Discard</button>
-				</div>
-			{/if}
-			{#if mode === 'new'}
-				<div class="use-last" aria-live="polite">
-					{#if copied}
-						<span class="filled-note">✓ Filled {Object.keys(copied).length} from last readings</span>
-						<button type="button" class="btn-text" onclick={undoLast}>Undo</button>
-					{:else if fillable.length}
-						<a
-							class="btn-text use"
-							href={fillHref}
-							onclick={(e) => {
-								e.preventDefault();
-								useLast();
-							}}>Use last readings</a
-						>
-					{:else}
-						<span class="filled-note">All fields optional</span>
-					{/if}
-					{#if filled}<button type="button" class="btn-text clear" onclick={clearAll}>Clear</button>{/if}
-				</div>
-			{/if}
-
-			<div class="rows">
-				{#each shown as r (r.id)}{@render paramRow(r)}{/each}
-				{#if later.length}
-					<!-- the ones a beginner's kit doesn't cover, folded (#65); inside, they still post with the form -->
-					<details class="later" open={later.some((r) => r.raw !== '' || fieldErrors[r.id])}>
-						<summary
-							><span class="later-n">{later.length} more parameter{later.length === 1 ? '' : 's'}</span>
-							<span class="later-names">{later.map((r) => r.name).join(', ')}</span></summary
-						>
-						{#each later as r (r.id)}{@render paramRow(r)}{/each}
-					</details>
-				{/if}
-				{#if mode === 'new' && targetsHref}
-					<a
-						class="add-param"
-						href={targetsHref}
-						onclick={(e) => {
-							e.preventDefault();
-							addOpen = true;
-						}}>+ Add parameter</a
-					>
-					<!-- the ranges and which parameters are tested live on the targets page; Save there comes back here -->
-					<a class="add-param edit-targets" href="{targetsHref}?from={encodeURIComponent(page.url.pathname + page.url.search)}"
-						>Edit targets and parameters ›</a
-					>
-				{/if}
-			</div>
-
-			<div class="note-row">
-				<input
-					class="input note"
-					name="note"
-					bind:value={note}
-					maxlength="2000"
-					placeholder={desk ? 'Note, e.g. “before water change”' : 'Add note…'}
-					aria-label="Note"
-				/>
-				<PhotoPicker compact existing={existingPhotos} ontaken={(d) => (photoDates = d)} />
-			</div>
-			{#if photoWhen}
-				<button type="button" class="btn-text photo-date" onclick={() => (when = photoWhen)}>Use the photo's date ({fmtWhenShort(photoWhen)})</button>
-			{/if}
-
-			{#if task && taskText}
-				<label class="check-row task">
-					<input type="checkbox" name="completeTask" value={task.id} defaultChecked={task.checked} />
-					<span class="task-text"
-						><span>{taskText.main}</span>{#if taskText.next}{' '}<span class="next">{taskText.next}</span>{/if}</span
-					>
-				</label>
-			{/if}
-
-			{#if mode === 'new' && waterChange}
-				<!-- without JS the checkbox opens the block too (:has) -->
-				<div class="wc" class:on={wcOn}>
-					<label class="check-row wc-toggle">
-						<input type="checkbox" name="wc" value="1" bind:checked={wcOn} />
-						<span class="wc-head">
-							<span class="wc-title">Also log a water change</span>
-							<span class="wc-sub">{wcSummary}</span>
-						</span>
-					</label>
-					<div class="wc-body">
-						<WaterChangeFields
-							compact
-							bind:amountMode={wcMode}
-							bind:amount={wcAmount}
-							bind:source={wcSource}
-							volUnit={waterChange.volUnit}
-							tankVolume={waterChange.tankVolume}
-							tankVolumeIsActual={waterChange.tankVolumeIsActual}
-							error={fieldErrors.amount}
-						/>
-						{#if waterChange.task && wcTaskText}
-							<label class="check-row wc-task">
-								<input type="checkbox" name="wcCompleteTask" value={waterChange.task.id} defaultChecked={waterChange.task.checked} />
-								<span class="task-text"
-									><span>{wcTaskText.main}</span>{#if wcTaskText.next}{' '}<span class="next">{wcTaskText.next}</span>{/if}</span
-								>
-							</label>
-						{/if}
-					</div>
-				</div>
-			{/if}
+			{#if filled}<button type="button" class="btn-text clear" onclick={clearAll}>Clear</button>{/if}
 		</div>
+	{/if}
 
-		<footer class="foot">
-			{#if summary}<p class="summary status-warn" aria-live="polite">{summary}</p>{/if}
-			<div class="foot-line">
-				{#if mode === 'new'}
-					<span class="count">{filled} of {params.length} filled{outOfRange ? ` · ${outOfRange} out of range` : ''}</span>
-				{:else}
-					<span class="grow" aria-hidden="true"></span>
-				{/if}
-				{#if remove}<button type="button" class="btn btn-danger remove" popovertarget="confirm-entry-delete">Delete entry</button>{/if}
-				<a class="btn cancel" href={closeHref}>Cancel</a>
-				<button class="btn btn-primary save" disabled={busy}>{saveLabel}</button>
-			</div>
-		</footer>
+	<div class="rows">
+		{#each shown as r (r.id)}{@render paramRow(r)}{/each}
+		{#if later.length}
+			<!-- the ones a beginner's kit doesn't cover, folded (#65); inside, they still post with the form -->
+			<details class="later" open={later.some((r) => r.raw !== '' || fieldErrors[r.id])}>
+				<summary
+					><span class="later-n">{later.length} more parameter{later.length === 1 ? '' : 's'}</span>
+					<span class="later-names">{later.map((r) => r.name).join(', ')}</span></summary
+				>
+				{#each later as r (r.id)}{@render paramRow(r)}{/each}
+			</details>
+		{/if}
+		{#if mode === 'new' && targetsHref}
+			<a
+				class="add-param"
+				href={targetsHref}
+				onclick={(e) => {
+					e.preventDefault();
+					addOpen = true;
+				}}>+ Add parameter</a
+			>
+			<!-- the ranges and which parameters are tested live on the targets page; Save there comes back here -->
+			<a class="add-param edit-targets" href="{targetsHref}?from={encodeURIComponent(page.url.pathname + page.url.search)}"
+				>Edit targets and parameters ›</a
+			>
+		{/if}
 	</div>
-</form>
 
-{#if remove}
-	<ConfirmDelete id="confirm-entry-delete" trigger={false} title={remove.title} body={remove.body} action={remove.action} fields={{ from: ui.prev ?? '' }} />
-{/if}
+	<div class="note-row">
+		<input
+			class="input note"
+			name="note"
+			bind:value={note}
+			maxlength="2000"
+			placeholder={desk ? 'Note, e.g. “before water change”' : 'Add note…'}
+			aria-label="Note"
+		/>
+		<PhotoPicker compact existing={existingPhotos} ontaken={(d) => (photoDates = d)} />
+	</div>
+	<PhotoDateOffer dates={photoDates} bind:when {timeZone} />
 
-<DateTimePicker bind:open={picking} value={when} {timeZone} onselect={(v) => (when = v)} />
+	{#if task}
+		<div class="task-gap"><TaskCheckRow {task} entryDate={when?.date} /></div>
+	{/if}
+
+	{#if mode === 'new' && waterChange}
+		<!-- without JS the checkbox opens the block too (:has) -->
+		<div class="wc" class:on={wcOn}>
+			<label class="check-row wc-toggle">
+				<input type="checkbox" name="wc" value="1" bind:checked={wcOn} />
+				<span class="wc-head">
+					<span class="wc-title">Also log a water change</span>
+					<span class="wc-sub">{wcSummary}</span>
+				</span>
+			</label>
+			<div class="wc-body">
+				<WaterChangeFields
+					compact
+					bind:amountMode={wcMode}
+					bind:amount={wcAmount}
+					bind:source={wcSource}
+					volUnit={waterChange.volUnit}
+					tankVolume={waterChange.tankVolume}
+					tankVolumeIsActual={waterChange.tankVolumeIsActual}
+					error={fieldErrors.amount}
+				/>
+				{#if waterChange.task}
+					<TaskCheckRow task={waterChange.task} entryDate={when?.date} name="wcCompleteTask" bare />
+				{/if}
+			</div>
+		</div>
+	{/if}
+
+	{#snippet footNote()}
+		{#if summary}<p class="summary status-warn" aria-live="polite">{summary}</p>{/if}
+	{/snippet}
+	{#snippet footInfo()}
+		{#if mode === 'new'}{filled} of {params.length} filled{outOfRange ? ` · ${outOfRange} out of range` : ''}{/if}
+	{/snippet}
+</LogFormShell>
 
 {#if mode === 'new' && targetsHref}
 	<CustomParamSheet bind:open={addOpen} {tankName} {reusable} action="{targetsHref}?/addCustom" onadded={() => invalidateAll()} />
 {/if}
 
 <style>
-	/* a field scrolled or tabbed to stays clear of the sticky Save bar */
-	:global(html:has(.tform)) {
-		scroll-padding-bottom: 132px;
-	}
-	.tform {
-		min-height: 100dvh;
-		display: flex;
-		flex-direction: column;
-	}
-	.panel {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		padding: 0 20px;
-	}
-
-	/* ── Head: the tank, the type, the title and when ── */
-	.top {
-		display: flex;
-		flex-direction: column;
-		gap: 10px;
-		padding: 10px 0 12px;
-		border-bottom: 2px solid var(--divider);
-	}
-	.kick {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 12px;
-	}
-	.tank {
-		min-height: 44px;
-		text-align: left;
-	}
-	.tank:disabled {
-		cursor: default;
-	}
-	.close {
-		margin-right: -12px;
-		color: var(--accent-text);
-		font-size: 16px;
-	}
-	/* the types: one bordered row, this one filled accent */
-	.types {
-		display: flex;
-		gap: 6px;
-		overflow-x: auto;
-		scrollbar-width: none;
-		margin: 0 -20px;
-		padding: 0 20px;
-	}
-	.types::-webkit-scrollbar {
-		display: none;
-	}
-	.ty {
-		flex-shrink: 0;
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		min-height: 40px;
-		padding: 0 12px;
-		border: 1px solid var(--divider);
-		color: var(--text);
-		font-size: 13px;
-		font-weight: 700;
-		white-space: nowrap;
-	}
-	.ty.on {
-		background: var(--accent);
-		border-color: var(--accent);
-		color: var(--on-accent);
-		font-weight: 800;
-	}
-	.ty kbd {
-		display: none;
-		font-family: inherit;
-		font-size: 11px;
-		font-weight: 400;
-		opacity: 0.65;
-	}
-	.trow {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: 12px;
-	}
-	h1 {
-		margin: 0;
-		font-size: 22px;
-		min-width: 0;
-	}
-	.when {
-		flex-shrink: 0;
-		min-height: 44px;
-		font-size: 13px;
-		white-space: nowrap;
-		text-align: right;
-	}
-	.when-k {
-		color: var(--text-muted);
-		margin-right: 6px;
-	}
-
-	.body {
-		display: flex;
-		flex-direction: column;
-		padding-bottom: 16px;
-	}
-	.meta {
-		margin: 12px 0 0;
-		padding: 10px 14px;
-		background: var(--surface);
-		font-size: 13px;
-		color: var(--text-muted);
-	}
-	.banner,
-	.draft-note {
-		margin: 12px 0 0;
-	}
 	.use-last {
 		display: flex;
 		align-items: center;
@@ -859,16 +654,8 @@
 		flex: 1;
 		min-width: 0;
 	}
-	.task {
+	.task-gap {
 		margin-top: 12px;
-		padding: 10px 0;
-		border-top: 1px solid var(--divider);
-		border-bottom: 1px solid var(--divider);
-		font-size: 14px;
-		line-height: 1.4;
-	}
-	.next {
-		display: block;
 	}
 
 	/* ── Also log a water change: a block under a rule that opens up ── */
@@ -907,100 +694,19 @@
 	.wc:has(.wc-toggle input:checked) .wc-sub {
 		display: none;
 	}
-	.wc-task {
-		font-size: 14px;
-		line-height: 1.4;
-	}
 
-	/* ── Footer: the warning, then Save, sticky on phones ── */
-	.foot {
-		position: sticky;
-		bottom: 0;
-		z-index: 2;
-		margin: auto -20px 0;
-		padding: 12px 20px calc(24px + env(safe-area-inset-bottom));
-		background: var(--bg);
-		border-top: 2px solid var(--divider);
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
-	}
 	.summary {
 		margin: 0;
 		font-size: 13px;
 		font-weight: 600;
 	}
-	.foot-line {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-	}
-	.count,
-	.grow,
-	.cancel {
-		display: none;
-	}
-	.save {
-		flex: 1;
-		min-height: 52px;
-		font-size: 16px;
-	}
-	.remove {
-		min-height: 52px;
-	}
 
 	@media (min-width: 1024px) {
-		:global(html:has(.tform)) {
-			scroll-padding-bottom: 96px;
-		}
-		.tform {
-			min-height: 0;
-			padding: 20px 32px 32px;
-		}
-		.panel {
-			width: 600px;
-			max-width: 100%;
-			flex: none;
-			padding: 0;
-		}
-		.top {
-			padding: 0 0 14px;
-		}
-		.ty kbd {
-			display: inline;
-		}
 		.line {
 			grid-template-columns: minmax(0, 1fr) 100px 96px;
 		}
 		.note-row {
 			gap: 10px;
-		}
-		.foot {
-			position: sticky;
-			bottom: 0;
-			margin: 0;
-			padding: 12px 0 0;
-			border-top: 2px solid var(--divider);
-		}
-		.count,
-		.grow {
-			display: block;
-			flex: 1;
-			font-size: 13px;
-			color: var(--text-muted);
-		}
-		.cancel {
-			display: inline-flex;
-		}
-		.save {
-			flex: none;
-			min-height: 44px;
-			font-size: 14px;
-			padding: 0 20px;
-		}
-		.remove {
-			min-height: 40px;
-			order: -1;
 		}
 	}
 </style>

@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **One look for every log form.** The water test now lists every kind of entry at the top, the same wrapping row as the other log forms (Feeding, Maintenance, Observation and the rest, instead of a More), Delete entry sits at the start of the buttons when you edit any entry, and the test's "Use the photo's date" link matches the others: [Log water test](/entries/test/new).
+
 ## 1.21.13 · 2026-11-11
 
 - **Remove a whole school at once.** After a − or + on Livestock, type the new count straight in, or press **Remove all**, then choose Loss, Rehomed or Recount as before, instead of one tap per animal: [Livestock](/tanks/current/livestock).

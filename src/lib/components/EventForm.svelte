@@ -1,15 +1,12 @@
 <script lang="ts">
-	import { onMount, tick, untrack } from 'svelte';
+	import { tick, untrack } from 'svelte';
 	// 14 / G2–G5 / D13 · Log event: one layout that adapts to the category.
-	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
-	import { queueable } from '$lib/offline';
-	import { clearDraft, logDraft, type Restored } from '$lib/draft';
-	import ConfirmDelete from './ConfirmDelete.svelte';
-	import { ui } from '$lib/ui.svelte';
-	import DateTimePicker from './DateTimePicker.svelte';
+	import LogFormShell from './LogFormShell.svelte';
+	import PhotoDateOffer from './PhotoDateOffer.svelte';
 	import PhotoPicker from './PhotoPicker.svelte';
 	import SpeciesInput from './SpeciesInput.svelte';
+	import TaskCheckRow from './TaskCheckRow.svelte';
 	import WaterChangeFields from './WaterChangeFields.svelte';
 	import {
 		CATEGORY_LABEL,
@@ -18,15 +15,14 @@
 		EQUIPMENT_REASONS,
 		LIVESTOCK_ACTIONS,
 		LIVESTOCK_STATUS,
-		LOG_TYPES,
 		MAINTENANCE_ACTIONS,
 		OBSERVATION_TAGS,
 		RECHECK_OPTIONS
 	} from '$lib/events';
 	import { FEED_UNITS, logCompletes, type ReminderTask } from '$lib/tasks';
-	import { fmtWhenShort, type ExifDate } from '$lib/exif';
-	import { whenLabel, type When } from '$lib/time';
-	import { entryHref, photoOtherDay, splitTask } from './entry-form';
+	import type { ExifDate } from '$lib/exif';
+	import type { When } from '$lib/time';
+	import { entryHref } from './entry-form';
 	import { doseHint as hintFor, eventSaveLabel, eventTitle, lastDoseOf, livestockPreview, productChoices as choicesOf, stepCount } from './event-form';
 	import type { EventCategory } from '$lib/types';
 
@@ -126,27 +122,9 @@
 	);
 
 	let when = $state<When | null>(untrack(() => initialWhen));
-	let picking = $state(false);
-	let clientId = $state('');
-	let busy = $state(false);
-	onMount(() => (clientId = crypto.randomUUID()));
 
 	// A photo taken on another day than the entry (#42): offer its date, without changing the entry by itself.
 	let photoDates = $state<(ExifDate | null)[]>([]);
-	const photoWhen = $derived(photoOtherDay(photoDates, when, timeZone));
-
-	// An entry that was left before it was saved comes back, with Discard.
-	let restored = $state<{ discard: () => Promise<void> } | null>(null);
-	function onrestore(r: Restored) {
-		if (r.date && r.time) when = { date: r.date, time: r.time };
-		restored = {
-			discard: async () => {
-				restored = null;
-				when = initialWhen;
-				await r.discard();
-			}
-		};
-	}
 
 	// Water change
 	let amountMode = $state(untrack(() => v('amountMode') || lastAmountMode));
@@ -216,12 +194,11 @@
 	const offered = $derived(
 		task ?? (routine ? { ...routine, checked: logCompletes(routine.schedule, routine.lastDone, when?.date ?? routine.today) } : null)
 	);
-	const taskText = $derived(splitTask(offered, when?.date));
 
 	const saveLabel = $derived(eventSaveLabel(mode, category));
 	const title = $derived(eventTitle(mode, category));
 	// the types at the top (README § 11): Test, then every kind of entry as an equal chip
-	const testHref = $derived(entryHref(page.url.searchParams, '/entries/test/new'));
+	const typeHref = (t: 'test' | EventCategory) => (t === 'test' ? entryHref(page.url.searchParams, '/entries/test/new') : categoryHref!(t));
 
 	// Notes start one line tall (14, G2) and grow with what's typed.
 	function autosize(el: HTMLTextAreaElement) {
@@ -235,280 +212,169 @@
 	}
 </script>
 
-<form
-	method="POST"
-	enctype="multipart/form-data"
-	class="eform"
-	class:edit={mode === 'edit'}
-	use:enhance={queueable({
-		offline: mode === 'new',
-		title: () =>
-			category === 'water_change' && amount
-				? `Water change · ${amount}${amountMode === 'percent' ? '%' : ` ${volUnit}`}`
-				: category === 'dosing' && product
-					? `Dosed ${product}`
-					: category === 'feeding' && food
-						? `Fed ${food}`
-						: CATEGORY_LABEL[category],
-		closeHref: () => closeHref,
-		timeZone,
-		busy: (b) => (busy = b),
-		onsaved: () => draftKey && clearDraft(draftKey)
-	})}
-	use:logDraft={{ key: mode === 'new' ? draftKey : null, onrestore, watch: when }}
+<LogFormShell
+	{mode}
+	current={category}
+	typeHref={mode === 'new' && categoryHref ? typeHref : null}
+	{tankName}
+	{title}
+	bind:when
+	{timeZone}
+	{closeHref}
+	{returnTo}
+	{saveLabel}
+	queueTitle={() =>
+		category === 'water_change' && amount
+			? `Water change · ${amount}${amountMode === 'percent' ? '%' : ` ${volUnit}`}`
+			: category === 'dosing' && product
+				? `Dosed ${product}`
+				: category === 'feeding' && food
+					? `Fed ${food}`
+					: CATEGORY_LABEL[category]}
+	{draftKey}
+	{meta}
+	{error}
+	{remove}
+	{ontankclick}
 >
-	<input type="hidden" name="clientId" value={clientId} />
-	{#if returnTo}<input type="hidden" name="from" value={returnTo} />{/if}
-	<input type="hidden" name="date" value={when?.date ?? ''} />
-	<input type="hidden" name="time" value={when?.time ?? ''} />
-
-	<div class="panel">
-		<header class="top">
-			<div class="kick">
-				<button type="button" class="kicker tank" onclick={() => ontankclick?.()} disabled={!ontankclick}
-					>{mode === 'edit' ? 'Edit' : 'Log for'} {tankName}{#if ontankclick}<span aria-hidden="true"> ▾</span>{/if}</button
+	<div class="fields">
+		{#if category === 'water_change'}
+			<WaterChangeFields
+				bind:amountMode
+				bind:amount
+				source={v('source') || 'tap'}
+				{volUnit}
+				{tankVolume}
+				{tankVolumeIsActual}
+				error={errors.amount}
+				additives={initialAdditives}
+				recentProducts={recentAdditives}
+				{errors}
+			/>
+		{:else if category === 'dosing'}
+			<div class="dose">
+				<div class="field product">
+					<label class="label" for="product">Product</label>
+					<input class="input" id="product" name="product" bind:value={product} list="recent-products" maxlength="80" autocomplete="off" placeholder="e.g. All-in-one fertilizer" aria-invalid={!!errors.product} />
+					<datalist id="recent-products">
+						{#each productChoices as name (name)}<option value={name}></option>{/each}
+					</datalist>
+					{#if productChoices.length && !product}
+						<div class="chips">
+							{#each productChoices.slice(0, 8) as name (name)}
+								<button type="button" class="chip" onclick={() => pickProduct(name)}>{name}</button>
+							{/each}
+						</div>
+					{/if}
+					{#if errors.product}<span class="error-text">✕ {errors.product}</span>{/if}
+				</div>
+				<div class="field">
+					<label class="label" for="amount">Amount</label>
+					<input class="input" id="amount" name="amount" inputmode="decimal" autocomplete="off" defaultValue={v('amount')} aria-invalid={!!errors.amount} />
+					{#if errors.amount}<span class="error-text">✕ {errors.amount}</span>{/if}
+				</div>
+				<div class="field">
+					<label class="label" for="unit">Unit</label>
+					<select class="input" id="unit" name="unit" bind:value={dosingUnit}>
+						{#each DOSING_UNITS as u (u)}<option value={u}>{u}</option>{/each}
+					</select>
+				</div>
+			</div>
+			{#if doseHint}<span class="hint">{doseHint}</span>{/if}
+			{#if mode === 'new'}<a class="hint calc-link" href="/calculators?tank={page.url.searchParams.get('tank') ?? ''}#dose">What does this dose add? Dose → ppm ›</a>{/if}
+			{#if mode === 'new'}<a class="hint calc-link" href="/settings/products">Manage products ›</a>{/if}
+			{#if mode === 'new' && savedLink}
+				<a class="reorder" href={savedLink.url} target="_blank" rel="noopener noreferrer"
+					>Reorder {savedLink.name}<span aria-hidden="true"> ↗</span><span class="sr-only"> (opens in a new tab)</span></a
 				>
-				<a class="btn-icon close" href={closeHref} aria-label="Close">✕</a>
-			</div>
-			{#if mode === 'new' && categoryHref}
-				<!-- the type: this one, and the others as links (README § 11) -->
-				<nav class="types" aria-label="Log type">
-					<a class="ty" href={testHref}>Test<kbd aria-hidden="true">T</kbd></a>
-					{#each LOG_TYPES as t (t.category)}
-						<a class="ty" class:on={category === t.category} aria-current={category === t.category ? 'page' : undefined} href={categoryHref(t.category)}
-							>{t.label}{#if t.key}<kbd aria-hidden="true">{t.key}</kbd>{/if}</a
-						>
-					{/each}
-				</nav>
+			{:else if mode === 'new' && lastDose}
+				<!-- a product dosed before is one worth a link -->
+				<a class="reorder" href="/settings/products?name={encodeURIComponent(product.trim())}#add">Save a reorder link</a>
 			{/if}
-			<div class="trow">
-				<h1>{title}</h1>
-				<button type="button" class="when" onclick={() => (picking = true)}><span class="when-k">When</span>{' '}<b>{whenLabel(when)}</b>{' '}<span class="when-c">▾</span></button>
+			{:else if category === 'feeding'}
+			<!-- by hand here, or logged by a feeding routine's Done (#17): the same food / amount / unit -->
+			<div class="dose">
+				<div class="field product">
+					<label class="label" for="food">Food</label>
+					<input class="input" id="food" name="food" bind:value={food} list="recent-foods" maxlength="80" autocomplete="off" placeholder="e.g. Micro pellets" aria-invalid={!!errors.food} />
+					<datalist id="recent-foods">
+						{#each recentFoods as r (r.food)}<option value={r.food}></option>{/each}
+					</datalist>
+					{#if recentFoods.length && !food}
+						<div class="chips">
+							{#each recentFoods as r (r.food)}
+								<button type="button" class="chip" onclick={() => pickFood(r)}>{r.food}</button>
+							{/each}
+						</div>
+					{/if}
+					{#if errors.food}<span class="error-text">✕ {errors.food}</span>{/if}
+				</div>
+				<div class="field">
+					<label class="label" for="amount">Amount</label>
+					<input class="input" id="amount" name="amount" inputmode="decimal" autocomplete="off" defaultValue={v('amount')} placeholder="e.g. 2" aria-invalid={!!errors.amount} />
+					{#if errors.amount}<span class="error-text">✕ {errors.amount}</span>{/if}
+				</div>
+				<div class="field">
+					<label class="label" for="unit">Unit</label>
+					<input class="input" id="unit" name="unit" bind:value={feedUnit} list="feed-units" maxlength="20" autocomplete="off" placeholder="pinches, cubes, mL, g" />
+					<datalist id="feed-units">
+						{#each FEED_UNITS as u (u)}<option value={u}></option>{/each}
+						<option value="mL"></option>
+						<option value="tablets"></option>
+					</datalist>
+				</div>
 			</div>
-		</header>
-
-		<div class="body">
-			{#if meta}<p class="meta">{meta}</p>{/if}
-
-			{#if error}<p class="banner banner-bad" role="alert">✕ {error}</p>{/if}
-			{#if restored}
-				<div class="draft-note" role="status">
-					<span>▲ Restored what you hadn't saved</span>
-					<button type="button" class="btn-text" onclick={() => restored?.discard()}>Discard</button>
+			{:else if category === 'maintenance'}
+			<fieldset class="field">
+				<legend class="label">What did you do?</legend>
+				<div class="chips">
+					{#each MAINTENANCE_ACTIONS as a (a)}
+						<label class="chip pick"><input type="checkbox" name="actions" value={a} defaultChecked={list('actions').includes(a)} />{a}</label>
+					{/each}
+				</div>
+				{#if errors.actions}<span class="error-text">✕ {errors.actions}</span>{/if}
+			</fieldset>
+			{#if linked && inventory?.equipment.length}
+				<div class="field">
+					<label class="label" for="m-equipment">Equipment · optional</label>
+					<select class="input" id="m-equipment" name="equipmentId">
+						<option value="">—</option>
+						{#each inventory.equipment as e (e.id)}<option value={e.id}>{e.name}</option>{/each}
+					</select>
 				</div>
 			{/if}
-
-			<div class="fields">
-				{#if category === 'water_change'}
-					<WaterChangeFields
-						bind:amountMode
-						bind:amount
-						source={v('source') || 'tap'}
-						{volUnit}
-						{tankVolume}
-						{tankVolumeIsActual}
-						error={errors.amount}
-						additives={initialAdditives}
-						recentProducts={recentAdditives}
-						{errors}
-					/>
-				{:else if category === 'dosing'}
-					<div class="dose">
-						<div class="field product">
-							<label class="label" for="product">Product</label>
-							<input class="input" id="product" name="product" bind:value={product} list="recent-products" maxlength="80" autocomplete="off" placeholder="e.g. All-in-one fertilizer" aria-invalid={!!errors.product} />
-							<datalist id="recent-products">
-								{#each productChoices as name (name)}<option value={name}></option>{/each}
-							</datalist>
-							{#if productChoices.length && !product}
-								<div class="chips">
-									{#each productChoices.slice(0, 8) as name (name)}
-										<button type="button" class="chip" onclick={() => pickProduct(name)}>{name}</button>
-									{/each}
-								</div>
-							{/if}
-							{#if errors.product}<span class="error-text">✕ {errors.product}</span>{/if}
-						</div>
-						<div class="field">
-							<label class="label" for="amount">Amount</label>
-							<input class="input" id="amount" name="amount" inputmode="decimal" autocomplete="off" defaultValue={v('amount')} aria-invalid={!!errors.amount} />
-							{#if errors.amount}<span class="error-text">✕ {errors.amount}</span>{/if}
-						</div>
-						<div class="field">
-							<label class="label" for="unit">Unit</label>
-							<select class="input" id="unit" name="unit" bind:value={dosingUnit}>
-								{#each DOSING_UNITS as u (u)}<option value={u}>{u}</option>{/each}
-							</select>
-						</div>
-					</div>
-					{#if doseHint}<span class="hint">{doseHint}</span>{/if}
-					{#if mode === 'new'}<a class="hint calc-link" href="/calculators?tank={page.url.searchParams.get('tank') ?? ''}#dose">What does this dose add? Dose → ppm ›</a>{/if}
-					{#if mode === 'new'}<a class="hint calc-link" href="/settings/products">Manage products ›</a>{/if}
-					{#if mode === 'new' && savedLink}
-						<a class="reorder" href={savedLink.url} target="_blank" rel="noopener noreferrer"
-							>Reorder {savedLink.name}<span aria-hidden="true"> ↗</span><span class="sr-only"> (opens in a new tab)</span></a
-						>
-					{:else if mode === 'new' && lastDose}
-						<!-- a product dosed before is one worth a link -->
-						<a class="reorder" href="/settings/products?name={encodeURIComponent(product.trim())}#add">Save a reorder link</a>
-					{/if}
-					{:else if category === 'feeding'}
-					<!-- by hand here, or logged by a feeding routine's Done (#17): the same food / amount / unit -->
-					<div class="dose">
-						<div class="field product">
-							<label class="label" for="food">Food</label>
-							<input class="input" id="food" name="food" bind:value={food} list="recent-foods" maxlength="80" autocomplete="off" placeholder="e.g. Micro pellets" aria-invalid={!!errors.food} />
-							<datalist id="recent-foods">
-								{#each recentFoods as r (r.food)}<option value={r.food}></option>{/each}
-							</datalist>
-							{#if recentFoods.length && !food}
-								<div class="chips">
-									{#each recentFoods as r (r.food)}
-										<button type="button" class="chip" onclick={() => pickFood(r)}>{r.food}</button>
-									{/each}
-								</div>
-							{/if}
-							{#if errors.food}<span class="error-text">✕ {errors.food}</span>{/if}
-						</div>
-						<div class="field">
-							<label class="label" for="amount">Amount</label>
-							<input class="input" id="amount" name="amount" inputmode="decimal" autocomplete="off" defaultValue={v('amount')} placeholder="e.g. 2" aria-invalid={!!errors.amount} />
-							{#if errors.amount}<span class="error-text">✕ {errors.amount}</span>{/if}
-						</div>
-						<div class="field">
-							<label class="label" for="unit">Unit</label>
-							<input class="input" id="unit" name="unit" bind:value={feedUnit} list="feed-units" maxlength="20" autocomplete="off" placeholder="pinches, cubes, mL, g" />
-							<datalist id="feed-units">
-								{#each FEED_UNITS as u (u)}<option value={u}></option>{/each}
-								<option value="mL"></option>
-								<option value="tablets"></option>
-							</datalist>
-						</div>
-					</div>
-					{:else if category === 'maintenance'}
-					<fieldset class="field">
-						<legend class="label">What did you do?</legend>
-						<div class="chips">
-							{#each MAINTENANCE_ACTIONS as a (a)}
-								<label class="chip pick"><input type="checkbox" name="actions" value={a} defaultChecked={list('actions').includes(a)} />{a}</label>
-							{/each}
-						</div>
-						{#if errors.actions}<span class="error-text">✕ {errors.actions}</span>{/if}
-					</fieldset>
-					{#if linked && inventory?.equipment.length}
-						<div class="field">
-							<label class="label" for="m-equipment">Equipment · optional</label>
-							<select class="input" id="m-equipment" name="equipmentId">
-								<option value="">—</option>
-								{#each inventory.equipment as e (e.id)}<option value={e.id}>{e.name}</option>{/each}
-							</select>
-						</div>
-					{/if}
-				{:else if category === 'livestock' && linked && inventory}
-					<input type="hidden" name="linked" value="1" />
-					<fieldset class="seg-field">
-						<legend class="sr-only">Change</legend>
-						<div class="segmented">
-							{#each LIVESTOCK_ACTIONS as a (a.value)}
-								<label><input type="radio" name="action" value={a.value} bind:group={lsAction} onchange={() => (count = '1')} />{a.label}</label>
-							{/each}
-						</div>
-					</fieldset>
-					{#if lsAction === 'added'}
-						<div class="segmented" role="group" aria-label="Kind">
-							{#each [['fish', 'Fish'], ['invert', 'Invert'], ['coral', 'Coral'], ['plant', 'Plant']] as [k, l] (k)}
-								<label><input type="radio" name="kind" value={k} bind:group={lsKind} />{l}</label>
-							{/each}
-						</div>
-						<div class="species" bind:this={speciesBox} oninput={readSpecies} onclick={readSpecies} onkeyup={readSpecies} onfocusout={readSpecies} role="presentation">
-							{#key lsKind}<SpeciesInput kind={lsKind} water={lsKind === 'plant' ? 'fresh' : water} invalid={!!errors.name} />{/key}
-						</div>
-						{#if errors.name}<span class="error-text">✕ {errors.name}</span>{/if}
-						{#if lsKind === 'plant'}
-							<div class="field">
-								<label class="label" for="position">Position</label>
-								<select class="input" id="position" name="position">
-									<option value="background">Background</option>
-									<option value="midground" selected>Midground</option>
-									<option value="foreground">Foreground</option>
-									<option value="epiphyte">Epiphyte</option>
-									<option value="floating">Floating</option>
-								</select>
-							</div>
-						{:else}
-							<div class="pair">
-								<div class="field">
-									<label class="label" for="count">Count</label>
-									<div class="count-stepper stepper">
-										<button type="button" aria-label="One fewer" disabled={!Number.isNaN(countN) && countN <= countMin} onclick={() => step(-1)}>−</button>
-										<input id="count" name="count" inputmode="numeric" autocomplete="off" bind:value={count} aria-invalid={!!errors.count} />
-										<button type="button" aria-label="One more" onclick={() => step(1)}>+</button>
-									</div>
-									{#if errors.count}<span class="error-text">✕ {errors.count}</span>{/if}
-								</div>
-								<div class="field">
-									<label class="label" for="status">Status</label>
-									<select class="input" id="status" name="status" bind:value={lsStatus}>
-										{#each LIVESTOCK_STATUS as s (s.value)}<option value={s.value}>{s.label}</option>{/each}
-									</select>
-								</div>
-							</div>
-						{/if}
-					{:else}
-						<div class="field">
-							<label class="label" for="target">Which one?</label>
-							<select class="input" id="target" name="target" bind:value={lsTarget} aria-invalid={!!errors.target}>
-								<option value="" disabled>Choose…</option>
-								{#if inventory.livestock.length}
-									<optgroup label="Livestock">
-										{#each inventory.livestock as l (l.id)}<option value="livestock:{l.id}">{l.name} ({l.count})</option>{/each}
-									</optgroup>
-								{/if}
-								{#if inventory.plants.length}
-									<optgroup label="Plants">
-										{#each inventory.plants as p (p.id)}<option value="plant:{p.id}">{p.name}</option>{/each}
-									</optgroup>
-								{/if}
-							</select>
-							{#if !inventory.livestock.length && !inventory.plants.length}<span class="hint">Nothing in this tank yet.</span>{/if}
-							{#if errors.target}<span class="error-text">✕ {errors.target}</span>{/if}
-						</div>
-						{#if lsAction === 'removed' && targetIsLivestock}
-							<div class="pair">
-								<div class="field">
-									<label class="label" for="count">How many</label>
-									<div class="count-stepper stepper">
-										<button type="button" aria-label="One fewer" disabled={!Number.isNaN(countN) && countN <= countMin} onclick={() => step(-1)}>−</button>
-										<input id="count" name="count" inputmode="numeric" autocomplete="off" bind:value={count} aria-invalid={!!errors.count} />
-										<button type="button" aria-label="One more" disabled={countMax != null && !Number.isNaN(countN) && countN >= countMax} onclick={() => step(1)}>+</button>
-									</div>
-									{#if errors.count}<span class="error-text">✕ {errors.count}</span>{/if}
-								</div>
-								<fieldset class="field">
-									<legend class="label">Why</legend>
-									<div class="segmented">
-										<label><input type="radio" name="reason" value="loss" defaultChecked />Loss</label>
-										<label><input type="radio" name="reason" value="rehomed" />Rehomed</label>
-									</div>
-								</fieldset>
-							</div>
-						{/if}
-					{/if}
-				{:else if category === 'livestock'}
-					<fieldset class="seg-field">
-						<legend class="sr-only">Change</legend>
-						<div class="segmented">
-							{#each LIVESTOCK_ACTIONS as a (a.value)}
-								<label><input type="radio" name="action" value={a.value} defaultChecked={(v('action') || 'added') === a.value} />{a.label}</label>
-							{/each}
-						</div>
-						{#if errors.action}<span class="error-text">✕ {errors.action}</span>{/if}
-					</fieldset>
+		{:else if category === 'livestock' && linked && inventory}
+			<input type="hidden" name="linked" value="1" />
+			<fieldset class="seg-field">
+				<legend class="sr-only">Change</legend>
+				<div class="segmented">
+					{#each LIVESTOCK_ACTIONS as a (a.value)}
+						<label><input type="radio" name="action" value={a.value} bind:group={lsAction} onchange={() => (count = '1')} />{a.label}</label>
+					{/each}
+				</div>
+			</fieldset>
+			{#if lsAction === 'added'}
+				<div class="segmented" role="group" aria-label="Kind">
+					{#each [['fish', 'Fish'], ['invert', 'Invert'], ['coral', 'Coral'], ['plant', 'Plant']] as [k, l] (k)}
+						<label><input type="radio" name="kind" value={k} bind:group={lsKind} />{l}</label>
+					{/each}
+				</div>
+				<div class="species" bind:this={speciesBox} oninput={readSpecies} onclick={readSpecies} onkeyup={readSpecies} onfocusout={readSpecies} role="presentation">
+					{#key lsKind}<SpeciesInput kind={lsKind} water={lsKind === 'plant' ? 'fresh' : water} invalid={!!errors.name} />{/key}
+				</div>
+				{#if errors.name}<span class="error-text">✕ {errors.name}</span>{/if}
+				{#if lsKind === 'plant'}
 					<div class="field">
-						<label class="label" for="name">Species</label>
-						<input class="input" id="name" name="name" defaultValue={v('name')} maxlength="80" placeholder="e.g. Ember tetra" aria-invalid={!!errors.name} />
-						{#if errors.name}<span class="error-text">✕ {errors.name}</span>{/if}
+						<label class="label" for="position">Position</label>
+						<select class="input" id="position" name="position">
+							<option value="background">Background</option>
+							<option value="midground" selected>Midground</option>
+							<option value="foreground">Foreground</option>
+							<option value="epiphyte">Epiphyte</option>
+							<option value="floating">Floating</option>
+						</select>
 					</div>
+				{:else}
 					<div class="pair">
 						<div class="field">
 							<label class="label" for="count">Count</label>
@@ -526,252 +392,182 @@
 							</select>
 						</div>
 					</div>
-				{:else if category === 'equipment'}
-					<fieldset class="seg-field">
-						<legend class="sr-only">Change</legend>
-						<div class="segmented">
-							{#each EQUIPMENT_ACTIONS as a (a.value)}
-								<label><input type="radio" name="action" value={a.value} bind:group={eqAction} />{a.label}</label>
-							{/each}
-						</div>
-						{#if errors.action}<span class="error-text">✕ {errors.action}</span>{/if}
-					</fieldset>
-					{#if linked && inventory?.equipment.length}
-						<div class="field">
-							<label class="label" for="equipmentId">Item</label>
-							<select class="input" id="equipmentId" name="equipmentId" bind:value={eqId}>
-								{#each inventory.equipment as e (e.id)}<option value={e.id}>{e.name}</option>{/each}
-								<option value="">Something else…</option>
-							</select>
-						</div>
-					{/if}
-					<div class="field" hidden={linked && !!inventory?.equipment.length && eqId !== ''}>
-						<label class="label" for="item">{linked && inventory?.equipment.length ? 'Name' : 'Item'}</label>
-						<input class="input" id="item" name="item" defaultValue={v('item')} maxlength="80" placeholder="e.g. Canister filter" aria-invalid={!!errors.item} />
-						{#if errors.item}<span class="error-text">✕ {errors.item}</span>{/if}
-					</div>
-					<fieldset class="field">
-						<legend class="label">Why</legend>
-						<div class="chips">
-							{#each EQUIPMENT_REASONS as r (r)}
-								<label class="chip pick"><input type="checkbox" name="reasons" value={r} defaultChecked={list('reasons').includes(r)} />{r}</label>
-							{/each}
-						</div>
-					</fieldset>
-				{:else if category === 'observation'}
-					<fieldset class="field">
-						<legend class="label">What did you notice?</legend>
-						<div class="chips">
-							{#each OBSERVATION_TAGS as t (t)}
-								<label class="chip pick"><input type="checkbox" name="tags" value={t} defaultChecked={list('tags').includes(t)} />{t}</label>
-							{/each}
-						</div>
-						{#if errors.tags}<span class="error-text">✕ {errors.tags}</span>{/if}
-					</fieldset>
 				{/if}
-
+			{:else}
 				<div class="field">
-					<label class="label" for="note">Note</label>
-					<textarea
-						class="input note"
-						class:long={category === 'note'}
-						id="note"
-						name="note"
-						rows={category === 'note' ? 5 : 1}
-						maxlength="2000"
-						placeholder={category === 'maintenance' ? 'e.g. swapped sponge, kept ceramic' : category === 'note' ? undefined : 'Optional'}
-						aria-invalid={!!errors.note}
-						bind:value={note}
-						use:autosize
-					></textarea>
-					{#if errors.note}<span class="error-text">✕ {errors.note}</span>{/if}
+					<label class="label" for="target">Which one?</label>
+					<select class="input" id="target" name="target" bind:value={lsTarget} aria-invalid={!!errors.target}>
+						<option value="" disabled>Choose…</option>
+						{#if inventory.livestock.length}
+							<optgroup label="Livestock">
+								{#each inventory.livestock as l (l.id)}<option value="livestock:{l.id}">{l.name} ({l.count})</option>{/each}
+							</optgroup>
+						{/if}
+						{#if inventory.plants.length}
+							<optgroup label="Plants">
+								{#each inventory.plants as p (p.id)}<option value="plant:{p.id}">{p.name}</option>{/each}
+							</optgroup>
+						{/if}
+					</select>
+					{#if !inventory.livestock.length && !inventory.plants.length}<span class="hint">Nothing in this tank yet.</span>{/if}
+					{#if errors.target}<span class="error-text">✕ {errors.target}</span>{/if}
 				</div>
-
-				<PhotoPicker existing={existingPhotos} ontaken={(d) => (photoDates = d)} />
-				{#if photoWhen}
-					<button type="button" class="btn-text photo-date" onclick={() => (when = photoWhen)}>Use the photo's date ({fmtWhenShort(photoWhen)})</button>
+				{#if lsAction === 'removed' && targetIsLivestock}
+					<div class="pair">
+						<div class="field">
+							<label class="label" for="count">How many</label>
+							<div class="count-stepper stepper">
+								<button type="button" aria-label="One fewer" disabled={!Number.isNaN(countN) && countN <= countMin} onclick={() => step(-1)}>−</button>
+								<input id="count" name="count" inputmode="numeric" autocomplete="off" bind:value={count} aria-invalid={!!errors.count} />
+								<button type="button" aria-label="One more" disabled={countMax != null && !Number.isNaN(countN) && countN >= countMax} onclick={() => step(1)}>+</button>
+							</div>
+							{#if errors.count}<span class="error-text">✕ {errors.count}</span>{/if}
+						</div>
+						<fieldset class="field">
+							<legend class="label">Why</legend>
+							<div class="segmented">
+								<label><input type="radio" name="reason" value="loss" defaultChecked />Loss</label>
+								<label><input type="radio" name="reason" value="rehomed" />Rehomed</label>
+							</div>
+						</fieldset>
+					</div>
 				{/if}
-
-				{#if category === 'livestock' && preview}
-					<p class="preview">
-						Livestock tab: {preview.name}
-						<b>{preview.from} → {preview.to}</b> · <span class="nowrap">{preview.total} animal{preview.total === 1 ? '' : 's'} total</span>
-					</p>
-				{/if}
-
-				{#if category === 'equipment' && linked && eqId && eqAction === 'removed'}
-					<p class="hint">Updates the item on the Equipment tab.</p>
-				{/if}
-
-				{#if category === 'observation' && mode === 'new'}
-					<!-- G5: one row, the choice on the right -->
-					<label class="remind">
-						<span>Remind me to check again</span>
-						<span class="remind-pick">
-							<select name="recheck" bind:value={recheck}>
-								{#each RECHECK_OPTIONS as o (o.value)}<option value={o.value}>{o.label}</option>{/each}
-							</select>
-							<span class="caret" aria-hidden="true">▾</span>
-						</span>
-					</label>
-				{/if}
-
-				{#if offered && taskText}
-					{#key offered.id}
-					<label class="check-row task">
-						<input type="checkbox" name="completeTask" value={offered.id} defaultChecked={offered.checked} />
-						<span class="task-text"
-							><span>{taskText.main}</span>{#if taskText.next}{' '}<span class="next">{taskText.next}</span>{/if}</span
-						>
-					</label>
-					{/key}
-				{/if}
+			{/if}
+		{:else if category === 'livestock'}
+			<fieldset class="seg-field">
+				<legend class="sr-only">Change</legend>
+				<div class="segmented">
+					{#each LIVESTOCK_ACTIONS as a (a.value)}
+						<label><input type="radio" name="action" value={a.value} defaultChecked={(v('action') || 'added') === a.value} />{a.label}</label>
+					{/each}
+				</div>
+				{#if errors.action}<span class="error-text">✕ {errors.action}</span>{/if}
+			</fieldset>
+			<div class="field">
+				<label class="label" for="name">Species</label>
+				<input class="input" id="name" name="name" defaultValue={v('name')} maxlength="80" placeholder="e.g. Ember tetra" aria-invalid={!!errors.name} />
+				{#if errors.name}<span class="error-text">✕ {errors.name}</span>{/if}
 			</div>
+			<div class="pair">
+				<div class="field">
+					<label class="label" for="count">Count</label>
+					<div class="count-stepper stepper">
+						<button type="button" aria-label="One fewer" disabled={!Number.isNaN(countN) && countN <= countMin} onclick={() => step(-1)}>−</button>
+						<input id="count" name="count" inputmode="numeric" autocomplete="off" bind:value={count} aria-invalid={!!errors.count} />
+						<button type="button" aria-label="One more" onclick={() => step(1)}>+</button>
+					</div>
+					{#if errors.count}<span class="error-text">✕ {errors.count}</span>{/if}
+				</div>
+				<div class="field">
+					<label class="label" for="status">Status</label>
+					<select class="input" id="status" name="status" bind:value={lsStatus}>
+						{#each LIVESTOCK_STATUS as s (s.value)}<option value={s.value}>{s.label}</option>{/each}
+					</select>
+				</div>
+			</div>
+		{:else if category === 'equipment'}
+			<fieldset class="seg-field">
+				<legend class="sr-only">Change</legend>
+				<div class="segmented">
+					{#each EQUIPMENT_ACTIONS as a (a.value)}
+						<label><input type="radio" name="action" value={a.value} bind:group={eqAction} />{a.label}</label>
+					{/each}
+				</div>
+				{#if errors.action}<span class="error-text">✕ {errors.action}</span>{/if}
+			</fieldset>
+			{#if linked && inventory?.equipment.length}
+				<div class="field">
+					<label class="label" for="equipmentId">Item</label>
+					<select class="input" id="equipmentId" name="equipmentId" bind:value={eqId}>
+						{#each inventory.equipment as e (e.id)}<option value={e.id}>{e.name}</option>{/each}
+						<option value="">Something else…</option>
+					</select>
+				</div>
+			{/if}
+			<div class="field" hidden={linked && !!inventory?.equipment.length && eqId !== ''}>
+				<label class="label" for="item">{linked && inventory?.equipment.length ? 'Name' : 'Item'}</label>
+				<input class="input" id="item" name="item" defaultValue={v('item')} maxlength="80" placeholder="e.g. Canister filter" aria-invalid={!!errors.item} />
+				{#if errors.item}<span class="error-text">✕ {errors.item}</span>{/if}
+			</div>
+			<fieldset class="field">
+				<legend class="label">Why</legend>
+				<div class="chips">
+					{#each EQUIPMENT_REASONS as r (r)}
+						<label class="chip pick"><input type="checkbox" name="reasons" value={r} defaultChecked={list('reasons').includes(r)} />{r}</label>
+					{/each}
+				</div>
+			</fieldset>
+		{:else if category === 'observation'}
+			<fieldset class="field">
+				<legend class="label">What did you notice?</legend>
+				<div class="chips">
+					{#each OBSERVATION_TAGS as t (t)}
+						<label class="chip pick"><input type="checkbox" name="tags" value={t} defaultChecked={list('tags').includes(t)} />{t}</label>
+					{/each}
+				</div>
+				{#if errors.tags}<span class="error-text">✕ {errors.tags}</span>{/if}
+			</fieldset>
+		{/if}
+
+		<div class="field">
+			<label class="label" for="note">Note</label>
+			<textarea
+				class="input note"
+				class:long={category === 'note'}
+				id="note"
+				name="note"
+				rows={category === 'note' ? 5 : 1}
+				maxlength="2000"
+				placeholder={category === 'maintenance' ? 'e.g. swapped sponge, kept ceramic' : category === 'note' ? undefined : 'Optional'}
+				aria-invalid={!!errors.note}
+				bind:value={note}
+				use:autosize
+			></textarea>
+			{#if errors.note}<span class="error-text">✕ {errors.note}</span>{/if}
 		</div>
 
-		<footer class="foot">
-			<span class="grow" aria-hidden="true"></span>
-			{#if remove}<button type="button" class="btn btn-danger remove" popovertarget="confirm-entry-delete">Delete entry</button>{/if}
-			<a class="btn cancel" href={closeHref}>Cancel</a>
-			<button class="btn btn-primary save" disabled={busy}>{saveLabel}</button>
-		</footer>
+		<PhotoPicker existing={existingPhotos} ontaken={(d) => (photoDates = d)} />
+		<PhotoDateOffer dates={photoDates} bind:when {timeZone} />
+
+		{#if category === 'livestock' && preview}
+			<p class="preview">
+				Livestock tab: {preview.name}
+				<b>{preview.from} → {preview.to}</b> · <span class="nowrap">{preview.total} animal{preview.total === 1 ? '' : 's'} total</span>
+			</p>
+		{/if}
+
+		{#if category === 'equipment' && linked && eqId && eqAction === 'removed'}
+			<p class="hint">Updates the item on the Equipment tab.</p>
+		{/if}
+
+		{#if category === 'observation' && mode === 'new'}
+			<!-- G5: one row, the choice on the right -->
+			<label class="remind">
+				<span>Remind me to check again</span>
+				<span class="remind-pick">
+					<select name="recheck" bind:value={recheck}>
+						{#each RECHECK_OPTIONS as o (o.value)}<option value={o.value}>{o.label}</option>{/each}
+					</select>
+					<span class="caret" aria-hidden="true">▾</span>
+				</span>
+			</label>
+		{/if}
+
+		{#if offered}
+			{#key offered.id}<TaskCheckRow task={offered} entryDate={when?.date} />{/key}
+		{/if}
 	</div>
-</form>
-
-{#if remove}
-	<ConfirmDelete id="confirm-entry-delete" trigger={false} title={remove.title} body={remove.body} action={remove.action} fields={{ from: ui.prev ?? '' }} />
-{/if}
-
-<DateTimePicker bind:open={picking} value={when} {timeZone} onselect={(w) => (when = w)} />
+</LogFormShell>
 
 <style>
-	/* a field scrolled or tabbed to stays clear of the sticky Save bar */
-	:global(html:has(.eform)) {
-		scroll-padding-bottom: 112px;
-	}
-	.eform {
-		min-height: 100dvh;
-		display: flex;
-		flex-direction: column;
-	}
-	.panel {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		padding: 0 20px;
-	}
-
-	/* ── Head: the tank, the type, the title and when ── */
-	.top {
-		display: flex;
-		flex-direction: column;
-		gap: 10px;
-		padding: 10px 0 12px;
-		border-bottom: 2px solid var(--divider);
-	}
-	.kick {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 12px;
-	}
-	.tank {
-		min-height: 44px;
-		text-align: left;
-	}
-	.tank:disabled {
-		cursor: default;
-	}
-	.close {
-		margin-right: -12px;
-		color: var(--accent-text);
-		font-size: 16px;
-	}
-	/* every kind as one wrapping row of equal chips, the current one accent */
-	.types {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 6px;
-	}
-	.ty {
-		flex-shrink: 0;
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		min-height: 40px;
-		padding: 0 12px;
-		border: 1px solid var(--divider);
-		color: var(--text);
-		font-size: 13px;
-		font-weight: 700;
-		white-space: nowrap;
-	}
-	.ty.on {
-		background: var(--accent);
-		border-color: var(--accent);
-		color: var(--on-accent);
-		font-weight: 800;
-	}
-	.ty kbd {
-		display: none;
-		font-family: inherit;
-		font-size: 11px;
-		font-weight: 400;
-		opacity: 0.65;
-	}
-	.trow {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: 12px;
-	}
-	h1 {
-		margin: 0;
-		font-size: 22px;
-		min-width: 0;
-	}
-	.when {
-		flex-shrink: 0;
-		min-height: 44px;
-		font-size: 13px;
-		white-space: nowrap;
-		text-align: right;
-	}
-	.when-k {
-		color: var(--text-muted);
-		margin-right: 6px;
-	}
-
-	.body {
-		display: flex;
-		flex-direction: column;
-		padding: 16px 0 20px;
-	}
-	.meta {
-		margin: 0 0 16px;
-		padding: 10px 14px;
-		background: var(--surface);
-		font-size: 13px;
-		color: var(--text-muted);
-	}
-	.banner,
-	.draft-note {
-		margin: 0 0 16px;
-	}
 	.fields {
 		display: flex;
 		flex-direction: column;
 		gap: 18px;
+		margin-top: 16px;
 	}
 	legend {
 		margin-bottom: 8px;
-	}
-	/* "Use the photo's date (Sep 14, 3:20 PM)" under the photos (#42) */
-	.photo-date {
-		align-self: flex-start;
-		font-size: 14px;
-		min-height: 32px;
-		padding: 0;
 	}
 	.hint {
 		margin: 0;
@@ -904,64 +700,7 @@
 		font-size: 13px;
 	}
 
-	/* ── Task ── */
-	.task {
-		padding: 10px 0;
-		border-top: 1px solid var(--divider);
-		border-bottom: 1px solid var(--divider);
-		font-size: 14px;
-		line-height: 1.4;
-	}
-	.next {
-		display: block;
-	}
-
-	/* ── Footer: sticky Save on phones; Delete entry at the start when editing ── */
-	.foot {
-		position: sticky;
-		bottom: 0;
-		z-index: 2;
-		margin: auto -20px 0;
-		padding: 12px 20px calc(24px + env(safe-area-inset-bottom));
-		background: var(--bg);
-		border-top: 2px solid var(--divider);
-		display: flex;
-		align-items: center;
-		gap: 10px;
-	}
-	.grow,
-	.cancel {
-		display: none;
-	}
-	.save {
-		flex: 1;
-		min-height: 52px;
-		font-size: 16px;
-	}
-	.remove {
-		min-height: 52px;
-	}
-
 	@media (min-width: 1024px) {
-		:global(html:has(.eform)) {
-			scroll-padding-bottom: 96px;
-		}
-		.eform {
-			min-height: 0;
-			padding: 20px 32px 32px;
-		}
-		.panel {
-			width: 600px;
-			max-width: 100%;
-			flex: none;
-			padding: 0;
-		}
-		.top {
-			padding: 0 0 14px;
-		}
-		.ty kbd {
-			display: inline;
-		}
 		.fields :global(.field) {
 			gap: 6px;
 		}
@@ -986,31 +725,6 @@
 		}
 		.product {
 			grid-column: auto;
-		}
-		.foot,
-		.edit .foot {
-			position: sticky;
-			bottom: 0;
-			margin: 0;
-			padding: 12px 0 0;
-			border-top: 2px solid var(--divider);
-		}
-		.grow {
-			display: block;
-			flex: 1;
-		}
-		.cancel {
-			display: inline-flex;
-		}
-		.save,
-		.edit .save {
-			flex: none;
-			min-height: 44px;
-			font-size: 14px;
-			padding: 0 20px;
-		}
-		.remove {
-			min-height: 40px;
 		}
 	}
 </style>
