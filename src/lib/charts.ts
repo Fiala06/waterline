@@ -1,3 +1,8 @@
+import { displayValue, fmtValue, paramDecimals, paramUnit, statusOf, type ParamLike } from './params';
+import { statusShort } from './status';
+import { fmtDay } from './time';
+import { formatNumber, type UnitPrefs } from './units';
+
 // Time ranges on the Charts screen: the short label for the picker on phones, the long one on desktop.
 export const CHART_RANGES = [
 	{ key: '2w', label: '2W', long: '2 weeks', days: 14 },
@@ -149,4 +154,53 @@ export function parseCompare(raw: string | null, ids: string[], primary: string)
 		if (out.length >= MAX_COMPARE) break;
 	}
 	return out;
+}
+
+/** A water test's reading of one parameter, as stored (metric). */
+export interface StoredReading {
+	takenAt: string;
+	value: number;
+}
+
+/** "Nitrate 18 → 12 ppm": the reading just before an event at t and the one just after; null without both. */
+export function changeAcross(param: ParamLike, readings: StoredReading[], t: number, prefs: UnitPrefs): string | null {
+	const before = readings.findLast((r) => Date.parse(r.takenAt) <= t);
+	const after = readings.find((r) => Date.parse(r.takenAt) > t);
+	if (!before || !after) return null;
+	const unit = paramUnit(param, prefs);
+	return `${param.name} ${fmtValue(param, before.value, prefs)} → ${fmtValue(param, after.value, prefs)}${unit ? ` ${unit}` : ''}`;
+}
+
+/** "+11 since Sep 29": the latest reading against the one before it; null with fewer than two. */
+export function latestChange(param: ParamLike, readings: StoredReading[], prefs: UnitPrefs & { timeZone: string }, now = new Date()): { amount: string; over: string } | null {
+	if (readings.length < 2) return null;
+	const a = readings[readings.length - 2];
+	const b = readings[readings.length - 1];
+	const delta = displayValue(param, b.value, prefs) - displayValue(param, a.value, prefs);
+	const dec = paramDecimals(param, prefs);
+	const amount = Math.abs(delta) < 10 ** -dec / 2 ? 'No change' : `${delta > 0 ? '+' : '−'}${formatNumber(Math.abs(delta), dec)}`;
+	const before = fmtDay(a.takenAt, prefs.timeZone, now);
+	return { amount, over: before === 'Today' ? 'since the test before' : `since ${before.toLowerCase() === 'yesterday' ? 'yesterday' : before}` };
+}
+
+/** The numbers beside a parameter's chart: latest, average, range, how many were in target, the latest change; null without readings. */
+export function chartStats(param: ParamLike, readings: StoredReading[], prefs: UnitPrefs & { timeZone: string }, now = new Date()) {
+	const values = readings.map((r) => r.value);
+	if (!values.length) return null;
+	const fv = (stored: number) => fmtValue(param, stored, prefs);
+	const unit = paramUnit(param, prefs);
+	const withUnit = (s: string) => (unit ? `${s} ${unit}` : s);
+	const inRange = values.filter((v) => statusOf(param, v).level !== 'bad').length;
+	const last = values[values.length - 1];
+	return {
+		latest: fv(last),
+		latestLevel: statusOf(param, last).level,
+		latestStatus: statusShort(statusOf(param, last)),
+		average: withUnit(fv(values.reduce((a, b) => a + b, 0) / values.length)),
+		range: withUnit(`${fv(Math.min(...values))}–${fv(Math.max(...values))}`),
+		inTarget: `${inRange} of ${values.length}`,
+		inRangePct: `${Math.round((inRange / values.length) * 100)}%`,
+		change: latestChange(param, readings, prefs, now),
+		count: values.length
+	};
 }

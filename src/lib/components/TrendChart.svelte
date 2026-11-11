@@ -22,11 +22,15 @@
 	// Sized to its container so nothing distorts. `full` adds the points, the
 	// axis titles, the limit labels and a popover for the chosen marker.
 	import type { Snippet } from 'svelte';
-	import { goto } from '$app/navigation';
 	import { paramStatus, type StatusLevel } from '$lib/status';
 	import { formatNumber } from '$lib/units';
 	import { chartDomain } from '$lib/charts';
-	import { axisTitle, hasLowZone, keyIndex, nearestIndex, niceTicks, readoutStatus, readoutWhen, tapWidths, tipStyle as placeTip, zeroIsBest, zoneLabels as zonesFor } from './trend-chart';
+	import { axisTitle, hasLowZone, niceTicks, readoutStatus, readoutWhen, timeScale, tipStyle as placeTip, valueScale, zeroIsBest, zoneLabels as zonesFor } from './trend-chart';
+	import { ChartPointer } from './chart-pointer.svelte';
+	import ChartDateAxis from './ChartDateAxis.svelte';
+	import ChartMarkerLines from './ChartMarkerLines.svelte';
+	import ChartMarkers from './ChartMarkers.svelte';
+	import ChartReadout from './ChartReadout.svelte';
 
 	interface Point {
 		t: number; // ms
@@ -136,18 +140,13 @@
 	// the lowest value sits a little above the axis, so a run of zeros isn't hidden under it
 	const LIFT = 8;
 
-	const x = (t: number) => LEFT + ((t - from) / Math.max(1, to - from)) * (width - LEFT - RIGHT);
-	const y = (v: number) => TOP + (1 - (v - domain.lo) / (domain.hi - domain.lo)) * (plotH - LIFT);
-	const y2 = (v: number, d: { lo: number; hi: number }) => TOP + (1 - (v - d.lo) / (d.hi - d.lo)) * (plotH - LIFT);
+	const x = $derived(timeScale(from, to, LEFT, RIGHT, width));
+	const y = $derived(valueScale(domain, TOP, plotH - LIFT));
+	const y2 = (v: number, d: { lo: number; hi: number }) => valueScale(d, TOP, plotH - LIFT)(v);
 	/** a compared parameter's reading from the same test as `p` (the same instant), for the readout */
 	const alongside = (p: Point) => scales.flatMap((c) => {
 		const m = c.points.find((q) => q.t === p.t);
 		return m ? [`${c.name} ${formatNumber(m.v, c.decimals)}${c.unit ? ` ${c.unit}` : ''}`] : [];
-	});
-
-	const xTicks = $derived.by(() => {
-		const n = Math.max(2, Math.min(5, Math.floor((width - LEFT) / 90)));
-		return Array.from({ length: n }, (_, i) => from + ((to - from) * i) / (n - 1));
 	});
 
 	const line = $derived(points.map((p) => `${x(p.t).toFixed(1)},${y(p.v).toFixed(1)}`).join(' '));
@@ -162,14 +161,14 @@
 	/** The zones' labels in the gutter, where they fit */
 	const zoneLabels = $derived(zoned ? zonesFor(band, decimals, { top: TOP, bandTop, bandBottom, baseline, zero: y(0) }) : []);
 
-	const fmt = (t: number) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone });
-	const isToday = (t: number) => readoutWhen(t, timeZone, false) === 'Today';
-	const chosen = $derived(markers.find((m) => m.href === selected) ?? null);
-	/** Each marker's tap width: 44px, narrower where the next one is closer, so no tap area covers another's dot. */
-	const tapWidth = $derived(tapWidths(markers.map((m) => x(m.t))));
-
 	// The readout: the reading nearest the pointer, or picked with the keys
-	let active = $state<number | null>(null);
+	const pointer = new ChartPointer({
+		el: () => el,
+		xs: () => points.map((p) => x(p.t)),
+		href: (): string | undefined => hot?.href,
+		series: () => points
+	});
+	const active = $derived(pointer.active);
 	const hot = $derived(active != null ? (points[active] ?? null) : null);
 	const shown = $derived(active ?? points.length - 1);
 	// nothing pointed at: a small tooltip stays on the latest reading
@@ -181,49 +180,6 @@
 	const status = (p: Point) => readoutStatus(p.v, band, decimals);
 	const spoken = (p: Point | undefined) => (p ? `${when(p.t)}: ${value(p)}${status(p) ? `, ${status(p).replace(/^\S+ /, '')}` : ''}` : 'No readings');
 
-	const onMarker = (e: Event) => !!(e.target as Element | null)?.closest?.('.marker, .pop, .readout');
-	let pointerType = 'mouse';
-	function showAt(clientX: number) {
-		if (!el || !points.length) return;
-		active = nearestIndex(
-			points.map((p) => x(p.t)),
-			clientX - el.getBoundingClientRect().left
-		);
-	}
-	function onpointermove(e: PointerEvent) {
-		// a mouse just hovers; a finger or pen drags along the line
-		if (!onMarker(e) && (e.pointerType === 'mouse' || e.buttons)) showAt(e.clientX);
-	}
-	function onpointerdown(e: PointerEvent) {
-		pointerType = e.pointerType;
-		if (!onMarker(e)) showAt(e.clientX);
-	}
-	function onpointerleave(e: PointerEvent) {
-		if (e.pointerType === 'mouse') active = null;
-	}
-	// a mouse click opens the reading's test; a finger reads first, then taps the tooltip's link
-	function onclick(e: MouseEvent) {
-		if (onMarker(e) || pointerType !== 'mouse' || !hot?.href) return;
-		goto(hot.href);
-	}
-	function onkeydown(e: KeyboardEvent) {
-		const end = points.length - 1;
-		if (end < 0) return;
-		const next = keyIndex(e.key, active, end);
-		if (next !== undefined) active = next;
-		else if (e.key === 'Enter' && hot?.href) goto(hot.href);
-		else return;
-		e.preventDefault();
-	}
-	// a tap outside the chart puts a finger's readout away
-	$effect(() => {
-		if (active == null) return;
-		const away = (e: PointerEvent) => {
-			if (el && !el.contains(e.target as Node)) active = null;
-		};
-		window.addEventListener('pointerdown', away);
-		return () => window.removeEventListener('pointerdown', away);
-	});
 	// the line draws itself the first time the chart is in view; one below the
 	// fold waits for it (without scripts, or with reduced motion, it's simply there)
 	let waiting = $state(false);
@@ -241,12 +197,6 @@
 		io.observe(el);
 		return () => io.disconnect();
 	});
-	// another series (a different parameter or range): start over
-	$effect(() => {
-		void points;
-		active = null;
-	});
-
 	/** The tooltip's place: beside the reading, flipped inside the chart's edges. */
 	const tipStyle = (p: Point) => placeTip(x(p.t), y(p.v), width);
 </script>
@@ -263,11 +213,11 @@
 		aria-valuemax={points.length}
 		aria-valuenow={points.length ? shown + 1 : 0}
 		aria-valuetext={spoken(points[shown])}
-		{onpointermove}
-		{onpointerdown}
-		{onpointerleave}
-		{onclick}
-		{onkeydown}
+		onpointermove={pointer.onpointermove}
+		onpointerdown={pointer.onpointerdown}
+		onpointerleave={pointer.onpointerleave}
+		onclick={pointer.onclick}
+		onkeydown={pointer.onkeydown}
 	>
 		<svg {width} height={h} viewBox="0 0 {width} {h}" aria-hidden="true">
 			{#if title}
@@ -292,16 +242,7 @@
 					{#if z.sub && z.room >= 30}<text x={zoneRight} y={z.y + 12} class="zone-sub">{z.sub}</text>{/if}
 				{/each}
 			{/if}
-			{#each markers as m (m.href)}
-				<line
-					x1={x(m.t)}
-					x2={x(m.t)}
-					y1={TOP - 10}
-					y2={baseline}
-					class="marker-line {m.kind ?? ''}"
-					class:chosen={m.href === selected}
-				></line>
-			{/each}
+			<ChartMarkerLines {markers} {x} top={TOP} {baseline} {selected} />
 			{#if hot}<line x1={x(hot.t)} x2={x(hot.t)} y1={TOP - 4} y2={baseline} class="guide"></line>{/if}
 			{#if pinned}<line x1={x(pinned.t)} x2={x(pinned.t)} y1={TOP - 4} y2={baseline} class="guide"></line>{/if}
 			{#if sensorBand}
@@ -345,28 +286,15 @@
 				<text x={x(last.t) - 9} y={y(last.v) - 10 < TOP + 4 ? y(last.v) + 20 : y(last.v) - 10} class="last-value" class:bad={lastLevel === 'bad'} text-anchor="end">{value(last)}</text>
 			{/if}
 			{#if hot}<rect x={x(hot.t) - 6} y={y(hot.v) - 6} width="12" height="12" class="hot"></rect>{/if}
-			<line x1={LEFT} x2={width - RIGHT} y1={baseline} y2={baseline} class="baseline"></line>
-			{#each xTicks as t, i (i)}
-				<text
-					x={i === 0 ? LEFT : i === xTicks.length - 1 ? width - RIGHT : x(t)}
-					y={baseline + 16}
-					class="axis"
-					text-anchor={i === 0 ? 'start' : i === xTicks.length - 1 ? 'end' : 'middle'}
-					>{i === xTicks.length - 1 && isToday(t) ? 'Today' : fmt(t)}</text
-				>
-			{/each}
-			{#if full}
-				<text class="axis-title" x={LEFT + (width - LEFT - RIGHT) / 2} y={h - 4} text-anchor="middle">Date</text>
-			{/if}
+			<ChartDateAxis {from} {to} {x} left={LEFT} right={RIGHT} {width} {baseline} height={h} {timeZone} titled={full} />
 		</svg>
 		{#if hot}
-			<div class="readout" style={tipStyle(hot)}>
-				<span class="r-kicker">{active === points.length - 1 ? 'Latest test' : 'Water test'}</span>
+			<ChartReadout latest={active === points.length - 1} href={hot.href} style={tipStyle(hot)}>
 				<span class="r-value status-{level(hot)}">{value(hot)}</span>
-				<span class="r-when">{when(hot.t)}{status(hot) ? ` · ${status(hot)}` : ''}</span>
+				<!-- the status goes under the date when both don't fit in the box -->
+				<span class="r-when"><span class="nb">{when(hot.t)}{status(hot) ? ' ·' : ''}</span>{#if status(hot)}{' '}<span class="nb">{status(hot)}</span>{/if}</span>
 				{#each alongside(hot) as line (line)}<span class="r-also">{line}</span>{/each}
-				{#if hot.href}<a class="r-link" href={hot.href}>Open this test ›</a>{/if}
-			</div>
+			</ChartReadout>
 		{:else if pinned}
 			<div class="readout pinned" style="left:{Math.min(x(pinned.t), width - 8)}px;top:{y(pinned.v) - 10}px">
 				<span class="r-value status-{level(pinned)}">{value(pinned)}</span> · {when(pinned.t).split(' · ')[0]}
@@ -374,28 +302,7 @@
 			</div>
 		{/if}
 	</div>
-	{#each markers as m, i (m.href)}
-		{#if onselect}
-			<button
-				type="button"
-				class="marker {m.kind ?? ''}"
-				class:chosen={m.href === selected}
-				style:left="{x(m.t)}px"
-				style:top="{TOP - 10}px"
-				style:--tap="{tapWidth[i]}px"
-				aria-label="{m.label}, {fmt(m.t)}"
-				aria-pressed={m.href === selected}
-				onclick={() => onselect(m)}
-			></button>
-		{:else}
-			<a class="marker {m.kind ?? ''}" href={m.href} style:left="{x(m.t)}px" style:top="{TOP - 10}px" style:--tap="{tapWidth[i]}px" title={m.label} aria-label="{m.label}, {fmt(m.t)}"></a>
-		{/if}
-	{/each}
-	{#if chosen && popover}
-		<div class="pop" style:left="{Math.min(Math.max(x(chosen.t) - 90, 0), width - 200)}px" style:top="{TOP + 4}px">
-			{@render popover(chosen)}
-		</div>
-	{/if}
+	<ChartMarkers {markers} {x} top={TOP} {width} {timeZone} {selected} {onselect} {popover} />
 	<!-- the readings as a table, for screen readers (#267): the picture is hidden from them -->
 	{#if points.length}
 		<table class="sr-only">
@@ -436,10 +343,6 @@
 		stroke: var(--divider);
 		stroke-dasharray: 2 4;
 	}
-	.baseline {
-		stroke: var(--ink);
-		stroke-width: 2;
-	}
 	/* the target's limits, where High and Low begin */
 	.band-edge {
 		stroke: var(--accent);
@@ -472,25 +375,6 @@
 	}
 	.last-value.bad {
 		fill: var(--accent-text);
-	}
-	.marker-line {
-		stroke: var(--text-muted);
-		stroke-opacity: 0.6;
-		stroke-dasharray: 3 3;
-	}
-	.marker-line.dosing,
-	.marker-line.co2,
-	.marker-line.light,
-	.marker-line.trim,
-	.marker-line.maintenance,
-	.marker-line.algae {
-		stroke-dasharray: 1 3;
-	}
-	.marker-line.chosen {
-		stroke: var(--ink);
-		stroke-opacity: 1;
-		stroke-dasharray: none;
-		stroke-width: 1.5;
 	}
 	.axis {
 		fill: var(--text-muted);
@@ -531,28 +415,6 @@
 		stroke: var(--bg);
 		stroke-width: 2;
 	}
-	.readout {
-		position: absolute;
-		z-index: 3;
-		width: max-content;
-		min-width: 190px;
-		max-width: 240px;
-		padding: 10px 12px;
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-		background: var(--bg);
-		border: 2px solid var(--ink);
-		box-shadow: var(--shadow-md);
-		pointer-events: none;
-	}
-	.r-kicker {
-		font-size: 11px;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: var(--text-muted);
-		white-space: nowrap;
-	}
 	.r-also {
 		display: block;
 		font-size: 12px;
@@ -565,84 +427,27 @@
 	}
 	.r-when {
 		font-size: 13px;
-		white-space: nowrap;
 	}
-	.r-link {
-		padding-top: 4px;
-		font-size: 12px;
-		font-weight: 700;
-		color: var(--bad);
+	.r-when .nb {
 		white-space: nowrap;
-		pointer-events: auto;
 	}
 	/* the small tooltip pinned to the latest reading */
-	.readout.pinned {
-		display: block;
-		min-width: 0;
+	.pinned {
+		position: absolute;
+		z-index: 3;
+		width: max-content;
 		max-width: 170px;
 		padding: 6px 8px;
 		transform: translate(-100%, -100%);
-		border: none;
-		box-shadow: none;
 		background: var(--ink);
 		color: var(--bg);
 		font-size: 12px;
 		line-height: 1.3;
+		pointer-events: none;
 	}
 	.pinned .r-value {
 		font-size: 12px;
 		color: inherit !important;
-	}
-	/* a 44px target, with the 10px square drawn in its middle */
-	.marker {
-		position: absolute;
-		z-index: 1;
-		width: var(--tap, 44px);
-		height: 44px;
-		margin: -22px 0 0 calc(var(--tap, 44px) / -2);
-		padding: 0;
-		border: none;
-		background: none;
-	}
-	.marker::before {
-		content: '';
-		position: absolute;
-		top: 17px;
-		left: calc(50% - 5px);
-		width: 10px;
-		height: 10px;
-		box-sizing: border-box;
-		background: var(--ink);
-	}
-	/* each overlay its own glyph (#88): a dose is a diamond, CO₂ a bar, a light a triangle,
-	   a trim a cross, other maintenance a hollow square; all in the neutral, the water change in ink */
-	.marker.dosing::before {
-		transform: rotate(45deg) scale(0.8);
-		background: var(--neutral-600);
-	}
-	.marker.co2::before {
-		top: 20px;
-		height: 4px;
-		background: var(--neutral-600);
-	}
-	.marker.light::before {
-		background: var(--neutral-600);
-		clip-path: polygon(50% 0, 100% 100%, 0 100%);
-	}
-	.marker.trim::before {
-		background:
-			linear-gradient(45deg, transparent 38%, var(--neutral-600) 38% 62%, transparent 62%),
-			linear-gradient(-45deg, transparent 38%, var(--neutral-600) 38% 62%, transparent 62%);
-	}
-	.marker.maintenance::before {
-		background: none;
-		border: 2px solid var(--neutral-600);
-	}
-	/* algae: a hollow diamond */
-	.marker.algae::before {
-		background: none;
-		border: 2px solid var(--neutral-600);
-		transform: rotate(45deg) scale(0.8);
 	}
 	/* the reading line draws itself in, then the latest reading pops up */
 	.trace {
@@ -682,23 +487,5 @@
 		.last-dot {
 			animation: none;
 		}
-	}
-	.marker:hover::before,
-	.marker:focus-visible::before,
-	.marker.chosen::before {
-		background: var(--accent);
-	}
-	.marker:focus-visible {
-		outline: 2px solid var(--accent);
-		outline-offset: -8px;
-	}
-	.pop {
-		position: absolute;
-		width: 200px;
-		z-index: 2;
-		background: var(--bg);
-		border: 2px solid var(--ink);
-		padding: 10px 12px;
-		box-shadow: var(--shadow-md);
 	}
 </style>

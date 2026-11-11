@@ -1,7 +1,7 @@
-// The trend chart's arithmetic and words (#120): ticks, which reading is
-// nearest, the zones' labels, the readout's status, the keys, the tooltip's
-// place. Pure, so TrendChart.svelte draws and wires, and TrendChart.test.ts
-// covers these.
+// The charts' arithmetic and words (#120, #264): ticks and scales, which reading
+// is nearest, the zones' labels, the readout's status and place, the keys.
+// Pure, so TrendChart, OverlayChart and EventLanes draw and wire, and
+// TrendChart.test.ts covers these.
 import { paramStatus, statusShort } from '$lib/status';
 import { formatNumber } from '$lib/units';
 
@@ -123,4 +123,31 @@ export function tipStyle(px: number, py: number, width: number): string {
 	const side = px < 200 ? '0' : px > width - 200 ? '-100%' : '-50%';
 	const below = py < 110;
 	return `left:${px}px;top:${py}px;transform:translate(${side},${below ? '14px' : 'calc(-100% - 14px)'})`;
+}
+
+/** A time axis: t → x across the plot, from `left` to `width - right` (#264). */
+export function timeScale(from: number, to: number, left: number, right: number, width: number): (t: number) => number {
+	return (t) => left + ((t - from) / Math.max(1, to - from)) * (width - left - right);
+}
+
+/** A value axis: v → y, `top` for d.hi down to `top + span` for d.lo (SVG's y grows downwards). */
+export function valueScale(d: { lo: number; hi: number }, top: number, span: number): (v: number) => number {
+	return (v) => top + (1 - (v - d.lo) / (d.hi - d.lo || 1)) * span;
+}
+
+/** The dates along the bottom: from `from` to `to`, about 90px apart in `room`, two to five of them. */
+export function dateTicks(from: number, to: number, room: number): number[] {
+	const n = Math.max(2, Math.min(5, Math.floor(room / 90)));
+	return Array.from({ length: n }, (_, i) => from + ((to - from) * i) / (n - 1));
+}
+
+/** "Oct 3": a date on the axis and in a marker's name. */
+export function shortDate(t: number, timeZone: string | undefined): string {
+	return new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone });
+}
+
+/** A readout's left edge beside the crosshair at px: to its right where it fits, else to its left, never past the chart's edges. */
+export function tipLeft(px: number, tipWidth: number, width: number): number {
+	const left = px + 14 + tipWidth <= width ? px + 14 : px - 14 - tipWidth;
+	return Math.max(0, Math.min(left, width - tipWidth));
 }

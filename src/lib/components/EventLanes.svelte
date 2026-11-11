@@ -35,6 +35,7 @@
 	// each mark is focusable and names itself, and the chosen one's details show under it.
 	import { chartDomain } from '$lib/charts';
 	import { formatNumber } from '$lib/units';
+	import { timeScale, valueScale } from './trend-chart';
 
 	let {
 		lanes,
@@ -52,12 +53,12 @@
 	const PAD = 8;
 	// room on the right for each lane's scale
 	const PADR = 34;
-	const x = (t: number) => Math.round(((t - axis.from) / Math.max(1, axis.to - axis.from)) * (width - PAD - PADR) * 10) / 10 + PAD;
+	const round = (n: number) => Math.round(n * 10) / 10;
+	const xAt = $derived(timeScale(axis.from, axis.to, PAD, PADR, width));
+	const x = (t: number) => round(xAt(t));
 	const dom = (l: Lane) => chartDomain([...l.points.map((p) => p.v), ...l.sensor.map((s) => s.v)], l.band);
-	const yOf = (l: Lane, v: number) => {
-		const d = dom(l);
-		return Math.round((H - 6 - ((v - d.lo) / (d.hi - d.lo || 1)) * (H - 12)) * 10) / 10;
-	};
+	// 6px clear of the lane's top and bottom
+	const yOf = (l: Lane, v: number) => round(valueScale(dom(l), 6, H - 12)(v));
 	const bandRect = (l: Lane) => {
 		if (l.band.min == null && l.band.max == null) return null;
 		const d = dom(l);
