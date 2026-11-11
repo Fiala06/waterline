@@ -11,6 +11,10 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Remove a whole school at once.** After a − or + on Livestock, type the new count straight in, or press **Remove all**, then choose Loss, Rehomed or Recount as before, instead of one tap per animal: [Livestock](/tanks/current/livestock).
+- **Remove an animal from its own page.** An animal's or group's page has **Remove from tank**, logged as a loss or rehomed; it moves to past livestock, where Restore brings it back: [Livestock](/tanks/current/livestock).
+- **Rename a plant.** A plant's sheet has its name to change, for a cultivar or a better guess at what it is, and History notes the rename: [Plants](/tanks/current/plants).
+
 ## 1.21.12 · 2026-11-11
 
 - **Tank setup is shorter on a phone.** The list of setup sections (Parameters & targets, Public page, Sharing, Notes & routines and the rest) now comes first, above the tank's details, so changing a target is one tap away. The page no longer repeats the specs, notes and routines under the form; they're on Notes & routines: [Tank setup](/tanks/current/settings).

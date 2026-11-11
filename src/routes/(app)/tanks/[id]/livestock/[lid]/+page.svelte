@@ -11,6 +11,7 @@
 	let { data, form } = $props();
 	const nameError = $derived(refusal(form, 'name').message);
 	const photoError = $derived(refusal(form, 'photo').message);
+	const removeError = $derived(refusal(form, 'remove').message);
 	const a = $derived(data.animal);
 	const list = $derived(`/tanks/${data.tank.id}/livestock`);
 	const here = $derived(`/tanks/${data.tank.id}/livestock/${a.id}`);
@@ -152,6 +153,23 @@
 				</div>
 				<div class="foot"><button class="btn btn-primary" disabled={busy}>Save</button></div>
 			</form>
+
+			{#if !gone}
+				<!-- out of the tank (#265): open, then the reason saves it, as on the list; Restore brings it back -->
+				<details class="remove" open={!!removeError}>
+					<summary class="btn-text">Remove from tank</summary>
+					<form method="POST" action="?/remove" use:enhance={saving}>
+						<p class="hint">
+							{one ? `${title} moves` : `All ${a.count} ${a.commonName} move`} to past livestock, where Restore brings {one ? 'it' : 'them'} back. Log it as:
+						</p>
+						<div class="reasons">
+							<button class="btn btn-warn" name="reason" value="loss" disabled={busy}>Loss</button>
+							<button class="btn" name="reason" value="rehomed" disabled={busy}>Rehomed</button>
+						</div>
+						{#if removeError}<p class="error-text" role="alert">✕ {removeError}</p>{/if}
+					</form>
+				</details>
+			{/if}
 
 			{#if data.photos.length || a.nickname}
 				<section class="gallery" aria-labelledby="photos-h">
@@ -378,6 +396,34 @@
 	.foot {
 		display: flex;
 		justify-content: flex-end;
+	}
+	/* Remove from tank (#265): a quiet text button over a divider; open, the reason saves it */
+	.remove {
+		border-top: 1px solid var(--divider);
+		padding-top: 4px;
+	}
+	.remove summary {
+		list-style: none;
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		cursor: pointer;
+	}
+	.remove summary::-webkit-details-marker {
+		display: none;
+	}
+	.remove form {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		padding-bottom: 8px;
+	}
+	.remove .hint {
+		margin: 0;
+	}
+	.reasons {
+		display: flex;
+		gap: 8px;
 	}
 	.foot .btn {
 		min-width: 120px;

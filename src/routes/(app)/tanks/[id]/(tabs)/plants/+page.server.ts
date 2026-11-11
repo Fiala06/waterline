@@ -4,7 +4,7 @@ import { dateInZone, fmtDate } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
 import { optStr, str } from '$lib/server/forms';
 import { checkPhotoFiles, photoFiles, datePhotos, preparePhotos, storePhotos } from '$lib/server/photos';
-import { addPlant, getPlant, listPlants, logTrim, removePlant, restorePlant, updatePlant } from '$lib/server/specs';
+import { addPlant, getPlant, listPlants, logTrim, removePlant, renamePlant, restorePlant, updatePlant } from '$lib/server/specs';
 import { plantHealthEvents } from '$lib/server/log-plants';
 import { isPlantObservation, plantObservationText, PLANT_OBSERVATIONS } from '$lib/plants';
 import { PLANT_SYMPTOM_CHECKS, resolveChecks } from '$lib/symptoms';
@@ -95,6 +95,12 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const id = str(form, 'id');
 		if (getPlant(locals.user!.id, id).tankId !== params.id) return fail(404);
+		// its name too (#265), when the sheet sent one
+		if (form.has('name')) {
+			const name = str(form, 'name').slice(0, 80);
+			if (!name) return fail(400, { error: 'Enter the plant.' });
+			renamePlant(locals.user!.id, id, name);
+		}
 		updatePlant(locals.user!.id, id, {
 			position: pick(str(form, 'position'), POSITIONS, 'midground'),
 			status: pick(str(form, 'status'), STATUSES, 'thriving')

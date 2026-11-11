@@ -7,6 +7,7 @@
 	import ImportButton from '$lib/components/ImportButton.svelte';
 	import SortHeader from '$lib/components/SortHeader.svelte';
 	import SortMenu from '$lib/components/SortMenu.svelte';
+	import { MAX_LIVESTOCK_COUNT } from '$lib/livestock';
 	let { data, form } = $props();
 	// species photos still on their way from Wikimedia: look again in a moment, a few times
 	let tries = 0;
@@ -23,10 +24,18 @@
 	let pending = $state<Record<string, number>>({});
 	const KIND: Record<string, string> = { fish: 'Fish', invert: 'Invert', coral: 'Coral' };
 	function step(id: string, current: number, by: number) {
-		const next = Math.max(0, (pending[id] ?? current) + by);
+		const from = pending[id];
+		const next = Math.max(0, (Number.isInteger(from) ? from : current) + by);
 		if (next === current) delete pending[id];
 		else pending[id] = next;
 	}
+	// the new count typed in (#265): a school of 12 is one number, not 12 taps; NaN while it isn't a whole number yet
+	function typed(id: string, text: string) {
+		pending[id] = text.trim() === '' ? NaN : Number(text);
+	}
+	/** a count that can be saved: a whole number, 0 to the most, 1 at most for a named pet, and a change */
+	const valid = (n: number, current: number, pet: boolean) =>
+		Number.isInteger(n) && n >= 0 && n <= (pet ? 1 : MAX_LIVESTOCK_COUNT) && n !== current;
 	const label = (l: { name: string; nickname: string | null }) => (l.nickname ? `${l.nickname} · ${l.name}` : l.name);
 	// "−1 Harlequin rasbora · loss": the part after the first " · " is muted (T6)
 	function split(title: string) {
@@ -139,7 +148,7 @@
 							<div class="cnt" role="cell">
 								<div class="stepper">
 									<button type="button" aria-label="One fewer {label(l)}" onclick={() => step(l.id, l.count, -1)}>−</button>
-									<span class="value" class:changed={next != null}>{next ?? l.count}</span>
+									<span class="value" class:changed={next != null}>{next == null ? l.count : Number.isInteger(next) ? next : '–'}</span>
 									<!-- a named pet is one animal -->
 									<button type="button" aria-label="One more {label(l)}" disabled={!!l.nickname && (next ?? l.count) >= 1} onclick={() => step(l.id, l.count, 1)}>+</button>
 								</div>
@@ -157,18 +166,40 @@
 										}}
 								>
 									<input type="hidden" name="id" value={l.id} />
-									<input type="hidden" name="count" value={next} />
-									<p class="ask"><span class="tag tag-accent unsaved">Not saved yet</span><span><b>{l.count} → {next}</b>. Log it as:</span></p>
+									<div class="ask">
+										<span class="tag tag-accent unsaved">Not saved yet</span>
+										<!-- the − / + taps set it; type a school's count straight in (#265) -->
+										<label class="to"
+											><b>{l.count} →</b>
+											<input
+												class="input to-count"
+												name="count"
+												type="number"
+												inputmode="numeric"
+												min="0"
+												max={l.nickname ? 1 : MAX_LIVESTOCK_COUNT}
+												step="1"
+												required
+												aria-label="New count of {label(l)}"
+												value={Number.isInteger(next) ? next : ''}
+												oninput={(e) => typed(l.id, e.currentTarget.value)}
+											/></label
+										>
+										{#if next !== 0 && l.count > 0}<button type="button" class="ghost all" onclick={() => (pending[l.id] = 0)}>Remove all</button>{/if}
+									</div>
+									{#if valid(next, l.count, !!l.nickname)}<p class="ask">Log it as:</p>{:else}<p class="ask muted">{next === l.count ? 'No change to save.' : `Enter a whole number from 0 to ${l.nickname ? 1 : MAX_LIVESTOCK_COUNT.toLocaleString('en-US')}.`}</p>{/if}
 									<div class="reasons">
-										<div class="seg">
-											{#if next < l.count}
-												<button class="rsn lead" name="reason" value="loss">Loss</button>
-												<button class="rsn" name="reason" value="rehomed">Rehomed</button>
-											{:else}
-												<button class="rsn lead" name="reason" value="added">Added</button>
-											{/if}
-											<button class="rsn" name="reason" value="recount">Recount</button>
-										</div>
+										{#if valid(next, l.count, !!l.nickname)}
+											<div class="seg">
+												{#if next < l.count}
+													<button class="rsn lead" name="reason" value="loss">Loss</button>
+													<button class="rsn" name="reason" value="rehomed">Rehomed</button>
+												{:else}
+													<button class="rsn lead" name="reason" value="added">Added</button>
+												{/if}
+												<button class="rsn" name="reason" value="recount">Recount</button>
+											</div>
+										{/if}
 										<button type="button" class="ghost cancel" onclick={() => delete pending[l.id]}>Cancel</button>
 									</div>
 								</form>
@@ -386,6 +417,24 @@
 	}
 	.unsaved {
 		font-weight: 800;
+	}
+	/* "14 →" and the new count, typed or set by − / + (#265) */
+	div.ask {
+		align-items: center;
+	}
+	.to {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+	}
+	.to-count {
+		width: 88px;
+		min-height: 44px;
+		text-align: right;
+		font-weight: 800;
+	}
+	.ask.muted {
+		color: var(--text-muted);
 	}
 	.reasons {
 		display: flex;

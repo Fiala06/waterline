@@ -25,6 +25,11 @@ describe('pets in History', () => {
 		expect(title({ action: 'removed', name: 'Betta', nickname: 'Captain', reason: 'loss', count: 1 })).toBe('Removed Captain · Betta · loss');
 	});
 
+	it('says a plant was renamed (#265)', () => {
+		expect(title({ action: 'renamed', kind: 'plant', name: 'Java fern Windelov', previous: 'Java fern' })).toBe('Renamed Java fern to Java fern Windelov');
+		expect(title({ action: 'removed', kind: 'plant', name: 'Java fern' })).toBe('Removed Java fern');
+	});
+
 	it('says the species when the name is left out, as on public pages', () => {
 		expect(title({ action: 'status', name: 'Betta', nickname: null, status: 'in_tank', count: 1 })).toBe('Betta moved into the tank');
 		expect(title({ action: 'removed', name: 'Betta', nickname: null, reason: 'loss', count: 1 })).toBe('−1 Betta · loss');

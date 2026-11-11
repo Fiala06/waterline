@@ -228,6 +228,11 @@
 			<form method="POST" action="?/update" class="sheet-form" use:enhance={close}>
 				{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
 				<input type="hidden" name="id" value={editing.id} />
+				<!-- renamed here (#265): a cultivar, or a better guess at what it is -->
+				<div class="field">
+					<label class="label" for="plant-rename">Name</label>
+					<input class="input" id="plant-rename" name="name" required maxlength="80" autocomplete="off" defaultValue={editing.name} />
+				</div>
 				<fieldset class="field">
 					<legend class="label">Status</legend>
 					<div class="chips">

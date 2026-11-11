@@ -38,7 +38,8 @@ test('equipment, livestock and plants', async ({ page }, info) => {
 
 	// Count down → log as loss
 	await page.getByRole('button', { name: /One fewer Harlequin rasbora/ }).click();
-	await expect(page.getByText('14 → 13. Log it as:')).toBeVisible();
+	await expect(page.getByLabel('New count of Harlequin rasbora')).toHaveValue('13');
+	await expect(page.getByText('Log it as:')).toBeVisible();
 	await page.getByRole('button', { name: 'Loss' }).click();
 	await expect(page.getByRole('status')).toContainText('Harlequin rasbora 14 → 13');
 	await expect(page.getByText('13 animals · 1 species')).toBeVisible();

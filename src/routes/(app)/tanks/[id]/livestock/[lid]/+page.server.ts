@@ -10,7 +10,7 @@ import { setFlash } from '$lib/server/flash';
 import { optStr, refuse } from '$lib/server/forms';
 import { checkPhotoFiles, photoFiles, datePhotos, preparePhotos, storePhotos } from '$lib/server/photos';
 import { speciesPhotos } from '$lib/server/stock-photos';
-import { getLivestock, nameLivestock, petPhotos, updateLivestockDetails } from '$lib/server/specs';
+import { changeCount, getLivestock, nameLivestock, petPhotos, updateLivestockDetails } from '$lib/server/specs';
 import { getTank } from '$lib/server/tanks';
 import { careLine, groupWarning, tankTargets, targetWarnings } from '$lib/care';
 import { CARE_SOURCE, careFor, speciesCareOn } from '$lib/server/species-care';
@@ -130,6 +130,17 @@ export const actions: Actions = {
 		updateLivestockDetails(user.id, l.id, { photoId: photo.id });
 		setFlash(cookies, '✓ Photo saved');
 		redirect(303, back(params.id, l.id));
+	},
+	/** Out of the tank (#265): a loss or rehomed, the whole entry, as − to 0 on the list does. */
+	remove: async ({ request, locals, params, cookies }) => {
+		const user = locals.user!;
+		const l = entry(user.id, params.id, params.lid);
+		const reason = (await request.formData()).get('reason');
+		if (reason !== 'loss' && reason !== 'rehomed') return refuse('remove', 'Choose Loss or Rehomed.');
+		if (l.removedAt || l.count === 0) return refuse('remove', 'Already out of the tank.');
+		changeCount(user.id, l.id, 0, reason);
+		setFlash(cookies, `✓ ${l.nickname ?? l.commonName} removed · ${reason === 'loss' ? 'loss' : 'rehomed'}`);
+		redirect(303, `/tanks/${params.id}/livestock`);
 	},
 	/** Stops using the photo here; it stays in Photos. */
 	removePhoto: ({ locals, params, cookies }) => {
