@@ -13,11 +13,10 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## 1.21.13 · 2026-11-11
 
-- **Tidier settings and forms.** A few lists lost a grey box the browser drew around them (a product's strength, a sensor's tanks, a shared tank's reminders), the Sensors page now matches AI assistant, its Copy buttons are easier to tap, and Save fades the same way on every form while it's saving: [Settings › Sensors](/settings/sensors).
-
 - **Remove a whole school at once.** After a − or + on Livestock, type the new count straight in, or press **Remove all**, then choose Loss, Rehomed or Recount as before, instead of one tap per animal: [Livestock](/tanks/current/livestock).
 - **Remove an animal from its own page.** An animal's or group's page has **Remove from tank**, logged as a loss or rehomed; it moves to past livestock, where Restore brings it back: [Livestock](/tanks/current/livestock).
 - **Rename a plant.** A plant's sheet has its name to change, for a cultivar or a better guess at what it is, and History notes the rename: [Plants](/tanks/current/plants).
+- **Tidier settings and forms.** A few lists lost a grey box the browser drew around them (a product's strength, a sensor's tanks, a shared tank's reminders), the Sensors page now matches AI assistant, its Copy buttons are easier to tap, and Save fades the same way on every form while it's saving: [Settings › Sensors](/settings/sensors).
 
 ## 1.21.12 · 2026-11-11
 
