@@ -291,7 +291,8 @@
 		{#if hot}
 			<ChartReadout latest={active === points.length - 1} href={hot.href} style={tipStyle(hot)}>
 				<span class="r-value status-{level(hot)}">{value(hot)}</span>
-				<span class="r-when">{when(hot.t)}{status(hot) ? ` · ${status(hot)}` : ''}</span>
+				<!-- the status goes under the date when both don't fit in the box -->
+				<span class="r-when"><span class="nb">{when(hot.t)}{status(hot) ? ' ·' : ''}</span>{#if status(hot)}{' '}<span class="nb">{status(hot)}</span>{/if}</span>
 				{#each alongside(hot) as line (line)}<span class="r-also">{line}</span>{/each}
 			</ChartReadout>
 		{:else if pinned}
@@ -426,6 +427,8 @@
 	}
 	.r-when {
 		font-size: 13px;
+	}
+	.r-when .nb {
 		white-space: nowrap;
 	}
 	/* the small tooltip pinned to the latest reading */

@@ -38,5 +38,7 @@ test('charts say what they show, and read out a reading on hover, tap or the arr
 	await page.mouse.click(box.x + box.width - 12, box.y + box.height / 2);
 	await expect(chart.locator('.readout')).toContainText('30 ppm');
 	await expect(chart.locator('.readout')).toContainText(/✕ (High|10 over target)/);
-	await expect(chart.locator('.readout')).toContainText(/\d{4} · \d{1,2}:\d{2}\s?[AP]M/);
+	await expect(chart.locator('.readout')).toContainText(/\d{4} · \d{1,2}:\d{2}\s?[AP]M · ✕ (High|10 over target)/);
+	// the date and the status wrap inside the box instead of running past its edge
+	expect(await chart.locator('.readout').evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
 });
