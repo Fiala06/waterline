@@ -74,8 +74,8 @@ test('alerts page: readings out of range and overdue tasks, read state, filters 
 	await expect(page.getByText("You're all caught up.")).toBeVisible();
 	await page.getByRole('link', { name: 'All · 2' }).click();
 
-	// Mark done from here works as on Tasks: a water change opens its log form, for this task
-	await wc.getByRole('button', { name: 'Mark Water change 25% done' }).click();
+	// Done from here works as on Tasks: a water change opens its log form, for this task, and says so (#271)
+	await wc.getByRole('button', { name: 'Log water change for Water change 25%' }).click();
 	await expect(page).toHaveURL(/\/entries\/event\/new\?.*category=water_change/);
 	await expect(page).toHaveURL(/[?&]task=/);
 

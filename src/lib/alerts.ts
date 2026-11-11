@@ -64,6 +64,8 @@ export interface TaskAlert extends AlertBase {
 		nextDue?: string | null;
 		weekdays?: string | null;
 		endsOn?: string | null;
+		/** Done opens its log form (#176) */
+		openFormOnDone?: boolean;
 	};
 }
 

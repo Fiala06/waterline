@@ -19,7 +19,7 @@
 	import { customized, DASHBOARD_SECTIONS, DEFAULT_CHOICES, MAX_PRIORITY, prioritize } from '$lib/dashboard';
 	import Sparkline from '$lib/components/Sparkline.svelte';
 	import { enhance } from '$app/forms';
-	import { dueInfo, intervalText, isRoutine, routineLine } from '$lib/tasks';
+	import { dueInfo, formDoneLabel, intervalText, isRoutine, routineLine } from '$lib/tasks';
 	import { invalidateAll } from '$app/navigation';
 	import { toast, ui } from '$lib/ui.svelte';
 	import { photoUrl } from '$lib/media';
@@ -84,8 +84,11 @@
 
 	const wc = $derived(data.waterChange);
 	// the water change needs attention once it's due
+	// its Done says "Log water change" when it opens the form (#271)
 	const wcDue = $derived(
-		wc && wc.days != null && wc.days >= wc.goal ? { taskId: wc.taskId, days: wc.days, goal: wc.goal, last: wc.last } : null
+		wc && wc.days != null && wc.days >= wc.goal
+			? { taskId: wc.taskId, days: wc.days, goal: wc.goal, last: wc.last, done: formDoneLabel(data.tasks?.find((t) => t.id === wc.taskId) ?? {}) ?? 'Done' }
+			: null
 	);
 	// overdue tasks go in Needs attention too, with Done (the water change has its own row)
 	const overdue = $derived(
@@ -93,12 +96,12 @@
 			.filter((t) => dueInfo(t.due, data.today ?? '', t.graceDays).section === 'overdue' && !(wcDue && t.id === wcDue.taskId))
 			.map((t) => {
 				const d = dueInfo(t.due, data.today ?? '', t.graceDays);
-				return { id: t.id, name: t.name, when: `✕ ${-d.days} day${d.days === -1 ? '' : 's'} over`, sub: isRoutine(t.kind) ? routineLine(t) : intervalText(t) };
+				return { id: t.id, name: t.name, when: `✕ ${-d.days} day${d.days === -1 ? '' : 's'} over`, sub: isRoutine(t.kind) ? routineLine(t) : intervalText(t), done: formDoneLabel(t) };
 			})
 	);
-	// Due: every open task, soonest first, as on the Tasks page, the water change too when
-	// Needs attention has its row (as an overdue task is in both)
-	const dueTasks = $derived(data.tasks ?? []);
+	// Due: every open task, soonest first, as on the Tasks page; not the water change while
+	// Needs attention has its row, so it's listed once (#271)
+	const dueTasks = $derived((data.tasks ?? []).filter((t) => !(wcDue && t.id === wcDue.taskId)));
 	// Due (#166): everything due today or over, then the next 3; "+N more" opens the rest on Tasks
 	const UPCOMING = 3;
 	const dueNow = $derived(dueTasks.filter((t) => t.due <= (data.today ?? '')));

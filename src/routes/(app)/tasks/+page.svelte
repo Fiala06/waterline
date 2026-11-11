@@ -11,7 +11,7 @@
 	import SnoozeSheet from '$lib/components/SnoozeSheet.svelte';
 	import TaskDoneLog from '$lib/components/TaskDoneLog.svelte';
 	import TaskForm from '$lib/components/TaskForm.svelte';
-	import { cadenceText, dueInfo, isRoutine, routineLine } from '$lib/tasks';
+	import { cadenceText, dueInfo, formDoneLabel, isRoutine, routineLine } from '$lib/tasks';
 	import { REVIEW_ABOUT } from '$lib/review';
 	import { fmtDate, fmtWeekday } from '$lib/time';
 
@@ -152,6 +152,7 @@
 					<div class="rows">
 						{#each s.items as t, i (t.id)}
 							{@const d = dueInfo(t.due, data.today, t.graceDays)}
+							{@const log = formDoneLabel(t)}
 							<div class="row {s.key}" class:selected={selectedId === t.id} class:extra={folded && i >= LATER_LIMIT}>
 								<a class="rtext t-link" href="/tasks/{t.id}" onclick={(e) => openEdit(e, t.id)}>
 									<span class="name">{t.name}</span>
@@ -172,7 +173,7 @@
 										{/if}
 									</div>
 								{:else}
-								<div class="acts">
+								<div class="acts buttons">
 									<!-- Snooze on every task: one not due yet moves back from its due date -->
 									<form method="POST" action="/tasks?/snooze" use:enhance>
 										<input type="hidden" name="taskId" value={t.id} />
@@ -184,7 +185,10 @@
 									<form method="POST" action="/tasks?/done" use:enhance={markDone}>
 										<input type="hidden" name="taskId" value={t.id} />
 										<input type="hidden" name="from" value={from} />
-										{#if s.key === 'overdue'}
+										{#if log}
+											<!-- it opens its log form, so it says so (#271) -->
+											<button class="btn mark" class:btn-primary={s.key === 'overdue' || d.days <= 0} aria-label="{log} for {t.name}">{log}</button>
+										{:else if s.key === 'overdue'}
 											<button class="btn btn-primary mark">{t.kind === 'review' ? 'Review' : 'Mark done'}</button>
 										{:else}
 											<button class="btn mark" class:btn-primary={d.days <= 0} aria-label={t.kind === 'review' ? t.name : `Mark ${t.name} done`}
@@ -530,6 +534,13 @@
 		}
 		.mark {
 			padding: 0 12px;
+		}
+	}
+	/* a phone (#271): the name and schedule get the row's width, Snooze and Done under them */
+	@media (max-width: 599px) {
+		.row:has(> .acts.buttons) {
+			grid-template-columns: minmax(0, 1fr);
+			gap: 4px;
 		}
 	}
 	@media (hover: hover) {

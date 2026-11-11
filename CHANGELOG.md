@@ -11,6 +11,13 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.21.11 · 2026-11-11
+
+- **The water change is listed once on Overview.** When a water change is due, it's in Needs attention and no longer in Due as well: [Overview](/).
+- **Buttons say when they open a form.** Done on a water change or test reminder now reads **Log water change** or **Log test**, as it opens the log form, on Overview, Tasks and Alerts: [Tasks](/tasks).
+- **The tank header leads with the last test.** On a computer, the line above the tank's name starts with when it was last tested, so a narrow window cuts off the tank's details instead: [Overview](/).
+- **Tasks are easier to read on a phone.** Snooze and Mark done now sit under the task's name and schedule, which get the row's full width: [Tasks](/tasks).
+
 ## 1.21.10 · 2026-11-11
 
 - **Chart readings fit their box on a phone.** Pointing at a reading on a chart shows its status, such as ✕ 0.25 over target, on a line of its own under the date when both don't fit, instead of running past the edge of the box: [Charts](/charts).

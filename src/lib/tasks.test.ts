@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { amountText, cadenceText, followText, waitingText, courseDayText, courseText, dueInfo, effectiveDue, endsAfterTimes, intervalText, intervalFor, logCompletes, nextDueAfterCompletion, occurrencesUntil, onOrAfterWeekday, parseWeekdays, reminderDue, reminderSub, resumeSchedule, routineLine, scheduleExamples, skipTo, snoozeOptions } from './tasks';
+import { amountText, cadenceText, followText, waitingText, courseDayText, courseText, dueInfo, effectiveDue, endsAfterTimes, intervalText, formDoneLabel, intervalFor, logCompletes, nextDueAfterCompletion, occurrencesUntil, onOrAfterWeekday, parseWeekdays, reminderDue, reminderSub, resumeSchedule, routineLine, scheduleExamples, skipTo, snoozeOptions } from './tasks';
 
 const weekly = { recurring: true, intervalDays: 7, scheduleMode: 'completion' as const, nextDue: '2026-09-24' };
 
@@ -344,5 +344,18 @@ describe('after a log (#178)', () => {
 	it('reads as its cadence, with when it was last done', () => {
 		expect(cadenceText(after, '2026-10-13')).toBe('1 day after a water change · last Oct 13');
 		expect(intervalText(after)).toBe('1 day after a water change');
+	});
+});
+
+describe('formDoneLabel (#271)', () => {
+	it('says what Done opens for a water change or test that logs', () => {
+		expect(formDoneLabel({ kind: 'water_change', openFormOnDone: true })).toBe('Log water change');
+		expect(formDoneLabel({ kind: 'test', openFormOnDone: true })).toBe('Log test');
+	});
+
+	it('is null when Done finishes the task', () => {
+		expect(formDoneLabel({ kind: 'water_change', openFormOnDone: false })).toBeNull();
+		expect(formDoneLabel({ kind: 'maintenance', openFormOnDone: true })).toBeNull();
+		expect(formDoneLabel({})).toBeNull();
 	});
 });

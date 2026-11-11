@@ -64,7 +64,7 @@ test('core flow', async ({ page }, info) => {
 	await expect(inRange.getByText(/^Not tested: .*CO₂/)).toHaveCount(0);
 
 	// Complete a task: the water change reminder opens its log form. It isn't due
-	// for a week, so it says how soon, and its button is a quiet "Done early"
+	// for a week, so it says how soon, and its quiet button says it logs one (#271)
 	const due = page.getByRole('region', { name: 'Due' });
 	await expect(due.getByText(/^In 7 days · every 7 days$/i)).toBeVisible();
 	// the setup review says what it's for (#69)
@@ -72,7 +72,8 @@ test('core flow', async ({ page }, info) => {
 	await expect(due.getByRole('button', { name: 'Mark done', exact: true })).toHaveCount(0);
 	// and the row steps back (grey name, muted button), so what is due stands out
 	await expect(due.locator('.row', { hasText: 'Water change 25%' })).toHaveClass(/\blater\b/);
-	await due.getByRole('button', { name: 'Mark Water change 25% done early' }).click();
+	await expect(due.getByRole('button', { name: 'Log water change for Water change 25%' })).toHaveText('Log water change');
+	await due.getByRole('button', { name: 'Log water change for Water change 25%' }).click();
 	await expect(page).toHaveURL(/\/entries\/event\/new\?.*category=water_change/);
 	await expect(page.getByLabel(/Also mark the reminder “Water change 25%” done/)).toBeChecked();
 	await page.locator('label', { hasText: 'RODI' }).click();

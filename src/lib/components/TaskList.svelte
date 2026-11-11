@@ -1,13 +1,13 @@
 <script lang="ts">
 	// Overview › Due rows with Mark done (redesign README → Screens §2): the
 	// name, then the when as an 11px uppercase line (✕ / ▲), under a 2px ink
-	// rule with 1px dividers. Mark done on a water-change or test task opens the
-	// matching log form instead, and the setup review (#30) is a Review that
-	// opens its page.
+	// rule with 1px dividers. A water-change or test task that opens its log form
+	// says so ("Log water change", #271), and the setup review (#30) is a Review
+	// that opens its page.
 	import { enhance } from '$app/forms';
 	import { markDone } from '$lib/splash';
 	import { page } from '$app/state';
-	import { amountText, cadenceText, dueInfo, intervalText } from '$lib/tasks';
+	import { amountText, cadenceText, dueInfo, formDoneLabel, intervalText } from '$lib/tasks';
 	import { REVIEW_ABOUT } from '$lib/review';
 	import { fmtDate } from '$lib/time';
 
@@ -29,6 +29,8 @@
 		tempUntil?: string | null;
 		/** days late before it's overdue (#175) */
 		graceDays?: number;
+		/** Done opens its log form (#176) */
+		openFormOnDone?: boolean;
 	}
 	let { tasks, today }: { tasks: TaskRow[]; today: string } = $props();
 
@@ -49,6 +51,7 @@
 					? '▲ Today'
 					: `${d.days === 1 ? 'Tomorrow' : d.days <= 7 ? `In ${d.days} days` : fmtDate(t.due)} · ${t.tempUntil && t.tempUntil > today ? cadenceText(t, null, today) : intervalText(t)}`}
 		{@const dose = amountText(t.amount, t.amountUnit)}
+		{@const log = formDoneLabel(t)}
 		<!-- a task not due yet steps back, so what is due or over stands out -->
 		<div class="row" class:later={d.days > 0}>
 			<div class="text">
@@ -61,6 +64,8 @@
 				<input type="hidden" name="from" value={from} />
 				{#if t.kind === 'review'}
 					<button class="btn" class:early={d.days > 0} class:btn-primary={d.days <= 0 && i === 0}>Review</button>
+				{:else if log}
+					<button class="btn" class:early={d.days > 0} class:btn-primary={d.days <= 0 && i === 0} aria-label="{log} for {t.name}">{log}</button>
 				{:else if d.days > 0}
 					<button class="btn early" title="Due {fmtDate(t.due)}" aria-label="Mark {t.name} done early">Done early</button>
 				{:else}

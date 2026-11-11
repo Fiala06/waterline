@@ -1,6 +1,7 @@
 <script lang="ts">
-	// The tank workspace header: the cover, a kicker ("PLANTED · 40 GAL · DAY 201 ·
-	// SINCE MAR 2026 · LAST TEST TODAY"), the name at 42/800, then Share summary, the Log water test
+	// The tank workspace header: the cover, a kicker ("LAST TEST TODAY · PLANTED · 40 GAL ·
+	// DAY 201 · SINCE MAR 2026": the last test first, so the static facts are what a narrow
+	// window cuts off, #271), the name at 42/800, then Share summary, the Log water test
 	// split button and the More menu; under them, the tabs with their counts.
 	// On phones the name opens the Switch tank sheet and the bell sits at the right.
 	import { goto } from '$app/navigation';
@@ -99,7 +100,7 @@
 				{#if tank.cover}<img src={photoUrl(tank.cover)} alt="" decoding="async" style:object-position={tank.coverPos} />{/if}
 			</span>
 			<div class="names">
-				<span class="kicker">{kicker}<span class="hide-phone"> · {lastTest}</span></span>
+				<span class="kicker"><span class="hide-phone">{`${lastTest} · `}</span>{kicker}</span>
 				<h1 class="hide-phone">{tank.name}</h1>
 				<button type="button" class="name hide-desk" aria-label="{tank.name}, switch tank" onclick={() => (ui.tankSwitcher = true)}>
 					{tank.name} <span class="caret" aria-hidden="true">▾</span>

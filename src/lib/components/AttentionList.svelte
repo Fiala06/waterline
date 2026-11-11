@@ -39,6 +39,8 @@
 		when: string;
 		/** "Every 7 days", or a routine's line */
 		sub: string;
+		/** "Log test" when Done opens its log form (#271) */
+		done?: string | null;
 	}
 	interface Paused {
 		/** the item, and the dose when only one of a doser's doses is paused */
@@ -62,7 +64,8 @@
 	}: {
 		items: Item[];
 		/** the water change, when it's due or over */
-		wc: { taskId: string | null; days: number; goal: number; last: string | null } | null;
+		/** `done`: its button's words, "Log water change" when it opens the form (#271) */
+		wc: { taskId: string | null; days: number; goal: number; last: string | null; done: string } | null;
 		/** tasks past their date, with Done */
 		overdue?: Overdue[];
 		/** equipment switched off for a while on purpose, with Resume */
@@ -124,7 +127,7 @@
 						<form method="POST" action="/tasks?/done" use:enhance={markDone}>
 							<input type="hidden" name="taskId" value={wc.taskId} />
 							<input type="hidden" name="from" value={from} />
-							<button class="btn btn-primary" aria-label="Mark water change done">Done</button>
+							<button class="btn btn-primary" aria-label={wc.done === 'Done' ? 'Mark water change done' : undefined}>{wc.done}</button>
 						</form>
 					{/if}
 				</span>
@@ -140,7 +143,7 @@
 					<form method="POST" action="/tasks?/done" use:enhance={markDone}>
 						<input type="hidden" name="taskId" value={t.id} />
 						<input type="hidden" name="from" value={from} />
-						<button class="btn btn-primary" aria-label="Mark {t.name} done">Done</button>
+						<button class="btn btn-primary" aria-label={t.done ? `${t.done} for ${t.name}` : `Mark ${t.name} done`}>{t.done ?? 'Done'}</button>
 					</form>
 				</span>
 			</div>
