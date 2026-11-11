@@ -32,16 +32,20 @@ export function ntfyMessage(topic: string, notice: Notice) {
 		click: notice.url,
 		tags: TAGS[notice.kind],
 		priority: notice.kind === 'oor' ? 4 : 3,
-		// Mark done / Snooze post the one-time link from the ntfy app
-		actions: (notice.actions ?? []).map((a) => ({
-			action: 'http',
-			label: a.title,
-			url: a.url,
-			method: 'POST',
-			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-			body: '',
-			clear: true
-		}))
+		// Mark done / Snooze post the one-time link from the ntfy app; Open opens its page
+		actions: (notice.actions ?? []).map((a) =>
+			a.action === 'open'
+				? { action: 'view', label: a.title, url: a.url, clear: true }
+				: {
+						action: 'http',
+						label: a.title,
+						url: a.url,
+						method: 'POST',
+						headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+						body: '',
+						clear: true
+					}
+		)
 	};
 }
 

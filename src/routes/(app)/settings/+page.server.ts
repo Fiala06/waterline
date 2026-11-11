@@ -42,7 +42,11 @@ export const load: PageServerLoad = ({ locals, url }) => {
 			unsubscribedAt: prefs.unsubscribedAt,
 			pushTaskReminders: prefs.pushTaskReminders,
 			pushOverdueAlerts: prefs.pushOverdueAlerts,
-			pushOutOfRangeAlerts: prefs.pushOutOfRangeAlerts
+			pushOutOfRangeAlerts: prefs.pushOutOfRangeAlerts,
+			// #180: one push per tank, and quiet hours
+			pushGrouped: prefs.pushGrouped,
+			quietStart: prefs.quietStart ?? '',
+			quietEnd: prefs.quietEnd ?? ''
 		},
 		// push (#16): this person's devices, and their ntfy topic
 		push: {
@@ -111,6 +115,11 @@ export const actions: Actions = {
 		const delivery = str(form, 'delivery');
 		const lead = Number(str(form, 'leadDays'));
 		const sendTime = str(form, 'sendTime');
+		// quiet hours (#180): both on the hour, and different, or off
+		const hour = (k: string) => (SEND_TIMES.some((t) => t.value === str(form, k)) ? str(form, k) : null);
+		const quietStart = hour('quietStart');
+		const quietEnd = hour('quietEnd');
+		const quiet = quietStart && quietEnd && quietStart !== quietEnd;
 		const on = (k: string) => form.get(k) === 'on';
 		const any = on('taskReminders') || on('overdueAlerts') || on('outOfRangeAlerts');
 		prefsFor(user.id);
@@ -126,6 +135,9 @@ export const actions: Actions = {
 				pushTaskReminders: on('pushTaskReminders'),
 				pushOverdueAlerts: on('pushOverdueAlerts'),
 				pushOutOfRangeAlerts: on('pushOutOfRangeAlerts'),
+				pushGrouped: on('pushGrouped'),
+				quietStart: quiet ? quietStart : null,
+				quietEnd: quiet ? quietEnd : null,
 				// turning any email back on resubscribes
 				...(any ? { unsubscribedAt: null } : {})
 			})

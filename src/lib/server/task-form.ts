@@ -10,7 +10,10 @@ import { listProducts } from './products';
 import { clearTextOf } from './suggestions';
 import { setFlash } from './flash';
 import { num, str } from './forms';
-import { listTanks } from './tanks';
+import { listTanks, roleOn } from './tanks';
+import { scheduledItems } from './specs';
+import { tankLighting } from '$lib/equipment';
+import { lightTimes, parseRemindAt } from '$lib/remind-time';
 import { createTask, deleteTask, followSchedule, getTask, setTempCadence, updateTask, type TaskInput } from './tasks';
 
 export type OnDone = 'none' | 'test' | 'water_change';
@@ -70,6 +73,9 @@ export interface TaskFormValues {
 	avoidWaterChange: boolean;
 	movedFrom: string | null;
 	scheduled: string | null;
+	/** when on its day it's pushed (#180) */
+	remindChoice: 'send' | 'before_lights' | 'lights_off' | 'time';
+	remindTime: string;
 }
 
 /** Form values for a task (15 / D5). */
@@ -108,7 +114,9 @@ export function taskFormValues(task: Task | null, user: User, tankId: string | n
 			triggerProduct: '',
 			avoidWaterChange: false,
 			movedFrom: null as string | null,
-			scheduled: null as string | null
+			scheduled: null as string | null,
+			remindChoice: 'send',
+			remindTime: ''
 		};
 	}
 	const d = task.intervalDays ?? 7;
@@ -146,7 +154,8 @@ export function taskFormValues(task: Task | null, user: User, tankId: string | n
 		avoidWaterChange: task.avoidWaterChange,
 		// moved on its own (#173): shown as "Moved from …", the schedule still on next_due
 		movedFrom: task.snoozedUntil && task.nextDue && task.snoozedUntil !== task.nextDue ? task.nextDue : null,
-		scheduled: effectiveDue(task)
+		scheduled: effectiveDue(task),
+		...remindValues(task.remindAt)
 	};
 }
 
@@ -232,7 +241,11 @@ function parse(form: FormData, existing: Task | null) {
 	else kind = /water change/i.test(name) ? 'water_change' : /\btest/i.test(name) ? 'test' : 'maintenance';
 
 	const grace = num(form, 'graceDays');
+	// when on its day it's pushed (#180)
+	const remindAt = parseRemindAt(str(form, 'remindChoice'), str(form, 'remindTime'));
+	if (str(form, 'remindChoice') === 'time' && !remindAt) errors.remindTime = 'Pick the time to push it.';
 	const input: TaskInput & { tankId: string } = {
+		remindAt,
 		graceDays: grace != null && Number.isInteger(grace) && grace >= 0 && grace <= 3 ? grace : 0,
 		name,
 		tankId: str(form, 'tankId'),
@@ -299,9 +312,26 @@ const formValues = (form: FormData, existing: Task | null): TaskFormValues => {
 		triggerProduct: str(form, 'triggerProduct'),
 		avoidWaterChange: form.has('avoidWaterChange'),
 		movedFrom: null,
-		scheduled: existing ? effectiveDue(existing) : null
+		scheduled: existing ? effectiveDue(existing) : null,
+		remindChoice: remindChoiceOf(str(form, 'remindChoice')),
+		remindTime: str(form, 'remindTime')
 	};
 };
+
+const remindChoiceOf = (v: string): TaskFormValues['remindChoice'] => (v === 'before_lights' || v === 'lights_off' || v === 'time' ? v : 'send');
+
+/** A saved remind-at (#180) as the form's choice and time. */
+function remindValues(at: string | null): Pick<TaskFormValues, 'remindChoice' | 'remindTime'> {
+	if (at === 'before_lights' || at === 'lights_off') return { remindChoice: at, remindTime: '' };
+	return at ? { remindChoice: 'time', remindTime: at } : { remindChoice: 'send', remindTime: '' };
+}
+
+/** The tanks a task can be for, and whether each has a light schedule, for "Before lights on" (#180). */
+export function formTanks(userId: string, owned = false) {
+	return listTanks(userId)
+		.filter((t) => !owned || roleOn(userId, t) === 'owner')
+		.map((t) => ({ id: t.id, name: t.name, lights: !!lightTimes(tankLighting(t, scheduledItems(t.id)).lights?.schedule) }));
+}
 
 /** For a while (#171): every N days until a day to come, on a task that repeats every so often. */
 function parseTemp(form: FormData, errors: Record<string, string>, today: string) {

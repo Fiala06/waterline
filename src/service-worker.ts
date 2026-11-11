@@ -195,7 +195,8 @@ sw.addEventListener('notificationclick', (event) => {
 	event.notification.close();
 	if (!n) return;
 	const act = n.actions?.find((a) => a.action === event.action);
-	event.waitUntil(act ? runAction(n, act) : openPage(n.url));
+	// Open (#180) opens its page; Mark done and Snooze post their link
+	event.waitUntil(act && act.action !== 'open' ? runAction(n, act) : openPage(act?.url ?? n.url));
 });
 
 async function runAction(n: Pushed, act: NonNullable<Pushed['actions']>[number]) {

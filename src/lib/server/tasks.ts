@@ -337,7 +337,7 @@ export type TaskInput = Pick<Task, 'name' | 'kind' | 'recurring' | 'intervalDays
 	Partial<
 		Pick<
 			Task,
-			'equipmentId' | 'weekdays' | 'product' | 'amount' | 'amountUnit' | 'endsOn' | 'fromEventId' | 'graceDays' | 'snoozedUntil' | 'triggerKind' | 'triggerOffsetDays' | 'triggerProduct' | 'triggerEntryId' | 'avoidWaterChange'
+			'equipmentId' | 'weekdays' | 'product' | 'amount' | 'amountUnit' | 'endsOn' | 'fromEventId' | 'graceDays' | 'snoozedUntil' | 'triggerKind' | 'triggerOffsetDays' | 'triggerProduct' | 'triggerEntryId' | 'avoidWaterChange' | 'remindAt'
 		>
 	>;
 

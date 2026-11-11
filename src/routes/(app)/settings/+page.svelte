@@ -65,6 +65,9 @@
 	let timeZone = $state(untrack(() => u.timeZone));
 	let leadDays = $state(untrack(() => p.leadDays));
 	let sendTime = $state(untrack(() => p.sendTime));
+	// quiet hours (#180): off until a start is picked; the end defaults to 7 AM
+	let quietStart = $state(untrack(() => p.quietStart));
+	let quietEnd = $state(untrack(() => p.quietEnd || '07:00'));
 	let delivery = $state(untrack(() => p.delivery));
 	const zones = $derived(zoneGroups(data.timeZones, u.timeZone));
 	// each kind by email and by push (#16), on its own switches
@@ -281,7 +284,7 @@
 				</div>
 				{#if delivery !== 'individual'}
 					<div class="row note-row">
-						<span class="hint">{delivery === 'weekly' ? 'Weekly digests go out on Mondays. ' : ''}Digests are by email; push still sends each one on its own.</span>
+						<span class="hint">{delivery === 'weekly' ? 'Weekly digests go out on Mondays. ' : ''}Digests are by email; push still sends each task, or each tank's, as it comes due.</span>
 					</div>
 				{/if}
 				<div class="row pick">
@@ -296,6 +299,39 @@
 						{#each SEND_TIMES as t (t.value)}<option value={t.value}>{t.label}</option>{/each}
 					</select>
 				</div>
+				<!-- #180: a tank's tasks due together as one push, and nights without any -->
+				<div class="row toggle">
+					<span class="ttext"
+						><span class="tt">One push per tank</span><span class="td" id="n-grouped-d">Tasks due together in a tank come as one notification, with Snooze all</span></span
+					>
+					<!-- push only: under the Push column -->
+					<span></span>
+					<span class="switch">
+						<input id="n-grouped" type="checkbox" name="pushGrouped" form="notify-form" aria-label="One push per tank" aria-describedby="n-grouped-d" defaultChecked={p.pushGrouped} />
+						<span></span>
+					</span>
+				</div>
+				<div class="row pick quiet">
+					<label class="k" for="quietStart">Quiet hours</label>
+					<span class="quiet-pair">
+						<select class="input" id="quietStart" name="quietStart" form="notify-form" bind:value={quietStart}>
+							<option value="">Off</option>
+							{#each SEND_TIMES as t (t.value)}<option value={t.value}>From {t.label}</option>{/each}
+						</select>
+						{#if quietStart}
+							<select class="input" id="quietEnd" name="quietEnd" form="notify-form" bind:value={quietEnd} aria-label="Quiet hours end">
+								{#each SEND_TIMES as t (t.value)}<option value={t.value}>to {t.label}</option>{/each}
+							</select>
+						{:else}
+							<input type="hidden" name="quietEnd" form="notify-form" value={quietEnd} />
+						{/if}
+					</span>
+				</div>
+				{#if quietStart}
+					<div class="row note-row">
+						<span class="hint">Nothing is pushed then. A reminder that falls inside goes out once when they end.</span>
+					</div>
+				{/if}
 			</div>
 			<p class="hint">Every email includes a link back to these settings and a one-click unsubscribe.</p>
 			<noscript><button class="btn btn-lg" form="notify-form">Save notifications</button></noscript>
@@ -576,6 +612,16 @@
 	}
 	.pick select.input {
 		max-width: 360px;
+	}
+	/* quiet hours (#180): from and to side by side, wrapping on a narrow phone */
+	.quiet-pair {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+	.quiet-pair select.input {
+		flex: 1 1 140px;
+		max-width: 176px;
 	}
 	.seg-row .segmented {
 		justify-self: start;

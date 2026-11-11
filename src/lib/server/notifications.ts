@@ -10,7 +10,7 @@ import { dueInfo, intervalText, isRoutine } from '$lib/tasks';
 import { addDays, dateInZone, daysBetween, fmtDate, fmtTime, fmtWeekday, fmtWhen, todayInZone, utcToZoned } from '$lib/time';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { collectTokens, createActionToken } from './action-tokens';
-import { claimSend, sendFailed, sendSucceeded } from './send-log';
+import { claimSend, markSent, sendFailed, sendSucceeded, wasClaimed } from './send-log';
 import { db } from './db';
 import { logger } from './log';
 import { emailLog, notificationPrefs, tankParameters, tanks, taskCompletions, tests, testReadings, users, type Tank, type TankParameter, type User } from './db/schema';
@@ -25,6 +25,9 @@ import { isLive, latestSamplesFor, outOfRangeSince } from './sensors';
 import { getUser, maySignIn } from './users';
 import { listParams, listTanks, roleOn } from './tanks';
 import { listTasks, settleTasks } from './tasks';
+import { scheduledItems } from './specs';
+import { tankLighting } from '$lib/equipment';
+import { lightTimes, pushDue, quietOf, remindTime, LATEST_PUSH } from '$lib/remind-time';
 import { tankTypeLabel } from '$lib/types';
 
 export type Prefs = typeof notificationPrefs.$inferSelect;
@@ -162,8 +165,30 @@ function taskNotice(user: Pick<User, 'id'>, t: { id: string; name: string; kind:
 	};
 }
 
+/**
+ * Several tasks due together in one tank, as one push (#180): "Riverbed 40 · 4
+ * tasks due", their names, Open (Tasks for the tank) and Snooze all 1 day,
+ * which is each task's own snooze link, joined.
+ */
+function groupNotice(user: Pick<User, 'id'>, tank: { id: string; name: string }, items: { t: { id: string; name: string; nextDue: string | null }; overdue: boolean }[], base: string): Notice {
+	const names = items.map(({ t, overdue }) => (overdue ? `${t.name} (overdue)` : t.name));
+	const url = `${base}/tasks?filter=${tank.id}`;
+	const snooze = items.map(({ t }) => createActionToken(t.id, 'snooze', t.nextDue!, user.id)).join('.');
+	return {
+		kind: items.some((i) => i.overdue) ? 'overdue' : 'reminder',
+		title: `${tank.name} · ${items.length} tasks due`,
+		body: names.length > 3 ? `${names.slice(0, 3).join(', ')}, …` : names.join(', '),
+		url,
+		tag: `tank-${tank.id}`,
+		actions: [
+			{ action: 'open', title: 'Open', url, result: '' },
+			{ action: 'snooze', title: 'Snooze all 1 day', url: `${base}/e/${snooze}`, result: `Snoozed ${items.length} tasks for a day` }
+		]
+	};
+}
+
 /** The latest a day's emails and pushes can be set to go: the scheduler runs every 5 minutes. */
-const LATEST_SEND = '23:50';
+const LATEST_SEND = LATEST_PUSH;
 
 /** One user's scheduled emails and pushes. `force` ignores the send time (for tests and "send now"). */
 export async function notifyUser(user: User, now = new Date(), force = false) {
@@ -177,7 +202,9 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 	const tz = user.timeZone;
 	const local = utcToZoned(now, tz);
 	// the send time is on the hour; one saved later than the day's last run of the scheduler would never come (#231)
-	if (!force && local.time < (prefs.sendTime > LATEST_SEND ? LATEST_SEND : prefs.sendTime)) return { sent: 0 };
+	const sendTime = prefs.sendTime > LATEST_SEND ? LATEST_SEND : prefs.sendTime;
+	// pushes go at each task's own time (#180), so only emails wait for the send time
+	if (!force && !push && local.time < sendTime) return { sent: 0 };
 	const today = local.date;
 	let sent = 0;
 
@@ -197,8 +224,20 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 	// and a missed one isn't an alert: it shows as overdue in the app, and the next one comes
 	const leadFor = (t: { kind: string }) => (isRoutine(t.kind) ? 0 : prefs.leadDays);
 
-	// push: each task on its own, the same days as the emails
+	// push: the same days as the emails, each task at its own time (#180), outside quiet
+	// hours, and the tasks due together in a tank as one push unless that's turned off
 	if (push) {
+		const quiet = quietOf(prefs.quietStart, prefs.quietEnd);
+		const lights = new Map<string, { on: string; off: string } | null>();
+		const lightsOf = (tankId: string) => {
+			if (!lights.has(tankId)) {
+				const tank = tankRows.get(tankId);
+				lights.set(tankId, tank ? lightTimes(tankLighting(tank, scheduledItems(tankId)).lights?.schedule) : null);
+			}
+			return lights.get(tankId)!;
+		};
+		type Due = { t: (typeof tasks)[number]; d: ReturnType<typeof dueInfo>; overdue: boolean; key: string };
+		const due: Due[] = [];
 		for (const t of tasks) {
 			const d = dueInfo(t.due, today, t.graceDays);
 			const overdue = d.section === 'overdue';
@@ -206,11 +245,30 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 			if (!overdue && d.days < 0) continue;
 			if (overdue ? !prefs.pushOverdueAlerts : !prefs.pushTaskReminders || d.days > leadFor(t)) continue;
 			if (overdue && isRoutine(t.kind)) continue;
-			const key = `${overdue ? 'overdue' : 'reminder'}:${t.id}:${t.due}`;
-			const ok = await pushOnce(user, prefs, key, () => taskNotice(user, t, d.days, overdue ? lastDone(t.id, today, tz) : null, base), base);
-			if (ok) sent++;
+			if (!force && !pushDue(local.time, remindTime(t.remindAt, sendTime, lightsOf(t.tankId)), quiet)) continue;
+			due.push({ t, d, overdue, key: `${overdue ? 'overdue' : 'reminder'}:${t.id}:${t.due}` });
+		}
+		const one = async ({ t, d, overdue, key }: Due) => {
+			if (await pushOnce(user, prefs, key, () => taskNotice(user, t, d.days, overdue ? lastDone(t.id, today, tz) : null, base), base)) sent++;
+		};
+		for (const [tankId, items] of Map.groupBy(due, (x) => x.t.tankId)) {
+			// what hasn't gone yet: a task pushed earlier today on its own, or in an earlier group, stays out
+			const fresh = prefs.pushGrouped ? items.filter((x) => !wasClaimed(user.id, `push:${x.key}`)) : [];
+			if (fresh.length < 2) {
+				for (const x of items) await one(x);
+				continue;
+			}
+			// keyed by the tasks in it, so a task that comes due later the same day still gets its push
+			const key = `group:${tankId}:${today}:${fresh.map((x) => x.t.id).sort().join(',')}`;
+			const tank = { id: tankId, name: fresh[0].t.tankName };
+			if (await pushOnce(user, prefs, key, () => groupNotice(user, tank, fresh, base), base)) {
+				sent++;
+				for (const x of fresh) markSent(user.id, `push:${x.key}`);
+			}
 		}
 	}
+	// emails go at the send time
+	if (!force && local.time < sendTime) return { sent };
 	if (!to) return { sent };
 
 	if (prefs.delivery === 'individual') {

@@ -87,7 +87,13 @@ export const notificationPrefs = sqliteTable('notification_prefs', {
 	pushOutOfRangeAlerts: integer('push_out_of_range_alerts', { mode: 'boolean' }).notNull().default(true),
 	// an ntfy topic's address (https://ntfy.sh/<topic>, or a self-hosted server's), and its access token
 	ntfyUrl: text('ntfy_url'),
-	ntfyTokenEnc: text('ntfy_token_enc')
+	ntfyTokenEnc: text('ntfy_token_enc'),
+	// one push per tank for the tasks due together, rather than one each (#180)
+	pushGrouped: integer('push_grouped', { mode: 'boolean' }).notNull().default(true),
+	// quiet hours (#180), 'HH:MM' both or neither: nothing is pushed between them,
+	// and what falls inside goes out once at their end
+	quietStart: text('quiet_start'),
+	quietEnd: text('quiet_end')
 });
 
 /** A browser or phone that gets Web Push notifications (#16), one per device. */
@@ -367,6 +373,12 @@ export const tasks = sqliteTable(
 		product: text('product'),
 		amount: real('amount'),
 		amountUnit: text('amount_unit'),
+		/**
+		 * When on its day it's pushed (#180): null at the keeper's send time,
+		 * 'before_lights' (30 minutes before the tank's lights come on), 'lights_off',
+		 * or a time 'HH:MM'. The calendar feed gives it that time too.
+		 */
+		remindAt: text('remind_at'),
 		createdAt: createdAt()
 	},
 	(t) => [index('tasks_next_due').on(t.nextDue)]

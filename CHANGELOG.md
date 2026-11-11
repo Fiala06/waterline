@@ -11,6 +11,10 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **One push per tank.** When several of a tank's tasks are due together, your phone gets one notification, such as "Riverbed 40 · 4 tasks due", with Open and Snooze all, instead of one for each. Turn it off under [Settings › Notifications](/settings#notifications) to get them one by one.
+- **Push a task at its own time.** A task can be pushed at a time of its own, 30 minutes before the tank's lights come on, or when they go off, rather than at your daily send time: choose **Push it** on the task. Your calendar link shows it at that time too: [Tasks](/tasks).
+- **Quiet hours.** Pick hours when nothing is pushed, such as 10 PM to 7 AM. A reminder that falls inside them goes out once when they end: [Settings › Notifications](/settings#notifications).
+
 ## 1.21.13 · 2026-11-11
 
 - **Remove a whole school at once.** After a − or + on Livestock, type the new count straight in, or press **Remove all**, then choose Loss, Rehomed or Recount as before, instead of one tap per animal: [Livestock](/tanks/current/livestock).

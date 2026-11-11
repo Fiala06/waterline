@@ -5,13 +5,17 @@ import { randomBytes } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { buildCalendar, type CalendarEvent } from '$lib/ics';
 import { intervalText } from '$lib/tasks';
-import { daysBetween, fmtDate, todayInZone } from '$lib/time';
+import { daysBetween, fmtDate, todayInZone, zonedToUtc } from '$lib/time';
+import { tankLighting } from '$lib/equipment';
+import { lightTimes, remindTime } from '$lib/remind-time';
 import { db } from './db';
 import { calendarFeeds, users, type User } from './db/schema';
 import { maySignIn } from './users';
 import { listTasks } from './tasks';
 import { notifiesUser } from './members';
 import { listTanks, roleOn } from './tanks';
+import { scheduledItems } from './specs';
+import { prefsFor } from './notifications';
 
 /** How often "last checked" is written. */
 const TOUCH_MS = 60 * 60_000;
@@ -51,6 +55,11 @@ export function feedCalendar(user: User, origin: string, opts: { tankId?: string
 	const host = new URL(origin).host;
 	// a shared tank's tasks (#22) only when its reminders go to everyone who can log
 	const tankRows = new Map(listTanks(user.id).map((t) => [t.id, t]));
+	const sendTime = prefsFor(user.id).sendTime;
+	const lightsOf = (tankId: string) => {
+		const t = tankRows.get(tankId);
+		return t ? lightTimes(tankLighting(t, scheduledItems(tankId)).lights?.schedule) : null;
+	};
 	const events: CalendarEvent[] = listTasks(user.id, opts.tankId)
 		.filter(({ task }) => {
 			const t = tankRows.get(task.tankId);
@@ -58,9 +67,12 @@ export function feedCalendar(user: User, origin: string, opts: { tankId?: string
 		})
 		.map(({ task, tankName }) => {
 		const late = daysBetween(task.due, today);
+		const date = late > 0 ? today : task.due;
 		return {
 			uid: `task-${task.id}@${host}`,
-			date: late > 0 ? today : task.due,
+			date,
+			// at its time of day (#180), as it's pushed; all day without one
+			...(task.remindAt ? { start: zonedToUtc(date, remindTime(task.remindAt, sendTime, lightsOf(task.tankId)), user.timeZone) } : {}),
 			summary: `${late > 0 ? 'Overdue: ' : ''}${task.name} · ${tankName}`,
 			description: [
 				late > 0 ? `Overdue since ${fmtDate(task.due)}.` : null,

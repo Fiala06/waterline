@@ -54,6 +54,9 @@
 		movedFrom?: string | null;
 		/** the scheduled date (next_due), to tell a moved date from a new schedule */
 		scheduled?: string | null;
+		/** when on its day it's pushed (#180): at the send time, around the lights, or at a time */
+		remindChoice?: 'send' | 'before_lights' | 'lights_off' | 'time';
+		remindTime?: string;
 	}
 	let {
 		mode,
@@ -69,7 +72,8 @@
 		from = null
 	}: {
 		mode: 'new' | 'edit';
-		tanks: { id: string; name: string }[];
+		/** `lights`: the tank has a light schedule, for "Before lights on" (#180) */
+		tanks: { id: string; name: string; lights?: boolean }[];
 		values: Values;
 		errors?: Record<string, string>;
 		action?: string;
@@ -86,6 +90,7 @@
 	} = $props();
 
 	let type = $state(untrack(() => values.type));
+	let remindChoice = $state(untrack(() => values.remindChoice ?? 'send'));
 	let repeat = $state(untrack(() => values.repeat));
 	let weekdays = $state(untrack(() => values.weekdays));
 	let every = $state(untrack(() => values.every));
@@ -352,6 +357,24 @@
 			<small class="muted">Within it a late task reads ▲ Due, with no overdue alert.</small>
 		</div>
 
+		<!-- #180: when on its day it's pushed; the time field shows for "At a set time", by CSS, so it works without scripts -->
+		<div class="field">
+			<label class="label" for="t-remind">Push it</label>
+			<div class="remind-row">
+				<select class="input" id="t-remind" name="remindChoice" bind:value={remindChoice}>
+					<option value="send">At my send time</option>
+					{#if tanks.find((t) => t.id === tankId)?.lights || remindChoice === 'before_lights' || remindChoice === 'lights_off'}
+						<option value="before_lights">Before lights on</option>
+						<option value="lights_off">At lights off</option>
+					{/if}
+					<option value="time">At a set time</option>
+				</select>
+				<input class="input remind-time" type="time" name="remindTime" aria-label="Push it at" value={values.remindTime ?? ''} aria-invalid={!!errors.remindTime} />
+			</div>
+			{#if errors.remindTime}<span class="error-text">✕ {errors.remindTime}</span>{/if}
+			<small class="muted">On its day{remindChoice === 'before_lights' ? ', 30 minutes before the lights come on' : ''}, and at that time in the calendar feed. Quiet hours hold it back.</small>
+		</div>
+
 		{#if repeat === 'every' && mode === 'edit'}
 			<!-- for a while (#171): tighter during an outbreak, then back by itself; the inputs show
 			     with the box ticked, by CSS, so it works without scripts too -->
@@ -441,6 +464,22 @@
 {/if}
 
 <style>
+	/* "Push it" (#180): the choice, and the time beside it only for "At a set time" */
+	.remind-row {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+	.remind-row select {
+		flex: 1 1 200px;
+	}
+	.remind-time {
+		flex: 0 1 140px;
+		display: none;
+	}
+	.remind-row:has(option[value='time']:checked) .remind-time {
+		display: block;
+	}
 	.tform {
 		display: flex;
 		flex-direction: column;

@@ -3,10 +3,9 @@ import { addDays, fmtDate, isDate, todayInZone, utcToZoned, zonedToUtc } from '$
 import { setFlash } from '$lib/server/flash';
 import { str } from '$lib/server/forms';
 import { safeReturn } from '$lib/server/redirect';
-import { listTanks } from '$lib/server/tanks';
 import { listPlanRuns } from '$lib/server/plans';
 import { clearTextOf } from '$lib/server/suggestions';
-import { routineProducts, taskFormValues, taskType } from '$lib/server/task-form';
+import { formTanks, routineProducts, taskFormValues, taskType } from '$lib/server/task-form';
 import { algaeOf, completeTask, needsOwnDone, countableEntry, courseDay, endCourseEarly, getTask, reopenCourse, lastDoneOn, waitingTasks, lastDoseText, listTasks, recentCompletions, resumeTask, skipTask, snoozeTask, undoCompletion, unpauseTasks } from '$lib/server/tasks';
 import { effectiveDue, followText, waitingText } from '$lib/tasks';
 import type { Actions, PageServerLoad } from './$types';
@@ -49,7 +48,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
 			return t ? courseDay(t, user.timeZone) : null;
 		})(),
 		pane,
-		formTanks: listTanks(user.id).map((t) => ({ id: t.id, name: t.name })),
+		formTanks: formTanks(user.id),
 		products: routineProducts(user.id)
 	};
 };
