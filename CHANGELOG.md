@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.21.11 · 2026-11-11
+
 - **The water change is listed once on Overview.** When a water change is due, it's in Needs attention and no longer in Due as well: [Overview](/).
 - **Buttons say when they open a form.** Done on a water change or test reminder now reads **Log water change** or **Log test**, as it opens the log form, on Overview, Tasks and Alerts: [Tasks](/tasks).
 - **The tank header leads with the last test.** On a computer, the line above the tank's name starts with when it was last tested, so a narrow window cuts off the tank's details instead: [Overview](/).
