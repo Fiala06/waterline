@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chartDomain, equipmentTypeLookup, overlayKind, parseCompare, TARGET_BAND, targetPosition } from './charts';
+import { changeAcross, chartDomain, chartStats, equipmentTypeLookup, latestChange, overlayKind, parseCompare, TARGET_BAND, targetPosition } from './charts';
 
 describe('chartDomain (#74)', () => {
 	it('gives ammonia at 0 room up to twice its limit', () => {
@@ -115,5 +115,37 @@ describe('parseCompare (#87)', () => {
 		expect(parseCompare(' b , d', ['a', 'b', 'c', 'd'], 'a')).toEqual(['b', 'd']);
 		expect(parseCompare(null, ['a'], 'a')).toEqual([]);
 		expect(parseCompare('', ['a'], 'a')).toEqual([]);
+	});
+});
+
+describe('the Charts page’s numbers (#264)', () => {
+	const prefs = { unitSystem: 'metric' as const, hardnessUnit: 'dgh' as const, timeZone: 'UTC' };
+	const nitrate = { key: 'no3', name: 'Nitrate', unit: 'ppm', decimals: 0, min: 5, max: 20 };
+	const at = (iso: string, value: number) => ({ takenAt: iso, value });
+	const now = new Date('2026-10-10T12:00:00Z');
+	const readings = [at('2026-09-29T09:00:00Z', 10), at('2026-10-05T09:00:00Z', 30), at('2026-10-10T09:00:00Z', 18)];
+
+	it('sums up the readings in range', () => {
+		const s = chartStats(nitrate, readings, prefs, now)!;
+		expect(s).toMatchObject({ latest: '18', latestLevel: 'ok', average: '19 ppm', range: '10–30 ppm', inTarget: '2 of 3', inRangePct: '67%', count: 3 });
+		expect(s.change).toEqual({ amount: '−12', over: 'since Oct 5' });
+	});
+
+	it('has nothing to say without readings', () => {
+		expect(chartStats(nitrate, [], prefs, now)).toBeNull();
+	});
+
+	it('words the latest change by when the test before it was', () => {
+		expect(latestChange(nitrate, readings.slice(0, 1), prefs, now)).toBeNull();
+		expect(latestChange(nitrate, [at('2026-10-09T09:00:00Z', 18), at('2026-10-10T09:00:00Z', 18)], prefs, now)).toEqual({ amount: 'No change', over: 'since yesterday' });
+		expect(latestChange(nitrate, [at('2026-10-10T07:00:00Z', 10), at('2026-10-10T09:00:00Z', 21)], prefs, now)).toEqual({ amount: '+11', over: 'since the test before' });
+	});
+
+	it('gives the readings either side of an event', () => {
+		expect(changeAcross(nitrate, readings, Date.parse('2026-10-01T00:00:00Z'), prefs)).toBe('Nitrate 10 → 30 ppm');
+		// on the test's own instant, that test is the one before
+		expect(changeAcross(nitrate, readings, Date.parse('2026-10-05T09:00:00Z'), prefs)).toBe('Nitrate 30 → 18 ppm');
+		expect(changeAcross(nitrate, readings, Date.parse('2026-09-01T00:00:00Z'), prefs)).toBeNull();
+		expect(changeAcross(nitrate, readings, Date.parse('2026-10-11T00:00:00Z'), prefs)).toBeNull();
 	});
 });

@@ -22,12 +22,16 @@
 	// keys) for a crosshair and a readout of every reading in that test, each
 	// with its value and status. A click (or Enter) opens the test.
 	import type { Snippet } from 'svelte';
-	import { goto } from '$app/navigation';
 	import { paramStatus, statusShort } from '$lib/status';
 	import { formatNumber } from '$lib/units';
 	import { TARGET_BAND, targetPosition } from '$lib/charts';
 	import type { Marker } from './TrendChart.svelte';
-	import { nearestIndex, tapWidths } from './trend-chart';
+	import { readoutWhen, timeScale, tipLeft, valueScale } from './trend-chart';
+	import { ChartPointer } from './chart-pointer.svelte';
+	import ChartDateAxis from './ChartDateAxis.svelte';
+	import ChartMarkerLines from './ChartMarkerLines.svelte';
+	import ChartMarkers from './ChartMarkers.svelte';
+	import ChartReadout from './ChartReadout.svelte';
 
 	let {
 		lines,
@@ -67,8 +71,9 @@
 	const plotH = $derived(Math.max(1, h - TOP - BOTTOM));
 	const baseline = $derived(h - BOTTOM);
 
-	const x = (t: number) => LEFT + ((t - from) / Math.max(1, to - from)) * (width - LEFT - RIGHT);
-	const y = (pos: number) => TOP + (1 - pos) * plotH;
+	const x = $derived(timeScale(from, to, LEFT, RIGHT, width));
+	// a reading's place against its own target, 0 (bottom) to 1 (top)
+	const y = $derived(valueScale({ lo: 0, hi: 1 }, TOP, plotH));
 	const bandTop = $derived(y(TARGET_BAND.hi));
 	const bandBottom = $derived(y(TARGET_BAND.lo));
 
@@ -85,10 +90,6 @@
 	// the tests across every parameter shown, left to right: the readout steps through these
 	const times = $derived([...new Set(shown.flatMap((l) => l.points.map((p) => p.t)))].sort((a, b) => a - b));
 
-	const xTicks = $derived.by(() => {
-		const n = Math.max(2, Math.min(5, Math.floor((width - LEFT) / 90)));
-		return Array.from({ length: n }, (_, i) => from + ((to - from) * i) / (n - 1));
-	});
 	const zones = $derived(
 		[
 			{ y: (TOP + bandTop) / 2, title: '✕ High', bad: true, room: bandTop - TOP },
@@ -97,19 +98,17 @@
 		].filter((z) => z.room >= 14)
 	);
 
-	const fmt = (t: number) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone });
-	const dayOf = (t: number) => new Date(t).toLocaleDateString('en-CA', { timeZone });
-	const isToday = (t: number) => dayOf(t) === dayOf(Date.now());
-	const when = (t: number) => {
-		const d = new Date(t);
-		const day = isToday(t) ? 'Today' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone });
-		return `${day} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone })}`;
-	};
-	const chosen = $derived(markers.find((m) => m.href === selected) ?? null);
-	const tapWidth = $derived(tapWidths(markers.map((m) => x(m.t))));
+	const when = (t: number) => readoutWhen(t, timeZone, true);
 
 	// The readout: every reading taken in the test nearest the pointer
-	let active = $state<number | null>(null);
+	const pointer = new ChartPointer({
+		el: () => el,
+		xs: () => times.map(x),
+		href: (): string | undefined => hotHref,
+		// another range, or a parameter shown or hidden: start over
+		series: () => times
+	});
+	const active = $derived(pointer.active);
 	const hotT = $derived(active != null ? (times[active] ?? null) : null);
 	const hot = $derived.by(() => {
 		if (hotT == null) return [];
@@ -131,59 +130,8 @@
 		return `${when(t)}: ${rows.join('; ')}`;
 	});
 
-	const onMarker = (e: Event) => !!(e.target as Element | null)?.closest?.('.marker, .pop, .readout');
-	let pointerType = 'mouse';
-	function showAt(clientX: number) {
-		if (!el || !times.length) return;
-		active = nearestIndex(times.map(x), clientX - el.getBoundingClientRect().left);
-	}
-	function onpointermove(e: PointerEvent) {
-		if (!onMarker(e) && (e.pointerType === 'mouse' || e.buttons)) showAt(e.clientX);
-	}
-	function onpointerdown(e: PointerEvent) {
-		pointerType = e.pointerType;
-		if (!onMarker(e)) showAt(e.clientX);
-	}
-	function onpointerleave(e: PointerEvent) {
-		if (e.pointerType === 'mouse') active = null;
-	}
-	function onclick(e: MouseEvent) {
-		if (onMarker(e) || pointerType !== 'mouse' || !hotHref) return;
-		goto(hotHref);
-	}
-	function onkeydown(e: KeyboardEvent) {
-		const end = times.length - 1;
-		if (end < 0) return;
-		if (e.key === 'ArrowRight' || e.key === 'ArrowUp') active = Math.min(end, (active ?? -1) + 1);
-		else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') active = Math.max(0, (active ?? end + 1) - 1);
-		else if (e.key === 'Home') active = 0;
-		else if (e.key === 'End') active = end;
-		else if (e.key === 'Escape') active = null;
-		else if (e.key === 'Enter' && hotHref) goto(hotHref);
-		else return;
-		e.preventDefault();
-	}
-	$effect(() => {
-		if (active == null) return;
-		const away = (e: PointerEvent) => {
-			if (el && !el.contains(e.target as Node)) active = null;
-		};
-		window.addEventListener('pointerdown', away);
-		return () => window.removeEventListener('pointerdown', away);
-	});
-	// another range, or a parameter shown or hidden: start over
-	$effect(() => {
-		void times;
-		active = null;
-	});
-
 	/** The readout beside the crosshair, on whichever side has room, and never past the chart's edges. */
 	let tipW = $state(220);
-	const tipLeft = (t: number) => {
-		const px = x(t);
-		const left = px + 14 + tipW <= width ? px + 14 : px - 14 - tipW;
-		return Math.max(0, Math.min(left, width - tipW));
-	};
 </script>
 
 <div class="chart" bind:this={el} bind:clientWidth={width} bind:clientHeight={h}>
@@ -197,11 +145,11 @@
 		aria-valuemax={times.length}
 		aria-valuenow={times.length ? (active ?? times.length - 1) + 1 : 0}
 		aria-valuetext={spoken}
-		{onpointermove}
-		{onpointerdown}
-		{onpointerleave}
-		{onclick}
-		{onkeydown}
+		onpointermove={pointer.onpointermove}
+		onpointerdown={pointer.onpointerdown}
+		onpointerleave={pointer.onpointerleave}
+		onclick={pointer.onclick}
+		onkeydown={pointer.onkeydown}
 	>
 		<svg {width} height={h} viewBox="0 0 {width} {h}" aria-hidden="true">
 			<rect x={LEFT} y={TOP} width={Math.max(0, width - LEFT - RIGHT)} height={bandTop - TOP} fill="var(--zone-bad)"></rect>
@@ -212,9 +160,7 @@
 			{#each zones as z (z.title)}
 				<text x={width - RIGHT + 8} y={z.y + 4} class="zone" class:bad={z.bad}>{z.title}</text>
 			{/each}
-			{#each markers as m (m.href)}
-				<line x1={x(m.t)} x2={x(m.t)} y1={TOP - 10} y2={baseline} class="marker-line {m.kind ?? ''}" class:chosen={m.href === selected}></line>
-			{/each}
+			<ChartMarkerLines {markers} {x} top={TOP} {baseline} {selected} />
 			{#if hotT != null}<line x1={x(hotT)} x2={x(hotT)} y1={TOP - 4} y2={baseline} class="guide"></line>{/if}
 			{#each shown as l (l.id)}
 				<g class="series" class:faded={focus != null && focus !== l.id} data-param={l.name}>
@@ -237,55 +183,22 @@
 			{#each hot as r (r.id)}
 				<rect x={x(hotT!) - 6} y={y(r.pos) - 6} width="12" height="12" class="hot" fill={r.color}></rect>
 			{/each}
-			<line x1={LEFT} x2={width - RIGHT} y1={baseline} y2={baseline} class="baseline"></line>
-			{#each xTicks as t, i (i)}
-				<text
-					x={i === 0 ? LEFT : i === xTicks.length - 1 ? width - RIGHT : x(t)}
-					y={baseline + 16}
-					class="axis"
-					text-anchor={i === 0 ? 'start' : i === xTicks.length - 1 ? 'end' : 'middle'}
-					>{i === xTicks.length - 1 && isToday(t) ? 'Today' : fmt(t)}</text
-				>
-			{/each}
-			<text class="axis-title" x={LEFT + (width - LEFT - RIGHT) / 2} y={h - 4} text-anchor="middle">Date</text>
+			<ChartDateAxis {from} {to} {x} left={LEFT} right={RIGHT} {width} {baseline} height={h} {timeZone} titled />
 		</svg>
 		{#if hotT != null && hot.length}
-			<div class="readout" bind:offsetWidth={tipW} style:left="{tipLeft(hotT)}px" style:top="{TOP}px">
-				<span class="r-kicker">{active === times.length - 1 ? 'Latest test' : 'Water test'}</span>
+			<ChartReadout latest={active === times.length - 1} href={hotHref} style="left:{tipLeft(x(hotT), tipW, width)}px;top:{TOP}px" wide bind:tipWidth={tipW}>
 				<span class="r-when">{when(hotT)}</span>
-				<ul>
+				<ul class="rows">
 					{#each [...hot].sort((a, b) => b.pos - a.pos) as r (r.id)}
 						<li>
 							<i class:dashed={r.dash} style:--key={r.color}></i><span class="r-name">{r.name}</span><span class="r-value num">{r.value}</span><span class="r-status status-{r.level}">{r.status}</span>
 						</li>
 					{/each}
 				</ul>
-				{#if hotHref}<a class="r-link" href={hotHref}>Open this test ›</a>{/if}
-			</div>
+			</ChartReadout>
 		{/if}
 	</div>
-	{#each markers as m, i (m.href)}
-		{#if onselect}
-			<button
-				type="button"
-				class="marker {m.kind ?? ''}"
-				class:chosen={m.href === selected}
-				style:left="{x(m.t)}px"
-				style:top="{TOP - 10}px"
-				style:--tap="{tapWidth[i]}px"
-				aria-label="{m.label}, {fmt(m.t)}"
-				aria-pressed={m.href === selected}
-				onclick={() => onselect(m)}
-			></button>
-		{:else}
-			<a class="marker {m.kind ?? ''}" href={m.href} style:left="{x(m.t)}px" style:top="{TOP - 10}px" style:--tap="{tapWidth[i]}px" title={m.label} aria-label="{m.label}, {fmt(m.t)}"></a>
-		{/if}
-	{/each}
-	{#if chosen && popover}
-		<div class="pop" style:left="{Math.min(Math.max(x(chosen.t) - 90, 0), width - 200)}px" style:top="{TOP + 4}px">
-			{@render popover(chosen)}
-		</div>
-	{/if}
+	<ChartMarkers {markers} {x} top={TOP} {width} {timeZone} {selected} {onselect} {popover} />
 </div>
 
 <style>
@@ -307,10 +220,6 @@
 		display: block;
 		overflow: visible;
 	}
-	.baseline {
-		stroke: var(--ink);
-		stroke-width: 2;
-	}
 	.band-edge {
 		stroke: var(--accent);
 		stroke-width: 1;
@@ -323,34 +232,6 @@
 	}
 	.zone.bad {
 		fill: var(--accent-text);
-	}
-	.axis {
-		fill: var(--text-muted);
-		font-size: 12px;
-	}
-	.axis-title {
-		fill: var(--text-2);
-		font-size: 12px;
-		font-weight: 700;
-	}
-	.marker-line {
-		stroke: var(--text-muted);
-		stroke-opacity: 0.6;
-		stroke-dasharray: 3 3;
-	}
-	.marker-line.dosing,
-	.marker-line.co2,
-	.marker-line.light,
-	.marker-line.trim,
-	.marker-line.maintenance,
-	.marker-line.algae {
-		stroke-dasharray: 1 3;
-	}
-	.marker-line.chosen {
-		stroke: var(--ink);
-		stroke-opacity: 1;
-		stroke-dasharray: none;
-		stroke-width: 1.5;
 	}
 	.guide {
 		stroke: var(--ink);
@@ -371,33 +252,12 @@
 		stroke: var(--bg);
 		stroke-width: 2;
 	}
-	.readout {
-		position: absolute;
-		z-index: 3;
-		width: max-content;
-		min-width: 200px;
-		max-width: 280px;
-		padding: 10px 12px;
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-		background: var(--bg);
-		border: 2px solid var(--ink);
-		box-shadow: var(--shadow-md);
-		pointer-events: none;
-	}
-	.r-kicker {
-		font-size: 11px;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: var(--text-muted);
-	}
 	.r-when {
 		font-size: 13px;
 		font-weight: 800;
 		padding-bottom: 4px;
 	}
-	.readout ul {
+	.rows {
 		list-style: none;
 		margin: 0;
 		padding: 0;
@@ -407,16 +267,16 @@
 		row-gap: 3px;
 		font-size: 13px;
 	}
-	.readout li {
+	.rows li {
 		display: contents;
 	}
-	.readout li i {
+	.rows li i {
 		align-self: center;
 		width: 10px;
 		height: 10px;
 		background: var(--key);
 	}
-	.readout li i.dashed {
+	.rows li i.dashed {
 		height: 4px;
 		background: repeating-linear-gradient(to right, var(--key) 0 4px, transparent 4px 6px);
 	}
@@ -429,70 +289,6 @@
 		font-size: 12px;
 		font-weight: 800;
 		white-space: nowrap;
-	}
-	.r-link {
-		padding-top: 6px;
-		font-size: 12px;
-		font-weight: 700;
-		color: var(--bad);
-		pointer-events: auto;
-	}
-	.marker {
-		position: absolute;
-		z-index: 1;
-		width: var(--tap, 44px);
-		height: 44px;
-		margin: -22px 0 0 calc(var(--tap, 44px) / -2);
-		padding: 0;
-		border: none;
-		background: none;
-	}
-	.marker::before {
-		content: '';
-		position: absolute;
-		top: 17px;
-		left: calc(50% - 5px);
-		width: 10px;
-		height: 10px;
-		box-sizing: border-box;
-		background: var(--ink);
-	}
-	/* each event kind its own glyph, as on a single parameter's chart (#88) */
-	.marker.dosing::before {
-		transform: rotate(45deg) scale(0.8);
-		background: var(--neutral-600);
-	}
-	.marker.co2::before {
-		top: 20px;
-		height: 4px;
-		background: var(--neutral-600);
-	}
-	.marker.light::before {
-		background: var(--neutral-600);
-		clip-path: polygon(50% 0, 100% 100%, 0 100%);
-	}
-	.marker.trim::before {
-		background:
-			linear-gradient(45deg, transparent 38%, var(--neutral-600) 38% 62%, transparent 62%),
-			linear-gradient(-45deg, transparent 38%, var(--neutral-600) 38% 62%, transparent 62%);
-	}
-	.marker.maintenance::before {
-		background: none;
-		border: 2px solid var(--neutral-600);
-	}
-	.marker.algae::before {
-		background: none;
-		border: 2px solid var(--neutral-600);
-		transform: rotate(45deg) scale(0.8);
-	}
-	.marker:hover::before,
-	.marker:focus-visible::before,
-	.marker.chosen::before {
-		background: var(--accent);
-	}
-	.marker:focus-visible {
-		outline: 2px solid var(--accent);
-		outline-offset: -8px;
 	}
 	.trace {
 		stroke-dasharray: 1;
@@ -514,14 +310,5 @@
 		.trace {
 			animation: none;
 		}
-	}
-	.pop {
-		position: absolute;
-		width: 200px;
-		z-index: 2;
-		background: var(--bg);
-		border: 2px solid var(--ink);
-		padding: 10px 12px;
-		box-shadow: var(--shadow-md);
 	}
 </style>

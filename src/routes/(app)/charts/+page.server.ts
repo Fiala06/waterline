@@ -2,8 +2,7 @@ import { and, eq, gte } from 'drizzle-orm';
 import { eventTitle } from '$lib/events';
 import { displayValue, fmtRange, fmtValue, paramDecimals, paramUnit, statusOf } from '$lib/params';
 import { statusIcon, statusShort } from '$lib/status';
-import { fmtDate, fmtDay, dateInZone } from '$lib/time';
-import { formatNumber } from '$lib/units';
+import { fmtDate, dateInZone } from '$lib/time';
 import { db } from '$lib/server/db';
 import { tests } from '$lib/server/db/schema';
 import { eventsSince, latestReadings, series } from '$lib/server/logs';
@@ -11,7 +10,7 @@ import { getTank, listParams } from '$lib/server/tanks';
 import { tankNotes } from '$lib/server/trends';
 import { displaySamples, isLive, latestSamples, sampleCount, sampleSeries } from '$lib/server/sensors';
 import { fmtWhen } from '$lib/time';
-import { CHART_RANGES, equipmentTypeLookup, overlayKind, parseCompare } from '$lib/charts';
+import { CHART_RANGES, changeAcross, chartStats, equipmentTypeLookup, overlayKind, parseCompare } from '$lib/charts';
 import { equipmentName } from '$lib/equipment';
 import { whatChanged } from '$lib/what-changed';
 import { listEquipment } from '$lib/server/specs';
@@ -147,42 +146,8 @@ export const load: PageServerLoad = async ({ locals, parent, url, cookies, isDat
 
 	// the events in range, with the reading just before and after each one
 	const evs = eventsFrom(from);
-	const fv = (stored: number) => fmtValue(param, stored, user);
-	const markers = markersOf(evs).map((m) => {
-		const before = [...raw].reverse().find((r) => Date.parse(r.takenAt) <= m.t);
-		const after = raw.find((r) => Date.parse(r.takenAt) > m.t);
-		return { ...m, change: before && after ? `${param.name} ${fv(before.value)} → ${fv(after.value)}${paramUnit(param, user) ? ' ' + paramUnit(param, user) : ''}` : null };
-	});
-
-	const values = raw.map((r) => r.value);
-	const inRange = values.filter((v) => statusOf(param, v).level !== 'bad').length;
-	const lastValue = values.at(-1);
-	const unit = paramUnit(param, user);
-	const withUnit = (s: string) => (unit ? `${s} ${unit}` : s);
-	// "+11 since Sep 29": the latest reading against the one before it
-	const change = (() => {
-		if (raw.length < 2) return null;
-		const a = raw[raw.length - 2];
-		const b = raw[raw.length - 1];
-		const delta = displayValue(param, b.value, user) - displayValue(param, a.value, user);
-		const dec = paramDecimals(param, user);
-		const amount = Math.abs(delta) < 10 ** -dec / 2 ? 'No change' : `${delta > 0 ? '+' : '−'}${formatNumber(Math.abs(delta), dec)}`;
-		const before = fmtDay(a.takenAt, user.timeZone);
-		return { amount, over: before === 'Today' ? 'since the test before' : `since ${before.toLowerCase() === 'yesterday' ? 'yesterday' : before}` };
-	})();
-	const stats = values.length
-		? {
-				latest: fv(lastValue!),
-				latestLevel: statusOf(param, lastValue).level,
-				latestStatus: statusShort(statusOf(param, lastValue)),
-				average: withUnit(fv(values.reduce((a, b) => a + b, 0) / values.length)),
-				range: withUnit(`${fv(Math.min(...values))}–${fv(Math.max(...values))}`),
-				inTarget: `${inRange} of ${values.length}`,
-				inRangePct: `${Math.round((inRange / values.length) * 100)}%`,
-				change,
-				count: values.length
-			}
-		: null;
+	const markers = markersOf(evs).map((m) => ({ ...m, change: changeAcross(param, raw, m.t, user) }));
+	const stats = chartStats(param, raw, user);
 	// What stands out (a run, a pace, a pattern), as the dashboard tells it
 	const insight = tankNotes(tank.id, user).find((n) => n.parameterId === param.id) ?? null;
 	// What changed? (#89): the latest move worth a word, and what was logged in that stretch

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { axisTitle, keyIndex, nearestIndex, niceTicks, readoutStatus, readoutWhen, tapWidths, tipStyle, zoneLabels } from './trend-chart';
+import { axisTitle, dateTicks, keyIndex, nearestIndex, niceTicks, readoutStatus, readoutWhen, shortDate, tapWidths, timeScale, tipLeft, tipStyle, valueScale, zoneLabels } from './trend-chart';
 
 describe('niceTicks', () => {
 	it('picks round numbers near the count asked for', () => {
@@ -84,5 +84,55 @@ describe('the chart’s words and places', () => {
 		expect(tipStyle(50, 200, 800)).toBe('left:50px;top:200px;transform:translate(0,calc(-100% - 14px))');
 		expect(tipStyle(700, 50, 800)).toBe('left:700px;top:50px;transform:translate(-100%,14px)');
 		expect(tipStyle(400, 50, 800)).toContain('translate(-50%,14px)');
+	});
+});
+
+describe('timeScale and valueScale (#264)', () => {
+	it('maps a time range across the plot between its margins', () => {
+		const x = timeScale(1000, 2000, 40, 10, 350);
+		expect(x(1000)).toBe(40);
+		expect(x(2000)).toBe(340);
+		expect(x(1500)).toBe(190);
+	});
+
+	it('copes with a range of no length', () => {
+		expect(timeScale(1000, 1000, 8, 8, 100)(1000)).toBe(8);
+	});
+
+	it('puts the highest value at the top and the lowest at the bottom', () => {
+		const y = valueScale({ lo: 0, hi: 20 }, 22, 100);
+		expect(y(20)).toBe(22);
+		expect(y(0)).toBe(122);
+		expect(y(5)).toBe(97);
+		// a flat domain doesn't divide by zero
+		expect(valueScale({ lo: 3, hi: 3 }, 6, 52)(3)).toBe(58);
+	});
+});
+
+describe('dateTicks', () => {
+	it('spreads two to five dates from the start to the end, about 90px apart', () => {
+		expect(dateTicks(0, 100, 100)).toEqual([0, 100]);
+		expect(dateTicks(0, 100, 300)).toEqual([0, 50, 100]);
+		expect(dateTicks(0, 400, 2000)).toEqual([0, 100, 200, 300, 400]);
+	});
+});
+
+describe('shortDate', () => {
+	it('names the day in the keeper’s time zone', () => {
+		const t = Date.UTC(2026, 9, 3, 2, 0);
+		expect(shortDate(t, 'UTC')).toBe('Oct 3');
+		expect(shortDate(t, 'America/Los_Angeles')).toBe('Oct 2');
+	});
+});
+
+describe('tipLeft', () => {
+	it('sits right of the crosshair where it fits, else left of it', () => {
+		expect(tipLeft(100, 200, 600)).toBe(114);
+		expect(tipLeft(500, 200, 600)).toBe(286);
+	});
+
+	it('never goes past the chart’s edges', () => {
+		expect(tipLeft(150, 280, 320)).toBe(0);
+		expect(tipLeft(10, 400, 320)).toBe(0);
 	});
 });
