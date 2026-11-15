@@ -156,8 +156,10 @@
 	// the types at the top (README § 11): Test, then every kind of entry as an equal chip
 	const types = $derived(categoryHref ? eventTypes(page.url.searchParams, category, categoryHref) : null);
 
-	// Notes start one line tall (14, G2) and grow with what's typed.
+	// Notes start one line tall (14, G2) and grow with what's typed: CSS `field-sizing: content`
+	// does it; this only measures by hand in browsers without it (before Firefox 152, Safari 26.2).
 	function autosize(el: HTMLTextAreaElement) {
+		if (CSS.supports('field-sizing', 'content')) return;
 		const fit = () => {
 			el.style.height = 'auto';
 			el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`;
@@ -309,6 +311,7 @@
 		font-size: 16px;
 		resize: none;
 		overflow-y: hidden;
+		field-sizing: content;
 	}
 	.note.long {
 		min-height: 140px;
@@ -373,7 +376,8 @@
 			min-height: 44px;
 			padding: 10px 12px;
 		}
-		.note.long {
+		.note.long,
+		:global(.eform .fields) .note.long {
 			min-height: 120px;
 		}
 	}
