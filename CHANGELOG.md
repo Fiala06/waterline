@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Safer spreadsheet downloads.** A note or name that starts with a minus, such as "-2 snails", now opens in Excel or LibreOffice as the words you typed instead of being run as a formula, in your exports and in the data people download from a public page: [Settings › Export](/settings/export).
+
 ## 1.22.2 · 2026-11-11
 
 - **Log forms, tidied behind the scenes.** The forms for water changes, doses, feedings and the other kinds were reorganised so they're easier to improve; nothing changes in how they look or work: [Log a note](/entries/event/new?category=note).
