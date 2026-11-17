@@ -11,6 +11,10 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.22.4 · 2026-11-17
+
+- **Security updates.** The parts of Waterline that send its emails and serve its pages were updated with their latest security fixes; nothing changes in how the app looks or works: [Settings › What's new](/settings/changelog).
+
 ## 1.22.3 · 2026-11-17
 
 - **Safer spreadsheet downloads.** A note or name that starts with a minus, such as "-2 snails", now opens in Excel or LibreOffice as the words you typed instead of being run as a formula, in your exports and in the data people download from a public page: [Settings › Export](/settings/export).
