@@ -6,6 +6,7 @@
 // helping me" off, days only (no times), no notes, no observations and no
 // schedule, as the page has always been.
 import { safeCell } from '$lib/csv';
+import { withoutPetNames } from '$lib/pet-names';
 import { and, eq, isNull } from 'drizzle-orm';
 import { tankLighting, equipmentName, specSummary, scheduleLabel, hoursText, EQUIPMENT_TYPE_LABEL, type Schedule } from '$lib/equipment';
 import { eventKindLabel, eventTitle, WATER_SOURCES } from '$lib/events';
@@ -46,12 +47,7 @@ export function zoneLabel(tz: string, now = new Date()) {
 	}
 }
 
-// Pets stay unnamed unless the owner turns their names on (as on the rest of the page)
-// (a health entry lists its animals as "Zippy · Otocinclus": the species stays)
-const withoutPetNames = (e: Event): Event => ({
-	...e,
-	data: { ...e.data, nickname: null, previous: null, ...(Array.isArray(e.data.names) ? { names: (e.data.names as string[]).map((n) => n.split(' · ').at(-1)!) } : {}) }
-});
+// Pets stay unnamed unless the owner turns their names on (as on the rest of the page): withoutPetNames
 const isNaming = (e: Event) => e.category === 'livestock' && e.data.action === 'named';
 const isLoss = (e: Event) => e.category === 'livestock' && e.data.kind !== 'plant' && e.data.action === 'removed' && e.data.reason === 'loss';
 

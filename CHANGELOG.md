@@ -17,6 +17,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 - **Leaving a tank sticks.** When someone leaves a tank you share with them, Undo on the Sharing page no longer brings them back, and Undo after Remove works for 10 minutes; to have them back, share the tank again and they say yes: [Sharing](/tanks/current/sharing).
 - **Sign out everywhere, everywhere.** It now also holds for sessions that began before Waterline kept when each one started, which could otherwise carry on after it: [Server settings › People](/settings/server/people).
 - **Semicolons in your calendar.** A task with a semicolon in its name or note, such as "Water change; 25%", now shows whole in your calendar app instead of being cut short or garbled: [Settings › Calendar](/settings#calendar).
+- **Pet names stay private on health entries.** With Pet names and photos off, a health entry on your public page or on a shared photo now names the species, such as "Betta", never the pet: [Public page](/tanks/current/public).
 
 ## 1.22.2 · 2026-11-11
 

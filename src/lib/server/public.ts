@@ -1,4 +1,5 @@
 import { coverPosition } from '$lib/media';
+import { withoutPetNames } from '$lib/pet-names';
 // Public, read-only tank pages (/t/<slug>) and photo share links (/s/<id>).
 // Only what the owner switched on is included. Never public: email addresses,
 // livestock sources, equipment notes, prices. Tasks, notes on entries and the
@@ -144,7 +145,6 @@ const PUBLIC_TIMELINE_MAX = 24;
 // Pets' names stay private unless the owner turns on "Pet names and photos":
 // public titles say the species ("Betta moved into the tank"), naming one isn't
 // listed, pets count with their species, and photos tagged with a pet are hidden.
-const withoutPetNames = <E extends { data: Record<string, unknown> }>(e: E): E => ({ ...e, data: { ...e.data, nickname: null, previous: null } });
 const untagged = sql`not exists (select 1 from ${photoLivestock} where ${photoLivestock.photoId} = ${photos.id})`;
 const isNaming = (e: { category: string; data: Record<string, unknown> }) => e.category === 'livestock' && e.data.action === 'named';
 /** Pets count with their species, never by name. */
