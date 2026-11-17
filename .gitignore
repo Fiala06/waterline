@@ -25,6 +25,10 @@ vite.config.ts.timestamp-*
 test-results/
 playwright-report/
 .e2e-data/
-.claude/
+# Claude Code: the shared settings, hooks and skills are kept; the rest is each machine's own
+.claude/*
+!.claude/settings.json
+!.claude/hooks/
+!.claude/skills/
 .dev-data/
 .e2e-fresh-*/
