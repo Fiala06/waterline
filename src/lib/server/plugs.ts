@@ -78,7 +78,29 @@ export function digestAuthorization(
 }
 
 /** A problem talking to the plug, in words for the keeper. */
-export class PlugError extends Error {}
+export class PlugError extends Error {
+	/** `plain`: said of a plug that answered as one (it stayed off), so fine for anyone to see */
+	constructor(message: string, readonly plain = false) {
+		super(message);
+	}
+}
+
+/** What anyone but an admin is told when a plug can't be used (#288). */
+export const PLUG_GENERAL = "Waterline couldn't use a Shelly plug (Gen2 or later) at that address";
+
+/**
+ * What went wrong, spelled out for an admin; everyone else gets one general
+ * message (#288, as devices do since #212), so the plug's address can't be
+ * used to find out what else answers on the server's network.
+ */
+export function plugProblem(err: unknown, detail: boolean): PlugError {
+	if (err instanceof PlugError && (detail || err.plain)) return err;
+	if (detail) return new PlugError(err instanceof Error ? err.message : String(err));
+	return new PlugError(PLUG_GENERAL);
+}
+
+/** Whether this user is told the detail of a plug's problems. */
+const isAdmin = (userId: string) => !!db.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, userId)).get()?.isAdmin;
 
 const NOT_A_PLUG = "That address isn't a Shelly plug (Gen2 or later)";
 
@@ -173,7 +195,7 @@ export function reportBase(p: Pick<EquipmentPlug, 'reportUrl'>): string | null {
  * webhooks named Waterline… are replaced by one for each, at this plug's
  * address under /plug-hook. Gives when they were set up, or why not.
  */
-async function installHooks(p: EquipmentPlug, password: string | null, fetcher: typeof fetch): Promise<{ hooksAt: string | null; hooksError: string | null }> {
+async function installHooks(p: EquipmentPlug, password: string | null, fetcher: typeof fetch, detail: boolean): Promise<{ hooksAt: string | null; hooksError: string | null }> {
 	const base = reportBase(p);
 	if (!base || !p.hookToken) return { hooksAt: null, hooksError: "Waterline's own address isn't set (ORIGIN)" };
 	try {
@@ -190,7 +212,7 @@ async function installHooks(p: EquipmentPlug, password: string | null, fetcher: 
 			);
 		return { hooksAt: new Date().toISOString(), hooksError: null };
 	} catch (e) {
-		return { hooksAt: null, hooksError: e instanceof Error ? e.message : String(e) };
+		return { hooksAt: null, hooksError: plugProblem(e, detail).message };
 	}
 }
 
@@ -249,8 +271,15 @@ export async function linkPlug(
 	if (e.removedAt) error(400, 'That equipment was removed');
 	const before = db.select().from(equipmentPlugs).where(eq(equipmentPlugs.equipmentId, e.id)).get();
 	const password = input.password ?? (before?.url === input.url ? decrypt(before.passwordEnc) : null);
-	const name = await plugName(input.url, password, fetcher);
-	const state = await readPlug(input.url, password, 0, fetcher);
+	const detail = isAdmin(userId);
+	let name: string | null;
+	let state: PlugState;
+	try {
+		name = await plugName(input.url, password, fetcher);
+		state = await readPlug(input.url, password, 0, fetcher);
+	} catch (err) {
+		throw plugProblem(err, detail);
+	}
 	const off = await autoOff(input.url, password, 0, fetcher).catch(() => null);
 	const at = new Date().toISOString();
 	const fields = {
@@ -270,7 +299,7 @@ export async function linkPlug(
 	if (before) db.update(equipmentPlugs).set(fields).where(eq(equipmentPlugs.id, before.id)).run();
 	else db.insert(equipmentPlugs).values({ ...fields, equipmentId: e.id, tankId: e.tankId }).run();
 	const row = db.select().from(equipmentPlugs).where(eq(equipmentPlugs.equipmentId, e.id)).get()!;
-	db.update(equipmentPlugs).set(await installHooks(row, password, fetcher)).where(eq(equipmentPlugs.id, row.id)).run();
+	db.update(equipmentPlugs).set(await installHooks(row, password, fetcher, detail)).where(eq(equipmentPlugs.id, row.id)).run();
 	if (!runsOnPower(e)) follow(e.id, state.on, at);
 	return plugOf(e.id)!;
 }
@@ -366,12 +395,12 @@ export async function switchPlug(userId: string, equipmentId: string, on: boolea
 		} else {
 			await shellyRpc(p.url, 'Switch.Set', { id: p.switchId, on }, password, fetcher);
 			state = await readPlug(p.url, password, p.switchId, fetcher);
-			if (state.on !== on) throw new PlugError(`The plug stayed ${state.on ? 'on' : 'off'}`);
+			if (state.on !== on) throw new PlugError(`The plug stayed ${state.on ? 'on' : 'off'}`, true);
 		}
 	} catch (err) {
-		const msg = err instanceof Error ? err.message : String(err);
-		db.update(equipmentPlugs).set({ lastPolledAt: at, lastError: msg }).where(eq(equipmentPlugs.id, p.id)).run();
-		throw err instanceof PlugError ? err : new PlugError(msg);
+		const problem = plugProblem(err, isAdmin(userId));
+		db.update(equipmentPlugs).set({ lastPolledAt: at, lastError: problem.message }).where(eq(equipmentPlugs.id, p.id)).run();
+		throw problem;
 	}
 	db.update(equipmentPlugs).set({ on: state.on, watts: state.watts, lastPolledAt: at, lastOkAt: at, lastError: null, pausedScheduleIds }).where(eq(equipmentPlugs.id, p.id)).run();
 	setEquipmentPaused(userId, e.id, !on, zoneOf(userId), at);
@@ -429,9 +458,9 @@ export async function runPlugFor(userId: string, equipmentId: string, seconds: n
 	try {
 		await shellyRpc(p.url, 'Switch.Set', { id: p.switchId, on: true, toggle_after: seconds }, decrypt(p.passwordEnc), fetcher);
 	} catch (err) {
-		const msg = err instanceof Error ? err.message : String(err);
-		db.update(equipmentPlugs).set({ lastPolledAt: at, lastError: msg }).where(eq(equipmentPlugs.id, p.id)).run();
-		throw err instanceof PlugError ? err : new PlugError(msg);
+		const problem = plugProblem(err, isAdmin(userId));
+		db.update(equipmentPlugs).set({ lastPolledAt: at, lastError: problem.message }).where(eq(equipmentPlugs.id, p.id)).run();
+		throw problem;
 	}
 	db.update(equipmentPlugs)
 		.set({ on: true, lastOkAt: at, lastError: null, runPlannedS: seconds, ...(runsOnPower(e) && !p.runStartedAt ? { runStartedAt: at } : {}) })
@@ -462,7 +491,9 @@ export async function pollPlug(id: string, fetcher: typeof fetch = fetch, now = 
 		} else follow(p.equipmentId, state.on, at);
 		return { ok: true, error: null };
 	} catch (e) {
-		const msg = e instanceof Error ? e.message : String(e);
+		// the tank's owner is the one who set the address, and sees what went wrong only as an admin
+		const owner = db.select({ userId: tanks.userId }).from(tanks).where(eq(tanks.id, p.tankId)).get();
+		const msg = plugProblem(e, !!owner && isAdmin(owner.userId)).message;
 		db.update(equipmentPlugs).set({ lastPolledAt: at, lastError: msg }).where(eq(equipmentPlugs.id, p.id)).run();
 		return { ok: false, error: msg };
 	}
