@@ -1,1 +1,14 @@
-[]
+[
+	{
+		"id": "GHSA-3r8g-jcqq-3p5j",
+		"package": "@sveltejs/kit",
+		"reason": "DoS in remote functions' form parsing. Waterline has no remote functions (no *.remote.ts, nothing from $app/server), so it can't be reached; the only fix is Kit 3.1.1+, a major upgrade.",
+		"until": "2026-12-17"
+	},
+	{
+		"id": "GHSA-fc5q-39xc-vjpf",
+		"package": "picomatch",
+		"reason": "ReDoS with no fixed version yet. It comes in through vite, a build tool; the built server runs neither, and takes no globs from anyone.",
+		"until": "2026-12-17"
+	}
+]
