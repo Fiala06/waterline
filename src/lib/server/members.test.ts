@@ -150,21 +150,37 @@ describe('one active membership per person and tank (#117)', async () => {
 		const { member: again } = inviteMember(t2, 'friend@example.com', 'log', keeper.id);
 		acceptMemberInvites(friend.email, friend.id, { id: again.id });
 		// Undo of the old Remove: the new membership stands, no second row comes back
-		expect(restoreMember(t2.id, m.id).id).toBe(again.id);
+		expect(restoreMember(t2.id, m.id)?.id).toBe(again.id);
 		expect(getMember(t2.id, m.id).revokedAt).toBeTruthy();
 		expect(active(friend.id).map((r) => r.id)).toEqual([again.id]);
 		expect(tankRole(friend.id, t2)).toBe('log');
 		// Undo with nothing newer still brings the same row back
 		removeMember(t2.id, again.id);
-		expect(restoreMember(t2.id, again.id).revokedAt).toBeNull();
+		expect(restoreMember(t2.id, again.id)?.revokedAt).toBeNull();
 		expect(active(friend.id)).toHaveLength(1);
+	});
+
+	it('Undo of Remove never brings back someone who left, nor one removed long ago (#290)', () => {
+		const leaver = upsertUser({ email: 'leaver@example.com', name: 'Leaver', googleSub: 'g-leaver' });
+		const { member } = inviteMember(t2, leaver.email, 'log', keeper.id);
+		acceptMemberInvites(leaver.email, leaver.id, { id: member.id });
+		leaveTank(t2.id, leaver.id);
+		expect(restoreMember(t2.id, member.id)).toBeNull();
+		expect(tankRole(leaver.id, t2)).toBeNull();
+		// asked again, they say yes; then removed by the owner, Undo works only for a while
+		const { member: again } = inviteMember(t2, leaver.email, 'log', keeper.id);
+		acceptMemberInvites(leaver.email, leaver.id, { id: again.id });
+		const removed = removeMember(t2.id, again.id);
+		expect(restoreMember(t2.id, again.id, Date.parse(removed.revokedAt!) + 11 * 60_000)).toBeNull();
+		expect(restoreMember(t2.id, again.id)?.revokedAt).toBeNull();
+		expect(tankRole(leaver.id, t2)).toBe('log');
 	});
 
 	it('Undo of a cancelled invitation gives way to a newer one for the same address', () => {
 		const { member: first } = inviteMember(t2, 'later@example.com', 'view', keeper.id);
 		removeMember(t2.id, first.id);
 		const { member: second } = inviteMember(t2, 'later@example.com', 'log', keeper.id);
-		expect(restoreMember(t2.id, first.id).id).toBe(second.id);
+		expect(restoreMember(t2.id, first.id)?.id).toBe(second.id);
 		expect(listMembers(t2.id).filter((r) => r.member.email === 'later@example.com')).toHaveLength(1);
 	});
 

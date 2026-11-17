@@ -129,7 +129,13 @@ export const actions: Actions = {
 	restore: async ({ request, locals, params, cookies }) => {
 		const user = locals.user!;
 		const tank = getTank(user.id, params.id, 'owner');
-		const m = restoreMember(tank.id, str(await request.formData(), 'id'));
+		const id = str(await request.formData(), 'id');
+		const m = restoreMember(tank.id, id);
+		if (!m) {
+			const gone = getMember(tank.id, id);
+			setFlash(cookies, gone.leftAt ? `✕ ${gone.email} left this tank: share it with them again to ask them back` : `✕ Too late to undo: share it with ${gone.email} again`);
+			redirect(303, `/tanks/${tank.id}/sharing`);
+		}
 		// Undo of a cancelled share: its way onto the server comes back, on the same terms as when it was first shared
 		if (!m.acceptedAt && !m.revokedAt && !getUserByEmail(m.email) && !isEmailAllowed(m.email) && shareMayInvite(user)) createInvite(m.email, user.id);
 		setFlash(cookies, `✓ ${m.email} is back`);

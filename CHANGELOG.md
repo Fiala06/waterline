@@ -14,6 +14,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 - **Safer spreadsheet downloads.** A note or name that starts with a minus, such as "-2 snails", now opens in Excel or LibreOffice as the words you typed instead of being run as a formula, in your exports and in the data people download from a public page: [Settings › Export](/settings/export).
 - **Smart plug problems, said once.** When a Shelly plug can't be used, anyone who isn't the server's admin now sees one message, that Waterline couldn't use a Shelly plug at that address, as with ESPHome devices; admins still see exactly what went wrong: [Equipment](/tanks/current/equipment).
 - **Taking back an import needs a say in the tank.** Someone removed from a shared tank, or who can now only view it, can no longer undo the livestock or plants they added to it: [Livestock](/tanks/current/livestock).
+- **Leaving a tank sticks.** When someone leaves a tank you share with them, Undo on the Sharing page no longer brings them back, and Undo after Remove works for 10 minutes; to have them back, share the tank again and they say yes: [Sharing](/tanks/current/sharing).
 
 ## 1.22.2 · 2026-11-11
 
