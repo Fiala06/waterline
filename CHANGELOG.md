@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.22.3 · 2026-11-17
+
 - **Safer spreadsheet downloads.** A note or name that starts with a minus, such as "-2 snails", now opens in Excel or LibreOffice as the words you typed instead of being run as a formula, in your exports and in the data people download from a public page: [Settings › Export](/settings/export).
 - **Smart plug problems, said once.** When a Shelly plug can't be used, anyone who isn't the server's admin now sees one message, that Waterline couldn't use a Shelly plug at that address, as with ESPHome devices; admins still see exactly what went wrong: [Equipment](/tanks/current/equipment).
 - **Taking back an import needs a say in the tank.** Someone removed from a shared tank, or who can now only view it, can no longer undo the livestock or plants they added to it: [Livestock](/tanks/current/livestock).
