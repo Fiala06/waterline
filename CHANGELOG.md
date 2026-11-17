@@ -11,6 +11,16 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.22.3 · 2026-11-17
+
+- **Safer spreadsheet downloads.** A note or name that starts with a minus, such as "-2 snails", now opens in Excel or LibreOffice as the words you typed instead of being run as a formula, in your exports and in the data people download from a public page: [Settings › Export](/settings/export).
+- **Smart plug problems, said once.** When a Shelly plug can't be used, anyone who isn't the server's admin now sees one message, that Waterline couldn't use a Shelly plug at that address, as with ESPHome devices; admins still see exactly what went wrong: [Equipment](/tanks/current/equipment).
+- **Taking back an import needs a say in the tank.** Someone removed from a shared tank, or who can now only view it, can no longer undo the livestock or plants they added to it: [Livestock](/tanks/current/livestock).
+- **Leaving a tank sticks.** When someone leaves a tank you share with them, Undo on the Sharing page no longer brings them back, and Undo after Remove works for 10 minutes; to have them back, share the tank again and they say yes: [Sharing](/tanks/current/sharing).
+- **Sign out everywhere, everywhere.** It now also holds for sessions that began before Waterline kept when each one started, which could otherwise carry on after it: [Server settings › People](/settings/server/people).
+- **Semicolons in your calendar.** A task with a semicolon in its name or note, such as "Water change; 25%", now shows whole in your calendar app instead of being cut short or garbled: [Settings › Calendar](/settings#calendar).
+- **Pet names stay private on health entries.** With Pet names and photos off, a health entry on your public page or on a shared photo now names the species, such as "Betta", never the pet: [Public page](/tanks/current/public).
+
 ## 1.22.2 · 2026-11-11
 
 - **Log forms, tidied behind the scenes.** The forms for water changes, doses, feedings and the other kinds were reorganised so they're easier to improve; nothing changes in how they look or work: [Log a note](/entries/event/new?category=note).

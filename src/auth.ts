@@ -10,6 +10,7 @@ import { authSecret } from '$lib/server/instance';
 import { logger } from '$lib/server/log';
 import { isValidPasswordHash, verifyPassword } from '$lib/server/password';
 import { adminEmail, googleClient, localAdminLogin } from '$lib/server/sign-in';
+import { sessionStart, stampSessionStart } from '$lib/server/session-start';
 import { acceptInvite } from '$lib/server/invites';
 import { acceptMemberInvites } from '$lib/server/members';
 import { googleAccountConflict, isEmailAllowed, LOCAL_ADMIN_FALLBACK_EMAIL, upsertUser } from '$lib/server/users';
@@ -145,16 +146,12 @@ export const { handle, signIn, signOut } = SvelteKitAuth(async () => ({
 			} else if (user?.id) {
 				token.uid = user.id;
 			}
-			// when this session began, for Sign out everywhere (#27). Kept on the token itself:
-			// Auth.js re-signs the cookie on every request, so `iat` is only the last request's time.
-			if ((account || user) && typeof token.signedInAt !== 'number') token.signedInAt = Math.floor(Date.now() / 1000);
-			return token;
+			// when this session began, for Sign out everywhere (#27, #291)
+			return stampSessionStart(token, !!(account || user));
 		},
 		session({ session, token }) {
 			if (token.uid) session.user.id = token.uid as string;
-			// when this session began, for Sign out everywhere (#27); a session from before this was kept falls back to iat
-			const began = typeof token.signedInAt === 'number' ? token.signedInAt : token.iat;
-			if (typeof began === 'number') (session.user as { signedInAt?: number }).signedInAt = began;
+			(session.user as { signedInAt?: number }).signedInAt = sessionStart(token);
 			return session;
 		}
 	}

@@ -45,7 +45,8 @@ describe('water-tests.csv (#221)', () => {
 		expect(text).toContain("\"'=Reef, 40\"");
 		// a bare return is inside quotes, so it can't split the row
 		expect(text).toContain('"cleaned\rthe filter"');
-		expect(text).toContain(',-2 snails');
+		// text after a minus is a formula to a spreadsheet too, number or not (#287)
+		expect(text).toContain(",'-2 snails");
 
 		const read = readHistory('tests', text, historyContext(user, tank));
 		if ('error' in read) throw new Error(read.error);

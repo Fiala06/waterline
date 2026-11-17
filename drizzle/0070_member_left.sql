@@ -1,0 +1,1 @@
+ALTER TABLE `tank_members` ADD `left_at` text;

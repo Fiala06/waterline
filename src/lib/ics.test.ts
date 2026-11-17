@@ -3,7 +3,7 @@ import { buildCalendar, escapeText, fold } from './ics';
 
 describe('escapeText', () => {
 	it('escapes what iCalendar text treats specially', () => {
-		expect(escapeText('Water change; 25%, RODI\nnote \\ here')).toBe('Water change\; 25%\\, RODI\\nnote \\\\ here');
+		expect(escapeText('Water change; 25%, RODI\nnote \\ here')).toBe('Water change\\; 25%\\, RODI\\nnote \\\\ here');
 	});
 	it('escapes every kind of line end, a bare CR too', () => {
 		expect(escapeText('a\r\nb\rc\nd')).toBe('a\\nb\\nc\\nd');

@@ -228,7 +228,8 @@ export function acceptMemberInvites(email: string, userId: string, which: { id: 
 export function leaveTank(tankId: string, userId: string): TankMember | null {
 	const m = activeMembership(tankId, userId);
 	if (!m) return null;
-	return db.update(tankMembers).set({ revokedAt: now() }).where(eq(tankMembers.id, m.id)).returning().get();
+	const at = now();
+	return db.update(tankMembers).set({ revokedAt: at, leftAt: at }).where(eq(tankMembers.id, m.id)).returning().get();
 }
 
 export function getMember(tankId: string, id: string): TankMember {
@@ -248,14 +249,20 @@ export function removeMember(tankId: string, id: string): TankMember {
 	return db.update(tankMembers).set({ revokedAt: now() }).where(eq(tankMembers.id, id)).returning().get();
 }
 
+/** How long after Remove its Undo still works (#290). */
+export const RESTORE_MS = 10 * 60_000;
+
 /**
  * Undo of Remove: the same row comes back as it was, unless they've been
  * invited again since (#117); then that newer access or invitation stands,
- * and is what's returned.
+ * and is what's returned. Only for a Remove a moment ago (#290): someone who
+ * left the tank themselves, or was removed long since, isn't joined to it
+ * again without saying yes (#218), so that gives null; a new share asks them.
  */
-export function restoreMember(tankId: string, id: string): TankMember {
+export function restoreMember(tankId: string, id: string, at = Date.now()): TankMember | null {
 	const m = getMember(tankId, id);
 	if (!m.revokedAt) return m;
+	if (m.leftAt || at - Date.parse(m.revokedAt) > RESTORE_MS) return null;
 	return db.transaction((tx) => {
 		const newer = m.acceptedAt
 			? m.userId

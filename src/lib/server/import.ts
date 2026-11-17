@@ -38,6 +38,7 @@ import {
 import { createEvent, createTest } from './logs';
 import { removeEntryPhotoFiles } from './photos';
 import { addEquipment, addLivestock, addPlant, listEquipment, listLivestock, listPlants } from './specs';
+import { requireRoleOn } from './members';
 import { listParams } from './tanks';
 import { createTask } from './tasks';
 
@@ -346,6 +347,9 @@ export function undoImport(userId: string, importId: string) {
 		.where(and(eq(imports.id, importId), eq(imports.userId, userId)))
 		.get();
 	if (!imp) error(404, 'Import not found');
+	// still allowed to change the tank (#289): someone removed from it, or now only viewing, can't take their import back.
+	// Livestock and plants come in through Add several, open to anyone who can log; the rest only through the owner's Import.
+	requireRoleOn(userId, imp.tankId, imp.kind === 'livestock' || imp.kind === 'plants' ? 'log' : 'owner');
 	if (imp.undoneAt) return { ...imp, removed: 0, already: true };
 	const now = new Date().toISOString();
 	let removed = 0;

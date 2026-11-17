@@ -13,9 +13,9 @@ const { events } = await import('./db/schema');
 const { upsertUser } = await import('./users');
 const { createTank } = await import('./tanks');
 const { addEquipment, getEquipment, removeEquipment } = await import('./specs');
-const { digestAuthorization, linkPlug, parseDigestChallenge, plugOf, plugReported, pollAllPlugs, pollPlug, readPlug, runPlugFor, switchPlug, unlinkPlug } = await import('./plugs');
+const { digestAuthorization, linkPlug, PLUG_GENERAL, parseDigestChallenge, plugOf, plugReported, pollAllPlugs, pollPlug, readPlug, runPlugFor, switchPlug, unlinkPlug } = await import('./plugs');
 const { logDueDoses, syncDoses } = await import('./dosers');
-const { equipmentPlugs } = await import('./db/schema');
+const { equipmentPlugs, users } = await import('./db/schema');
 
 /**
  * A Shelly plug as fetch sees it: POST /rpc with {id, method, params}, behind a
@@ -81,6 +81,8 @@ function fakePlug(opts: { password?: string; on?: boolean; autoOff?: number | nu
 }
 
 const user = upsertUser({ email: 'plugs@example.com', name: 'Keeper' });
+// an admin, so problems are spelled out; a keeper who isn't one gets one general message (#288)
+db.update(users).set({ isAdmin: true }).where(eq(users.id, user.id)).run();
 const tank = createTank(user, { name: 'Plug tank', type: 'planted', nominalVolumeL: 60 });
 const item = (model: string) => addEquipment(user.id, tank.id, { type: 'other', brand: 'Jebao', model, specs: {}, installedAt: null, notes: null }, user.timeZone);
 const titles = (id: string) =>
@@ -171,6 +173,27 @@ describe('smart plugs (#203)', () => {
 		const notAPlug = (async () => new Response('<html></html>', { status: 404 })) as typeof fetch;
 		await expect(linkPlug(user.id, e.id, { url: 'http://router', password: null }, notAPlug)).rejects.toThrow("That address isn't a Shelly plug (Gen2 or later)");
 		expect(plugOf(e.id)).toBeNull();
+	});
+
+	it("tells a keeper who isn't an admin only that the plug can't be used, never what answered instead (#288)", async () => {
+		const keeper = upsertUser({ email: 'plugs-keeper@example.com', name: 'Keeper two' });
+		const own = createTank(keeper, { name: 'Their tank', type: 'planted', nominalVolumeL: 60 });
+		const e = addEquipment(keeper.id, own.id, { type: 'other', brand: 'Jebao', model: 'Probe', specs: {}, installedAt: null, notes: null }, keeper.timeZone);
+		const internal = (async () => Response.json({ error: { message: 'secret internal detail' } }, { status: 500 })) as typeof fetch;
+		const refused = (async () => {
+			throw new TypeError('fetch failed');
+		}) as typeof fetch;
+		const notAPlug = (async () => new Response('<html></html>', { status: 404 })) as typeof fetch;
+		for (const f of [internal, refused, notAPlug]) await expect(linkPlug(keeper.id, e.id, { url: 'http://10.0.0.5:8080', password: null }, f)).rejects.toThrow(PLUG_GENERAL);
+		// a plug's own sign-in is still said, so they know to give its password
+		await expect(linkPlug(keeper.id, e.id, { url: 'http://locked', password: null }, fakePlug({ password: 'pw' }).fetcher)).rejects.toThrow('The plug asks for its password');
+		// linked to a real plug, a later problem is just as general, in the error and in what's kept
+		const plug = fakePlug();
+		await linkPlug(keeper.id, e.id, { url: 'http://plug9', password: null }, plug.fetcher);
+		plug.state.down = true;
+		await expect(switchPlug(keeper.id, e.id, false, plug.fetcher)).rejects.toThrow(PLUG_GENERAL);
+		expect(plugOf(e.id)?.lastError).toBe(PLUG_GENERAL);
+		expect(await pollPlug(plugOf(e.id)!.id, plug.fetcher)).toEqual({ ok: false, error: PLUG_GENERAL });
 	});
 
 	it('linking sets the plug up to report each switch to Waterline, replacing its own old hooks', async () => {

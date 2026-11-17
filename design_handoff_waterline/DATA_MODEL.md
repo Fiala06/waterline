@@ -204,7 +204,9 @@ public_page_views tank_id, day, views
 tank_members     id, tank_id, email, user_id? (once accepted), role(log|view), token_hash,
                  invited_by?, created_at, expires_at (7 days), accepted_at?, revoked_at? (removed,
                  cancelled, or left by the member; always pending until accepted on the link, or
-                 by signing up when the share came before the account)
+                 by signing up when the share came before the account), left_at? (left by the
+                 member themselves: the owner's Undo of Remove never brings them back, and it
+                 only works for 10 minutes after a Remove)
                  (people a tank is shared with: "log" logs tests, water changes, dosing, notes,
                  photos and tasks done; "view" is read-only; only the owner changes setup;
                  one active row (accepted, not revoked) per tank and user_id, unique; removed

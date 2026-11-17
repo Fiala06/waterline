@@ -197,7 +197,9 @@ export const tankMembers = sqliteTable(
 		createdAt: createdAt(),
 		expiresAt: text('expires_at').notNull(),
 		acceptedAt: text('accepted_at'),
-		revokedAt: text('revoked_at')
+		revokedAt: text('revoked_at'),
+		/** set when the member left themselves (Tanks › Leave), not removed by the owner: Undo of Remove never brings them back (#290) */
+		leftAt: text('left_at')
 	},
 	(t) => [
 		index('tank_members_tank').on(t.tankId),
