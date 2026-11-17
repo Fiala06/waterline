@@ -185,6 +185,8 @@ describe('smart plugs (#203)', () => {
 		}) as typeof fetch;
 		const notAPlug = (async () => new Response('<html></html>', { status: 404 })) as typeof fetch;
 		for (const f of [internal, refused, notAPlug]) await expect(linkPlug(keeper.id, e.id, { url: 'http://10.0.0.5:8080', password: null }, f)).rejects.toThrow(PLUG_GENERAL);
+		// a plug's own sign-in is still said, so they know to give its password
+		await expect(linkPlug(keeper.id, e.id, { url: 'http://locked', password: null }, fakePlug({ password: 'pw' }).fetcher)).rejects.toThrow('The plug asks for its password');
 		// linked to a real plug, a later problem is just as general, in the error and in what's kept
 		const plug = fakePlug();
 		await linkPlug(keeper.id, e.id, { url: 'http://plug9', password: null }, plug.fetcher);

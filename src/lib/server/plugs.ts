@@ -79,7 +79,7 @@ export function digestAuthorization(
 
 /** A problem talking to the plug, in words for the keeper. */
 export class PlugError extends Error {
-	/** `plain`: said of a plug that answered as one (it stayed off), so fine for anyone to see */
+	/** `plain`: said of a plug that answered as one (it asks for its password, it stayed off), so fine for anyone to see */
 	constructor(message: string, readonly plain = false) {
 		super(message);
 	}
@@ -128,10 +128,11 @@ export async function shellyRpc(base: string, method: string, params: Record<str
 	let res = await call();
 	if (res.status === 401) {
 		const challenge = parseDigestChallenge(res.headers.get('www-authenticate') ?? '');
-		if (!password) throw new PlugError('The plug asks for its password');
 		if (!challenge?.nonce) throw new PlugError("The plug's sign-in isn't one Waterline knows");
+		// said to anyone (#288): only a plug's own sign-in gets this far, and the keeper needs to know
+		if (!password) throw new PlugError('The plug asks for its password', true);
 		res = await call(digestAuthorization(challenge, { username: 'admin', password, method: 'POST', uri: new URL(url).pathname }));
-		if (res.status === 401) throw new PlugError("The plug's password isn't right");
+		if (res.status === 401) throw new PlugError("The plug's password isn't right", true);
 	}
 	if (res.status === 404) throw new PlugError(NOT_A_PLUG);
 	let text: string;
