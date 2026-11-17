@@ -73,6 +73,9 @@ jobs:
         with:
           fail-on-severity: high
           comment-summary-in-pr: on-failure
+          # can't reach Waterline, as in .github/security/npm-audit-allow.json and .grype.yaml (look again 2026-12-17):
+          # GHSA-3r8g-jcqq-3p5j, SvelteKit remote functions, which Waterline doesn't use; fixed only in Kit 3
+          allow-ghsas: GHSA-3r8g-jcqq-3p5j
 
   npm-audit:
     name: npm audit (production)
