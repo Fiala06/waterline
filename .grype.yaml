@@ -8,4 +8,10 @@
 #     package:
 #       name: libexample
 #     # why: only reachable through the example CLI, which the image never runs; look again 2027-01-01
-ignore: []
+ignore:
+  - vulnerability: GHSA-3r8g-jcqq-3p5j
+    package:
+      name: "@sveltejs/kit"
+    # why: a DoS in remote functions' form parsing; Waterline has no remote functions (no *.remote.ts,
+    # nothing from $app/server), and the only fix is Kit 3.1.1+, a major upgrade. As in
+    # .github/security/npm-audit-allow.json; look again 2026-12-17
