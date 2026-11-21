@@ -238,7 +238,8 @@ function parse(form: FormData, existing: Task | null) {
 	if (routine) kind = type;
 	else if (onDone === 'water_change' || onDone === 'test') kind = onDone;
 	else if (existing) kind = existing.kind;
-	else kind = /water change/i.test(name) ? 'water_change' : /\btest/i.test(name) ? 'test' : 'maintenance';
+	// a top-off reminder (#316) is told by its name, as a water change's is: its Done logs a top-off
+	else kind = /water change/i.test(name) ? 'water_change' : /\btop[- ]?(off|up)\b/i.test(name) ? 'top_off' : /\btest/i.test(name) ? 'test' : 'maintenance';
 
 	const grace = num(form, 'graceDays');
 	// when on its day it's pushed (#180)

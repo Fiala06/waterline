@@ -4,6 +4,7 @@
 	export type Kind =
 		| 'test'
 		| 'water_change'
+		| 'top_off'
 		| 'dosing'
 		| 'feeding'
 		| 'maintenance'
@@ -40,6 +41,9 @@
 			<path d="M14.5 2v17.5a2.5 2.5 0 0 1-5 0V2" /><path d="M8.5 2h7" /><path d="M9.5 14h5" />
 		{:else if kind === 'water_change'}
 			<path d="M12 2.5s-6.5 7-6.5 11.5a6.5 6.5 0 0 0 13 0C18.5 9.5 12 2.5 12 2.5Z" /><path d="M8.8 15c1.1.8 2.1.8 3.2 0s2.1-.8 3.2 0" />
+		{:else if kind === 'top_off'}
+			<!-- a drop with a plus: water added, not changed (#316) -->
+			<path d="M12 2.5s-6.5 7-6.5 11.5a6.5 6.5 0 0 0 13 0C18.5 9.5 12 2.5 12 2.5Z" /><path d="M12 11v6M9 14h6" />
 		{:else if kind === 'dosing'}
 			<path d="m2 22 1-1h3l9-9" /><path d="M3 21v-3l9-9" /><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z" />
 		{:else if kind === 'feeding'}

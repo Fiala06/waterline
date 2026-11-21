@@ -88,7 +88,8 @@ const SAVE: Record<EventCategory, string> = {
 	equipment: 'Save equipment change',
 	observation: 'Save observation',
 	note: 'Save note',
-	health: 'Save health entry'
+	health: 'Save health entry',
+	top_off: 'Save top-off'
 };
 
 /** The form's Save button. */
@@ -97,6 +98,7 @@ export const eventSaveLabel = (mode: 'new' | 'edit', category: EventCategory) =>
 /** "Log a dose", "Add note or photo", "Edit water change" */
 export function eventTitle(mode: 'new' | 'edit', category: EventCategory): string {
 	const label = CATEGORY_LABEL[category].toLowerCase();
+	if (category === 'top_off') return mode === 'edit' ? 'Edit top-off' : 'Log a top-off';
 	if (mode === 'edit') return `Edit ${label}`;
 	if (category === 'note') return 'Add note or photo';
 	if (category === 'dosing') return 'Log a dose';

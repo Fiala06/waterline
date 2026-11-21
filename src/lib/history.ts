@@ -3,6 +3,7 @@ export const FILTERS = [
 	{ key: 'all', label: 'All' },
 	{ key: 'test', label: 'Water tests', short: 'Tests' },
 	{ key: 'water_change', label: 'Water changes' },
+	{ key: 'top_off', label: 'Top-offs' },
 	{ key: 'dosing', label: 'Dosing' },
 	{ key: 'feeding', label: 'Feeding' },
 	{ key: 'maintenance', label: 'Maintenance' },

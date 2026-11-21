@@ -104,7 +104,7 @@ export function parseReadings(form: FormData, params: TankParameter[], user: Use
 export function completableTask(
 	user: User,
 	tankId: string,
-	kind: 'water_change' | 'test' | 'maintenance' | null,
+	kind: 'water_change' | 'test' | 'maintenance' | 'top_off' | null,
 	requestedId: string | null,
 	entryDate?: string | null
 ) {
@@ -221,6 +221,20 @@ export function parseEventData(
 				},
 				errors
 			};
+		}
+		case 'top_off': {
+			// water added for what evaporated (#316): how much is optional, and it's never a percentage of the tank
+			const raw = str(form, 'volume');
+			const amount = num(form, 'volume');
+			const source = pick(
+				'source',
+				WATER_SOURCES.map((s) => s.value)
+			);
+			if (raw && (amount == null || amount <= 0)) errors.volume = 'Enter an amount above 0, or leave it blank.';
+			const volumeL = amount != null && amount > 0 ? toStored(amount, 'volume', user) : null;
+			const vol = tankVolumeL(tank);
+			if (volumeL != null && volumeOverTank(volumeL, vol)) errors.volume = volumeLimitError(formatNumber(toDisplay(vol!, 'volume', user), 1), unitLabel('volume', user));
+			return { data: { ...(volumeL != null ? { volume_l: volumeL } : {}), ...(source ? { source } : {}) }, errors };
 		}
 		case 'dosing': {
 			const product = str(form, 'product').slice(0, 80);
@@ -343,6 +357,8 @@ export function eventFormValues(
 						...added
 					};
 		}
+		case 'top_off':
+			return { volume: typeof data.volume_l === 'number' ? formatNumber(toDisplay(data.volume_l, 'volume', user), 1) : '', source: s(data.source) };
 		case 'dosing':
 			return { product: s(data.product), amount: s(data.amount), unit: s(data.unit) || 'mL' };
 		case 'feeding':

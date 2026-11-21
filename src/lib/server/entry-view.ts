@@ -115,6 +115,10 @@ export function eventView(user: User, id: string): EntryView {
 			add('Source water', labelOf(WATER_SOURCES, d.source));
 			add('Added', additivesOf(d).map(additiveText));
 			break;
+		case 'top_off':
+			add('Volume', typeof d.volume_l === 'number' ? `${formatNumber(toDisplay(d.volume_l, 'volume', user), 1)} ${unitLabel('volume', user)}` : null);
+			add('Source water', labelOf(WATER_SOURCES, d.source));
+			break;
 		case 'dosing': {
 			add('Product', d.product);
 			add('Amount', typeof d.amount === 'number' ? `${formatNumber(d.amount, 2)} ${d.unit ?? ''}` : null);

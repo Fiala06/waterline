@@ -77,6 +77,7 @@
 	// (Dosing only on phones: the desktop's Log ▾ menu has it)
 	const more = [
 		{ category: 'dosing', label: 'Dosing', phone: true },
+		{ category: 'top_off', label: 'Top off' },
 		{ category: 'feeding', label: 'Feeding' },
 		{ category: 'maintenance', label: 'Maintenance' },
 		{ category: 'livestock', label: 'Livestock / plants' },

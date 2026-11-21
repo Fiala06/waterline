@@ -16,12 +16,14 @@ export const CATEGORY_LABEL: Record<EventCategory, string> = {
 	observation: 'Observation',
 	note: 'Note',
 	feeding: 'Feeding',
-	health: 'Health'
+	health: 'Health',
+	top_off: 'Top off'
 };
 
 /** Category tabs on the log event form, in design order. */
 export const LOG_CATEGORIES: EventCategory[] = [
 	'water_change',
+	'top_off',
 	'dosing',
 	'feeding',
 	'maintenance',
@@ -35,6 +37,7 @@ export const LOG_CATEGORIES: EventCategory[] = [
 /** The type row on the log event form: every kind as an equal chip, with its key. */
 export const LOG_TYPES: { category: EventCategory; label: string; key?: string }[] = [
 	{ category: 'water_change', label: 'Water change', key: 'W' },
+	{ category: 'top_off', label: 'Top off' },
 	{ category: 'dosing', label: 'Dose', key: 'D' },
 	{ category: 'feeding', label: 'Feeding' },
 	{ category: 'maintenance', label: 'Maintenance' },
@@ -155,6 +158,14 @@ export function eventTitle(e: EventLike, prefs: UnitPrefs): string {
 			for (const a of additivesOf(d)) parts.push(additiveText(a));
 			return parts.join(' · ');
 		}
+		case 'top_off': {
+			// "Top off · 2 L · RODI": never a percentage, it isn't a change (#316)
+			const parts = ['Top off'];
+			if (typeof d.volume_l === 'number') parts.push(`${formatNumber(toDisplay(d.volume_l, 'volume', prefs), 1)} ${unitLabel('volume', prefs)}`);
+			const src = WATER_SOURCES.find((s) => s.value === d.source);
+			if (src) parts.push(src.label);
+			return parts.join(' · ');
+		}
 		case 'dosing': {
 			const product = str(d.product) || 'product';
 			const amount = typeof d.amount === 'number' ? amountText(d.amount, str(d.unit) || null) : null;
@@ -269,8 +280,10 @@ export function eventKindLabel(e: EventLike): string {
 }
 
 /** Which task kind an event category can complete. */
-export function taskKindFor(category: EventCategory): 'water_change' | 'maintenance' | null {
+export function taskKindFor(category: EventCategory): 'water_change' | 'maintenance' | 'top_off' | null {
 	if (category === 'water_change') return 'water_change';
+	// a top-off completes a top-off reminder, never the water change's (#316)
+	if (category === 'top_off') return 'top_off';
 	if (category === 'maintenance') return 'maintenance';
 	return null;
 }

@@ -14,6 +14,7 @@
 	import LivestockFields from './event-fields/LivestockFields.svelte';
 	import MaintenanceFields from './event-fields/MaintenanceFields.svelte';
 	import ObservationFields from './event-fields/ObservationFields.svelte';
+	import TopOffFields from './event-fields/TopOffFields.svelte';
 	import { RECHECK_OPTIONS } from '$lib/events';
 	import { logCompletes, type ReminderTask } from '$lib/tasks';
 	import type { When } from '$lib/time';
@@ -205,6 +206,8 @@
 				recentProducts={recentAdditives}
 				{errors}
 			/>
+		{:else if category === 'top_off'}
+			<TopOffFields {values} {errors} {volUnit} />
 		{:else if category === 'dosing'}
 			<DosingFields {mode} bind:product {values} {errors} {recentProducts} {productLinks} {timeZone} />
 		{:else if category === 'feeding'}

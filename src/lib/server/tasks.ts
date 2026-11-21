@@ -84,6 +84,8 @@ function routineEntry(task: Task) {
  * maintenance task is a Maintenance entry, the rest a "Done: …" note.
  */
 function doneEntry(task: Task, prevServicedAt: string | null) {
+	// a top-off reminder's Done is a top-off (#316), with no amount: it never counts as a water change
+	if (task.kind === 'top_off') return { category: 'top_off' as const, note: null, data: { task_id: task.id, task_done: true } };
 	if (task.kind === 'maintenance') {
 		const item = task.equipmentId ? { equipment_id: task.equipmentId, prev_serviced_at: prevServicedAt } : {};
 		return { category: 'maintenance' as const, note: null, data: { actions: [task.name], ...item, task_id: task.id, task_done: true } };

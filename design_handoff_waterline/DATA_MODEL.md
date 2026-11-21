@@ -63,7 +63,7 @@ tests            id, tank_id, taken_at, note?, edited_at?, client_id? (offline d
 test_readings    test_id, parameter_id, value, prev_value? (before the last edit: "was 40")
 
 events           id, tank_id, category(water_change|dosing|maintenance|livestock|
-                 equipment|observation|note|feeding), occurred_at, note?, data JSON, edited_at?,
+                 equipment|observation|note|feeding|health|top_off), occurred_at, note?, data JSON, edited_at?,
                  client_id?, import_id?, logged_by? (who logged it on a shared tank)
                  -- data examples:
                  -- water_change {percent, volume_l, source: tap|rodi|mix}
@@ -71,6 +71,8 @@ events           id, tank_id, category(water_change|dosing|maintenance|livestock
                  -- dosing {product, amount, unit: mL, auto: true, doser_id, dose_id} (#196: logged by
                  --         Waterline at a doser's dose time; its routine is marked done)
                  -- feeding {food, amount?, unit?, task_id?}
+                 -- top_off {volume_l?, source?: tap|rodi|mix, task_id?} (#316: water added for
+                 --         evaporation; never a water change, no percent)
                  -- maintenance {actions:[...], equipment_id?}
                  -- livestock {action: added|removed|moved|status|named, livestock_id, delta,
                  --            reason: loss|rehomed|recount}
@@ -109,6 +111,7 @@ photo_livestock  photo_id, livestock_id (pets tagged in a photo)
 
 ── Tasks ──────────────────────────────────────────────────────────────────────
 tasks            id, tank_id, name, kind(water_change|test|maintenance|other|dosing|feeding|
+                 top_off: a top-off reminder, told by its name; Done logs a top_off entry (#316)|
                  review: the setup review, one per tank, every 30/91/182 days or none when off;
                  done on its page, not by Mark done),
                  recurring, interval_days?, schedule_mode(completion|fixed|weekdays|after),

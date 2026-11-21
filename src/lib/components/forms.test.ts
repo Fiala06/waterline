@@ -57,7 +57,7 @@ describe('what the log forms share', () => {
 		expect(ev[0]).toEqual({ label: 'Test', key: 'T', href: '/entries/test/new?tank=t1&date=2026-10-07&time=09%3A00' });
 		expect(ev.filter((t) => t.on).map((t) => t.label)).toEqual(['Feeding']);
 		expect(ev.find((t) => t.label === 'Feeding')!.href).toBe('/entries/event/new?category=feeding');
-		expect(ev).toHaveLength(10);
+		expect(ev).toHaveLength(11);
 	});
 
 	it('scrolls the type chips just enough to show this one', () => {

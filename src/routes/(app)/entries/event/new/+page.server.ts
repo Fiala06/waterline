@@ -197,6 +197,8 @@ export const actions: Actions = {
 			message = `✓ Observation saved · check again ${fmtDate(data.recheck_at as string)}`;
 		} else if (category === 'feeding') {
 			message = '✓ Feeding logged';
+		} else if (category === 'top_off') {
+			message = `✓ Top-off logged${completeTaskId ? ' · task done' : ''}`;
 		} else if (category === 'note') {
 			message = files.length && !optStr(form, 'note') ? `✓ Photo${files.length === 1 ? '' : 's'} added` : '✓ Note saved';
 		} else if (completeTaskId) {
