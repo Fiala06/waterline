@@ -92,7 +92,7 @@ describe('alertSections', () => {
 	});
 
 	it('is empty, not broken, with nothing to show', () => {
-		expect(alertSections([], [])).toEqual({ readings: [], tasks: [], updates: [], total: 0, unread: 0, shown: 0 });
+		expect(alertSections([], [])).toEqual({ readings: [], tasks: [], updates: [], stock: [], total: 0, unread: 0, shown: 0 });
 	});
 });
 

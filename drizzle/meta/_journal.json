@@ -519,6 +519,13 @@
       "when": 1795286559733,
       "tag": "0073_shrimp_profile",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "6",
+      "when": 1795287052542,
+      "tag": "0074_product_stock",
+      "breakpoints": true
     }
   ]
 }

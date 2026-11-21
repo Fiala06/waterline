@@ -11,6 +11,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Product stock.** A saved product can track what's left in the bottle: say how much there is, and doses you log in mL under its name are taken off, with refills added. The page says whether it's measured or estimated, and can tell you under Alerts when it runs low, if you turn that on: [Products](/settings/products).
 - **Shrimp tank.** A new freshwater or planted tank can be a Shrimp tank: temperature, pH, GH, KH and TDS are tracked and kept in view on the water test, and pH, GH, KH and TDS start without targets, since Neocaridina and Caridina want different water. An existing tank can turn it on or off in Parameters & targets without losing any targets, parameters or readings: [Parameters & targets](/tanks/current/targets).
 
 ## 1.23.0 · 2026-11-21

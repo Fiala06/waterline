@@ -186,7 +186,10 @@ test_kits        id, user_id, name, param_key (ph|nh3|no2|no3|gh|kh|temp or cust
                  steps JSON [{text, seconds?}] (a test's steps, timed ones run on the form),
                  created_at
 products         id, user_id, name, url, note?, strength_mg_per_ml?, strength_of? (its strength for
-                 the Dose → ppm calculator: mg per mL of what it adds), created_at (saved reorder links)
+                 the Dose → ppm calculator: mg per mL of what it adds), low_ml?, low_alert (#318: below
+                 low_ml it's running low; an alert only when low_alert is on), created_at (saved reorder links)
+product_stock    id, product_id, at, kind(set|refill), ml, note?, created_at (#318: what's left is the
+                 latest set + refills since − doses logged in mL under the product's name since)
 quick_favorites  id, user_id, tank_id? (null: every tank), label, kind(test|water_change|dosing|
                  feeding|maintenance|note), fields JSON (what the form opens with, as typed:
                  amountMode, amount, source, product, unit, food, actions[]), position, created_at

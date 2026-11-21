@@ -22,6 +22,7 @@ import {
 	maintenanceRoutines,
 	parReadings,
 	planRuns,
+	productStock,
 	sourceTests,
 	waterSources,
 	testKits,
@@ -242,7 +243,8 @@ async function build(id: string, user: User, list: Tank[], format: 'zip' | 'csv'
 					.from(products)
 					.where(eq(products.userId, user.id))
 					.all()
-					.map((p) => ({ ...p, userId: undefined })),
+					// with its stock log (#318): measurements and refills, for the keeper's records
+					.map((p) => ({ ...p, userId: undefined, stock: db.select().from(productStock).where(eq(productStock.productId, p.id)).all().map((r) => ({ ...r, productId: undefined })) })),
 				favorites: db
 					.select()
 					.from(quickFavorites)

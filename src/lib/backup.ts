@@ -20,7 +20,7 @@ export const BACKUP_INCLUDES = [
 ];
 
 /** In the backup for your own records, but not put back by Restore. */
-export const BACKUP_NOT_RESTORED = ['Your settings, notification choices, products, favorites and test kits: set them again in Settings'];
+export const BACKUP_NOT_RESTORED = ['Your settings, notification choices, products (with their stock), favorites and test kits: set them again in Settings'];
 
 /** Left out of the backup on purpose, with why. */
 export const BACKUP_EXCLUDES = [

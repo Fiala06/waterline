@@ -3,6 +3,7 @@ import { setFlash } from '$lib/server/flash';
 import { str } from '$lib/server/forms';
 import { addProduct, deleteProduct, lastDosed, listProducts, parseProduct, productHost, updateProduct } from '$lib/server/products';
 import { formatNumber, toDisplay, unitLabel, type UnitPrefs } from '$lib/units';
+import { stockFor } from '$lib/server/stock';
 import type { Actions, PageServerLoad } from './$types';
 
 /** A saved strength back as the form takes it: 1 mL in 10 L (or gal) adds this many ppm. */
@@ -18,6 +19,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
 	const dosed = lastDosed(user.id, user.timeZone);
 	const list = listProducts(user.id);
 	const saved = new Set(list.map((p) => p.name.trim().toLowerCase()));
+	const stock = stockFor(user.id, list);
 	return {
 		products: list.map((p) => ({
 			id: p.id,
@@ -26,6 +28,13 @@ export const load: PageServerLoad = ({ locals, url }) => {
 			note: p.note,
 			host: productHost(p.url),
 			dosed: dosed.get(p.name.trim().toLowerCase()) ?? null,
+			// what's left (#318), when it's tracked: "▲ Low · about 40 mL left"
+			stock: (() => {
+				const s = stock.get(p.id);
+				if (!s) return null;
+				const left = `${s.estimated ? 'about ' : ''}${formatNumber(s.left, 0)} mL left`;
+				return s.low ? `▲ Low · ${left}` : left.charAt(0).toUpperCase() + left.slice(1);
+			})(),
 			// "1 mL in 10 L adds 1 ppm of nitrate", for the list and the Dose → ppm calculator (#18)
 			strength: p.strengthMgPerMl != null ? `${strengthFields(p.strengthMgPerMl, p.strengthOf, user).strengthPpm} ppm${p.strengthOf ? ` of ${p.strengthOf}` : ''} per mL in 10 ${unitLabel('volume', user)}` : null,
 			...strengthFields(p.strengthMgPerMl, p.strengthOf, user)

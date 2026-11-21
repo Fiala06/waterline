@@ -75,11 +75,20 @@ export interface UpdateAlert extends AlertBase {
 	version: string;
 }
 
-export type Alert = ReadingAlert | TaskAlert | UpdateAlert;
+/** A saved product running low (#318), when its alert is on: no tank's, the keeper's own. */
+export interface StockAlert extends AlertBase {
+	kind: 'stock';
+	tankId: null;
+	productId: string;
+}
+
+export type Alert = ReadingAlert | TaskAlert | UpdateAlert | StockAlert;
 
 export const readingKey = (paramId: string, since: string) => `reading:${paramId}:${since}`;
 export const taskKey = (taskId: string, due: string) => `task:${taskId}:${due}`;
 export const updateKey = (version: string) => `update:${version}`;
+/** until it's measured or refilled again */
+export const stockKey = (productId: string, since: string) => `stock:${productId}:${since}`;
 
 /** The notice an admin gets when a newer Waterline is out. */
 export function updateAlert(version: string): UpdateAlert {
@@ -106,6 +115,7 @@ export interface AlertSections {
 	readings: ReadingAlert[];
 	tasks: TaskAlert[];
 	updates: UpdateAlert[];
+	stock: StockAlert[];
 	/** alerts for the tank picked (or every tank), read or not */
 	total: number;
 	unread: number;
@@ -126,6 +136,7 @@ export function alertSections(alerts: Alert[], seen: string[], filter: { tank?: 
 		readings: listed.filter((a): a is ReadingAlert => a.kind === 'reading'),
 		tasks: listed.filter((a): a is TaskAlert => a.kind === 'task'),
 		updates: listed.filter((a): a is UpdateAlert => a.kind === 'update'),
+		stock: listed.filter((a): a is StockAlert => a.kind === 'stock'),
 		total: mine.length,
 		unread,
 		shown: listed.length

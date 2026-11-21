@@ -627,12 +627,38 @@ export const products = sqliteTable(
 		// its strength for the Dose → ppm calculator (#18): mg per mL of what it adds ("nitrate"); null when not given
 		strengthMgPerMl: real('strength_mg_per_ml'),
 		strengthOf: text('strength_of'),
+		// stock (#318): below this many mL it's running low; the alert only when the keeper turns it on
+		lowMl: real('low_ml'),
+		lowAlert: integer('low_alert', { mode: 'boolean' }).notNull().default(false),
 		createdAt: createdAt()
 	},
 	(t) => [index('products_user').on(t.userId)]
 );
 
 export type Product = typeof products.$inferSelect;
+
+/**
+ * What's in a product's bottle (#318), in mL: a measurement ("set": there's
+ * this much now) or a refill (this much more). Doses logged in mL under the
+ * product's name since the latest measurement are taken off when it's read,
+ * so editing or deleting a dose, or a replayed one, can't count twice.
+ */
+export const productStock = sqliteTable(
+	'product_stock',
+	{
+		id: id(),
+		productId: text('product_id')
+			.notNull()
+			.references(() => products.id, { onDelete: 'cascade' }),
+		at: text('at').notNull(),
+		kind: text('kind', { enum: ['set', 'refill'] }).notNull(),
+		ml: real('ml').notNull(),
+		note: text('note'),
+		createdAt: createdAt()
+	},
+	(t) => [index('product_stock_product').on(t.productId, t.at)]
+);
+export type ProductStock = typeof productStock.$inferSelect;
 
 // ── Quick log favorites (#93): the keeper's usual entries, one tap from Log ──
 

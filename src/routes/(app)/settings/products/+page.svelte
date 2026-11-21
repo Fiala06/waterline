@@ -81,6 +81,7 @@
 							<span class="name">{p.name}</span>
 							<span class="meta">{p.host}{p.note ? ` · ${p.note}` : ''}{p.strength ? ` · ${p.strength}` : ''}</span>
 							{#if p.dosed}<span class="meta">Last dosed {fmtDateLong(p.dosed.date)} in {p.dosed.tank}</span>{/if}
+							<span class="meta"><a class="stock-link" href="/settings/products/{p.id}/stock">{p.stock ?? 'Track what’s left'} ›</a></span>
 						</div>
 						<div class="acts">
 							<a
