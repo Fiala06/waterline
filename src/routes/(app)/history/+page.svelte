@@ -98,7 +98,23 @@
 			</nav>
 
 			<div class="list">
-				<form class="toolbar" method="GET" action="/history">
+				<form class="toolbar" method="GET" action="/history" role="search" aria-label="History">
+					<!-- search (#312): notes, products, items, species and kinds of entry, with the category and dates -->
+					<div class="search">
+						<label class="sr-only" for="history-q">Search History</label>
+						<input
+							class="input"
+							id="history-q"
+							type="search"
+							name="q"
+							value={data.search}
+							placeholder="Search notes, products, items"
+							autocomplete="off"
+							enterkeyhint="search"
+							maxlength="80"
+						/>
+						{#if data.search}<a class="clear" href={q({ q: null, entry: null, before: null })}>Clear search</a>{/if}
+					</div>
 					<label class="cat-pick">
 						<span class="sr-only">Category</span>
 						<select class="input" name="cat" value={data.cat} onchange={pickCat}>
@@ -109,11 +125,20 @@
 						<span class="sr-only">Date range</span>
 						<select class="input" name="range" value={data.range} onchange={submit}>
 							{#each RANGES as r (r.key)}<option value={r.key} selected={r.key === data.range}>{r.label}</option>{/each}
+							<option value="custom" selected={data.range === 'custom'}>{data.range === 'custom' ? data.rangeLabel : 'Choose dates…'}</option>
 						</select>
 					</label>
+					{#if data.range === 'custom'}
+						<!-- days in the keeper's time zone, either or both -->
+						<div class="dates">
+							<label><span>From</span><input class="input" type="date" name="from" value={data.dates?.from} max={data.dates?.to || undefined} /></label>
+							<label><span>To</span><input class="input" type="date" name="to" value={data.dates?.to} min={data.dates?.from || undefined} /></label>
+							<button class="btn apply-dates">Show</button>
+						</div>
+					{/if}
 					<noscript><button class="btn apply">Apply</button></noscript>
 					<span class="total"
-						>{data.total} entr{data.total === 1 ? 'y' : 'ies'}{#if data.older}{' · '}<a class="older-count" href={q({ range: 'all', entry: null, before: null })}>{data.older.count} older</a>{/if}</span
+						>{data.total} {data.search ? (data.total === 1 ? 'match' : 'matches') : `entr${data.total === 1 ? 'y' : 'ies'}`}{#if data.older}{' · '}<a class="older-count" href={q({ range: 'all', from: null, to: null, entry: null, before: null })}>{data.older.count} older</a>{/if}</span
 					>
 				</form>
 
@@ -153,7 +178,7 @@
 				{:else if data.groups?.length && data.older}
 					<p class="older">
 						<span>{data.older.count} older entr{data.older.count === 1 ? 'y' : 'ies'} before {data.older.before}</span>
-						<a class="older-link" href={q({ range: 'all', entry: null, before: null })}>Show all time</a>
+						<a class="older-link" href={q({ range: 'all', from: null, to: null, entry: null, before: null })}>Show all time</a>
 					</p>
 				{/if}
 				{#if data.groups?.length && importHref}<ImportButton href={importHref} />{/if}
@@ -162,11 +187,16 @@
 			{#if !data.groups?.length}
 				<div class="empty-block">
 					<span class="hide-desk"><CategoryIcon kind={emptyIcon} size={44} /></span>
-					{#if data.older}
+					{#if data.search && !data.older}
+						<!-- a search with nothing to show, in this range or before it -->
+						<h2 class="e-title">Nothing matches “{data.search}”</h2>
+						<p class="e-text">Try other words{data.cat !== 'all' ? ', All,' : ''} or a longer date range. Search looks in notes, products, foods, equipment, species and the kinds of entry.</p>
+						<a class="btn" href={q({ q: null, entry: null, before: null })}>Clear search</a>
+					{:else if data.older}
 						<!-- older entries exist: the range is what's empty, not the tank's history -->
-						<h2 class="e-title">Nothing in the {data.rangeLabel.toLowerCase()}</h2>
+						<h2 class="e-title">{data.search ? `Nothing matches “${data.search}”` : data.range === 'custom' ? 'Nothing in those dates' : `Nothing in the ${data.rangeLabel.toLowerCase()}`}</h2>
 						<p class="e-text">{data.older.count} older entr{data.older.count === 1 ? 'y' : 'ies'} before {data.older.before}.</p>
-						<a class="btn" href={q({ range: 'all', entry: null, before: null })}>Show all time</a>
+						<a class="btn" href={q({ range: 'all', from: null, to: null, entry: null, before: null })}>Show all time</a>
 					{:else}
 						<h2 class="e-title">Nothing logged here yet</h2>
 						<p class="e-text"><span class="hide-desk">Try a longer date range or another category.</span><span class="hide-phone">{emptyText}</span></p>
@@ -284,6 +314,46 @@
 	}
 	.cat-pick {
 		display: none;
+	}
+	.search {
+		flex: 1 1 100%;
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		min-width: 0;
+	}
+	.search .input {
+		flex: 1;
+		min-width: 0;
+		height: 44px;
+	}
+	.clear {
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
+		font-weight: 700;
+		color: var(--accent-text);
+		white-space: nowrap;
+	}
+	.dates {
+		flex: 1 1 100%;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-end;
+		gap: 8px 12px;
+	}
+	.dates label {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		font-size: 13px;
+	}
+	.dates .input {
+		height: 44px;
+		width: auto;
+	}
+	.apply-dates {
+		min-height: 44px;
 	}
 	.cat-pick .input,
 	.range-pick .input {

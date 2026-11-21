@@ -2,10 +2,13 @@
 // first, a hundred at a time, with the category filter and the counts done in
 // SQL. "Show older" carries a cursor (the last entry shown), so a page costs
 // the same however long the tank has been logged.
-import { and, count, desc, eq, gte, lt, or, sql, type SQL } from 'drizzle-orm';
+import { and, count, desc, eq, gte, inArray, lt, or, sql, type SQL } from 'drizzle-orm';
 import { db } from './db';
-import { events, tests, type Event, type Test } from './db/schema';
-import type { EventCategory } from '$lib/types';
+import { events, tankParameters, testReadings, tests, type Event, type Test } from './db/schema';
+import { CATEGORY_LABEL, LOG_TYPES } from '$lib/events';
+import { FILTERS } from '$lib/history';
+import { fold, likePattern } from '$lib/search';
+import { EVENT_CATEGORIES, type EventCategory } from '$lib/types';
 
 export const HISTORY_PAGE = 100;
 
@@ -31,10 +34,77 @@ const testsAfter = (c: Cursor | null): SQL | undefined => (c ? or(lt(tests.taken
 const eventsAfter = (c: Cursor | null): SQL | undefined =>
 	c ? or(lt(events.occurredAt, c.at), c.kind === 'test' ? eq(events.occurredAt, c.at) : and(eq(events.occurredAt, c.at), lt(events.id, c.id))) : undefined;
 
-export interface HistoryQuery {
-	tankId: string;
+/** The part of History asked for (#312): from when, until when, and matching what. */
+export interface HistoryWindow {
 	/** entries from this time on (ISO); '0000' for all time */
 	since: string;
+	/** and before this time (ISO); none for up to now */
+	until?: string | null;
+	/** the search box's words, as typed; '' or none for everything */
+	search?: string | null;
+}
+
+// ── Search (#312) ───────────────────────────────────────────────────────────
+// Folded (accents and case aside, see $lib/search) and done in SQL, so counts
+// and pages are of the matches. A test matches by its note or the parameters it
+// read; an entry by its note, the words in it (a product, a food, an item, an
+// action, a species, a tag; never an id) or its kind's name.
+
+/** LIKE's escape character: one backslash (see likePattern) */
+const ESC = sql.raw("escape '\\'");
+const folded = (col: SQL) => sql`wl_fold(coalesce(${col}, ''))`;
+
+/** The kinds of entry whose name has the words: "water change", "dose", "top off". */
+function categoriesNamed(term: string): EventCategory[] {
+	const t = fold(term);
+	return EVENT_CATEGORIES.filter((c) =>
+		[CATEGORY_LABEL[c], LOG_TYPES.find((l) => l.category === c)?.label, FILTERS.find((f) => f.key === c)?.label].some((l) => l && fold(l).includes(t))
+	);
+}
+
+function testsMatching(term: string): SQL {
+	const like = likePattern(term);
+	return or(
+		sql`${folded(sql`${tests.note}`)} like ${like} ${ESC}`,
+		// "nitrate" finds the tests that read it
+		sql`exists (select 1 from ${testReadings} join ${tankParameters} on ${tankParameters.id} = ${testReadings.parameterId} where ${testReadings.testId} = ${tests.id} and wl_fold(${tankParameters.name}) like ${like} ${ESC})`,
+		fold('Water test').includes(fold(term)) ? sql`1` : undefined
+	)!;
+}
+
+function eventsMatching(term: string): SQL {
+	const like = likePattern(term);
+	const named = categoriesNamed(term);
+	return or(
+		sql`${folded(sql`${events.note}`)} like ${like} ${ESC}`,
+		// the words in its data: text values only, and not ids or the app's own markers
+		sql`exists (select 1 from json_tree(${events.data}) j where j.type = 'text' and cast(j.key as text) not like '%id' and j.key not in ('system', 'client_id') and wl_fold(j.value) like ${like} ${ESC})`,
+		named.length ? inArray(events.category, named) : undefined
+	)!;
+}
+
+const testsIn = (tankId: string, w: HistoryWindow) =>
+	and(eq(tests.tankId, tankId), gte(tests.takenAt, w.since), w.until ? lt(tests.takenAt, w.until) : undefined, w.search ? testsMatching(w.search) : undefined);
+const eventsIn = (tankId: string, w: HistoryWindow) =>
+	and(eq(events.tankId, tankId), gte(events.occurredAt, w.since), w.until ? lt(events.occurredAt, w.until) : undefined, w.search ? eventsMatching(w.search) : undefined);
+
+/** How many entries before the window (and matching its search), for "42 older entries"; tests only, events only (of a category) or both. */
+export function olderCount(tankId: string, w: HistoryWindow, cat: string): number {
+	const before: HistoryWindow = { since: '0000', until: w.since, search: w.search };
+	const nTests = cat === 'all' || cat === 'test' ? (db.select({ n: count() }).from(tests).where(testsIn(tankId, before)).get()?.n ?? 0) : 0;
+	const nEvents =
+		cat === 'test'
+			? 0
+			: (db
+					.select({ n: count() })
+					.from(events)
+					.where(and(eventsIn(tankId, before), cat === 'all' ? undefined : eq(events.category, cat as EventCategory)))
+					.get()?.n ?? 0);
+	return nTests + nEvents;
+}
+
+export interface HistoryQuery extends HistoryWindow {
+	tankId: string;
 	/** 'all', 'test', or an event category */
 	cat: string;
 	before?: Cursor | null;
@@ -42,13 +112,13 @@ export interface HistoryQuery {
 }
 
 /** How many entries the range holds, by category: { all, test, water_change, … }. */
-export function historyCounts(tankId: string, since: string): Record<string, number> {
-	const nTests = db.select({ n: count() }).from(tests).where(and(eq(tests.tankId, tankId), gte(tests.takenAt, since))).get()?.n ?? 0;
+export function historyCounts(tankId: string, w: HistoryWindow): Record<string, number> {
+	const nTests = db.select({ n: count() }).from(tests).where(testsIn(tankId, w)).get()?.n ?? 0;
 	const counts: Record<string, number> = { all: nTests, test: nTests };
 	const rows = db
 		.select({ category: events.category, n: count() })
 		.from(events)
-		.where(and(eq(events.tankId, tankId), gte(events.occurredAt, since)))
+		.where(eventsIn(tankId, w))
 		.groupBy(events.category)
 		.all();
 	for (const r of rows) {
@@ -67,9 +137,8 @@ export function historyPage(q: HistoryQuery): { entries: Entry[]; next: Cursor |
 	const before = q.before ?? null;
 	const wantTests = q.cat === 'all' || q.cat === 'test';
 	const wantEvents = q.cat !== 'test';
-	const inTests = (c: Cursor | null) => and(eq(tests.tankId, q.tankId), gte(tests.takenAt, q.since), testsAfter(c));
-	const inEvents = (c: Cursor | null) =>
-		and(eq(events.tankId, q.tankId), gte(events.occurredAt, q.since), q.cat === 'all' ? undefined : eq(events.category, q.cat as EventCategory), eventsAfter(c));
+	const inTests = (c: Cursor | null) => and(testsIn(q.tankId, q), testsAfter(c));
+	const inEvents = (c: Cursor | null) => and(eventsIn(q.tankId, q), q.cat === 'all' ? undefined : eq(events.category, q.cat as EventCategory), eventsAfter(c));
 	// one more than a page from each, so the merge knows whether anything follows
 	const t: Entry[] = wantTests
 		? db

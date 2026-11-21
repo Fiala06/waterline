@@ -87,9 +87,9 @@ describe('History, a page at a time (#240)', () => {
 	});
 
 	it('counts each category without loading the entries', () => {
-		expect(historyCounts(tank.id, '0000')).toEqual({ all: TOTAL, test: 21, feeding: 230, note: 150, dosing: 1 });
-		expect(historyCounts(tank.id, iso(t0 + 200 * HOUR))).toEqual({ all: 30, test: 0, feeding: 30 });
-		expect(historyCounts(other.id, '0000')).toEqual({ all: 1, test: 0, feeding: 1 });
+		expect(historyCounts(tank.id, { since: '0000' })).toEqual({ all: TOTAL, test: 21, feeding: 230, note: 150, dosing: 1 });
+		expect(historyCounts(tank.id, { since: iso(t0 + 200 * HOUR) })).toEqual({ all: 30, test: 0, feeding: 30 });
+		expect(historyCounts(other.id, { since: '0000' })).toEqual({ all: 1, test: 0, feeding: 1 });
 	});
 
 	it('takes only a cursor it wrote', () => {

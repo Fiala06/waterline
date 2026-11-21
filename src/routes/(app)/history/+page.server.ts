@@ -1,15 +1,15 @@
-import { and, count as countRows, eq, inArray, lt } from 'drizzle-orm';
+import { inArray } from 'drizzle-orm';
 import { eventIcon, eventKindLabel, eventTitle } from '$lib/events';
 import { shortName, statusOf, fmtValue } from '$lib/params';
-import { dateInZone, daysBetween, fmtDate, fmtTime, fmtWeekday, todayInZone } from '$lib/time';
+import { addDays, dateInZone, daysBetween, fmtDate, fmtDateLong, fmtTime, fmtWeekday, isDate, todayInZone, zonedToUtc } from '$lib/time';
 import { db } from '$lib/server/db';
-import { events, testReadings, tests } from '$lib/server/db/schema';
+import { testReadings } from '$lib/server/db/schema';
 import { eventView, testView, type EntryView } from '$lib/server/entry-view';
 import { thumbsFor } from '$lib/server/photos';
-import { cursorText, historyCounts, historyPage, parseCursor } from '$lib/server/history-page';
+import { cursorText, historyCounts, historyPage, olderCount, parseCursor, type HistoryWindow } from '$lib/server/history-page';
 import { isShared, tankPeople } from '$lib/server/members';
 import { getTank, listParams, roleOn } from '$lib/server/tanks';
-import type { EventCategory } from '$lib/types';
+import { searchTerm } from '$lib/search';
 import { FILTERS, RANGES } from '$lib/history';
 import { RANGE_COOKIE, rememberOptions } from '$lib/remember';
 import type { PageServerLoad } from './$types';
@@ -27,34 +27,43 @@ export const load: PageServerLoad = async ({ locals, parent, url, cookies, isDat
 	const valid = (v: string | null | undefined) => !!v && RANGES.some((r) => r.key === v);
 	const asked = url.searchParams.get('range');
 	const saved = cookies.get(RANGE_COOKIE);
-	const range = valid(asked) ? asked! : valid(saved) ? saved! : '30';
-	// kept on a real visit only (#223), as the current tank is: see $lib/remember
-	if (!isDataRequest && (valid(asked) || valid(saved))) cookies.set(RANGE_COOKIE, range, rememberOptions);
-	const since = range === 'all' ? '0000' : new Date(Date.now() - Number(range) * 86_400_000).toISOString();
+	// dates of the keeper's own choosing (#312): ?from= and ?to=, days in their time zone, either one or both
+	const day = (k: string) => {
+		const v = url.searchParams.get(k);
+		return v && isDate(v) ? v : null;
+	};
+	let from = day('from');
+	let to = day('to');
+	if (from && to && from > to) [from, to] = [to, from];
+	// a preset picked from the menu wins over dates left in the form
+	const custom = asked === 'custom' || (!valid(asked) && !!(from || to));
+	const range = custom ? 'custom' : valid(asked) ? asked! : valid(saved) ? saved! : '30';
+	// kept on a real visit only (#223), as the current tank is: see $lib/remember (never a range of dates)
+	if (!isDataRequest && !custom && (valid(asked) || valid(saved))) cookies.set(RANGE_COOKIE, range, rememberOptions);
+	const since = custom
+		? from
+			? zonedToUtc(from, '00:00', tz).toISOString()
+			: '0000'
+		: range === 'all'
+			? '0000'
+			: new Date(Date.now() - Number(range) * 86_400_000).toISOString();
+	const until = custom && to ? zonedToUtc(addDays(to, 1), '00:00', tz).toISOString() : null;
+	// the search box (#312): matched in SQL before counting and paging
+	const search = searchTerm(url.searchParams.get('q'));
+	const window: HistoryWindow = { since, until, search };
 
 	// counted and filtered in SQL, and a page at a time (#240): see $lib/server/history-page
-	const counts = historyCounts(tank.id, since);
+	const counts = historyCounts(tank.id, window);
 	const before = parseCursor(url.searchParams.get('before'));
-	const listed = historyPage({ tankId: tank.id, since, cat, before });
+	const listed = historyPage({ tankId: tank.id, ...window, cat, before });
 	const shownTests = listed.entries.flatMap((x) => (x.kind === 'test' ? [x.row] : []));
 	const shownEvents = listed.entries.flatMap((x) => (x.kind === 'event' ? [x.row] : []));
 
-	const showTests = cat === 'all' || cat === 'test';
 	// what's before the range, so a short range never looks like missing data: "42 older entries · Show all time"
 	let older: { count: number; before: string } | null = null;
-	if (range !== 'all') {
-		const olderTests = showTests
-			? (db.select({ n: countRows() }).from(tests).where(and(eq(tests.tankId, tank.id), lt(tests.takenAt, since))).get()?.n ?? 0)
-			: 0;
-		const olderEvents =
-			cat === 'test'
-				? 0
-				: (db
-						.select({ n: countRows() })
-						.from(events)
-						.where(and(eq(events.tankId, tank.id), lt(events.occurredAt, since), cat === 'all' ? undefined : eq(events.category, cat as EventCategory)))
-						.get()?.n ?? 0);
-		if (olderTests + olderEvents) older = { count: olderTests + olderEvents, before: fmtDate(dateInZone(since, tz)) };
+	if (since !== '0000') {
+		const n = olderCount(tank.id, window, cat);
+		if (n) older = { count: n, before: fmtDate(dateInZone(since, tz)) };
 	}
 	const thumbs = thumbsFor(
 		shownEvents.map((e) => e.id),
@@ -155,8 +164,18 @@ export const load: PageServerLoad = async ({ locals, parent, url, cookies, isDat
 		// on a later page: where it starts, for the way back to the newest
 		from: before ? fmtDate(dateInZone(before.at, tz)) : null,
 		older,
-		rangeLabel: RANGES.find((r) => r.key === range)!.label,
+		rangeLabel: custom ? customLabel(from, to) : RANGES.find((r) => r.key === range)!.label,
+		search,
+		dates: { from: from ?? '', to: to ?? '' },
 		selected: detail ? `${detail.kind}:${detail.id}` : null,
 		detail
 	};
 };
+
+/** "Oct 1 – Oct 31, 2026", "Since Oct 1, 2026", "Until Oct 31, 2026", or all time with neither. */
+function customLabel(from: string | null, to: string | null): string {
+	if (from && to) return `${fmtDateLong(from)} – ${fmtDateLong(to)}`;
+	if (from) return `Since ${fmtDateLong(from)}`;
+	if (to) return `Until ${fmtDateLong(to)}`;
+	return 'All time';
+}
