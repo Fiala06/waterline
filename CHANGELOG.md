@@ -14,6 +14,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 ## 1.23.2 · 2026-11-21
 
 - **Plant care.** A plant's sheet now shows a care profile for about 80 common aquarium plants: light, CO₂, growth, placement, how to propagate it, whether it feeds through its roots, and a temperature range with your tank's latest temperature beside it. It's general guidance to start from, not a rule: [Plants](/tanks/current/plants).
+
 ## 1.23.1 · 2026-11-21
 
 - **Shrimp tank.** A new freshwater or planted tank can be a Shrimp tank: temperature, pH, GH, KH and TDS are tracked and kept in view on the water test, and pH, GH, KH and TDS start without targets, since Neocaridina and Caridina want different water. An existing tank can turn it on or off in Parameters & targets without losing any targets, parameters or readings: [Parameters & targets](/tanks/current/targets).
