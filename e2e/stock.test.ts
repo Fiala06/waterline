@@ -30,6 +30,7 @@ test('track what is left of a fertilizer, with a low-stock alert you turn on', a
 	// low below 50 mL: only an alert once it's turned on
 	await page.getByLabel('Low below · optional').fill('50');
 	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('status')).toContainText('✓ Low mark saved');
 	await expect(page.getByText('▲ Low · below 50 mL')).toBeVisible();
 	await open(page, '/alerts');
 	await expect(page.getByText('Thrive S is running low')).toHaveCount(0);
@@ -37,6 +38,7 @@ test('track what is left of a fertilizer, with a low-stock alert you turn on', a
 	await page.getByRole('link', { name: /▲ Low · about 30 mL left/ }).click();
 	await page.getByLabel(/Tell me under Alerts/).check();
 	await page.getByRole('button', { name: 'Save' }).last().click();
+	await expect(page.getByRole('status')).toContainText('✓ Low mark saved');
 	await open(page, '/alerts');
 	await expect(page.getByText('Thrive S is running low')).toBeVisible();
 
