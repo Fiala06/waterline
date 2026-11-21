@@ -25,6 +25,8 @@ import {
 	livestock,
 	maintenanceRoutines,
 	parReadings,
+	sourceTests,
+	waterSources,
 	photoLivestock,
 	photos,
 	planRuns,
@@ -274,7 +276,7 @@ export async function restoreBackup(user: User, token: string, tankIds: string[]
 	};
 	for (const t of chosen) {
 		give(t.id);
-		for (const k of ['parameters', 'tests', 'events', 'equipment', 'autoDoses', 'livestock', 'plants', 'tasks', 'photos', 'expenses', 'wishes', 'routines', 'plans', 'parReadings'])
+		for (const k of ['parameters', 'tests', 'events', 'equipment', 'autoDoses', 'livestock', 'plants', 'tasks', 'photos', 'expenses', 'wishes', 'routines', 'plans', 'parReadings', 'waterSources', 'sourceTests'])
 			for (const r of arr(t[k])) give(r.id);
 	}
 	const restored = new Set(ids.values());
@@ -322,7 +324,7 @@ export async function restoreBackup(user: User, token: string, tankIds: string[]
 	const today = todayInZone(user.timeZone);
 	const overdue: { id: string; due: string }[] = [];
 	for (const t of chosen) {
-		const { parameters: _p, tests: ts, events: _e, equipment: _q, autoDoses: _a, livestock: _l, plants: _pl, tasks: tk, photos: ph, expenses: ex, wishes: _w, routines: _r, plans: _pn, parReadings: _par, ...tank } = t;
+		const { parameters: _p, tests: ts, events: _e, equipment: _q, autoDoses: _a, livestock: _l, plants: _pl, tasks: tk, photos: ph, expenses: ex, wishes: _w, routines: _r, plans: _pn, parReadings: _par, waterSources: _ws, sourceTests: _st, ...tank } = t;
 		const newTank = ids.get(t.id)!;
 		// a restored tank is private and its own: no cover until its photos are in
 		add(tanks, [{ ...tank, userId: user.id, coverPhotoId: null }]);
@@ -398,6 +400,9 @@ export async function restoreBackup(user: User, token: string, tankIds: string[]
 		add(wishes, arr(t.wishes).map((r) => ({ ...r, tankId: t.id })));
 		add(maintenanceRoutines, arr(t.routines).map((r) => ({ ...r, tankId: t.id })));
 		add(parReadings, arr(t.parReadings).map((r) => ({ ...r, tankId: t.id })));
+		// source water and its tests (#315): readings point at the tank's parameters, by their new ids
+		add(waterSources, arr(t.waterSources).map((r) => ({ ...r, tankId: t.id })));
+		add(sourceTests, arr(t.sourceTests).map((r) => ({ ...r, tankId: t.id })));
 	}
 
 	try {

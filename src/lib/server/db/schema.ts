@@ -238,6 +238,48 @@ export const tankParameters = sqliteTable(
 	(t) => [index('tank_parameters_tank').on(t.tankId)]
 );
 
+/**
+ * A tank's source water (#315): its tap, well, RO or remineralized mix, tested
+ * on its own. Never a tank reading: no status, no alerts, not on shared pages.
+ */
+export const WATER_SOURCE_KINDS = ['tap', 'well', 'ro', 'mix'] as const;
+export const waterSources = sqliteTable(
+	'water_sources',
+	{
+		id: id(),
+		tankId: text('tank_id')
+			.notNull()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		name: text('name').notNull(),
+		kind: text('kind', { enum: WATER_SOURCE_KINDS }).notNull().default('tap'),
+		note: text('note'),
+		createdAt: createdAt()
+	},
+	(t) => [index('water_sources_tank').on(t.tankId)]
+);
+export type WaterSource = typeof waterSources.$inferSelect;
+
+/** A test of a source (#315): its readings against the tank's own parameters, stored as theirs are (metric). */
+export const sourceTests = sqliteTable(
+	'source_tests',
+	{
+		id: id(),
+		sourceId: text('source_id')
+			.notNull()
+			.references(() => waterSources.id, { onDelete: 'cascade' }),
+		tankId: text('tank_id')
+			.notNull()
+			.references(() => tanks.id, { onDelete: 'cascade' }),
+		takenAt: text('taken_at').notNull(),
+		note: text('note'),
+		/** [{ parameter_id, value }], each value in its parameter's stored unit */
+		readings: text('readings', { mode: 'json' }).$type<{ parameter_id: string; value: number }[]>().notNull().default([]),
+		createdAt: createdAt()
+	},
+	(t) => [index('source_tests_source').on(t.sourceId, t.takenAt)]
+);
+export type SourceTest = typeof sourceTests.$inferSelect;
+
 export const tests = sqliteTable(
 	'tests',
 	{

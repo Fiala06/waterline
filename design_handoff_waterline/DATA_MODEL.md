@@ -112,6 +112,11 @@ photos           id, tank_id, event_id?, test_id?, path, thumb_path, width, heig
                  in_timeline (off: left out of the tank's timeline, e.g. a close-up)
 photo_livestock  photo_id, livestock_id (pets tagged in a photo)
 
+water_sources    id, tank_id, name, kind(tap|well|ro|mix), note?, created_at (#315: the tank's
+                 source water; its tests are never the tank's readings)
+source_tests     id, source_id, tank_id, taken_at, note?, readings JSON [{parameter_id, value}]
+                 (each in its tank parameter's stored unit), created_at
+
 ── Tasks ──────────────────────────────────────────────────────────────────────
 tasks            id, tank_id, name, kind(water_change|test|maintenance|other|dosing|feeding|
                  top_off: a top-off reminder, told by its name; Done logs a top_off entry (#316)|

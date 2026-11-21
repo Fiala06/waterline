@@ -83,6 +83,8 @@ const TANK_TITLES: Record<string, string> = {
 	routines: 'Maintenance routines',
 	'routines/[rid]/run': 'Run routine',
 	summary: 'Share summary',
+	'source-water': 'Source water',
+	'source-water/[sid]/test': 'Test source water',
 	delete: 'Delete tank'
 };
 
@@ -99,7 +101,8 @@ const TANK_TABS: Record<string, TabKey> = {
 	suggestions: 'setup',
 	remind: 'setup',
 	import: 'setup',
-	sharing: 'setup'
+	sharing: 'setup',
+	'source-water': 'setup'
 };
 
 const NONE: RouteInfo = { tankPage: false, tab: null, tabPage: false, topLevel: false, phoneBar: false, fullscreen: false, logForm: false, keepOnTankChange: false };
@@ -184,7 +187,7 @@ export function pageHeader(routeId: string | null | undefined, c: HeaderContext)
 // ── Tank setup's menu: the desktop's side nav, and the list on the phone's Tank setup page ──
 
 export interface SetupItem {
-	key: 'details' | 'targets' | 'public' | 'sharing' | 'remind' | 'notes' | 'review' | 'suggestions';
+	key: 'details' | 'targets' | 'public' | 'sharing' | 'remind' | 'notes' | 'review' | 'suggestions' | 'source';
 	label: string;
 	/** under /tanks/<id>: '' for Notes & routines at /tanks/<id> itself */
 	path: string;
@@ -195,6 +198,8 @@ export interface SetupItem {
 export const SETUP_NAV: readonly SetupItem[] = [
 	{ key: 'details', label: 'Details', path: 'settings', route: `${TANK}/(tabs)/settings` },
 	{ key: 'targets', label: 'Parameters & targets', path: 'targets', route: `${TANK}/targets` },
+	// its tap, well or RO water, tested on its own (#315)
+	{ key: 'source', label: 'Source water', path: 'source-water', route: `${TANK}/source-water` },
 	{ key: 'public', label: 'Public page', path: 'public', route: `${TANK}/public` },
 	{ key: 'sharing', label: 'Sharing', path: 'sharing', route: `${TANK}/sharing` },
 	{ key: 'remind', label: 'Remind me', path: 'remind', route: `${TANK}/remind` },

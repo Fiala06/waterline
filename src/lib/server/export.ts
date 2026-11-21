@@ -22,6 +22,8 @@ import {
 	maintenanceRoutines,
 	parReadings,
 	planRuns,
+	sourceTests,
+	waterSources,
 	testKits,
 	wishes,
 	livestock,
@@ -145,7 +147,12 @@ function dataFor(user: User, list: Tank[]) {
 	const allRoutines = byTank(db.select().from(maintenanceRoutines).where(inArray(maintenanceRoutines.tankId, ids)).orderBy(asc(maintenanceRoutines.position)).all());
 	const allPlans = byTank(db.select().from(planRuns).where(inArray(planRuns.tankId, ids)).all());
 	const allPar = byTank(db.select().from(parReadings).where(inArray(parReadings.tankId, ids)).all());
+	// source water and its tests (#315)
+	const allSources = byTank(db.select().from(waterSources).where(inArray(waterSources.tankId, ids)).all());
+	const allSourceTests = byTank(db.select().from(sourceTests).where(inArray(sourceTests.tankId, ids)).orderBy(asc(sourceTests.takenAt)).all());
 	return {
+		allSources,
+		allSourceTests,
 		allWishes,
 		allRoutines,
 		allPlans,
@@ -280,7 +287,9 @@ async function build(id: string, user: User, list: Tank[], format: 'zip' | 'csv'
 				wishes: d.allWishes(t.id).map((w) => ({ ...w, tankId: undefined })),
 				routines: d.allRoutines(t.id).map((r) => ({ ...r, tankId: undefined })),
 				plans: d.allPlans(t.id).map((r) => ({ ...r, tankId: undefined })),
-				parReadings: d.allPar(t.id).map((r) => ({ ...r, tankId: undefined }))
+				parReadings: d.allPar(t.id).map((r) => ({ ...r, tankId: undefined })),
+				waterSources: d.allSources(t.id).map((r) => ({ ...r, tankId: undefined })),
+				sourceTests: d.allSourceTests(t.id).map((r) => ({ ...r, tankId: undefined }))
 			}))
 		};
 		zip.addBuffer(Buffer.from(JSON.stringify(json, null, 2)), 'waterline.json');

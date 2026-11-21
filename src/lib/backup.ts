@@ -15,7 +15,8 @@ export const BACKUP_INCLUDES = [
 	'Livestock, plants and equipment, and what the dosers put in',
 	'Photos (full size) and which pets are in them',
 	'Spending, with receipts',
-	'Wish list, maintenance routines, fertilizer and treatment plans, PAR readings'
+	'Wish list, maintenance routines, fertilizer and treatment plans, PAR readings',
+	'Source water and its tests'
 ];
 
 /** In the backup for your own records, but not put back by Restore. */

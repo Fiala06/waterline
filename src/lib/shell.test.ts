@@ -38,7 +38,7 @@ function before(routeId: string) {
 		['plants', under('plants')],
 		['equipment', under('equipment')],
 		['spending', under('spending')],
-		['setup', under('settings') || under('targets') || under('public') || under('review') || under('suggestions') || under('remind') || under('import') || under('sharing') || routeId === '/(app)/tanks/[id]/(tabs)']
+		['setup', under('settings') || under('targets') || under('public') || under('review') || under('suggestions') || under('remind') || under('import') || under('sharing') || under('source-water') || routeId === '/(app)/tanks/[id]/(tabs)']
 	];
 	const topLevel = path === '/' || /^\/(charts|history|photos|more)$/.test(path) || /^\/\(app\)\/tanks\/\[id\]\/\(tabs\)\/?[a-z]*$/.test(routeId);
 	const logForm = /^\/entries\/(test|event)\/new$/.test(path);
@@ -120,7 +120,7 @@ describe('desktop page titles', () => {
 
 describe('Tank setup’s menu', () => {
 	it('lists each setup page once, at its own route', () => {
-		expect(SETUP_NAV.map((s) => s.label)).toEqual(['Details', 'Parameters & targets', 'Public page', 'Sharing', 'Remind me', 'Notes & routines', 'Setup review', 'Suggested steps']);
+		expect(SETUP_NAV.map((s) => s.label)).toEqual(['Details', 'Parameters & targets', 'Source water', 'Public page', 'Sharing', 'Remind me', 'Notes & routines', 'Setup review', 'Suggested steps']);
 		for (const s of SETUP_NAV) {
 			expect(ROUTES, s.label).toContain(s.route);
 			expect(routeInfo(s.route).tab, s.label).toBe('setup');

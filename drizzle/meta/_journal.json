@@ -505,6 +505,13 @@
       "when": 1795223769269,
       "tag": "0071_expense_currency",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "6",
+      "when": 1795279796468,
+      "tag": "0072_water_sources",
+      "breakpoints": true
     }
   ]
 }
