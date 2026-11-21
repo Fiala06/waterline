@@ -73,6 +73,9 @@ export const load: PageServerLoad = ({ locals, url }) => {
 			allow: s.allowPublicPages,
 			home: s.publicHomeEnabled,
 			landing: s.landingEnabled,
+			aboutOperator: s.aboutOperator ?? '',
+			aboutContact: s.aboutContact ?? '',
+			aboutTerms: s.aboutTerms ?? '',
 			landingAccess: s.landingAccess ?? '',
 			baseUrl: s.publicBaseUrl ?? '',
 			ga4Id: s.ga4Id ?? '',
@@ -321,6 +324,22 @@ export const actions: Actions = {
 		return { publicSaved: true };
 	},
 	// Sends E5 with what's in the form right now, saved or not.
+	/** About this server (#302): who runs it, a private contact and its terms, dated when they change */
+	saveAbout: async ({ request, locals }) => {
+		requireAdmin(locals);
+		const form = await request.formData();
+		const contact = str(form, 'aboutContact');
+		if (contact && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact)) return fail(400, { aboutErrors: { aboutContact: 'Enter an email address, or leave it blank.' } });
+		const next = { aboutOperator: optStr(form, 'aboutOperator', 200), aboutContact: contact || null, aboutTerms: optStr(form, 'aboutTerms', 4000) };
+		const s = getServerSettings();
+		const changed = next.aboutOperator !== s.aboutOperator || next.aboutContact !== s.aboutContact || next.aboutTerms !== s.aboutTerms;
+		db.update(serverSettings)
+			.set({ ...next, ...(changed ? { aboutUpdatedAt: new Date().toISOString() } : {}) })
+			.where(eq(serverSettings.id, 1))
+			.run();
+		logger.info('settings', 'About this server saved', { userId: locals.user!.id });
+		return { saved: true };
+	},
 	test: async ({ request, locals }) => {
 		const user = requireAdmin(locals);
 		const { cfg, errors } = readForm(await request.formData(), storedConfig());

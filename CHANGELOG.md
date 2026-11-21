@@ -11,6 +11,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **About this server.** A page anyone can open, linked from sign-in, the homepage and Settings: who runs this server, what it keeps, which outside services it uses as it's set up now, how to download or delete your data, and how to get help. Admins add who runs it, a private contact and their terms in Server settings › About this server: [About this server](/about).
 ## 1.23.3 · 2026-11-21
 
 - **A homepage for your server.** Admins can turn on a product homepage in Server settings › Public pages: people who follow a link to your server and aren't signed in see what Waterline does, with a screenshot, Sign in, a link to run their own, and a line you write on who can join. It's off unless you turn it on: [Server settings](/settings/server#public-pages).

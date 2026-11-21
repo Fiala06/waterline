@@ -533,6 +533,13 @@
       "when": 1795293813114,
       "tag": "0075_landing_page",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "6",
+      "when": 1795297611855,
+      "tag": "0076_about_server",
+      "breakpoints": true
     }
   ]
 }

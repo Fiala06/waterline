@@ -76,6 +76,8 @@
 				{/if}
 			{/if}
 			<p class="host kicker">self-hosted · {data.host}</p>
+			<!-- who runs this server, what it keeps, and where to get help (#302) -->
+			<p class="about-link"><a class="link" href="/about">About this server · privacy &amp; help</a></p>
 		</div>
 	</div>
 </div>
@@ -115,6 +117,16 @@
 		font-size: 16px;
 		line-height: 1.5;
 		max-width: 300px;
+	}
+	.about-link {
+		margin: 0;
+		text-align: center;
+		font-size: 13px;
+	}
+	.about-link a {
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
 	}
 	.actions {
 		padding: 0 20px calc(40px + env(safe-area-inset-bottom));

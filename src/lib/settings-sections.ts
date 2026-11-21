@@ -28,6 +28,7 @@ export const SERVER_SECTIONS: Section[] = [
 	{ id: 'people', label: 'People' },
 	{ id: 'email', label: 'Email' },
 	{ id: 'public-pages', label: 'Public pages' },
+	{ id: 'about-server', label: 'About this server' },
 	{ id: 'features', label: 'Features' },
 	{ id: 'about', label: 'Logs & version' }
 ];

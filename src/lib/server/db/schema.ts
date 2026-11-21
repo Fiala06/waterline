@@ -500,6 +500,11 @@ export const serverSettings = sqliteTable('server_settings', {
 	// a product homepage for signed-out visitors (#300), off unless the admin turns it on; who can join, in their own words
 	landingEnabled: integer('landing_enabled', { mode: 'boolean' }).notNull().default(false),
 	landingAccess: text('landing_access'),
+	// About this server (#302): who runs it, a private contact, and its terms and retention, in the admin's own words, dated when changed
+	aboutOperator: text('about_operator'),
+	aboutContact: text('about_contact'),
+	aboutTerms: text('about_terms'),
+	aboutUpdatedAt: text('about_updated_at'),
 	publicBaseUrl: text('public_base_url'),
 	ga4Id: text('ga4_id'),
 	consentBanner: integer('consent_banner', { mode: 'boolean' }).notNull().default(true),

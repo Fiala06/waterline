@@ -78,6 +78,8 @@
 				<a class="btn" href={data.repo} rel="noopener">Waterline on GitHub ↗</a>
 			</section>
 		</div>
+		<!-- who runs this server, what it keeps, and where to get help (#302) -->
+		<p class="foot"><a href="/about">About this server · privacy &amp; help</a></p>
 	</main>
 </div>
 
@@ -211,6 +213,18 @@
 		flex-direction: column;
 		align-items: flex-start;
 		gap: 12px;
+	}
+	.foot {
+		margin: 0;
+		padding-top: 16px;
+		border-top: 1px solid var(--divider);
+		font-size: 14px;
+	}
+	.foot a {
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		text-decoration: underline;
 	}
 	@media (min-width: 1024px) {
 		.top-in,

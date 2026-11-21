@@ -260,7 +260,8 @@ server_settings  singleton: email_provider?(mailgun|smtp), mailgun_api_key_enc?,
                  sharing a tank lets a new address sign in, with list or invited; admins' shares do),
                  local_admin_username?, local_admin_password_hash?,
                  allow_public_pages, public_home_enabled, landing_enabled, landing_access? (#300: the product
-                 homepage at /welcome for signed-out visitors, and the admin's line on who can join), public_base_url?, ga4_id?,
+                 homepage at /welcome for signed-out visitors, and the admin's line on who can join), about_operator?,
+                 about_contact?, about_terms?, about_updated_at? (#302: the admin's words on /about), public_base_url?, ga4_id?,
                  consent_banner, search_console_tag?, scheduled_emails, update_check,
                  log_level(warn|info), log_debug_until?, stock_photos, species_care (care ranges
                  from FishBase, downloaded by the server into DATA_DIR/species-care.json),

@@ -527,6 +527,32 @@
 		<div class="actions"><button class="btn btn-primary">Save</button></div>
 	</form>
 
+	<!-- About this server (#302): the public page's own words; the rest of it comes from how the server is set up -->
+	<form method="POST" action="?/saveAbout" class="sec" id="about-server" aria-labelledby="about-server-h" use:enhance={saved('✓ About this server saved')}>
+		<div class="sec-head">
+			<h2 id="about-server-h">About this server<SectionLink id="about-server" label="About this server" /></h2>
+			<p class="sub">
+				Shown to everyone at <a href="/about">/about</a>, linked from sign-in, the homepage and Settings, beside what Waterline works out itself: what it keeps and the services this
+				server uses. Write only what you'll stand by.
+			</p>
+		</div>
+		<div class="field">
+			<label class="label" for="ab-op">Who runs it · optional</label>
+			<input class="input" id="ab-op" name="aboutOperator" maxlength="200" defaultValue={data.publicPages.aboutOperator} placeholder="e.g. Run by Sam, a hobbyist, on a home server in Oregon." />
+		</div>
+		<div class="field">
+			<label class="label" for="ab-contact">Private contact · optional</label>
+			<input class="input" id="ab-contact" name="aboutContact" type="email" maxlength="200" defaultValue={data.publicPages.aboutContact} placeholder="you@example.com" aria-invalid={!!form?.aboutErrors?.aboutContact} />
+			{#if form?.aboutErrors?.aboutContact}<span class="error-text">✕ {form.aboutErrors.aboutContact}</span>{:else}<span class="hint">For account, privacy and security questions. Left blank, people are pointed to GitHub for bugs only.</span>{/if}
+		</div>
+		<div class="field">
+			<label class="label" for="ab-terms">Terms and retention · optional</label>
+			<textarea class="input" id="ab-terms" name="aboutTerms" rows="5" maxlength="4000" placeholder="e.g. Free during the beta, with no promise it stays up. Backups run nightly and are kept 14 days. Ask me to delete your data and it's gone within a week.">{data.publicPages.aboutTerms}</textarea>
+			<span class="hint">Cost, backups, how long data is kept, beta limits. A blank line starts a new paragraph. The page shows the date it last changed.</span>
+		</div>
+		<div class="actions"><button class="btn btn-primary">Save</button></div>
+	</form>
+
 	<section class="sec" id="features" aria-labelledby="features-h">
 		<div class="sec-head">
 			<h2 id="features-h">Features<SectionLink id="features" label="Features" /></h2>

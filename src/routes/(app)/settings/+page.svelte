@@ -494,6 +494,8 @@
 					<span class="ttext"><span class="tt">Keyboard shortcuts</span><span class="td">Press ? anywhere to see them</span></span>
 					<button type="button" class="btn" onclick={() => (ui.keys = true)}>Show shortcuts</button>
 				</div>
+				<!-- who runs this server, what it keeps, and where to get help (#302) -->
+				<a class="row link" href="/about"><span class="ttext"><span class="tt">About this server</span><span class="td">Who runs it, what it keeps, privacy and help</span></span><span class="chev" aria-hidden="true">›</span></a>
 				<div class="row toggle">
 					<a class="version" href="/settings/changelog"
 						>Waterline v{data.app.version} · self-hosted · What's new{#if data.app.update}<span class="status-bad"
