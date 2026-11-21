@@ -4,6 +4,7 @@
 	// routine (#17) is a task that doses a product or feeds a food: marking it done
 	// logs that in History.
 	import { applyAction, enhance } from '$app/forms';
+	import { busyEnhance } from '$lib/forms';
 	import { goto } from '$app/navigation';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import DateField from '$lib/components/DateField.svelte';
@@ -136,16 +137,15 @@
 	action="{action}?/save"
 	class="tform"
 	class:compact
-	use:enhance={() => {
-		busy = true;
-		return async ({ result, update }) => {
+	use:enhance={busyEnhance((b) => (busy = b), {
+		after: async (result) => {
 			if (result.type === 'redirect' && afterSave) await goto(afterSave, { invalidateAll: true, noScroll: true, keepFocus: true });
 			// the pane posts to /tasks/[id], which `update` won't apply on /tasks: show its errors here
 			else if (result.type === 'failure') await applyAction(result);
-			else await update({ reset: false });
-			busy = false;
-		};
-	}}
+			else return false;
+			return true;
+		}
+	})}
 >
 	{#if compact}
 		<div class="phead">
@@ -446,7 +446,7 @@
 
 	<div class="foot">
 		{#if mode === 'edit'}
-			<button type="button" class="delete" popovertarget="confirm-task-delete">{compact ? 'Delete' : routine ? 'Delete routine' : 'Delete task'}</button>
+			<button type="button" class="delete" popovertarget="confirm-task-delete">{routine ? 'Delete routine' : 'Delete task'}</button>
 		{/if}
 		{#if !compact}<a class="btn cancel-btn hide-phone" href={cancelHref}>Cancel</a>{/if}
 		<button class="btn btn-primary save" disabled={busy}>Save</button>

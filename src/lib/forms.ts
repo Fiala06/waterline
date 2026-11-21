@@ -1,7 +1,7 @@
 // One submission per form at a time (#255): while a form's request is out, a
 // second submit is cancelled, the form is aria-busy and the button that sent
 // it is disabled. Both are released when the answer has been handled.
-import type { SubmitFunction } from '@sveltejs/kit';
+import type { ActionResult, SubmitFunction } from '@sveltejs/kit';
 
 type Input = Parameters<SubmitFunction>[0];
 type After = Exclude<Awaited<ReturnType<SubmitFunction>>, void>;
@@ -62,6 +62,29 @@ export function refusal(form: unknown, name: string): Refusal {
 }
 
 // ── What a form does once it's answered (#268) ──────────────────────────────
+
+/**
+ * A form that's busy while its save is on its way (#282): `set` turns the busy
+ * state on, then off once the answer is in. The page then updates, keeping what
+ * was typed (or emptied with `reset`); `after` can deal with the answer itself
+ * first, and returns true when it has; `then` runs once it's all done. Without scripts the form posts as usual.
+ */
+export const busyEnhance =
+	(
+		set: (busy: boolean) => void,
+		opts: { reset?: boolean; after?: (result: ActionResult) => Promise<boolean>; then?: (form: HTMLFormElement) => void } = {}
+	): SubmitFunction =>
+	({ formElement }) => {
+		set(true);
+		return async ({ result, update }) => {
+			try {
+				if (!(opts.after && (await opts.after(result)))) await update({ reset: opts.reset ?? false });
+			} finally {
+				set(false);
+			}
+			opts.then?.(formElement);
+		};
+	};
 
 /** Keep what was typed: the page stays, with its fields as they were. */
 export const keepValues: SubmitFunction = () => async ({ update }) => update({ reset: false });

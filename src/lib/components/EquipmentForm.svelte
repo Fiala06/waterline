@@ -1,6 +1,7 @@
 <script lang="ts">
 	// T3 · Add / edit equipment. Fields adapt to the type.
 	import { enhance } from '$app/forms';
+	import { busyEnhance } from '$lib/forms';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import DateField from '$lib/components/DateField.svelte';
 	import { untrack } from 'svelte';
@@ -116,13 +117,7 @@
 	method="POST"
 	action="?/save"
 	class="eqform"
-	use:enhance={() => {
-		busy = true;
-		return async ({ update }) => {
-			await update({ reset: false });
-			busy = false;
-		};
-	}}
+	use:enhance={busyEnhance((b) => (busy = b))}
 >
 	<!-- phones; on desktop the header has the title -->
 	<FormBar title={mode === 'edit' ? 'Edit equipment' : 'Add equipment'} {cancelHref} disabled={busy} />

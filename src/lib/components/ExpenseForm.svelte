@@ -1,6 +1,7 @@
 <script lang="ts">
 	// Add / edit an expense (#7), with its receipt (#8): a photo or a PDF.
 	import { enhance } from '$app/forms';
+	import { busyEnhance } from '$lib/forms';
 	import ConfirmDelete from './ConfirmDelete.svelte';
 	import DateField from './DateField.svelte';
 	import FormBar from './FormBar.svelte';
@@ -52,18 +53,15 @@
 	action="?/save"
 	class="xform"
 	enctype="multipart/form-data"
-	use:enhance={() => {
-		busy = true;
-		return async ({ update, formElement }) => {
-			await update({ reset: false });
-			busy = false;
-			// a receipt is sent once: not again with the next save
-			for (const el of formElement.querySelectorAll<HTMLInputElement>('input[name=receipt], input[name=removeReceipt]')) {
+	use:enhance={busyEnhance((b) => (busy = b), {
+		// a receipt is sent once: not again with the next save
+		then: (form) => {
+			for (const el of form.querySelectorAll<HTMLInputElement>('input[name=receipt], input[name=removeReceipt]')) {
 				el.value = el.type === 'file' ? '' : el.value;
 				el.checked = false;
 			}
-		};
-	}}
+		}
+	})}
 >
 	<!-- phones; on desktop the header has the title -->
 	<FormBar title={mode === 'edit' ? 'Edit expense' : 'Add expense'} {cancelHref} disabled={busy} />
@@ -180,7 +178,7 @@
 
 	<div class="foot">
 		{#if mode === 'edit'}
-			<button type="button" class="btn btn-danger remove" popovertarget="confirm-expense">Delete</button>
+			<button type="button" class="btn btn-danger remove" popovertarget="confirm-expense">Delete expense</button>
 		{/if}
 		<a class="btn hide-phone" href={cancelHref}>Cancel</a>
 		<button class="btn btn-primary save" disabled={busy}>{busy ? 'Saving…' : mode === 'edit' ? 'Save' : 'Add expense'}</button>

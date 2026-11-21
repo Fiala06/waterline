@@ -5,6 +5,7 @@
 	// `Otocinclus x 5` or `Amano shrimp, 3` and shows how each line was read.
 	// Without scripts, the typed list alone does the same (the server parses it).
 	import { enhance } from '$app/forms';
+	import { busyEnhance } from '$lib/forms';
 	import { onMount, untrack } from 'svelte';
 	import DateField from './DateField.svelte';
 	import FormBar from './FormBar.svelte';
@@ -146,13 +147,7 @@
 <form
 	method="POST"
 	class="lform"
-	use:enhance={() => {
-		busy = true;
-		return async ({ update }) => {
-			await update();
-			busy = false;
-		};
-	}}
+	use:enhance={busyEnhance((b) => (busy = b), { reset: true })}
 >
 	<!-- phones; on desktop the header has the title -->
 	<FormBar title={plants ? 'Add several plants' : 'Add several'} cancelHref={back} saveLabel="Add" disabled={busy || (js && !items)} />
