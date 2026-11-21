@@ -6,9 +6,9 @@ test('track what is left of a fertilizer, with a low-stock alert you turn on', a
 	await newKeeperWithTank(page, `stock-${info.project.name}`);
 	const tankId = new URL(page.url()).searchParams.get('tank')!;
 	await open(page, '/settings/products');
-	await page.getByLabel('Name').first().fill('Thrive S');
-	await page.getByLabel('Link').first().fill('https://example.com/thrive');
-	await page.getByRole('button', { name: /^Save/ }).first().click();
+	await page.locator('#add-name').fill('Thrive S');
+	await page.locator('#add-url').fill('https://example.com/thrive');
+	await page.getByRole('button', { name: 'Add product' }).click();
 	await expect(page.getByRole('status')).toContainText('✓ Thrive S saved');
 
 	await page.getByRole('link', { name: /Track what’s left/ }).click();
@@ -19,7 +19,7 @@ test('track what is left of a fertilizer, with a low-stock alert you turn on', a
 
 	// a dose in mL is taken off
 	await open(page, `/entries/event/new?tank=${tankId}&category=dosing`);
-	await page.getByLabel('Product').fill('Thrive S');
+	await page.getByLabel('Product', { exact: true }).fill('Thrive S');
 	await page.getByLabel('Amount').fill('70');
 	await page.getByRole('button', { name: 'Save dosing' }).click();
 	await expect(page.getByRole('status')).toBeVisible();

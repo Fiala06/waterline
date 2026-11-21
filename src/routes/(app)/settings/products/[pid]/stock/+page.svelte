@@ -94,6 +94,8 @@
 		flex-direction: column;
 		gap: 24px;
 		max-width: 640px;
+		/* phones: its own gutter (on desktop the settings shell pads it) */
+		padding: 16px 16px 40px;
 	}
 	.head {
 		display: flex;

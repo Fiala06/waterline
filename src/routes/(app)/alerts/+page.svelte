@@ -226,7 +226,10 @@
 		</section>
 	{/if}
 
-	<p class="foot">Also sent by email and push. <a href="/settings#notifications">Notification settings ›</a></p>
+	<p class="foot">
+		{#if sections.stock.length}Readings and overdue tasks are also sent by email and push; running low shows here only.{:else}Also sent by email and push.{/if}
+		<a href="/settings#notifications">Notification settings ›</a>
+	</p>
 </div>
 
 <SnoozeSheet bind:open={snoozeOpen} task={snoozing} tankName={snoozeTank} today={data.today} anchor={snoozeAnchor} />
