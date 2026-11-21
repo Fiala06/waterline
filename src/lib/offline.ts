@@ -162,7 +162,10 @@ export async function flushQueue(): Promise<number> {
 	if (flushing || !navigator.onLine) return 0;
 	flushing = true;
 	let synced = 0;
+	let reached = true;
 	try {
+		if (!(await listQueued()).some((q) => !q.error || wasPassing(q.error))) return 0;
+		ui.sync = 'syncing';
 		for (const item of await listQueued()) {
 			// refused before: waits for Retry or Discard, unless what it was kept for would have passed (#225)
 			if (item.error && !wasPassing(item.error)) continue;
@@ -180,7 +183,8 @@ export async function flushQueue(): Promise<number> {
 					headers: { 'x-sveltekit-action': 'true', accept: 'application/json', 'x-waterline-sync': '1', ...(item.userId ? { 'x-waterline-user': item.userId } : {}) }
 				});
 			} catch {
-				break; // still offline
+				reached = false;
+				break; // still offline, or no way through to the server
 			}
 			const outcome = syncOutcome(res, await res.json().catch(() => null));
 			if (outcome.kind === 'synced') {
@@ -197,6 +201,8 @@ export async function flushQueue(): Promise<number> {
 		}
 	} finally {
 		flushing = false;
+		// "Syncing…" only while a post is on its way: no answer means it can't be reached (#311)
+		ui.sync = reached ? 'idle' : 'unreachable';
 		await refreshQueue();
 	}
 	return synced;

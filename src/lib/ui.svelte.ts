@@ -17,6 +17,13 @@ export const ui = $state({
 	/** desktop sidebar: kept open, or a rail that expands on hover; null until the user chooses */
 	navPinned: null as boolean | null,
 	online: true,
+	/**
+	 * The offline queue's sync (#311), as it really is: a post on its way
+	 * ('syncing'), the last try got no answer though the browser says it's
+	 * online ('unreachable'), or neither ('idle'). Never inferred from
+	 * navigator.onLine alone.
+	 */
+	sync: 'idle' as 'idle' | 'syncing' | 'unreachable',
 	/** the list page the user came from (History, Charts…), for entry Back links and deletes */
 	prev: null as string | null,
 	/** signed-in user, so one account never sees or sends another's offline entries */

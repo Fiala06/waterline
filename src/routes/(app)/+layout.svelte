@@ -169,7 +169,10 @@
 			ui.online = true;
 			sync();
 		};
-		const off = () => (ui.online = false);
+		const off = () => {
+			ui.online = false;
+			ui.sync = 'idle';
+		};
 		const vis = () => document.visibilityState === 'visible' && sync();
 		window.addEventListener('online', on);
 		window.addEventListener('offline', off);
@@ -181,6 +184,13 @@
 		};
 	});
 	const waiting = $derived(ui.queue.filter((q) => !q.error).length);
+	const syncState = $derived(!ui.online ? 'offline' : ui.sync === 'syncing' ? 'syncing' : ui.sync === 'unreachable' ? 'unreachable' : 'waiting');
+	// online with entries still waiting (no answer last time, or the server was restarting): try again every 30 seconds
+	$effect(() => {
+		if (!ui.online || !waiting || ui.sync === 'syncing') return;
+		const t = setInterval(sync, 30_000);
+		return () => clearInterval(t);
+	});
 	// refused by the server: shown whatever tank is on screen, until sent again or dropped (#225)
 	const refused = $derived(ui.queue.filter((q) => q.error));
 	/** " · Reef 24" for an entry logged to a tank other than the one on screen */
@@ -482,9 +492,21 @@
 
 	<div class="main">
 		{#if !ui.online || waiting}
-			<div class="offline" role="status">
+			<!-- the queue as it really is (#311): offline, a sync on its way, no way through to Waterline, or waiting for the next try -->
+			<div class="offline" role="status" data-sync={syncState} data-waiting={waiting}>
 				<strong>{ui.online ? '' : 'Offline'}{!ui.online && waiting ? ' · ' : ''}{waiting ? `${waiting} entr${waiting === 1 ? 'y' : 'ies'} waiting` : ''}</strong>
-				<span>{ui.online ? 'Syncing…' : waiting ? "Saved on this phone. They'll sync when you're back on dry land." : "New entries are saved on this phone until you're back on dry land."}</span>
+				<span
+					>{syncState === 'syncing'
+						? 'Syncing…'
+						: syncState === 'unreachable'
+							? "Saved on this device. Waterline can't be reached right now; they'll sync when it can."
+							: syncState === 'waiting'
+								? "Saved on this device, waiting to sync."
+								: waiting
+									? "Saved on this phone. They'll sync when you're back on dry land."
+									: "New entries are saved on this phone until you're back on dry land."}</span
+				>
+				{#if syncState === 'unreachable'}<button type="button" class="btn try" onclick={sync}>Try now</button>{/if}
 			</div>
 		{/if}
 		{#if refused.length}
@@ -656,6 +678,10 @@
 	}
 	.spacer {
 		flex: 1;
+	}
+	.offline .try {
+		align-self: flex-start;
+		margin-top: 6px;
 	}
 	.offline {
 		margin: calc(8px + env(safe-area-inset-top)) 20px 0;

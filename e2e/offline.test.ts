@@ -1,7 +1,43 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page, type Route } from '@playwright/test';
 import { jpeg, newKeeperWithTank, open } from './helpers';
 
 test.use({ serviceWorkers: 'allow' });
+
+/** The offline banner: its state (offline, syncing, unreachable, waiting) and how many entries wait (#311). */
+const queue = (page: Page) => page.locator('[data-sync][data-waiting]');
+/** Entries saved here and waiting, with no sync claimed: offline, or no way through to Waterline. */
+async function expectWaiting(page: Page, n: number) {
+	const banner = queue(page);
+	await expect(banner).toHaveAttribute('data-waiting', String(n));
+	await expect(banner).toHaveAttribute('data-sync', /^(offline|unreachable)$/);
+	await expect(banner).not.toContainText('Syncing…');
+}
+
+// #311: the browser says it's online, but nothing reaches Waterline: "can't be reached", never "Syncing…", then synced once
+test("a connection with no way through says so, and syncs once it's back", async ({ page, context }, info) => {
+	await newKeeperWithTank(page, `unreachable-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await page.evaluate(() => navigator.serviceWorker.ready);
+	await open(page, `/?tank=${tankId}`);
+	await open(page, `/entries/test/new?tank=${tankId}`);
+	const posts = (r: Route) => (r.request().method() === 'POST' ? r.abort('internetdisconnected') : r.continue());
+	await context.route('**/entries/test/new**', posts);
+	await page.getByLabel('pH', { exact: true }).fill('7.2');
+	await page.getByRole('button', { name: 'Save 1 reading' }).click();
+	await expect(page.getByText("Waterline couldn't be reached. Saved on this device, and it'll sync when it can.")).toBeVisible();
+	const banner = queue(page);
+	await expect(banner).toHaveAttribute('data-sync', 'unreachable');
+	await expect(banner).toHaveAttribute('data-waiting', '1');
+	await expect(banner).toContainText("Waterline can't be reached right now");
+	await expect(banner).not.toContainText('Syncing…');
+
+	await context.unroute('**/entries/test/new**', posts);
+	await banner.getByRole('button', { name: 'Try now' }).click();
+	await expect(page.getByText('✓ Synced 1 entry')).toBeVisible({ timeout: 10_000 });
+	await expect(banner).toHaveCount(0);
+	await open(page, '/history');
+	await expect(page.locator('a.row', { hasText: 'Water test · 1 reading' })).toHaveCount(1);
+});
 
 test('manifest and icons are served', async ({ request }) => {
 	const m = await (await request.get('/manifest.webmanifest')).json();
@@ -38,12 +74,14 @@ test('logging offline saves on the device and syncs later', async ({ page, conte
 	await page.getByLabel('pH', { exact: true }).fill('7.1');
 	await page.getByRole('button', { name: 'Save 2 readings' }).click();
 	await expect(page.getByText("You're offline. Saved, and it'll sync when you're back on dry land.")).toBeVisible();
-	await expect(page.getByText('Offline · 1 entry waiting')).toBeVisible();
+	// the queue's state, not one exact sentence (#311): one entry waiting, and never "Syncing…" with no way through
+	await expectWaiting(page, 1);
 	await expect(page.getByText('▲ Waiting to sync')).toBeVisible();
 
 	await context.setOffline(false);
 	await expect(page.getByText('✓ Synced 1 entry')).toBeVisible({ timeout: 10_000 });
 	await expect(page.getByText('▲ Waiting to sync')).toHaveCount(0);
+	await expect(queue(page)).toHaveCount(0);
 	await open(page, '/history');
 	// Exactly one row: replays can't duplicate it (clientId dedupe)
 	await expect(page.locator('a.row', { hasText: 'Water test · 2 readings' })).toHaveCount(1);
@@ -187,7 +225,7 @@ test('offline data stays with one person, and can be removed from the device', a
 	await context.setOffline(true);
 	await page.getByLabel('pH', { exact: true }).fill('7.1');
 	await page.getByRole('button', { name: 'Save 1 reading' }).click();
-	await expect(page.getByText('Offline · 1 entry waiting')).toBeVisible();
+	await expectWaiting(page, 1);
 	// the app goes on to the dashboard after saving; let it get there first
 	await page.waitForURL((u) => u.pathname === '/');
 	await page.goto('/settings');

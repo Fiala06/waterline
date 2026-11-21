@@ -12,6 +12,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 ## Unreleased
 
 - **How your reminders reach you.** The water-change reminder on a new tank's Getting started list, and every task's own page, now say when the next reminder goes and how: by email (and to which address), by push to your devices or ntfy, whether this device gets push, or in Waterline only. Each line says why when it's off, with a link to set it up, and the last send is shown as sent, since Waterline can't see whether it arrived: [Tasks](/tasks).
+- **Offline entries, told straight.** The banner for entries saved on your device now says "Syncing…" only while they're really on their way. When your phone says it's online but Waterline can't be reached, it says so, keeps trying every 30 seconds, and has Try now; nothing is lost, and each entry is saved once when it gets through: [Dashboard](/).
 
 ## 1.22.5 · 2026-11-21
 
