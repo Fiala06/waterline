@@ -4,7 +4,10 @@ import { dateInZone, fmtDate } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
 import { optStr, str } from '$lib/server/forms';
 import { storeOnePhoto } from '$lib/server/photos';
-import { addPlant, getPlant, listPlants, logTrim, removePlant, renamePlant, restorePlant, updatePlant } from '$lib/server/specs';
+import { addPlant, getPlant, listEquipment, listPlants, logTrim, removePlant, renamePlant, restorePlant, updatePlant } from '$lib/server/specs';
+import { careRows, plantCare } from '$lib/plant-care';
+import { latestReadings } from '$lib/server/logs';
+import { listParams } from '$lib/server/tanks';
 import { plantHealthEvents } from '$lib/server/log-plants';
 import { isPlantObservation, plantObservationText, PLANT_OBSERVATIONS } from '$lib/plants';
 import { PLANT_SYMPTOM_CHECKS, resolveChecks } from '$lib/symptoms';
@@ -45,6 +48,12 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 	}
 	const tank = getTank(user.id, params.id);
 	const facts = latestObs.size ? symptomFacts(user, tank) : null;
+	// care profiles (#84): what the tank already knows, to put each one in context
+	const tempParam = listParams(params.id, { all: true }).find((p) => p.key === 'temp');
+	const tankFacts = {
+		tempC: tempParam ? (latestReadings(params.id).get(tempParam.id)?.value ?? null) : null,
+		co2: tank.growingStyle === 'co2' || listEquipment(user.id, params.id).some((e) => e.type === 'co2')
+	};
 	const checksFor = (plant: { id: string; name: string }) => {
 		const obs = latestObs.get(plant.id);
 		const spec = obs && isPlantObservation(obs) ? PLANT_SYMPTOM_CHECKS[obs] : undefined;
@@ -69,7 +78,12 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 			photo: photos.list[i],
 			ownPhoto: !!p.photoId,
 			health: health.get(p.id) ?? [],
-			checks: checksFor(p)
+			checks: checksFor(p),
+			// its care profile (#84), when it's a plant Waterline knows
+			care: (() => {
+				const c = plantCare(p.scientificName);
+				return c ? { rows: careRows(c, user, tankFacts), note: c.note ?? null } : null;
+			})()
 		})),
 		sort,
 		photosPending: photos.pending,

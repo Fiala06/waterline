@@ -1,0 +1,1291 @@
+{
+	"about": "Waterline's own short, cautious care notes for common aquarium plants (#84): general hobby guidance, broad on purpose, written for this project and licensed like its code (MIT). Plants vary with light, water and nutrients; this is a starting point, not a rule. Temperatures in °C.",
+	"plants": [
+		{
+			"s": "Anubias barteri",
+			"light": "low",
+			"co2": "optional",
+			"growth": "slow",
+			"place": [
+				"epiphyte",
+				"midground"
+			],
+			"propagate": "Divide the rhizome",
+			"roots": false,
+			"tempC": [
+				22,
+				28
+			],
+			"note": "Tie or glue it to wood or rock; burying the rhizome rots it."
+		},
+		{
+			"s": "Anubias gracilis",
+			"light": "low",
+			"co2": "optional",
+			"growth": "slow",
+			"place": [
+				"epiphyte",
+				"midground"
+			],
+			"propagate": "Divide the rhizome",
+			"roots": false,
+			"tempC": [
+				22,
+				28
+			],
+			"note": "Tie or glue it to wood or rock; burying the rhizome rots it."
+		},
+		{
+			"s": "Anubias heterophylla",
+			"light": "low",
+			"co2": "optional",
+			"growth": "slow",
+			"place": [
+				"epiphyte",
+				"background"
+			],
+			"propagate": "Divide the rhizome",
+			"roots": false,
+			"tempC": [
+				22,
+				28
+			],
+			"note": "Tie or glue it to wood or rock; burying the rhizome rots it."
+		},
+		{
+			"s": "Microsorum pteropus",
+			"light": "low",
+			"co2": "optional",
+			"growth": "slow",
+			"place": [
+				"epiphyte",
+				"midground"
+			],
+			"propagate": "Plantlets on its leaves, or divide the rhizome",
+			"roots": false,
+			"tempC": [
+				20,
+				28
+			],
+			"note": "Tie or glue it to wood or rock; burying the rhizome rots it.",
+			"also": [
+				"Leptochilus pteropus"
+			]
+		},
+		{
+			"s": "Bolbitis heudelotii",
+			"light": "medium",
+			"co2": "helps",
+			"growth": "slow",
+			"place": [
+				"epiphyte",
+				"midground"
+			],
+			"propagate": "Divide the rhizome",
+			"roots": false,
+			"tempC": [
+				22,
+				27
+			],
+			"note": "Tie or glue it to wood or rock; burying the rhizome rots it."
+		},
+		{
+			"s": "Bucephalandra motleyana",
+			"light": "low",
+			"co2": "optional",
+			"growth": "slow",
+			"place": [
+				"epiphyte",
+				"foreground"
+			],
+			"propagate": "Divide the rhizome",
+			"roots": false,
+			"tempC": [
+				22,
+				28
+			],
+			"note": "Tie or glue it to wood or rock; burying the rhizome rots it."
+		},
+		{
+			"s": "Taxiphyllum barbieri",
+			"light": "low",
+			"co2": "optional",
+			"growth": "medium",
+			"place": [
+				"epiphyte",
+				"foreground"
+			],
+			"propagate": "Pull off a clump and attach it elsewhere",
+			"roots": false,
+			"tempC": [
+				18,
+				28
+			],
+			"note": "Grows on wood, rock or mesh; it doesn't root in the substrate.",
+			"also": [
+				"Vesicularia dubyana"
+			]
+		},
+		{
+			"s": "Vesicularia montagnei",
+			"light": "low",
+			"co2": "optional",
+			"growth": "slow",
+			"place": [
+				"epiphyte",
+				"foreground"
+			],
+			"propagate": "Pull off a clump and attach it elsewhere",
+			"roots": false,
+			"tempC": [
+				20,
+				28
+			],
+			"note": "Grows on wood, rock or mesh; it doesn't root in the substrate."
+		},
+		{
+			"s": "Vesicularia ferriei",
+			"light": "low",
+			"co2": "optional",
+			"growth": "slow",
+			"place": [
+				"epiphyte",
+				"foreground"
+			],
+			"propagate": "Pull off a clump and attach it elsewhere",
+			"roots": false,
+			"tempC": [
+				20,
+				28
+			],
+			"note": "Grows on wood, rock or mesh; it doesn't root in the substrate."
+		},
+		{
+			"s": "Fissidens fontanus",
+			"light": "low",
+			"co2": "optional",
+			"growth": "slow",
+			"place": [
+				"epiphyte",
+				"foreground"
+			],
+			"propagate": "Pull off a clump and attach it elsewhere",
+			"roots": false,
+			"tempC": [
+				18,
+				26
+			]
+		},
+		{
+			"s": "Monosolenium tenerum",
+			"light": "low",
+			"co2": "optional",
+			"growth": "slow",
+			"place": [
+				"epiphyte",
+				"foreground"
+			],
+			"propagate": "Pull off a clump",
+			"roots": false,
+			"tempC": [
+				18,
+				28
+			]
+		},
+		{
+			"s": "Lomariopsis lineata",
+			"light": "low",
+			"co2": "optional",
+			"growth": "slow",
+			"place": [
+				"epiphyte",
+				"foreground"
+			],
+			"propagate": "Pull off a clump",
+			"roots": false,
+			"tempC": [
+				20,
+				28
+			]
+		},
+		{
+			"s": "Cryptocoryne wendtii",
+			"light": "low",
+			"co2": "optional",
+			"growth": "slow",
+			"place": [
+				"foreground",
+				"midground"
+			],
+			"propagate": "Runners",
+			"roots": true,
+			"tempC": [
+				22,
+				28
+			],
+			"note": "Often melts back after planting or a big change, then regrows from the roots."
+		},
+		{
+			"s": "Cryptocoryne parva",
+			"light": "medium",
+			"co2": "helps",
+			"growth": "slow",
+			"place": [
+				"foreground"
+			],
+			"propagate": "Runners",
+			"roots": true,
+			"tempC": [
+				22,
+				28
+			],
+			"note": "Often melts back after planting or a big change, then regrows from the roots."
+		},
+		{
+			"s": "Cryptocoryne beckettii",
+			"light": "low",
+			"co2": "optional",
+			"growth": "slow",
+			"place": [
+				"midground"
+			],
+			"propagate": "Runners",
+			"roots": true,
+			"tempC": [
+				22,
+				28
+			],
+			"note": "Often melts back after planting or a big change, then regrows from the roots."
+		},
+		{
+			"s": "Cryptocoryne undulata",
+			"light": "low",
+			"co2": "optional",
+			"growth": "slow",
+			"place": [
+				"midground"
+			],
+			"propagate": "Runners",
+			"roots": true,
+			"tempC": [
+				22,
+				28
+			],
+			"note": "Often melts back after planting or a big change, then regrows from the roots."
+		},
+		{
+			"s": "Cryptocoryne lutea",
+			"light": "low",
+			"co2": "optional",
+			"growth": "slow",
+			"place": [
+				"foreground",
+				"midground"
+			],
+			"propagate": "Runners",
+			"roots": true,
+			"tempC": [
+				22,
+				28
+			],
+			"note": "Often melts back after planting or a big change, then regrows from the roots."
+		},
+		{
+			"s": "Cryptocoryne spiralis",
+			"light": "medium",
+			"co2": "optional",
+			"growth": "slow",
+			"place": [
+				"midground",
+				"background"
+			],
+			"propagate": "Runners",
+			"roots": true,
+			"tempC": [
+				22,
+				28
+			],
+			"note": "Often melts back after planting or a big change, then regrows from the roots."
+		},
+		{
+			"s": "Cryptocoryne crispatula",
+			"light": "low",
+			"co2": "optional",
+			"growth": "slow",
+			"place": [
+				"background"
+			],
+			"propagate": "Runners",
+			"roots": true,
+			"tempC": [
+				20,
+				28
+			],
+			"note": "Often melts back after planting or a big change, then regrows from the roots.",
+			"also": [
+				"Cryptocoryne balansae"
+			]
+		},
+		{
+			"s": "Cryptocoryne pontederiifolia",
+			"light": "low",
+			"co2": "optional",
+			"growth": "slow",
+			"place": [
+				"midground"
+			],
+			"propagate": "Runners",
+			"roots": true,
+			"tempC": [
+				22,
+				28
+			],
+			"note": "Often melts back after planting or a big change, then regrows from the roots."
+		},
+		{
+			"s": "Echinodorus bleheri",
+			"light": "medium",
+			"co2": "optional",
+			"growth": "medium",
+			"place": [
+				"background"
+			],
+			"propagate": "Plantlets on its flower stems, or runners",
+			"roots": true,
+			"tempC": [
+				22,
+				28
+			],
+			"note": "Grows large; a heavy root feeder."
+		},
+		{
+			"s": "Echinodorus amazonicus",
+			"light": "medium",
+			"co2": "optional",
+			"growth": "medium",
+			"place": [
+				"background"
+			],
+			"propagate": "Plantlets on its flower stems, or runners",
+			"roots": true,
+			"tempC": [
+				22,
+				28
+			],
+			"note": "Grows large; a heavy root feeder."
+		},
+		{
+			"s": "Echinodorus osiris",
+			"light": "medium",
+			"co2": "optional",
+			"growth": "medium",
+			"place": [
+				"background"
+			],
+			"propagate": "Plantlets on its flower stems, or runners",
+			"roots": true,
+			"tempC": [
+				22,
+				28
+			]
+		},
+		{
+			"s": "Echinodorus cordifolius",
+			"light": "medium",
+			"co2": "optional",
+			"growth": "medium",
+			"place": [
+				"background"
+			],
+			"propagate": "Plantlets on its flower stems",
+			"roots": true,
+			"tempC": [
+				22,
+				28
+			],
+			"note": "Can send leaves above the water."
+		},
+		{
+			"s": "Helanthium tenellum",
+			"light": "medium",
+			"co2": "helps",
+			"growth": "medium",
+			"place": [
+				"foreground"
+			],
+			"propagate": "Runners",
+			"roots": true,
+			"tempC": [
+				22,
+				28
+			]
+		},
+		{
+			"s": "Sagittaria subulata",
+			"light": "low",
+			"co2": "optional",
+			"growth": "medium",
+			"place": [
+				"foreground"
+			],
+			"propagate": "Runners",
+			"roots": true,
+			"tempC": [
+				20,
+				28
+			]
+		},
+		{
+			"s": "Vallisneria spiralis",
+			"light": "low",
+			"co2": "optional",
+			"growth": "fast",
+			"place": [
+				"background"
+			],
+			"propagate": "Runners",
+			"roots": true,
+			"tempC": [
+				20,
+				28
+			],
+			"note": "Leaves trail along the surface in a shallow tank."
+		},
+		{
+			"s": "Vallisneria americana",
+			"light": "low",
+			"co2": "optional",
+			"growth": "fast",
+			"place": [
+				"background"
+			],
+			"propagate": "Runners",
+			"roots": true,
+			"tempC": [
+				20,
+				28
+			],
+			"note": "Leaves trail along the surface in a shallow tank.",
+			"also": [
+				"Vallisneria gigantea"
+			]
+		},
+		{
+			"s": "Aponogeton crispus",
+			"light": "medium",
+			"co2": "optional",
+			"growth": "fast",
+			"place": [
+				"background"
+			],
+			"propagate": "From its bulb; may set seed",
+			"roots": true,
+			"tempC": [
+				22,
+				28
+			],
+			"note": "Can rest for a few months after a growth spell; leave the bulb in."
+		},
+		{
+			"s": "Aponogeton ulvaceus",
+			"light": "medium",
+			"co2": "optional",
+			"growth": "fast",
+			"place": [
+				"background"
+			],
+			"propagate": "From its bulb; may set seed",
+			"roots": true,
+			"tempC": [
+				22,
+				28
+			],
+			"note": "Can rest for a few months after a growth spell; leave the bulb in."
+		},
+		{
+			"s": "Nymphaea lotus",
+			"light": "medium",
+			"co2": "optional",
+			"growth": "fast",
+			"place": [
+				"background"
+			],
+			"propagate": "Runners and bulb offsets",
+			"roots": true,
+			"tempC": [
+				22,
+				28
+			],
+			"note": "Trim lily pads to keep its leaves under water, or let them float."
+		},
+		{
+			"s": "Crinum calamistratum",
+			"light": "medium",
+			"co2": "optional",
+			"growth": "slow",
+			"place": [
+				"background"
+			],
+			"propagate": "Offsets from its bulb",
+			"roots": true,
+			"tempC": [
+				22,
+				28
+			],
+			"note": "Plant the bulb with its top above the substrate."
+		},
+		{
+			"s": "Barclaya longifolia",
+			"light": "medium",
+			"co2": "helps",
+			"growth": "medium",
+			"place": [
+				"midground"
+			],
+			"propagate": "Seeds; offsets now and then",
+			"roots": true,
+			"tempC": [
+				22,
+				28
+			]
+		},
+		{
+			"s": "Lobelia cardinalis",
+			"light": "medium",
+			"co2": "optional",
+			"growth": "slow",
+			"place": [
+				"foreground",
+				"midground"
+			],
+			"propagate": "Cuttings: replant the tops",
+			"roots": true,
+			"tempC": [
+				20,
+				26
+			]
+		},
+		{
+			"s": "Cyperus helferi",
+			"light": "medium",
+			"co2": "helps",
+			"growth": "slow",
+			"place": [
+				"midground"
+			],
+			"propagate": "Side shoots",
+			"roots": true,
+			"tempC": [
+				22,
+				28
+			]
+		},
+		{
+			"s": "Eleocharis acicularis",
+			"light": "medium",
+			"co2": "helps",
+			"growth": "medium",
+			"place": [
+				"foreground"
+			],
+			"propagate": "Runners",
+			"roots": true,
+			"tempC": [
+				18,
+				28
+			],
+			"also": [
+				"Eleocharis parvula"
+			]
+		},
+		{
+			"s": "Lilaeopsis brasiliensis",
+			"light": "medium",
+			"co2": "helps",
+			"growth": "slow",
+			"place": [
+				"foreground"
+			],
+			"propagate": "Runners",
+			"roots": true,
+			"tempC": [
+				20,
+				28
+			]
+		},
+		{
+			"s": "Marsilea hirsuta",
+			"light": "low",
+			"co2": "optional",
+			"growth": "slow",
+			"place": [
+				"foreground"
+			],
+			"propagate": "Runners",
+			"roots": true,
+			"tempC": [
+				20,
+				28
+			]
+		},
+		{
+			"s": "Marsilea crenata",
+			"light": "low",
+			"co2": "optional",
+			"growth": "slow",
+			"place": [
+				"foreground"
+			],
+			"propagate": "Runners",
+			"roots": true,
+			"tempC": [
+				20,
+				28
+			]
+		},
+		{
+			"s": "Hemianthus callitrichoides",
+			"light": "high",
+			"co2": "needed",
+			"growth": "medium",
+			"place": [
+				"foreground"
+			],
+			"propagate": "Split off a patch and replant it",
+			"roots": false,
+			"tempC": [
+				20,
+				28
+			],
+			"note": "Tiny leaves; fine substrate helps it take hold."
+		},
+		{
+			"s": "Glossostigma elatinoides",
+			"light": "high",
+			"co2": "needed",
+			"growth": "fast",
+			"place": [
+				"foreground"
+			],
+			"propagate": "Runners",
+			"roots": false,
+			"tempC": [
+				20,
+				26
+			],
+			"note": "Grows upward instead of across in low light."
+		},
+		{
+			"s": "Staurogyne repens",
+			"light": "medium",
+			"co2": "helps",
+			"growth": "medium",
+			"place": [
+				"foreground"
+			],
+			"propagate": "Cuttings and side shoots",
+			"roots": true,
+			"tempC": [
+				22,
+				28
+			]
+		},
+		{
+			"s": "Pogostemon helferi",
+			"light": "medium",
+			"co2": "helps",
+			"growth": "slow",
+			"place": [
+				"foreground"
+			],
+			"propagate": "Side shoots",
+			"roots": false,
+			"tempC": [
+				22,
+				30
+			],
+			"note": "Tie it to rock or wood, or plant it."
+		},
+		{
+			"s": "Utricularia graminifolia",
+			"light": "high",
+			"co2": "needed",
+			"growth": "medium",
+			"place": [
+				"foreground"
+			],
+			"propagate": "Split off a patch",
+			"roots": false,
+			"tempC": [
+				20,
+				26
+			]
+		},
+		{
+			"s": "Blyxa japonica",
+			"light": "medium",
+			"co2": "helps",
+			"growth": "medium",
+			"place": [
+				"foreground",
+				"midground"
+			],
+			"propagate": "Side shoots",
+			"roots": true,
+			"tempC": [
+				20,
+				28
+			]
+		},
+		{
+			"s": "Hydrocotyle tripartita",
+			"light": "medium",
+			"co2": "helps",
+			"growth": "fast",
+			"place": [
+				"foreground",
+				"midground"
+			],
+			"propagate": "Runners",
+			"roots": false,
+			"tempC": [
+				20,
+				28
+			]
+		},
+		{
+			"s": "Micranthemum umbrosum",
+			"light": "medium",
+			"co2": "helps",
+			"growth": "fast",
+			"place": [
+				"foreground",
+				"midground"
+			],
+			"propagate": "Cuttings: replant the tops",
+			"roots": false,
+			"tempC": [
+				20,
+				28
+			]
+		},
+		{
+			"s": "Bacopa australis",
+			"light": "medium",
+			"co2": "helps",
+			"growth": "medium",
+			"place": [
+				"foreground",
+				"midground"
+			],
+			"propagate": "Cuttings: replant the tops",
+			"roots": false,
+			"tempC": [
+				20,
+				28
+			]
+		},
+		{
+			"s": "Hygrophila polysperma",
+			"light": "low",
+			"co2": "optional",
+			"growth": "fast",
+			"place": [
+				"background"
+			],
+			"propagate": "Cuttings: replant the tops",
+			"roots": false,
+			"tempC": [
+				20,
+				28
+			],
+			"note": "Invasive in some regions: never release it."
+		},
+		{
+			"s": "Hygrophila difformis",
+			"light": "medium",
+			"co2": "optional",
+			"growth": "fast",
+			"place": [
+				"background",
+				"midground"
+			],
+			"propagate": "Cuttings: replant the tops",
+			"roots": false,
+			"tempC": [
+				22,
+				28
+			]
+		},
+		{
+			"s": "Hygrophila corymbosa",
+			"light": "medium",
+			"co2": "helps",
+			"growth": "fast",
+			"place": [
+				"background"
+			],
+			"propagate": "Cuttings: replant the tops",
+			"roots": false,
+			"tempC": [
+				22,
+				28
+			]
+		},
+		{
+			"s": "Limnophila sessiliflora",
+			"light": "medium",
+			"co2": "helps",
+			"growth": "fast",
+			"place": [
+				"background"
+			],
+			"propagate": "Cuttings: replant the tops",
+			"roots": false,
+			"tempC": [
+				22,
+				28
+			],
+			"note": "Invasive in some regions: never release it."
+		},
+		{
+			"s": "Limnophila aromatica",
+			"light": "high",
+			"co2": "needed",
+			"growth": "medium",
+			"place": [
+				"background"
+			],
+			"propagate": "Cuttings: replant the tops",
+			"roots": false,
+			"tempC": [
+				22,
+				28
+			]
+		},
+		{
+			"s": "Rotala rotundifolia",
+			"light": "medium",
+			"co2": "helps",
+			"growth": "fast",
+			"place": [
+				"background"
+			],
+			"propagate": "Cuttings: replant the tops",
+			"roots": false,
+			"tempC": [
+				22,
+				28
+			],
+			"note": "Turns pink to red in strong light."
+		},
+		{
+			"s": "Rotala wallichii",
+			"light": "high",
+			"co2": "needed",
+			"growth": "fast",
+			"place": [
+				"background"
+			],
+			"propagate": "Cuttings: replant the tops",
+			"roots": false,
+			"tempC": [
+				22,
+				28
+			]
+		},
+		{
+			"s": "Rotala macrandra",
+			"light": "high",
+			"co2": "needed",
+			"growth": "medium",
+			"place": [
+				"background"
+			],
+			"propagate": "Cuttings: replant the tops",
+			"roots": false,
+			"tempC": [
+				22,
+				28
+			]
+		},
+		{
+			"s": "Ludwigia repens",
+			"light": "medium",
+			"co2": "helps",
+			"growth": "fast",
+			"place": [
+				"background"
+			],
+			"propagate": "Cuttings: replant the tops",
+			"roots": false,
+			"tempC": [
+				20,
+				28
+			],
+			"note": "Redder in strong light."
+		},
+		{
+			"s": "Ludwigia palustris",
+			"light": "medium",
+			"co2": "helps",
+			"growth": "medium",
+			"place": [
+				"background",
+				"midground"
+			],
+			"propagate": "Cuttings: replant the tops",
+			"roots": false,
+			"tempC": [
+				20,
+				28
+			]
+		},
+		{
+			"s": "Alternanthera reineckii",
+			"light": "high",
+			"co2": "helps",
+			"growth": "medium",
+			"place": [
+				"midground"
+			],
+			"propagate": "Cuttings: replant the tops",
+			"roots": false,
+			"tempC": [
+				22,
+				28
+			],
+			"note": "Keeps its red colour best with strong light and iron."
+		},
+		{
+			"s": "Bacopa caroliniana",
+			"light": "medium",
+			"co2": "helps",
+			"growth": "medium",
+			"place": [
+				"background",
+				"midground"
+			],
+			"propagate": "Cuttings: replant the tops",
+			"roots": false,
+			"tempC": [
+				20,
+				28
+			]
+		},
+		{
+			"s": "Bacopa monnieri",
+			"light": "medium",
+			"co2": "helps",
+			"growth": "medium",
+			"place": [
+				"midground"
+			],
+			"propagate": "Cuttings: replant the tops",
+			"roots": false,
+			"tempC": [
+				20,
+				28
+			]
+		},
+		{
+			"s": "Cabomba caroliniana",
+			"light": "high",
+			"co2": "helps",
+			"growth": "fast",
+			"place": [
+				"background"
+			],
+			"propagate": "Cuttings: replant the tops",
+			"roots": false,
+			"tempC": [
+				22,
+				27
+			],
+			"note": "Invasive in some regions: never release it."
+		},
+		{
+			"s": "Ceratophyllum demersum",
+			"light": "low",
+			"co2": "optional",
+			"growth": "fast",
+			"place": [
+				"background",
+				"floating"
+			],
+			"propagate": "Breaks into pieces that each grow on",
+			"roots": false,
+			"tempC": [
+				15,
+				28
+			],
+			"note": "Has no real roots: weigh it down or let it float."
+		},
+		{
+			"s": "Elodea densa",
+			"light": "low",
+			"co2": "optional",
+			"growth": "fast",
+			"place": [
+				"background"
+			],
+			"propagate": "Cuttings: replant the tops",
+			"roots": false,
+			"tempC": [
+				15,
+				26
+			],
+			"note": "Invasive in many regions: never release it."
+		},
+		{
+			"s": "Myriophyllum mattogrossense",
+			"light": "medium",
+			"co2": "helps",
+			"growth": "fast",
+			"place": [
+				"background"
+			],
+			"propagate": "Cuttings: replant the tops",
+			"roots": false,
+			"tempC": [
+				22,
+				28
+			]
+		},
+		{
+			"s": "Heteranthera zosterifolia",
+			"light": "medium",
+			"co2": "helps",
+			"growth": "fast",
+			"place": [
+				"midground",
+				"background"
+			],
+			"propagate": "Cuttings: replant the tops",
+			"roots": false,
+			"tempC": [
+				22,
+				28
+			]
+		},
+		{
+			"s": "Pogostemon erectus",
+			"light": "high",
+			"co2": "needed",
+			"growth": "medium",
+			"place": [
+				"background"
+			],
+			"propagate": "Cuttings: replant the tops",
+			"roots": false,
+			"tempC": [
+				22,
+				28
+			]
+		},
+		{
+			"s": "Pogostemon stellatus",
+			"light": "high",
+			"co2": "needed",
+			"growth": "medium",
+			"place": [
+				"background"
+			],
+			"propagate": "Cuttings: replant the tops",
+			"roots": false,
+			"tempC": [
+				22,
+				28
+			]
+		},
+		{
+			"s": "Hemianthus micranthemoides",
+			"light": "medium",
+			"co2": "helps",
+			"growth": "fast",
+			"place": [
+				"midground"
+			],
+			"propagate": "Cuttings: replant the tops",
+			"roots": false,
+			"tempC": [
+				20,
+				28
+			]
+		},
+		{
+			"s": "Ammannia gracilis",
+			"light": "high",
+			"co2": "needed",
+			"growth": "medium",
+			"place": [
+				"background"
+			],
+			"propagate": "Cuttings: replant the tops",
+			"roots": false,
+			"tempC": [
+				22,
+				28
+			]
+		},
+		{
+			"s": "Proserpinaca palustris",
+			"light": "high",
+			"co2": "helps",
+			"growth": "medium",
+			"place": [
+				"background"
+			],
+			"propagate": "Cuttings: replant the tops",
+			"roots": false,
+			"tempC": [
+				20,
+				28
+			]
+		},
+		{
+			"s": "Didiplis diandra",
+			"light": "high",
+			"co2": "needed",
+			"growth": "medium",
+			"place": [
+				"midground"
+			],
+			"propagate": "Cuttings: replant the tops",
+			"roots": false,
+			"tempC": [
+				20,
+				28
+			]
+		},
+		{
+			"s": "Hydrocotyle leucocephala",
+			"light": "low",
+			"co2": "optional",
+			"growth": "fast",
+			"place": [
+				"background",
+				"floating"
+			],
+			"propagate": "Cuttings: replant the tops",
+			"roots": false,
+			"tempC": [
+				20,
+				28
+			]
+		},
+		{
+			"s": "Pistia stratiotes",
+			"light": "medium",
+			"co2": "optional",
+			"growth": "fast",
+			"place": [
+				"floating"
+			],
+			"propagate": "Runners",
+			"roots": false,
+			"tempC": [
+				22,
+				28
+			],
+			"note": "Covers the surface quickly: thin it so the plants below still get light. Invasive in many regions: never release it."
+		},
+		{
+			"s": "Salvinia minima",
+			"light": "medium",
+			"co2": "optional",
+			"growth": "fast",
+			"place": [
+				"floating"
+			],
+			"propagate": "Splits on its own",
+			"roots": false,
+			"tempC": [
+				20,
+				28
+			],
+			"note": "Covers the surface quickly: thin it so the plants below still get light."
+		},
+		{
+			"s": "Salvinia natans",
+			"light": "medium",
+			"co2": "optional",
+			"growth": "fast",
+			"place": [
+				"floating"
+			],
+			"propagate": "Splits on its own",
+			"roots": false,
+			"tempC": [
+				18,
+				28
+			],
+			"note": "Covers the surface quickly: thin it so the plants below still get light."
+		},
+		{
+			"s": "Limnobium laevigatum",
+			"light": "medium",
+			"co2": "optional",
+			"growth": "fast",
+			"place": [
+				"floating"
+			],
+			"propagate": "Runners",
+			"roots": false,
+			"tempC": [
+				20,
+				28
+			],
+			"note": "Covers the surface quickly: thin it so the plants below still get light."
+		},
+		{
+			"s": "Lemna minor",
+			"light": "low",
+			"co2": "optional",
+			"growth": "fast",
+			"place": [
+				"floating"
+			],
+			"propagate": "Splits on its own",
+			"roots": false,
+			"tempC": [
+				15,
+				28
+			],
+			"note": "Covers the surface quickly: thin it so the plants below still get light."
+		},
+		{
+			"s": "Phyllanthus fluitans",
+			"light": "medium",
+			"co2": "optional",
+			"growth": "fast",
+			"place": [
+				"floating"
+			],
+			"propagate": "Splits on its own",
+			"roots": false,
+			"tempC": [
+				20,
+				28
+			],
+			"note": "Covers the surface quickly: thin it so the plants below still get light."
+		},
+		{
+			"s": "Riccia fluitans",
+			"light": "medium",
+			"co2": "helps",
+			"growth": "fast",
+			"place": [
+				"floating",
+				"foreground"
+			],
+			"propagate": "Pull off a clump",
+			"roots": false,
+			"tempC": [
+				18,
+				28
+			],
+			"note": "Floats unless tied to rock or mesh."
+		}
+	]
+}

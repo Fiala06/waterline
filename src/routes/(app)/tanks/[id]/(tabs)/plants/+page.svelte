@@ -194,6 +194,22 @@
 				</form>
 				<p class="hint">Or open one in Photos and choose Use as the photo for {editing.name}.</p>
 			</div>
+			{#if editing.care}
+				<!-- its care profile (#84): general guidance, with the tank's own context where it has one -->
+				<section class="care" aria-label="Care">
+					<span class="label">Care</span>
+					<dl class="care-rows">
+						{#each editing.care.rows as r (r.label)}
+							<div>
+								<dt>{r.label}</dt>
+								<dd>{r.value}{#if r.context}<span class="ctx">{r.context}</span>{/if}</dd>
+							</div>
+						{/each}
+					</dl>
+					{#if editing.care.note}<p class="hint">{editing.care.note}</p>{/if}
+					<p class="hint">General guidance written for Waterline, a starting point rather than a rule: plants vary with light, water and nutrients.</p>
+				</section>
+			{/if}
 			<!-- its health journal (#85): what it's been doing, newest first -->
 			<section class="plant-health" aria-label="Health">
 				<div class="ph-head">
@@ -479,6 +495,37 @@
 	}
 	.ph-none {
 		margin: 8px 0 0;
+	}
+	.care {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+	.care-rows {
+		margin: 0;
+		border-top: 2px solid var(--ink);
+	}
+	.care-rows div {
+		display: grid;
+		grid-template-columns: 110px minmax(0, 1fr);
+		gap: 12px;
+		padding: 8px 0;
+		border-bottom: 1px solid var(--divider);
+		font-size: 14px;
+	}
+	.care-rows dt {
+		color: var(--text-muted);
+	}
+	.care-rows dd {
+		margin: 0;
+	}
+	.care-rows .ctx {
+		display: block;
+		font-size: 13px;
+		font-weight: 600;
+	}
+	.care .hint {
+		margin: 0;
 	}
 	.sheet-form {
 		display: flex;
