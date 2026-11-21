@@ -11,7 +11,7 @@ export const load: PageServerLoad = ({ locals, params }) => {
 	const e = getExpense(user.id, params.eid);
 	if (e.tankId !== params.id) error(404, 'Expense not found');
 	return {
-		...expensePage(user),
+		...expensePage(user, e.currency),
 		tankId: e.tankId,
 		values: { amount: moneyInput(e.amountCents), what: e.what, category: e.category, date: e.date, note: e.note ?? '', tankId: e.tankId, productId: e.productId ?? '', equipmentId: e.equipmentId ?? '' },
 		receipt: e.receiptType ? { href: `/receipts/${e.id}`, type: e.receiptType } : null

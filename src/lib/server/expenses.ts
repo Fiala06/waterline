@@ -7,6 +7,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import sharp from 'sharp';
 import { equipmentName } from '$lib/equipment';
+import { mainCurrency, sumByCurrency, type Sums } from '$lib/money';
 import { addDays } from '$lib/time';
 import { db } from './db';
 import { requireRoleOn, visibleTo } from './members';
@@ -40,7 +41,7 @@ export function listExpenses(userId: string, tankId: string) {
 	return db.select().from(expenses).where(eq(expenses.tankId, tankId)).orderBy(desc(expenses.date), desc(expenses.createdAt)).all();
 }
 
-/** What an item cost (#148): the expenses linked to it, newest first, with their sum. */
+/** What an item cost (#148): the expenses linked to it, newest first, with their sum per currency (#307). */
 export function expensesForEquipment(equipmentId: string) {
 	// two added in the same millisecond: the one added last is the newest
 	const rows = db
@@ -49,7 +50,7 @@ export function expensesForEquipment(equipmentId: string) {
 		.where(eq(expenses.equipmentId, equipmentId))
 		.orderBy(desc(expenses.date), desc(expenses.createdAt), desc(sql`${expenses}.rowid`))
 		.all();
-	return { rows, totalCents: rows.reduce((n, e) => n + e.amountCents, 0) };
+	return { rows, totals: sumByCurrency(rows.map((e) => ({ cents: e.amountCents, currency: e.currency }))) };
 }
 
 /** The name of each equipment item of these tanks, past ones too, to say what an expense was for. */
@@ -79,18 +80,19 @@ export function getExpense(userId: string, id: string): Expense {
 	return row.e;
 }
 
-export function addExpense(userId: string, tankId: string, input: ExpenseInput, importId: string | null = null) {
+/** A new expense, in `currency`: the keeper's preference as it is now (#307). */
+export function addExpense(userId: string, tankId: string, input: ExpenseInput & { currency: string }, importId: string | null = null) {
 	getTank(userId, tankId, 'owner');
 	return db.insert(expenses).values({ ...input, tankId, importId }).returning().get();
 }
 
-/** An expense's details; moving it to another of the keeper's tanks keeps its receipt. */
+/** An expense's details; it keeps its currency (#307), and moving it to another of the keeper's tanks keeps its receipt. */
 export async function updateExpense(userId: string, id: string, input: ExpenseInput & { tankId: string }) {
 	const before = getExpense(userId, id);
 	// the owner's, on the tank it's on and the one it goes to (#106)
 	requireRoleOn(userId, before.tankId, 'owner');
 	getTank(userId, input.tankId, 'owner');
-	const save = (receiptPath: string | null) => db.update(expenses).set({ ...input, receiptPath }).where(eq(expenses.id, id)).returning().get();
+	const save = (receiptPath: string | null) => db.update(expenses).set({ ...input, currency: before.currency, receiptPath }).where(eq(expenses.id, id)).returning().get();
 	if (!before.receiptPath || input.tankId === before.tankId) return save(before.receiptPath);
 	// to another tank: a copy in its folder, the row, then the old file (#118)
 	let data: Buffer;
@@ -125,37 +127,47 @@ const monthLabel = (m: string) =>
 /**
  * This month, this year and all time; this year by category; and each of the
  * last 12 months, oldest first (months with nothing spent included, as 0).
+ * Each total is per currency (#307); `cents` (bar heights, shares, order) is
+ * in the main one, `mainCurrency`.
  */
-export function spendingSummary(rows: Pick<Expense, 'date' | 'amountCents' | 'category'>[], today: string) {
+export function spendingSummary(rows: Pick<Expense, 'date' | 'amountCents' | 'category' | 'currency'>[], today: string, preferred = 'USD') {
 	const month = today.slice(0, 7);
 	const year = today.slice(0, 4);
-	const sum = (xs: typeof rows) => xs.reduce((n, e) => n + e.amountCents, 0);
+	const main = mainCurrency(rows.map((e) => e.currency), preferred);
+	const sums = (xs: typeof rows): Sums => sumByCurrency(xs.map((e) => ({ cents: e.amountCents, currency: e.currency })));
+	const cents = (xs: typeof rows) => xs.reduce((n, e) => n + (e.currency === main ? e.amountCents : 0), 0);
 	const thisYear = rows.filter((e) => e.date.startsWith(year));
 	const byCategory = Object.entries(CATEGORY_LABEL)
-		.map(([key, label]) => ({ key: key as ExpenseCategory, label, cents: sum(thisYear.filter((e) => e.category === key)) }))
-		.filter((c) => c.cents > 0)
-		.sort((a, b) => b.cents - a.cents);
-	const months: { key: string; label: string; cents: number }[] = [];
+		.map(([key, label]) => {
+			const xs = thisYear.filter((e) => e.category === key);
+			return { key: key as ExpenseCategory, label, sums: sums(xs), cents: cents(xs), count: xs.length };
+		})
+		.filter((c) => c.count > 0)
+		.sort((a, b) => b.cents - a.cents)
+		.map(({ count: _, ...c }) => c);
+	const months: { key: string; label: string; sums: Sums; cents: number }[] = [];
 	let d = `${month}-01`;
 	for (let i = 0; i < MONTHS; i++) {
 		const key = d.slice(0, 7);
-		months.unshift({ key, label: monthLabel(key), cents: sum(rows.filter((e) => e.date.startsWith(key))) });
+		const xs = rows.filter((e) => e.date.startsWith(key));
+		months.unshift({ key, label: monthLabel(key), sums: sums(xs), cents: cents(xs) });
 		d = addDays(d, -1).slice(0, 7) + '-01'; // the month before
 	}
-	return { month: sum(rows.filter((e) => e.date.startsWith(month))), year: sum(thisYear), all: sum(rows), byCategory, months };
+	return { main, month: sums(rows.filter((e) => e.date.startsWith(month))), year: sums(thisYear), yearCents: cents(thisYear), all: sums(rows), byCategory, months };
 }
 
-/** This year's spending on all of the keeper's tanks (archived ones too). */
-export function spentThisYear(userId: string, year: string) {
+/** This year's spending on all of the keeper's tanks (archived ones too), per currency (#307). */
+export function spentThisYear(userId: string, year: string): Sums {
 	const ids = db.select({ id: tanks.id }).from(tanks).where(eq(tanks.userId, userId)).all().map((t) => t.id);
-	if (!ids.length) return 0;
-	return db
-		.select({ c: expenses.amountCents, date: expenses.date })
-		.from(expenses)
-		.where(inArray(expenses.tankId, ids))
-		.all()
-		.filter((e) => e.date.startsWith(year))
-		.reduce((n, e) => n + e.c, 0);
+	if (!ids.length) return {};
+	return sumByCurrency(
+		db
+			.select({ cents: expenses.amountCents, currency: expenses.currency, date: expenses.date })
+			.from(expenses)
+			.where(inArray(expenses.tankId, ids))
+			.all()
+			.filter((e) => e.date.startsWith(year))
+	);
 }
 
 // ── Receipts ────────────────────────────────────────────────────────────────

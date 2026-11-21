@@ -164,7 +164,7 @@
 									<div class="field amount">
 										<label class="label" for="paid-{w.id}">Paid</label>
 										<div class="money">
-											<span class="cur">{data.currency}</span>
+											<span class="cur">{w.currency}</span>
 											<input class="input" id="paid-{w.id}" name="amount" inputmode="decimal" placeholder="0.00" value={form?.addError?.id === w.id ? '' : w.priceInput} aria-invalid={form?.addError?.id === w.id} />
 										</div>
 										{#if form?.addError?.id === w.id}<span class="error-text">✕ {form.addError.error}</span>{/if}

@@ -53,8 +53,8 @@
 				<h2 id="month-h" class="kicker rule">The last 12 months</h2>
 				<ul class="bars months">
 					{#each [...data.months].reverse() as m (m.key)}
-						<li class:zero={!m.cents} class:on={m.on}>
-							{#if m.cents}
+						<li class:zero={!m.spent} class:on={m.on}>
+							{#if m.spent}
 								<a href={m.on ? `${base}/spending` : `${base}/spending?month=${m.key}`} aria-current={m.on ? 'true' : undefined} title="Show only {m.label}">
 									<span class="bl">{m.label}</span>
 									<span class="bar" aria-hidden="true"><i style:width="{Math.max(2, m.share * 100)}%"></i></span>

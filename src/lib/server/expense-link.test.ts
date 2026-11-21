@@ -26,8 +26,8 @@ const betta = createTank(full, { name: 'Betta Tank', type: 'freshwater', nominal
 const bowl = createTank(full, { name: 'Shrimp Bowl', type: 'freshwater', nominalVolumeL: 10 });
 const light = addEquipment(user.id, betta.id, { type: 'light', brand: 'Twinstar', model: '300S V', specs: {}, installedAt: null, notes: null }, tz);
 const heater = addEquipment(user.id, betta.id, { type: 'heater', brand: 'Eheim', model: 'Jäger 50', specs: {}, installedAt: null, notes: null }, tz);
-const expense = (what: string, amountCents: number, equipmentId: string | null, tankId = betta.id) =>
-	addExpense(user.id, tankId, { date: today, amountCents, category: 'equipment', what, note: null, equipmentId });
+const expense = (what: string, amountCents: number, equipmentId: string | null, tankId = betta.id, currency = 'USD') =>
+	addExpense(user.id, tankId, { date: today, amountCents, category: 'equipment', what, note: null, equipmentId, currency });
 
 describe('what an item cost', () => {
 	it('sums the expenses linked to it, newest first', () => {
@@ -37,8 +37,8 @@ describe('what an item cost', () => {
 		expense('Fittings', 400, null);
 		const cost = expensesForEquipment(light.id);
 		expect(cost.rows.map((r) => r.what)).toEqual(['Replacement bulb', 'Twinstar 300S V']);
-		expect(cost.totalCents).toBe(14499);
-		expect(expensesForEquipment(heater.id).totalCents).toBe(2500);
+		expect(cost.totals).toEqual({ USD: 14499 });
+		expect(expensesForEquipment(heater.id).totals).toEqual({ USD: 2500 });
 	});
 
 	it('names each item of a tank, past ones too, and lists the choices in the tank first', () => {

@@ -186,7 +186,10 @@ dashboard_prefs  id, user_id, tank_id, trend_param_id?, priority JSON [parameter
 maintenance_routines id, tank_id, name, steps JSON [{kind(test|water_change|dosing|feeding|
                  maintenance|note), label, fields}], position, created_at (a named sequence of log
                  steps, run one at a time; each logged step is an events/tests row like any other)
-expenses         id, tank_id, date, amount_cents, category(livestock|plants|equipment|
+expenses         id, tank_id, date, amount_cents, currency (ISO 4217: the owner's preference
+                 when it was added, kept when the preference changes, never converted; rows
+                 saved before it existed took the owner's preference as it was at the upgrade),
+                 category(livestock|plants|equipment|
                  consumables|other), what, note?, product_id?, equipment_id? (the item it
                  was for), receipt_path?,
                  receipt_type?(image/jpeg|application/pdf), import_id?, created_at
@@ -279,7 +282,8 @@ sensor_hours     tank_id, parameter_id, hour ('YYYY-MM-DDTHH', UTC), n, total, l
                  and the hour goes with its last sample; lo/hi stay until then. Charts with spans
                  of an hour or more read these instead of the samples)
 wishes           id, tank_id, kind(fish|invert|coral|plant|equipment), name, scientific_name?,
-                 count, equipment_type?, note?, price_cents?, url?, created_at, added_at?
+                 count, equipment_type?, note?, price_cents?, currency (of the price, as on
+                 expenses), url?, created_at, added_at?
                  (the wish list; Add to tank writes the livestock, plant or equipment row,
                  its event and, when asked, the expense, then sets added_at)
 action_tokens    token_hash, task_id, action(done|snooze), due, expires_at, used_at?,

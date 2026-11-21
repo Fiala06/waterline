@@ -277,7 +277,7 @@ export function tankSummary(user: User, tankId: string, days: number, now = new 
 			wishes.map(
 				(w) =>
 					`- ${w.kind === 'plant' || w.kind === 'equipment' ? '' : `${w.count} × `}${w.name}${w.scientificName ? ` (${w.scientificName})` : ''}, ${w.kind === 'equipment' ? EQUIPMENT_TYPE_LABEL[w.equipmentType ?? 'other'].toLowerCase() : w.kind}` +
-					`${w.priceCents != null ? `, about ${fmtMoney(w.priceCents, user.currency)}` : ''}${w.note ? `, note: "${cell(w.note)}"` : ''}`
+					`${w.priceCents != null ? `, about ${fmtMoney(w.priceCents, w.currency)}` : ''}${w.note ? `, note: "${cell(w.note)}"` : ''}`
 			)
 		);
 	}

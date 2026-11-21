@@ -2,7 +2,7 @@ import { error } from "@sveltejs/kit";
 import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { EQUIPMENT_TYPE_LABEL, serviceDueText } from "$lib/equipment";
 import { eventTitle } from "$lib/events";
-import { fmtMoney } from "$lib/money";
+import { fmtMoney, fmtSums } from "$lib/money";
 import { effectiveDue, intervalText } from "$lib/tasks";
 import { db } from "$lib/server/db";
 import { events, tasks } from "$lib/server/db/schema";
@@ -101,12 +101,12 @@ export const load: PageServerLoad = ({ locals, params }) => {
             })()
           : null,
       cost: {
-        total: fmtMoney(spent.totalCents, user.currency),
+        total: fmtSums(spent.totals, user.currency),
         rows: spent.rows.map((x) => ({
           id: x.id,
           what: x.what,
           day: fmtDate(x.date),
-          amount: fmtMoney(x.amountCents, user.currency),
+          amount: fmtMoney(x.amountCents, x.currency),
           receipt: !!x.receiptType,
         })),
         addHref: `/tanks/${e.tankId}/spending/new?equipment=${e.id}`,

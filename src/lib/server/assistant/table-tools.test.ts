@@ -37,8 +37,8 @@ createEvent(user.id, bowl.id, { category: 'water_change', occurredAt: hour(2), n
 const today = todayInZone(user.timeZone);
 createTask(user.id, betta.id, { name: 'Water change', kind: 'water_change', recurring: true, intervalDays: 7, scheduleMode: 'completion', nextDue: addDays(today, -2), openFormOnDone: false });
 createTask(user.id, bowl.id, { name: 'Clean filter', kind: 'maintenance', recurring: true, intervalDays: 30, scheduleMode: 'completion', nextDue: addDays(today, 3), openFormOnDone: false });
-addExpense(user.id, betta.id, { date: today, amountCents: 1299, category: 'consumables', what: 'Seachem Prime', note: null });
-addExpense(user.id, bowl.id, { date: addDays(today, -2), amountCents: 500, category: 'plants', what: 'Moss', note: null });
+addExpense(user.id, betta.id, { date: today, amountCents: 1299, category: 'consumables', what: 'Seachem Prime', note: null, currency: 'USD' });
+addExpense(user.id, bowl.id, { date: addDays(today, -2), amountCents: 500, category: 'plants', what: 'Moss', note: null, currency: 'USD' });
 // five otos and a betta in the tank, a tetra that left; two plants
 const stock = (name: string, count: number) => addLivestock(user.id, betta.id, { kind: 'fish', commonName: name, scientificName: null, count, status: 'in_tank', addedAt: null, source: null });
 stock('Otocinclus', 5);

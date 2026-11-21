@@ -8,13 +8,14 @@ import { listTanks } from './tanks';
 /** "$" for USD, "€" for EUR: the amount field's prefix. */
 export const currencySymbol = (currency: string) => fmtMoney(0, currency).replace(/[\d.,\s]/g, '') || currency;
 
-export function expensePage(user: User) {
+/** `currency`: an expense's own (#307); a new one's is the keeper's preference. */
+export function expensePage(user: User, currency = user.currency) {
 	const tanks = listTanks(user.id).map((t) => ({ id: t.id, name: t.name }));
 	return {
 		tanks,
 		// the items an expense can be for (#148), per tank, so the picker follows the tank chosen
 		equipmentByTank: equipmentChoices(tanks.map((t) => t.id)),
-		currencySymbol: currencySymbol(user.currency),
+		currencySymbol: currencySymbol(currency),
 		today: todayInZone(user.timeZone)
 	};
 }

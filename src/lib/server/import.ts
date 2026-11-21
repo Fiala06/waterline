@@ -139,7 +139,7 @@ export function applyImport(
 				);
 			} else if (list === 'expenses') {
 				const x = v as ExpenseValue;
-				addExpense(user.id, tankId, { date: x.date, what: x.what, amountCents: x.amountCents, category: x.category, note: x.note }, imp.id);
+				addExpense(user.id, tankId, { date: x.date, what: x.what, amountCents: x.amountCents, category: x.category, note: x.note, currency: user.currency }, imp.id);
 			} else if (list === 'plants') {
 				const p = v as PlantValue;
 				addPlant(

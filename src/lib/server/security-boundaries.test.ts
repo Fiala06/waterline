@@ -84,14 +84,14 @@ const param = listParams(T.id)[0];
 const { test } = createTest(A.id, T.id, { takenAt: at, note: 'A’s test', readings: new Map([[param.id, 7]]) }, tz);
 const { event } = createEvent(A.id, T.id, { category: 'note', occurredAt: at, note: 'A’s note', data: {} }, tz);
 const task = listTasks(A.id, T.id)[0].task;
-const expense = addExpense(A.id, T.id, { date: '2026-10-01', amountCents: 2500, category: 'equipment', what: 'Heater', note: null });
+const expense = addExpense(A.id, T.id, { date: '2026-10-01', amountCents: 2500, category: 'equipment', what: 'Heater', note: null, currency: 'USD' });
 const product = addProduct(A.id, { name: 'Easy Green', url: 'https://example.com/easy-green', note: null, strengthMgPerMl: null, strengthOf: null });
 const kit = addKit(A.id, { name: 'API nitrate', paramKey: 'no3', steps: [{ text: 'Add 10 drops' }] });
 const gear = specs.addEquipment(A.id, T.id, { type: 'heater', brand: 'Eheim', model: 'Jäger', specs: {}, installedAt: null, notes: null }, 'UTC');
 const { row: fish } = specs.addLivestock(A.id, T.id, { kind: 'fish', commonName: 'Corydoras', scientificName: null, count: 6, status: 'in_tank', addedAt: null, source: null });
 const plant = specs.addPlant(A.id, T.id, { name: 'Java fern', scientificName: null, position: 'midground', status: 'thriving' });
 const wishInput = { kind: 'plant' as const, name: 'Anubias', scientificName: null, count: 1, equipmentType: null, note: null, priceCents: null, url: null };
-const wish = addWish(A.id, T.id, wishInput);
+const wish = addWish(A.id, T.id, wishInput, 'USD');
 // a photo row without files: the guards only read the row
 const photoOn = (tankId: string) =>
 	db.insert(photos).values({ tankId, path: `${tankId}/x.jpg`, thumbPath: `${tankId}/x_t.jpg`, width: 10, height: 10, takenAt: at }).returning().get();
@@ -151,7 +151,7 @@ describe('a stranger can’t reach another keeper’s records by id (404, so not
 				expectStatus(() => listExpenses(p.id, T.id), 404);
 				await expectStatusAsync(() => updateExpense(p.id, expense.id, { date: '2026-10-01', amountCents: 1, category: 'other', what: 'x', note: null, tankId: T.id }), 404);
 				await expectStatusAsync(() => deleteExpense(p.id, expense.id), 404);
-				expectStatus(() => addExpense(p.id, T.id, { date: '2026-10-01', amountCents: 1, category: 'other', what: 'x', note: null }), 404);
+				expectStatus(() => addExpense(p.id, T.id, { date: '2026-10-01', amountCents: 1, category: 'other', what: 'x', note: null, currency: 'USD' }), 404);
 			});
 
 			it('can’t read, edit or delete a product or a test kit (they’re per account)', async () => {
@@ -184,7 +184,7 @@ describe('a stranger can’t reach another keeper’s records by id (404, so not
 			it('can’t read or change the wish list', async () => {
 				expectStatus(() => listWishes(p.id, T.id), 404);
 				expectStatus(() => getWish(p.id, T.id, wish.id), 404);
-				expectStatus(() => addWish(p.id, T.id, wishInput), 404);
+				expectStatus(() => addWish(p.id, T.id, wishInput, 'USD'), 404);
 				expectStatus(() => deleteWish(p.id, T.id, wish.id), 404);
 				expectStatus(() => addWishToTank(p, T.id, wish.id, { spend: false }), 404);
 				// a wish of T's, asked for through a tank of their own
@@ -276,21 +276,21 @@ describe('"view" can read, never write (403)', () => {
 	});
 
 	it('spends nothing and changes no setup, sharing or public page', async () => {
-		expectStatus(() => addExpense(V.id, T.id, { date: '2026-10-01', amountCents: 1, category: 'other', what: 'x', note: null }), 403);
+		expectStatus(() => addExpense(V.id, T.id, { date: '2026-10-01', amountCents: 1, category: 'other', what: 'x', note: null, currency: 'USD' }), 403);
 		await expectStatusAsync(() => deleteExpense(V.id, expense.id), 403);
 		expectStatus(() => updateTank(V.id, T.id, { name: 'x' }), 403);
 		expectStatus(() => updateParams(V.id, T.id, [{ id: param.id, min: 0, max: 1, tracked: true }]), 403);
 		expectStatus(() => requireRole(V.id, T, 'owner'), 403);
 		expectStatus(() => getPublicPage(V.id, T.id), 403);
 		expectStatus(() => updateShare(V.id, photo.id, { includeNote: true, includeTank: true }), 403);
-		expectStatus(() => addWish(V.id, T.id, wishInput), 403);
+		expectStatus(() => addWish(V.id, T.id, wishInput, 'USD'), 403);
 		expectStatus(() => addWishToTank(V, T.id, wish.id, { spend: false }), 403);
 	});
 
 	// fixed with #106
 	it('can’t move the owner’s expense into a tank of their own', async () => {
 		// an expense of its own, so a regression would really move it
-		const e = addExpense(A.id, T.id, { date: '2026-10-01', amountCents: 900, category: 'plants', what: 'Moss', note: null });
+		const e = addExpense(A.id, T.id, { date: '2026-10-01', amountCents: 900, category: 'plants', what: 'Moss', note: null, currency: 'USD' });
 		await expectStatusAsync(() => updateExpense(V.id, e.id, { date: '2026-10-01', amountCents: 1, category: 'other', what: 'mine', note: null, tankId: VX.id }), 403);
 	});
 });
@@ -330,22 +330,22 @@ describe('"log" logs, never changes setup or sharing (403)', () => {
 		expectStatus(() => createShare(L.id, photo.id), 403);
 		expectStatus(() => updateShare(L.id, photo.id, { includeNote: true, includeTank: true }), 403);
 		expectStatus(() => revokeShare(L.id, photo.id), 403);
-		expectStatus(() => addExpense(L.id, T.id, { date: '2026-10-01', amountCents: 1, category: 'other', what: 'x', note: null }), 403);
+		expectStatus(() => addExpense(L.id, T.id, { date: '2026-10-01', amountCents: 1, category: 'other', what: 'x', note: null, currency: 'USD' }), 403);
 		await expectStatusAsync(() => updateExpense(L.id, expense.id, { date: '2026-10-01', amountCents: 1, category: 'other', what: 'x', note: null, tankId: T.id }), 403);
 		await expectStatusAsync(() => deleteExpense(L.id, expense.id), 403);
-		expectStatus(() => addWish(L.id, T.id, wishInput), 403);
+		expectStatus(() => addWish(L.id, T.id, wishInput, 'USD'), 403);
 		expectStatus(() => deleteWish(L.id, T.id, wish.id), 403);
 	});
 
 	// fixed with #106
 	it('can’t move the owner’s expense into a tank of their own', async () => {
-		const e = addExpense(A.id, T.id, { date: '2026-10-01', amountCents: 900, category: 'plants', what: 'Moss', note: null });
+		const e = addExpense(A.id, T.id, { date: '2026-10-01', amountCents: 900, category: 'plants', what: 'Moss', note: null, currency: 'USD' });
 		await expectStatusAsync(() => updateExpense(L.id, e.id, { date: '2026-10-01', amountCents: 1, category: 'other', what: 'mine', note: null, tankId: LX.id }), 403);
 	});
 
 	// fixed with #106
 	it('can’t tick off the owner’s wish list with Add to tank', async () => {
-		const w = addWish(A.id, T.id, { ...wishInput, name: 'Bucephalandra' });
+		const w = addWish(A.id, T.id, { ...wishInput, name: 'Bucephalandra' }, 'USD');
 		expectStatus(() => addWishToTank(L, T.id, w.id, { spend: false }), 403);
 	});
 });

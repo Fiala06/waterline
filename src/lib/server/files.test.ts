@@ -84,7 +84,7 @@ describe('photos, receipts and people, in that order (#118)', () => {
 	});
 
 	it('receipts: a replacement never writes over the one in use; a move copies, then removes', async () => {
-		const e = addExpense(user.id, tank.id, { date: '2026-10-01', amountCents: 500, category: 'plants', what: 'Moss', note: null });
+		const e = addExpense(user.id, tank.id, { date: '2026-10-01', amountCents: 500, category: 'plants', what: 'Moss', note: null, currency: 'USD' });
 		const file = (body: Buffer, name: string) => new File([new Uint8Array(body)], name);
 		expect(await attachReceipt(user.id, e.id, file(jpeg, 'one.jpg'))).toBeNull();
 		const first = (await receiptOf(user.id, e.id)).expense.receiptPath!;
@@ -110,7 +110,7 @@ describe('photos, receipts and people, in that order (#118)', () => {
 		const gone = upsertUser({ email: 'files-gone@example.com', name: 'Gone', googleSub: 'g-files-gone' });
 		const t = createTank(gone, { name: 'Gone tank', type: 'planted', nominalVolumeL: 40 });
 		await storePhotos(t.id, [photo], { takenAt: new Date().toISOString() });
-		const e = addExpense(gone.id, t.id, { date: '2026-10-01', amountCents: 100, category: 'other', what: 'x', note: null });
+		const e = addExpense(gone.id, t.id, { date: '2026-10-01', amountCents: 100, category: 'other', what: 'x', note: null, currency: 'USD' });
 		await attachReceipt(gone.id, e.id, new File([new Uint8Array(jpeg)], 'r.jpg'));
 		mkdirSync(join(dir, 'avatars'), { recursive: true });
 		writeFileSync(join(dir, 'avatars', `${gone.id}-own.jpg`), jpeg);

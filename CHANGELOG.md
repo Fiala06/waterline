@@ -11,6 +11,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Each expense keeps its currency.** Changing your currency in Settings no longer relabels what you've already spent: past purchases stay in the currency you entered them in, new ones use your new choice, and totals in more than one currency show each one, such as "$12.99 + €5.00", instead of adding them up. Wish list prices and the purchases they become work the same way: [Spending](/tanks/current/spending).
 - **Water changes no bigger than the tank.** A water change logged in gallons or litres can no longer be more than the tank's water volume, just as a percentage stops at 100%: the form says so as you type, nothing is saved, and the whole tank reads as 100%. The same goes for water changes in a history spreadsheet and the percentage in a favorite or routine step; with no tank volume set, any amount is still taken: [Log a water change](/entries/event/new?category=water_change).
 
 ## 1.22.4 · 2026-11-17

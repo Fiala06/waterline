@@ -703,7 +703,7 @@ export type TestKit = typeof testKits.$inferSelect;
 
 export const EXPENSE_CATEGORIES = ['livestock', 'plants', 'equipment', 'consumables', 'other'] as const;
 
-/** What's spent on a tank (#7), in the keeper's currency, with an optional receipt (#8). */
+/** What's spent on a tank (#7), in its own currency (#307), with an optional receipt (#8). */
 export const expenses = sqliteTable(
 	'expenses',
 	{
@@ -715,6 +715,8 @@ export const expenses = sqliteTable(
 		date: text('date').notNull(),
 		/** in cents (hundredths of the currency) */
 		amountCents: integer('amount_cents').notNull(),
+		/** the currency it was paid in (#307): the keeper's preference when it was added; never converted */
+		currency: text('currency').notNull().default('USD'),
 		category: text('category', { enum: EXPENSE_CATEGORIES }).notNull().default('other'),
 		what: text('what').notNull(),
 		note: text('note'),
@@ -1022,8 +1024,10 @@ export const wishes = sqliteTable(
 		/** for equipment: filter, heater, light… */
 		equipmentType: text('equipment_type', { enum: EQUIPMENT_TYPES }),
 		note: text('note'),
-		/** in cents of the keeper's currency */
+		/** in cents of `currency` */
 		priceCents: integer('price_cents'),
+		/** the price's currency (#307): the keeper's preference when it was set */
+		currency: text('currency').notNull().default('USD'),
 		url: text('url'),
 		createdAt: createdAt(),
 		/** when it was added to the tank; still listed under Added */

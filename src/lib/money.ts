@@ -58,3 +58,37 @@ export function parseMoney(input: unknown): number | null {
 	if (!Number.isFinite(n) || n < 0 || n > 10_000_000) return null;
 	return Math.round(n * 100);
 }
+
+/**
+ * Amounts in more than one currency (#307), by currency code: { USD: 1299, EUR: 500 }.
+ * Never added across currencies, and never converted.
+ */
+export type Sums = Record<string, number>;
+
+/** These amounts summed per currency. */
+export function sumByCurrency(rows: { cents: number; currency: string }[]): Sums {
+	const out: Sums = {};
+	for (const r of rows) out[r.currency] = (out[r.currency] ?? 0) + r.cents;
+	return out;
+}
+
+/**
+ * "$12.99", or "$12.99 + €5.00" when more than one currency: the keeper's own
+ * first, then the others by code. Nothing at all is 0 in theirs.
+ */
+export function fmtSums(sums: Sums, preferred = 'USD'): string {
+	const codes = Object.keys(sums).sort((a, b) => Number(b === preferred) - Number(a === preferred) || a.localeCompare(b));
+	if (!codes.length) return fmtMoney(0, preferred);
+	return codes.map((c) => fmtMoney(sums[c], c)).join(' + ');
+}
+
+/**
+ * The currency bars and shares are measured in when amounts are mixed: the
+ * keeper's own if any amount is in it, else the one with the most amounts.
+ */
+export function mainCurrency(currencies: string[], preferred = 'USD'): string {
+	if (!currencies.length || currencies.includes(preferred)) return preferred;
+	const n = new Map<string, number>();
+	for (const c of currencies) n.set(c, (n.get(c) ?? 0) + 1);
+	return [...n].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0];
+}

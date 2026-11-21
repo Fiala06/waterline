@@ -252,8 +252,8 @@ async function build(id: string, user: User, list: Tank[], format: 'zip' | 'csv'
 					file: `photos/${p.path}`,
 					livestock: d.petsIn.get(p.id) ?? []
 				})),
-				// in hundredths of the currency the keeper chose
-				expenses: d.expensesIn(t.id).map(({ receiptPath, tankId: _, ...e }) => ({ ...e, currency: user.currency, receipt: receiptPath ? `receipts/${receiptPath}` : null }))
+				// in hundredths of each one's own currency (#307)
+				expenses: d.expensesIn(t.id).map(({ receiptPath, tankId: _, ...e }) => ({ ...e, receipt: receiptPath ? `receipts/${receiptPath}` : null }))
 			}))
 		};
 		zip.addBuffer(Buffer.from(JSON.stringify(json, null, 2)), 'waterline.json');

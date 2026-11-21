@@ -5,7 +5,7 @@ import { error } from '@sveltejs/kit';
 import { and, asc, desc, eq, isNotNull, isNull } from 'drizzle-orm';
 import { EQUIPMENT_TYPES, type EquipmentType } from '$lib/equipment';
 import { validLivestockCount } from '$lib/livestock';
-import { parseMoney } from '$lib/money';
+import { parseMoney, sumByCurrency } from '$lib/money';
 import { todayInZone } from '$lib/time';
 import { db } from './db';
 import { WISH_KINDS, wishes, type User, type Wish, type WishKind } from './db/schema';
@@ -76,9 +76,10 @@ export function parseWish(form: FormData): { errors: Record<string, string>; inp
 	};
 }
 
-export function addWish(userId: string, tankId: string, input: WishInput): Wish {
+/** A new wish; its price is in `currency`, the keeper's preference as it is now (#307). */
+export function addWish(userId: string, tankId: string, input: WishInput, currency: string): Wish {
 	getTank(userId, tankId, 'owner');
-	return db.insert(wishes).values({ ...input, tankId }).returning().get();
+	return db.insert(wishes).values({ ...input, currency, tankId }).returning().get();
 }
 
 /** Rows taken off the list, kept a few minutes for the toast's Undo. */
@@ -106,7 +107,8 @@ export function restoreWish(userId: string, tankId: string, id: string): Wish | 
 /**
  * Add to tank: the wish becomes livestock, a plant or equipment, with the
  * usual History entry, and with `spend` the purchase goes in Spending at the
- * wish's price (or the amount given). The wish stays, marked added.
+ * wish's price (or the amount given), in the wish's currency (#307). The wish
+ * stays, marked added.
  */
 export function addWishToTank(user: User, tankId: string, id: string, opts: { spend: boolean; amountCents?: number | null }) {
 	// the wish list is the owner's, like adding and deleting wishes (#106); checked before anything is added
@@ -133,7 +135,9 @@ export function addWishToTank(user: User, tankId: string, id: string, opts: { sp
 			amountCents: cents,
 			category: w.kind === 'equipment' ? 'equipment' : w.kind === 'plant' ? 'plants' : 'livestock',
 			what: w.kind === 'equipment' || w.kind === 'plant' ? w.name : `${w.count} ${w.name}`,
-			note: null
+			note: null,
+			// the Paid field is shown in the wish's currency
+			currency: w.currency
 		});
 		spent = true;
 	}
@@ -141,8 +145,8 @@ export function addWishToTank(user: User, tankId: string, id: string, opts: { sp
 	return { wish: w, message: `✓ ${added}${spent ? ' · logged in Spending' : ''}` };
 }
 
-/** "3 planned · about $62", for the tabs and the header. */
+/** "3 planned · about $62", for the tabs and the header; per currency (#307). */
 export function wishTotals(items: Wish[]) {
 	const priced = items.filter((w) => w.priceCents != null);
-	return { count: items.length, cents: priced.reduce((n, w) => n + (w.priceCents ?? 0), 0), priced: priced.length };
+	return { count: items.length, sums: sumByCurrency(priced.map((w) => ({ cents: w.priceCents!, currency: w.currency }))), priced: priced.length };
 }

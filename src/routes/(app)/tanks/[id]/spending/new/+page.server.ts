@@ -42,7 +42,8 @@ export const actions: Actions = {
 		const read = readExpenseForm(form, user, params.id);
 		if (!read.input) return fail(400, { errors: read.errors, values: read.values });
 		const { tankId, ...input } = read.input;
-		const e = addExpense(user.id, tankId, input);
+		// in the keeper's currency as it is now (#307)
+		const e = addExpense(user.id, tankId, { ...input, currency: user.currency });
 		return finishExpense(form, user, e.id, tankId, cookies, '✓ Expense added');
 	}
 };

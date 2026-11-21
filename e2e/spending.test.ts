@@ -64,13 +64,25 @@ test('spending: add an expense, totals, a receipt, edit and delete', async ({ pa
 	await expect(page.getByRole('status')).toContainText('Expense deleted');
 	await expect(month).toContainText('$12.50');
 
-	// in the keeper's currency
+	// another currency (#307): what's spent keeps its own, new purchases take the new one, totals never mix
 	await open(page, '/settings');
 	const saved = page.waitForResponse((r) => r.url().includes('?/save') && r.request().method() === 'POST');
 	await page.locator('#currency').selectOption('EUR');
 	await saved;
 	await open(page, `/tanks/${tankId}/spending`);
-	await expect(month).toContainText('€12.50');
+	await expect(month).toHaveText(/\$12\.50/);
+	await expect(page.getByRole('link', { name: /All-in-one fertilizer .* \$12\.50/ })).toBeVisible();
+	await open(page, `/tanks/${tankId}/spending/new`);
+	await expect(page.locator('.sym')).toHaveText('€');
+	await page.getByLabel('Amount').fill('5');
+	await page.getByLabel('What for').fill('Java moss');
+	await page.getByRole('button', { name: 'Add expense' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Expense added');
+	await expect(month).toContainText('€5.00 + $12.50');
+	await expect(page.getByRole('link', { name: /Java moss .* €5\.00/ })).toBeVisible();
+	// editing the older one still shows it in dollars
+	await page.getByRole('link', { name: /All-in-one fertilizer/ }).click();
+	await expect(page.locator('.sym')).toHaveText('$');
 });
 
 test('a saved product, bought again, logged in one step', async ({ page }, info) => {

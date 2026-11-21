@@ -233,7 +233,7 @@ async function seedPlanted(user: User) {
 		[-12, 1850, 'consumables', 'All-in-one fertilizer'],
 		[-5, 1299, 'livestock', 'Honey gourami']
 	] as const) {
-		addExpense(user.id, tank.id, { date: day(d), amountCents: cents, category, what, note: null });
+		addExpense(user.id, tank.id, { date: day(d), amountCents: cents, category, what, note: null, currency: user.currency });
 	}
 
 	// Zippy's photos: a profile photo, and one more tagged with it

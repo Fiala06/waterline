@@ -498,6 +498,13 @@
       "when": 1794937792370,
       "tag": "0070_member_left",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "6",
+      "when": 1795223769269,
+      "tag": "0071_expense_currency",
+      "breakpoints": true
     }
   ]
 }

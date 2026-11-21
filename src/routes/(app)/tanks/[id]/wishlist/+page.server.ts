@@ -1,7 +1,7 @@
 // The wish list (#24): what's planned for a tank, Add to tank, and the purchase in Spending.
 import { fail, redirect } from '@sveltejs/kit';
 import { EQUIPMENT_TYPE_LABEL, EQUIPMENT_TYPES } from '$lib/equipment';
-import { fmtMoney, moneyInput, parseMoney } from '$lib/money';
+import { fmtMoney, fmtSums, moneyInput, parseMoney } from '$lib/money';
 import { fmtDateLong, dateInZone } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
 import { str } from '$lib/server/forms';
@@ -23,7 +23,8 @@ export const load: PageServerLoad = ({ locals, params }) => {
 		name: w.kind === 'plant' || w.kind === 'equipment' ? w.name : `${w.count} ${w.name}`,
 		scientific: w.scientificName,
 		note: w.note,
-		price: w.priceCents != null ? fmtMoney(w.priceCents, user.currency) : null,
+		price: w.priceCents != null ? fmtMoney(w.priceCents, w.currency) : null,
+		currency: w.currency,
 		priceInput: w.priceCents != null ? moneyInput(w.priceCents) : '',
 		url: w.url,
 		host: w.url ? productHost(w.url) : null,
@@ -38,7 +39,7 @@ export const load: PageServerLoad = ({ locals, params }) => {
 		items: planned.map(view),
 		added: listWishes(user.id, tank.id, { added: true }).map(view),
 		// "3 planned · about $62"
-		totals: { count: totals.count, money: totals.priced ? `${totals.priced < totals.count ? 'at least ' : 'about '}${fmtMoney(totals.cents, user.currency)}` : null },
+		totals: { count: totals.count, money: totals.priced ? `${totals.priced < totals.count ? 'at least ' : 'about '}${fmtSums(totals.sums, user.currency)}` : null },
 		currency: user.currency,
 		equipmentTypes: EQUIPMENT_TYPES.map((t) => ({ value: t, label: EQUIPMENT_TYPE_LABEL[t] }))
 	};
@@ -49,7 +50,7 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const { errors, input, values } = parseWish(form);
 		if (Object.keys(errors).length) return fail(400, { errors, values });
-		const w = addWish(locals.user!.id, params.id, input);
+		const w = addWish(locals.user!.id, params.id, input, locals.user!.currency);
 		setFlash(cookies, `✓ ${w.name} on the wish list`);
 		redirect(303, `/tanks/${params.id}/wishlist`);
 	},

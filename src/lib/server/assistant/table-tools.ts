@@ -241,7 +241,7 @@ export const spendingTool: Tool = {
 	name: 'get_spending',
 	title: 'Spending as rows',
 	description:
-		"What's been spent on the tanks as a flat table, newest first: tank, date, category (livestock, plants, equipment, consumables, other), what, the equipment item it was for (if linked), amount in the keeper's currency, and the note. Across every tank unless tank_id is given.",
+		"What's been spent on the tanks as a flat table, newest first: tank, date, category (livestock, plants, equipment, consumables, other), what, the equipment item it was for (if linked), amount and the currency it was paid in, and the note. Across every tank unless tank_id is given.",
 	inputSchema: { type: 'object', properties: { tank_id: optionalTankArg, days: daysArg(3650, 3650) } },
 	run: (access, args) => {
 		const { user } = access;
@@ -266,7 +266,7 @@ export const spendingTool: Tool = {
 				what: x.what,
 				equipment: x.equipmentId ? (items.get(x.equipmentId) ?? null) : null,
 				amount: x.amountCents / 100,
-				currency: user.currency,
+				currency: x.currency,
 				note: x.note
 			}))
 		);
