@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import sharp from 'sharp';
-import { jpeg, newKeeperWithTank, open } from './helpers';
+import { jpeg, newKeeperWithTank, open, openQuickAdd } from './helpers';
 
 const pdf = { name: 'receipt.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n1 0 obj << >> endobj\ntrailer << >>\n%%EOF\n') };
 
@@ -155,4 +155,29 @@ test('an expense linked to a piece of equipment, from the item’s page', async 
 	await page.getByRole('link', { name: /Twinstar 300S V \$129\.99/ }).click();
 	await expect(page).toHaveURL(/\/spending\/[\w-]+$/);
 	await expect(page.getByLabel('For which item · optional')).toHaveValue(/[\w-]+/);
+});
+
+// #313: a purchase from the same Log button as everything else, and from the palette on desktop
+test('Add expense from Quick add, with a receipt photo, and from the palette', async ({ page }, info) => {
+	await newKeeperWithTank(page, `spend-quick-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await openQuickAdd(page);
+	await page.getByRole('dialog', { name: 'Quick add' }).getByRole('link', { name: 'Expense' }).click();
+	await expect(page).toHaveURL(`/tanks/${tankId}/spending/new`);
+	await page.getByLabel('Amount').fill('8.25');
+	await page.getByLabel('What for').fill('Floating plants');
+	await page.locator('label', { hasText: 'Plants' }).first().click();
+	await page.locator('input[name=receipt]').setInputFiles(await jpeg());
+	await page.getByRole('button', { name: 'Add expense' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Expense added');
+	await expect(page).toHaveURL(`/tanks/${tankId}/spending`);
+	await expect(page.locator('.tile', { hasText: 'This month' })).toContainText('$8.25');
+	await expect(page.getByText(/Plants · Receipt/)).toBeVisible();
+
+	if (info.project.name !== 'desktop') return;
+	await page.keyboard.press('Control+k');
+	const menu = page.getByRole('dialog', { name: 'Search' });
+	await menu.getByPlaceholder('Search tanks or type an action').fill('add expense');
+	await page.keyboard.press('Enter');
+	await expect(page).toHaveURL(`/tanks/${tankId}/spending/new`);
 });

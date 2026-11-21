@@ -18,6 +18,8 @@
 		outOfRange?: number;
 		overdue?: number;
 		cover?: string | null;
+		/** this person's role on it (#22): only an owner adds expenses */
+		role?: string;
 	}
 	interface Item {
 		group: 'Tanks' | 'Go to' | 'Actions';
@@ -92,6 +94,8 @@
 				{ group: 'Actions', title: 'Log dosing', sub: current.name, key: 'D', run: go(logHref('dosing', current.id)) },
 				{ group: 'Actions', title: 'Add a note', sub: current.name, key: 'N', run: go(logHref('note', current.id)) },
 				{ group: 'Actions', title: 'Add several livestock', sub: current.name, run: go(`${base}/livestock/several`) },
+				// a purchase (#313): the owner's
+				...(current.role === 'owner' ? [{ group: 'Actions' as const, title: 'Add expense', sub: current.name, run: go(`${base}/spending/new`) }] : []),
 				{ group: 'Actions', title: 'Share summary', sub: `${current.name} · for a forum, a friend, your fish store or an AI chat`, run: go(`${base}/summary`) },
 				{ group: 'Actions', title: 'Public page', sub: current.name, run: go(`${base}/public`) },
 				{ group: 'Actions', title: 'Export this tank', sub: current.name, run: go(`/settings/export?tank=${current.id}`) },

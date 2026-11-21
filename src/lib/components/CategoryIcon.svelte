@@ -13,7 +13,8 @@
 		| 'observation'
 		| 'note'
 		| 'health'
-		| 'import';
+		| 'import'
+		| 'expense';
 	let { kind, size = 40, inverted = false }: { kind: Kind; size?: number; inverted?: boolean } = $props();
 	const glyph = $derived(Math.round(size * 0.55));
 </script>
@@ -55,6 +56,9 @@
 		{:else if kind === 'health'}
 			<!-- a first-aid cross -->
 			<path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6Z" />
+		{:else if kind === 'expense'}
+			<!-- a receipt -->
+			<path d="M5 2h14v20l-2.5-1.5L14 22l-2-1.5-2 1.5-2.5-1.5L5 22Z" /><path d="M9 7h6M9 11h6M9 15h4" />
 		{:else if kind === 'import'}
 			<rect x="3" y="3" width="18" height="18" /><path d="M3 9h18M3 15h18M9 3v18" />
 		{:else if kind === 'observation'}

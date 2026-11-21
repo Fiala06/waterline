@@ -17,6 +17,8 @@
 	interface TankSummary {
 		id: string;
 		name: string;
+		/** this person's role on it (#22): only an owner adds expenses */
+		role?: string;
 		type: string;
 		volume: string | null;
 		alerts: number;
@@ -228,6 +230,13 @@
 						<span>{m.label}</span>
 					</a>
 				{/each}
+				{#if tank.role === 'owner'}
+					<!-- a purchase (#313): the tank's own expense form, on the day picked here -->
+					<a class="tile" href="/tanks/{tankId}/spending/new{when ? `?date=${when.date}` : ''}" onclick={() => (open = false)}>
+						<CategoryIcon kind="expense" size={32} />
+						<span>Expense</span>
+					</a>
+				{/if}
 				<a class="tile" href="/tanks/{tankId}/import/tests" onclick={() => (open = false)}>
 					<CategoryIcon kind="import" size={32} />
 					<span>Import a spreadsheet</span>

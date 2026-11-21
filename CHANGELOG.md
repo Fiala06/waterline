@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Add expense from Log.** Quick add now has an Expense tile beside the other kinds, on your phone's Log button and under More… on a computer, and the search (⌘K) has Add expense: it opens the tank's expense form, on the day you picked, with its receipt photo or PDF. It's offered on tanks you own: [Spending](/tanks/current/spending).
+
 - **Cycling, as measured.** While a tank cycles, the dashboard now says what your tests showed and when, such as "Ammonia and nitrite read 0 on the last 3 tests, Nov 16 to Nov 20", instead of declaring the tank cycled or telling you when to add fish: zero readings alone can't show that. Only this cycle's tests count, so readings from before you marked the tank running don't carry over, and with livestock already in the tank, high ammonia or nitrite stays ✕ High instead of ▲ Cycling: [Dashboard](/).
 
 - **Each expense keeps its currency.** Changing your currency in Settings no longer relabels what you've already spent: past purchases stay in the currency you entered them in, new ones use your new choice, and totals in more than one currency show each one, such as "$12.99 + €5.00", instead of adding them up. Wish list prices and the purchases they become work the same way: [Spending](/tanks/current/spending).

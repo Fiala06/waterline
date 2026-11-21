@@ -6,6 +6,7 @@ import { expensePage } from '$lib/server/expense-page';
 import { getProduct } from '$lib/server/products';
 import { getEquipment } from '$lib/server/specs';
 import { getTank } from '$lib/server/tanks';
+import { isDate, todayInZone } from '$lib/time';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals, params, url }) => {
@@ -17,6 +18,8 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 	// "Add expense" from an item's page (#148): its name, Equipment, and the link, filled in
 	const equipmentId = url.searchParams.get('equipment');
 	const item = equipmentId ? getEquipment(user.id, equipmentId) : null;
+	const day = url.searchParams.get('date') ?? '';
+	const today = todayInZone(user.timeZone);
 	if (item && item.tankId !== tank.id) error(404, 'Equipment not found');
 	return {
 		...expensePage(user),
@@ -25,7 +28,8 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 			amount: '',
 			what: product?.name ?? (item ? equipmentName(item) : ''),
 			category: product ? 'consumables' : item ? 'equipment' : '',
-			date: '',
+			// a day picked in Quick add (#313): today or before
+			date: isDate(day) && day <= today ? day : '',
 			note: '',
 			tankId: tank.id,
 			productId: product?.id ?? '',
