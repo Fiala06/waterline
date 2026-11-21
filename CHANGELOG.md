@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Water changes no bigger than the tank.** A water change logged in gallons or litres can no longer be more than the tank's water volume, just as a percentage stops at 100%: the form says so as you type, nothing is saved, and the whole tank reads as 100%. The same goes for water changes in a history spreadsheet and the percentage in a favorite or routine step; with no tank volume set, any amount is still taken: [Log a water change](/entries/event/new?category=water_change).
+
 ## 1.22.4 · 2026-11-17
 
 - **Security updates.** The parts of Waterline that send its emails and serve its pages were updated with their latest security fixes; nothing changes in how the app looks or works: [Settings › What's new](/settings/changelog).

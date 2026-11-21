@@ -22,6 +22,7 @@ import { EVENT_CATEGORIES, type EventCategory, type Tank, type TankParameter, ty
 import { num, optStr, str, type FieldErrors } from './forms';
 import { lastEventOf, latestTest } from './logs';
 import { getTask, lastDoneOn, taskOfKind } from './tasks';
+import { PERCENT_LIMIT_ERROR, percentOfTank, volumeLimitError, volumeOverTank } from '$lib/water-change';
 
 export function parseCategory(value: string | null): EventCategory {
 	return EVENT_CATEGORIES.includes(value as EventCategory) ? (value as EventCategory) : 'water_change';
@@ -194,7 +195,7 @@ export function parseEventData(
 				return { data: {}, errors };
 			}
 			if (mode === 'percent') {
-				if (amount > 100) errors.amount = 'Enter a percentage up to 100.';
+				if (amount > 100) errors.amount = PERCENT_LIMIT_ERROR;
 				return {
 					data: {
 						amount_mode: 'percent',
@@ -207,11 +208,14 @@ export function parseEventData(
 				};
 			}
 			const volumeL = toStored(amount, 'volume', user);
+			// no more than the tank holds, when its size is known (#308)
+			if (volumeOverTank(volumeL, vol)) errors.amount = volumeLimitError(formatNumber(toDisplay(vol!, 'volume', user), 1), unitLabel('volume', user));
+			const percent = percentOfTank(volumeL, vol);
 			return {
 				data: {
 					amount_mode: 'volume',
 					volume_l: volumeL,
-					...(vol ? { percent: Math.round((volumeL / vol) * 1000) / 10 } : {}),
+					...(percent != null ? { percent } : {}),
 					...(source ? { source } : {}),
 					...(additives.length ? { additives } : {})
 				},

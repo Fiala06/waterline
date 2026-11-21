@@ -190,6 +190,19 @@ describe('water changes, dosing, maintenance, observations, notes', () => {
 		]);
 	});
 
+	it('refuses a volume over what the tank holds, and takes any volume when its size is unknown (#308)', () => {
+		const csv = 'Date,Volume (L)\n2026-09-01,100\n2026-09-02,100.4\n2026-09-03,125\n';
+		const r = rows('water_changes', csv);
+		expect(r[0].value).toMatchObject({ volumeL: 100, percent: 100 });
+		// within rounding of the whole tank: 100%, never 100.4%
+		expect(r[1].value).toMatchObject({ volumeL: 100.4, percent: 100 });
+		expect(r[2].problems).toEqual(["Volume is more than the tank's 26.4 gal"]);
+		expect(r[2].value).toBeNull();
+		const unknown = rows('water_changes', csv, { ...ctx, tankVolumeL: null });
+		expect(unknown[2].problems).toEqual([]);
+		expect(unknown[2].value).toMatchObject({ volumeL: 125, percent: null });
+	});
+
 	it('reads a dose with its unit in its own column or after the amount', () => {
 		const r = rows(
 			'dosing',

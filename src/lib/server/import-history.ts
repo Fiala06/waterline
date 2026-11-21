@@ -4,6 +4,7 @@
 // The export's water-tests.csv reads back as it is (its Tank column picks
 // this tank's rows). No database here; import.ts compares and saves.
 import { toCsv } from '$lib/csv';
+import { percentOfTank, volumeOverTank } from '$lib/water-change';
 import { HISTORY_IMPORTS, type HistoryFile, type HistoryKind } from '$lib/imports';
 import { DOSING_UNITS, MAINTENANCE_ACTIONS, OBSERVATION_TAGS, WATER_SOURCES } from '$lib/events';
 import { displayValue, fmtValue, paramDecimals, paramUnit, quantityOf, storedValue, type ParamLike } from '$lib/params';
@@ -377,7 +378,12 @@ function checkWaterChange(c: Cells, ctx: HistoryContext, headers: Record<string,
 	if (!rawP && !rawV) problems.push('No amount');
 	// the other one from the tank's volume, as logging a change does
 	if (percent != null && volumeL == null && ctx.tankVolumeL) volumeL = (ctx.tankVolumeL * percent) / 100;
-	if (volumeL != null && percent == null && ctx.tankVolumeL) percent = Math.round((volumeL / ctx.tankVolumeL) * 1000) / 10;
+	// no more than the tank holds, as logging a change (#308)
+	if (volumeL != null && volumeOverTank(volumeL, ctx.tankVolumeL)) {
+		problems.push(`Volume is more than the tank's ${formatNumber(toDisplay(ctx.tankVolumeL!, 'volume', ctx.prefs), 1)} ${unitLabel('volume', ctx.prefs)}`);
+		volumeL = null;
+	}
+	if (volumeL != null && percent == null) percent = percentOfTank(volumeL, ctx.tankVolumeL);
 	const source = pick(c.source ?? '', SOURCE_WORDS);
 	if (source === null) problems.push(`Source ${quoted(c.source)} isn't Tap, RODI or Mix`);
 	const note = (c.note ?? '').slice(0, 2000) || null;

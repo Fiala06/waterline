@@ -1,6 +1,7 @@
 // Maintenance routines (#92): a tank's named step sequences, in the keeper's
 // order, each step a log form filled in (a Quick log favorite's shape).
 import { error } from '@sveltejs/kit';
+import { PERCENT_LIMIT_ERROR } from '$lib/water-change';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { cleanFields, favoriteDefaultLabel, isFavoriteKind, type FavoriteKind } from '$lib/favorites';
 import { MAX_STEPS, type RoutineStep } from '$lib/routines';
@@ -68,6 +69,8 @@ export function parseStep(form: FormData, volUnit: string): { errors: Record<str
 	const fields = cleanFields(kind, raw);
 	if (kind === 'dosing' && !fields.product) errors.product = 'Enter the product it doses.';
 	if (['water_change', 'dosing', 'feeding'].includes(kind) && raw.amount && !fields.amount) errors.amount = 'Enter a number above 0, or leave it blank.';
+	// a percentage, as the log form takes it (#308); a volume is checked against the tank when it's logged
+	if (kind === 'water_change' && fields.amountMode !== 'volume' && Number(fields.amount) > 100) errors.amount = PERCENT_LIMIT_ERROR;
 	const label = str(form, 'label').slice(0, 60) || favoriteDefaultLabel(kind, fields, volUnit);
 	return { errors, step: { kind, label, fields } };
 }

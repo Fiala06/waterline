@@ -2,6 +2,7 @@
 // form filled in. The keeper's own, for one tank or every tank; kept in the
 // order they put them.
 import { error } from '@sveltejs/kit';
+import { PERCENT_LIMIT_ERROR } from '$lib/water-change';
 import { and, asc, eq } from 'drizzle-orm';
 import { cleanFields, favoriteDefaultLabel, isFavoriteKind, type FavoriteFields, type FavoriteKind } from '$lib/favorites';
 import { db } from './db';
@@ -64,6 +65,8 @@ export function parseFavorite(form: FormData, tankIds: string[], volUnit: string
 	const fields = cleanFields(kind, raw);
 	if (kind === 'dosing' && !fields.product) errors.product = 'Enter the product it doses.';
 	if (['water_change', 'dosing', 'feeding'].includes(kind) && raw.amount && !fields.amount) errors.amount = 'Enter a number above 0, or leave it blank.';
+	// a percentage, as the log form takes it (#308); a volume is checked against the tank when it's logged
+	if (kind === 'water_change' && fields.amountMode !== 'volume' && Number(fields.amount) > 100) errors.amount = PERCENT_LIMIT_ERROR;
 	const label = str(form, 'label').slice(0, 60) || favoriteDefaultLabel(kind, fields, volUnit);
 	return { errors, input: { label, tankId, kind, fields } };
 }

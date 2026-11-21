@@ -45,6 +45,8 @@ export const actions: Actions = {
 		if (e.category === 'water_change' && str(form, 'amountMode') === shown.amountMode && str(form, 'amount') === shown.amount) {
 			delete data.percent;
 			delete data.volume_l;
+			// nor is it checked again against the tank's volume today
+			delete errors.amount;
 		}
 		const keeping = entryPhotos({ eventId: e.id }).length - form.getAll('removePhoto').length;
 		if (files.length || keeping > 0) {

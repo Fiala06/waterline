@@ -79,3 +79,37 @@ test('the palette is a combobox that follows the highlighted row', async ({ page
 	await page.keyboard.press('ArrowDown');
 	await expect(input).toHaveAttribute('aria-activedescendant', 'palette-option-1');
 });
+
+// #308: a water change by volume can't be more than the tank holds, with or without scripts
+test('a water change over the tank’s volume is refused and saves nothing', async ({ page, browser }, info) => {
+	test.skip(info.project.name !== 'desktop', 'one size is enough');
+	await newKeeperWithTank(page, 'wc-limit');
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, `/entries/event/new?tank=${tankId}&category=water_change`);
+	await page.locator('.unit-toggle label', { hasText: 'gal' }).click();
+	await page.getByLabel('Amount', { exact: true }).fill('50');
+	await expect(page.getByText("✕ Enter up to 40 gal, the tank's water volume.")).toBeVisible();
+
+	// the server refuses it too, keeping what was typed
+	const ctx = await browser.newContext({ storageState: await page.context().storageState(), javaScriptEnabled: false });
+	const plain = await ctx.newPage();
+	await plain.goto(`/entries/event/new?tank=${tankId}&category=water_change`);
+	await plain.locator('.unit-toggle label', { hasText: 'gal' }).click();
+	await plain.getByLabel('Amount', { exact: true }).fill('50');
+	await plain.getByRole('button', { name: 'Save water change' }).click();
+	await expect(plain.getByText("✕ Enter up to 40 gal, the tank's water volume.")).toBeVisible();
+	await expect(plain.getByLabel('Amount', { exact: true })).toHaveValue('50');
+	await expect(plain.getByRole('radio', { name: 'gal' })).toBeChecked();
+	await ctx.close();
+	await open(page, `/history?tank=${tankId}&range=all`);
+	await expect(page.getByRole('link', { name: /^Water change · / })).toHaveCount(0);
+
+	// the whole tank is fine, and reads as 100%
+	await open(page, `/entries/event/new?tank=${tankId}&category=water_change`);
+	await page.locator('.unit-toggle label', { hasText: 'gal' }).click();
+	await page.getByLabel('Amount', { exact: true }).fill('40');
+	await page.getByRole('button', { name: 'Save water change' }).click();
+	await expect(page.locator('.toast-region')).toContainText('✓ Water change logged');
+	await open(page, `/history?tank=${tankId}&range=all`);
+	await expect(page.getByRole('link', { name: /^Water change · 100%/ })).toBeVisible();
+});

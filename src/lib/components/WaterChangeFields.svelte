@@ -7,6 +7,7 @@
 	import { formatNumber, parseNumber } from '$lib/units';
 	import { TIPS } from '$lib/tips';
 	import Tip from './Tip.svelte';
+	import { PERCENT_LIMIT_ERROR, volumeLimitError, volumeOverTank } from '$lib/water-change';
 
 	let {
 		amountMode = $bindable('percent'),
@@ -54,10 +55,18 @@
 		}
 		amountMode = mode;
 	}
+	// More than one change can take, as the server refuses it (#308)
+	const overLimit = $derived.by(() => {
+		const a = parseNumber(amount);
+		if (a == null) return null;
+		if (amountMode === 'percent') return a > 100 ? PERCENT_LIMIT_ERROR : null;
+		return volumeOverTank(a, tankVolume) ? volumeLimitError(formatNumber(tankVolume!, 1), volUnit) : null;
+	});
+	const shownError = $derived(error ?? overLimit);
 	// "≈ 8.5 gal of 34 gal actual volume"
 	const wcNote = $derived.by(() => {
 		const a = parseNumber(amount);
-		if (a == null || !tankVolume) return '';
+		if (a == null || !tankVolume || overLimit) return '';
 		const of = `${formatNumber(tankVolume, 1)} ${volUnit}${tankVolumeIsActual ? ' actual volume' : ''}`;
 		return amountMode === 'percent'
 			? `≈ ${formatNumber((tankVolume * a) / 100, 1)} ${volUnit} of ${of}`
@@ -82,7 +91,7 @@
 				inputmode="decimal"
 				autocomplete="off"
 				bind:value={amount}
-				aria-invalid={!!error}
+				aria-invalid={!!shownError}
 				aria-describedby={wcNote ? 'wc-note' : undefined}
 			/>
 			<span class="unit" aria-hidden="true">{amountMode === 'percent' ? '%' : volUnit}</span>
@@ -95,7 +104,7 @@
 				{/each}
 			</div>
 		{/if}
-		{#if error}<span class="error-text">✕ {error}</span>{/if}
+		{#if shownError}<span class="error-text">✕ {shownError}</span>{/if}
 	</div>
 	<fieldset class="field">
 		<legend class="label src">Source water <Tip text={TIPS.sourceWater} label="About source water" /></legend>
