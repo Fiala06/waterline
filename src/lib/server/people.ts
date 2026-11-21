@@ -1,11 +1,11 @@
 // People on the server (#27): everyone with an account, for Server settings ›
 // People, and what an admin can do about them.
 import { error } from '@sveltejs/kit';
-import { and, count, eq, inArray, isNotNull, ne } from 'drizzle-orm';
+import { and, count, eq, inArray, isNotNull, isNull, ne } from 'drizzle-orm';
 import { join } from 'node:path';
 import { env } from '$env/dynamic/private';
 import { db } from './db';
-import { assistantTokens, calendarFeeds, invites, oauthCodes, photos, tanks, users, type User } from './db/schema';
+import { assistantTokens, calendarFeeds, invites, oauthCodes, photos, tankMembers, tanks, users, type User } from './db/schema';
 import { avatarFile, ownAvatarFile } from './avatar';
 import { removeFiles } from './files';
 import { exportIdsOf, removeExportFiles } from './export';
@@ -91,22 +91,55 @@ export async function removePerson(by: User, userId: string): Promise<User> {
 	if (!u) error(404, 'Person not found');
 	if (u.id === by.id) error(400, "You can't remove your own account from here.");
 	if (u.isAdmin && adminCount() <= 1) error(400, 'The server needs at least one admin.');
-	const { tankIds, tanks: n, photos: p } = personFootprint(userId);
-	const exportIds = exportIdsOf(userId);
+	const { tanks: n, photos: p } = await removeAccount(u);
+	logger.info('settings', `${u.email} removed from the server with ${n} tank${n === 1 ? '' : 's'} and ${p} photo${p === 1 ? '' : 's'}`, { userId: by.id });
+	return u;
+}
+
+/**
+ * What deleting your own account takes with it (#303), for its page: the
+ * tanks you own (and how many people they're shared with), and the tanks
+ * others share with you, which you leave.
+ */
+export function accountFootprint(userId: string) {
+	const own = personFootprint(userId);
+	// a membership in use: accepted, not removed, not left
+	const active = and(isNotNull(tankMembers.acceptedAt), isNull(tankMembers.revokedAt), isNull(tankMembers.leftAt));
+	const sharedWith = own.tankIds.length
+		? (db.select({ n: count() }).from(tankMembers).where(and(inArray(tankMembers.tankId, own.tankIds), isNotNull(tankMembers.userId), active)).get()?.n ?? 0)
+		: 0;
+	const member = db.select({ n: count() }).from(tankMembers).where(and(eq(tankMembers.userId, userId), active)).get()?.n ?? 0;
+	return { tanks: own.tanks, photos: own.photos, sharedWith, member };
+}
+
+/**
+ * Delete your own account (#303): everything removePerson takes, asked for by
+ * the person themself. Never the server's last admin. Entries they logged on
+ * someone else's tank stay with that tank (logged_by isn't a foreign key).
+ */
+export async function deleteOwnAccount(u: User): Promise<void> {
+	if (u.isAdmin && adminCount() <= 1) error(400, "You're the server's only admin. Make someone else an admin in Server settings › People first.");
+	const { tanks: n, photos: p } = await removeAccount(u);
+	logger.info('settings', `An account deleted itself with ${n} tank${n === 1 ? '' : 's'} and ${p} photo${p === 1 ? '' : 's'}`, { userId: u.id });
+}
+
+/** The account row (which cascades to everything else), then its files and built backups. */
+async function removeAccount(u: User) {
+	const { tankIds, tanks: n, photos: p } = personFootprint(u.id);
+	const exportIds = exportIdsOf(u.id);
 	// their invitation goes too, so the address can't sign back in by itself
 	db.update(invites).set({ revokedAt: new Date().toISOString() }).where(and(eq(invites.email, u.email), ne(invites.email, ''))).run();
-	db.delete(users).where(eq(users.id, userId)).run(); // cascades to everything else
+	db.delete(users).where(eq(users.id, u.id)).run(); // cascades to everything else
 	// then their files (#118): each tank's photos and receipts, and their profile photos
 	const data = env.DATA_DIR ?? './data';
 	await removeFiles(
-		[...tankIds.flatMap((id) => [join(data, 'photos', id), join(data, 'receipts', id)]), avatarFile(userId), ownAvatarFile(userId)],
+		[...tankIds.flatMap((id) => [join(data, 'photos', id), join(data, 'receipts', id)]), avatarFile(u.id), ownAvatarFile(u.id)],
 		'settings',
 		{ recursive: true }
 	);
 	// and the backups they had built, which hold all of it (#213)
 	removeExportFiles(exportIds);
-	logger.info('settings', `${u.email} removed from the server with ${n} tank${n === 1 ? '' : 's'} and ${p} photo${p === 1 ? '' : 's'}`, { userId: by.id });
-	return u;
+	return { tanks: n, photos: p };
 }
 
 /** Someone opened the app: remembered to the quarter hour, so the People list can say when they were last seen. */

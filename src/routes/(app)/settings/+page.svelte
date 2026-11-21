@@ -460,6 +460,11 @@
 				{#if forgetting}<p class="row unsynced status-warn" role="alert">
 						▲ {forgetting === 1 ? "1 entry hasn't" : `${forgetting} entries haven't`} synced yet and will be lost.
 					</p>{/if}
+				<!-- leaving for good (#303): its own page says what goes, and asks for a recent sign-in -->
+				<a class="row link" href="/settings/delete-account">
+					<span class="ttext"><span class="tt">Delete account</span><span class="td">Your account, your tanks and everything in them. Download a backup first.</span></span>
+					<span class="chev" aria-hidden="true">›</span>
+				</a>
 				{#if u.isAdmin}
 					<a class="row link" href="/settings/server">
 						<span class="ttext"><span class="tt">Server settings<span class="tag tag-outline admin">ADMIN</span></span><span class="td">Sign-in, email, public pages, features and logs</span></span>

@@ -18,6 +18,8 @@ export const load: PageServerLoad = ({ url }) => {
 		showLocal: url.searchParams.has('local') || !googleEnabled(),
 		host: url.host,
 		redirectTo: safeReturn(url.searchParams.get('redirectTo')),
+		// after Settings › Delete account (#303)
+		deleted: url.searchParams.has('deleted'),
 		error: error
 			? error === 'CredentialsSignin'
 				? 'Wrong username or password.'

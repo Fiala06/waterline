@@ -40,6 +40,7 @@
 		<div class="actions">
 			<h2 class="hide-phone">Sign in</h2>
 			{#if error}<p class="banner banner-bad" role="alert">✕ {error}</p>{/if}
+			{#if data.deleted && !error}<p class="banner banner-ok" role="status">✓ Your account and everything in it were deleted.</p>{/if}
 
 			{#if data.google}
 				<form method="POST" action="?/google">

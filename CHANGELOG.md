@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Delete your account.** Settings › Data now has Delete account: it says what goes (your tanks and everything in them, your settings and backups) and what stays (tanks others share with you, and what you logged on them), suggests a backup first, and asks you to type your email address after a recent sign-in. Signing in again later starts a fresh, empty account: [Settings › Data](/settings#data).
+
 ## 1.22.6 · 2026-11-21
 
 - **How your reminders reach you.** The water-change reminder on a new tank's Getting started list, and every task's own page, now say when the next reminder goes and how: by email (and to which address), by push to your devices or ntfy, whether this device gets push, or in Waterline only. Each line says why when it's off, with a link to set it up, and the last send is shown as sent, since Waterline can't see whether it arrived: [Tasks](/tasks).
