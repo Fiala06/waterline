@@ -12,6 +12,7 @@ import {
   readingCounts,
   reusableCustomParams,
   resetParamDefaults,
+  setShrimpProfile,
   updateParams,
 } from "$lib/server/tanks";
 import { checkSection } from "$lib/server/review";
@@ -23,13 +24,15 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
   const user = locals.user!;
   const tank = getTank(user.id, params.id, 'owner');
   const defaults = new Map(
-    defaultParameters(user, tank.type).map((d) => [d.key, d]),
+    defaultParameters(user, tank.type, tank.growingStyle, tank.shrimp).map((d) => [d.key, d]),
   );
   const counts = readingCounts(tank.id);
   // which parameters a sensor reports, so the switch to make it the reading shows for them
   const sensors = latestSamples(tank.id);
   return {
-    tank: { id: tank.id, name: tank.name, type: tank.type },
+    tank: { id: tank.id, name: tank.name, type: tank.type, shrimp: tank.shrimp },
+    // the shrimp profile (#319) is for freshwater and planted tanks
+    shrimpable: tank.type === "freshwater" || tank.type === "planted",
     reusable: reusableCustomParams(user.id, tank.id),
     fromReview: url.searchParams.get("from") === "review",
     // from the water test form: Save (and the back link) go back to it
@@ -55,7 +58,9 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
         max: p.max == null ? "" : fmtTarget(p, p.max, user),
         defaultText:
           d && !p.isCustom
-            ? `Default ${fmtTarget(p, d.min, user)}–${fmtTarget(p, d.max, user)}${paramUnit(p, user) ? " " + paramUnit(p, user) : ""}`
+            ? d.min == null || d.max == null
+              ? "No default: set it for your shrimp"
+              : `Default ${fmtTarget(p, d.min, user)}–${fmtTarget(p, d.max, user)}${paramUnit(p, user) ? " " + paramUnit(p, user) : ""}`
             : p.isCustom
               ? "Custom parameter"
               : `Not in the ${tank.type} preset`,
@@ -116,6 +121,12 @@ export const actions: Actions = {
   reset: async ({ locals, params, cookies }) => {
     resetParamDefaults(locals.user!, params.id);
     setFlash(cookies, "Targets reset to defaults");
+    redirect(303, `/tanks/${params.id}/targets`);
+  },
+  shrimp: async ({ request, locals, params, cookies }) => {
+    const on = (await request.formData()).get("on") === "1";
+    setShrimpProfile(locals.user!, params.id, on);
+    setFlash(cookies, on ? "✓ Shrimp readings on" : "Shrimp readings off");
     redirect(303, `/tanks/${params.id}/targets`);
   },
   addCustom: async ({ request, locals, params, cookies }) => {

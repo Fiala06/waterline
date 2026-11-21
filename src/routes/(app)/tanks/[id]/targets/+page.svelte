@@ -106,6 +106,25 @@
 			<button type="button" class="reset" popovertarget="confirm-reset">Reset to {tankTypeLabel(data.tank.type)} defaults</button>
 		</div>
 	</form>
+
+	{#if data.shrimpable}
+		<!-- a shrimp tank (#319): its readings tracked and in view; targets stay the keeper's to set -->
+		<form class="shrimp" method="POST" action="?/shrimp">
+			<div class="section-head"><h2>Shrimp tank</h2></div>
+			{#if data.tank.shrimp}
+				<p class="hint">✓ On: temperature, pH, GH, KH and TDS are tracked and kept in view on the water test. Turning it off only stops keeping them in view; nothing is removed.</p>
+				<input type="hidden" name="on" value="0" />
+				<button class="btn">Turn off</button>
+			{:else}
+				<p class="hint">
+					Keeping shrimp? Track temperature, pH, GH, KH and TDS and keep them in view on the water test. Targets you've set stay as they are; any of these the tank hasn't got
+					start without one, as Neocaridina and Caridina want different water.
+				</p>
+				<input type="hidden" name="on" value="1" />
+				<button class="btn">Turn on shrimp readings</button>
+			{/if}
+		</form>
+	{/if}
 </div>
 
 <ConfirmDelete
@@ -321,6 +340,21 @@
 	}
 	.add {
 		border-style: dashed;
+	}
+	.shrimp {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 10px;
+		margin-top: 24px;
+	}
+	.shrimp .hint {
+		margin: 0;
+		font-size: 14px;
+		line-height: 1.5;
+	}
+	.shrimp .btn {
+		min-height: 44px;
 	}
 	.reset {
 		font-size: 14px;

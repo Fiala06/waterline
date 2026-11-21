@@ -107,6 +107,11 @@
 			</div>
 			{#if errors.nominalVolume}<span class="error-text">✕ {errors.nominalVolume}</span>{/if}
 		</div>
+		<!-- a shrimp tank (#319): freshwater or planted; hidden for the others by CSS, so it works without JavaScript -->
+		<label class="check-row shrimp fresh-only">
+			<input type="checkbox" name="shrimp" defaultChecked={values.shrimp === 'on'} />
+			<span><strong>Shrimp tank</strong> <small>Temperature, pH, GH, KH and TDS are tracked and kept in view on the water test. Neocaridina and Caridina want different water, so pH, GH, KH and TDS start without targets: set them for your shrimp in Parameters &amp; targets.</small></span>
+		</label>
 		<label class="check-row cycling">
 			<input type="checkbox" name="cycling" defaultChecked={values.cycling === 'on'} />
 			<span>This tank is still cycling</span>
@@ -146,6 +151,24 @@
 	/* a planted tank's questions: hidden for other types (shown where :has isn't supported) */
 	.tank-form:has(input[name='type']:checked):not(:has(input[name='type'][value='planted']:checked)) .planted-only {
 		display: none;
+	}
+	.tank-form:has(input[name='type'][value='brackish']:checked) .fresh-only,
+	.tank-form:has(input[name='type'][value='reef']:checked) .fresh-only {
+		display: none;
+	}
+	.check-row.shrimp {
+		align-items: flex-start;
+	}
+	.shrimp strong {
+		font-size: 14px;
+		font-weight: 600;
+	}
+	.shrimp small {
+		display: block;
+		margin-top: 2px;
+		font-size: 13px;
+		line-height: 1.4;
+		color: var(--text-muted);
 	}
 	.styles {
 		grid-template-columns: 1fr;

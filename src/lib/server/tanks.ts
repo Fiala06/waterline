@@ -11,7 +11,7 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import { defaultParameters } from "$lib/params";
+import { defaultParameters, SHRIMP_KEYS, shrimpTypes } from "$lib/params";
 import { newReviewTask } from "$lib/review";
 import { addDays, todayInZone } from "$lib/time";
 import { db } from "./db";
@@ -92,6 +92,7 @@ export interface TankInput {
   waterSource?: string | null;
   /** a planted tank's growing style (#81) */
   growingStyle?: GrowingStyle | null;
+  shrimp?: boolean;
   photoperiodH?: number | null;
   /** the lighting and CO₂ schedule, "HH:MM" */
   lightsOn?: string | null;
@@ -128,7 +129,7 @@ export function createTank(user: User, input: TankInput): Tank {
       .get();
     tx.insert(tankParameters)
       .values(
-        defaultParameters(user, input.type, input.growingStyle).map((p) => ({
+        defaultParameters(user, input.type, input.growingStyle, !!input.shrimp).map((p) => ({
           ...p,
           tankId: tank.id,
         })),
@@ -383,13 +384,50 @@ export function deleteCustomParam(
 }
 
 /**
+ * The shrimp profile (#319), on or off for a freshwater or planted tank. On:
+ * temperature, pH, GH, KH and TDS are tracked (added, without targets, if the
+ * tank hasn't got them) and kept in view on the water test; targets already set
+ * stay as they are. Off: they're no longer kept in view, and nothing else
+ * changes. Custom parameters and readings are never touched.
+ */
+export function setShrimpProfile(user: User, tankId: string, on: boolean) {
+  const tank = getTank(user.id, tankId, "owner");
+  if (on && !shrimpTypes.includes(tank.type)) error(400, "A shrimp profile is for freshwater and planted tanks.");
+  if (tank.shrimp === on) return tank;
+  const existing = new Map(
+    listParams(tankId, { all: true })
+      .filter((p) => !p.isCustom)
+      .map((p) => [p.key, p]),
+  );
+  const preset = defaultParameters(user, tank.type, tank.growingStyle, true);
+  db.transaction((tx) => {
+    if (on) {
+      for (const key of SHRIMP_KEYS) {
+        const p = existing.get(key);
+        if (p) {
+          if (!p.tracked) tx.update(tankParameters).set({ tracked: true }).where(eq(tankParameters.id, p.id)).run();
+        } else {
+          const d = preset.find((x) => x.key === key);
+          if (d) tx.insert(tankParameters).values({ ...d, tankId }).run();
+        }
+      }
+    }
+    tx.update(tanks).set({ shrimp: on }).where(eq(tanks.id, tankId)).run();
+    tx.insert(events)
+      .values({ tankId, category: "note", occurredAt: new Date().toISOString(), data: { system: on ? "shrimp_on" : "shrimp_off" } })
+      .run();
+  });
+  return getTank(user.id, tankId);
+}
+
+/**
  * Reset to the tank type's preset: preset parameters get default targets (and
  * are added if missing); other built-ins are untracked but keep their history.
  * Custom parameters are untouched.
  */
 export function resetParamDefaults(user: User, tankId: string) {
   const tank = getTank(user.id, tankId, "owner");
-  const preset = defaultParameters(user, tank.type, tank.growingStyle);
+  const preset = defaultParameters(user, tank.type, tank.growingStyle, tank.shrimp);
   const existing = new Map(
     listParams(tankId, { all: true })
       .filter((p) => !p.isCustom)

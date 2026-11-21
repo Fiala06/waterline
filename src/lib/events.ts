@@ -256,6 +256,8 @@ export function eventTitle(e: EventLike, prefs: UnitPrefs): string {
 			if (d.system === 'tank_created') return `Tank created${d.type ? ` · ${cap(str(d.type))}` : ''}`;
 			if (d.system === 'tank_archived') return 'Tank archived';
 			if (d.system === 'tank_restored') return 'Tank restored';
+			if (d.system === 'shrimp_on') return 'Shrimp readings turned on';
+			if (d.system === 'shrimp_off') return 'Shrimp readings turned off';
 			if (d.system === 'setup_reviewed') return reviewTitle(d);
 			if (d.system === 'volume_set' && typeof d.volumeL === 'number') return `Water volume set · ${formatNumber(toDisplay(d.volumeL, 'volume', prefs), 1)} ${unitLabel('volume', prefs)}`;
 			return firstLine(e.note) || 'Note';

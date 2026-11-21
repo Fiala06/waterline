@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Shrimp tank.** A new freshwater or planted tank can be a Shrimp tank: temperature, pH, GH, KH and TDS are tracked and kept in view on the water test, and pH, GH, KH and TDS start without targets, since Neocaridina and Caridina want different water. An existing tank can turn it on or off in Parameters & targets without losing any targets, parameters or readings: [Parameters & targets](/tanks/current/targets).
+
 ## 1.23.0 · 2026-11-21
 
 - **Source water.** Tank setup has a Source water page: name the water you use for changes (tap, well, RO or a remineralized mix), log its tests, and see each one beside the tank's latest readings and targets, in the tank's units, with a ▲ where the source is outside the tank's target. Source tests never count as the tank's readings, raise alerts or show on shared pages, and they're in backups: [Tank setup](/tanks/current/source-water).

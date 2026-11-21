@@ -95,9 +95,11 @@ export function statusOf(p: ParamLike, stored: number | null | undefined): Statu
  * the rest fold under "Show N more". A reef keeps them all in view.
  */
 const BASIC_TEST_KEYS = ['ph', 'nh3', 'no2', 'no3', 'gh', 'kh', 'temp', 'sal'];
-export function foldsInTestForm(p: { key: string; isCustom?: boolean | null }, tankType: string, testedBefore: boolean, growingStyle?: GrowingStyle | null): boolean {
+export function foldsInTestForm(p: { key: string; isCustom?: boolean | null }, tankType: string, testedBefore: boolean, growingStyle?: GrowingStyle | null, shrimp = false): boolean {
 	// with CO₂ injected, its reading is one of the tests that matter (#81)
 	if (growingStyle === 'co2' && p.key === 'co2') return false;
+	// a shrimp tank (#319): its readings stay in view
+	if (shrimp && SHRIMP_KEYS.includes(p.key)) return false;
 	return tankType !== 'reef' && !p.isCustom && !testedBefore && !BASIC_TEST_KEYS.includes(p.key);
 }
 
@@ -107,7 +109,20 @@ export function foldsInTestForm(p: { key: string; isCustom?: boolean | null }, t
  * Parameters & targets, ready to turn on.
  */
 const SIMPLE_PLANTED_UNTRACKED = ['co2', 'k', 'fe', 'tds', 'ec'];
-export function trackedByDefault(key: string, type: TankType, growingStyle?: GrowingStyle | null): boolean {
+
+/**
+ * A shrimp tank's readings (#319): what shrimp keepers test, tracked and kept
+ * in view. Neocaridina and Caridina want quite different water, so pH, GH, KH
+ * and TDS start without targets for the keeper to set for their own shrimp;
+ * there is no one safe range to suggest.
+ */
+export const SHRIMP_KEYS = ['temp', 'ph', 'gh', 'kh', 'tds'];
+export const SHRIMP_NO_TARGET = ['ph', 'gh', 'kh', 'tds'];
+/** A shrimp profile is for these tank types. */
+export const shrimpTypes: readonly string[] = ['freshwater', 'planted'];
+
+export function trackedByDefault(key: string, type: TankType, growingStyle?: GrowingStyle | null, shrimp = false): boolean {
+	if (shrimp && SHRIMP_KEYS.includes(key)) return true;
 	if (type !== 'planted' || !growingStyle || growingStyle === 'co2') return true;
 	return !SIMPLE_PLANTED_UNTRACKED.includes(key);
 }
@@ -118,7 +133,8 @@ export function trackedByDefault(key: string, type: TankType, growingStyle?: Gro
  * units so they read as round numbers (74–80 °F, not 73.4–80.6 °F).
  * Ranges are common hobby guidance; every one can be edited per tank.
  */
-export function defaultParameters(prefs: UnitPrefs, type: TankType = 'freshwater', growingStyle?: GrowingStyle | null) {
+export function defaultParameters(prefs: UnitPrefs, type: TankType = 'freshwater', growingStyle?: GrowingStyle | null, shrimp = false) {
+	shrimp = shrimp && shrimpTypes.includes(type);
 	const imperial = prefs.unitSystem === 'imperial';
 	const ppm = prefs.hardnessUnit === 'ppm';
 	const hard = (dgh: [number, number], ppmRange: [number, number]) =>
@@ -199,7 +215,13 @@ export function defaultParameters(prefs: UnitPrefs, type: TankType = 'freshwater
 			temp([76, 79], [24.5, 26])
 		]
 	};
-	return [...sets[type]].map((x, i) => ({ ...x, sort: i, tracked: trackedByDefault(x.key, type, growingStyle), isCustom: false }));
+	return [...sets[type]].map((x, i) => ({
+		...x,
+		...(shrimp && SHRIMP_NO_TARGET.includes(x.key) ? { min: null, max: null } : {}),
+		sort: i,
+		tracked: trackedByDefault(x.key, type, growingStyle, shrimp),
+		isCustom: false
+	}));
 }
 
 // Parameters & targets groups them by purpose (#83), so a beginner can tell the

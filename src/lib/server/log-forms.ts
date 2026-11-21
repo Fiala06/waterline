@@ -34,7 +34,8 @@ export function testFormParams(
 	latest: Map<string, { value: number; takenAt: string }>,
 	user: User,
 	tankType: string,
-	growingStyle?: GrowingStyle | null
+	growingStyle?: GrowingStyle | null,
+	shrimp = false
 ) {
 	return params.map((p) => {
 		const last = latest.get(p.id);
@@ -55,7 +56,7 @@ export function testFormParams(
 			tip: p.isCustom ? null : paramTip(p.key, tankType),
 			when: p.isCustom ? null : (whenToTest(p.key, tankType)?.text ?? null),
 			// under "Show N more" on a new test (#65)
-			later: foldsInTestForm(p, tankType, !!last, growingStyle)
+			later: foldsInTestForm(p, tankType, !!last, growingStyle, shrimp)
 		};
 	});
 }

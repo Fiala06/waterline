@@ -512,6 +512,13 @@
       "when": 1795279796468,
       "tag": "0072_water_sources",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "6",
+      "when": 1795286559733,
+      "tag": "0073_shrimp_profile",
+      "breakpoints": true
     }
   ]
 }

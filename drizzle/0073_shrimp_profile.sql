@@ -1,0 +1,1 @@
+ALTER TABLE `tanks` ADD `shrimp` integer DEFAULT false NOT NULL;

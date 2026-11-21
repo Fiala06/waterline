@@ -147,6 +147,8 @@ export const tanks = sqliteTable(
 		waterSource: text('water_source'),
 		/** a planted tank's growing style (#81): low_tech | co2 | simple; null when never chosen */
 		growingStyle: text('growing_style', { enum: GROWING_STYLES }),
+		/** a shrimp tank (#319): temperature, pH, GH, KH and TDS tracked and in view on the water test */
+		shrimp: integer('shrimp', { mode: 'boolean' }).notNull().default(false),
 		photoperiodH: real('photoperiod_h'),
 		// the lighting and CO₂ schedule, "08:00"–"16:00" (planted keepers time CO₂ against the lights)
 		lightsOn: text('lights_on'),

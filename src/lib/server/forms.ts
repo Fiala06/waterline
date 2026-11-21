@@ -128,6 +128,8 @@ export function parseTankForm(form: FormData, prefs: UnitPrefs) {
           : {}),
       // the Add tank form asks a planted tank both; Tank setup changes them (the style doesn't touch its parameters)
       ...(form.has("growingStyle") ? { growingStyle } : {}),
+      // the Add tank form's shrimp tank (#319), for freshwater and planted tanks
+      ...(!form.has("specBrand") && form.get("shrimp") === "on" && (type === "freshwater" || type === "planted") ? { shrimp: true } : {}),
       ...(form.has("waterSource") && !form.has("specBrand") ? { waterSource } : {}),
     },
   };
