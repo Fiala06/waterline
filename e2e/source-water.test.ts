@@ -13,7 +13,7 @@ test('test the tap water and see it beside the tank, without it becoming a tank 
 	await expect(page.getByRole('status')).toContainText('✓ Kitchen tap added');
 
 	// straight to its first test
-	await expect(page.getByRole('heading', { name: 'Test Kitchen tap' }).or(page.getByText('Test Kitchen tap')).first()).toBeVisible();
+	await expect(page).toHaveURL(new RegExp(`/tanks/${tankId}/source-water/[0-9a-f-]{36}/test$`));
 	await page.getByLabel(/^Nitrate/).fill('60');
 	await page.getByRole('button', { name: 'Save source test' }).click();
 	await expect(page.getByRole('status')).toContainText('✓ Kitchen tap tested · 1 reading');

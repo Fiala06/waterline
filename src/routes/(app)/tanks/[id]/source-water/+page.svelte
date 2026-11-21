@@ -42,7 +42,7 @@
 					<tbody>
 						{#each s.rows as r (r.id)}
 							<tr>
-								<th scope="row">{r.name}{#if r.unit}<span class="unit"> · {r.unit}</span>{/if}</th>
+								<th scope="row">{r.name}{#if r.unit}<span class="unit">{` · ${r.unit}`}</span>{/if}</th>
 								<td class="num">
 									{r.source}
 									{#if r.outside}<span class="flag">▲ Outside tank target</span>{/if}
