@@ -39,8 +39,8 @@ test('search History, then narrow it to dates of your own', async ({ page }) => 
 
 	// dates of your own: only what's between them
 	await page.getByLabel('Date range').selectOption('custom');
-	await page.getByLabel('From').fill(daysAgo(41));
-	await page.getByLabel('To').fill(daysAgo(39));
+	await page.getByLabel('From', { exact: true }).fill(daysAgo(41));
+	await page.getByLabel('To', { exact: true }).fill(daysAgo(39));
 	await page.getByRole('button', { name: 'Show' }).click();
 	await expect(page).toHaveURL(/from=.*to=/);
 	await expect(page.locator('a.row', { hasText: 'Swapped the filter média' })).toHaveCount(1);
