@@ -107,6 +107,14 @@
 							<input class="sr-only" type="radio" name="format" value="csv" bind:group={format} />
 							<span class="ctext"><strong>Water tests (CSV)</strong><small>One row per test, for spreadsheets</small></span>
 						</label>
+						<!-- straight away, not built (#314): the tank's spending, or every expense on your own tanks, archived ones too -->
+						<a class="choice link" href={scope === 'tank' ? `/tanks/${tankId}/spending.csv` : '/settings/export/spending.csv'} download>
+							<span class="ctext"
+								><strong>Spending (CSV)</strong><small
+									>{scope === 'tank' && tankName ? `${tankName}'s expenses` : 'Every expense on your own tanks, archived ones too'}, one row each in its own currency, straight away.</small
+								></span
+							>
+						</a>
 						<!-- not a file to build: the tank's summary page, to copy from -->
 						<a class="choice link" href="/tanks/{tankId}/summary">
 							<span class="ctext"

@@ -1,8 +1,9 @@
 <script lang="ts">
 	import SortMenu from '$lib/components/SortMenu.svelte';
 	// Spending (#7): this month, this year and all time, this year by category,
-	// the last 12 months, and each expense (with its receipt, #8). A category or
-	// month bar is a link that filters the list (?cat=, ?month=), so it works without JS.
+	// the last 12 months, and each expense (with its receipt, #8). The list's
+	// filters (#314: category, dates, words) are a GET form, so they work without
+	// JS; a category or month bar is a link that sets its part of them.
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ImportButton from '$lib/components/ImportButton.svelte';
 	let { data } = $props();
@@ -37,7 +38,7 @@
 					<ul class="bars cats">
 						{#each data.byCategory as c (c.key)}
 							<li class:on={c.on}>
-								<a href={c.on ? `${base}/spending` : `${base}/spending?cat=${c.key}`} aria-current={c.on ? 'true' : undefined} title="Show only {c.label}">
+								<a href="{base}/spending{c.href}" aria-current={c.on ? 'true' : undefined} title="Show only {c.label}">
 									<span class="bl">{c.label}</span>
 									<span class="bar" aria-hidden="true"><i style:width="{Math.max(2, c.share * 100)}%"></i></span>
 									<span class="bv num">{c.amount}</span>
@@ -55,7 +56,7 @@
 					{#each [...data.months].reverse() as m (m.key)}
 						<li class:zero={!m.spent} class:on={m.on}>
 							{#if m.spent}
-								<a href={m.on ? `${base}/spending` : `${base}/spending?month=${m.key}`} aria-current={m.on ? 'true' : undefined} title="Show only {m.label}">
+								<a href="{base}/spending{m.href}" aria-current={m.on ? 'true' : undefined} title="Show only {m.label}">
 									<span class="bl">{m.label}</span>
 									<span class="bar" aria-hidden="true"><i style:width="{Math.max(2, m.share * 100)}%"></i></span>
 									<span class="bv num">{m.amount}</span>
@@ -72,10 +73,37 @@
 		</div>
 
 		<section aria-labelledby="list-h">
-			<h2 id="list-h" class="kicker rule">Expenses · {data.expenses.length}{data.filter ? ` of ${data.total}` : ''}</h2>
-			{#if data.filter}
-				<p class="showing">Showing: {data.filter.label} · <a href="{base}/spending">clear</a></p>
-			{/if}
+			<h2 id="list-h" class="kicker rule">Expenses · {data.expenses.length}{data.filter.on ? ` of ${data.total}` : ''}</h2>
+			<!-- the filters (#314), all at once; a bar above sets its part of them -->
+			<form class="filters" method="GET" action="{base}/spending" role="search" aria-label="Expenses">
+				<div class="f-q">
+					<label class="label" for="sp-q">Search</label>
+					<input class="input" id="sp-q" type="search" name="q" value={data.filter.q} placeholder="What for, a note, an item" autocomplete="off" enterkeyhint="search" maxlength="80" />
+				</div>
+				<div class="f-cat">
+					<label class="label" for="sp-cat">Category</label>
+					<select class="input" id="sp-cat" name="cat">
+						<option value="" selected={!data.filter.cat}>All categories</option>
+						{#each data.categories as c (c.key)}<option value={c.key} selected={data.filter.cat === c.key}>{c.label}</option>{/each}
+					</select>
+				</div>
+				<div class="f-day">
+					<label class="label" for="sp-from">From</label>
+					<input class="input" id="sp-from" type="date" name="from" value={data.filter.from ?? ''} />
+				</div>
+				<div class="f-day">
+					<label class="label" for="sp-to">To</label>
+					<input class="input" id="sp-to" type="date" name="to" value={data.filter.to ?? ''} />
+				</div>
+				<button class="btn f-go">Show</button>
+			</form>
+			<p class="showing">
+				{#if data.filter.on}
+					<span>Showing {data.expenses.length} of {data.total} · <strong class="num">{data.shownTotal}</strong></span>
+					<a href="{base}/spending">Clear filters</a>
+				{/if}
+				<a class="csv" href="{base}/spending.csv{data.filter.query}" download>Download CSV{data.filter.on ? ' of these' : ''}</a>
+			</p>
 			{#if data.expenses.length > 1}
 				<SortMenu
 					sort={data.sort}
@@ -90,7 +118,7 @@
 				/>
 			{/if}
 			{#if !data.expenses.length}
-				<p class="none">Nothing in {data.filter?.label}.</p>
+				<p class="none">No expenses match these filters. <a href="{base}/spending">Clear filters</a></p>
 			{/if}
 			<ul class="list">
 				{#each data.expenses as e (e.id)}
@@ -210,10 +238,56 @@
 			text-underline-offset: 3px;
 		}
 	}
+	.filters {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 10px 12px;
+		align-items: end;
+		padding: 12px 0;
+	}
+	.filters > div {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		min-width: 0;
+	}
+	.f-q,
+	.f-cat {
+		grid-column: 1 / -1;
+	}
+	.filters .input {
+		width: 100%;
+		height: 44px;
+	}
+	.f-go {
+		min-height: 44px;
+		justify-self: start;
+	}
+	@media (min-width: 1024px) {
+		.filters {
+			grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+		}
+		.f-q,
+		.f-cat {
+			grid-column: auto;
+		}
+	}
+	.csv {
+		margin-left: auto;
+		font-weight: 700;
+	}
 	.showing {
-		margin: 8px 0 0;
+		margin: 0;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 4px 16px;
+		min-height: 44px;
 		font-size: 13px;
 		color: var(--text-muted);
+	}
+	.showing strong {
+		color: var(--text);
 	}
 	.showing a {
 		font-weight: 800;

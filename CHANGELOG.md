@@ -11,6 +11,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Spending filters and CSV.** A tank's Spending list now filters by words, category and dates all at once, says how many expenses and how much the filters show, and has Download CSV for what's shown. Settings › Import & export downloads every expense on your own tanks, archived ones too, as one CSV: [Spending](/tanks/current/spending).
 - **Search History.** History has a search box: find an old filter-media swap, a symptom you wrote down or a fertilizer by name in notes, products, foods, equipment, species and the parameters a test read, with or without accents. It works with the category and the date range, which can now be dates of your own (From and To), and links keep the search: [History](/history).
 - **Top off.** Log the water you add for what evaporated as a Top off, with how much and the source water. It has its own place in History (with a Top-offs filter) and never counts as a water change, so it doesn't mark your water-change reminder done or reset when the last change was. A task named like "Top off the tank" becomes a top-off reminder, and logging a top-off marks it done: [Quick add](/entries/event/new?category=top_off).
 - **Delete an archived tank.** A test tank, a duplicate or one you've retired for good can now be deleted once it's archived: Delete… beside Restore on Tanks, or on its Settings tab, lists what goes, offers a backup of it first, and asks you to type its name. Archiving on its own still keeps everything: [Tanks](/tanks).

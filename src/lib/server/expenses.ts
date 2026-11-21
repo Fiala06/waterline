@@ -7,6 +7,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import sharp from 'sharp';
 import { equipmentName } from '$lib/equipment';
+import { safeCell } from '$lib/csv';
 import { mainCurrency, sumByCurrency, type Sums } from '$lib/money';
 import { addDays } from '$lib/time';
 import { db } from './db';
@@ -168,6 +169,43 @@ export function spentThisYear(userId: string, year: string): Sums {
 			.all()
 			.filter((e) => e.date.startsWith(year))
 	);
+}
+
+// ── CSV (#314) ──────────────────────────────────────────────────────────────
+
+/**
+ * Expenses as a spreadsheet: one row each, the amount in its own currency
+ * (never converted), with its tank, the item it was for, and whether it has a
+ * receipt (never where the file is). Cells are guarded against formulas.
+ */
+export function expensesCsv(rows: Expense[], tankNames: Map<string, string>, items: Map<string, string>): string {
+	const head = ['Date', 'Amount', 'Currency', 'Category', 'What for', 'Item', 'Note', 'Tank', 'Receipt'];
+	// safeCell guards and quotes each cell, so the lines are joined here rather than by toCsv
+	const lines = [
+		head,
+		...rows.map((e) =>
+			[
+				e.date,
+				(e.amountCents / 100).toFixed(2),
+				e.currency,
+				CATEGORY_LABEL[e.category],
+				e.what,
+				(e.equipmentId && items.get(e.equipmentId)) || '',
+				e.note ?? '',
+				tankNames.get(e.tankId) ?? '',
+				e.receiptType ? (e.receiptType === 'application/pdf' ? 'PDF' : 'Photo') : ''
+			]
+		)
+	];
+	return '\uFEFF' + lines.map((r) => r.map(safeCell).join(',')).join('\r\n') + '\r\n';
+}
+
+/** Every expense on the keeper's own tanks, archived ones too, newest first: the whole ledger (#314). */
+export function ownedLedger(userId: string) {
+	const own = db.select({ id: tanks.id, name: tanks.name }).from(tanks).where(eq(tanks.userId, userId)).all();
+	const ids = own.map((t) => t.id);
+	const rows = ids.length ? db.select().from(expenses).where(inArray(expenses.tankId, ids)).orderBy(desc(expenses.date), desc(expenses.createdAt)).all() : [];
+	return { rows, tankNames: new Map(own.map((t) => [t.id, t.name])), items: equipmentNames(ids) };
 }
 
 // ── Receipts ────────────────────────────────────────────────────────────────
