@@ -532,7 +532,7 @@
 		<div class="sec-head">
 			<h2 id="about-server-h">About this server<SectionLink id="about-server" label="About this server" /></h2>
 			<p class="sub">
-				Shown to everyone at <a href="/about">/about</a>, linked from sign-in, the homepage and Settings, beside what Waterline works out itself: what it keeps and the services this
+				Shown to everyone at <a href="/about" style="text-decoration: underline">/about</a>, linked from sign-in, the homepage and Settings, beside what Waterline works out itself: what it keeps and the services this
 				server uses. Write only what you'll stand by.
 			</p>
 		</div>
