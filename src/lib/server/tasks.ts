@@ -3,6 +3,7 @@ import { and, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { addDays, dateInZone, fmtDate, todayInZone } from '$lib/time';
 import { amountText, courseDayText, effectiveDue, intervalText, isRoutine, logCompletes, nextDueAfterCompletion, reminderSub, resumeSchedule, skipTo, type TriggerKind } from '$lib/tasks';
 import { clearText, readingClears } from '$lib/suggestions';
+import type { Hold } from '$lib/reminder-delivery';
 import { db } from './db';
 import { requireRoleOn, visibleTo } from './members';
 import { equipment, events, planRuns, tankParameters, taskCompletions, tanks, tasks, tests, users, type Tank, type Task } from './db/schema';
@@ -44,6 +45,21 @@ export function listTasks(userId: string, tankId?: string, opts: { paused?: bool
 
 /** Paused (#172) until a day still to come. */
 export const isPaused = (task: Pick<Task, 'pausedUntil'>, today: string) => !!task.pausedUntil && task.pausedUntil > today;
+
+/**
+ * Why the scheduler won't remind about a task (#323), or null when it will:
+ * the same rules as listTasks, which is what the scheduler sends from (an
+ * archived tank, no next date, paused).
+ */
+export function reminderHold(task: Pick<Task, 'nextDue' | 'pausedUntil' | 'pausedUntilParam'>, tank: Pick<Tank, 'archivedAt'>, today: string): Hold | null {
+	if (tank.archivedAt) return { kind: 'archived' };
+	if (!task.nextDue) return { kind: 'no-date' };
+	if (isPaused(task, today)) {
+		const param = task.pausedUntilParam ? db.select({ name: tankParameters.name }).from(tankParameters).where(eq(tankParameters.id, task.pausedUntilParam)).get() : undefined;
+		return { kind: 'paused', until: task.pausedUntil!, param: param?.name ?? null };
+	}
+	return null;
+}
 
 export function getTask(userId: string, taskId: string): Task {
 	const row = db

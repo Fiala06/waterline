@@ -74,3 +74,25 @@ describe('how a reminder reaches the keeper (#310)', () => {
 		expect(clockText('12:00')).toBe('12:00 PM');
 	});
 });
+
+describe('a task whose reminders are held (#323)', () => {
+	it('promises no day or channel while paused, and says until when', () => {
+		const d = reminderDelivery(
+			f({ due: '2026-11-22', hold: { kind: 'paused', until: '2026-11-26', param: null }, lastSent: { at: '2026-11-01T08:00:00Z', by: 'email', error: false } }, {}, { devices: 1, ntfy: true })
+		);
+		expect(d.day).toBeNull();
+		expect(d.channels).toEqual([]);
+		expect(d.held).toBe('– Reminders paused until Nov 26, 2026. No email or push goes until then.');
+		// what was sent before stays
+		expect(d.lastSent).toBe('Last sent 2026-11-01T08:00:00Z by email.');
+	});
+
+	it('says a reading can end the pause sooner, and covers archived tanks and tasks with no next date', () => {
+		expect(reminderDelivery(f({ hold: { kind: 'paused', until: '2026-12-01', param: 'Ammonia' } })).held).toBe(
+			'– Reminders paused until Dec 1, 2026, or sooner once a test reads Ammonia in range. No email or push goes until then.'
+		);
+		expect(reminderDelivery(f({ hold: { kind: 'archived' } })).held).toMatch(/^– No reminders: this tank is archived/);
+		expect(reminderDelivery(f({ due: null, hold: { kind: 'no-date' } })).held).toBe('– No reminder scheduled: this task has no next date.');
+		expect(reminderDelivery(f()).held).toBeNull();
+	});
+});

@@ -120,7 +120,8 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
   }));
 
   const tasks = listTasks(user.id, tank.id).map((r) => r.task);
-  const wcTask = tasks.find((t) => t.kind === "water_change");
+  // the water change's task, paused or not (#323): Getting started says its reminders are paused rather than missing
+  const wcTask = tasks.find((t) => t.kind === "water_change") ?? listTasks(user.id, tank.id, { paused: true }).find((r) => r.task.kind === "water_change")?.task;
   const lastWc = lastEventOf(tank.id, "water_change");
 
   // Spotting trends: what stands out, most urgent first, at most three

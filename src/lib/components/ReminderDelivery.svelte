@@ -29,7 +29,9 @@
 </script>
 
 <div class="delivery">
-	{#if delivery.ownerOnly}
+	{#if delivery.held}
+		<p class="line">{delivery.held}</p>
+	{:else if delivery.ownerOnly}
 		<p class="line">– In Waterline only: the tank's owner gets this tank's reminders by email and push, not you. It shows under Tasks and on the dashboard.</p>
 	{:else}
 		{#if delivery.day}<p class="next">Next reminder <b>{delivery.day}</b></p>{/if}
@@ -44,7 +46,7 @@
 		{/if}
 	{/if}
 	{#if delivery.lastSent}<p class="sent">{delivery.lastSent}</p>{/if}
-	{#if !delivery.inAppOnly}
+	{#if !delivery.inAppOnly && !delivery.held}
 		<p class="hint">
 			Waterline can say it sent a reminder, not that it arrived.{#if delivery.channels.some((c) => c.key === 'push' && c.level === 'ok')}
 				<a href="/settings#push">Send a test push ›</a>{/if}

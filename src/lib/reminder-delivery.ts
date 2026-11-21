@@ -38,7 +38,15 @@ export interface ReminderFacts {
 	};
 	/** the last time this task's reminder was sent: when, and how */
 	lastSent: { at: string; by: 'email' | 'push'; error: boolean } | null;
+	/** why no reminder goes for now (#323), by the scheduler's own rules; null when one does */
+	hold?: Hold | null;
 }
+
+/** Why the scheduler sends no reminder for a task (#323). */
+export type Hold =
+	| { kind: 'paused'; until: string; param: string | null }
+	| { kind: 'archived' }
+	| { kind: 'no-date' };
 
 export type Level = 'ok' | 'none';
 export interface Channel {
@@ -60,6 +68,8 @@ export interface ReminderDelivery {
 	/** the shared tank's owner gets them instead */
 	ownerOnly: boolean;
 	lastSent: string | null;
+	/** "– Reminders paused until …": nothing is sent for now, so no day or channel is promised (#323) */
+	held: string | null;
 }
 
 /** "8:00 AM" for "08:00" */
@@ -70,7 +80,19 @@ export function clockText(t: string): string {
 
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
 
+/** The line for a task whose reminders are held (#323). */
+export function holdText(h: Hold): string {
+	if (h.kind === 'archived') return '– No reminders: this tank is archived. Restore it to get them again.';
+	if (h.kind === 'no-date') return '– No reminder scheduled: this task has no next date.';
+	const sooner = h.param ? `, or sooner once a test reads ${h.param} in range` : '';
+	return `– Reminders paused until ${fmtDateLong(h.until)}${sooner}. No email or push goes until then.`;
+}
+
 export function reminderDelivery(f: ReminderFacts, fmtSent: (iso: string) => string = (iso) => iso): ReminderDelivery {
+	const sent = f.lastSent;
+	// sent is not received: Waterline can say it went, never that it arrived
+	const lastSent = sent ? (sent.error ? `✕ Last tried ${fmtSent(sent.at)} by ${sent.by}, and it didn't go through.` : `Last sent ${fmtSent(sent.at)} by ${sent.by}.`) : null;
+	if (f.hold) return { day: null, channels: [], inAppOnly: true, ownerOnly: false, lastSent, held: holdText(f.hold) };
 	const lead = isRoutine(f.kind) ? 0 : f.leadDays;
 	// the day it goes: its lead ahead of the due date, or today when that's passed
 	let on: string | null = f.due ? addDays(f.due, -lead) : null;
@@ -106,13 +128,12 @@ export function reminderDelivery(f: ReminderFacts, fmtSent: (iso: string) => str
 		channels.push({ key: 'push', level: 'ok', label: '✓ Push', detail: `${day ? `${day} at ${at}` : `At ${at}`}, to ${targets}.`, href: '/settings#push' });
 	}
 
-	const sent = f.lastSent;
 	return {
 		day,
 		channels: f.notified ? channels : [],
 		ownerOnly: !f.notified,
 		inAppOnly: !f.notified || channels.every((c) => c.level === 'none'),
-		// sent is not received: Waterline can say it went, never that it arrived
-		lastSent: sent ? (sent.error ? `✕ Last tried ${fmtSent(sent.at)} by ${sent.by}, and it didn't go through.` : `Last sent ${fmtSent(sent.at)} by ${sent.by}.`) : null
+		lastSent,
+		held: null
 	};
 }
