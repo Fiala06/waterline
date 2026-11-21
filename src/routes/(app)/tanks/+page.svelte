@@ -99,6 +99,7 @@
 							<input type="hidden" name="tankId" value={t.id} />
 							<button class="btn-text">Restore</button>
 						</form>
+						{#if t.owner}<a class="btn-text del" href="/tanks/{t.id}/delete" aria-label="Delete {t.name}…">Delete…</a>{/if}
 					</li>
 				{/each}
 			</ul>

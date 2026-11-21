@@ -255,6 +255,13 @@
 				<p class="hint">History is kept. Archived tanks can be restored from Tanks.</p>
 				<button type="button" class="btn btn-warn" popovertarget="confirm-archive">Archive tank</button>
 			</div>
+		{:else}
+			<!-- once archived, it can go for good (#304) -->
+			<div class="archive" id="delete">
+				<div class="section-head"><h2>Delete</h2></div>
+				<p class="hint">This tank is archived. Restore it from Tanks, or delete it and everything in it for good.</p>
+				<a class="btn btn-danger" href="/tanks/{data.tank.id}/delete">Delete tank…</a>
+			</div>
 		{/if}
 	</div>
 </form>

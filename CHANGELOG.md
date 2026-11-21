@@ -11,6 +11,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Delete an archived tank.** A test tank, a duplicate or one you've retired for good can now be deleted once it's archived: Delete… beside Restore on Tanks, or on its Settings tab, lists what goes, offers a backup of it first, and asks you to type its name. Archiving on its own still keeps everything: [Tanks](/tanks).
 - **Paused reminders say so.** A paused task's page, and the water-change step on Getting started, now say its reminders are paused and until when, instead of promising an email or push that won't go. The same goes for a task with no next date or on an archived tank. Once the pause ends, they show when the next reminder goes again: [Tasks](/tasks).
 - **Backups leave out ntfy.** A full backup now keeps your notification choices but not your ntfy topic's address or its access token, as What's in a full backup always said. A backup you built or downloaded before this update still holds them, so keep it private (backups waiting on the page are removed within a day anyway): [Import & export](/settings/export).
 - **Uploaded backups don't linger.** A backup you upload to restore is kept for a day at most: after that Restore asks you to choose it again, and the server removes it even if you never come back. It also goes straight away if you delete your account: [Import & export](/settings/export).

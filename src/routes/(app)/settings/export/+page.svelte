@@ -10,8 +10,8 @@
 
 	let { data, form } = $props();
 
-	let scope = $state<'tank' | 'account'>(untrack(() => (data.exportTanks.length > 1 ? 'account' : 'tank')));
-	let tankId = $state(untrack(() => data.defaultTank ?? ''));
+	let scope = $state<'tank' | 'account'>(untrack(() => (data.exportTanks.length > 1 && !data.pickedTank ? 'account' : 'tank')));
+	let tankId = $state(untrack(() => data.pickedTank ?? data.defaultTank ?? ''));
 	let format = $state<'zip' | 'csv'>('zip');
 	// a backup being restored (#306): what's in it, until it's restored or cancelled
 	const restore = $derived(form && 'restore' in form ? form.restore : null);

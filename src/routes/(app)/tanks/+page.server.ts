@@ -76,7 +76,8 @@ export const load: PageServerLoad = ({ locals }) => {
 		cover: t.coverPhotoId,
 		coverPos: coverPosition(t.coverX, t.coverY),
 		volume: vol(t.nominalVolumeL),
-		archivedOn: t.archivedAt ? monthYear(dateInZone(t.archivedAt, tz)) : ''
+		archivedOn: t.archivedAt ? monthYear(dateInZone(t.archivedAt, tz)) : '',
+		owner: t.userId === user.id
 	}));
 
 	// each cover's own shape, so the cards don't move as their photos load (#243)

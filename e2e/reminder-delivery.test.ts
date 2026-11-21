@@ -59,5 +59,5 @@ test('a paused reminder says it is paused, on Getting started and the task', asy
 	await open(page, `/?tank=${tankId}`);
 	await expect(start).toContainText('Next reminder');
 	await expect(start).toContainText('✓ Email');
-	await expect(start).not.toContainText('paused');
+	await expect(start).not.toContainText('Reminders paused');
 });

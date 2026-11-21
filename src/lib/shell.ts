@@ -82,7 +82,8 @@ const TANK_TITLES: Record<string, string> = {
 	wishlist: 'Wish list',
 	routines: 'Maintenance routines',
 	'routines/[rid]/run': 'Run routine',
-	summary: 'Share summary'
+	summary: 'Share summary',
+	delete: 'Delete tank'
 };
 
 /** A tank page's tab, by the first part of its path: its own tabs, and Tank setup's pages. */

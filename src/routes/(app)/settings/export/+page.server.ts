@@ -7,7 +7,7 @@ import { estimateBackupBytes, listExports, startExport } from '$lib/server/expor
 import { listTanks } from '$lib/server/tanks';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals, parent }) => {
+export const load: PageServerLoad = async ({ locals, parent, url }) => {
 	const user = locals.user!;
 	const { currentTankId } = await parent();
 	const tanks = [...listTanks(user.id, { own: true }), ...listTanks(user.id, { archived: true, own: true })].map((t) => ({ id: t.id, name: t.name }));
@@ -15,6 +15,8 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		// what a backup holds, restores and leaves out (#306)
 		manifest: { includes: BACKUP_INCLUDES, notRestored: BACKUP_NOT_RESTORED, excludes: BACKUP_EXCLUDES },
 		exportTanks: tanks,
+		// ?tank=: a backup of that tank, as Delete tank links it (#304)
+		pickedTank: tanks.find((t) => t.id === url.searchParams.get('tank'))?.id ?? null,
 		defaultTank: currentTankId ?? tanks[0]?.id ?? null,
 		estimates: {
 			account: estimateBackupBytes(user, 'account', null),
