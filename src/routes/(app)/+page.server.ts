@@ -50,6 +50,7 @@ import { parseChoices } from "$lib/dashboard";
 import { intervalText } from "$lib/tasks";
 import { listTasks } from "$lib/server/tasks";
 import { tankSuggestions } from "$lib/server/suggestions";
+import { deliveryView } from "$lib/server/reminder-delivery";
 import type { Actions, PageServerLoad } from "./$types";
 
 const TREND_DAYS = 28;
@@ -327,7 +328,9 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
   const checklist = roleOn(user.id, tank) === "owner" && showChecklist(facts)
     ? (() => {
         const steps = checklistSteps(facts);
-        return { steps, done: steps.filter((s) => s.done).length, cycling: tank.cycling, allDone: steps.every((s) => s.done) };
+        // how its water-change reminder will reach the keeper (#310)
+        const reminder = wcTask ? deliveryView(user, wcTask) : null;
+        return { steps, done: steps.filter((s) => s.done).length, cycling: tank.cycling, allDone: steps.every((s) => s.done), reminder };
       })()
     : null;
 

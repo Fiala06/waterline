@@ -46,6 +46,8 @@ test('a tank that is not planted has no plants step, and a cycling one talks thr
 	await open(page, `/tanks/${tankId}/settings`);
 	await page.getByLabel('This tank is still cycling').check();
 	await page.getByRole('button', { name: 'Save changes' }).click();
+	// saved before leaving the page
+	await expect(page.getByRole('status')).toBeVisible();
 	await open(page, `/?tank=${tankId}`);
 	await expect(start).toContainText('Ammonia, nitrite and nitrate every few days');
 });

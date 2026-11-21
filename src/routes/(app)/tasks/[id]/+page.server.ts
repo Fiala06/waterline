@@ -1,5 +1,6 @@
 import { deleteTaskAction, formTanks, routineProducts, saveTaskAction, taskFormValues } from '$lib/server/task-form';
 import { courseDay, getTask, recentCompletions } from '$lib/server/tasks';
+import { deliveryView } from '$lib/server/reminder-delivery';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals, params }) => {
@@ -11,7 +12,9 @@ export const load: PageServerLoad = ({ locals, params }) => {
 		values: taskFormValues(task, user, null),
 		products: routineProducts(user.id),
 		done: recentCompletions(task.id, user.timeZone),
-		course: courseDay(task, user.timeZone)
+		course: courseDay(task, user.timeZone),
+		// how its next reminder will reach the keeper (#310)
+		reminder: deliveryView(user, task)
 	};
 };
 

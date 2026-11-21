@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **How your reminders reach you.** The water-change reminder on a new tank's Getting started list, and every task's own page, now say when the next reminder goes and how: by email (and to which address), by push to your devices or ntfy, whether this device gets push, or in Waterline only. Each line says why when it's off, with a link to set it up, and the last send is shown as sent, since Waterline can't see whether it arrived: [Tasks](/tasks).
+
 ## 1.22.5 · 2026-11-21
 
 - **Add expense from Log.** Quick add now has an Expense tile beside the other kinds, on your phone's Log button and under More… on a computer, and the search (⌘K) has Add expense: it opens the tank's expense form, on the day you picked, with its receipt photo or PDF. It's offered on tanks you own: [Spending](/tanks/current/spending).

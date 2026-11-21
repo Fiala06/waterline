@@ -24,6 +24,7 @@
 	import { toast, ui } from '$lib/ui.svelte';
 	import { photoUrl } from '$lib/media';
 	import { hscroll } from '$lib/actions';
+	import ReminderDelivery from '$lib/components/ReminderDelivery.svelte';
 
 	let { data } = $props();
 	const prefs = $derived(data.user);
@@ -219,6 +220,10 @@
 								<span class="step-text"><span class="step-title">{s.title}</span><span class="step-detail">{s.detail}</span></span>
 								<span class="chev" aria-hidden="true">›</span>
 							</a>
+							{#if s.key === 'water' && c.reminder}
+								<!-- how the reminder will reach the keeper (#310) -->
+								<div class="step-delivery"><ReminderDelivery delivery={c.reminder.delivery} devices={c.reminder.devices} /></div>
+							{/if}
 						</li>
 					{/each}
 				</ol>
@@ -619,6 +624,16 @@
 	}
 	.steps li {
 		border-bottom: 1px solid var(--divider);
+	}
+	/* under the water-change step, lined up with its text (#310) */
+	.step-delivery {
+		padding: 0 28px 12px 76px;
+	}
+	@media (max-width: 599px) {
+		.step-delivery {
+			padding-left: 0;
+			padding-right: 0;
+		}
 	}
 	.steps a {
 		display: grid;

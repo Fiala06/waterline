@@ -8,6 +8,7 @@
 	import { onMount } from 'svelte';
 	import { fmtDate, dateInZone } from '$lib/time';
 	import { toast } from '$lib/ui.svelte';
+	import { detectPush, PUSH_NOTE, type PushSupport } from '$lib/push-support';
 
 	let {
 		push,
@@ -28,8 +29,7 @@
 	const pushError = $derived(typeof form?.pushError === 'string' ? form.pushError : '');
 	const typedUrl = $derived(typeof form?.ntfyUrl === 'string' ? form.ntfyUrl : null);
 
-	type State = 'checking' | 'insecure' | 'ios' | 'unsupported' | 'denied' | 'ready';
-	let support = $state<State>('checking');
+	let support = $state<PushSupport>('checking');
 	let busy = $state(false);
 	/** this device's subscription, when it has one */
 	let mine = $state<string | null>(null);
@@ -49,19 +49,9 @@
 	}
 
 	onMount(async () => {
-		const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-		if (!isSecureContext) support = 'insecure';
-		else if (!('PushManager' in window) || !('serviceWorker' in navigator) || !('Notification' in window)) support = ios ? 'ios' : 'unsupported';
-		else if (Notification.permission === 'denied') support = 'denied';
-		else {
-			try {
-				const reg = await navigator.serviceWorker.getRegistration();
-				mine = (await reg?.pushManager.getSubscription())?.endpoint ?? null;
-			} catch {
-				mine = null;
-			}
-			support = 'ready';
-		}
+		const d = await detectPush();
+		mine = d.endpoint;
+		support = d.support;
 	});
 
 	async function turnOn() {
@@ -110,12 +100,7 @@
 		}
 	}
 
-	const note: Partial<Record<string, string>> = {
-		insecure: 'Push to this device needs Waterline on HTTPS. ntfy, below, works either way.',
-		ios: 'On iPhone and iPad, add Waterline to your Home Screen first (Share › Add to Home Screen), then open it from there and turn this on.',
-		unsupported: "This browser can't get push notifications. ntfy, below, works on any phone.",
-		denied: "Notifications are blocked for Waterline in this browser. Allow them in the browser's site settings, then come back here."
-	};
+	const note = PUSH_NOTE;
 	const any = $derived(push.devices.length > 0 || !!push.ntfyUrl);
 	let showToken = $state(false);
 </script>
