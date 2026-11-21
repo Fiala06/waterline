@@ -165,7 +165,7 @@ describe("cyclingLevel", () => {
 
 describe("cyclingStage", () => {
   it("asks for readings when there are none", () => {
-    expect(cyclingStage([]).cycled).toBe(false);
+    expect(cyclingStage([]).text).toMatch(/Log ammonia/);
     expect(cyclingStage([{ no3: 5 }]).text).toMatch(/Log ammonia/);
   });
   it("names the first stage while ammonia rises", () => {
@@ -195,18 +195,35 @@ describe("cyclingStage", () => {
       ]).text,
     ).toBe("Nitrite is falling and nitrate is rising: the last stage.");
   });
-  it("counts clean tests and says cycled after three", () => {
-    const clean = { nh3: 0, no2: 0, no3: 10 };
-    expect(cyclingStage([clean, { nh3: 0, no2: 1 }])).toEqual({
-      text: "Ammonia and nitrite read 0 on the last test: 2 more clean tests and it's cycled.",
-      cycled: false,
+  it("says when ammonia and nitrite read 0, never that it's cycled (#309)", () => {
+    const clean = (on: string) => ({ nh3: 0, no2: 0, no3: 10, on });
+    expect(cyclingStage([clean("Nov 20"), { nh3: 0, no2: 1, on: "Nov 18" }])).toEqual({
+      text: "Ammonia and nitrite read 0 on the last test on Nov 20. That's what the water held on those days; on its own it can't say the tank is ready for more fish.",
     });
-    expect(cyclingStage([clean, clean, clean, { nh3: 0, no2: 1 }])).toEqual({
-      text: "Ammonia and nitrite have read 0 for 3 tests: it's cycled. Mark it running?",
-      cycled: true,
-    });
+    const three = cyclingStage([clean("Nov 20"), clean("Nov 18"), clean("Nov 16"), { nh3: 0, no2: 1 }]).text;
+    expect(three).toMatch(/^Ammonia and nitrite read 0 on the last 3 tests, Nov 16 to Nov 20\./);
+    expect(three).not.toMatch(/cycled|ready for fish|add fish/i);
     // a test missing nitrite neither counts nor breaks the run
-    expect(cyclingStage([clean, { nh3: 0 }, clean, clean]).cycled).toBe(true);
+    expect(cyclingStage([clean("Nov 20"), { nh3: 0, on: "Nov 19" }, clean("Nov 18"), clean("Nov 16")]).text).toMatch(/the last 3 tests, Nov 16 to Nov 20/);
+  });
+  it("says three zeros on day one show nothing at work yet", () => {
+    const day1 = { nh3: 0, no2: 0, on: "Nov 1" };
+    expect(cyclingStage([day1, day1, day1]).text).toBe(
+      "Ammonia and nitrite read 0 on the last 3 tests on Nov 1. Neither has shown up in this cycle yet, so the readings can't show the bacteria at work.",
+    );
+  });
+  it("asks for both when results are incomplete", () => {
+    expect(cyclingStage([{ no3: 5 }, { no3: 0 }]).text).toMatch(/^Log ammonia/);
+    // ammonia alone: never a run of zeros
+    expect(cyclingStage([{ nh3: 0 }, { nh3: 0 }, { nh3: 0 }]).text).toBe("Keep testing every day or two to follow the cycle.");
+  });
+  it("says ammonia or nitrite can harm the livestock already in the tank", () => {
+    expect(cyclingStage([{ nh3: 1, no2: 0 }, { nh3: 0.5, no2: 0 }], { stocked: true }).text).toBe(
+      "Ammonia is rising: the first stage. With livestock in the tank, ammonia or nitrite above 0 can harm them.",
+    );
+    expect(cyclingStage([{ nh3: 1, no2: 0 }], { stocked: false }).text).toBe("Ammonia is rising: the first stage.");
+    // zeros with fish in: never "nothing at work yet"
+    expect(cyclingStage([{ nh3: 0, no2: 0, on: "Nov 2" }], { stocked: true }).text).toMatch(/can't say the tank is ready for more fish/);
   });
 });
 

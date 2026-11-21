@@ -240,7 +240,7 @@
 		<!-- a new tank: ammonia and nitrite are stages of the cycle, not failures, until it's running -->
 		<label class="check-row cycling">
 			<input type="checkbox" name="cycling" defaultChecked={data.tank.cycling} />
-			<span><b>This tank is still cycling</b><span class="hint">Ammonia and nitrite above target show as ▲ Cycling, and the dashboard follows the cycle.</span></span>
+			<span><b>This tank is still cycling</b><span class="hint">Ammonia and nitrite above target show as ▲ Cycling while no livestock are in it, and the dashboard follows the cycle.</span></span>
 		</label>
 
 		<div class="foot">

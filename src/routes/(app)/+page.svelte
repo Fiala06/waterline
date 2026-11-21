@@ -39,7 +39,8 @@
 		prioritize(data.params ?? [], choices.priority).map((p) => {
 			const r = data.latest?.[p.id];
 			// while the tank is cycling, high ammonia and nitrite are a stage, not a failure
-			const cycling = !!data.tank?.cycling;
+			// softened only with no livestock in the water (#309)
+			const cycling = !!data.tank?.cycling && !data.cycling?.stocked;
 			const st = cyclingLevel(p.key, statusOf(p, r?.value), cycling);
 			const range = fmtRange(p, prefs, false);
 			return {
@@ -174,7 +175,8 @@
 				</div>
 				<p class="cycle-about">
 					Bacteria in the filter turn fish waste’s ammonia into nitrite, then nitrite into the far safer nitrate. It
-					takes 4–8 weeks; add fish once ammonia and nitrite both read 0.
+					often takes 4–8 weeks. Your readings show what was in the water on the day you tested; they can’t say on their
+					own when the tank is ready for fish.
 				</p>
 				<div class="cycle-charts">
 					{#each data.cycling.charts as c (c.key)}
@@ -190,7 +192,7 @@
 					<p class="stage">{data.cycling.text}</p>
 					<form method="POST" action="?/markRunning" use:enhance>
 						<input type="hidden" name="tankId" value={data.tank.id} />
-						<button class="btn" class:btn-primary={data.cycling.cycled}>Mark as running</button>
+						<button class="btn">Mark as running</button>
 					</form>
 				</div>
 			</section>

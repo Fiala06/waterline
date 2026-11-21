@@ -117,7 +117,8 @@ export function rangeText(
 // ── Cycling ─────────────────────────────────────────────────────────────────
 // A new tank cycling (tanks.cycling): ammonia and nitrite above target are a
 // stage of the cycle, not a failure, so they show as "▲ Cycling" instead of
-// "✕ High". statusOf's contract is unchanged; callers soften the result.
+// "✕ High", but only while no fish are in it (#309): with fish in the water
+// they stay "✕ High". statusOf's contract is unchanged; callers soften the result.
 
 export const CYCLING_KEYS = ["nh3", "no2"];
 export const CYCLING_TEXT = "▲ Cycling";
@@ -152,45 +153,51 @@ export interface CycleTest {
   nh3?: number | null;
   no2?: number | null;
   no3?: number | null;
+  /** the day it was taken, as shown: "Nov 20" */
+  on?: string;
 }
 
-/** Tests in a row, newest first, with ammonia and nitrite both at 0, before it counts as cycled. */
-export const CYCLED_TESTS = 3;
-
 /**
- * Where the cycle is, in plain words, from the tests newest first:
- * ammonia rising (first stage), ammonia falling and nitrite rising (second),
- * nitrite falling and nitrate rising (last), or both at 0 for CYCLED_TESTS
- * tests (cycled). `cycled` says the Mark as running nudge applies.
+ * Where the cycle is, in plain words, from this cycle's tests newest first
+ * (#309): ammonia rising (first stage), ammonia falling and nitrite rising
+ * (second), nitrite falling and nitrate rising (last), or how many tests in a
+ * row read 0 and when. It describes what was measured and never says the tank
+ * is cycled or ready for fish: zero readings alone can't show that (a new tank
+ * with nothing feeding the bacteria reads 0 on day one). `stocked`: fish are
+ * already in the tank, so ammonia or nitrite above 0 is said to harm them.
  */
-export function cyclingStage(tests: CycleTest[]): {
-  text: string;
-  cycled: boolean;
-} {
+export function cyclingStage(
+  tests: CycleTest[],
+  opts: { stocked?: boolean } = {},
+): { text: string } {
   const has = (t: CycleTest, k: keyof CycleTest) => t[k] != null;
   const withAmmonia = tests.filter((t) => has(t, "nh3") || has(t, "no2"));
   if (!withAmmonia.length)
     return {
       text: "Log ammonia, nitrite and nitrate with each test to follow the cycle.",
-      cycled: false,
     };
-  // clean tests in a row, newest first (a test missing either doesn't count or break it)
-  let clean = 0;
+  // tests with both at 0 in a row, newest first (a test missing either doesn't count or break it)
+  const clean: CycleTest[] = [];
   for (const t of tests) {
     const both = [t.nh3, t.no2].filter((v): v is number => v != null);
     if (both.some((v) => v > 0)) break;
-    if (both.length === 2) clean++;
+    if (both.length === 2) clean.push(t);
   }
-  if (clean >= CYCLED_TESTS)
+  if (clean.length) {
+    const n = clean.length;
+    const first = clean.at(-1)!.on;
+    const last = clean[0].on;
+    const when =
+      first && last ? (n === 1 || first === last ? ` on ${last}` : `, ${first} to ${last}`) : "";
+    const seen = withAmmonia.some((t) => (t.nh3 ?? 0) > 0 || (t.no2 ?? 0) > 0);
     return {
-      text: `Ammonia and nitrite have read 0 for ${clean} tests: it's cycled. Mark it running?`,
-      cycled: true,
+      text:
+        `Ammonia and nitrite read 0 on ${n === 1 ? "the last test" : `the last ${n} tests`}${when}. ` +
+        (seen || opts.stocked
+          ? "That's what the water held on those days; on its own it can't say the tank is ready for more fish."
+          : "Neither has shown up in this cycle yet, so the readings can't show the bacteria at work."),
     };
-  if (clean > 0)
-    return {
-      text: `Ammonia and nitrite read 0 on the last ${clean === 1 ? "test" : `${clean} tests`}: ${CYCLED_TESTS - clean} more clean test${CYCLED_TESTS - clean === 1 ? "" : "s"} and it's cycled.`,
-      cycled: false,
-    };
+  }
   const latest = tests[0];
   const prev = tests
     .slice(1)
@@ -206,38 +213,24 @@ export function cyclingStage(tests: CycleTest[]): {
   const nh3 = dir("nh3");
   const no2 = dir("no2");
   const no3 = dir("no3");
-  if (nh3 === "down" && no2 === "up")
-    return {
-      text: "Ammonia is falling and nitrite is rising: the second stage.",
-      cycled: false,
-    };
-  if (no2 === "down" && (no3 === "up" || (latest.nh3 ?? 0) === 0))
-    return {
-      text: "Nitrite is falling and nitrate is rising: the last stage.",
-      cycled: false,
-    };
-  if ((latest.no2 ?? 0) > 0 && (latest.nh3 ?? 0) === 0)
-    return {
-      text: "Ammonia is at 0 and nitrite is up: the second stage.",
-      cycled: false,
-    };
-  if ((latest.nh3 ?? 0) > 0 && !(latest.no2 ?? 0))
-    return {
-      text:
-        nh3 === "down"
-          ? "Ammonia is falling: the first stage is ending."
-          : "Ammonia is rising: the first stage.",
-      cycled: false,
-    };
-  if ((latest.nh3 ?? 0) > 0 && (latest.no2 ?? 0) > 0)
-    return {
-      text: "Ammonia and nitrite are both up: the second stage.",
-      cycled: false,
-    };
-  return {
-    text: "Keep testing every day or two to follow the cycle.",
-    cycled: false,
-  };
+  const stage = (() => {
+    if (nh3 === "down" && no2 === "up")
+      return "Ammonia is falling and nitrite is rising: the second stage.";
+    if (no2 === "down" && (no3 === "up" || (latest.nh3 ?? 0) === 0))
+      return "Nitrite is falling and nitrate is rising: the last stage.";
+    if ((latest.no2 ?? 0) > 0 && (latest.nh3 ?? 0) === 0)
+      return "Ammonia is at 0 and nitrite is up: the second stage.";
+    if ((latest.nh3 ?? 0) > 0 && !(latest.no2 ?? 0))
+      return nh3 === "down"
+        ? "Ammonia is falling: the first stage is ending."
+        : "Ammonia is rising: the first stage.";
+    if ((latest.nh3 ?? 0) > 0 && (latest.no2 ?? 0) > 0)
+      return "Ammonia and nitrite are both up: the second stage.";
+    return "Keep testing every day or two to follow the cycle.";
+  })();
+  // livestock in the water: never softened (#309)
+  const harmful = opts.stocked && ((latest.nh3 ?? 0) > 0 || (latest.no2 ?? 0) > 0);
+  return { text: harmful ? `${stage} With livestock in the tank, ammonia or nitrite above 0 can harm them.` : stage };
 }
 
 // ── Test cadence ─────────────────────────────────────────────────────────────

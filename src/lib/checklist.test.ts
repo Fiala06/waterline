@@ -32,7 +32,8 @@ describe('getting-started checklist (#82)', () => {
 	it('talks a cycling tank through the cycle', () => {
 		const steps = checklistSteps({ ...fresh, cycling: true });
 		expect(steps.find((s) => s.key === 'test')?.detail).toMatch(/Ammonia, nitrite and nitrate/);
-		expect(steps.find((s) => s.key === 'livestock')?.detail).toMatch(/both read 0/);
+		expect(steps.find((s) => s.key === 'livestock')?.detail).toMatch(/readings alone can’t say so/);
+		expect(steps.find((s) => s.key === 'livestock')?.detail).not.toMatch(/read 0/);
 	});
 
 	it('shows for a new tank, not a settled or old one, and does as it was told', () => {

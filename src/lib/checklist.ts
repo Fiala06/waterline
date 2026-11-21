@@ -56,7 +56,7 @@ export function checklistSteps(f: ChecklistFacts): ChecklistStep[] {
 		{
 			key: 'livestock',
 			title: 'Add livestock',
-			detail: f.cycling ? 'Once ammonia and nitrite both read 0. Species care ranges are then checked against your water.' : 'Fish, shrimp and snails by species, with their counts.',
+			detail: f.cycling ? 'When you judge the tank ready: readings alone can’t say so. Species care ranges are then checked against your water.' : 'Fish, shrimp and snails by species, with their counts.',
 			href: `${base}/livestock/several`,
 			done: f.livestock > 0
 		},

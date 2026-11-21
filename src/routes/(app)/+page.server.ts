@@ -24,6 +24,7 @@ import {
   fmtDay,
   fmtWhen,
   todayInZone,
+  zonedToUtc,
 } from "$lib/time";
 import {
   eventsSince,
@@ -34,7 +35,7 @@ import {
 } from "$lib/server/logs";
 import { tankNotes } from "$lib/server/trends";
 import { db } from "$lib/server/db";
-import { testReadings, tests } from "$lib/server/db/schema";
+import { events, testReadings, tests } from "$lib/server/db/schema";
 import { thumbsFor } from "$lib/server/photos";
 import { equipmentName } from "$lib/equipment";
 import { listEquipment, scheduledItems, listLivestock, listPlants } from "$lib/server/specs";
@@ -173,10 +174,13 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
     (p) => p.key === "nh3" || p.key === "no2" || p.key === "no3",
   );
   const byTest = new Map<string, CycleTest>();
+  // when each test was taken, to keep the cycle's own tests (#309)
+  const takenAt = new Map<string, string>();
   if (cycleParams.length) {
     const rows = db
       .select({
         testId: tests.id,
+        takenAt: tests.takenAt,
         parameterId: testReadings.parameterId,
         value: testReadings.value,
       })
@@ -198,6 +202,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
       const key = cycleParams.find((p) => p.id === r.parameterId)!
         .key as keyof CycleTest;
       byTest.set(r.testId, { ...byTest.get(r.testId), [key]: r.value });
+      takenAt.set(r.testId, r.takenAt);
     }
   }
   // a bit of fun when things are going well (the page shows it only while nothing needs attention)
@@ -224,9 +229,35 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
         (p.key === "nh3" || p.key === "no2") &&
         statusOf(p, latest.get(p.id)?.value).level === "bad",
     );
+  const startOf = (day: string) => {
+    const at = zonedToUtc(day, "00:00", tz);
+    return Number.isNaN(at.getTime()) ? "" : at.toISOString();
+  };
+  // this cycle's tests only (#309): none from before it was last marked running
+  // (a restart), before the tank started, or older than the charts beside it
+  const cycleStart = tank.cycling
+    ? [
+        db
+          .select({ at: events.occurredAt })
+          .from(events)
+          .where(and(eq(events.tankId, tank.id), sql`json_extract(${events.data}, '$.system') = 'cycle_complete'`))
+          .orderBy(desc(events.occurredAt))
+          .get()?.at ?? "",
+        startOf(born),
+        cycleSince,
+      ].reduce((a, b) => (b > a ? b : a))
+    : "";
+  // livestock already in the water: ammonia and nitrite are never softened (#309)
+  const stocked = inTank.length > 0;
   const cycling = tank.cycling
     ? {
-        ...cyclingStage([...byTest.values()]),
+        ...cyclingStage(
+          [...byTest]
+            .filter(([id]) => takenAt.get(id)! >= cycleStart)
+            .map(([id, t]) => ({ ...t, on: fmtDate(dateInZone(takenAt.get(id)!, tz)) })),
+          { stocked },
+        ),
+        stocked,
         charts: (["nh3", "no2", "no3"] as const).map((key) => {
           const p = cycleParams.find((x) => x.key === key);
           const r = p ? latest.get(p.id) : undefined;
