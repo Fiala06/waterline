@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.23.2 · 2026-11-21
+
 - **Plant care.** A plant's sheet now shows a care profile for about 80 common aquarium plants: light, CO₂, growth, placement, how to propagate it, whether it feeds through its roots, and a temperature range with your tank's latest temperature beside it. It's general guidance to start from, not a rule: [Plants](/tanks/current/plants).
 ## 1.23.1 · 2026-11-21
 
