@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.23.0 · 2026-11-21
+
 - **Source water.** Tank setup has a Source water page: name the water you use for changes (tap, well, RO or a remineralized mix), log its tests, and see each one beside the tank's latest readings and targets, in the tank's units, with a ▲ where the source is outside the tank's target. Source tests never count as the tank's readings, raise alerts or show on shared pages, and they're in backups: [Tank setup](/tanks/current/source-water).
 - **Move livestock to another tank.** An animal's page has Move to another tank: move all or some of a group, or a pet, to another of your tanks, in the tank or in quarantine there. You confirm it first; both tanks' lists and History change together, it's never logged as a loss or a purchase, and a pet keeps its name, notes and history: [Livestock](/tanks/current/livestock).
 - **Spending filters and CSV.** A tank's Spending list now filters by words, category and dates all at once, says how many expenses and how much the filters show, and has Download CSV for what's shown. Settings › Import & export downloads every expense on your own tanks, archived ones too, as one CSV: [Spending](/tanks/current/spending).
