@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import yazl from 'yazl';
 import { env } from '$env/dynamic/private';
 import { safeCell } from '$lib/csv';
+import { backupManifest, backupReadme } from '$lib/backup';
 import { displayValue, paramDecimals, paramUnit } from '$lib/params';
 import { formatNumber } from '$lib/units';
 import { utcToZoned } from '$lib/time';
@@ -18,6 +19,11 @@ import {
 	expenses,
 	events,
 	exports,
+	maintenanceRoutines,
+	parReadings,
+	planRuns,
+	testKits,
+	wishes,
 	livestock,
 	plants,
 	notificationPrefs,
@@ -134,7 +140,16 @@ function dataFor(user: User, list: Tank[]) {
 		petsIn.set(t.photoId, [...(petsIn.get(t.photoId) ?? []), t.livestockId]);
 	}
 	const allExpenses = db.select().from(expenses).where(inArray(expenses.tankId, ids)).orderBy(asc(expenses.date)).all();
+	// added in format 2 (#306)
+	const allWishes = byTank(db.select().from(wishes).where(inArray(wishes.tankId, ids)).all());
+	const allRoutines = byTank(db.select().from(maintenanceRoutines).where(inArray(maintenanceRoutines.tankId, ids)).orderBy(asc(maintenanceRoutines.position)).all());
+	const allPlans = byTank(db.select().from(planRuns).where(inArray(planRuns.tankId, ids)).all());
+	const allPar = byTank(db.select().from(parReadings).where(inArray(parReadings.tankId, ids)).all());
 	return {
+		allWishes,
+		allRoutines,
+		allPlans,
+		allPar,
 		params,
 		allTests,
 		testsIn: byTank(allTests),
@@ -203,8 +218,10 @@ async function build(id: string, user: User, list: Tank[], format: 'zip' | 'csv'
 		const prefs = db.select().from(notificationPrefs).where(eq(notificationPrefs.userId, user.id)).get();
 		const json = {
 			format: 'waterline-backup',
-			version: 1,
+			version: 2,
 			exportedAt: new Date().toISOString(),
+			// what's in it, what Restore puts back, and what's left out on purpose (#306)
+			manifest: backupManifest(),
 			note: 'Measurements are stored metric: volume in liters, temperature in °C, lengths in cm, hardness in dGH. Times are UTC.',
 			account: {
 				email: user.email,
@@ -224,7 +241,13 @@ async function build(id: string, user: User, list: Tank[], format: 'zip' | 'csv'
 					.from(quickFavorites)
 					.where(eq(quickFavorites.userId, user.id))
 					.all()
-					.map((f) => ({ ...f, userId: undefined }))
+					.map((f) => ({ ...f, userId: undefined })),
+				testKits: db
+					.select()
+					.from(testKits)
+					.where(eq(testKits.userId, user.id))
+					.all()
+					.map((k) => ({ ...k, userId: undefined }))
 			},
 			tanks: list.map((t) => ({
 				...t,
@@ -253,17 +276,16 @@ async function build(id: string, user: User, list: Tank[], format: 'zip' | 'csv'
 					livestock: d.petsIn.get(p.id) ?? []
 				})),
 				// in hundredths of each one's own currency (#307)
-				expenses: d.expensesIn(t.id).map(({ receiptPath, tankId: _, ...e }) => ({ ...e, receipt: receiptPath ? `receipts/${receiptPath}` : null }))
+				expenses: d.expensesIn(t.id).map(({ receiptPath, tankId: _, ...e }) => ({ ...e, receipt: receiptPath ? `receipts/${receiptPath}` : null })),
+				wishes: d.allWishes(t.id).map((w) => ({ ...w, tankId: undefined })),
+				routines: d.allRoutines(t.id).map((r) => ({ ...r, tankId: undefined })),
+				plans: d.allPlans(t.id).map((r) => ({ ...r, tankId: undefined })),
+				parReadings: d.allPar(t.id).map((r) => ({ ...r, tankId: undefined }))
 			}))
 		};
 		zip.addBuffer(Buffer.from(JSON.stringify(json, null, 2)), 'waterline.json');
 		zip.addBuffer(Buffer.from(testsCsv(user, list, d)), 'water-tests.csv');
-		zip.addBuffer(
-			Buffer.from(
-				`Waterline backup — ${stamp}\n\nwaterline.json   everything: tanks, parameters, tests, events, tasks, spending, photo list\nwater-tests.csv  one row per water test, in your units\nphotos/          full-size photos, by tank\nreceipts/        receipts for spending, by tank\n`
-			),
-			'README.txt'
-		);
+		zip.addBuffer(Buffer.from(backupReadme(stamp)), 'README.txt');
 
 		const total = d.allPhotos.length;
 		for (let i = 0; i < total; i++) {

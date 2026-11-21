@@ -13,6 +13,11 @@
 	let scope = $state<'tank' | 'account'>(untrack(() => (data.exportTanks.length > 1 ? 'account' : 'tank')));
 	let tankId = $state(untrack(() => data.defaultTank ?? ''));
 	let format = $state<'zip' | 'csv'>('zip');
+	// a backup being restored (#306): what's in it, until it's restored or cancelled
+	const restore = $derived(form && 'restore' in form ? form.restore : null);
+	let reading = $state(false);
+	const n = (k: number, one: string, many = `${one}s`) => `${k} ${k === 1 ? one : many}`;
+	let restoring = $state(false);
 
 	const latest = $derived(data.exports[0]);
 	const building = $derived(latest?.status === 'building' ? latest : null);
@@ -66,7 +71,7 @@
 	<div class="head">
 		<a class="back sub-back" href="/settings">‹ Settings</a>
 		<h1>Import & export</h1>
-		<p class="lede">Take everything with you. Nothing is deleted.</p>
+		<p class="lede">Take everything with you, and bring it back. Nothing is deleted.</p>
 	</div>
 
 	{#if !data.exportTanks.length}
@@ -74,7 +79,7 @@
 	{:else}
 		<section class="block" aria-labelledby="export-h">
 			<h2 class="kicker" id="export-h">Export</h2>
-			<form id="export-form" method="POST" use:enhance={keepValues} class="stack">
+			<form id="export-form" method="POST" action="?/build" use:enhance={keepValues} class="stack">
 				<fieldset class="scope-row">
 					<legend class="sr-only">Scope</legend>
 					<div class="segmented scope">
@@ -114,6 +119,16 @@
 				</fieldset>
 				{#if form?.error}<p class="error-text">✕ {form.error}</p>{/if}
 			</form>
+			<!-- exactly what a backup holds and what Restore puts back (#306) -->
+			<details class="manifest">
+				<summary>What's in a full backup</summary>
+				<h3>Restored</h3>
+				<ul>{#each data.manifest.includes as x (x)}<li>✓ {x}</li>{/each}</ul>
+				<h3>In the backup, not restored</h3>
+				<ul>{#each data.manifest.notRestored as x (x)}<li>– {x}</li>{/each}</ul>
+				<h3>Left out on purpose</h3>
+				<ul>{#each data.manifest.excludes as x (x)}<li>– {x}</li>{/each}</ul>
+			</details>
 
 			{#if building}
 				{@const pct = live?.progress ?? building.progress}
@@ -184,6 +199,73 @@
 			</form>
 		</section>
 	{/if}
+
+	<!-- Restore a backup (#306): into new, private tanks, after a look at what's in it -->
+	<section class="block" aria-labelledby="restore-h">
+		<h2 class="kicker" id="restore-h">Restore a backup</h2>
+		{#if restore}
+			<form method="POST" action="?/restore" class="stack" use:enhance={() => {
+				restoring = true;
+				return async ({ update }) => {
+					await update();
+					restoring = false;
+				};
+			}}>
+				<input type="hidden" name="token" value={restore.token} />
+				<p class="lede">
+					A backup{restore.exportedAt ? ` from ${day(restore.exportedAt)}` : ''}. Each tank you tick is added as a new, private tank of yours; nothing you have now changes.
+				</p>
+				<ul class="list restore-tanks">
+					{#each restore.tanks as t (t.id)}
+						<li>
+							<label class="pick">
+								<input type="checkbox" name="tank" value={t.id} checked={!t.already} />
+								<span class="ptext">
+									<strong>{t.name}{t.archived ? ' · archived' : ''}</strong>
+									<small
+										>{[
+											n(t.counts.tests, 'test'),
+											n(t.counts.entries, 'entry', 'entries'),
+											n(t.counts.photos, 'photo'),
+											n(t.counts.tasks, 'task'),
+											`${t.counts.livestock} livestock`,
+											n(t.counts.plants, 'plant'),
+											`${t.counts.equipment} equipment`,
+											n(t.counts.expenses, 'expense')
+										].join(' · ')}</small
+									>
+									{#if t.already}<small class="status-warn">▲ You already have this tank: ticking it adds a second copy</small>{/if}
+									{#if t.missingFiles}<small class="status-warn">▲ {t.missingFiles} photo or receipt file{t.missingFiles === 1 ? ' is' : 's are'} missing from the ZIP and won't be restored</small>{/if}
+								</span>
+							</label>
+						</li>
+					{/each}
+				</ul>
+				{#if form?.restoreError}<p class="error-text" role="alert">✕ {form.restoreError}</p>{/if}
+				<div class="action">
+					<button class="btn btn-primary" disabled={restoring}>{restoring ? 'Restoring…' : 'Restore'}</button>
+					<button class="btn-text" formaction="?/restoreCancel">Cancel</button>
+				</div>
+			</form>
+		{:else}
+			<form method="POST" action="?/restorePreview" enctype="multipart/form-data" class="stack" use:enhance={() => {
+				reading = true;
+				return async ({ update }) => {
+					await update({ reset: false });
+					reading = false;
+				};
+			}}>
+				<p class="lede">
+					A full backup from Waterline, from this server or another. You see what's in it first; its tanks are added as new, private tanks, and
+					nothing you have now is changed or removed.
+				</p>
+				<label class="label" for="restore-file">Backup ZIP</label>
+				<input class="input" id="restore-file" name="backup" type="file" accept=".zip,application/zip" />
+				{#if form?.restoreError}<p class="error-text" role="alert">✕ {form.restoreError}</p>{/if}
+				<div class="action"><button class="btn" disabled={reading}>{reading ? 'Reading…' : 'Look inside'}</button></div>
+			</form>
+		{/if}
+	</section>
 </div>
 
 <style>
@@ -216,6 +298,53 @@
 		gap: 14px;
 		padding-top: 14px;
 		border-top: 2px solid var(--ink);
+	}
+	.manifest {
+		font-size: 14px;
+	}
+	.manifest summary {
+		cursor: pointer;
+		min-height: 44px;
+		display: flex;
+		align-items: center;
+		font-weight: 700;
+	}
+	.manifest h3 {
+		margin: 12px 0 4px;
+		font-size: 13px;
+	}
+	.manifest ul {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+	.pick {
+		display: flex;
+		gap: 12px;
+		align-items: flex-start;
+		padding: 10px 0;
+		min-height: 44px;
+	}
+	.pick input {
+		margin-top: 3px;
+		width: 20px;
+		height: 20px;
+		flex-shrink: 0;
+	}
+	.ptext {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+	.ptext small {
+		font-size: 12px;
+		color: var(--text-muted);
+	}
+	.ptext small.status-warn {
+		color: inherit;
 	}
 	.block h2 {
 		margin: 0;

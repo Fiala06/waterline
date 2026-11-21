@@ -330,3 +330,21 @@ export function setCover(userId: string, photoId: string) {
 	db.update(tanks).set({ coverPhotoId: p.id, coverX: 50, coverY: 50 }).where(eq(tanks.id, p.tankId)).run();
 	return p;
 }
+
+/**
+ * A photo from a backup being restored (#306): decoded and saved again as
+ * uploads are, so only a real image gets in and it carries no metadata, with
+ * its thumbnail made afresh.
+ */
+export async function photoFromBackup(input: Buffer): Promise<{ full: Buffer; thumb: Buffer; width: number; height: number }> {
+	const { data: full, info } = await sharp(input, { failOn: 'error', limitInputPixels: MAX_PIXELS })
+		.rotate()
+		.resize(FULL, FULL, { fit: 'inside', withoutEnlargement: true })
+		.jpeg({ quality: 82, mozjpeg: true })
+		.toBuffer({ resolveWithObject: true });
+	const thumb = await sharp(full).resize(THUMB, THUMB, { fit: 'cover' }).jpeg({ quality: 76 }).toBuffer();
+	return { full, thumb, width: info.width, height: info.height };
+}
+
+/** Where a restored photo's files go: the same layout storePhotos uses. */
+export const photoPaths = (tankId: string, id: string) => ({ path: join(tankId, `${id}.jpg`), thumbPath: join(tankId, `${id}_t.jpg`), dir: root() });

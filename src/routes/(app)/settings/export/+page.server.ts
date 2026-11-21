@@ -1,4 +1,7 @@
-import { fail } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
+import { BACKUP_EXCLUDES, BACKUP_INCLUDES, BACKUP_NOT_RESTORED } from '$lib/backup';
+import { setFlash } from '$lib/server/flash';
+import { discardRestore, previewRestore, restoreBackup, RestoreError } from '$lib/server/restore';
 import { str } from '$lib/server/forms';
 import { estimateBackupBytes, listExports, startExport } from '$lib/server/export';
 import { listTanks } from '$lib/server/tanks';
@@ -9,6 +12,8 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 	const { currentTankId } = await parent();
 	const tanks = [...listTanks(user.id, { own: true }), ...listTanks(user.id, { archived: true, own: true })].map((t) => ({ id: t.id, name: t.name }));
 	return {
+		// what a backup holds, restores and leaves out (#306)
+		manifest: { includes: BACKUP_INCLUDES, notRestored: BACKUP_NOT_RESTORED, excludes: BACKUP_EXCLUDES },
 		exportTanks: tanks,
 		defaultTank: currentTankId ?? tanks[0]?.id ?? null,
 		estimates: {
@@ -34,7 +39,36 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, locals }) => {
+	// Restore a backup (#306): the ZIP is read and kept, and what's in it shown, before anything is added
+	restorePreview: async ({ request, locals }) => {
+		const file = (await request.formData()).get('backup');
+		if (!(file instanceof File) || !file.size) return fail(400, { restoreError: 'Choose a backup ZIP.' });
+		try {
+			return { restore: previewRestore(locals.user!, Buffer.from(await file.arrayBuffer())) };
+		} catch (e) {
+			if (e instanceof RestoreError) return fail(400, { restoreError: e.message });
+			throw e;
+		}
+	},
+	restore: async ({ request, locals, cookies }) => {
+		const form = await request.formData();
+		const token = str(form, 'token');
+		const picked = form.getAll('tank').map(String);
+		let made: { id: string; name: string }[];
+		try {
+			made = await restoreBackup(locals.user!, token, picked);
+		} catch (e) {
+			if (e instanceof RestoreError) return fail(400, { restoreError: e.message });
+			throw e;
+		}
+		setFlash(cookies, `✓ Restored ${made.length === 1 ? made[0].name : `${made.length} tanks`}`);
+		redirect(303, `/?tank=${made[0].id}`);
+	},
+	restoreCancel: async ({ request, locals }) => {
+		discardRestore(locals.user!, str(await request.formData(), 'token'));
+		return { restoreCancelled: true };
+	},
+	build: async ({ request, locals }) => {
 		const user = locals.user!;
 		const form = await request.formData();
 		const scope = str(form, 'scope') === 'tank' ? 'tank' : 'account';

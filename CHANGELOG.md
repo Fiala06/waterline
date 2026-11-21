@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Restore a backup.** A full backup can now come back: Settings › Import & export › Restore a backup shows what's in a backup, from this server or another, and adds the tanks you pick as new, private tanks with everything in them linked as before. Nothing you have now changes. Backups now also hold your wish list, maintenance routines, plans and PAR readings, and the page lists exactly what's in a backup and what's left out: [Import & export](/settings/export).
+
 - **Delete your account.** Settings › Data now has Delete account: it says what goes (your tanks and everything in them, your settings and backups) and what stays (tanks others share with you, and what you logged on them), suggests a backup first, and asks you to type your email address after a recent sign-in. Signing in again later starts a fresh, empty account: [Settings › Data](/settings#data).
 
 ## 1.22.6 · 2026-11-21

@@ -57,3 +57,54 @@ test('export a full backup and a CSV', async ({ page }, info) => {
 	expect([303, 302, 404]).toContain(res.status());
 	await other.close();
 });
+
+// #306: a backup comes back, on this account or another, as a new private tank, after a look inside
+test('restore a backup into a new tank, from another account', async ({ page, browser }, info) => {
+	await newKeeperWithTank(page, `restore-src-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, `/entries/test/new?tank=${tankId}`);
+	await page.getByLabel('pH', { exact: true }).fill('6.8');
+	await page.locator('input[type=file][name=photos]').setInputFiles(await jpeg());
+	await page.getByRole('button', { name: 'Save 1 reading' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Saved 1 reading');
+	await open(page, '/settings/export');
+	await page.getByText("What's in a full backup").click();
+	await expect(page.getByText('Left out on purpose')).toBeVisible();
+	await page.getByRole('button', { name: 'Build backup' }).click();
+	await expect(page.getByText('✓ Backup ready')).toBeVisible({ timeout: 15_000 });
+	const zip = await (await page.request.get((await page.getByRole('link', { name: 'Download' }).first().getAttribute('href'))!)).body();
+
+	// someone else, on a fresh account
+	const ctx = await browser.newContext({ ...info.project.use });
+	const other = await ctx.newPage();
+	await newKeeperWithTank(other, `restore-dst-${info.project.name}`);
+	await open(other, '/settings/export');
+	const restore = other.getByRole('region', { name: 'Restore a backup' });
+	// not a backup: said so, nothing added
+	await restore.getByLabel('Backup ZIP').setInputFiles({ name: 'notes.zip', mimeType: 'application/zip', buffer: Buffer.from('hello') });
+	await restore.getByRole('button', { name: 'Look inside' }).click();
+	await expect(restore.getByRole('alert')).toContainText("That file isn't a ZIP.");
+
+	await restore.getByLabel('Backup ZIP').setInputFiles({ name: 'backup.zip', mimeType: 'application/zip', buffer: zip });
+	await restore.getByRole('button', { name: 'Look inside' }).click();
+	await expect(restore.getByRole('checkbox', { name: /Riverbed 40/ })).toBeChecked();
+	await expect(restore).toContainText('1 test · 1 entry · 1 photo');
+	await restore.getByRole('button', { name: 'Restore' }).click();
+	await expect(other.getByRole('status')).toContainText('✓ Restored Riverbed 40');
+	const restoredId = new URL(other.url()).searchParams.get('tank')!;
+	expect(restoredId).not.toBe(tankId);
+	await open(other, `/history?tank=${restoredId}&range=all`);
+	await expect(other.locator('a.row', { hasText: 'Water test · 1 reading' })).toHaveCount(1);
+	await open(other, `/photos?tank=${restoredId}`);
+	await expect(other.locator('a.tile')).toHaveCount(1);
+
+	// the same backup again: flagged, and left unticked
+	await open(other, '/settings/export');
+	await restore.getByLabel('Backup ZIP').setInputFiles({ name: 'backup.zip', mimeType: 'application/zip', buffer: zip });
+	await restore.getByRole('button', { name: 'Look inside' }).click();
+	await expect(restore).toContainText('▲ You already have this tank');
+	await expect(restore.getByRole('checkbox', { name: /Riverbed 40/ })).not.toBeChecked();
+	await restore.getByRole('button', { name: 'Cancel' }).click();
+	await expect(restore.getByLabel('Backup ZIP')).toBeVisible();
+	await ctx.close();
+});
