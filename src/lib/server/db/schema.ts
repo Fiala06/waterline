@@ -497,6 +497,9 @@ export const serverSettings = sqliteTable('server_settings', {
 	sender: text('sender'),
 	allowPublicPages: integer('allow_public_pages', { mode: 'boolean' }).notNull().default(true),
 	publicHomeEnabled: integer('public_home_enabled', { mode: 'boolean' }).notNull().default(false),
+	// a product homepage for signed-out visitors (#300), off unless the admin turns it on; who can join, in their own words
+	landingEnabled: integer('landing_enabled', { mode: 'boolean' }).notNull().default(false),
+	landingAccess: text('landing_access'),
 	publicBaseUrl: text('public_base_url'),
 	ga4Id: text('ga4_id'),
 	consentBanner: integer('consent_banner', { mode: 'boolean' }).notNull().default(true),

@@ -526,6 +526,13 @@
       "when": 1795287052542,
       "tag": "0074_product_stock",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "6",
+      "when": 1795293813114,
+      "tag": "0075_landing_page",
+      "breakpoints": true
     }
   ]
 }

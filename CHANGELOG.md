@@ -11,6 +11,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **A homepage for your server.** Admins can turn on a product homepage in Server settings › Public pages: people who follow a link to your server and aren't signed in see what Waterline does, with a screenshot, Sign in, a link to run their own, and a line you write on who can join. It's off unless you turn it on: [Server settings](/settings/server#public-pages).
 ## 1.23.2 · 2026-11-21
 
 - **Plant care.** A plant's sheet now shows a care profile for about 80 common aquarium plants: light, CO₂, growth, placement, how to propagate it, whether it feeds through its roots, and a temperature range with your tank's latest temperature beside it. It's general guidance to start from, not a rule: [Plants](/tanks/current/plants).

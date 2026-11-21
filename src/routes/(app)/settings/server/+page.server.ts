@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 import { env } from '$env/dynamic/private';
 import { db } from '$lib/server/db';
 import { serverSettings, users } from '$lib/server/db/schema';
-import { num, str } from '$lib/server/forms';
+import { num, optStr, str } from '$lib/server/forms';
 import { getServerSettings, MailError, outboxMode, storedConfig, transportFrom, type MailConfig } from '$lib/server/mail';
 import { testEmail } from '$lib/server/mail/templates';
 import { baseUrl, prefsFor, recipient, unsubscribeToken } from '$lib/server/notifications';
@@ -72,6 +72,8 @@ export const load: PageServerLoad = ({ locals, url }) => {
 		publicPages: {
 			allow: s.allowPublicPages,
 			home: s.publicHomeEnabled,
+			landing: s.landingEnabled,
+			landingAccess: s.landingAccess ?? '',
 			baseUrl: s.publicBaseUrl ?? '',
 			ga4Id: s.ga4Id ?? '',
 			consent: s.consentBanner,
@@ -306,6 +308,8 @@ export const actions: Actions = {
 			.set({
 				allowPublicPages: form.get('allowPublicPages') === 'on',
 				publicHomeEnabled: form.get('publicHomeEnabled') === 'on',
+				landingEnabled: form.get('landingEnabled') === 'on',
+				landingAccess: optStr(form, 'landingAccess', 300),
 				publicBaseUrl: baseUrl || null,
 				ga4Id: ga4 || null,
 				consentBanner: form.get('consentBanner') === 'on',

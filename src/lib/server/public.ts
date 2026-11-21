@@ -52,6 +52,9 @@ export function publicSettings() {
 	return {
 		allowPublicPages: s.allowPublicPages,
 		publicHomeEnabled: s.publicHomeEnabled,
+		// the product homepage (#300), and who can join in the admin's own words
+		landingEnabled: s.landingEnabled,
+		landingAccess: s.landingAccess,
 		baseUrl: (s.publicBaseUrl || env.ORIGIN || '').replace(/\/+$/, '') || null,
 		ga4Id: s.ga4Id,
 		consentBanner: s.consentBanner,
@@ -463,8 +466,11 @@ export function publicPhoto(page: PublicPage, tank: Tank, photoId: string) {
 
 export function sitemapEntries() {
 	const s = publicSettings();
-	if (!s.allowPublicPages || !s.baseUrl) return [];
-	return db
+	if (!s.baseUrl) return [];
+	// the product homepage (#300), when it's on
+	const home = s.landingEnabled ? [{ loc: `${s.baseUrl}/welcome`, lastmod: undefined as string | undefined }] : [];
+	if (!s.allowPublicPages) return home;
+	return [...home, ...db
 		.select({ slug: publicPages.slug, updated: sql<string>`max(coalesce(${tests.takenAt}, ${tanks.createdAt}))` })
 		.from(publicPages)
 		.innerJoin(tanks, eq(tanks.id, publicPages.tankId))
@@ -472,7 +478,7 @@ export function sitemapEntries() {
 		.where(and(eq(publicPages.enabled, true), eq(publicPages.indexable, true), isNull(tanks.archivedAt)))
 		.groupBy(publicPages.slug)
 		.all()
-		.map((r) => ({ loc: `${s.baseUrl}/t/${r.slug}`, lastmod: r.updated?.slice(0, 10) }));
+		.map((r) => ({ loc: `${s.baseUrl}/t/${r.slug}`, lastmod: r.updated?.slice(0, 10) }))];
 }
 
 export function publicTanksForHome() {

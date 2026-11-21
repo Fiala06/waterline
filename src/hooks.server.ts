@@ -14,7 +14,7 @@ import { logger } from '$lib/server/log';
 import { VERSION } from '$lib/changelog';
 import { preloadsInHead } from '$lib/server/preloads';
 
-const PUBLIC_PATHS = ['/signin', '/first-run', '/auth', '/e', '/invite', '/share', '/unsubscribe', '/t', '/s', '/p', '/public', '/sitemap.xml', '/robots.txt', '/mcp', '/api/v1', '/.well-known', '/oauth/register', '/oauth/token', '/cal'];
+const PUBLIC_PATHS = ['/signin', '/first-run', '/auth', '/e', '/invite', '/share', '/unsubscribe', '/t', '/s', '/p', '/public', '/welcome', '/sitemap.xml', '/robots.txt', '/mcp', '/api/v1', '/.well-known', '/oauth/register', '/oauth/token', '/cal'];
 /** For AI assistants (#9): signed in by an access token, never the session cookie; and a smart plug's report of a switch (#205), by its plug's token. */
 const TOKEN_PATHS = ['/mcp', '/api/v1', '/plug-hook'];
 /** Where apps register and get tokens (OAuth): no cookies, so any site may call them. */
@@ -151,9 +151,10 @@ const appHandle: Handle = async ({ event, resolve }) => {
 
 	const path = event.url.pathname;
 	const user = event.locals.user;
-	// Signed-out visitors to / see the public home page when the admin turned it on.
+	// Signed-out visitors to / see the product homepage (#300), or the public tank directory, when the admin turned one on.
 	if (!user && path === '/') {
 		const pub = publicSettings();
+		if (pub.landingEnabled) redirect(303, '/welcome');
 		if (pub.publicHomeEnabled && pub.allowPublicPages) redirect(303, '/public');
 	}
 	if (!user && !isPublic(path)) {

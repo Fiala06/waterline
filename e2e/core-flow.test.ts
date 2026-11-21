@@ -7,7 +7,8 @@ test('core flow', async ({ page }, info) => {
 
 	// Sign in (mock Google)
 	await page.goto('/');
-	await expect(page).toHaveURL(/\/signin/);
+	await expect(page).toHaveURL(/\/(signin|welcome)/); // the product homepage (#300), if another test has it on
+	if (page.url().includes('/welcome')) await page.goto('/signin');
 	await page.getByPlaceholder('Email').fill(email);
 	await page.getByPlaceholder('Name', { exact: true }).fill('Jordan Reyes');
 	await page.getByRole('button', { name: /Sign in with Google/ }).click();

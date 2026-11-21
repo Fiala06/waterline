@@ -468,6 +468,20 @@
 				<span class="state status-ok">✓ Generated</span>
 			</div>
 		</div>
+		<!-- the product homepage (#300): what signed-out visitors see at the root, off unless turned on -->
+		<div class="rows">
+			<div class="row">
+				<label for="pp-landingEnabled" class="ttext"
+					><span class="tt">Product homepage</span><span class="td">Signed-out visitors to the root see what Waterline is, with Sign in and a link to self-host it</span></label
+				>
+				<span class="switch"><input id="pp-landingEnabled" type="checkbox" name="landingEnabled" defaultChecked={data.publicPages.landing} /><span></span></span>
+			</div>
+		</div>
+		<div class="field">
+			<label class="label" for="pp-access">Who can join · shown on the homepage, optional</label>
+			<textarea class="input" id="pp-access" name="landingAccess" rows="2" maxlength="300" placeholder="e.g. Free while it's in beta. Ask for an invitation in the forum thread.">{data.publicPages.landingAccess}</textarea>
+			<span class="hint">Only what you've decided: access, limits, price. Left blank, the homepage says nothing about who can join.</span>
+		</div>
 		<div class="field narrow">
 			<label class="label" for="pp-base">Public site URL</label>
 			<input
