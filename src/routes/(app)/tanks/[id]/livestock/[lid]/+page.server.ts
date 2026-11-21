@@ -5,13 +5,14 @@ import { outcomeOpen, outcomeText } from '$lib/livestock';
 import { healthEvents } from '$lib/server/log-livestock';
 import { dateInZone, fmtDate, fmtDateLong } from '$lib/time';
 import { db } from '$lib/server/db';
-import { events } from '$lib/server/db/schema';
+import { events, tanks } from '$lib/server/db/schema';
+import { visibleTo } from '$lib/server/members';
 import { setFlash } from '$lib/server/flash';
 import { optStr, refuse } from '$lib/server/forms';
 import { storeOnePhoto } from '$lib/server/photos';
 import { speciesPhotos } from '$lib/server/stock-photos';
-import { changeCount, getLivestock, nameLivestock, petPhotos, updateLivestockDetails } from '$lib/server/specs';
-import { getTank } from '$lib/server/tanks';
+import { changeCount, getLivestock, moveLivestock, nameLivestock, petPhotos, updateLivestockDetails } from '$lib/server/specs';
+import { getTank, listTanks, roleOn } from '$lib/server/tanks';
 import { careLine, groupWarning, tankTargets, targetWarnings } from '$lib/care';
 import { CARE_SOURCE, careFor, speciesCareOn } from '$lib/server/species-care';
 import { listParams } from '$lib/server/tanks';
@@ -38,19 +39,26 @@ function entry(userId: string, tankId: string, id: string) {
 export const load: PageServerLoad = ({ locals, params }) => {
 	const user = locals.user!;
 	const l = entry(user.id, params.id, params.lid);
+	// its History follows it between tanks (#317), in the tanks this person can see
 	const history = db
-		.select()
+		.select({ e: events })
 		.from(events)
+		.innerJoin(tanks, eq(tanks.id, events.tankId))
 		.where(
 			and(
-				eq(events.tankId, l.tankId),
+				visibleTo(user.id),
 				eq(events.category, 'livestock'),
-				or(sql`json_extract(${events.data}, '$.livestock_id') = ${l.id}`, sql`json_extract(${events.data}, '$.from_id') = ${l.id}`)
+				or(
+					sql`json_extract(${events.data}, '$.livestock_id') = ${l.id}`,
+					sql`json_extract(${events.data}, '$.from_id') = ${l.id}`,
+					sql`json_extract(${events.data}, '$.to_livestock_id') = ${l.id}`
+				)
 			)
 		)
 		.orderBy(desc(events.occurredAt))
 		.limit(50)
 		.all()
+		.map((r) => r.e)
 		.map((e) => ({ id: e.id, title: eventTitle(e, user), day: fmtDate(dateInZone(e.occurredAt, user.timeZone)) }));
 	const tank = getTank(user.id, l.tankId);
 	// its health entries, newest first; "▲ Under treatment" while the latest is still open
@@ -86,6 +94,14 @@ export const load: PageServerLoad = ({ locals, params }) => {
 		// no photo of its own: the species photo from Wikimedia Commons, with its credit
 		stock: l.photoId ? null : speciesPhotos([{ photoId: null, scientific: l.scientificName, common: l.commonName }]).list[0],
 		history,
+		// Move (#317): to another tank of the keeper's own, from a tank they own
+		moveTo:
+			!l.removedAt && roleOn(user.id, tank) === 'owner'
+				? listTanks(user.id, { own: true })
+						.filter((t) => t.id !== tank.id)
+						.map((t) => ({ id: t.id, name: t.name }))
+				: [],
+		moveKey: crypto.randomUUID(),
 		// photos it's tagged in (the profile photo too), newest first
 		photos: petPhotos(user.id, l.id).map((p) => p.id)
 	};
@@ -136,6 +152,26 @@ export const actions: Actions = {
 		changeCount(user.id, l.id, 0, reason);
 		setFlash(cookies, `✓ ${l.nickname ?? l.commonName} removed · ${reason === 'loss' ? 'loss' : 'rehomed'}`);
 		redirect(303, `/tanks/${params.id}/livestock`);
+	},
+	/**
+	 * Move to another of the keeper's tanks (#317), confirmed: the first post
+	 * says what will happen, the second (confirm=1) does it. Not a loss or a purchase.
+	 */
+	move: async ({ request, locals, params, cookies }) => {
+		const user = locals.user!;
+		const l = entry(user.id, params.id, params.lid);
+		const form = await request.formData();
+		const toId = String(form.get('to') ?? '');
+		const to = listTanks(user.id, { own: true }).find((t) => t.id === toId && t.id !== l.tankId);
+		if (!to) return refuse('move', 'Pick another of your tanks.');
+		const n = l.nickname ? 1 : Number(String(form.get('count') ?? '').trim());
+		if (!Number.isInteger(n) || n < 1 || n > l.count) return refuse('move', `Move from 1 to ${l.count}.`);
+		const status = form.get('status') === 'quarantine' ? 'quarantine' : 'in_tank';
+		const what = l.nickname ?? `${n} ${l.commonName}`;
+		if (form.get('confirm') !== '1') return { confirmMove: { to: to.id, toName: to.name, count: n, status, what, key: String(form.get('key') ?? '') } };
+		const moved = moveLivestock(user.id, l.id, to.id, n, { status, clientId: optStr(form, 'key', 64) });
+		setFlash(cookies, `✓ Moved ${what} to ${to.name}`);
+		redirect(303, `/tanks/${to.id}/livestock/${moved.id}`);
 	},
 	/** Stops using the photo here; it stays in Photos. */
 	removePhoto: ({ locals, params, cookies }) => {

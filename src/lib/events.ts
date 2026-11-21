@@ -208,6 +208,9 @@ export function eventTitle(e: EventLike, prefs: UnitPrefs): string {
 			if (pet && d.action === 'status') return `${pet} ${d.status === 'quarantine' ? 'to quarantine' : 'moved into the tank'}`;
 			if (pet && d.action === 'removed') return `Removed ${pet} · ${name}${d.reason ? ` · ${d.reason}` : ''}`;
 			if (pet && d.action === 'added') return `${pet} is back · ${name}`;
+			// moved between the keeper's tanks (#317): never a loss or a purchase
+			if (d.action === 'moved_out') return pet ? `${pet} moved to ${str(d.to_tank) || 'another tank'} · ${name}` : `Moved ${n ?? 1} ${name} to ${str(d.to_tank) || 'another tank'}`;
+			if (d.action === 'moved_in') return pet ? `${pet} moved in from ${str(d.from_tank) || 'another tank'} · ${name}` : `${n ?? 1} ${name} moved in from ${str(d.from_tank) || 'another tank'}`;
 			if (d.action === 'recount') return `Recount · ${name} ${d.from} → ${d.to}`;
 			if (d.action === 'status') return `${name} ${d.status === 'quarantine' ? 'to quarantine' : 'moved into the tank'}`;
 			if (d.action === 'added') return `+${n ?? 1} ${name}${d.status === 'quarantine' ? ' · quarantine' : ''}`;

@@ -12,6 +12,8 @@
 	const nameError = $derived(refusal(form, 'name').message);
 	const photoError = $derived(refusal(form, 'photo').message);
 	const removeError = $derived(refusal(form, 'remove').message);
+	const moveError = $derived(refusal(form, 'move').message);
+	const confirmMove = $derived(form && 'confirmMove' in form ? form.confirmMove : null);
 	const a = $derived(data.animal);
 	const list = $derived(`/tanks/${data.tank.id}/livestock`);
 	const here = $derived(`/tanks/${data.tank.id}/livestock/${a.id}`);
@@ -153,6 +155,56 @@
 				</div>
 				<div class="foot"><button class="btn btn-primary" disabled={busy}>Save</button></div>
 			</form>
+
+			{#if !gone && data.moveTo.length}
+				<!-- to another of the keeper's tanks (#317): a quarantine tank to the display, or some of a group; confirmed first -->
+				<details class="remove move" open={!!moveError || !!confirmMove}>
+					<summary class="btn-text">Move to another tank</summary>
+					{#if confirmMove}
+						<form method="POST" action="?/move" use:enhance={saving} class="confirm-move">
+							<input type="hidden" name="to" value={confirmMove.to} />
+							<input type="hidden" name="count" value={confirmMove.count} />
+							<input type="hidden" name="status" value={confirmMove.status} />
+							<input type="hidden" name="key" value={confirmMove.key} />
+							<input type="hidden" name="confirm" value="1" />
+							<p class="hint">
+								Move <b>{confirmMove.what}</b> to <b>{confirmMove.toName}</b>{confirmMove.status === 'quarantine' ? ', in quarantine' : ''}? Both tanks' lists and History change; it isn't logged as a loss or a purchase.
+							</p>
+							<div class="reasons">
+								<button class="btn btn-primary" disabled={busy}>Move</button>
+								<a class="btn" href={here}>Cancel</a>
+							</div>
+						</form>
+					{:else}
+						<form method="POST" action="?/move" use:enhance={saving}>
+							<input type="hidden" name="key" value={data.moveKey} />
+							<div class="field">
+								<label class="label" for="move-to">To</label>
+								<select class="input" id="move-to" name="to">
+									{#each data.moveTo as t (t.id)}<option value={t.id}>{t.name}</option>{/each}
+								</select>
+							</div>
+							{#if !one}
+								<div class="field">
+									<label class="label" for="move-count">How many · of {a.count}</label>
+									<input class="input" id="move-count" name="count" inputmode="numeric" autocomplete="off" defaultValue={String(a.count)} aria-invalid={!!moveError} />
+								</div>
+							{:else}
+								<input type="hidden" name="count" value="1" />
+							{/if}
+							<fieldset class="field">
+								<legend class="label">There</legend>
+								<div class="options">
+									<label class="option"><input type="radio" name="status" value="in_tank" checked />In the tank</label>
+									<label class="option"><input type="radio" name="status" value="quarantine" />Quarantine</label>
+								</div>
+							</fieldset>
+							{#if moveError}<p class="error-text" role="alert">✕ {moveError}</p>{/if}
+							<div class="reasons"><button class="btn" disabled={busy}>Move…</button></div>
+						</form>
+					{/if}
+				</details>
+			{/if}
 
 			{#if !gone}
 				<!-- out of the tank (#265): open, then the reason saves it, as on the list; Restore brings it back -->
@@ -424,6 +476,17 @@
 	.reasons {
 		display: flex;
 		gap: 8px;
+	}
+	.move .field {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		margin: 0;
+		padding: 0;
+		border: 0;
+	}
+	.move .options {
+		grid-template-columns: 1fr 1fr;
 	}
 	.foot .btn {
 		min-width: 120px;

@@ -601,6 +601,68 @@ export function setLivestockStatus(
 }
 
 /**
+ * Move animals to another of the keeper's tanks (#317): a quarantine tank to
+ * the display, or some of a group. Not a loss, a purchase or a rehoming: both
+ * tanks get a History entry ("Moved 3 to …", "3 moved in from …") and both
+ * lists change together. A whole entry moving keeps its identity (notes, where
+ * it came from, the History that follows it); part of a group starts a new
+ * entry, or joins the same species there. A pet always moves whole and stays
+ * its own. The profile photo stays with the tank it was taken in (it's one of
+ * that tank's photos), so it isn't carried over. First slice: tanks the keeper
+ * owns. `clientId` makes a resent form a no-op.
+ */
+export function moveLivestock(
+  userId: string,
+  id: string,
+  toTankId: string,
+  count: number,
+  opts: { status?: Livestock["status"]; at?: string; clientId?: string | null } = {},
+) {
+  const l = getLivestock(userId, id);
+  const from = getTank(userId, l.tankId, "owner");
+  const to = getTank(userId, toTankId, "owner");
+  if (to.id === from.id) error(400, "Pick another tank to move them to.");
+  if (to.archivedAt) error(400, "That tank is archived. Restore it first.");
+  if (l.removedAt) error(400, "These have left the tank.");
+  // a resent form: already done
+  if (opts.clientId) {
+    const done = db.select().from(events).where(and(eq(events.tankId, from.id), eq(events.clientId, opts.clientId))).get();
+    if (done) return { id: typeof done.data.to_livestock_id === "string" ? done.data.to_livestock_id : l.id, toTankId: to.id, count: Number(done.data.count) || count };
+  }
+  const n = l.nickname ? 1 : count;
+  if (!Number.isInteger(n) || n < 1 || n > l.count) error(400, `Move from 1 to ${l.count}.`);
+  const status = opts.status ?? "in_tank";
+  const at = opts.at ?? now();
+  const whole = n === l.count;
+  return db.transaction(() => {
+    const same = l.nickname ? undefined : sameSpecies(to.id, { ...l, status });
+    let movedId: string;
+    if (same) {
+      // joins the group of the same species there
+      db.update(livestock).set({ count: Math.min(same.count + n, MAX_LIVESTOCK_COUNT) }).where(eq(livestock.id, same.id)).run();
+      if (whole) db.delete(livestock).where(eq(livestock.id, l.id)).run();
+      else db.update(livestock).set({ count: l.count - n }).where(eq(livestock.id, l.id)).run();
+      movedId = same.id;
+    } else if (whole) {
+      // the same entry, in its new tank
+      db.update(livestock).set({ tankId: to.id, status, photoId: null }).where(eq(livestock.id, l.id)).run();
+      movedId = l.id;
+    } else {
+      db.update(livestock).set({ count: l.count - n }).where(eq(livestock.id, l.id)).run();
+      movedId = db
+        .insert(livestock)
+        .values({ tankId: to.id, kind: l.kind, commonName: l.commonName, scientificName: l.scientificName, count: n, status, addedAt: l.addedAt, source: l.source })
+        .returning()
+        .get().id;
+    }
+    const about = { name: l.commonName, scientific_name: l.scientificName, nickname: l.nickname, count: n };
+    logEvent(from.id, "livestock", { action: "moved_out", livestock_id: whole && !same ? movedId : l.id, to_livestock_id: movedId, to_tank_id: to.id, to_tank: to.name, ...about, delta: -n }, { at, clientId: opts.clientId ?? null });
+    logEvent(to.id, "livestock", { action: "moved_in", livestock_id: movedId, from_livestock_id: l.id, from_tank_id: from.id, from_tank: from.name, status, ...about, delta: n }, { at });
+    return { id: movedId, toTankId: to.id, count: n };
+  });
+}
+
+/**
  * Name an animal, or rename or unname a pet. In a group, naming one takes it
  * out into its own entry ("Corydoras ×6" becomes "×5" and "Pepper"), so each
  * pet has its own photo, notes and history. Returns the pet's entry.
@@ -725,7 +787,9 @@ export function petPhotos(userId: string, livestockId: string) {
     .select({ id: photos.id, takenAt: photos.takenAt })
     .from(photoLivestock)
     .innerJoin(photos, eq(photos.id, photoLivestock.photoId))
-    .where(eq(photoLivestock.livestockId, livestockId))
+    // a pet moved from another tank (#317): only that tank's photos its viewer can see
+    .innerJoin(tanks, eq(tanks.id, photos.tankId))
+    .where(and(eq(photoLivestock.livestockId, livestockId), visibleTo(userId)))
     .orderBy(desc(photos.takenAt))
     .all();
 }

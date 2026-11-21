@@ -74,8 +74,11 @@ events           id, tank_id, category(water_change|dosing|maintenance|livestock
                  -- top_off {volume_l?, source?: tap|rodi|mix, task_id?} (#316: water added for
                  --         evaporation; never a water change, no percent)
                  -- maintenance {actions:[...], equipment_id?}
-                 -- livestock {action: added|removed|moved|status|named, livestock_id, delta,
+                 -- livestock {action: added|removed|moved|status|named|moved_out|moved_in, livestock_id, delta,
                  --            reason: loss|rehomed|recount}
+                 -- livestock moved_out {to_tank_id, to_tank, to_livestock_id, count} / moved_in
+                 --            {from_tank_id, from_tank, from_livestock_id, status, count} (#317: between
+                 --            the keeper's own tanks; a whole entry keeps its id, its profile photo stays behind)
                  -- livestock {action: added|removed|renamed, kind: plant, plant_id, name, previous?}
                  --            (a plant planted, removed or renamed)
                  -- equipment {action: installed|replaced|adjusted|removed, equipment_id,
