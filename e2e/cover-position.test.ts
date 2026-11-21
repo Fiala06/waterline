@@ -15,7 +15,8 @@ test('drag the cover to choose which part of it shows', async ({ page }, info) =
 	await expect(photo).toHaveCSS('object-position', '50% 50%');
 	await expect(page.getByText('✥ Drag to reposition')).toBeVisible();
 
-	// drag it down: more of the top shows
+	// drag it down: more of the top shows (from where it is on screen, whatever is above it)
+	await photo.evaluate((el) => el.scrollIntoView({ block: 'start' }));
 	const box = (await photo.boundingBox())!;
 	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
 	await page.mouse.down();
