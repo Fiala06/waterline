@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { and, eq, inArray } from 'drizzle-orm';
@@ -21,7 +21,8 @@ const { addExpense, attachReceipt } = await import('./expenses');
 const { addWish, parseWish } = await import('./wishes');
 const { completeTask, listTasks } = await import('./tasks');
 const { startExport } = await import('./export');
-const { previewRestore, restoreBackup, RestoreError } = await import('./restore');
+const { cleanupRestores, previewRestore, restoreBackup, RestoreError } = await import('./restore');
+const { deleteOwnAccount } = await import('./people');
 const sharp = (await import('sharp')).default;
 
 const jpeg = await sharp({ create: { width: 16, height: 12, channels: 3, background: '#2a6' } }).jpeg().toBuffer();
@@ -160,5 +161,75 @@ describe('restoring a backup (#306)', () => {
 		const left = db.select().from(s.photos).where(inArray(s.photos.tankId, db.select({ id: s.tanks.id }).from(s.tanks).where(eq(s.tanks.userId, other.id)).all().map((t) => t.id))).all().length;
 		const onDisk = readdirSync(join(dir, 'photos')).flatMap((d) => readdirSync(join(dir, 'photos', d))).length;
 		expect(onDisk).toBe(left * 2 + 2); // each restored photo's full and thumb, plus the original's two
+	});
+});
+
+// Backups uploaded for Restore and left there (#322): a day, then they can't be
+// restored and the scheduler removes them; a handful at most per keeper; and
+// they go with the account.
+describe('uploads waiting to be restored (#322)', () => {
+	const staged = (userId: string) => {
+		try {
+			return readdirSync(join(dir, 'restores', userId));
+		} catch {
+			return [];
+		}
+	};
+	const age = (userId: string, token: string, hours: number) => {
+		const when = new Date(Date.now() - hours * 3_600_000);
+		utimesSync(join(dir, 'restores', userId, `${token}.zip`), when, when);
+	};
+	const tanksOf = (userId: string) => db.select().from(s.tanks).where(eq(s.tanks.userId, userId)).all().length;
+
+	it('refuses an upload older than a day, adding nothing, with no other preview since', async () => {
+		const me = getUser(upsertUser({ email: 'late@example.com', name: 'Late', googleSub: 'g-late' }).id)!;
+		const { token } = previewRestore(me, zip);
+		age(me.id, token, 25);
+		await expect(restoreBackup(me, token, [tank.id])).rejects.toThrow('That upload has expired. Choose the backup again.');
+		expect(tanksOf(me.id)).toBe(0);
+		expect(staged(me.id)).toEqual([]);
+		// a fresh one still goes in, and its file goes once it's restored
+		const again = previewRestore(me, zip);
+		age(me.id, again.token, 23);
+		await restoreBackup(me, again.token, [tank.id]);
+		expect(tanksOf(me.id)).toBe(1);
+		expect(staged(me.id)).toEqual([]);
+	});
+
+	it('keeps a few previews per keeper at most', () => {
+		const me = getUser(upsertUser({ email: 'many@example.com', name: 'Many', googleSub: 'g-many' }).id)!;
+		const tokens = [0, 1, 2, 3, 4].map((i) => {
+			const t = previewRestore(me, zip).token;
+			age(me.id, t, 5 - i); // each one newer than the last
+			return t;
+		});
+		expect(staged(me.id).sort()).toEqual(tokens.slice(2).map((t) => `${t}.zip`).sort());
+	});
+
+	it('sweeps abandoned uploads and the folders of accounts that are gone, and leaves fresh ones', () => {
+		const a = getUser(upsertUser({ email: 'gone-quiet@example.com', name: 'Quiet', googleSub: 'g-quiet' }).id)!;
+		const b = getUser(upsertUser({ email: 'still-here@example.com', name: 'Here', googleSub: 'g-here' }).id)!;
+		const old = previewRestore(a, zip).token;
+		age(a.id, old, 30);
+		const fresh = previewRestore(b, zip).token;
+		const orphan = join(dir, 'restores', '00000000-0000-0000-0000-000000000000');
+		mkdirSync(orphan, { recursive: true });
+		writeFileSync(join(orphan, '11111111-1111-1111-1111-111111111111.zip'), 'left behind');
+		writeFileSync(join(dir, 'restores', b.id, 'stray.txt'), 'not an upload');
+
+		cleanupRestores();
+		expect(existsSync(join(dir, 'restores', a.id))).toBe(false);
+		expect(existsSync(orphan)).toBe(false);
+		expect(staged(b.id)).toEqual([`${fresh}.zip`]);
+	});
+
+	it("go with the account that uploaded them, and nobody else's do", async () => {
+		const leaving = getUser(upsertUser({ email: 'leaving-restore@example.com', name: 'Leaving', googleSub: 'g-leaving-restore' }).id)!;
+		const staying = getUser(upsertUser({ email: 'staying-restore@example.com', name: 'Staying', googleSub: 'g-staying-restore' }).id)!;
+		previewRestore(leaving, zip);
+		const kept = previewRestore(staying, zip).token;
+		await deleteOwnAccount(leaving);
+		expect(existsSync(join(dir, 'restores', leaving.id))).toBe(false);
+		expect(staged(staying.id)).toEqual([`${kept}.zip`]);
 	});
 });

@@ -100,22 +100,82 @@ function counts(t: BackupTank) {
 
 // ── The uploaded file, kept until it's restored or a day has passed ─────────
 
+const UUID = /^[0-9a-f-]{36}$/;
 const dir = (userId: string) => join(dataDir(), 'restores', userId);
 const fileOf = (userId: string, token: string) => {
-	if (!/^[0-9a-f-]{36}$/.test(token)) error(400, 'Unknown upload');
+	if (!UUID.test(token)) error(400, 'Unknown upload');
 	return join(dir(userId), `${token}.zip`);
 };
 const DAY_MS = 86_400_000;
+/** Previews a keeper can have waiting at once (#322): older ones go when another is uploaded. */
+const MAX_PENDING = 3;
 
-function clearOld(userId: string) {
+const ageOf = (p: string) => Date.now() - statSync(p).mtimeMs;
+
+/** A keeper's waiting uploads, newest first; any older than a day are removed on the way. */
+function pending(userId: string): string[] {
+	let names: string[];
 	try {
-		for (const f of readdirSync(dir(userId))) {
-			const p = join(dir(userId), f);
-			if (Date.now() - statSync(p).mtimeMs > DAY_MS) rmSync(p, { force: true });
-		}
+		names = readdirSync(dir(userId));
 	} catch {
-		/* no folder yet */
+		return []; // no folder yet
 	}
+	const kept: { p: string; at: number }[] = [];
+	for (const f of names) {
+		const p = join(dir(userId), f);
+		try {
+			const age = ageOf(p);
+			if (age > DAY_MS || !/^[0-9a-f-]{36}\.zip$/.test(f)) rmSync(p, { force: true, recursive: true });
+			else kept.push({ p, at: age });
+		} catch {
+			/* gone already */
+		}
+	}
+	return kept.sort((a, b) => a.at - b.at).map((k) => k.p);
+}
+
+/** Make room for one more upload: the oldest beyond the limit go. */
+function makeRoom(userId: string) {
+	for (const p of pending(userId).slice(MAX_PENDING - 1)) rmSync(p, { force: true });
+}
+
+/**
+ * The scheduler's sweep (#322): uploads older than a day go even when their
+ * keeper never comes back, and so do the folders of accounts that are gone.
+ */
+export function cleanupRestores() {
+	const root = join(dataDir(), 'restores');
+	let folders: string[];
+	try {
+		folders = readdirSync(root);
+	} catch {
+		return; // nothing was ever uploaded
+	}
+	const people = new Set(db.select({ id: users.id }).from(users).all().map((u) => u.id));
+	let removed = 0;
+	for (const name of folders) {
+		const p = join(root, name);
+		try {
+			if (!people.has(name) || !statSync(p).isDirectory()) {
+				rmSync(p, { force: true, recursive: true });
+				removed++;
+				continue;
+			}
+			const before = readdirSync(p).length;
+			const left = pending(name).length;
+			removed += before - left;
+			if (!left) rmSync(p, { force: true, recursive: true });
+		} catch {
+			/* gone already */
+		}
+	}
+	if (removed) logger.info('settings', `Removed ${removed} backup upload${removed === 1 ? '' : 's'} that ${removed === 1 ? 'was' : 'were'} never restored`);
+}
+
+/** Every upload a keeper has waiting (#322), for when their account goes. */
+export function removeRestoreUploads(userId: string) {
+	if (!userId || userId.includes('/') || userId.includes('\\') || userId === '.' || userId === '..') return;
+	rmSync(dir(userId), { force: true, recursive: true });
 }
 
 function openBackup(buf: Buffer) {
@@ -140,8 +200,8 @@ export interface RestorePreview {
 
 /** An uploaded backup, kept for the preview and checked: what it holds, and which of its tanks were restored before. */
 export function previewRestore(user: User, buf: Buffer): RestorePreview {
-	clearOld(user.id);
 	const { entries, backup } = openBackup(buf);
+	makeRoom(user.id);
 	const mine = db.select({ name: tanks.name, createdAt: tanks.createdAt }).from(tanks).where(eq(tanks.userId, user.id)).all();
 	const token = crypto.randomUUID();
 	mkdirSync(dir(user.id), { recursive: true });
@@ -190,11 +250,18 @@ function foreignKeys(table: SQLiteTable) {
  * Throws RestoreError for a backup that can't go in; nothing is left behind then.
  */
 export async function restoreBackup(user: User, token: string, tankIds: string[]): Promise<{ id: string; name: string }[]> {
+	const expired = new RestoreError('That upload has expired. Choose the backup again.');
+	const file = fileOf(user.id, token);
 	let buf: Buffer;
 	try {
-		buf = readFileSync(fileOf(user.id, token));
+		// kept for a day (#322): an older one isn't restored, whether or not the sweep has been by yet
+		if (ageOf(file) > DAY_MS) {
+			rmSync(file, { force: true });
+			throw expired;
+		}
+		buf = readFileSync(file);
 	} catch {
-		throw new RestoreError('That upload has expired. Choose the backup again.');
+		throw expired;
 	}
 	const { entries, backup } = openBackup(buf);
 	const chosen = backup.tanks.filter((t) => tankIds.includes(t.id));

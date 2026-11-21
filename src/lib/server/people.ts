@@ -10,6 +10,7 @@ import { avatarFile, ownAvatarFile } from './avatar';
 import { removeFiles } from './files';
 import { exportIdsOf, removeExportFiles } from './export';
 import { logger } from './log';
+import { removeRestoreUploads } from './restore';
 import { adminEmail } from './sign-in';
 import { LOCAL_ADMIN_FALLBACK_EMAIL } from './users';
 
@@ -139,6 +140,8 @@ async function removeAccount(u: User) {
 	);
 	// and the backups they had built, which hold all of it (#213)
 	removeExportFiles(exportIds);
+	// and any backup they'd uploaded to restore and not yet restored (#322)
+	removeRestoreUploads(u.id);
 	return { tanks: n, photos: p };
 }
 

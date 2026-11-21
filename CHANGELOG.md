@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Uploaded backups don't linger.** A backup you upload to restore is kept for a day at most: after that Restore asks you to choose it again, and the server removes it even if you never come back. It also goes straight away if you delete your account: [Import & export](/settings/export).
+
 ## 1.22.7 · 2026-11-21
 
 - **Restore a backup.** A full backup can now come back: Settings › Import & export › Restore a backup shows what's in a backup, from this server or another, and adds the tanks you pick as new, private tanks with everything in them linked as before. Nothing you have now changes. Backups now also hold your wish list, maintenance routines, plans and PAR readings, and the page lists exactly what's in a backup and what's left out: [Import & export](/settings/export).

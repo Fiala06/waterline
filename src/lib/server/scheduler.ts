@@ -8,6 +8,7 @@ import { logDueDoses } from './dosers';
 import { pruneSamples } from './sensors';
 import { pruneOAuth } from './assistant/oauth';
 import { cleanupExports } from './export';
+import { cleanupRestores } from './restore';
 import { pruneShareImages } from './og-cache';
 import { getServerSettings } from './mail';
 import { logger, pruneLogs } from './log';
@@ -37,6 +38,8 @@ const JOBS: Job[] = [
 	['readings', () => pruneSamples()],
 	['connections', () => pruneOAuth()],
 	['exports', () => cleanupExports()],
+	// backups uploaded to restore and left (#322): a day, then they go
+	['restores', () => cleanupRestores()],
 	['share images', () => pruneShareImages()],
 	// species care data from FishBase (#20), once, when the server hasn't got it
 	['species care', () => ensureCare()]
