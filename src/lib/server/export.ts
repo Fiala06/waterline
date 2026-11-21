@@ -229,7 +229,7 @@ async function build(id: string, user: User, list: Tank[], format: 'zip' | 'csv'
 				unitSystem: user.unitSystem,
 				hardnessUnit: user.hardnessUnit,
 				timeZone: user.timeZone,
-				notifications: prefs ? { ...prefs, userId: undefined } : null,
+				notifications: prefs ? backupNotifications(prefs) : null,
 				products: db
 					.select()
 					.from(products)
@@ -384,6 +384,30 @@ export const exportIdsOf = (userId: string) => db.select({ id: exports.id }).fro
  * ready and within its 24 hours, so one whose build failed, or whose person
  * was removed, doesn't stay behind.
  */
+/**
+ * The notification choices a backup keeps (#321), named one by one so a new
+ * column never slips in: never the ntfy topic's address or its token, which
+ * are a connection's credentials, not a choice.
+ */
+export function backupNotifications(p: typeof notificationPrefs.$inferSelect) {
+	return {
+		taskReminders: p.taskReminders,
+		overdueAlerts: p.overdueAlerts,
+		outOfRangeAlerts: p.outOfRangeAlerts,
+		delivery: p.delivery,
+		leadDays: p.leadDays,
+		sendTime: p.sendTime,
+		notifyEmail: p.notifyEmail,
+		unsubscribedAt: p.unsubscribedAt,
+		pushTaskReminders: p.pushTaskReminders,
+		pushOverdueAlerts: p.pushOverdueAlerts,
+		pushOutOfRangeAlerts: p.pushOutOfRangeAlerts,
+		pushGrouped: p.pushGrouped,
+		quietStart: p.quietStart,
+		quietEnd: p.quietEnd
+	};
+}
+
 export function cleanupExports() {
 	const now = new Date().toISOString();
 	for (const r of db.select().from(exports).where(and(eq(exports.status, 'ready'), lt(exports.expiresAt, now))).all()) {
