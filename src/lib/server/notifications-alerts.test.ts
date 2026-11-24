@@ -119,3 +119,33 @@ describe('a sensor hovering at its limit (#228)', () => {
 		expect(to()).toEqual([]);
 	});
 });
+
+describe('a sensor alert and someone who may no longer sign in (#338)', async () => {
+	const { serverSettings } = await import('./db/schema');
+	const { getServerSettings } = await import('./mail');
+	const { maySignIn } = await import('./users');
+	const tank = createTank(owner, { name: 'Locked 30', type: 'freshwater', nominalVolumeL: 110 });
+	share(tank, helper, 'log', owner.id);
+	const temp = listParams(tank.id).find((p) => p.key === 'temp')!;
+	updateParams(owner.id, tank.id, [{ id: temp.id, min: 22, max: 26, tracked: true, sensorRecord: true }]);
+
+	it('goes only to people who can still sign in', async () => {
+		getServerSettings();
+		mail();
+		const t0 = Date.now() - 2 * 3_600_000;
+		try {
+			// only the admin, the owner, may sign in now
+			db.update(serverSettings).set({ signupMode: 'admin', adminEmail: owner.email }).where(eq(serverSettings.id, 1)).run();
+			expect(maySignIn(helper)).toBe(false);
+			expect(maySignIn(owner)).toBe(true);
+			for (let m = 0; m <= 60; m += 5) {
+				const now = t0 + m * 60_000;
+				recordSamples(tank.id, [{ parameter: 'temp', value: 28, at: new Date(now).toISOString() }], 'Probe', null, now);
+				await alertSensorExcursions(now);
+			}
+		} finally {
+			db.update(serverSettings).set({ signupMode: null, adminEmail: null }).where(eq(serverSettings.id, 1)).run();
+		}
+		expect(to()).toEqual(['owner@example.com']);
+	});
+});
