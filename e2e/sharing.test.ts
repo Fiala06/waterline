@@ -42,6 +42,12 @@ test('share a tank with someone', async ({ page, browser }, info) => {
 	await theirs.getByLabel('Note').fill('Fed them while you were away');
 	await theirs.getByRole('button', { name: 'Save note' }).click();
 	await expect(theirs.getByRole('status')).toContainText('✓ Note saved');
+	// #328: an observation keeps its "check again in 3 days" reminder, not a 403 after saving
+	await theirs.goto(`/entries/event/new?tank=${tankId}&category=observation`);
+	await theirs.locator('html[data-ready="true"]').waitFor();
+	await theirs.locator('#note').fill('One neon hiding');
+	await theirs.locator('button.save').click();
+	await expect(theirs.getByRole('status')).toContainText('✓ Observation saved · check again');
 
 	// The owner sees who logged it, and the helper in People with access
 	await open(page, '/history');

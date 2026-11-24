@@ -7,7 +7,6 @@ import { createEvent, createTest, latestReadings } from '$lib/server/logs';
 import { photoFiles, preparePhotos, storePhotos } from '$lib/server/photos';
 import { alertOutOfRange } from '$lib/server/notifications';
 import { getTank, listParams, reusableCustomParams } from '$lib/server/tanks';
-import { getTask } from '$lib/server/tasks';
 import { kitsByParam } from '$lib/server/kits';
 import { safeReturn } from '$lib/server/redirect';
 import type { Actions, PageServerLoad } from './$types';
@@ -75,7 +74,6 @@ export const actions: Actions = {
 		const prepared = await preparePhotos(photoFiles(form));
 		if ('error' in prepared) return fail(400, { ...back, errors, error: prepared.error });
 		const wcTaskId = wc ? optStr(form, 'wcCompleteTask', 64) : null;
-		if (wcTaskId && getTask(user.id, wcTaskId).tankId !== tank.id) error(400, 'Task belongs to another tank');
 
 		const clientId = optStr(form, 'clientId', 64);
 		const result = createTest(

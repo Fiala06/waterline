@@ -9,10 +9,10 @@ import { addDays, fmtDate, todayInZone } from '$lib/time';
 const dir = mkdtempSync(join(tmpdir(), 'wl-tasks-'));
 vi.mock('$env/dynamic/private', () => ({ env: { DATA_DIR: dir } }));
 const { db } = await import('./db');
-const { equipment, events, tankParameters, tasks } = await import('./db/schema');
+const { equipment, events, taskCompletions, tankParameters, tasks } = await import('./db/schema');
 const { upsertUser } = await import('./users');
 const { createTank } = await import('./tanks');
-const { addEquipment } = await import('./specs');
+const { addEquipment, markServiced } = await import('./specs');
 const { createEvent, createTest } = await import('./logs');
 const { completableTask } = await import('./log-forms');
 const { algaeOf, completeTask, updateTask, countableEntry, courseDay, coursesFrom, createTask, dosingRoutines, endCourseEarly, reopenCourse, getTask, lastDoneOn, lastDoseText, listTasks, pauseTasks, recentCompletions, resumeTask, setTempCadence, settleTasks, skipTask, undoCompletion, unpauseTasks } = await import('./tasks');
@@ -97,6 +97,55 @@ describe('Done leaves an entry in History (#161)', () => {
 		const completion = db.$client.prepare('select id from task_completions where task_id = ?').get(wc.id) as { id: string };
 		undoCompletion(user.id, completion.id);
 		expect(db.select().from(events).where(eq(events.id, event.id)).get()).toBeDefined();
+	});
+});
+
+describe("an entry's reminder that's gone or another tank's (#330)", () => {
+	const elsewhere = createTank(user, { name: 'Elsewhere tank', type: 'planted', nominalVolumeL: 60 });
+	const at = () => new Date().toISOString();
+
+	it('saves the test and leaves a deleted reminder alone', () => {
+		const gone = newTask('Test water gone', 'test');
+		db.delete(tasks).where(eq(tasks.id, gone.id)).run();
+		const r = createTest(user.id, tank.id, { takenAt: at(), note: null, readings: new Map() }, { completeTaskId: gone.id, timeZone: tz });
+		expect(r.duplicate).toBe(false);
+		const e = createEvent(user.id, tank.id, { category: 'water_change', occurredAt: at(), note: null, data: { percent: 10 } }, { completeTaskId: gone.id, timeZone: tz });
+		expect(e.done).toBeNull();
+	});
+
+	it("doesn't complete another tank's reminder", () => {
+		const theirs = createTask(user.id, elsewhere.id, { name: 'Test elsewhere', kind: 'test', recurring: true, intervalDays: 7, scheduleMode: 'completion', nextDue: today, openFormOnDone: false });
+		createTest(user.id, tank.id, { takenAt: at(), note: null, readings: new Map() }, { completeTaskId: theirs.id, timeZone: tz });
+		createEvent(user.id, tank.id, { category: 'water_change', occurredAt: at(), note: null, data: { percent: 10 } }, { completeTaskId: theirs.id, timeZone: tz });
+		expect(getTask(user.id, theirs.id).nextDue).toBe(today);
+	});
+});
+
+describe('a logged service (#331)', () => {
+	const serviceTask = (name: string) => {
+		const item = addEquipment(user.id, tank.id, { type: 'filter', brand: 'Service', model: name, specs: {}, installedAt: null, notes: null }, tz);
+		const task = createTask(user.id, tank.id, { name: `Clean ${name}`, kind: 'maintenance', recurring: true, intervalDays: 7, scheduleMode: 'completion', nextDue: today, openFormOnDone: false, equipmentId: item.id });
+		return { item, task };
+	};
+	const completions = (taskId: string) => db.select().from(taskCompletions).where(eq(taskCompletions.taskId, taskId)).all();
+
+	it('completes the service reminder once when the entry already marked it done, tied to the entry', () => {
+		const { item, task } = serviceTask('Once');
+		const at = new Date().toISOString();
+		const { event, done } = createEvent(user.id, tank.id, { category: 'maintenance', occurredAt: at, note: null, data: { equipment_id: item.id } }, { completeTaskId: task.id, timeZone: tz });
+		markServiced(user.id, item.id, at, { timeZone: tz, eventId: event.id, alreadyDone: done?.id });
+		expect(completions(task.id)).toHaveLength(1);
+		const { item: other, task: otherTask } = serviceTask('Linked');
+		const e2 = createEvent(user.id, tank.id, { category: 'maintenance', occurredAt: at, note: null, data: { equipment_id: other.id } }, { timeZone: tz });
+		markServiced(user.id, other.id, at, { timeZone: tz, eventId: e2.event.id });
+		expect(completions(otherTask.id).map((c) => c.eventId)).toEqual([e2.event.id]);
+	});
+
+	it("counts the next date from the keeper's day, not UTC's", () => {
+		const { item, task } = serviceTask('Evening');
+		// 21:00 on the 19th in Los Angeles is already the 20th in UTC
+		markServiced(user.id, item.id, '2026-11-20T05:00:00.000Z', { timeZone: 'America/Los_Angeles' });
+		expect(getTask(user.id, task.id).nextDue).toBe('2026-11-26');
 	});
 });
 

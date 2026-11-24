@@ -13,6 +13,9 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 - **Opening a plant works again.** Choosing a plant on the Plants tab opens its sheet again, instead of stopping the page with an error: [Plants](/tanks/current/plants).
 - **Lists with repeated names.** Two identical lights on Equipment, two doses at the same time, two tests in the same minute on a compared chart, or two rows of the same fish no longer stop the page with an error, and Worth checking says a repeated line once: [Equipment](/tanks/current/equipment).
+- **Check again, on a shared tank.** Someone who can log on a tank shared with them can save an Observation with its "Remind me to check again" reminder, instead of getting an error after it was saved: [History](/history).
+- **Entries save whatever happened to their reminder.** A water test or entry whose reminder was deleted in the meantime, say while it waited offline, still saves with its photos and alerts: [History](/history).
+- **Maintenance and its reminder.** Logging maintenance on an item marks its service reminder done once, tied to the entry, and the next date counts from your own day rather than UTC's: [Tasks](/tasks).
 
 ## 1.23.4 · 2026-11-21
 

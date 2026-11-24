@@ -359,8 +359,9 @@ export type TaskInput = Pick<Task, 'name' | 'kind' | 'recurring' | 'intervalDays
 		>
 	>;
 
-export function createTask(userId: string, tankId: string, input: TaskInput) {
-	getTank(userId, tankId, 'owner');
+/** A reminder on a tank: the owner's to set, except a one-off an entry asks for (#328: an observation's "check again", `need: 'log'`). */
+export function createTask(userId: string, tankId: string, input: TaskInput, need: 'log' | 'owner' = 'owner') {
+	getTank(userId, tankId, need);
 	return db.insert(tasks).values({ ...input, tankId }).returning().get();
 }
 
