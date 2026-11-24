@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.23.9 · 2026-11-24
+
 - **Know how to join before signing in.** The sign-in page now says whether new keepers can join this server, join by invitation, or have to wait, with a private email link to ask for access when the server owner has added one. Server owners can pause new accounts without locking out anyone who already has one: [Server settings › Who can sign in](/settings/server#who-can-sign-in).
 
 ## 1.23.8 · 2026-11-24
