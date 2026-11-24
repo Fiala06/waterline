@@ -205,7 +205,7 @@ async function seedPlanted(user: User) {
 		}
 		if (d % 28 === -2) {
 			const m = event(user, tank, d, '18:40', 'maintenance', { actions: ['Cleaned filter', 'Replaced media'], equipment_id: filter.id }, 'Swapped the fine sponge, kept the ceramic.');
-			markServiced(user.id, filter.id, m.occurredAt);
+			markServiced(user.id, filter.id, m.occurredAt, { timeZone: user.timeZone });
 		}
 		if (d % 14 === -4) {
 			const e = logTrim(user.id, tank.id, plantIds.slice(0, 2), d === -4 ? 'Replanted the tops in the back left.' : null);

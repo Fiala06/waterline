@@ -332,7 +332,9 @@ export function markServiced(
   userId: string,
   id: string,
   at: string,
-  opts: { timeZone?: string; eventId?: string } = {},
+  // the keeper's zone works out the next date (#331: UTC put it a day out); the entry
+  // it's tied to; and a reminder the entry already marked done, not to be done twice
+  opts: { timeZone: string; eventId?: string; alreadyDone?: string | null },
 ) {
   requireRoleOn(userId, getEquipment(userId, id).tankId, "log");
   db.update(equipment)
@@ -350,13 +352,13 @@ export function markServiced(
       ),
     )
     .get();
-  if (task)
+  if (task && task.id !== opts.alreadyDone)
     completeTask(userId, task.id, {
       at,
       eventId: opts.eventId,
       // a service is always logged in History by whoever calls this
       logged: true,
-      timeZone: opts.timeZone ?? "UTC",
+      timeZone: opts.timeZone,
     });
 }
 

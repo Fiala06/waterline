@@ -10,6 +10,7 @@ import {
 	events,
 	tankParameters,
 	tanks,
+	tasks,
 	testReadings,
 	tests,
 	type Event,
@@ -35,6 +36,17 @@ export interface TestInput {
 	importId?: string | null;
 }
 
+/**
+ * The reminder an entry marks done, checked before the entry is written: only one
+ * still on this tank (#330: one deleted since the form loaded, say by an offline
+ * entry syncing later, or another tank's, threw after the entry was saved, so its
+ * photos and alert were lost). Anything else is left alone.
+ */
+function taskToComplete(tankId: string, taskId: string | null | undefined): string | null {
+	if (!taskId) return null;
+	return db.select({ id: tasks.id }).from(tasks).where(and(eq(tasks.id, taskId), eq(tasks.tankId, tankId))).get()?.id ?? null;
+}
+
 export function createTest(
 	userId: string,
 	tankId: string,
@@ -56,6 +68,7 @@ export function createTest(
 		if (existing) return { test: existing, ...summarize(existing.id, params), duplicate: true };
 	}
 
+	const taskId = taskToComplete(tankId, opts.completeTaskId);
 	const test = db.transaction((tx) => {
 		const t = tx
 			.insert(tests)
@@ -69,7 +82,7 @@ export function createTest(
 		}
 		return t;
 	});
-	const done = opts.completeTaskId ? completeTask(userId, opts.completeTaskId, { at: input.takenAt, logged: true, timeZone: opts.timeZone }) : null;
+	const done = taskId ? completeTask(userId, taskId, { at: input.takenAt, logged: true, timeZone: opts.timeZone }) : null;
 	// the tasks that follow a water test (#178), unless it's an import or a follower's own
 	if (!input.importId && done?.scheduleMode !== 'after')
 		followLog(tankId, { kind: 'test', date: dateInZone(input.takenAt, opts.timeZone), id: test.id }, opts.timeZone, done?.id);
@@ -266,22 +279,23 @@ export function createEvent(
 	tankId: string,
 	input: EventInput,
 	opts: { completeTaskId?: string | null; timeZone: string }
-): { event: Event; duplicate: boolean } {
+): { event: Event; duplicate: boolean; done?: { id: string; nextDue: string | null } | null } {
 	getTank(userId, tankId, 'log');
 	const existing = input.clientId ? eventByClientId(tankId, input.clientId) : undefined;
 	if (existing) return { event: existing, duplicate: true };
+	const taskId = taskToComplete(tankId, opts.completeTaskId);
 	const event = db
 		.insert(events)
 		.values({ ...input, tankId, clientId: input.clientId ?? null, importId: input.importId ?? null, loggedBy: userId })
 		.returning()
 		.get();
-	const done = opts.completeTaskId ? completeTask(userId, opts.completeTaskId, { at: input.occurredAt, eventId: event.id, timeZone: opts.timeZone }) : null;
+	const done = taskId ? completeTask(userId, taskId, { at: input.occurredAt, eventId: event.id, timeZone: opts.timeZone }) : null;
 	// the tasks that follow a water change, a dose or maintenance (#178), unless it's an
 	// import or a follower's own (chains stop after one step)
 	const trigger = triggerOf(input.category, input.data);
 	if (trigger && !input.importId && done?.scheduleMode !== 'after')
 		followLog(tankId, { ...trigger, date: dateInZone(input.occurredAt, opts.timeZone), id: event.id }, opts.timeZone, done?.id);
-	return { event, duplicate: false };
+	return { event, duplicate: false, done };
 }
 
 export function getEvent(userId: string, eventId: string): Event {

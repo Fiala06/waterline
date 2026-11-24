@@ -169,7 +169,7 @@ describe('a stranger can’t reach another keeper’s records by id (404, so not
 				expectStatus(() => specs.listEquipment(p.id, T.id), 404);
 				expectStatus(() => specs.updateEquipment(p.id, gear.id, { type: 'heater', brand: 'x', model: null, specs: {}, installedAt: null, notes: null }), 404);
 				expectStatus(() => specs.removeEquipment(p.id, gear.id), 404);
-				expectStatus(() => specs.markServiced(p.id, gear.id, at), 404);
+				expectStatus(() => specs.markServiced(p.id, gear.id, at, tz), 404);
 				expectStatus(() => specs.getLivestock(p.id, fish.id), 404);
 				expectStatus(() => specs.changeCount(p.id, fish.id, 0, 'loss'), 404);
 				expectStatus(() => specs.setLivestockStatus(p.id, fish.id, 'quarantine'), 404);
@@ -254,11 +254,12 @@ describe('"view" can read, never write (403)', () => {
 		expectStatus(() => snoozeTask(V.id, task.id, '2026-12-01'), 403);
 		expectStatus(() => updateTask(V.id, task.id, { ...task, tankId: T.id }), 403);
 		expectStatus(() => deleteTask(V.id, task.id), 403);
+		expectStatus(() => createTask(V.id, T.id, { ...task }, 'log'), 403);
 	});
 
 	it('changes no equipment, livestock, plants or photos', async () => {
 		expectStatus(() => specs.addEquipment(V.id, T.id, { type: 'light', brand: null, model: null, specs: {}, installedAt: null, notes: null }, 'UTC'), 403);
-		expectStatus(() => specs.markServiced(V.id, gear.id, at), 403);
+		expectStatus(() => specs.markServiced(V.id, gear.id, at, tz), 403);
 		expectStatus(() => specs.addLivestock(V.id, T.id, { kind: 'fish', commonName: 'Guppy', scientificName: null, count: 1, status: 'in_tank', addedAt: null, source: null }), 403);
 		expectStatus(() => specs.changeCount(V.id, fish.id, 5, 'loss'), 403);
 		expectStatus(() => specs.nameLivestock(V.id, fish.id, 'Pepper'), 403);
@@ -307,6 +308,8 @@ describe('"log" logs, never changes setup or sharing (403)', () => {
 		expect(statusOf(() => snoozeTask(L.id, task.id, '2026-12-01'))).toBeNull();
 		expect(completeTask(L.id, task.id, tz).id).toBe(task.id);
 		expect(statusOf(() => specs.changeCount(L.id, fish.id, 6, 'recount'))).toBeNull();
+		// an observation's "check again" reminder (#328)
+		expect(createTask(L.id, T.id, { name: 'Check again: observation', kind: 'other', recurring: false, intervalDays: null, scheduleMode: 'completion', nextDue: '2026-12-01', openFormOnDone: false }, 'log').tankId).toBe(T.id);
 	});
 
 	it('changes no setup, targets or schedule', async () => {

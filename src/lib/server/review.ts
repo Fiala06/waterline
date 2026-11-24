@@ -6,7 +6,7 @@ import { db } from './db';
 import { events, tanks, tasks, type Task, type User } from './db/schema';
 import { getEquipment, markServiced } from './specs';
 import { getTank } from './tanks';
-import { completeTask } from './tasks';
+import { completeTask, userZone } from './tasks';
 
 // The setup review (#30). A review task per tank comes up every few months;
 // its page checks the tank's details, equipment, target ranges, and livestock
@@ -106,9 +106,11 @@ export function servicedToday(userId: string, tankId: string, equipmentId: strin
 	const item = getEquipment(userId, equipmentId);
 	if (item.tankId !== tankId || item.removedAt) return null;
 	const at = new Date().toISOString();
-	markServiced(userId, item.id, at);
-	db.insert(events)
+	const event = db
+		.insert(events)
 		.values({ tankId, category: 'maintenance', occurredAt: at, note: null, data: { actions: [`Serviced ${equipmentName(item)}`], equipment_id: item.id } })
-		.run();
+		.returning()
+		.get();
+	markServiced(userId, item.id, at, { timeZone: userZone(userId), eventId: event.id });
 	return item;
 }

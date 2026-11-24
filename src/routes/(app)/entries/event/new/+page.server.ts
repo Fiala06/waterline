@@ -1,9 +1,9 @@
 import { error, fail, redirect } from '@sveltejs/kit';
-import { EQUIPMENT_REASONS, taskKindFor } from '$lib/events';
+import { EQUIPMENT_REASONS, RECHECK_OPTIONS, taskKindFor } from '$lib/events';
 import { bySpecies, livestockLabel } from '$lib/livestock';
 import { addDays, dateInZone, fmtDate } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
-import { num, optStr, parseWhen, str } from '$lib/server/forms';
+import { optStr, parseWhen, str } from '$lib/server/forms';
 import {
 	completableTask,
 	eventFormContext,
@@ -14,7 +14,7 @@ import { createEvent, eventByClientId, recentAdditives, recentDosingProducts, re
 import { photoFiles, preparePhotos, storePhotos } from '$lib/server/photos';
 import { listProducts } from '$lib/server/products';
 import { getTank } from '$lib/server/tanks';
-import { createTask, dosingRoutines, getTask } from '$lib/server/tasks';
+import { createTask, dosingRoutines } from '$lib/server/tasks';
 import { equipmentName } from '$lib/equipment';
 import { handleLinkedLivestock } from '$lib/server/log-livestock';
 import { getEquipment, listEquipment, listLivestock, listPlants, markServiced, removeEquipment } from '$lib/server/specs';
@@ -160,13 +160,14 @@ export const actions: Actions = {
 		if ('error' in prepared) return fail(400, { errors, values, error: prepared.error });
 
 		const completeTaskId = optStr(form, 'completeTask', 64);
-		if (completeTaskId && getTask(user.id, completeTaskId).tankId !== tank.id) error(400, 'Task belongs to another tank');
 
 		// Observation: "Remind me to check again" creates a one-off task.
-		const recheck = category === 'observation' ? num(form, 'recheck') : null;
-		if (recheck && recheck > 0) data.recheck_at = addDays(dateInZone(when.at, user.timeZone), recheck);
+		// only the choices the form offers (#328: a huge number threw in addDays)
+		const recheckPick = category === 'observation' ? String(form.get('recheck') ?? '') : '';
+		const recheck = RECHECK_OPTIONS.some((o) => o.value && o.value === recheckPick) ? Number(recheckPick) : null;
+		if (recheck) data.recheck_at = addDays(dateInZone(when.at, user.timeZone), recheck);
 
-		const { event, duplicate } = createEvent(
+		const { event, duplicate, done } = createEvent(
 			user.id,
 			tank.id,
 			{ category, occurredAt: when.at, note: optStr(form, 'note'), data, clientId },
@@ -174,7 +175,7 @@ export const actions: Actions = {
 		);
 
 		if (!duplicate) await storePhotos(tank.id, prepared, { eventId: event.id, takenAt: when.at });
-		if (!duplicate && eqItem && category === 'maintenance') markServiced(user.id, eqItem.id, when.at);
+		if (!duplicate && eqItem && category === 'maintenance') markServiced(user.id, eqItem.id, when.at, { timeZone: user.timeZone, eventId: event.id, alreadyDone: done?.id });
 
 		if (!duplicate && typeof data.recheck_at === 'string') {
 			const tags = (data.tags as string[] | undefined) ?? [];
@@ -186,12 +187,12 @@ export const actions: Actions = {
 				scheduleMode: 'completion',
 				nextDue: data.recheck_at,
 				openFormOnDone: false
-			});
+			}, 'log'); // a member who can log can ask to be reminded (#328)
 		}
 
 		let message = '✓ Saved';
 		if (category === 'water_change') {
-			const next = completeTaskId ? getTask(user.id, completeTaskId).nextDue : null;
+			const next = done?.nextDue ?? null;
 			message = `✓ Water change logged${next ? ` · next due ${fmtDate(next)}` : ''}`;
 		} else if (category === 'observation' && data.recheck_at) {
 			message = `✓ Observation saved · check again ${fmtDate(data.recheck_at as string)}`;
