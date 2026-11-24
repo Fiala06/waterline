@@ -11,6 +11,10 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.23.11 · 2026-11-24
+
+- **Saved means saved, with or without scripts.** Saving a part of Server settings now shows its ✓ message even in a browser with JavaScript off, as every other page already did. Behind the scenes every form reports a problem the same way, so messages appear in the same place across the app: [Server settings](/settings/server).
+
 ## 1.23.10 · 2026-11-24
 
 - **Tidier under the hood.** Repeated code across the app is shared now, and the largest screens are split into parts, so fixes land in one place. When some smart plugs are slow to answer, the ones left unread are read first on the next round, and the server does a little less work for each reminder run. Nothing else changes in how the app looks or works: [Settings › What's new](/settings/changelog).
