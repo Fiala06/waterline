@@ -16,7 +16,11 @@ export function smtpTransport(opts: {
 		requireTLS: opts.secure && opts.port !== 465,
 		auth: opts.user ? { user: opts.user, pass: opts.password ?? '' } : undefined,
 		connectionTimeout: 15_000,
-		greetingTimeout: 15_000
+		greetingTimeout: 15_000,
+		// a server that stalls mid-send gives up after 30 s, not nodemailer's 10 minutes,
+		// so one stuck send doesn't hold up the scheduler's other jobs (#339)
+		socketTimeout: 30_000,
+		dnsTimeout: 10_000
 	});
 	return {
 		describe: `Custom SMTP · ${opts.host}:${opts.port}`,

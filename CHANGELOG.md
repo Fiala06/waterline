@@ -21,6 +21,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 - **Safer admin sign-in.** The limit on wrong admin passwords can't be got round by sending many at once, and a failed sign-in no longer writes the typed username to the server log: [Server settings](/settings/server).
 - **Fresh share images.** The picture shown when your public page is shared now updates when readings are edited, targets, units or the start date change, and as "tested today" gets older: [Public page](/tanks/current/public).
 - **Offline pages after signing out.** Pages kept for offline use are cleared when your session ends, even when the app opens on the homepage instead of sign-in, and with Wi-Fi up but no way through, a kept page shows after a few seconds instead of a long wait: [Settings › Data](/settings#data).
+- **Email doesn't hold things up.** A mail server that stalls mid-send now gives up after 30 seconds, so reminders, dose logging and device readings carry on: [Server settings](/settings/server).
 
 ## 1.23.4 · 2026-11-21
 
