@@ -1,6 +1,6 @@
 import { error, fail } from '@sveltejs/kit';
 import { count, eq } from 'drizzle-orm';
-import { readdirSync, statSync } from 'node:fs';
+import { readdir, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { env } from '$env/dynamic/private';
 import { db } from '$lib/server/db';
@@ -27,17 +27,24 @@ function requireAdmin(locals: App.Locals) {
 	return locals.user;
 }
 
-function dirSize(dir: string): number {
+/** All the files under a folder, in bytes, read without blocking the server (#357). */
+async function dirSize(dir: string): Promise<number> {
 	let total = 0;
 	try {
-		for (const e of readdirSync(dir, { withFileTypes: true })) {
+		for (const e of await readdir(dir, { withFileTypes: true })) {
 			const p = join(dir, e.name);
-			total += e.isDirectory() ? dirSize(p) : statSync(p).size;
+			total += e.isDirectory() ? await dirSize(p) : await stat(p).then((s) => s.size, () => 0);
 		}
 	} catch {
 		/* unreadable or missing */
 	}
 	return total;
+}
+/** The data folder's size, counted at most once a minute: the page reloads after each of its forms. */
+let dataSize: { at: number; bytes: Promise<number> } | null = null;
+function dataDirSize(dir: string): Promise<number> {
+	if (!dataSize || Date.now() - dataSize.at > 60_000) dataSize = { at: Date.now(), bytes: dirSize(dir) };
+	return dataSize.bytes;
 }
 
 const mb = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${Math.round(bytes / 1024 / 1024)} MB`);
@@ -45,7 +52,7 @@ const mb = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.max(1, Math.round(b
 const googleIdHint = (id: string) => `…${id.replace('.apps.googleusercontent.com', '').slice(-4)}.apps.googleusercontent.com`;
 const USERNAME = /^[\w.@-]{1,40}$/;
 
-export const load: PageServerLoad = ({ locals, url }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
 	requireAdmin(locals);
 	const s = getServerSettings();
 	const dataDir = env.DATA_DIR ?? './data';
@@ -110,7 +117,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
 		},
 		server: {
 			version: pkg.version,
-			data: `${resolve(dataDir)} · ${mb(dirSize(dataDir))}`,
+			data: `${resolve(dataDir)} · ${mb(await dataDirSize(dataDir))}`,
 			users: db.select({ n: count() }).from(users).get()?.n ?? 0,
 			scheduledEmails: s.scheduledEmails,
 			schedulerOff: env.EMAIL_SCHEDULER === 'off',

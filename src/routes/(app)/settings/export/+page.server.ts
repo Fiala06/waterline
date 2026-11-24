@@ -3,7 +3,7 @@ import { BACKUP_EXCLUDES, BACKUP_INCLUDES, BACKUP_NOT_RESTORED } from '$lib/back
 import { setFlash } from '$lib/server/flash';
 import { discardRestore, previewRestore, restoreBackup, RestoreError } from '$lib/server/restore';
 import { str } from '$lib/server/forms';
-import { estimateBackupBytes, listExports, startExport } from '$lib/server/export';
+import { estimateBackupSizes, listExports, startExport } from '$lib/server/export';
 import { listTanks } from '$lib/server/tanks';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -11,6 +11,7 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 	const user = locals.user!;
 	const { currentTankId } = await parent();
 	const tanks = [...listTanks(user.id, { own: true }), ...listTanks(user.id, { archived: true, own: true })].map((t) => ({ id: t.id, name: t.name }));
+	const sizes = await estimateBackupSizes(user);
 	return {
 		// what a backup holds, restores and leaves out (#306)
 		manifest: { includes: BACKUP_INCLUDES, notRestored: BACKUP_NOT_RESTORED, excludes: BACKUP_EXCLUDES },
@@ -18,10 +19,7 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 		// ?tank=: a backup of that tank, as Delete tank links it (#304)
 		pickedTank: tanks.find((t) => t.id === url.searchParams.get('tank'))?.id ?? null,
 		defaultTank: currentTankId ?? tanks[0]?.id ?? null,
-		estimates: {
-			account: estimateBackupBytes(user, 'account', null),
-			...Object.fromEntries(tanks.map((t) => [t.id, estimateBackupBytes(user, 'tank', t.id)]))
-		} as Record<string, number>,
+		estimates: { account: sizes.account, ...Object.fromEntries(tanks.map((t) => [t.id, sizes.tanks.get(t.id) ?? 0])) } as Record<string, number>,
 		exports: listExports(user.id).map((e) => ({
 			id: e.id,
 			scope: e.scope,

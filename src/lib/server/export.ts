@@ -4,6 +4,7 @@
 import { error } from '@sveltejs/kit';
 import { and, asc, desc, eq, inArray, lt } from 'drizzle-orm';
 import { createWriteStream, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import yazl from 'yazl';
 import { env } from '$env/dynamic/private';
@@ -68,26 +69,43 @@ function tanksFor(user: User, scope: 'tank' | 'account', tankId: string | null):
 	return [...listTanks(user.id, { own: true }), ...listTanks(user.id, { archived: true, own: true })];
 }
 
-/** Rough size of a full backup, for "about 48 MB". */
-export function estimateBackupBytes(user: User, scope: 'tank' | 'account', tankId: string | null) {
-	const ids = tanksFor(user, scope, tankId).map((t) => t.id);
-	if (!ids.length) return 0;
-	let bytes = 50_000;
-	for (const p of db.select().from(photos).where(inArray(photos.tankId, ids)).all()) {
-		try {
-			bytes += statSync(photoFilePath(p, 'full')).size;
-		} catch {
-			/* missing file */
-		}
+/** A file's size, or nothing for a missing one. */
+const sizeOf = (path: string) => stat(path).then((s) => s.size, () => 0);
+
+/**
+ * Rough size of a full backup of each tank the person owns, and of the whole
+ * account, for "about 48 MB": every photo and receipt read and stat'ed once,
+ * without blocking the server while the files are looked at (#357).
+ */
+export async function estimateBackupSizes(user: User): Promise<{ account: number; tanks: Map<string, number> }> {
+	const ids = tanksFor(user, 'account', null).map((t) => t.id);
+	const tanks = new Map(ids.map((id) => [id, 50_000]));
+	if (!ids.length) return { account: 0, tanks };
+	const files = [
+		...db
+			.select()
+			.from(photos)
+			.where(inArray(photos.tankId, ids))
+			.all()
+			.map((p) => ({ tankId: p.tankId, path: photoFilePath(p, 'full') })),
+		...db
+			.select({ tankId: expenses.tankId, path: expenses.receiptPath })
+			.from(expenses)
+			.where(inArray(expenses.tankId, ids))
+			.all()
+			.flatMap((e) => (e.path ? [{ tankId: e.tankId, path: receiptFilePath(e.path) }] : []))
+	];
+	let account = 50_000;
+	// a few at a time, so a big gallery doesn't open thousands of files at once
+	for (let i = 0; i < files.length; i += 64) {
+		const batch = files.slice(i, i + 64);
+		const sizes = await Promise.all(batch.map((f) => sizeOf(f.path)));
+		batch.forEach((f, j) => {
+			tanks.set(f.tankId, (tanks.get(f.tankId) ?? 50_000) + sizes[j]);
+			account += sizes[j];
+		});
 	}
-	for (const e of db.select({ path: expenses.receiptPath }).from(expenses).where(inArray(expenses.tankId, ids)).all()) {
-		try {
-			if (e.path) bytes += statSync(receiptFilePath(e.path)).size;
-		} catch {
-			/* missing file */
-		}
-	}
-	return bytes;
+	return { account, tanks };
 }
 
 export function startExport(user: User, scope: 'tank' | 'account', tankId: string | null, format: 'zip' | 'csv') {
