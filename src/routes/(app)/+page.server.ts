@@ -31,7 +31,7 @@ import {
   lastEventOf,
   latestReadings,
   recentActivity,
-  series,
+  seriesFor,
 } from "$lib/server/logs";
 import { tankNotes } from "$lib/server/trends";
 import { db } from "$lib/server/db";
@@ -105,9 +105,11 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
   const since = new Date(Date.now() - TREND_DAYS * 86_400_000).toISOString();
   // the latest reading from a sensor per parameter (#19), and its line under the trend (#130)
   const live = latestSamples(tank.id);
+  // every parameter's readings in one query (#356)
+  const trendSeries = seriesFor(tank.id, params.map((p) => p.id), since);
   const trends = params.map((p) => ({
     parameterId: p.id,
-    points: series(tank.id, p.id, since).map((r) => ({
+    points: trendSeries.get(p.id)!.map((r) => ({
       t: Date.parse(r.takenAt),
       value: r.value,
     })),
@@ -154,6 +156,10 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
   const equipmentNow = listEquipment(user.id, tank.id);
   const plugs = plugsOfTank(tank.id);
   const owner = roleOn(user.id, tank) === "owner";
+  // read once for the lighting line, Getting started, the growing setup and guidance (#356)
+  const scheduled = scheduledItems(tank.id);
+  const lighting = tankLighting(tank, scheduled);
+  const doseLines = autoDoseLines(tank.id);
   const animals = bySpecies(listLivestock(user.id, tank.id));
   const inTank = animals.filter((l) => l.status === "in_tank");
   const contents = {
@@ -168,7 +174,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
     plants: listPlants(user.id, tank.id).map((p) => p.name),
     equipment: equipmentNow.map((e) => (e.pausedAt ? `${equipmentName(e)} (paused)` : equipmentName(e))),
     // "Lights 08:00–16:00 · CO₂ 07:00–15:00"
-    schedule: lightingText(tank, scheduledItems(tank.id)),
+    schedule: lightingText(tank, scheduled),
   };
 
   // ammonia, nitrite and nitrate by test, newest first: the zero streak, and the cycle's stage
@@ -249,6 +255,8 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
         cycleSince,
       ].reduce((a, b) => (b > a ? b : a))
     : "";
+  // ammonia, nitrite and nitrate since the cycle's charts start, in one query (#356)
+  const cycleSeries = tank.cycling ? seriesFor(tank.id, cycleParams.map((p) => p.id), cycleSince) : new Map<string, { value: number }[]>();
   // livestock already in the water: ammonia and nitrite are never softened (#309)
   const stocked = inTank.length > 0;
   const cycling = tank.cycling
@@ -269,9 +277,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
             name:
               p?.name ??
               { nh3: "Ammonia", no2: "Nitrite", no3: "Nitrate" }[key],
-            values: p
-              ? series(tank.id, p.id, cycleSince).map((x) => x.value)
-              : [],
+            values: p ? cycleSeries.get(p.id)!.map((x) => x.value) : [],
             lo: p?.min ?? null,
             hi: p?.max ?? null,
             value: p && r ? fmtValue(p, r.value, user) : null,
@@ -322,11 +328,11 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
     livestock: counts.livestock,
     plants: counts.plants,
     photos: counts.photos,
-    lights: !!tankLighting(tank, scheduledItems(tank.id)).lights || tank.withoutEquipment.includes("light"),
+    lights: !!lighting.lights || tank.withoutEquipment.includes("light"),
     waterChangeTaskId: wcTask?.id ?? null,
   };
   // the owner's to work through and to hide; someone the tank is shared with sees the tank as it is
-  const checklist = roleOn(user.id, tank) === "owner" && showChecklist(facts)
+  const checklist = owner && showChecklist(facts)
     ? (() => {
         const steps = checklistSteps(facts);
         // how its water-change reminder will reach the keeper (#310)
@@ -339,7 +345,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
   const growing =
     tank.type === "planted"
       ? (() => {
-          const l = tankLighting(tank, scheduledItems(tank.id));
+          const l = lighting;
           const part = (x: typeof l.lights) => (x ? { schedule: x.schedule, hours: x.hours, itemId: x.item?.id ?? null } : null);
           return growingRows({
             tankId: tank.id,
@@ -350,7 +356,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
               .filter((t) => t.kind === "dosing")
               .map((t) => ({ id: t.id, title: t.name, product: t.product, amount: t.amount, amountUnit: t.amountUnit, nextDue: t.due, interval: intervalText(t) })),
             // a doser's doses (#196), without how long the pump runs
-            autoDoses: autoDoseLines(tank.id).map((a) => ({ itemId: a.itemId, text: doseLabel({ ...a.dose, seconds: null }) })),
+            autoDoses: doseLines.map((a) => ({ itemId: a.itemId, text: doseLabel({ ...a.dose, seconds: null }) })),
             today,
           });
         })()
@@ -376,7 +382,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
       cycling: tank.cycling,
       // for tank-aware guidance (#90): the water source, whether CO₂ is injected, shrimp in the tank
       waterSource: tank.waterSource,
-      co2: tankLighting(tank, scheduledItems(tank.id)).co2 ? true : tank.withoutEquipment.includes("co2") ? false : null,
+      co2: lighting.co2 ? true : tank.withoutEquipment.includes("co2") ? false : null,
       shrimp: inTank.some((l) => /shrimp|caridina/i.test(`${l.commonName} ${l.scientificName ?? ""}`)),
     },
     params,
@@ -432,7 +438,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
           // a doser's plug (#205): Resume switches its schedule on the plug back on, not the plug
           return { id: e.id, dose: null, name: equipmentName(e), since: since[0].toUpperCase() + since.slice(1), plug, runs: !!plugs.get(e.id)?.runs };
         }),
-      ...autoDoseLines(tank.id)
+      ...doseLines
         .filter((a) => a.dose.paused && !equipmentNow.find((e) => e.id === a.itemId)?.pausedAt)
         .map((a) => ({ id: a.itemId, dose: a.dose.id, name: `${a.item} · ${a.dose.product}`, since: doseLabel({ ...a.dose, paused: false, seconds: null }), plug: null, runs: false })),
     ],

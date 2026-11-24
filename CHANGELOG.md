@@ -11,6 +11,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **A quicker dashboard.** The dashboard reads each tank's trends, lighting and doser schedules once instead of several times, so it opens and switches tanks faster: [Dashboard](/).
 - **No pause while sizes are counted.** Server settings and Import & export count the size of your data and backups without holding up the app for everyone else, which mattered most on a NAS with many photos: [Import & export](/settings/export).
 - **Quicker Tasks and Charts.** Tasks opens faster with a long list of reminders, and Charts draws every parameter at once without reading each one separately: [Tasks](/tasks), [Charts](/charts).
 - **Quicker dosers and PAR readings.** A doser's recent doses on Equipment, and deleting a PAR reading, look only through that tank's History, so they stay quick on a server with many tanks: [Equipment](/tanks/current/equipment).
