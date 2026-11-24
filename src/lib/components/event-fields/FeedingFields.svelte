@@ -33,11 +33,11 @@
 		<label class="label" for="food">Food</label>
 		<input class="input" id="food" name="food" bind:value={food} list="recent-foods" maxlength="80" autocomplete="off" placeholder="e.g. Micro pellets" aria-invalid={!!errors.food} />
 		<datalist id="recent-foods">
-			{#each recentFoods as r (r.food)}<option value={r.food}></option>{/each}
+			{#each recentFoods as r, i (i)}<option value={r.food}></option>{/each}
 		</datalist>
 		{#if recentFoods.length && !food}
 			<div class="chips">
-				{#each recentFoods as r (r.food)}
+				{#each recentFoods as r, i (i)}
 					<button type="button" class="chip" onclick={() => pickFood(r)}>{r.food}</button>
 				{/each}
 			</div>

@@ -12,6 +12,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 ## Unreleased
 
 - **Opening a plant works again.** Choosing a plant on the Plants tab opens its sheet again, instead of stopping the page with an error: [Plants](/tanks/current/plants).
+- **Lists with repeated names.** Two identical lights on Equipment, two doses at the same time, two tests in the same minute on a compared chart, or two rows of the same fish no longer stop the page with an error, and Worth checking says a repeated line once: [Equipment](/tanks/current/equipment).
 
 ## 1.23.4 · 2026-11-21
 

@@ -121,7 +121,7 @@
 			<div class="plot">
 				<svg width="100%" height={H} viewBox="0 0 {width} {H}" role="toolbar" tabindex="-1" aria-label="{l.name}: {l.points.length} readings{l.target ? `, target ${l.target}` : ''}" onkeydown={rove}>
 					{#if band}<rect class="band" x={PAD} y={band.y} width={width - PAD - PADR} height={band.h} />{/if}
-					{#each wc as m (m.t + m.label)}<line class="guide" x1={m.x} x2={m.x} y1="0" y2={H} />{/each}
+					{#each wc as m, i (i)}<line class="guide" x1={m.x} x2={m.x} y1="0" y2={H} />{/each}
 					<line class="now" x1={x(axis.now)} x2={x(axis.now)} y1="0" y2={H} />
 					<text class="scale" x={width - PADR + 6} y="10">{scaleLabel(l, d.hi)}</text>
 					<text class="scale" x={width - PADR + 6} y={H - 2}>{scaleLabel(l, d.lo)}</text>
@@ -143,7 +143,7 @@
 			<div class="plot">
 				<svg width="100%" height="40" viewBox="0 0 {width} 40" role="toolbar" tabindex="-1" aria-label="{markers.waterChanges.length} water changes" onkeydown={rove}>
 					{#each wcLabels as w (w.x)}<text class="wl" x={w.x} y="12" text-anchor="middle">{w.text}</text>{/each}
-					{#each wc as m, i (m.t + m.label)}
+					{#each wc as m, i (i)}
 						<rect class="wc" x={m.x - 4} y="20" width="8" height="8" data-mark tabindex={i === wc.length - 1 ? 0 : -1} role="button" aria-label={m.label} onpointerenter={show(m.label)} onfocus={show(m.label)}><title>{m.label}</title></rect>
 					{/each}
 				</svg>

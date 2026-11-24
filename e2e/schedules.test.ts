@@ -55,6 +55,29 @@ test('equipment schedules and the day timeline', async ({ page }, info) => {
 	await expect(page.getByText('22:00–06:00 · 8 h')).toBeVisible();
 });
 
+// #327: two identical lights on the same schedule draw two rows on the day, not a crash.
+test('two lights with the same name share the day timeline', async ({ page }, info) => {
+	await newKeeperWithTank(page, `sched-twin-${info.project.name}`);
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	for (let n = 0; n < 2; n++) {
+		await open(page, `/tanks/${tankId}/equipment/new`);
+		await page.locator('label', { hasText: /^Light$/ }).click();
+		await page.getByLabel('Brand').fill('Lumora');
+		await page.getByLabel('Model').fill('Pro 90');
+		await page.locator('label', { hasText: 'On a schedule' }).click();
+		await page.getByLabel('Period 1 on').fill('08:00');
+		await page.getByLabel('Period 1 off').fill('16:00');
+		await page.getByRole('button', { name: 'Save' }).last().click();
+		await expect(page.getByRole('status')).toContainText('✓ Lumora Pro 90 added');
+	}
+	const day = page.getByRole('img', { name: 'When each item runs through the day' });
+	await expect(day.locator('.row:not(.ticks)')).toHaveCount(2);
+	// a client-side visit renders the list in the browser, where repeated keys throw
+	await open(page, `/tanks/${tankId}/settings`);
+	await page.getByRole('link', { name: /^Equipment/ }).first().click();
+	await expect(day.locator('.row:not(.ticks)')).toHaveCount(2);
+});
+
 // #25: PAR readings on a reef tank, as a map and a list.
 test('PAR readings on a reef tank', async ({ page }, info) => {
 	await newKeeperWithTank(page, `par-${info.project.name}`, 'Reef');

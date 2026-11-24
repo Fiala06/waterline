@@ -159,5 +159,6 @@ export function tankWarnings(kept: Kept[], careOf: (s: string) => Care | null, t
 		if (g) out.push(g);
 	}
 	out.push(...compatibilityWarnings(kept));
-	return out;
+	// two rows of one species say the same thing once (#327)
+	return [...new Set(out)];
 }

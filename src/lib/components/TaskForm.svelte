@@ -190,7 +190,7 @@
 						aria-invalid={!!errors.product}
 					/>
 					{#if type === 'dosing'}
-						<datalist id="t-products">{#each products as p (p)}<option value={p}></option>{/each}</datalist>
+						<datalist id="t-products">{#each products as p, i (i)}<option value={p}></option>{/each}</datalist>
 					{/if}
 					{#if errors.product}<span class="error-text">✕ {errors.product}</span>{/if}
 				</div>
@@ -258,7 +258,7 @@
 					<div class="follow-of">
 						<label class="times-word" for="t-trigger-product">of</label>
 						<input class="input" id="t-trigger-product" name="triggerProduct" defaultValue={values.triggerProduct} maxlength="80" autocomplete="off" list="t-trigger-products" placeholder="Any product" />
-						<datalist id="t-trigger-products">{#each products as p (p)}<option value={p}></option>{/each}</datalist>
+						<datalist id="t-trigger-products">{#each products as p, i (i)}<option value={p}></option>{/each}</datalist>
 					</div>
 				{/if}
 				{#if errors.triggerOffset}<span class="error-text">✕ {errors.triggerOffset}</span>{/if}

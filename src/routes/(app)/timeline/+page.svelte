@@ -25,7 +25,7 @@
 {#snippet readings(list: { name: string; value: string; unit: string; level: string; status: string }[] | null, tested: string | null, testId: string | null)}
 	{#if list?.length}
 		<div class="rds">
-			{#each list as r (r.name)}
+			{#each list as r, i (i)}
 				<span class="rd" class:bad={r.level === 'bad'}><span class="rn">{r.name}</span><span class="rv num">{r.value}{r.unit ? ` ${r.unit}` : ''}</span><span class="rs status-{r.level}">{r.status}</span></span>
 			{/each}
 		</div>
