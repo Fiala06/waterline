@@ -8,7 +8,6 @@ import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import satori from 'satori';
 import sharp from 'sharp';
-import { env } from '$env/dynamic/private';
 import { ogCacheDir } from './og-cache';
 import type { Photo } from './photos';
 import { photoFilePath } from './photos';
@@ -132,14 +131,7 @@ export async function tankCard(view: PublicView, opts: { cover: Photo | null; fo
 							)
 						)
 					)
-				: view.summary
-					? h(
-							'div',
-							{ alignItems: 'center', gap: 10, fontSize: 30, fontWeight: 600, color: view.summary.bad.length ? C.bad : C.ok },
-							statusIcon(view.summary.bad.length ? 'bad' : 'ok', 28),
-							view.summary.bad.length ? view.summary.bad[0] : 'All in range'
-						)
-					: null,
+				: null,
 			h('div', { fontSize: 20, color: C.muted, marginTop: 8 }, url)
 		);
 		if (!opts.cover) return render(h('div', { width: W, height: H, background: C.bg }, body));

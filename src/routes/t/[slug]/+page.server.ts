@@ -1,4 +1,4 @@
-import { CHART_RANGES, findPublic, LOG_RANGES, ogVersion, publicRanges, publicSettings, publicView, recordView } from '$lib/server/public';
+import { CHART_RANGES, findPublic, ogVersion, publicRanges, publicSettings, publicView, recordView } from '$lib/server/public';
 import { tankCardAlt } from '$lib/server/og';
 import { forumSummary, publicDetail } from '$lib/server/public-detail';
 import type { PageServerLoad } from './$types';
@@ -25,10 +25,6 @@ export const load: PageServerLoad = ({ params, request, url, locals }) => {
 		summary: forumSummary(detail, { name: view.name, type: view.type, volume: view.volume, keeper: view.keeper, url: canonical, periodTitle: view.ranges.chart.title }),
 		ranges,
 		chartRanges: CHART_RANGES.map((r) => ({ key: r.key, label: r.label })),
-		logRanges: LOG_RANGES.map((r) => ({ key: r.key, label: r.label })),
-		// the chart a reading's tile chose, without scripts (?p=)
-		chartParam: url.searchParams.get('p'),
-		isOwner: locals.user?.id === user.id,
 		ownerTankId: locals.user?.id === user.id ? tank.id : null,
 		seo: {
 			title,

@@ -7,38 +7,33 @@ import { publicEntry } from '$lib/pet-names';
 // (public-detail.ts); otherwise the log and the timeline say the day, never the
 // time, and only the latest readings say theirs.
 import { error } from '@sveltejs/kit';
-import { and, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, isNull, sql } from 'drizzle-orm';
 import { createHash, randomBytes } from 'node:crypto';
 import { env } from '$env/dynamic/private';
-import { EQUIPMENT_TYPE_LABEL, equipmentName, isWithoutType, specSummary } from '$lib/equipment';
+import { EQUIPMENT_TYPE_LABEL, isWithoutType } from '$lib/equipment';
 import { eventTitle } from '$lib/events';
-import { bySpecies, livestockLabel, speciesKey } from '$lib/livestock';
-import { displayValue, fmtRange, fmtValue, paramDecimals, paramUnit, shortName, statusOf } from '$lib/params';
+import { fmtRange, fmtValue, paramUnit, shortName, statusOf } from '$lib/params';
 import { statusShort } from '$lib/status';
 import { dateInZone, fmtDate, fmtDateLong, fmtTime, fmtWhen, todayInZone } from '$lib/time';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { db } from './db';
 import {
-	equipment,
 	events,
-	livestock,
 	photoLivestock,
 	photos,
 	photoShares,
-	plants,
 	publicPages,
 	publicPageViews,
 	tanks,
 	tests,
-	testReadings,
 	users,
 	type PublicPage,
 	type Tank,
 	type User
 } from './db/schema';
 import { getServerSettings } from './mail';
-import { eventsSince, latestReadings, latestTest, series } from './logs';
-import { displaySamples, isLive, latestSamples, sampleSeries } from './sensors';
+import { latestReadings, latestTest } from './logs';
+import { isLive, latestSamples } from './sensors';
 import { getPhoto } from './photos';
 import { requireRoleOn } from './members';
 import { getTank, listParams } from './tanks';
@@ -149,46 +144,23 @@ const PUBLIC_TIMELINE_MAX = 24;
 // public titles say the species ("Betta moved into the tank"), naming one isn't
 // listed, pets count with their species, and photos tagged with a pet are hidden.
 const untagged = sql`not exists (select 1 from ${photoLivestock} where ${photoLivestock.photoId} = ${photos.id})`;
-const isNaming = (e: { category: string; data: Record<string, unknown> }) => e.category === 'livestock' && e.data.action === 'named';
-/** Pets count with their species, never by name. */
-function perSpecies(rows: { id: string; commonName: string; scientificName: string | null; count: number }[]) {
-	const groups = new Map<string, { id: string; name: string; count: number | null }>();
-	for (const l of rows) {
-		const g = groups.get(speciesKey(l));
-		if (g) g.count = (g.count ?? 0) + l.count;
-		else groups.set(speciesKey(l), { id: l.id, name: l.commonName, count: l.count });
-	}
-	return [...groups.values()];
-}
 const monthYear = (d: string) =>
 	new Date(d.slice(0, 10) + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 
-/** How much of the page a visitor asked to see (?chart= and ?log=); the owner's switches still decide what. */
+/** How much of the page a visitor asked to see (?chart=); the owner's switches still decide what. */
 export const CHART_RANGES = [
 	{ key: '30d', days: 30, label: '30 days', title: 'the last 30 days' },
 	{ key: '90d', days: 91, label: '90 days', title: 'the last 3 months' },
 	{ key: '1y', days: 365, label: '1 year', title: 'the last year' },
 	{ key: 'all', days: 0, label: 'All', title: 'all time' }
 ] as const;
-export const LOG_RANGES = [
-	{ key: 'week', days: 7, label: 'Last week' },
-	{ key: 'month', days: 30, label: 'Last month' },
-	{ key: 'all', days: 0, label: 'Everything' }
-] as const;
-export type PublicRanges = { chart: (typeof CHART_RANGES)[number]['key']; log: (typeof LOG_RANGES)[number]['key'] };
+export type PublicRanges = { chart: (typeof CHART_RANGES)[number]['key'] };
 export function publicRanges(url: URL): PublicRanges {
 	const c = url.searchParams.get('chart');
-	const l = url.searchParams.get('log');
-	return {
-		chart: CHART_RANGES.some((r) => r.key === c) ? (c as PublicRanges['chart']) : '30d',
-		log: LOG_RANGES.some((r) => r.key === l) ? (l as PublicRanges['log']) : 'month'
-	};
+	return { chart: CHART_RANGES.some((r) => r.key === c) ? (c as PublicRanges['chart']) : '30d' };
 }
-/** The most a visitor can scroll through at once. */
-const LOG_MAX = 200;
-
 /** Everything the public page may show, already filtered by the owner's switches. */
-export function publicView(page: PublicPage, tank: Tank, owner: User, ranges: PublicRanges = { chart: '30d', log: 'month' }) {
+export function publicView(page: PublicPage, tank: Tank, owner: User, ranges: PublicRanges = { chart: '30d' }) {
 	const tz = owner.timeZone;
 	const prefs = owner;
 	const today = todayInZone(tz);
@@ -235,63 +207,9 @@ export function publicView(page: PublicPage, tank: Tank, owner: User, ranges: Pu
 	const lastAt = last?.takenAt ?? null;
 	const bad = cards.filter((c) => c.level === 'bad');
 
-	// Charts: every tested parameter, bad ones first, by day (no times). The visitor picks the range.
+	// the visitor's chart range, for the detail's charts and the download (public-detail.ts)
 	const chartRange = CHART_RANGES.find((r) => r.key === ranges.chart)!;
 	const since = chartRange.days ? new Date(Date.now() - chartRange.days * 86_400_000).toISOString() : '';
-	// Problems first, then the usual headline parameters.
-	const ORDER = ['no3', 'ph', 'kh', 'temp', 'gh', 'nh3', 'no2'];
-	const rank = (p: (typeof params)[number]) => {
-		const l = statusOf(p, latest.get(p.id)?.value).level;
-		const o = ORDER.indexOf(p.key);
-		return (l === 'bad' ? 0 : l === 'warn' ? 100 : 200) + (o < 0 ? 50 : o);
-	};
-	// a parameter a sensor reports has a chart too, with or without tests (#130)
-	const chartParams = [...params]
-		.filter((p) => latest.has(p.id) || live.has(p.id))
-		.sort((a, b) => rank(a) - rank(b));
-	// public charts are by day: noon of the day, so a reading and a water change on the same day line up
-	const dayT = (at: string) => Date.parse(dateInZone(at, tz) + 'T12:00:00Z');
-	// water changes mark the chart as on the keeper's Charts, when the log is public (they're in it)
-	const changes = page.showCharts && page.showActivity ? eventsSince(tank.id, ['water_change'], since || '0000') : [];
-	const charts = page.showCharts
-		? chartParams
-				.map((p) => {
-					const unit = paramUnit(p, prefs);
-					// the day's last reading stands for it
-					const points = [...new Map(series(tank.id, p.id, since).map((r) => [dayT(r.takenAt), { t: dayT(r.takenAt), v: displayValue(p, r.value, prefs) }])).values()];
-					const fv = (v: number) => formatNumber(v, paramDecimals(p, prefs));
-					return {
-						id: p.id,
-						name: p.name,
-						unit,
-						decimals: paramDecimals(p, prefs),
-						target: fmtRange(p, prefs),
-						band: {
-							min: p.min == null ? null : displayValue(p, p.min, prefs),
-							max: p.max == null ? null : displayValue(p, p.max, prefs)
-						},
-						points,
-						// readings from a sensor (#19), the thin line under the tests, when readings are public
-						sensor: page.showReadings ? displaySamples(sampleSeries(tank.id, p.id, since || '0000'), p, prefs) : [],
-						// each water change with the reading before and after it: "Nitrate 40 → 10 ppm"
-						markers: changes.map((e) => {
-							const t = dayT(e.occurredAt);
-							const before = [...points].reverse().find((r) => r.t <= t);
-							const after = points.find((r) => r.t > t);
-							return {
-								t,
-								href: `#wc-${e.id}`,
-								kind: 'water_change' as const,
-								label: eventTitle(e, prefs),
-								day: fmtDate(dateInZone(e.occurredAt, tz)),
-								change: before && after ? `${p.name} ${fv(before.v)} → ${fv(after.v)}${unit ? ` ${unit}` : ''}` : null
-							};
-						}),
-						lastLevel: statusOf(p, latest.get(p.id)?.value).level
-					};
-				})
-				.filter((c) => c.points.length >= 2 || c.sensor.length >= 2)
-		: [];
 
 	const names = page.showPetNames;
 	// the cover opens full size in the lightbox, captioned with its day
@@ -310,78 +228,6 @@ export function publicView(page: PublicPage, tank: Tank, owner: User, ranges: Pu
 				.all()
 				.map((p) => ({ id: p.id, date: fmtDateLong(dateInZone(p.takenAt, tz)) }))
 		: [];
-
-	// quarantined animals aren't in the display tank yet
-	const animals = page.showLivestock
-		? db
-				.select()
-				.from(livestock)
-				.where(and(eq(livestock.tankId, tank.id), isNull(livestock.removedAt), eq(livestock.status, 'in_tank')))
-				.all()
-		: [];
-	const plantNames = page.showLivestock
-		? db.select().from(plants).where(and(eq(plants.tankId, tank.id), isNull(plants.removedAt))).all().map((p) => p.name)
-		: [];
-	const gear = page.showEquipment
-		? db
-				.select()
-				.from(equipment)
-				.where(and(eq(equipment.tankId, tank.id), isNull(equipment.removedAt)))
-				.all()
-				.map((e) => ({ id: e.id, name: equipmentName(e), spec: specSummary(e.type, e.specs, prefs)[0] ?? null }))
-		: [];
-
-	type Reading = { name: string; value: string; unit: string; level: string; status: string };
-	let activity: { key: string; title: string; kind: string; day: string; readings?: Reading[] }[] = [];
-	const logRange = LOG_RANGES.find((r) => r.key === ranges.log)!;
-	if (page.showActivity) {
-		const logSince = logRange.days ? new Date(Date.now() - logRange.days * 86_400_000).toISOString() : '';
-		const ev = db
-			.select()
-			.from(events)
-			.where(and(eq(events.tankId, tank.id), inArray(events.category, [...PUBLIC_CATEGORIES]), logSince ? gte(events.occurredAt, logSince) : undefined))
-			.orderBy(desc(events.occurredAt))
-			.limit(LOG_MAX * 2)
-			.all()
-			.filter((e) => names || !isNaming(e))
-			.slice(0, LOG_MAX)
-			.map((e) => ({ key: `e:${e.id}`, at: e.occurredAt, title: eventTitle(publicEntry(e, names), prefs), kind: e.category }));
-		const ts = db
-			.select({ id: tests.id, at: tests.takenAt, n: sql<number>`count(${testReadings.parameterId})` })
-			.from(tests)
-			.leftJoin(testReadings, eq(testReadings.testId, tests.id))
-			.where(and(eq(tests.tankId, tank.id), logSince ? gte(tests.takenAt, logSince) : undefined))
-			.groupBy(tests.id)
-			.orderBy(desc(tests.takenAt))
-			.limit(LOG_MAX)
-			.all()
-			.map((t) => ({ key: `t:${t.id}`, at: t.at, title: `Water test · ${t.n} reading${t.n === 1 ? '' : 's'}`, kind: 'test' }));
-		activity = [...ev, ...ts]
-			.sort((a, b) => b.at.localeCompare(a.at))
-			.slice(0, LOG_MAX)
-			.map(({ key, at, title, kind }) => {
-				const d = dateInZone(at, tz);
-				return { key, title, kind, day: d === today ? 'Today' : fmtDate(d) };
-			});
-		// a water test opens to its readings, when the page shows readings (the owner's switch)
-		const testIds = activity.filter((a) => a.kind === 'test').map((a) => a.key.slice(2));
-		if (page.showReadings && testIds.length) {
-			const byId = new Map(params.map((p) => [p.id, p]));
-			const order = new Map(params.map((p, i) => [p.id, i]));
-			const rows = db.select().from(testReadings).where(inArray(testReadings.testId, testIds)).all();
-			const per = new Map<string, Reading[]>();
-			for (const r of rows.sort((a, b) => (order.get(a.parameterId) ?? 99) - (order.get(b.parameterId) ?? 99))) {
-				const p = byId.get(r.parameterId);
-				if (!p) continue; // a parameter no longer tracked
-				const st = statusOf(p, r.value);
-				per.set(r.testId, [
-					...(per.get(r.testId) ?? []),
-					{ name: shortName(p), value: fmtValue(p, r.value, prefs), unit: paramUnit(p, prefs), level: st.level, status: statusShort(st) }
-				]);
-			}
-			activity = activity.map((a) => (a.kind === 'test' ? { ...a, readings: per.get(a.key.slice(2)) ?? [] } : a));
-		}
-	}
 
 	return {
 		slug: page.slug,
@@ -404,17 +250,9 @@ export function publicView(page: PublicPage, tank: Tank, owner: User, ranges: Pu
 		// "7:12 PM": the time of the latest test, beside its day on the page (the share image keeps the day)
 		testedTime: page.showReadings && lastAt ? fmtTime(lastAt, tz) : null,
 		readings: page.showReadings ? cards : [],
-		charts,
 		photos: photoIds,
-		// with names: each group, then its pets by name (one animal, no count)
-		livestock: names
-			? bySpecies(animals).map((l) => ({ id: l.id, name: livestockLabel(l), count: l.nickname ? null : l.count }))
-			: perSpecies(animals),
-		plants: plantNames,
-		equipment: gear,
 		// what it goes without on purpose ("Heater · None"), with the equipment
 		without: page.showEquipment ? tank.withoutEquipment.filter(isWithoutType).map((w) => EQUIPMENT_TYPE_LABEL[w]) : [],
-		activity,
 		// the timeline (#26): the latest photos in date order, with the day and, when readings are on, the nearest test's
 		timeline: page.showTimeline
 			? timelineEntries(tank, prefs, { names, readings: page.showReadings, activity: page.showActivity, categories: PUBLIC_CATEGORIES, limit: PUBLIC_TIMELINE_MAX }).map((e) => ({
@@ -427,7 +265,7 @@ export function publicView(page: PublicPage, tank: Tank, owner: User, ranges: Pu
 					gap: e.gap
 				}))
 			: [],
-		ranges: { chart: chartRange, log: logRange, chartSince: since ? Date.parse(since) : null }
+		ranges: { chart: chartRange, chartSince: since ? Date.parse(since) : null }
 	};
 }
 
