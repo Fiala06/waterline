@@ -191,3 +191,15 @@ test('the boundaries between keepers, tokens and the public', async ({ page, bro
 	});
 });
 
+
+// #365: signed out, a script's data or a photo answers 401, not the sign-in page with a 200
+test('signed out, /api and /media answer 401', async ({ playwright, baseURL }) => {
+	const anon = await playwright.request.newContext({ baseURL });
+	for (const url of ['/api/species?q=neon', '/api/species/care?s=x&name=x&count=1&tank=x', '/media/not-a-photo?size=thumb']) {
+		const res = await anon.get(url, { maxRedirects: 0 });
+		expect(res.status(), url).toBe(401);
+	}
+	// a page still goes to sign-in
+	expect((await anon.get('/history', { maxRedirects: 0 })).status()).toBe(303);
+	await anon.dispose();
+});

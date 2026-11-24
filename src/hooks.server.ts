@@ -158,6 +158,10 @@ const appHandle: Handle = async ({ event, resolve }) => {
 		if (pub.landingEnabled) redirect(303, '/welcome');
 		if (pub.publicHomeEnabled && pub.allowPublicPages) redirect(303, '/public');
 	}
+	// data and photos for scripts and <img>: a 401 they can tell from a page, not the sign-in page with a 200 (#365)
+	if (!user && !isPublic(path) && (path.startsWith('/api/') || path.startsWith('/media/'))) {
+		return new Response('Sign in to see this.', { status: 401, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' } });
+	}
 	if (!user && !isPublic(path)) {
 		redirect(303, `/signin${path === '/' ? '' : `?redirectTo=${encodeURIComponent(path + event.url.search)}`}`);
 	}
