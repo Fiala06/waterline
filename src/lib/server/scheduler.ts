@@ -13,6 +13,7 @@ import { pruneShareImages } from './og-cache';
 import { getServerSettings } from './mail';
 import { logger, pruneLogs } from './log';
 import { alertSensorExcursions, runNotifications } from './notifications';
+import { pruneSendLog } from './send-log';
 import { ensureCare } from './species-care';
 import { settleEveryone } from './tasks';
 
@@ -34,6 +35,8 @@ const JOBS: Job[] = [
 	// a sensor that is a parameter's reading of record, out of range for a while
 	['sensor alerts', () => alertSensorExcursions()],
 	['logs', () => pruneLogs()],
+	// what was sent to whom, after 90 days (#347)
+	['send log', () => pruneSendLog()],
 	['links', () => pruneActionTokens()],
 	['readings', () => pruneSamples()],
 	['connections', () => pruneOAuth()],

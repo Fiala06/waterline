@@ -26,7 +26,7 @@ const { upsertUser } = await import('./users');
 const { createTank } = await import('./tanks');
 const { createTask } = await import('./tasks');
 const { notifyUser } = await import('./notifications');
-const { claimSend, MAX_ATTEMPTS, retryWait, sendFailed } = await import('./send-log');
+const { claimSend, MAX_ATTEMPTS, pruneSendLog, retryWait, sendFailed } = await import('./send-log');
 const { todayInZone } = await import('$lib/time');
 
 describe('retryWait', () => {
@@ -98,5 +98,21 @@ describe('a reminder email that fails', () => {
 		// and it isn't sent again
 		await notifyUser(user, new Date(), true);
 		expect(failing.calls).toBe(1);
+	});
+});
+
+describe('pruneSendLog (#347)', () => {
+	const user = upsertUser({ email: 'prune@example.com', name: 'Prune' });
+	const tank = createTank(user, { name: 'Prune tank', type: 'freshwater', nominalVolumeL: 60 });
+	const stuck = createTask(user.id, tank.id, { name: 'Overdue for ages', kind: 'other', recurring: true, intervalDays: 7, scheduleMode: 'completion', nextDue: '2026-01-05', openFormOnDone: false });
+	const keys = () => db.select({ key: emailLog.key }).from(emailLog).where(eq(emailLog.userId, user.id)).all().map((r) => r.key).sort();
+
+	it('forgets sends after 90 days, but not an overdue alert for a task still due that day', () => {
+		const old = '2026-01-06T09:00:00.000Z';
+		for (const key of ['daily-digest:2026-01-06', `overdue:${stuck.id}:2026-01-05`, `push:overdue:${stuck.id}:2026-01-05`, `reminder:${stuck.id}:2025-12-29`, 'oor:some-test'])
+			db.insert(emailLog).values({ userId: user.id, key, sentAt: old }).run();
+		db.insert(emailLog).values({ userId: user.id, key: 'daily-digest:2026-04-01', sentAt: '2026-04-01T09:00:00.000Z' }).run();
+		expect(pruneSendLog(Date.parse('2026-04-20T00:00:00.000Z'))).toBe(3);
+		expect(keys()).toEqual(['daily-digest:2026-04-01', `overdue:${stuck.id}:2026-01-05`, `push:overdue:${stuck.id}:2026-01-05`].sort());
 	});
 });
