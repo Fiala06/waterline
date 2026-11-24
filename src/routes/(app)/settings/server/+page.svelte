@@ -131,11 +131,12 @@
 		<span class="meta">Self-hosted at {host} · v{data.server.version}</span>
 	</div>
 
-	<!-- the parts, each its own address; the one in view is filled -->
+	<!-- the parts, each its own address; the one in view is filled. Each is named by what it
+	     shows, its count or badge too, so speech input can say what's on screen -->
 	<nav class="parts" aria-label="On this page">
 		{#each SERVER_SECTIONS as sec (sec.id)}
 			{@const b = badge(sec.id)}
-			<a href="#{sec.id}" class:current={section === sec.id} aria-current={section === sec.id ? 'location' : undefined} aria-label={sec.label} title={b ? `${sec.label} · ${b}` : undefined}>
+			<a href="#{sec.id}" class:current={section === sec.id} aria-current={section === sec.id ? 'location' : undefined} title={b ? `${sec.label} · ${b}` : undefined}>
 				<span>{sec.label}</span>{#if b}<span class="pb">{b}</span>{/if}
 			</a>
 		{/each}

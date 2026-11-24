@@ -15,7 +15,7 @@ test('the account menu: your initials, your settings, and signing out', async ({
 	const home = info.project.name === 'phone' ? '/more' : '/';
 	await open(page, home);
 	const account = page.getByRole('button', { name: `Account: ${name}` });
-	await expect(account).toHaveText(initials);
+	await expect(account.locator('[data-initials]')).toHaveAttribute('data-initials', initials); // drawn, not text (axe 4.14's label-content-name-mismatch)
 	await account.click();
 	// only the open menu counts
 	const menu = page.locator(':popover-open');

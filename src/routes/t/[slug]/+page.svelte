@@ -153,7 +153,7 @@
 				<span class="hide-phone">{copied ? '✓ Copied' : 'Copy summary for a forum post'}</span>
 			</a>
 			{#if hasTests}
-				<a class="btn act" href="/t/{v.slug}/data.csv{rangeQuery}" download aria-label="Download the tests (CSV)">
+				<a class="btn act" href="/t/{v.slug}/data.csv{rangeQuery}" download aria-label="Download data (CSV)">
 					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12M6 10l6 6 6-6M4 21h16"></path></svg>
 					<span class="hide-phone">Download data (CSV)</span>
 				</a>

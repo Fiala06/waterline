@@ -25,7 +25,9 @@
 
 <button type="button" class="avatar" popovertarget={id} aria-label="Account: {name}" title={name}>
 	<span class="face">
-		{#if user.avatar}<img src={user.avatar} alt="" />{:else}<span aria-hidden="true">{initials}</span>{/if}
+		<!-- the initials are drawn, not text: the button's name is "Account: …", and text in it
+		     that its name doesn't contain is a mismatch for speech input (axe's label-content-name-mismatch) -->
+		{#if user.avatar}<img src={user.avatar} alt="" />{:else}<span class="initials" data-initials={initials}></span>{/if}
 	</span>
 </button>
 
@@ -74,6 +76,9 @@
 		font-size: 13px;
 		font-weight: 800;
 		letter-spacing: 0.02em;
+	}
+	.initials::before {
+		content: attr(data-initials) / '';
 	}
 	.face img {
 		width: 100%;

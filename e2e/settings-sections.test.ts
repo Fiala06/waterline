@@ -19,8 +19,10 @@ test('every part of Settings has its own address, and Server settings lists its 
 
 	// the parts: beside the page on desktop, at its top on a phone
 	const parts = desktop ? page.getByRole('navigation', { name: 'Settings sections' }) : page.getByRole('navigation', { name: 'On this page' });
-	for (const name of ['Sign-in', 'People', 'Email', 'Public pages', 'About this server', 'Features', 'Logs & version']) await expect(parts.getByRole('link', { name, exact: true })).toBeVisible();
-	await parts.getByRole('link', { name: 'Features', exact: true }).click();
+	// named by what they show, a count or badge too (People 3, Features ↑ 1.24.0)
+	const part = (name: string) => parts.getByRole('link', { name: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}( |$)`) });
+	for (const name of ['Sign-in', 'People', 'Email', 'Public pages', 'About this server', 'Features', 'Logs & version']) await expect(part(name)).toBeVisible();
+	await part('Features').click();
 	await expect(page).toHaveURL('/settings/server#features');
 	await expect(page.getByRole('heading', { name: /^Features/ })).toBeInViewport();
 
