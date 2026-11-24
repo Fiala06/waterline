@@ -111,38 +111,41 @@ export function restoreWish(userId: string, tankId: string, id: string): Wish | 
  * stays, marked added.
  */
 export function addWishToTank(user: User, tankId: string, id: string, opts: { spend: boolean; amountCents?: number | null }) {
-	// the wish list is the owner's, like adding and deleting wishes (#106); checked before anything is added
-	getTank(user.id, tankId, 'owner');
-	const w = getWish(user.id, tankId, id);
-	if (w.addedAt) error(400, 'Already added.');
-	const today = todayInZone(user.timeZone);
-	let added: string;
-	if (w.kind === 'equipment') {
-		const e = addEquipment(user.id, tankId, { type: w.equipmentType ?? 'other', brand: null, model: w.name, specs: {}, installedAt: today, notes: w.note }, user.timeZone);
-		added = `${e.model ?? w.name} added to Equipment`;
-	} else if (w.kind === 'plant') {
-		addPlant(user.id, tankId, { name: w.name, scientificName: w.scientificName, position: 'midground', status: 'thriving' });
-		added = `${w.name} added to Plants`;
-	} else {
-		const { row } = addLivestock(user.id, tankId, { kind: w.kind, commonName: w.name, scientificName: w.scientificName, count: w.count, status: 'in_tank', addedAt: today, source: null });
-		added = `${w.count} ${row.commonName} added to Livestock`;
-	}
-	const cents = opts.amountCents ?? w.priceCents;
-	let spent = false;
-	if (opts.spend && cents != null && cents > 0) {
-		addExpense(user.id, tankId, {
-			date: today,
-			amountCents: cents,
-			category: w.kind === 'equipment' ? 'equipment' : w.kind === 'plant' ? 'plants' : 'livestock',
-			what: w.kind === 'equipment' || w.kind === 'plant' ? w.name : `${w.count} ${w.name}`,
-			note: null,
-			// the Paid field is shown in the wish's currency
-			currency: w.currency
-		});
-		spent = true;
-	}
-	db.update(wishes).set({ addedAt: new Date().toISOString() }).where(eq(wishes.id, w.id)).run();
-	return { wish: w, message: `✓ ${added}${spent ? ' · logged in Spending' : ''}` };
+	// the item, its History entry, the expense and the wish together, or none of them (#348)
+	return db.transaction(() => {
+		// the wish list is the owner's, like adding and deleting wishes (#106); checked before anything is added
+		getTank(user.id, tankId, 'owner');
+		const w = getWish(user.id, tankId, id);
+		if (w.addedAt) error(400, 'Already added.');
+		const today = todayInZone(user.timeZone);
+		let added: string;
+		if (w.kind === 'equipment') {
+			const e = addEquipment(user.id, tankId, { type: w.equipmentType ?? 'other', brand: null, model: w.name, specs: {}, installedAt: today, notes: w.note }, user.timeZone);
+			added = `${e.model ?? w.name} added to Equipment`;
+		} else if (w.kind === 'plant') {
+			addPlant(user.id, tankId, { name: w.name, scientificName: w.scientificName, position: 'midground', status: 'thriving' });
+			added = `${w.name} added to Plants`;
+		} else {
+			const { row } = addLivestock(user.id, tankId, { kind: w.kind, commonName: w.name, scientificName: w.scientificName, count: w.count, status: 'in_tank', addedAt: today, source: null });
+			added = `${w.count} ${row.commonName} added to Livestock`;
+		}
+		const cents = opts.amountCents ?? w.priceCents;
+		let spent = false;
+		if (opts.spend && cents != null && cents > 0) {
+			addExpense(user.id, tankId, {
+				date: today,
+				amountCents: cents,
+				category: w.kind === 'equipment' ? 'equipment' : w.kind === 'plant' ? 'plants' : 'livestock',
+				what: w.kind === 'equipment' || w.kind === 'plant' ? w.name : `${w.count} ${w.name}`,
+				note: null,
+				// the Paid field is shown in the wish's currency
+				currency: w.currency
+			});
+			spent = true;
+		}
+		db.update(wishes).set({ addedAt: new Date().toISOString() }).where(eq(wishes.id, w.id)).run();
+		return { wish: w, message: `✓ ${added}${spent ? ' · logged in Spending' : ''}` };
+	});
 }
 
 /** "3 planned · about $62", for the tabs and the header; per currency (#307). */
