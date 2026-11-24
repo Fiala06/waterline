@@ -10,7 +10,8 @@ export const currencySymbol = (currency: string) => fmtMoney(0, currency).replac
 
 /** `currency`: an expense's own (#307); a new one's is the keeper's preference. */
 export function expensePage(user: User, currency = user.currency) {
-	const tanks = listTanks(user.id).map((t) => ({ id: t.id, name: t.name }));
+	// their own tanks: one shared with them takes no expenses (#342)
+	const tanks = listTanks(user.id, { own: true }).map((t) => ({ id: t.id, name: t.name }));
 	return {
 		tanks,
 		// the items an expense can be for (#148), per tank, so the picker follows the tank chosen
