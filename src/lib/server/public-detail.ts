@@ -129,15 +129,19 @@ export function publicDetail(page: PublicPage, tank: Tank, owner: User, opts: { 
 	const waterChanges = evs.filter((e) => e.category === 'water_change');
 
 	// ── Needs attention: out of range or near a limit, with what it was before ──
+	// the 120 days before each latest reading, read once from the earliest of them (#351)
+	const histFrom = (at: number) => new Date(at - 120 * 86_400_000).toISOString();
+	const shown = params.filter((p) => latest.has(p.id));
+	const histAll = page.showReadings && shown.length ? testsSince(tank.id, histFrom(Math.min(...shown.map((p) => Date.parse(latest.get(p.id)!.takenAt))))) : [];
 	const cards = page.showReadings
-		? params
-				.filter((p) => latest.has(p.id))
+		? shown
 				.map((p) => {
 					const r = latest.get(p.id)!;
 					const st = statusOf(p, r.value);
 					// the readings before it, for "was 0 on Oct 9" and the small line
-					const hist = testsSince(tank.id, new Date(Date.parse(r.takenAt) - 120 * 86_400_000).toISOString())
-						.filter((t) => t.readings.has(p.id))
+					const from = histFrom(Date.parse(r.takenAt));
+					const hist = histAll
+						.filter((t) => t.test.takenAt >= from && t.readings.has(p.id))
 						.map((t) => ({ at: t.test.takenAt, v: t.readings.get(p.id)! }));
 					const prev = [...hist].reverse().find((h) => h.at < r.takenAt);
 					const spark = hist.slice(-10).map((h) => displayValue(p, h.v, prefs));
