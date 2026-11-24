@@ -12,7 +12,7 @@ import { cleanupRestores } from './restore';
 import { pruneShareImages } from './og-cache';
 import { getServerSettings } from './mail';
 import { logger, pruneLogs } from './log';
-import { alertSensorExcursions, runNotifications } from './notifications';
+import { alertSensorExcursions, retryTestAlerts, runNotifications } from './notifications';
 import { pruneSendLog } from './send-log';
 import { ensureCare } from './species-care';
 import { settleEveryone } from './tasks';
@@ -34,6 +34,8 @@ const JOBS: Job[] = [
 	['plugs', () => pollAllPlugs()],
 	// a sensor that is a parameter's reading of record, out of range for a while
 	['sensor alerts', () => alertSensorExcursions()],
+	// a test's out-of-range alert that failed when it was saved (#334)
+	['test alerts', () => retryTestAlerts()],
 	['logs', () => pruneLogs()],
 	// what was sent to whom, after 90 days (#347)
 	['send log', () => pruneSendLog()],

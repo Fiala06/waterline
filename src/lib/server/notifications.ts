@@ -3,7 +3,7 @@
 // zone, and the email log makes every send happen at most once. Email and push
 // have their own switches per kind; push is one notice at a time, whatever the
 // email delivery (digests are email only), and doesn't need email set up.
-import { and, desc, eq, gt, isNull, like, lt, or } from 'drizzle-orm';
+import { and, desc, eq, gt, isNull, like, lt, lte, notLike, or } from 'drizzle-orm';
 import { env } from '$env/dynamic/private';
 import { fmtRange, fmtValue, paramUnit, shortName, statusOf } from '$lib/params';
 import { dueInfo, intervalText, isRoutine } from '$lib/tasks';
@@ -420,6 +420,30 @@ export async function alertOutOfRange(user: User, tankId: string, testId: string
 			{ at: test.takenAt, logged: `${loggedDay === today ? 'today' : fmtDate(loggedDay)} at ${fmtTime(test.takenAt, person.timeZone)}${by}` },
 			base
 		).catch((e) => logger.error('email', "A test's out-of-range alert didn't send", { userId, tankId: tank.id, error: e }));
+	}
+}
+
+/**
+ * A test's out-of-range alert that failed to send is tried again here (#334): it's
+ * asked for only once, when the test is saved, so without this its retry never came.
+ * Sent again as when it was saved, as by whoever logged it (or the owner); those
+ * it already reached aren't sent it twice, and a test over a day old isn't alerted.
+ */
+export async function retryTestAlerts(now = new Date()) {
+	const due = db
+		.selectDistinct({ key: emailLog.key })
+		.from(emailLog)
+		.where(and(lte(emailLog.retryAt, now.toISOString()), or(like(emailLog.key, 'oor:%'), like(emailLog.key, 'push:oor:%')), notLike(emailLog.key, '%oor:sensor:%')))
+		.all();
+	const testIds = new Set(due.map((r) => r.key.replace(/^push:/, '').slice('oor:'.length)));
+	for (const testId of testIds) {
+		const test = db.select({ tankId: tests.tankId, loggedBy: tests.loggedBy }).from(tests).where(eq(tests.id, testId)).get();
+		if (!test) continue;
+		const tank = db.select({ userId: tanks.userId }).from(tanks).where(eq(tanks.id, test.tankId)).get();
+		const logged = test.loggedBy ? getUser(test.loggedBy) : null;
+		const by = logged && listTanks(logged.id).some((t) => t.id === test.tankId) ? logged : tank ? getUser(tank.userId) : null;
+		if (!by) continue;
+		await alertOutOfRange(by, test.tankId, testId).catch((e) => logger.error('email', "A test's out-of-range alert didn't send", { tankId: test.tankId, error: e }));
 	}
 }
 
