@@ -95,12 +95,12 @@ sw.addEventListener('fetch', (event) => {
 	if (url.pathname.startsWith('/media/')) {
 		// thumbnails are kept here, for the dashboard and lists offline; a full-size photo is left to the
 		// browser's own cache (it's served immutable for a year), so viewing photos doesn't fill the device (#241)
-		if (isThumb(url)) event.respondWith(cacheFirst(req, MEDIA, MEDIA_MAX));
+		if (isThumb(url)) event.respondWith(cacheFirst(event, MEDIA, MEDIA_MAX));
 		return;
 	}
 
 	const isPage = req.mode === 'navigate' || url.pathname.endsWith('/__data.json');
-	if (isPage) event.respondWith(networkFirst(req));
+	if (isPage) event.respondWith(networkFirst(event));
 });
 
 const isThumb = (url: URL) => url.searchParams.get('size') === 'thumb';
@@ -130,32 +130,76 @@ async function dropFullSize() {
 	await trim(cache, MEDIA_MAX);
 }
 
-async function cacheFirst(req: Request, name: string, max: number) {
+async function cacheFirst(event: FetchEvent, name: string, max: number) {
+	const req = event.request;
 	const cache = await caches.open(name);
 	const hit = await cache.match(req);
 	if (hit) return hit;
 	const res = await fetch(req);
-	if (res.ok) void keep(cache, req, res.clone(), max);
+	// kept before the worker may stop (#336)
+	if (res.ok) event.waitUntil(keep(cache, req, res.clone(), max));
 	return res;
 }
 
-async function networkFirst(req: Request) {
-	const cache = await caches.open(PAGES);
+// With a copy kept, how long the network gets before the copy is shown (#336): with
+// Wi-Fi up but no way out, a fetch can hang for tens of seconds before it fails.
+const NETWORK_WAIT_MS = 4000;
+// where a signed-out visit is sent: the pages kept for the last person go
+const SIGNED_OUT = /^\/(signin|welcome|public)(\/|\?|$)/;
+
+/**
+ * A page's data that is a redirect, not data (SvelteKit sends one as a 200 JSON
+ * `{type: 'redirect'}`): never kept, and signed out clears what's kept (#336).
+ */
+async function dataRedirect(res: Response): Promise<string | null> {
+	if (!res.headers.get('content-type')?.includes('application/json')) return null;
 	try {
-		const res = await fetch(req);
-		// Signed out, or the session was revoked (#108): what's kept for them goes on the first contact
-		if (res.redirected && new URL(res.url).pathname.startsWith('/signin')) await clearUserCaches();
-		// Only keep real pages, not redirects to sign-in or errors.
-		else if (res.ok && !res.redirected && res.type === 'basic') void keep(cache, req, res.clone(), PAGES_MAX);
-		return res;
+		const body = (await res.clone().json()) as { type?: string; location?: string };
+		return body?.type === 'redirect' ? (body.location ?? '') : null;
 	} catch {
-		const hit = await cache.match(req, { ignoreVary: true });
+		return null;
+	}
+}
+
+async function networkFirst(event: FetchEvent) {
+	const req = event.request;
+	const cache = await caches.open(PAGES);
+	const hit = await cache.match(req, { ignoreVary: true });
+	const fresh = (async () => {
+		const res = await fetch(req);
+		const isData = new URL(req.url).pathname.endsWith('/__data.json');
+		const redirect = isData && res.ok ? await dataRedirect(res) : null;
+		// Signed out, or the session was revoked (#108): what's kept for them goes on the first contact.
+		// A navigation's own redirect can't be read here (it's opaque); the sign-in page, the
+		// homepage and the public home tell the worker instead.
+		if (redirect != null) {
+			if (SIGNED_OUT.test(new URL(redirect, req.url).pathname)) await clearUserCaches();
+		}
+		// Only keep real pages and data, not redirects or errors.
+		else if (res.ok && res.type === 'basic') event.waitUntil(keep(cache, req, res.clone(), PAGES_MAX));
+		return res;
+	})();
+	// the copy it falls back on
+	const fallback = async () => {
 		if (hit) return hit;
 		if (req.mode === 'navigate') {
 			const home = await cache.match('/', { ignoreSearch: true });
 			if (home) return home;
 		}
 		return new Response(offlinePage, { status: 503, headers: { 'content-type': 'text/html; charset=utf-8' } });
+	};
+	if (!hit) return fresh.catch(fallback);
+	// a copy is kept: the network has a few seconds, then the copy shows (the fetch carries on and keeps what it gets)
+	event.waitUntil(fresh.then(() => undefined, () => undefined));
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const late = new Promise<'late'>((resolve) => (timer = setTimeout(() => resolve('late'), NETWORK_WAIT_MS)));
+	try {
+		const res = await Promise.race([fresh, late]);
+		return res === 'late' ? hit : res;
+	} catch {
+		return hit;
+	} finally {
+		clearTimeout(timer);
 	}
 }
 

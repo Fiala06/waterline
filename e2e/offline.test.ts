@@ -254,3 +254,21 @@ test('a session ended elsewhere clears the pages kept for it on the next visit',
 	await expect(page).toHaveURL(/\/signin/);
 	await expect.poll(pages).toBe(0);
 });
+
+// #336: a network that hangs (Wi-Fi up, no way out) shows the kept page after a few seconds, not tens
+test('a network that hangs shows the kept page after a few seconds', async ({ page, context }, info) => {
+	test.skip(info.project.name !== 'desktop', 'one size is enough');
+	await newKeeperWithTank(page, `hang-${info.project.name}`);
+	await page.evaluate(() => navigator.serviceWorker.ready);
+	await open(page, '/history');
+	await open(page, '/history');
+	const kept = () => page.evaluate(async () => (await Promise.all((await caches.keys()).filter((k) => k.startsWith('pages-')).map(async (k) => (await (await caches.open(k)).keys()).map((r) => new URL(r.url).pathname)))).flat());
+	await expect.poll(kept).toContain('/history');
+	// the worker's fetch of the page never answers
+	await context.route('**/history', () => {});
+	const start = Date.now();
+	await page.goto('/history', { timeout: 15_000 });
+	await expect(page.getByRole('searchbox', { name: 'Search History' })).toBeVisible();
+	expect(Date.now() - start).toBeLessThan(9000);
+	await context.unrouteAll({ behavior: 'ignoreErrors' });
+});

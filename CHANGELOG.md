@@ -20,6 +20,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 - **Cycling from Tank setup.** Ticking or unticking "This tank is still cycling" in Tank setup now notes the cycle's start or end in History, so a restarted cycle only counts its own tests: [Tank setup](/tanks/current/settings).
 - **Safer admin sign-in.** The limit on wrong admin passwords can't be got round by sending many at once, and a failed sign-in no longer writes the typed username to the server log: [Server settings](/settings/server).
 - **Fresh share images.** The picture shown when your public page is shared now updates when readings are edited, targets, units or the start date change, and as "tested today" gets older: [Public page](/tanks/current/public).
+- **Offline pages after signing out.** Pages kept for offline use are cleared when your session ends, even when the app opens on the homepage instead of sign-in, and with Wi-Fi up but no way through, a kept page shows after a few seconds instead of a long wait: [Settings › Data](/settings#data).
 
 ## 1.23.4 · 2026-11-21
 

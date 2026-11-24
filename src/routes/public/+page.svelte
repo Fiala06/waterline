@@ -1,6 +1,11 @@
 <script lang="ts">
 	import Logo from '$lib/components/Logo.svelte';
+	import { onMount } from 'svelte';
 	let { data } = $props();
+	// signed out (a revoked session lands here, not on sign-in): forget what's kept offline for the last person (#336)
+	onMount(() => {
+		if (!data.signedIn) navigator.serviceWorker?.controller?.postMessage('clear-user-cache');
+	});
 </script>
 
 <svelte:head>
