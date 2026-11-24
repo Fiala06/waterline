@@ -1,4 +1,5 @@
 import { fail, redirect, type RequestEvent } from '@sveltejs/kit';
+import { safeReturn } from './redirect';
 import { visibleTo } from './members';
 import { and, desc, eq } from 'drizzle-orm';
 import { DOSING_UNITS } from '$lib/events';
@@ -385,7 +386,8 @@ export async function saveTaskAction({ request, locals, cookies }: RequestEvent,
 	} else createTask(user.id, input.tankId, input);
 	setFlash(cookies, existing ? (isRoutine(input.kind) ? '✓ Routine saved' : '✓ Task saved') : `✓ ${input.name} added`);
 	// a routine made from a tank's page goes back there
-	redirect(303, isRoutine(input.kind) && !existing && str(form, 'from').startsWith('/tanks/') ? str(form, 'from') : '/tasks');
+	const back = safeReturn(form.get('from'), '/tasks');
+	redirect(303, isRoutine(input.kind) && !existing && back.startsWith('/tanks/') ? back : '/tasks');
 }
 
 /**

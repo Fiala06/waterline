@@ -12,6 +12,7 @@ import { db } from './db';
 import { requireRoleOn, visibleTo } from './members';
 import { events, photos, publicPages, tanks, tests } from './db/schema';
 import { getTank } from './tanks';
+import { parseWhen } from './forms';
 
 export const MAX_PHOTO_BYTES = 20 * 1024 * 1024;
 export const MAX_PHOTOS_PER_ENTRY = 10;
@@ -117,6 +118,23 @@ export async function storeOnePhoto(form: FormData, tankId: string, timeZone: st
 	if ('error' in prepared) return prepared;
 	const [photo] = await storePhotos(tankId, datePhotos(prepared, timeZone), { takenAt: new Date().toISOString() });
 	return { photo };
+}
+
+/**
+ * A log form's date and time, then its photos checked and read (#361): what
+ * the entry is saved with, or what's wrong and with which field.
+ */
+export async function whenAndPhotos(
+	form: FormData,
+	timeZone: string,
+	files = photoFiles(form),
+	hints: (string | null)[] = []
+): Promise<{ at: string; prepared: PreparedPhoto[] } | { error: string; field: 'when' | 'photos' }> {
+	const when = parseWhen(form, timeZone);
+	if ('error' in when) return { error: when.error, field: 'when' };
+	const prepared = await preparePhotos(files, hints);
+	if ('error' in prepared) return { error: prepared.error, field: 'photos' };
+	return { at: when.at, prepared };
 }
 
 /** Save prepared photos: every file, then every row, or none of them (#118). */

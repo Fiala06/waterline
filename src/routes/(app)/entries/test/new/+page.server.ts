@@ -8,7 +8,7 @@ import { photoFiles, preparePhotos, storePhotos } from '$lib/server/photos';
 import { alertOutOfRange } from '$lib/server/notifications';
 import { getTank, listParams, reusableCustomParams } from '$lib/server/tanks';
 import { kitsByParam } from '$lib/server/kits';
-import { safeReturn } from '$lib/server/redirect';
+import { goBack, safeReturn } from '$lib/server/redirect';
 import type { Actions, PageServerLoad } from './$types';
 import { logger } from '$lib/server/log';
 
@@ -102,6 +102,6 @@ export const actions: Actions = {
 			`✓ Saved ${n} reading${n === 1 ? '' : 's'}${wc ? ' + water change' : ''}${result.outOfRange ? ` · ${result.outOfRange} out of range` : ''}`,
 			{ view: `/entries/test/${result.test.id}` }
 		);
-		redirect(303, safeReturn(form.get('from'), `/?tank=${tank.id}`));
+		goBack(form, `/?tank=${tank.id}`);
 	}
 };

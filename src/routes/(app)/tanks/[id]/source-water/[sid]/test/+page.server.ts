@@ -4,7 +4,7 @@ import { redirect } from '@sveltejs/kit';
 import { paramDecimals, paramUnit, shortName } from '$lib/params';
 import { isDate, todayInZone, zonedToUtc } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
-import { optStr, refuse, str } from '$lib/server/forms';
+import { formValues, optStr, refuse, str } from '$lib/server/forms';
 import { parseReadings } from '$lib/server/log-forms';
 import { listParams } from '$lib/server/tanks';
 import { SOURCE_KIND_LABEL, addSourceTest, getSource } from '$lib/server/water-sources';
@@ -27,7 +27,7 @@ export const actions: Actions = {
 		const source = getSource(user.id, params.id, params.sid);
 		const form = await request.formData();
 		const { readings, errors } = parseReadings(form, listParams(params.id), user);
-		const values = Object.fromEntries([...form.entries()].filter(([, v]) => typeof v === 'string'));
+		const values = formValues(form);
 		if (Object.keys(errors).length) return refuse('test', errors, values);
 		if (!readings.size) return refuse('test', 'Enter at least one reading.', values);
 		// the day it was tested: today is now, an earlier day its midday

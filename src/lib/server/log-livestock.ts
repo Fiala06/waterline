@@ -140,9 +140,9 @@ export function logHealth(user: User, tank: Tank, form: FormData, at: string): {
 			category: 'health',
 			occurredAt: at,
 			note: v.note.slice(0, 4000) || null,
-			data: { livestockIds: chosen.map((l) => l.id), names: chosen.map(livestockLabel), symptoms, treatment, outcome: v.outcome },
-			clientId: optStr(form, 'clientId', 64)
+			data: { livestockIds: chosen.map((l) => l.id), names: chosen.map(livestockLabel), symptoms, treatment, outcome: v.outcome }
 		},
+		// these forms are never queued offline, so there's no clientId to replay (#361)
 		{ timeZone: user.timeZone }
 	);
 	// lost one animal: one fewer in the tank

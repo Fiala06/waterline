@@ -54,9 +54,9 @@ export function logPlantHealth(user: User, tank: Tank, form: FormData, at: strin
 			category: 'observation',
 			occurredAt: at,
 			note: v.note.slice(0, 4000) || null,
-			data: { kind: 'plant', plant_ids: chosen.map((p) => p.id), plants: chosen.map((p) => p.name), observation: v.observation, tags: [] },
-			clientId: optStr(form, 'clientId', 64)
+			data: { kind: 'plant', plant_ids: chosen.map((p) => p.id), plants: chosen.map((p) => p.name), observation: v.observation, tags: [] }
 		},
+		// these forms are never queued offline, so there's no clientId to replay (#361)
 		{ timeZone: user.timeZone }
 	);
 	const status = plantStatusAfter(v.observation);
@@ -83,9 +83,9 @@ export function logAlgae(user: User, tank: Tank, form: FormData, at: string): { 
 			category: 'observation',
 			occurredAt: at,
 			note: optStr(form, 'note', 4000),
-			data: { kind: 'algae', algae, severity, ...(area ? { area } : {}), tags: ['Algae'] },
-			clientId: optStr(form, 'clientId', 64)
+			data: { kind: 'algae', algae, severity, ...(area ? { area } : {}), tags: ['Algae'] }
 		},
+		// these forms are never queued offline, so there's no clientId to replay (#361)
 		{ timeZone: user.timeZone }
 	);
 	return { eventId: event.id };

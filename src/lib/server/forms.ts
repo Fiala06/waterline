@@ -157,3 +157,20 @@ export function parseWhen(
 export function parseTimeZone(value: string, fallback: string) {
   return value && isValidTimeZone(value) ? value : fallback;
 }
+
+/**
+ * The form as posted, to fill it in again after an error: each field's text
+ * (the first, when it's sent more than once), or every value for the fields
+ * named in `multi`. Files are left out.
+ */
+export function formValues(form: FormData): Record<string, string>;
+export function formValues(form: FormData, multi: readonly string[]): Record<string, string | string[]>;
+export function formValues(form: FormData, multi: readonly string[] = []): Record<string, string | string[]> {
+  const values: Record<string, string | string[]> = {};
+  for (const k of new Set(form.keys())) {
+    const all = form.getAll(k).filter((v): v is string => typeof v === "string");
+    if (!all.length) continue;
+    values[k] = multi.includes(k) ? all : all[0];
+  }
+  return values;
+}

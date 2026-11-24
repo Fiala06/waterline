@@ -1,4 +1,5 @@
 import { redirect } from '@sveltejs/kit';
+import { safeReturn } from '$lib/server/redirect';
 import { formTanks, routineProducts, saveTaskAction, taskFormValues, taskPreset, taskType } from '$lib/server/task-form';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -11,7 +12,7 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 	const tankId = tanks.find((t) => t.id === url.searchParams.get('tank'))?.id ?? currentTankId;
 	// ?type=dosing or feeding: a routine (#17); ?from: where it was started, to go back to
 	const type = taskType(url.searchParams.get('type'));
-	const from = url.searchParams.get('from') ?? '';
+	const from = safeReturn(url.searchParams.get('from'), '');
 	return {
 		formTanks: tanks,
 		// ?product, ?every, ?ends, ?amount: filled in by a link (a treatment course from a health entry)

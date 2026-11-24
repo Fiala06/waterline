@@ -6,7 +6,7 @@ import { str } from '$lib/server/forms';
 import { applyHistory, applyImport, historyContext, listImports, previewHistory, previewImport, undoImport, undoneText } from '$lib/server/import';
 import { historyColumns, readHistory, trackedOnly } from '$lib/server/import-history';
 import { columnMapOf, importColumns, MAX_ROWS, validValue, wordMapOf, type FileColumn, type ImportValue, type LivestockValue } from '$lib/server/import-rows';
-import { safeReturn } from '$lib/server/redirect';
+import { goBack } from '$lib/server/redirect';
 import { getTank } from '$lib/server/tanks';
 import type { Tank, User } from '$lib/server/db/schema';
 import type { ImportKind } from '$lib/types';
@@ -158,6 +158,6 @@ export const actions: Actions = {
 		const imp = undoImport(locals.user!.id, str(form, 'importId'));
 		if (!imp.already) logger.info('import', `Undid the import of ${imp.summary}`, { userId: locals.user!.id, kind: imp.kind });
 		setFlash(cookies, undoneText(imp));
-		redirect(303, safeReturn(form.get('from'), `/tanks/${params.id}/import/${params.list}`));
+		goBack(form, `/tanks/${params.id}/import/${params.list}`);
 	}
 };

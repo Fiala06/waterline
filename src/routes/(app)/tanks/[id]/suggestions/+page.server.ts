@@ -4,7 +4,7 @@ import { isSuggestionRule, SUGGESTION_RULES } from '$lib/suggestions';
 import { setFlash } from '$lib/server/flash';
 import { str } from '$lib/server/forms';
 import { latestReadings } from '$lib/server/logs';
-import { safeReturn } from '$lib/server/redirect';
+import { goBack, safeReturn } from '$lib/server/redirect';
 import { setSuggestion, tankSuggestions } from '$lib/server/suggestions';
 import { getTank } from '$lib/server/tanks';
 import { getTask, setTempCadence } from '$lib/server/tasks';
@@ -61,7 +61,7 @@ export const actions: Actions = {
 		const rule = str(form, 'rule');
 		if (isSuggestionRule(rule)) setSuggestion(tank.id, rule, false);
 		setFlash(cookies, `Won’t suggest that for ${tank.name}`, { undo: { action: `/tanks/${tank.id}/suggestions?/on`, name: 'rule', value: rule } });
-		redirect(303, safeReturn(form.get('from'), `/?tank=${tank.id}`));
+		goBack(form, `/?tank=${tank.id}`);
 	},
 	on: async ({ request, locals, params, cookies }) => {
 		const tank = getTank(locals.user!.id, params.id, 'owner');
@@ -69,6 +69,6 @@ export const actions: Actions = {
 		const rule = str(form, 'rule');
 		if (isSuggestionRule(rule)) setSuggestion(tank.id, rule, true);
 		setFlash(cookies, 'Undid it');
-		redirect(303, safeReturn(form.get('from'), `/?tank=${tank.id}`));
+		goBack(form, `/?tank=${tank.id}`);
 	}
 };

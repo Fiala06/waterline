@@ -1,9 +1,9 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { fail } from '@sveltejs/kit';
 import { reminderDue } from '$lib/tasks';
 import { fmtDate, todayInZone } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
 import { str } from '$lib/server/forms';
-import { safeReturn } from '$lib/server/redirect';
+import { goBack, safeReturn } from '$lib/server/redirect';
 import { getTank } from '$lib/server/tanks';
 import { createTask } from '$lib/server/tasks';
 import type { Actions, PageServerLoad } from './$types';
@@ -41,6 +41,6 @@ export const actions: Actions = {
 			openFormOnDone: false
 		});
 		setFlash(cookies, `✓ Reminder set for ${fmtDate(due)}`);
-		redirect(303, safeReturn(form.get('from'), `/tanks/${tank.id}`));
+		goBack(form, `/tanks/${tank.id}`);
 	}
 };

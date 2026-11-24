@@ -3,7 +3,7 @@ import { paramTip, whenToTest } from "$lib/tips";
 import { parseTestEvery } from "$lib/status";
 import { defaultParameters, fmtTarget, paramDecimals, paramGroup, paramLevel, paramUnit, storedValue } from "$lib/params";
 import { setFlash } from "$lib/server/flash";
-import { num, refuse, str } from "$lib/server/forms";
+import { formValues, num, refuse, str } from "$lib/server/forms";
 import {
   addCustomParam,
   deleteCustomParam,
@@ -142,9 +142,7 @@ export const actions: Actions = {
       3,
       Math.max(0, Math.round(num(form, "decimals") ?? 2)),
     );
-    const values = Object.fromEntries(
-      [...form].map(([k, v]) => [k, String(v)]),
-    );
+    const values = formValues(form);
     if (!name) return refuse("custom", "Give the parameter a name.", values);
     if (min != null && max != null && min > max)
       return refuse("custom", "Min must be below max.", values);

@@ -2,7 +2,7 @@ import { error, redirect } from '@sveltejs/kit';
 import { addDays, fmtDate, isDate, todayInZone, utcToZoned, zonedToUtc } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
 import { str } from '$lib/server/forms';
-import { safeReturn } from '$lib/server/redirect';
+import { goBack, safeReturn } from '$lib/server/redirect';
 import { listPlanRuns } from '$lib/server/plans';
 import { clearTextOf } from '$lib/server/suggestions';
 import { formTanks, routineProducts, taskFormValues, taskType } from '$lib/server/task-form';
@@ -96,7 +96,7 @@ export const actions: Actions = {
 		setFlash(cookies, `✓ ${task.name} done${earlier ? ` ${fmtDate(earlier)}` : ''}${done.nextDue ? ` · next ${fmtDate(done.nextDue)}` : ''}`, {
 			undo: { action: '/tasks?/undo', name: 'completionId', value: done.completionId }
 		});
-		redirect(303, safeReturn(form.get('from'), '/tasks'));
+		goBack(form, '/tasks');
 	},
 	snooze: async ({ request, locals, cookies }) => {
 		const user = locals.user!;
@@ -113,7 +113,7 @@ export const actions: Actions = {
 		setFlash(cookies, due && date < due ? `Moved ${task.name} to ${date === today ? 'today' : fmtDate(date)}` : `Snoozed ${task.name} to ${fmtDate(date)}`, {
 			undo: { action: '/tasks?/unsnooze', name: 'taskId', value: `${task.id}|${due ?? ''}` }
 		});
-		redirect(303, safeReturn(form.get('from'), '/tasks'));
+		goBack(form, '/tasks');
 	},
 	/** Undo a snooze or a move: back to the date it had */
 	unsnooze: async ({ request, locals, cookies }) => {
@@ -123,7 +123,7 @@ export const actions: Actions = {
 		const task = getTask(user.id, taskId);
 		snoozeTask(user.id, taskId, isDate(was) ? was : (task.nextDue ?? ''));
 		setFlash(cookies, `Undid ${task.name}`);
-		redirect(303, safeReturn(form.get('from'), '/tasks'));
+		goBack(form, '/tasks');
 	},
 	/** Count the water change or test already logged as this one (#163), instead of skipping it */
 	count: async ({ request, locals, cookies }) => {
@@ -142,7 +142,7 @@ export const actions: Actions = {
 		setFlash(cookies, `✓ ${task.name} done ${fmtDate(entry.date)}${done.nextDue ? ` · next ${fmtDate(done.nextDue)}` : ''}`, {
 			undo: { action: '/tasks?/undo', name: 'completionId', value: done.completionId }
 		});
-		redirect(303, safeReturn(form.get('from'), '/tasks'));
+		goBack(form, '/tasks');
 	},
 	/**
 	 * Several done at once (#176): each as by its own Done, on the day or the day
@@ -170,7 +170,7 @@ export const actions: Actions = {
 			.filter(Boolean)
 			.join(' · ');
 		setFlash(cookies, text, done.length ? { undo: { action: '/tasks?/undoMany', name: 'completions', value: done.join(',') } } : {});
-		redirect(303, safeReturn(form.get('from'), '/tasks'));
+		goBack(form, '/tasks');
 	},
 	/** Undo several done at once */
 	undoMany: async ({ request, locals, cookies }) => {
@@ -179,7 +179,7 @@ export const actions: Actions = {
 		const ids = str(form, 'completions').split(',').filter(Boolean).slice(0, 50);
 		for (const id of ids) undoCompletion(user.id, id);
 		setFlash(cookies, `Undid ${ids.length === 1 ? '1 task' : `${ids.length} tasks`}`);
-		redirect(303, safeReturn(form.get('from'), '/tasks'));
+		goBack(form, '/tasks');
 	},
 	/** End a course before its last day (#174), with Undo */
 	endCourse: async ({ request, locals, cookies }) => {
@@ -187,14 +187,14 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const note = endCourseEarly(user.id, str(form, 'taskId'));
 		setFlash(cookies, 'Course ended early', { undo: { action: '/tasks?/reopenCourse', name: 'note', value: note.id } });
-		redirect(303, safeReturn(form.get('from'), '/tasks'));
+		goBack(form, '/tasks');
 	},
 	reopenCourse: async ({ request, locals, cookies }) => {
 		const user = locals.user!;
 		const form = await request.formData();
 		const task = reopenCourse(user.id, str(form, 'note'));
 		setFlash(cookies, `Undid ${task.name}`);
-		redirect(303, safeReturn(form.get('from'), '/tasks'));
+		goBack(form, '/tasks');
 	},
 	/** Resume a paused task now (#172), its dates moved on by the days it was paused */
 	resume: async ({ request, locals, cookies }) => {
@@ -202,7 +202,7 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const task = resumeTask(user.id, str(form, 'taskId'), user.timeZone);
 		setFlash(cookies, `Resumed ${task.name}`);
-		redirect(303, safeReturn(form.get('from'), '/tasks'));
+		goBack(form, '/tasks');
 	},
 	/** Undo a pause: as it was, and out of History */
 	unpause: async ({ request, locals, cookies }) => {
@@ -210,7 +210,7 @@ export const actions: Actions = {
 		const form = await request.formData();
 		unpauseTasks(user.id, str(form, 'notes').split(',').filter(Boolean));
 		setFlash(cookies, 'Undid the pause');
-		redirect(303, safeReturn(form.get('from'), '/tasks'));
+		goBack(form, '/tasks');
 	},
 	/** Skip this one (#71): on to the next date, with Undo */
 	skip: async ({ request, locals, cookies }) => {
@@ -222,12 +222,12 @@ export const actions: Actions = {
 		setFlash(cookies, `Skipped ${task.name} · next ${fmtDate(task.nextDue)}`, {
 			undo: { action: '/tasks?/undo', name: 'completionId', value: task.completionId }
 		});
-		redirect(303, safeReturn(form.get('from'), '/tasks'));
+		goBack(form, '/tasks');
 	},
 	undo: async ({ request, locals, cookies }) => {
 		const form = await request.formData();
 		const task = undoCompletion(locals.user!.id, str(form, 'completionId'));
 		setFlash(cookies, `Undid ${task.name}`);
-		redirect(303, safeReturn(form.get('from'), '/tasks'));
+		goBack(form, '/tasks');
 	}
 };

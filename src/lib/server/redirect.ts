@@ -1,3 +1,5 @@
+import { redirect } from '@sveltejs/kit';
+
 /**
  * Only allow same-site paths as post-action redirect targets. Control
  * characters and backslashes are refused too: browsers strip or rewrite them,
@@ -7,4 +9,9 @@ export function safeReturn(value: FormDataEntryValue | string | null | undefined
 	const s = typeof value === 'string' ? value : '';
 	if (!s.startsWith('/') || /[\u0000-\u001f\u007f\\]/.test(s)) return fallback;
 	return new URL(s, 'http://x').origin === 'http://x' ? s : fallback;
+}
+
+/** After a form's action: back to the page it was sent from (its `from` field), else `fallback`. */
+export function goBack(form: FormData, fallback: string): never {
+	redirect(303, safeReturn(form.get('from'), fallback));
 }

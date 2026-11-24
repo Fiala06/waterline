@@ -1,7 +1,7 @@
 import { rememberOptions, TANK_COOKIE } from '$lib/remember';
 import { fail, redirect, type RequestEvent } from '@sveltejs/kit';
 import { setFlash } from './flash';
-import { parseTankForm } from './forms';
+import { formValues, parseTankForm } from './forms';
 import { createTank } from './tanks';
 
 /** Shared action for setup step 2 and /tanks/new. */
@@ -10,7 +10,7 @@ export async function createTankAction({ request, locals, cookies }: RequestEven
 	const form = await request.formData();
 	const { errors, values } = parseTankForm(form, user);
 	if (Object.keys(errors).length) {
-		return fail(400, { errors, values: Object.fromEntries([...form].map(([k, v]) => [k, String(v)])) });
+		return fail(400, { errors, values: formValues(form) });
 	}
 	const tank = createTank(user, values);
 	cookies.set(TANK_COOKIE, tank.id, rememberOptions);

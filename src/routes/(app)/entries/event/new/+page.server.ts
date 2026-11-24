@@ -1,9 +1,9 @@
 import { error, fail, redirect } from '@sveltejs/kit';
-import { EQUIPMENT_REASONS, RECHECK_OPTIONS, taskKindFor } from '$lib/events';
+import { EQUIPMENT_REASONS, EVENT_MULTI_FIELDS, RECHECK_OPTIONS, taskKindFor } from '$lib/events';
 import { bySpecies, livestockLabel, speciesWater } from '$lib/livestock';
 import { addDays, dateInZone, fmtDate } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
-import { optStr, parseWhen, str } from '$lib/server/forms';
+import { formValues, optStr, str } from '$lib/server/forms';
 import {
 	completableTask,
 	eventFormContext,
@@ -11,14 +11,14 @@ import {
 	parseEventData
 } from '$lib/server/log-forms';
 import { createEvent, eventByClientId, recentAdditives, recentDosingProducts, recentFoods } from '$lib/server/logs';
-import { photoFiles, preparePhotos, storePhotos } from '$lib/server/photos';
+import { photoFiles, storePhotos, whenAndPhotos } from '$lib/server/photos';
 import { listProducts } from '$lib/server/products';
 import { getTank } from '$lib/server/tanks';
 import { createTask, dosingRoutines } from '$lib/server/tasks';
 import { equipmentName } from '$lib/equipment';
 import { handleLinkedLivestock } from '$lib/server/log-livestock';
 import { getEquipment, listEquipment, listLivestock, listPlants, markServiced, removeEquipment } from '$lib/server/specs';
-import { safeReturn } from '$lib/server/redirect';
+import { goBack, safeReturn } from '$lib/server/redirect';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, url, parent }) => {
@@ -101,11 +101,7 @@ export const actions: Actions = {
 		const tank = getTank(user.id, tankId, 'log');
 		const category = parseCategory(url.searchParams.get('category'));
 		const form = await request.formData();
-		const values: Record<string, string | string[]> = {};
-		for (const k of new Set(form.keys())) {
-			const all = form.getAll(k).map(String);
-			values[k] = ['actions', 'tags', 'reasons', 'additive_product', 'additive_amount', 'additive_unit'].includes(k) ? all : all[0];
-		}
+		const values = formValues(form, EVENT_MULTI_FIELDS);
 
 		const files = photoFiles(form);
 
@@ -115,14 +111,12 @@ export const actions: Actions = {
 
 		// Linked livestock/plant changes update the tank's lists and write their own entry.
 		if (category === 'livestock' && form.get('linked') === '1') {
-			const when = parseWhen(form, user.timeZone);
-			if ('error' in when) return fail(400, { errors: {}, values, error: when.error });
-			const prepared = await preparePhotos(files);
-			if ('error' in prepared) return fail(400, { errors: {}, values, error: prepared.error });
-			const r = handleLinkedLivestock(user, tank, form, when.at);
+			const w = await whenAndPhotos(form, user.timeZone, files);
+			if ('error' in w) return fail(400, { errors: {}, values, error: w.error });
+			const r = handleLinkedLivestock(user, tank, form, w.at);
 			if (r && 'errors' in r) return fail(400, { errors: r.errors, values, error: null });
 			if (r) {
-				if (r.eventId) await storePhotos(tank.id, prepared, { eventId: r.eventId, takenAt: when.at });
+				if (r.eventId) await storePhotos(tank.id, w.prepared, { eventId: r.eventId, takenAt: w.at });
 				setFlash(cookies, r.message, r.eventId ? { view: `/entries/event/${r.eventId}` } : {});
 				redirect(303, `/?tank=${tank.id}`);
 			}
@@ -134,13 +128,11 @@ export const actions: Actions = {
 		if (eqItem && eqItem.tankId !== tank.id) error(400, 'Equipment belongs to another tank');
 		if (eqItem && category === 'equipment') form.set('item', equipmentName(eqItem));
 		if (eqItem && category === 'equipment' && str(form, 'action') === 'removed') {
-			const when = parseWhen(form, user.timeZone);
-			if ('error' in when) return fail(400, { errors: {}, values, error: when.error });
-			const prepared = await preparePhotos(files);
-			if ('error' in prepared) return fail(400, { errors: {}, values, error: prepared.error });
+			const w = await whenAndPhotos(form, user.timeZone, files);
+			if ('error' in w) return fail(400, { errors: {}, values, error: w.error });
 			const reasons = form.getAll('reasons').map(String).filter((r) => EQUIPMENT_REASONS.includes(r));
-			const r = removeEquipment(user.id, eqItem.id, { at: when.at, note: optStr(form, 'note'), clientId, reasons });
-			await storePhotos(tank.id, prepared, { eventId: r.event.id, takenAt: when.at });
+			const r = removeEquipment(user.id, eqItem.id, { at: w.at, note: optStr(form, 'note'), clientId, reasons });
+			await storePhotos(tank.id, w.prepared, { eventId: r.event.id, takenAt: w.at });
 			setFlash(cookies, `${equipmentName(eqItem)} removed${r.tasksRemoved ? ' with its reminder' : ''}`);
 			redirect(303, `/?tank=${tank.id}`);
 		}
@@ -154,10 +146,9 @@ export const actions: Actions = {
 			delete errors.actions;
 		}
 		if (Object.keys(errors).length) return fail(400, { errors, values, error: null });
-		const when = parseWhen(form, user.timeZone);
-		if ('error' in when) return fail(400, { errors, values, error: when.error });
-		const prepared = await preparePhotos(files);
-		if ('error' in prepared) return fail(400, { errors, values, error: prepared.error });
+		const w = await whenAndPhotos(form, user.timeZone, files);
+		if ('error' in w) return fail(400, { errors, values, error: w.error });
+		const { at, prepared } = w;
 
 		const completeTaskId = optStr(form, 'completeTask', 64);
 
@@ -165,17 +156,17 @@ export const actions: Actions = {
 		// only the choices the form offers (#328: a huge number threw in addDays)
 		const recheckPick = category === 'observation' ? String(form.get('recheck') ?? '') : '';
 		const recheck = RECHECK_OPTIONS.some((o) => o.value && o.value === recheckPick) ? Number(recheckPick) : null;
-		if (recheck) data.recheck_at = addDays(dateInZone(when.at, user.timeZone), recheck);
+		if (recheck) data.recheck_at = addDays(dateInZone(at, user.timeZone), recheck);
 
 		const { event, duplicate, done } = createEvent(
 			user.id,
 			tank.id,
-			{ category, occurredAt: when.at, note: optStr(form, 'note'), data, clientId },
+			{ category, occurredAt: at, note: optStr(form, 'note'), data, clientId },
 			{ completeTaskId, timeZone: user.timeZone }
 		);
 
-		if (!duplicate) await storePhotos(tank.id, prepared, { eventId: event.id, takenAt: when.at });
-		if (!duplicate && eqItem && category === 'maintenance') markServiced(user.id, eqItem.id, when.at, { timeZone: user.timeZone, eventId: event.id, alreadyDone: done?.id });
+		if (!duplicate) await storePhotos(tank.id, prepared, { eventId: event.id, takenAt: at });
+		if (!duplicate && eqItem && category === 'maintenance') markServiced(user.id, eqItem.id, at, { timeZone: user.timeZone, eventId: event.id, alreadyDone: done?.id });
 
 		if (!duplicate && typeof data.recheck_at === 'string') {
 			const tags = (data.tags as string[] | undefined) ?? [];
@@ -206,6 +197,6 @@ export const actions: Actions = {
 			message = `✓ Saved · task done`;
 		}
 		setFlash(cookies, message, { view: `/entries/event/${event.id}` });
-		redirect(303, safeReturn(form.get('from'), `/?tank=${tank.id}`));
+		goBack(form, `/?tank=${tank.id}`);
 	}
 };

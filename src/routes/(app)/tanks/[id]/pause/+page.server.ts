@@ -1,8 +1,8 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { fail } from '@sveltejs/kit';
 import { addDays, fmtDate, isDate, todayInZone } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
 import { str } from '$lib/server/forms';
-import { safeReturn } from '$lib/server/redirect';
+import { goBack, safeReturn } from '$lib/server/redirect';
 import { clearText } from '$lib/suggestions';
 import { getTank, listParams } from '$lib/server/tanks';
 import { listTasks, pauseTasks } from '$lib/server/tasks';
@@ -50,6 +50,6 @@ export const actions: Actions = {
 		setFlash(cookies, `Paused ${chosen.length === 1 ? '1 task' : `${chosen.length} tasks`} until ${clears ? clearText(clears) : fmtDate(until)}`, {
 			undo: { action: '/tasks?/unpause', name: 'notes', value: noteIds.join(',') }
 		});
-		redirect(303, safeReturn(form.get('from'), '/tasks'));
+		goBack(form, '/tasks');
 	}
 };

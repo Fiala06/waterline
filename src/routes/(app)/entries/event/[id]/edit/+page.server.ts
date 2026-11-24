@@ -1,8 +1,8 @@
 import { error, fail, redirect } from '@sveltejs/kit';
-import { eventTitle } from '$lib/events';
+import { EVENT_MULTI_FIELDS, eventTitle } from '$lib/events';
 import { dateInZone, fmtDate, loggedLine, utcToZoned } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
-import { optStr, parseWhen, str } from '$lib/server/forms';
+import { formValues, optStr, parseWhen, str } from '$lib/server/forms';
 import { eventFormContext, eventFormValues, parseEventData } from '$lib/server/log-forms';
 import { eventEditable } from '$lib/server/entry-view';
 import { getEvent, updateEvent } from '$lib/server/logs';
@@ -32,11 +32,7 @@ export const actions: Actions = {
 		if (!eventEditable(e)) error(400, "This entry can't be edited");
 		const tank = getTank(user.id, e.tankId, 'log');
 		const form = await request.formData();
-		const values: Record<string, string | string[]> = {};
-		for (const k of new Set(form.keys())) {
-			const all = form.getAll(k).map(String);
-			values[k] = ['actions', 'tags', 'reasons', 'additive_product', 'additive_amount', 'additive_unit'].includes(k) ? all : all[0];
-		}
+		const values = formValues(form, EVENT_MULTI_FIELDS);
 		const files = photoFiles(form);
 		const { data, errors } = parseEventData(e.category, form, tank, user);
 		// A water change amount left as shown keeps its litres and percent, which

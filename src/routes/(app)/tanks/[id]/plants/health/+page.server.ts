@@ -1,11 +1,11 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { fail } from '@sveltejs/kit';
 import { PLANT_OBSERVATIONS } from '$lib/plants';
 import { todayInZone, utcToZoned } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
-import { parseWhen, str } from '$lib/server/forms';
+import { str } from '$lib/server/forms';
 import { logPlantHealth, plantHealthValues } from '$lib/server/log-plants';
-import { photoFiles, photoHints, preparePhotos, storePhotos } from '$lib/server/photos';
-import { safeReturn } from '$lib/server/redirect';
+import { photoFiles, photoHints, storePhotos, whenAndPhotos } from '$lib/server/photos';
+import { goBack, safeReturn } from '$lib/server/redirect';
 import { listPlants } from '$lib/server/specs';
 import { getTank } from '$lib/server/tanks';
 import type { Actions, PageServerLoad } from './$types';
@@ -34,14 +34,12 @@ export const actions: Actions = {
 		const tank = getTank(user.id, params.id, 'log');
 		const form = await request.formData();
 		const values = { ...plantHealthValues(form), date: str(form, 'date'), time: str(form, 'time') };
-		const when = parseWhen(form, user.timeZone);
-		if ('error' in when) return fail(400, { errors: { when: when.error } as Record<string, string>, values });
-		const prepared = await preparePhotos(photoFiles(form), photoHints(form));
-		if ('error' in prepared) return fail(400, { errors: { photos: prepared.error } as Record<string, string>, values });
-		const r = logPlantHealth(user, tank, form, when.at);
+		const w = await whenAndPhotos(form, user.timeZone, photoFiles(form), photoHints(form));
+		if ('error' in w) return fail(400, { errors: { [w.field]: w.error } as Record<string, string>, values });
+		const r = logPlantHealth(user, tank, form, w.at);
 		if ('errors' in r) return fail(400, { errors: r.errors, values });
-		await storePhotos(tank.id, prepared, { eventId: r.eventId, takenAt: when.at });
+		await storePhotos(tank.id, w.prepared, { eventId: r.eventId, takenAt: w.at });
 		setFlash(cookies, `✓ Plant health logged · ${r.names.length > 2 ? `${r.names.length} plants` : r.names.join(', ')}`, { view: `/entries/event/${r.eventId}` });
-		redirect(303, safeReturn(form.get('from'), `/tanks/${tank.id}/plants`));
+		goBack(form, `/tanks/${tank.id}/plants`);
 	}
 };

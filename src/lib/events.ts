@@ -20,6 +20,9 @@ export const CATEGORY_LABEL: Record<EventCategory, string> = {
 	top_off: 'Top off'
 };
 
+/** The log event form's fields that are sent once per row or choice, kept as lists when the form is shown again. */
+export const EVENT_MULTI_FIELDS = ['actions', 'tags', 'reasons', 'additive_product', 'additive_amount', 'additive_unit'] as const;
+
 /** The type row on the log event form: every kind as an equal chip, with its key. */
 export const LOG_TYPES: { category: EventCategory; label: string; key?: string }[] = [
 	{ category: 'water_change', label: 'Water change', key: 'W' },
