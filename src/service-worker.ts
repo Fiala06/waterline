@@ -41,7 +41,10 @@ const NO_CACHE = [
 	/^\/p\//,
 	/^\/public/,
 	/^\/sitemap\.xml/,
-	/^\/robots\.txt/
+	/^\/robots\.txt/,
+	// signed-out and one-off pages (#345): the homepage, invitations, first start, an app's sign-in
+	/^\/(welcome|about|invite|share|first-run|setup|oauth|plug-hook)(\/|$)/,
+	/^\/\.well-known\//
 ];
 
 sw.addEventListener('install', (event) => {

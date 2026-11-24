@@ -25,6 +25,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 - **Spending on your own tanks.** An expense's tank picker lists only your own tanks, not ones shared with you, which can't take one: [Spending](/tanks/current/spending).
 - **Removed stays removed.** Removing someone from a shared tank a second time can no longer bring back the Undo, so a person removed long ago can't be let back in without accepting a new invitation: [Sharing](/tanks/current/sharing).
 - **Sensor alerts only to people who can sign in.** Someone removed from the server or no longer allowed to sign in stops getting a sensor's out-of-range alerts, as they already did for water tests and reminders: [Alerts](/settings#notifications).
+- **Invitation and sign-in pages aren't kept offline.** The homepage, About this server, invitation and share links, first start and an app's sign-in page are no longer saved on your device for offline use, so an old copy is never shown: [Settings › Data](/settings#data).
 
 ## 1.23.4 · 2026-11-21
 

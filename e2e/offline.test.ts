@@ -272,3 +272,17 @@ test('a network that hangs shows the kept page after a few seconds', async ({ pa
 	expect(Date.now() - start).toBeLessThan(9000);
 	await context.unrouteAll({ behavior: 'ignoreErrors' });
 });
+
+// #345: pages for signed-out visitors and one-off links aren't kept on the device
+test('the homepage, About and invitation pages are not kept offline', async ({ page }, info) => {
+	test.skip(info.project.name !== 'desktop', 'one size is enough');
+	await newKeeperWithTank(page, `nokeep-${info.project.name}`);
+	await page.evaluate(() => navigator.serviceWorker.ready);
+	await open(page, '/history');
+	await open(page, '/about');
+	await page.goto('/invite/not-a-real-token');
+	await open(page, '/history');
+	const kept = () => page.evaluate(async () => (await Promise.all((await caches.keys()).filter((k) => k.startsWith('pages-')).map(async (k) => (await (await caches.open(k)).keys()).map((r) => new URL(r.url).pathname)))).flat());
+	await expect.poll(kept).toContain('/history');
+	expect((await kept()).filter((p) => /^\/(about|invite)/.test(p))).toEqual([]);
+});
