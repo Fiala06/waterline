@@ -11,15 +11,13 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
-- **Restoring big backups.** Restoring a backup with many photos saves each photo as it goes instead of holding them all in memory, so large backups restore without straining the server; a restore that fails still adds nothing: [Import & export](/settings/export).
-- **A quicker dashboard.** The dashboard reads each tank's trends, lighting and doser schedules once instead of several times, so it opens and switches tanks faster: [Dashboard](/).
-- **No pause while sizes are counted.** Server settings and Import & export count the size of your data and backups without holding up the app for everyone else, which mattered most on a NAS with many photos: [Import & export](/settings/export).
-- **Quicker Tasks and Charts.** Tasks opens faster with a long list of reminders, and Charts draws every parameter at once without reading each one separately: [Tasks](/tasks), [Charts](/charts).
-- **Quicker dosers and PAR readings.** A doser's recent doses on Equipment, and deleting a PAR reading, look only through that tank's History, so they stay quick on a server with many tanks: [Equipment](/tanks/current/equipment).
-- **Photos open faster.** Opening a photo, and stepping to the one before or after, no longer reads the tank's whole gallery first, which you'll notice on a tank with years of photos: [Photos](/photos).
-- **A quicker Tanks page.** With many tanks, or tanks shared with you, the Tanks page opens faster: it gathers every tank's status, last test and last water change at once: [Tanks](/tanks).
+## 1.23.7 · 2026-11-24
+
+- **A quicker app as your log grows.** The dashboard, Tanks, Tasks, Charts and the photo viewer each gather what they show at once instead of piece by piece, so they open faster with many tanks, reminders, photos or years of readings: [Dashboard](/).
 - **A quicker public page.** Your tank's public page, its download and its share picture do less work for each visitor, so they open faster on a busy server: [Public page](/tanks/current/public).
-- **Quicker with a year of sensor data.** Clearing out old sensor samples, removing a parameter or an assistant connection, and opening Tasks no longer read through every sample or every completion, so the app stays responsive as the log grows: [Tasks](/tasks).
+- **Sensors and dosers stay quick.** Clearing out old sensor samples, a doser's recent doses on Equipment and deleting a PAR reading no longer look through every tank's records: [Equipment](/tanks/current/equipment).
+- **No pause while sizes are counted.** Server settings and Import & export count the size of your data and backups without holding up the app for everyone else, which matters most on a NAS with many photos: [Import & export](/settings/export).
+- **Restoring big backups.** Restoring a backup with many photos saves each photo as it goes instead of holding them all in memory; a restore that fails still adds nothing: [Import & export](/settings/export).
 
 ## 1.23.6 · 2026-11-24
 
