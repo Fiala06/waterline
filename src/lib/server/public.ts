@@ -49,6 +49,7 @@ export function publicSettings() {
 		publicHomeEnabled: s.publicHomeEnabled,
 		// the product homepage (#300), and who can join in the admin's own words
 		landingEnabled: s.landingEnabled,
+		sampleEnabled: s.sampleEnabled,
 		landingAccess: s.landingAccess,
 		baseUrl: (s.publicBaseUrl || env.ORIGIN || '').replace(/\/+$/, '') || null,
 		ga4Id: s.ga4Id,

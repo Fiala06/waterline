@@ -1,6 +1,7 @@
 import { CHART_RANGES, findPublic, ogVersion, publicRanges, publicSettings, publicView, recordView } from '$lib/server/public';
 import { tankCardAlt } from '$lib/server/og';
 import { forumSummary, publicDetail } from '$lib/server/public-detail';
+import type { SampleExtras } from '$lib/sample';
 import type { PageServerLoad } from './$types';
 
 // Public, server-rendered, read-only tank page (P2 / P3).
@@ -26,6 +27,9 @@ export const load: PageServerLoad = ({ params, request, url, locals }) => {
 		ranges,
 		chartRanges: CHART_RANGES.map((r) => ({ key: r.key, label: r.label })),
 		ownerTankId: locals.user?.id === user.id ? tank.id : null,
+		// where the page lives, for its range links; the sample tank (#301) shows the same page at /sample
+		base: `/t/${page.slug}`,
+		sample: null as SampleExtras | null,
 		seo: {
 			title,
 			description,

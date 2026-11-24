@@ -36,6 +36,8 @@
 				<p class="lede">Waterline keeps your water tests, water changes, maintenance and costs in one place, and reminds you what’s due. It works on your phone at the tank, even offline.</p>
 				<div class="ctas">
 					<a class="btn btn-primary" href={data.signedIn ? '/' : '/signin'}>{data.signedIn ? 'Open Waterline' : 'Sign in'}</a>
+					<!-- a made-up tank to look around before signing in (#301) -->
+					{#if data.sample}<a class="btn" href="/sample">Explore a sample tank</a>{/if}
 					{#if data.publicTanks}<a class="btn" href="/public">See tanks on {data.host}</a>{/if}
 					<a class="btn" href={data.repo} rel="noopener">Self-host it ↗</a>
 				</div>

@@ -165,7 +165,7 @@
 				<svg width="100%" height="42" viewBox="0 0 {width} 42" role="toolbar" tabindex="-1" aria-label="{markers.changes.length} days with changes to the tank" onkeydown={rove}>
 					{#each chg as c, i (c.n)}
 						<g class="chg" class:loss={c.loss} data-mark tabindex={i === chg.length - 1 ? 0 : -1} role="button" aria-label="{c.n}: {c.day} · {c.text}" onpointerenter={show(`${c.n} · ${c.day} · ${c.text}`)} onfocus={show(`${c.n} · ${c.day} · ${c.text}`)}>
-							<title>{c.day} · {c.text}</title>
+							<!-- no <title>: its text would count as the mark's visible text beside the number; the readout shows it on hover and focus -->
 							<circle cx={c.cx} cy={c.cy} r="10" />
 							<text x={c.cx} y={c.cy + 4} text-anchor="middle">{c.n}</text>
 						</g>

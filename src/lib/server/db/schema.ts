@@ -505,6 +505,8 @@ export const serverSettings = sqliteTable('server_settings', {
 	// a product homepage for signed-out visitors (#300), off unless the admin turns it on; who can join, in their own words
 	landingEnabled: integer('landing_enabled', { mode: 'boolean' }).notNull().default(false),
 	landingAccess: text('landing_access'),
+	// a sample tank visitors can explore without signing in (#301), off unless the admin turns it on
+	sampleEnabled: integer('sample_enabled', { mode: 'boolean' }).notNull().default(false),
 	// About this server (#302): who runs it, a private contact, and its terms and retention, in the admin's own words, dated when changed
 	aboutOperator: text('about_operator'),
 	aboutContact: text('about_contact'),

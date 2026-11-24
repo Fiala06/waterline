@@ -17,6 +17,7 @@ export const load: PageServerLoad = ({ url, locals }) => {
 		host,
 		signedIn: !!locals.user,
 		access: s.landingAccess,
+		sample: s.sampleEnabled,
 		publicTanks: s.allowPublicPages && s.publicHomeEnabled,
 		repo: REPO_URL,
 		seo: {

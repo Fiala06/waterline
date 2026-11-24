@@ -474,6 +474,13 @@
 				>
 				<span class="switch"><input id="pp-landingEnabled" type="checkbox" name="landingEnabled" defaultChecked={data.publicPages.landing} /><span></span></span>
 			</div>
+			<!-- the sample tank (#301): made-up data, never saved, linked from the homepage and sign-in -->
+			<div class="row">
+				<label for="pp-sampleEnabled" class="ttext"
+					><span class="tt">Sample tank</span><span class="td">Visitors can explore a made-up planted tank at /sample before signing in. Nothing of it is saved or tied to anyone.</span></label
+				>
+				<span class="switch"><input id="pp-sampleEnabled" type="checkbox" name="sampleEnabled" defaultChecked={data.publicPages.sample} /><span></span></span>
+			</div>
 		</div>
 		<div class="field">
 			<label class="label" for="pp-access">Who can join · shown on the homepage, optional</label>

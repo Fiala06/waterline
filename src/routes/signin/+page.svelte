@@ -88,6 +88,7 @@
 					<p class="owner">Server owner? <a class="link" href={localHref}>Use local admin login</a></p>
 				{/if}
 			{/if}
+			{#if data.sample}<p class="about-link"><a class="link" href="/sample">Explore a sample tank first</a></p>{/if}
 			<p class="host kicker">self-hosted · {data.host}</p>
 			<!-- who runs this server, what it keeps, and where to get help (#302) -->
 			<p class="about-link"><a class="link" href="/about">About this server · privacy &amp; help</a></p>

@@ -561,6 +561,13 @@
       "when": 1795554720871,
       "tag": "0079_signup_paused",
       "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "6",
+      "when": 1795562048894,
+      "tag": "0080_sample_tank",
+      "breakpoints": true
     }
   ]
 }

@@ -60,7 +60,7 @@
 	const timelineShots = $derived(tlAll.map((e) => ({ id: e.id, date: e.date })));
 
 	// the visitor's range is a link, so it works without scripts
-	const rangeHref = (key: string) => `/t/${v.slug}${key !== '30d' ? `?chart=${key}` : ''}#trends`;
+	const rangeHref = (key: string) => `${data.base}${key !== '30d' ? `?chart=${key}` : ''}#trends`;
 	const rangeQuery = $derived(data.ranges.chart !== '30d' ? `?chart=${data.ranges.chart}` : '');
 	const period = $derived(v.ranges.chart.title);
 
@@ -131,21 +131,45 @@
 			{ id: 'setup', t: 'Setup & routine', on: hasSetup },
 			{ id: 'life', t: 'Livestock & plants', on: hasLife },
 			{ id: 'care', t: 'Care log', on: hasCare },
+			{ id: 'spending', t: 'Spending', on: !!data.sample },
 			{ id: 'photos', t: 'Photos', on: v.photos.length > 0 || v.timeline.length > 0 }
 		].filter((s) => s.on)
 	);
 	// a probe's latest reading (#19): "● Live · 9:30 AM" beside the parameter
 	const liveOf = (id: string) => v.readings.find((r) => r.id === id)?.live ?? null;
 	const hasSensor = $derived(d.lanes.some((l) => l.sensor.length > 1));
+	// the sample tank (#301): its call to action can be put away, on this device
+	let ctaHidden = $state(false);
+	onMount(() => {
+		try {
+			ctaHidden = localStorage.getItem('wl_sample_cta') === 'hidden';
+		} catch {
+			/* storage blocked */
+		}
+	});
+	function hideCta() {
+		ctaHidden = true;
+		try {
+			localStorage.setItem('wl_sample_cta', 'hidden');
+		} catch {
+			/* storage blocked */
+		}
+	}
 	const POSITION: Record<string, string> = { background: 'background', midground: 'midground', foreground: 'foreground', epiphyte: 'epiphyte', floating: 'floating' };
 </script>
 
 <PublicHead seo={data.seo} verification={data.verification} {jsonLd} />
 
 <div class="pub">
-	<header class="top">
+	<header class="top" class:sample={!!data.sample}>
 		<div class="top-in">
 			<a href="/" class="brand" aria-label="Waterline"><Logo size={24} wordmark wordSize={16} /></a>
+			{#if data.sample}
+				<!-- on every screen, and it stays at the top as the page scrolls: none of this is real (#301) -->
+				<span class="shared sample-tag">Sample tank · made-up data</span>
+				<span class="grow"></span>
+				<a class="btn act hide-phone" href="/signin">Sign in</a>
+			{:else}
 			<span class="shared hide-phone">Shared, read-only</span>
 			<span class="grow"></span>
 			<a class="btn act" href="/t/{v.slug}/summary.txt{rangeQuery}" onclick={copySummary} aria-label="Copy summary for a forum post">
@@ -159,11 +183,27 @@
 				</a>
 			{/if}
 			{#if data.ownerTankId}<a class="btn act" href="/tanks/{data.ownerTankId}/public">Edit</a>{/if}
+			{/if}
 		</div>
 		{#if copied}<p class="sr-only" role="status">Summary copied</p>{/if}
 	</header>
 
 	<main class="wrap">
+		{#if data.sample && !ctaHidden}
+			<!-- what to do next: this server's sign-in, or running your own (#301) -->
+			<aside class="sample-cta" aria-label="Start your own log">
+				<div class="sc-text">
+					<b>This tank is made up, to show what Waterline keeps.</b>
+					<span>Readings against targets, water changes on the chart, the care log, reminders and spending. Yours stays private unless you share it.</span>
+					{#if data.sample.access}<span class="muted">{data.sample.access}</span>{/if}
+				</div>
+				<div class="sc-acts">
+					<a class="btn btn-primary" href="/signin">Start your own log</a>
+					<a class="btn" href={data.sample.repo} rel="noopener">Run it yourself ↗</a>
+					{#if mounted}<button type="button" class="btn-text sc-close" onclick={hideCta} aria-label="Hide this">✕</button>{/if}
+				</div>
+			</aside>
+		{/if}
 		<!-- ── Who and what ─────────────────────────────────────── -->
 		<section class="intro">
 			{#if v.cover}
@@ -471,6 +511,24 @@
 			</section>
 		{/if}
 
+		<!-- ── Spending: the sample tank only; a real tank's spending is never public (#301) ── -->
+		{#if data.sample}
+			<section id="spending">
+				<div class="sh big"><h2>Spending</h2><span class="muted">{data.sample.spending.total} in all</span></div>
+				<div class="spend">
+					<ul class="spend-list">
+						{#each data.sample.spending.byCategory as c (c.label)}<li><span>{c.label}</span><b class="num">{c.amount}</b></li>{/each}
+					</ul>
+					<div>
+						<h3 class="spend-h">Latest</h3>
+						<ul class="spend-list">
+							{#each data.sample.spending.recent as r, i (i)}<li><span>{r.what} <span class="muted">· {r.date}</span></span><b class="num">{r.amount}</b></li>{/each}
+						</ul>
+					</div>
+				</div>
+			</section>
+		{/if}
+
 		<!-- ── Photos and the timeline ──────────────────────────── -->
 		{#if v.photos.length || v.timeline.length}
 			<section id="photos">
@@ -537,7 +595,7 @@
 		{/if}
 
 		<footer class="foot">
-			<span class="fl"><Logo size={18} />Shared from Waterline · read-only</span>
+			<span class="fl"><Logo size={18} />{data.sample ? "Sample tank · made-up data, nothing here is saved" : "Shared from Waterline · read-only"}</span>
 			{#if d.care.length}<span>Species care ranges from FishBase, CC BY-NC 4.0</span>{/if}
 		</footer>
 	</main>
@@ -596,6 +654,81 @@
 		color: var(--text-muted);
 		border: 1px solid var(--divider);
 		padding: 3px 10px;
+	}
+	/* the sample tank (#301): its label stays in view, in the accent, as the page scrolls */
+	.top.sample {
+		position: sticky;
+		top: 0;
+		z-index: 10;
+		background: var(--bg);
+	}
+	.sample-tag {
+		color: var(--accent-text);
+		border-color: var(--accent);
+		font-weight: 700;
+	}
+	.sample-cta {
+		margin-top: 20px;
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		padding: 14px 16px;
+		background: var(--surface);
+		border-left: 3px solid var(--accent);
+	}
+	.sc-text {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		font-size: 14px;
+		line-height: 1.45;
+	}
+	.sc-acts {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 8px;
+	}
+	.sc-acts .btn {
+		min-height: 44px;
+	}
+	.sc-close {
+		min-width: 44px;
+		min-height: 44px;
+		margin-left: auto;
+	}
+	.spend {
+		display: grid;
+		gap: 24px;
+	}
+	.spend-h {
+		margin: 0 0 4px;
+		font-size: 13px;
+		color: var(--text-muted);
+	}
+	.spend-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		border-top: 2px solid var(--ink);
+	}
+	.spend-list li {
+		display: flex;
+		justify-content: space-between;
+		gap: 16px;
+		padding: 10px 0;
+		border-bottom: 1px solid var(--divider);
+	}
+	@media (min-width: 1024px) {
+		.sample-cta {
+			flex-direction: row;
+			align-items: center;
+			justify-content: space-between;
+		}
+		.spend {
+			grid-template-columns: 1fr 1fr;
+			gap: 32px;
+		}
 	}
 	.grow {
 		flex: 1 1 auto;

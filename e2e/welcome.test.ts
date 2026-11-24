@@ -1,3 +1,4 @@
+import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from './test';
 import { open } from './helpers';
 
@@ -16,11 +17,16 @@ test('the product homepage: off by default, then on for signed-out visitors, and
 	await expect(page).toHaveURL(/\/(setup)?$/);
 	if (page.url().includes('/setup')) await page.getByRole('button', { name: /Skip/ }).click();
 
+	expect((await visitor.request.get('/sample')).status()).toBe(404);
 	const setLanding = async (on: boolean, access = '') => {
 		await open(page, '/settings/server#public-pages');
 		const box = page.getByLabel(/Product homepage/);
 		if (on) await box.check();
 		else await box.uncheck();
+		// the sample tank (#301) goes with it here: the same form, so one test switches both
+		const sample = page.getByLabel(/Sample tank/);
+		if (on) await sample.check();
+		else await sample.uncheck();
 		await page.getByLabel(/Who can join/).fill(access);
 		const saved = page.waitForResponse((r) => r.url().includes('/settings/server') && r.request().method() === 'POST');
 		await page.locator('form[aria-labelledby="public-h"]').getByRole('button', { name: /^Save/ }).click();
@@ -53,6 +59,53 @@ test('the product homepage: off by default, then on for signed-out visitors, and
 		expect(robots).toContain('Allow: /welcome$');
 		expect(robots).toContain('Disallow: /');
 
+		// #301: a sample tank to look around, from the homepage and sign-in, on a phone and a desktop
+		await visitor.goto('/welcome');
+		await visitor.getByRole('link', { name: 'Explore a sample tank' }).click();
+		await expect(visitor).toHaveURL(/\/sample$/);
+		for (const size of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) {
+			const guest = await (await browser.newContext({ viewport: size })).newPage();
+			await guest.goto('/sample');
+			// WCAG 2.2 AA, in light and dark, as e2e/a11y.test.ts checks the app's screens
+			for (const scheme of ['light', 'dark'] as const) {
+				await guest.emulateMedia({ colorScheme: scheme });
+				const { violations } = await new AxeBuilder({ page: guest }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+				expect(violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)).toEqual([]);
+			}
+			// labelled as made up, and it stays in view as the page scrolls
+			const label = guest.getByText('Sample tank · made-up data', { exact: true });
+			await expect(label).toBeVisible();
+			await guest.getByRole('heading', { name: 'Care log' }).scrollIntoViewIfNeeded();
+			await expect(label).toBeInViewport();
+			// an overview, a trend with care on it, a short history, a reminder and spending
+			await expect(guest.getByRole('heading', { name: 'Needs attention' })).toBeVisible();
+			await expect(guest.getByRole('heading', { name: 'Readings & events' })).toBeVisible();
+			await expect(guest.getByText('Water changes', { exact: true }).first()).toBeVisible();
+			await expect(guest.getByText(/Water change 25% · every 7 days/)).toBeVisible();
+			await expect(guest.getByRole('heading', { name: 'Spending' })).toBeVisible();
+			// nothing that only a real tank has: no copy, no download, no analytics, never indexed
+			await expect(guest.getByRole('link', { name: /Copy summary|Download data/ })).toHaveCount(0);
+			await expect(guest.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/);
+			// the call to action: this server's sign-in or running your own, and it can be put away
+			const cta = guest.getByRole('complementary', { name: 'Start your own log' });
+			await expect(cta.getByRole('link', { name: 'Start your own log' })).toHaveAttribute('href', '/signin');
+			await expect(cta.getByRole('link', { name: 'Run it yourself ↗' })).toHaveAttribute('href', 'https://github.com/Fiala06/waterline');
+			await cta.getByRole('button', { name: 'Hide this' }).click();
+			await expect(cta).toBeHidden();
+			await guest.reload();
+			await expect(guest.getByRole('complementary', { name: 'Start your own log' })).toBeHidden();
+			await expect(label).toBeVisible();
+			await guest.context().close();
+		}
+		// a deep link to a chart range, and the keyboard reaches the range links
+		await visitor.goto('/sample?chart=90d#trends');
+		await expect(visitor.getByRole('link', { name: '90 days' })).toHaveAttribute('aria-current', /.+/);
+		await visitor.getByRole('link', { name: '30 days' }).focus();
+		await visitor.keyboard.press('Enter');
+		await expect(visitor).toHaveURL(/\/sample#trends$/);
+		await visitor.goto('/signin');
+		await expect(visitor.getByRole('link', { name: 'Explore a sample tank first' })).toHaveAttribute('href', '/sample');
+
 		// signed in: / is the app; the homepage offers to open it
 		await open(page, '/');
 		await expect(page).not.toHaveURL(/\/welcome/);
@@ -64,4 +117,5 @@ test('the product homepage: off by default, then on for signed-out visitors, and
 	await visitor.goto('/');
 	await expect(visitor).toHaveURL(/\/signin/);
 	expect(await (await visitor.request.get('/robots.txt')).text()).not.toContain('/welcome');
+	expect((await visitor.request.get('/sample')).status()).toBe(404);
 });

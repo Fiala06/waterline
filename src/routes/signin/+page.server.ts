@@ -23,6 +23,8 @@ export const load: PageServerLoad = ({ url }) => {
 		// how someone new gets an account here, and the admin's private address to ask for one (#299)
 		joining: joining(),
 		contact: getServerSettings().aboutContact?.trim() || null,
+		// a made-up tank to look around first (#301)
+		sample: getServerSettings().sampleEnabled,
 		// after Settings › Delete account (#303)
 		deleted: url.searchParams.has('deleted'),
 		error: error
