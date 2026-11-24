@@ -475,7 +475,8 @@ export async function alertSensorExcursions(now = Date.now()) {
 		if (!run || run.old || run.count < EXCURSION_READINGS || now - Date.parse(run.since) < EXCURSION_MS) continue;
 		for (const userId of tankPeople(tank).keys()) {
 			const user = getUser(userId);
-			if (!user || !notifiesUser(tank, userId, 'alert', roleOn(userId, tank))) continue;
+			// not to someone who may no longer sign in (#209, #338)
+			if (!user || !maySignIn(user) || !notifiesUser(tank, userId, 'alert', roleOn(userId, tank))) continue;
 			// and at most one alert per parameter every few hours, however it comes and goes (#228)
 			if (alertedLately(userId, p.id, now)) continue;
 			const direction = st.direction === 'low' ? 'low' : 'high';
