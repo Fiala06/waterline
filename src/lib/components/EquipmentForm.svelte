@@ -260,7 +260,7 @@
 				{#if doses.length < MAX_DOSES}
 					<button type="button" class="btn-text add-period" onclick={() => doses.push(blankDose())}>+ Add a dose{doses.length === 1 ? ' · another product, or a second time' : ''}</button>
 				{/if}
-				<datalist id="dose-products">{#each products as p (p)}<option value={p}></option>{/each}</datalist>
+				<datalist id="dose-products">{#each products as p, i (i)}<option value={p}></option>{/each}</datalist>
 				{#if doseMarks.length}
 					<div class="preview">
 						<DayTimeline rows={[{ label: `${doseMarks.length} dose${doseMarks.length === 1 ? '' : 's'}`, schedule: { periods: [], rampMin: null }, marks: doseMarks }]} compact />

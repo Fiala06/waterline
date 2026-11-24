@@ -120,7 +120,7 @@
 			<legend class="label">What went in · optional</legend>
 			{#if rows.length}
 				<datalist id="recent-additives">
-					{#each recentProducts as r (r.product)}<option value={r.product}></option>{/each}
+					{#each recentProducts as r, i (i)}<option value={r.product}></option>{/each}
 				</datalist>
 				<div class="rows">
 					{#each rows as row, i (i)}

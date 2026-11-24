@@ -257,7 +257,7 @@
 			{#each scales as c, i (c.id)}
 				<polyline class="compare c{i + 1}" points={c.points.map((p) => `${x(p.t).toFixed(1)},${y2(p.v, c.domain).toFixed(1)}`).join(' ')} fill="none" stroke-linejoin="round"></polyline>
 				{#if full}
-					{#each c.points as p (p.t)}
+					{#each c.points as p, pi (pi)}
 						<rect class="compare-dot c{i + 1}" x={x(p.t) - 2.5} y={y2(p.v, c.domain) - 2.5} width="5" height="5"></rect>
 					{/each}
 				{/if}

@@ -82,7 +82,7 @@
 			{:else if s.key === 'targets'}
 				{#if data.targets.length}
 					<dl class="facts">
-						{#each data.targets as t (t.name)}
+						{#each data.targets as t, i (i)}
 							<div><dt>{t.name}</dt><dd class:faint={!t.range}>{t.range ?? 'No range set'}</dd></div>
 						{/each}
 					</dl>

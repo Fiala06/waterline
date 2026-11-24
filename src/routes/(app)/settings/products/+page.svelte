@@ -136,7 +136,7 @@
 	>
 		<h2>Add a product</h2>
 		{@render fields('add', addVal, addErr)}
-		<datalist id="dosed">{#each data.suggestions as s (s)}<option value={s}></option>{/each}</datalist>
+		<datalist id="dosed">{#each data.suggestions as s, i (i)}<option value={s}></option>{/each}</datalist>
 		<button class="btn btn-primary go">Add product</button>
 	</form>
 </div>

@@ -117,7 +117,7 @@
 							{#if r.example}
 								<span class="note">The template's example, left out</span>
 							{:else}
-								{#each r.problems as p (p)}<span class="note status-bad">{p}</span>{/each}
+								{#each r.problems as p, pi (pi)}<span class="note status-bad">{p}</span>{/each}
 							{/if}
 						</span>
 					</div>

@@ -31,7 +31,7 @@
 </script>
 
 <div class="timeline" class:compact role="img" aria-label="When each item runs through the day">
-	{#each rows as r (r.label)}
+	{#each rows as r, ri (ri)}
 		<div class="row">
 			<span class="lbl">{r.label}</span>
 			<svg viewBox="0 0 {W} {H}" preserveAspectRatio="none" aria-hidden="true">
@@ -46,7 +46,7 @@
 						{/if}
 					{/each}
 				{/each}
-				{#each r.marks ?? [] as m (m)}<rect x={mins(m) - 3} y="0" width="6" height={H} class="mark" />{/each}
+				{#each r.marks ?? [] as m, mi (mi)}<rect x={mins(m) - 3} y="0" width="6" height={H} class="mark" />{/each}
 				{#if nowX != null}<rect x={nowX - 2} y="0" width="4" height={H} class="now" />{/if}
 			</svg>
 		</div>

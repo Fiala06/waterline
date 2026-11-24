@@ -67,7 +67,7 @@
 			<section class="check" aria-labelledby="check-h">
 				<h2 id="check-h" class="check-h">Worth checking</h2>
 				<ul>
-					{#each data.warnings as w (w)}<li>{w}</li>{/each}
+					{#each data.warnings as w, i (i)}<li>{w}</li>{/each}
 				</ul>
 				<p class="check-src">
 					Care ranges from <a href={data.careSource?.url} target="_blank" rel="noopener noreferrer">{data.careSource?.name}</a> ({data.careSource?.license}); group sizes and conflicts are the hobby's rules of thumb, not every fish reads them.

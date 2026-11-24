@@ -174,7 +174,7 @@
 					<div class="field">
 						<label class="label" for="par-zone">Where</label>
 						<select class="input" id="par-zone" name="zone" aria-invalid={!!parErrors.zone}>
-							{#each data.par.zones as z (z)}<option value={z}>{z}</option>{/each}
+							{#each data.par.zones as z, i (i)}<option value={z}>{z}</option>{/each}
 						</select>
 						{#if parErrors.zone}<span class="error-text">✕ {parErrors.zone}</span>{/if}
 					</div>

@@ -93,4 +93,9 @@ describe('tankWarnings', () => {
 			'▲ Angelfish · Neon tetra: Grown angelfish eat fish the size of Neon tetra.'
 		]);
 	});
+	it('says a repeated line once (#327)', () => {
+		const neons = { s: 'Paracheirodon innesi', name: 'Neon tetra', count: 8 };
+		const w = tankWarnings([neons, { ...neons }], () => neon, { temp: [26, 30] }, metric);
+		expect(w).toEqual(["▲ Your tank's temperature target (26–30 °C) is outside the Neon tetra's range (20–26 °C)"]);
+	});
 });

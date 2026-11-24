@@ -230,7 +230,7 @@ sensor:
 								<label class="sr-only" for="p-{s.objectId}">Parameter for {s.name}</label>
 								<select class="input" id="p-{s.objectId}" name="param-{s.objectId}">
 									<option value="">Which parameter?</option>
-									{#each found.params as p (p.label)}
+									{#each found.params as p, i (i)}
 										<option value={p.label} selected={p.label === s.guess}>{p.name}</option>
 									{/each}
 								</select>
