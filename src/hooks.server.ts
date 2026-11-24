@@ -5,7 +5,7 @@ import { startScheduler } from '$lib/server/scheduler';
 import { cleanupExports, failInterruptedExports } from '$lib/server/export';
 import { sequence } from '@sveltejs/kit/hooks';
 import { checkAuthConfig, handle as authHandle } from './auth';
-import { clearLoginFailures, isLocalLoginPath, loginBlockedMinutes, loginWaitSeconds, recordLoginFailure } from '$lib/server/rate-limit';
+import { isLocalLoginPath, loginBlockedMinutes, loginSucceeded, loginWaitSeconds, recordLoginFailure } from '$lib/server/rate-limit';
 import { getUser, maySignIn } from '$lib/server/users';
 import { touchLastSeen } from '$lib/server/people';
 import { publicSettings } from '$lib/server/public';
@@ -85,10 +85,11 @@ const loginLimit: Handle = async ({ event, resolve }) => {
 	const address = event.getClientAddress();
 	const wait = loginBlockedMinutes(address) * 60 || loginWaitSeconds();
 	if (wait) return new Response('Too many sign-in attempts. Try again later.', { status: 429, headers: { 'retry-after': String(wait) } });
+	// counted before the password is checked, so parallel tries see each other (#329)
+	const at = recordLoginFailure(address);
 	const res = await resolve(event);
-	if (/session-token=[^;]/.test(res.headers.get('set-cookie') ?? '')) clearLoginFailures(address);
+	if (/session-token=[^;]/.test(res.headers.get('set-cookie') ?? '')) loginSucceeded(address, at);
 	else {
-		recordLoginFailure(address);
 		logger.warn('sign-in', 'Local admin sign-in failed: wrong username or password', { address });
 		if (loginBlockedMinutes(address)) logger.warn('sign-in', 'Local admin sign-in paused for 15 minutes after 5 wrong tries', { address });
 	}
