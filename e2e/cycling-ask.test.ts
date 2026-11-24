@@ -81,6 +81,23 @@ test('zero readings never say a tank is cycled, and a restart starts afresh', as
 	await expect(page.getByRole('status')).toBeVisible();
 	await open(page, `/?tank=${tankId}`);
 	await expect(cycling).toContainText('Log ammonia, nitrite and nitrate with each test to follow the cycle.');
+
+	// #333: the same restart from Tank setup alone, unticked and ticked again, is in History and starts afresh
+	await open(page, `/entries/test/new?tank=${tankId}`);
+	await page.getByLabel('Ammonia', { exact: true }).fill('0');
+	await page.getByRole('button', { name: 'Save 1 reading' }).click();
+	await expect(page.getByRole('status')).toContainText('✓ Saved 1 reading');
+	await expect(cycling).not.toContainText('Log ammonia, nitrite and nitrate with each test');
+	for (const tick of [false, true]) {
+		await open(page, `/tanks/${tankId}/settings`);
+		await page.getByLabel('This tank is still cycling').setChecked(tick);
+		await page.getByRole('button', { name: 'Save changes' }).click();
+		await expect(page.getByRole('status')).toBeVisible();
+	}
+	await open(page, `/?tank=${tankId}`);
+	await expect(cycling).toContainText('Log ammonia, nitrite and nitrate with each test to follow the cycle.');
+	await open(page, '/history');
+	await expect(page.getByText('Cycle complete').first()).toBeVisible();
 });
 
 // #309: with livestock already in a cycling tank, high ammonia stays ✕ High

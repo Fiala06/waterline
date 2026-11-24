@@ -8,7 +8,7 @@ import { dateInZone, fmtDate } from '$lib/time';
 import { db } from '$lib/server/db';
 import { publicPages } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
-import { getTank, listParams, setArchived, setChecklist, updateTank } from '$lib/server/tanks';
+import { getTank, listParams, markCycling, markRunning, setArchived, setChecklist, updateTank } from '$lib/server/tanks';
 import { listTasks } from '$lib/server/tasks';
 import { intervalText } from '$lib/tasks';
 import { doseText, nextDoseText } from '$lib/growing';
@@ -107,7 +107,11 @@ export const actions: Actions = {
 		const cover = form.get('cover');
 		const prepared = cover instanceof File && cover.size ? await preparePhotos([cover]) : [];
 		if ('error' in prepared) return fail(400, { errors: { cover: prepared.error } });
-		updateTank(user.id, params.id, values);
+		// cycling goes through its own steps, so History has the start or end of a cycle (#333)
+		const { cycling, ...rest } = values as typeof values & { cycling?: boolean };
+		updateTank(user.id, params.id, rest);
+		if (cycling === true) markCycling(user.id, params.id);
+		else if (cycling === false) markRunning(user.id, params.id);
 		const [photo] = await storePhotos(params.id, datePhotos(prepared, user.timeZone), { takenAt: new Date().toISOString() });
 		if (photo) setCover(user.id, photo.id);
 		// or one of the tank's own photos, picked under Choose from photos (an upload wins)
