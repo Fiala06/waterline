@@ -6,7 +6,7 @@
 // helping me" off, days only (no times), no notes, no observations and no
 // schedule, as the page has always been.
 import { toSafeCsv } from '$lib/csv';
-import { withoutPetNames } from '$lib/pet-names';
+import { publicEntry } from '$lib/pet-names';
 import { and, eq, isNull } from 'drizzle-orm';
 import { tankLighting, equipmentName, specSummary, scheduleLabel, hoursText, EQUIPMENT_TYPE_LABEL, type Schedule } from '$lib/equipment';
 import { eventKindLabel, eventTitle, WATER_SOURCES } from '$lib/events';
@@ -124,7 +124,7 @@ export function publicDetail(page: PublicPage, tank: Tank, owner: User, opts: { 
 				.filter((e) => inRange(e.occurredAt))
 				.filter((e) => names || !isNaming(e))
 				.filter((e) => !(e.category === 'note' && e.data.system)) // "Reviewed tank setup" and the like are the app's, not care
-				.map((e) => (names ? e : withoutPetNames(e)))
+				.map((e) => publicEntry(e, names))
 		: [];
 	const waterChanges = evs.filter((e) => e.category === 'water_change');
 
@@ -185,7 +185,9 @@ export function publicDetail(page: PublicPage, tank: Tank, owner: User, opts: { 
 							};
 						});
 					const l = latest.get(p.id);
-					const st = statusOf(p, l?.value);
+					// with readings off, the lane says only what its own chart shows: its last charted test (#343)
+					const lastCharted = chartedTests.findLast((t) => t.readings.has(p.id))?.readings.get(p.id);
+					const st = statusOf(p, page.showReadings ? l?.value : lastCharted);
 					return {
 						id: p.id,
 						name: p.name,
@@ -469,8 +471,9 @@ export function publicDetail(page: PublicPage, tank: Tank, owner: User, opts: { 
 		question: page.question?.trim() || null,
 		tankType: tankTypeLabel(tank.type),
 		dayNumber,
-		size,
-		waterVolume: tank.actualVolumeL != null ? vol(tank.actualVolumeL) : null,
+		// the tank's measurements are setup: shown with the equipment, as in Setup (#343)
+		size: page.showEquipment ? size : null,
+		waterVolume: page.showEquipment && tank.actualVolumeL != null ? vol(tank.actualVolumeL) : null,
 		units,
 		attention,
 		steady,

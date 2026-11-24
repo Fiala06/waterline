@@ -15,3 +15,12 @@ export const withoutPetNames = <E extends { data: Record<string, unknown> }>(e: 
 		...(Array.isArray(e.data.names) ? { names: (e.data.names as unknown[]).map((n) => String(n).split(' · ').at(-1)!) } : {})
 	}
 });
+
+/**
+ * An entry as a public page shows it: never the keeper's other tanks' names (a move
+ * reads "to another tank", #343), and without pets' names unless `names` is on.
+ */
+export const publicEntry = <E extends { data: Record<string, unknown> }>(e: E, names: boolean): E => {
+	const out = names ? e : withoutPetNames(e);
+	return 'to_tank' in out.data || 'from_tank' in out.data ? { ...out, data: { ...out.data, to_tank: null, from_tank: null } } : out;
+};

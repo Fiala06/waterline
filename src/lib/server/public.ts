@@ -1,5 +1,5 @@
 import { coverPosition } from '$lib/media';
-import { withoutPetNames } from '$lib/pet-names';
+import { publicEntry } from '$lib/pet-names';
 // Public, read-only tank pages (/t/<slug>) and photo share links (/s/<id>).
 // Only what the owner switched on is included. Never public: email addresses,
 // livestock sources, equipment notes, prices. Tasks, notes on entries and the
@@ -345,7 +345,7 @@ export function publicView(page: PublicPage, tank: Tank, owner: User, ranges: Pu
 			.all()
 			.filter((e) => names || !isNaming(e))
 			.slice(0, LOG_MAX)
-			.map((e) => ({ key: `e:${e.id}`, at: e.occurredAt, title: eventTitle(names ? e : withoutPetNames(e), prefs), kind: e.category }));
+			.map((e) => ({ key: `e:${e.id}`, at: e.occurredAt, title: eventTitle(publicEntry(e, names), prefs), kind: e.category }));
 		const ts = db
 			.select({ id: tests.id, at: tests.takenAt, n: sql<number>`count(${testReadings.parameterId})` })
 			.from(tests)
@@ -488,15 +488,16 @@ export function sitemapEntries() {
 	// the product homepage (#300), when it's on
 	const home = s.landingEnabled ? [{ loc: `${s.baseUrl}/welcome`, lastmod: undefined as string | undefined }] : [];
 	if (!s.allowPublicPages) return home;
+	// the last test's date is a reading: only when readings are shown, else no date at all (#343)
 	return [...home, ...db
-		.select({ slug: publicPages.slug, updated: sql<string>`max(coalesce(${tests.takenAt}, ${tanks.createdAt}))` })
+		.select({ slug: publicPages.slug, showReadings: publicPages.showReadings, updated: sql<string>`max(coalesce(${tests.takenAt}, ${tanks.createdAt}))` })
 		.from(publicPages)
 		.innerJoin(tanks, eq(tanks.id, publicPages.tankId))
 		.leftJoin(tests, eq(tests.tankId, tanks.id))
 		.where(and(eq(publicPages.enabled, true), eq(publicPages.indexable, true), isNull(tanks.archivedAt)))
 		.groupBy(publicPages.slug)
 		.all()
-		.map((r) => ({ loc: `${s.baseUrl}/t/${r.slug}`, lastmod: r.updated?.slice(0, 10) }))];
+		.map((r) => ({ loc: `${s.baseUrl}/t/${r.slug}`, lastmod: r.showReadings ? r.updated?.slice(0, 10) : undefined }))];
 }
 
 export function publicTanksForHome() {
@@ -552,7 +553,7 @@ export function findShare(id: string) {
 	if (!row) error(404, 'Not found');
 	const { share, photo, tank, user, event } = row;
 	const day = dateInZone(photo.takenAt, user.timeZone);
-	const title = event && share.includeNote ? (event.category === 'note' ? (event.note?.split('\n')[0] ?? null) : eventTitle(withoutPetNames(event), user)) : null;
+	const title = event && share.includeNote ? (event.category === 'note' ? (event.note?.split('\n')[0] ?? null) : eventTitle(publicEntry(event, false), user)) : null;
 	return {
 		id: share.id,
 		photoId: photo.id,

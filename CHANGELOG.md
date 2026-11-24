@@ -29,6 +29,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 - **Water-test spreadsheets open cleanly in Excel.** The water-tests CSV from Export and from a public page now opens in Excel with "°F", "CO₂" and other symbols as they should look: [Export](/settings/export).
 - **A lighter record of sent emails.** The server now forgets which reminders and alerts it sent after 90 days, so that record stops growing and reminders stay quick to work out; a task that's still overdue isn't alerted again: [Server settings](/settings/server).
 - **Clearer when you've been signed out.** If your session ends while a page is open, species searches and photos stop quietly instead of loading the sign-in page in their place, and the sign-in page is never kept on your device as a photo: [Sign in](/signin).
+- **Public pages keep to your switches.** A public page no longer names your other tanks when fish move between them (it says "another tank"), shows the tank's size and water volume only with Equipment on, and with Readings off its charts don't show the latest status and search engines aren't told when you last tested: [Public page](/tanks/current/public).
 
 ## 1.23.4 · 2026-11-21
 
