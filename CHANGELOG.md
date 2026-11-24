@@ -17,6 +17,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 - **Entries save whatever happened to their reminder.** A water test or entry whose reminder was deleted in the meantime, say while it waited offline, still saves with its photos and alerts: [History](/history).
 - **Maintenance and its reminder.** Logging maintenance on an item marks its service reminder done once, tied to the entry, and the next date counts from your own day rather than UTC's: [Tasks](/tasks).
 - **Keyboard shortcuts.** Ctrl+Enter (⌘↵) saves the form you're in or the page's log form, never the first button on the dashboard or a page behind an open sheet. Someone who can only view a shared tank isn't offered log keys or the palette's log actions: [Dashboard](/).
+- **Cycling from Tank setup.** Ticking or unticking "This tank is still cycling" in Tank setup now notes the cycle's start or end in History, so a restarted cycle only counts its own tests: [Tank setup](/tanks/current/settings).
 
 ## 1.23.4 · 2026-11-21
 
