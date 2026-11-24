@@ -139,6 +139,14 @@ export function isShared(tankId: string): boolean {
 		.get();
 }
 
+/** Each owner's name as tankPeople says it, by user id, in one query (#353). */
+export function ownerNames(userIds: string[]): Map<string, string> {
+	const ids = [...new Set(userIds)];
+	if (!ids.length) return new Map();
+	const rows = db.select({ id: users.id, name: users.displayName, email: users.email }).from(users).where(inArray(users.id, ids)).all();
+	return new Map(rows.map((u) => [u.id, u.name || u.email.split('@')[0]]));
+}
+
 /** Everyone who may have logged on a tank, by id: the owner and its members. */
 export function tankPeople(tank: Pick<Tank, 'id' | 'userId'>): Map<string, string> {
 	const out = new Map<string, string>();

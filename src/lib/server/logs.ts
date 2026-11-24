@@ -338,6 +338,30 @@ export function deleteEvent(userId: string, eventId: string) {
 	return e;
 }
 
+/** When each tank's latest test was taken, in one query (#353); tanks without one are left out. */
+export function latestTestAtFor(tankIds: string[]): Map<string, string> {
+	if (!tankIds.length) return new Map();
+	const rows = db
+		.select({ tankId: tests.tankId, at: sql<string>`max(${tests.takenAt})` })
+		.from(tests)
+		.where(inArray(tests.tankId, tankIds))
+		.groupBy(tests.tankId)
+		.all();
+	return new Map(rows.map((r) => [r.tankId, r.at]));
+}
+
+/** When each tank last had an entry of this kind, in one query (#353); tanks without one are left out. */
+export function lastEventAtFor(tankIds: string[], category: EventCategory): Map<string, string> {
+	if (!tankIds.length) return new Map();
+	const rows = db
+		.select({ tankId: events.tankId, at: sql<string>`max(${events.occurredAt})` })
+		.from(events)
+		.where(and(inArray(events.tankId, tankIds), eq(events.category, category)))
+		.groupBy(events.tankId)
+		.all();
+	return new Map(rows.map((r) => [r.tankId, r.at]));
+}
+
 export function lastEventOf(tankId: string, category: EventCategory) {
 	return db
 		.select()

@@ -5,9 +5,9 @@ import { dueInfo } from '$lib/tasks';
 import { dateInZone, daysBetween, fmtDay, todayInZone } from '$lib/time';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { setFlash } from '$lib/server/flash';
-import { lastEventOf, latestReadings, latestTest } from '$lib/server/logs';
-import { getTank, listParams, listTanks, roleOn, setArchived } from '$lib/server/tanks';
-import { leaveTank, tankPeople } from '$lib/server/members';
+import { lastEventAtFor, latestReadingsFor, latestTestAtFor } from '$lib/server/logs';
+import { getTank, listParamsFor, listTanks, setArchived } from '$lib/server/tanks';
+import { leaveTank, ownerNames, rolesOn } from '$lib/server/members';
 import { revokeActionTokens } from '$lib/server/action-tokens';
 import { logger } from '$lib/server/log';
 import { listTasks } from '$lib/server/tasks';
@@ -27,9 +27,18 @@ export const load: PageServerLoad = ({ locals }) => {
 	const vol = (l: number | null) =>
 		l == null ? null : `${formatNumber(toDisplay(l, 'volume', user), 1)} ${unitLabel('volume', user)}`;
 
-	const tanks = listTanks(user.id).map((t) => {
-		const latest = latestReadings(t.id);
-		const params = listParams(t.id);
+	// each tank's readings, targets, last test, last water change and role, a query each for all of them (#353)
+	const list = listTanks(user.id);
+	const ids = list.map((t) => t.id);
+	const latestOf = latestReadingsFor(ids);
+	const paramsOf = listParamsFor(ids);
+	const testAt = latestTestAtFor(ids);
+	const wcAt = lastEventAtFor(ids, 'water_change');
+	const roles = rolesOn(user.id, list);
+	const owners = ownerNames(list.filter((t) => t.userId !== user.id).map((t) => t.userId));
+	const tanks = list.map((t) => {
+		const latest = latestOf.get(t.id) ?? new Map();
+		const params = paramsOf.get(t.id) ?? [];
 		const bad = params
 			.map((p) => ({ p, st: statusOf(p, latest.get(p.id)?.value) }))
 			.filter((x) => x.st.level === 'bad');
@@ -52,19 +61,19 @@ export const load: PageServerLoad = ({ locals }) => {
 				? { level: 'warn', text: `▲ ${dueToday} due today` }
 				: null;
 
-		const lt = latestTest(t.id);
-		const wc = lastEventOf(t.id, 'water_change');
-		const wcDays = wc ? daysBetween(dateInZone(wc.occurredAt, tz), today) : null;
+		const lt = testAt.get(t.id);
+		const wc = wcAt.get(t.id);
+		const wcDays = wc ? daysBetween(dateInZone(wc, tz), today) : null;
 		const meta = [
-			lt ? `Last test ${relDay(fmtDay(lt.takenAt, tz))}` : 'No tests yet',
+			lt ? `Last test ${relDay(fmtDay(lt, tz))}` : 'No tests yet',
 			wcDays == null ? null : `last water change ${wcDays === 0 ? 'today' : `${wcDays} day${wcDays === 1 ? '' : 's'} ago`}`
 		]
 			.filter(Boolean)
 			.join(' · ');
 
 		// shared with this person (#22): "Shared by Cory · can log"
-		const role = roleOn(user.id, t);
-		const sharer = role === 'owner' ? null : (tankPeople(t).get(t.userId) ?? 'someone');
+		const role = roles.get(t.id) ?? 'view';
+		const sharer = role === 'owner' ? null : (owners.get(t.userId) ?? 'someone');
 		const shared = sharer && `Shared by ${sharer} · ${role === 'log' ? 'can log' : 'can view'}`;
 		return { id: t.id, name: t.name, type: t.type, cover: t.coverPhotoId, coverPos: coverPosition(t.coverX, t.coverY), volume: vol(t.nominalVolumeL), status, task, meta: shared ? `${shared} · ${meta}` : meta, sharer };
 	});
