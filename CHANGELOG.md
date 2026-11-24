@@ -11,6 +11,11 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.23.6 · 2026-11-24
+
+- **Buttons named as they read.** For people who use speech input, the account button, the parts of Server settings and the public page's Download data button are named by what they show, so saying what's on screen selects them: [Server settings](/settings/server).
+- **Updates under the hood.** The parts Waterline is built with are on their latest releases, among them the database driver, the email sender and what draws the share image; nothing changes in how the app looks or works: [Settings › What's new](/settings/changelog).
+
 ## 1.23.5 · 2026-11-24
 
 - **Opening a plant works again.** Choosing a plant on the Plants tab opens its sheet again, instead of stopping the page with an error: [Plants](/tanks/current/plants).
@@ -35,7 +40,6 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 - **Who changed livestock, plants and equipment.** On a shared tank, History now says who added or removed livestock, plants and equipment, trimmed plants or changed counts, as it already did for tests and other entries: [History](/history).
 - **Out-of-range alerts try again.** If the email or push for an out-of-range water test can't be sent when you save it, it's tried again later, as reminders are, instead of being lost: [Alerts](/settings#notifications).
 - **A limit on invitation emails.** One person can email up to 20 share invitations an hour, so the server's email can't be used to send many; past that, the tank is still shared and the invite link is there to copy and send yourself: [Sharing](/tanks/current/sharing).
-- **Buttons named as they read.** For people who use speech input, the account button, the parts of Server settings and the public page's Download data button are named by what they show, so saying what's on screen selects them: [Server settings](/settings/server).
 
 ## 1.23.4 · 2026-11-21
 
