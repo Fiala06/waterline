@@ -421,7 +421,7 @@ export function deletePar(userId: string, tankId: string, id: string) {
     const r = db.select().from(parReadings).where(and(eq(parReadings.id, id), eq(parReadings.tankId, tankId))).get();
     if (!r) error(404, "Reading not found");
     db.delete(parReadings).where(eq(parReadings.id, id)).run();
-    db.delete(events).where(sql`json_extract(${events.data}, '$.par_id') = ${id}`).run();
+    db.delete(events).where(and(eq(events.tankId, tankId), sql`json_extract(${events.data}, '$.par_id') = ${id}`)).run();
     return r;
   });
 }

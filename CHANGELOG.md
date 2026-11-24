@@ -11,6 +11,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Quicker dosers and PAR readings.** A doser's recent doses on Equipment, and deleting a PAR reading, look only through that tank's History, so they stay quick on a server with many tanks: [Equipment](/tanks/current/equipment).
 - **Photos open faster.** Opening a photo, and stepping to the one before or after, no longer reads the tank's whole gallery first, which you'll notice on a tank with years of photos: [Photos](/photos).
 - **A quicker Tanks page.** With many tanks, or tanks shared with you, the Tanks page opens faster: it gathers every tank's status, last test and last water change at once: [Tanks](/tanks).
 - **A quicker public page.** Your tank's public page, its download and its share picture do less work for each visitor, so they open faster on a busy server: [Public page](/tanks/current/public).

@@ -132,12 +132,12 @@ export function resumeDose(user: User, e: Equipment, doseId: string) {
 	return list.find((d) => d.id === doseId)!;
 }
 
-/** What a doser has logged, newest first, for its page. */
-export function dosesLoggedBy(equipmentId: string, limit = 10) {
+/** What a doser has logged, newest first, for its page: read through its tank's History by date (#355). */
+export function dosesLoggedBy(e: Pick<Equipment, 'id' | 'tankId'>, limit = 10) {
 	return db
 		.select()
 		.from(events)
-		.where(and(eq(events.category, 'dosing'), sql`json_extract(${events.data}, '$.doser_id') = ${equipmentId}`))
+		.where(and(eq(events.tankId, e.tankId), eq(events.category, 'dosing'), sql`json_extract(${events.data}, '$.doser_id') = ${e.id}`))
 		.orderBy(desc(events.occurredAt))
 		.limit(limit)
 		.all();

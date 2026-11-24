@@ -98,7 +98,7 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
       plug: (() => {
         const p = !e.removedAt ? plugs.get(e.id) : undefined;
         if (!p) return null;
-        const last = p.runs ? dosesLoggedBy(e.id, 1)[0] : undefined;
+        const last = p.runs ? dosesLoggedBy(e, 1)[0] : undefined;
         const secs = typeof last?.data.seconds === "number" ? last.data.seconds : null;
         return {
           ...plugText(p),

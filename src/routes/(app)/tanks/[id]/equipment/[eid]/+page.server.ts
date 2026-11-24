@@ -114,7 +114,7 @@ export const load: PageServerLoad = ({ locals, params }) => {
       // a doser (#196): the doses it logged
       doses:
         e.type === "doser"
-          ? dosesLoggedBy(e.id).map((h) => ({
+          ? dosesLoggedBy(e).map((h) => ({
               id: h.id,
               title: eventTitle(h, user),
               day: fmtDate(dateInZone(h.occurredAt, user.timeZone)),

@@ -58,7 +58,7 @@ describe("a doser's doses (#196)", () => {
 		expect(await logDueDoses(new Date('2026-10-19T23:30:00Z'))).toBe(0);
 		expect(await logDueDoses(new Date('2026-10-20T17:30:00Z'))).toBe(1);
 		expect(dosesLogged(tank.id)).toHaveLength(2);
-		expect(dosesLoggedBy(doser.id).map((e) => e.occurredAt)).toEqual(['2026-10-20T17:00:00.000Z', '2026-10-19T17:00:00.000Z']);
+		expect(dosesLoggedBy(doser).map((e) => e.occurredAt)).toEqual(['2026-10-20T17:00:00.000Z', '2026-10-19T17:00:00.000Z']);
 	});
 
 	it('are not logged on other days, while paused, or once the doser is gone', async () => {
