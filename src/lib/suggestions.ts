@@ -29,8 +29,6 @@ export const isSuggestionRule = (v: unknown): v is SuggestionRuleId => SUGGESTIO
 
 /** Phosphate below this (ppm, the same as mg/L) with green spot algae: worth a note. */
 export const LOW_PHOSPHATE = 0.1;
-/** Green spot algae logged this many days back still counts. */
-export const GREEN_SPOT_DAYS = 14;
 /** The water change's cadence while ammonia or nitrite shows. */
 export const CLEAR_EVERY = 2;
 

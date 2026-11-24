@@ -113,8 +113,6 @@ export function photoDate(p: PreparedPhoto, timeZone: string): string | null {
 export async function storeOnePhoto(form: FormData, tankId: string, timeZone: string, field = 'photo'): Promise<{ photo: Photo } | { error: string }> {
 	const files = photoFiles(form, field).slice(0, 1);
 	if (!files.length) return { error: 'Choose a photo.' };
-	const tooBig = checkPhotoFiles(files);
-	if (tooBig) return { error: tooBig };
 	const prepared = await preparePhotos(files);
 	if ('error' in prepared) return prepared;
 	const [photo] = await storePhotos(tankId, datePhotos(prepared, timeZone), { takenAt: new Date().toISOString() });

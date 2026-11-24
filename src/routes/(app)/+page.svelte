@@ -20,8 +20,7 @@
 	import Sparkline from '$lib/components/Sparkline.svelte';
 	import { enhance } from '$app/forms';
 	import { dueInfo, formDoneLabel, intervalText, isRoutine, routineLine } from '$lib/tasks';
-	import { invalidateAll } from '$app/navigation';
-	import { toast, ui } from '$lib/ui.svelte';
+	import { ui } from '$lib/ui.svelte';
 	import { photoUrl } from '$lib/media';
 	import { hscroll } from '$lib/actions';
 	import ReminderDelivery from '$lib/components/ReminderDelivery.svelte';

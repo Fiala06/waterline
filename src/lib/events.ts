@@ -20,20 +20,6 @@ export const CATEGORY_LABEL: Record<EventCategory, string> = {
 	top_off: 'Top off'
 };
 
-/** Category tabs on the log event form, in design order. */
-export const LOG_CATEGORIES: EventCategory[] = [
-	'water_change',
-	'top_off',
-	'dosing',
-	'feeding',
-	'maintenance',
-	'livestock',
-	'equipment',
-	'observation',
-	'note',
-	'health'
-];
-
 /** The type row on the log event form: every kind as an equal chip, with its key. */
 export const LOG_TYPES: { category: EventCategory; label: string; key?: string }[] = [
 	{ category: 'water_change', label: 'Water change', key: 'W' },

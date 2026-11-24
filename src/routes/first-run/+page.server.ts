@@ -5,13 +5,13 @@ import { logger } from '$lib/server/log';
 import { clearLoginFailures, loginBlockedMinutes, recordLoginFailure } from '$lib/server/rate-limit';
 import { codeMatches, finishSetup, setupCode, setupNeeded } from '$lib/server/setup';
 import type { Actions, PageServerLoad } from './$types';
-import { passwordProblem } from '$lib/server/password-policy';
+import { PASSWORD_HINT, PASSWORD_MIN, passwordProblem } from '$lib/server/password-policy';
 
 // A new server's first page: the setup code from the log, then the admin login.
 export const load: PageServerLoad = () => {
 	if (!setupNeeded()) redirect(303, '/signin');
 	setupCode(); // printed to the log, if it wasn't already
-	return {};
+	return { passwordMin: PASSWORD_MIN, passwordHint: PASSWORD_HINT };
 };
 
 export const actions: Actions = {

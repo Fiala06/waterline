@@ -267,8 +267,3 @@ export function staleAfter(
   return days > everyDays ? days : null;
 }
 
-export const isStale = (
-  lastDay: string | null,
-  today: string,
-  everyDays: number | null,
-) => staleAfter(lastDay, today, everyDays) != null;

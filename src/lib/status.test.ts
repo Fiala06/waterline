@@ -3,7 +3,6 @@ import {
   cyclingLevel,
   cyclingStage,
   isCyclingStatus,
-  isStale,
   paramStatus,
   parseTestEvery,
   rangeText,
@@ -236,7 +235,7 @@ describe("staleAfter", () => {
     expect(staleAfter("2026-09-10", "2026-10-03", 7)).toBe(23);
     expect(staleAfter("2026-09-26", "2026-10-03", 7)).toBeNull(); // exactly 7: not yet
     expect(staleAfter("2026-09-25", "2026-10-03", 7)).toBe(8);
-    expect(isStale("2026-09-25T14:00:00Z", "2026-10-03", 7)).toBe(true);
+    expect(staleAfter("2026-09-25T14:00:00Z", "2026-10-03", 7)).toBe(8);
   });
   it("parses the form value", () => {
     expect(parseTestEvery("7")).toBe(7);

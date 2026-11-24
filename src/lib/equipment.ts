@@ -349,22 +349,6 @@ export function scheduleHours(
 export const hoursText = (h: number) =>
   `${Number.isInteger(h) ? h : h.toFixed(1).replace(/\.0$/, "")} h`;
 
-/** "Lights 08:00–16:00 · CO₂ 07:00–15:00", or "" when neither is set. */
-export function scheduleText(t: {
-  lightsOn: string | null;
-  lightsOff: string | null;
-  co2On: string | null;
-  co2Off: string | null;
-}): string {
-  const span = (on: string | null, off: string | null) =>
-    on && off ? `${on}–${off}` : on ? `on ${on}` : off ? `off ${off}` : null;
-  const lights = span(t.lightsOn, t.lightsOff);
-  const co2 = span(t.co2On, t.co2Off);
-  return [lights && `Lights ${lights}`, co2 && `CO₂ ${co2}`]
-    .filter(Boolean)
-    .join(" · ");
-}
-
 // ── Schedules on equipment (#25) ────────────────────────────────────────────
 // A light, CO₂, pump or anything that doesn't run all day has periods it runs
 // in ("08:00"–"12:00" and "14:00"–"18:00" for a siesta), and lights can ramp

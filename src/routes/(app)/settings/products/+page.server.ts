@@ -9,7 +9,7 @@ import type { Actions, PageServerLoad } from './$types';
 /** A saved strength back as the form takes it: 1 mL in 10 L (or gal) adds this many ppm. */
 function strengthFields(mgPerMl: number | null, of: string | null, prefs: UnitPrefs) {
 	if (mgPerMl == null) return { strengthDose: '', strengthPer: '', strengthPpm: '', strengthOf: of ?? '' };
-	const per = prefs.unitSystem === 'imperial' ? 10 : 10; // 10 of the keeper's unit
+	const per = 10; // 10 of the keeper's unit
 	const perL = per / toDisplay(1, 'volume', prefs);
 	return { strengthDose: '1', strengthPer: String(per), strengthPpm: formatNumber(mgPerMl / perL, 3), strengthOf: of ?? '' };
 }

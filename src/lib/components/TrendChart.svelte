@@ -8,8 +8,6 @@
 		kind?: OverlayKind | 'other';
 	}
 
-	// the arithmetic and words are in trend-chart.ts (#120); these two are used by name elsewhere
-	export { nearestIndex, niceTicks } from './trend-chart';
 </script>
 
 <script lang="ts">

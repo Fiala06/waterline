@@ -2,7 +2,7 @@
 	// A new server's first page: the setup code from the server's log proves this
 	// is its owner, who then chooses the admin login. Works without scripts.
 	import Logo from '$lib/components/Logo.svelte';
-	let { form } = $props();
+	let { data, form } = $props();
 	const errors = $derived((form?.errors ?? {}) as Record<string, string>);
 </script>
 
@@ -43,8 +43,8 @@
 		<div class="pair">
 			<div class="field">
 				<label class="label" for="password">Password</label>
-				<input class="input" id="password" name="password" type="password" autocomplete="new-password" minlength="12" required aria-invalid={!!errors.password} aria-describedby="pw-hint" />
-				<span class="hint" id="pw-hint">At least 12 characters. A few words with spaces between them works well.</span>
+				<input class="input" id="password" name="password" type="password" autocomplete="new-password" minlength={data.passwordMin} required aria-invalid={!!errors.password} aria-describedby="pw-hint" />
+				<span class="hint" id="pw-hint">{data.passwordHint}</span>
 				{#if errors.password}<span class="error-text">✕ {errors.password}</span>{/if}
 			</div>
 			<div class="field">

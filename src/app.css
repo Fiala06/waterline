@@ -38,7 +38,6 @@
 	--surface-2: #f3f2f2;
 	--surface: #eae9e9;
 	--surface-hi: #dedbdb;
-	--selected: #eae9e9;
 	--neutral-100: #f8f4f4;
 	--neutral-200: #eae7e7;
 	--neutral-300: #d7d3d3;
@@ -52,7 +51,6 @@
 	--border: color-mix(in srgb, #201e1d 40%, transparent);
 	--border-strong: color-mix(in srgb, #201e1d 55%, transparent);
 	--divider-soft: color-mix(in srgb, #201e1d 22%, transparent);
-	--handle: #bab6b6;
 	--text: #201e1d;
 	--text-2: #444141;
 	--text-muted: #605d5d;
@@ -60,7 +58,6 @@
 	--placeholder: #9b9797;
 	/* fills one step darker than the design's #ec3013 so white text passes 4.5:1; red TEXT is accent-700 */
 	--accent: #dd2b0f;
-	--accent-hover: #ae1800;
 	--accent-text: #ae1800;
 	--accent-text-hover: #7c1405;
 	--accent-100: #fff2ef;
@@ -76,12 +73,9 @@
 	--on-accent-2: #ffffff;
 	/* ✓ is ink, ▲ is neutral-800 bold, ✕ is red text (accent-700) */
 	--ok: #201e1d;
-	--ok-bg: #eae9e9;
 	--ok-text: #201e1d;
 	--warn: #444141;
-	--warn-bg: #eae9e9;
 	--warn-border: color-mix(in srgb, #201e1d 40%, transparent);
-	--warn-text: #444141;
 	--bad: #ae1800;
 	--bad-bg: #fff2ef;
 	--bad-border: #ffc4b8;
@@ -112,14 +106,9 @@
 	--shadow-sm: 0 1px 2px color-mix(in srgb, #2d2b2b 14%, transparent);
 	--shadow-md: 0 3px 10px color-mix(in srgb, #2d2b2b 16%, transparent);
 	--shadow-lg: 0 12px 32px color-mix(in srgb, #2d2b2b 22%, transparent);
-	--shadow-fab: var(--shadow-md);
 	--shadow-modal: var(--shadow-lg);
-	--shadow-toast: var(--shadow-md);
 	--font: 'Archivo', system-ui, sans-serif;
 	--font-data: 'Archivo', system-ui, sans-serif;
-	--waterline: linear-gradient(to right, var(--accent), transparent);
-	--warn-fill: #444141;
-	--track: #d7d3d3;
 	color-scheme: light;
 }
 
@@ -130,7 +119,6 @@
 	--surface-2: #161514;
 	--surface: #22201f;
 	--surface-hi: #33302f;
-	--selected: #22201f;
 	--neutral-100: #2a2827;
 	--neutral-200: #33302f;
 	--neutral-300: #3d3a39;
@@ -144,14 +132,12 @@
 	--border: color-mix(in srgb, #f0eeed 32%, transparent);
 	--border-strong: color-mix(in srgb, #f0eeed 45%, transparent);
 	--divider-soft: color-mix(in srgb, #f0eeed 18%, transparent);
-	--handle: #57534f;
 	--text: #f0eeed;
 	--text-2: #d7d3d3;
 	--text-muted: #bab6b6;
 	--text-faint: #9b9797;
 	--placeholder: #7d7979;
 	--accent: #dd2b0f;
-	--accent-hover: #ae1800;
 	--accent-text: #ff9783;
 	--accent-text-hover: #ffc4b8;
 	--accent-100: #3a140d;
@@ -166,12 +152,9 @@
 	--on-accent: #ffffff;
 	--on-accent-2: #ffffff;
 	--ok: #f0eeed;
-	--ok-bg: #22201f;
 	--ok-text: #f0eeed;
 	--warn: #d7d3d3;
-	--warn-bg: #22201f;
 	--warn-border: color-mix(in srgb, #f0eeed 32%, transparent);
-	--warn-text: #d7d3d3;
 	--bad: #ff9783;
 	--bad-bg: #3a140d;
 	--bad-border: #7c1405;
@@ -201,11 +184,7 @@
 	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
 	--shadow-md: 0 3px 10px rgba(0, 0, 0, 0.55);
 	--shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.06);
-	--shadow-fab: var(--shadow-md);
 	--shadow-modal: var(--shadow-lg);
-	--shadow-toast: var(--shadow-md);
-	--warn-fill: #d7d3d3;
-	--track: #3d3a39;
 	color-scheme: dark;
 }
 
@@ -217,7 +196,6 @@
 		--surface-2: #161514;
 		--surface: #22201f;
 		--surface-hi: #33302f;
-		--selected: #22201f;
 		--neutral-100: #2a2827;
 		--neutral-200: #33302f;
 		--neutral-300: #3d3a39;
@@ -231,14 +209,12 @@
 		--border: color-mix(in srgb, #f0eeed 32%, transparent);
 		--border-strong: color-mix(in srgb, #f0eeed 45%, transparent);
 		--divider-soft: color-mix(in srgb, #f0eeed 18%, transparent);
-		--handle: #57534f;
 		--text: #f0eeed;
 		--text-2: #d7d3d3;
 		--text-muted: #bab6b6;
 		--text-faint: #9b9797;
 		--placeholder: #7d7979;
 		--accent: #dd2b0f;
-		--accent-hover: #ae1800;
 		--accent-text: #ff9783;
 		--accent-text-hover: #ffc4b8;
 		--accent-100: #3a140d;
@@ -253,12 +229,9 @@
 		--on-accent: #ffffff;
 		--on-accent-2: #ffffff;
 		--ok: #f0eeed;
-		--ok-bg: #22201f;
 		--ok-text: #f0eeed;
 		--warn: #d7d3d3;
-		--warn-bg: #22201f;
 		--warn-border: color-mix(in srgb, #f0eeed 32%, transparent);
-		--warn-text: #d7d3d3;
 		--bad: #ff9783;
 		--bad-bg: #3a140d;
 		--bad-border: #7c1405;
@@ -288,11 +261,7 @@
 		--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
 		--shadow-md: 0 3px 10px rgba(0, 0, 0, 0.55);
 		--shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.06);
-		--shadow-fab: var(--shadow-md);
 		--shadow-modal: var(--shadow-lg);
-		--shadow-toast: var(--shadow-md);
-		--warn-fill: #d7d3d3;
-		--track: #3d3a39;
 		color-scheme: dark;
 	}
 }
@@ -441,7 +410,6 @@ textarea::placeholder {
 	font-weight: 700;
 }
 /* Kicker: 11px uppercase, letter-spacing 0.08em, neutral-700. */
-.data-meta,
 .kicker {
 	font-family: var(--font-data);
 	font-size: 11px;
@@ -558,11 +526,6 @@ textarea::placeholder {
 	color: var(--bad);
 }
 /* a dark filled button (ink on bg) for secondary emphasis */
-.btn-ink {
-	background: var(--ink);
-	border-color: var(--ink);
-	color: var(--bg);
-}
 @media (min-width: 1024px) {
 	.btn,
 	.btn-text {
@@ -582,10 +545,6 @@ textarea::placeholder {
 	.btn-primary:not(:disabled):hover {
 		background: var(--accent-600);
 		border-color: var(--accent-600);
-	}
-	.btn-ink:not(:disabled):hover {
-		background: var(--neutral-800);
-		border-color: var(--neutral-800);
 	}
 	.btn-danger:not(:disabled):hover,
 	.btn-warn:not(:disabled):hover {

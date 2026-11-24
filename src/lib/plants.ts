@@ -54,12 +54,6 @@ export const ALGAE_SEVERITY = [
 export type AlgaeSeverity = (typeof ALGAE_SEVERITY)[number]['value'];
 export const isAlgaeSeverity = (v: unknown): v is AlgaeSeverity => ALGAE_SEVERITY.some((s) => s.value === v);
 
-/** "▲ Some" */
-export function severityText(v: unknown): string {
-	const s = ALGAE_SEVERITY.find((s) => s.value === v) ?? ALGAE_SEVERITY[1];
-	return `${s.glyph} ${s.label}`;
-}
-
 /** The title History shows: "Algae · Black beard · some · on driftwood". */
 export function algaeTitle(data: Record<string, unknown>): string {
 	const type = typeof data.algae === 'string' ? data.algae : null;

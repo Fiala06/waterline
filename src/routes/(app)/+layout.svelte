@@ -41,7 +41,6 @@
 	const info = $derived(routeInfo(routeId));
 	// the tank workspace: Overview, Charts, History, Photos, the tank's tabs and its pages
 	const tankScoped = $derived(!!current && info.tankPage);
-	const logForm = $derived(info.logForm);
 	const tabs = $derived.by((): Tab[] => {
 		if (!current) return [];
 		const id = current.id;

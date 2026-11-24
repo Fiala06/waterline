@@ -6,7 +6,6 @@ import {
   specChangeText,
   parseServiceCadence,
   scheduleHours,
-  scheduleText,
   serviceCadenceValue,
   serviceDueText,
 } from "./equipment";
@@ -46,32 +45,6 @@ describe("lighting and CO₂ schedule", () => {
     expect(scheduleHours("08:30", "16:00")).toBe(7.5);
     expect(scheduleHours("08:00", null)).toBeNull();
     expect(scheduleHours("8:00", "16:00")).toBeNull();
-  });
-  it("writes the line for the dashboard", () => {
-    expect(
-      scheduleText({
-        lightsOn: "08:00",
-        lightsOff: "16:00",
-        co2On: "07:00",
-        co2Off: "15:00",
-      }),
-    ).toBe("Lights 08:00–16:00 · CO₂ 07:00–15:00");
-    expect(
-      scheduleText({
-        lightsOn: "08:00",
-        lightsOff: "16:00",
-        co2On: null,
-        co2Off: null,
-      }),
-    ).toBe("Lights 08:00–16:00");
-    expect(
-      scheduleText({
-        lightsOn: null,
-        lightsOff: null,
-        co2On: null,
-        co2Off: null,
-      }),
-    ).toBe("");
   });
 });
 

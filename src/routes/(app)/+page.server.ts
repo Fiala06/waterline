@@ -54,7 +54,6 @@ import { deliveryView } from "$lib/server/reminder-delivery";
 import type { Actions, PageServerLoad } from "./$types";
 
 const TREND_DAYS = 28;
-/** Readings looked at for a run or a pace: a longer view than the chart's. */
 /** Readings in each card's sparkline (design 1a). */
 const SPARK_READINGS = 8;
 /** The cycling panel's charts look back this far. */

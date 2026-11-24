@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { algaeTitle, plantHealthTitle, plantObservationText, plantStatusAfter, PLANT_OBSERVATIONS, severityText } from './plants';
+import { algaeTitle, plantHealthTitle, plantObservationText, plantStatusAfter, PLANT_OBSERVATIONS } from './plants';
 
 describe('plant health (#85)', () => {
 	it('leaves a plant in a status, or removed', () => {
@@ -29,6 +29,5 @@ describe('algae (#86)', () => {
 		expect(algaeTitle({ algae: 'Black beard', severity: 'moderate', area: 'driftwood' })).toBe('Algae · Black beard · some · on driftwood');
 		expect(algaeTitle({ algae: 'Green dust', severity: 'light' })).toBe('Algae · Green dust · a little');
 		expect(algaeTitle({})).toBe('Algae');
-		expect(severityText('heavy')).toBe('✕ A lot');
 	});
 });
