@@ -13,6 +13,6 @@ export const GET: RequestHandler = async ({ params, url }) => {
 	const base = publicSettings().baseUrl ?? url.origin;
 	// the cover where the keeper put it; a share photo of its own is cut from the middle
 	const focus = coverId === tank.coverPhotoId ? { x: tank.coverX, y: tank.coverY } : undefined;
-	const png = await tankCard(view, { cover, focus, plain: page.ogPlain, host: new URL(base).host, version: ogVersion(page, tank) });
+	const png = await tankCard(view, { cover, focus, plain: page.ogPlain, host: new URL(base).host, version: ogVersion(page, tank, view) });
 	return new Response(new Uint8Array(png), { headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' } });
 };
