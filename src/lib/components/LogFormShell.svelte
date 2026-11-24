@@ -132,6 +132,7 @@
 <form
 	method="POST"
 	enctype="multipart/form-data"
+	data-save-shortcut
 	class="log-form {cls}"
 	class:edit={mode === 'edit'}
 	use:enhance={queueable({

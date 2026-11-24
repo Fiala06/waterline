@@ -17,7 +17,8 @@
 	} = $props();
 </script>
 
-<div class="bar hide-desk" class:log={variant === 'log'}>
+<!-- its form is the page's own: ⌘↵ saves it from anywhere on the page (#332) -->
+<div class="bar hide-desk" class:log={variant === 'log'} data-save-shortcut>
 	<a class="cancel" href={cancelHref}>Cancel</a>
 	<h1>{title}</h1>
 	<button class="save-top" {disabled}>{saveLabel}</button>

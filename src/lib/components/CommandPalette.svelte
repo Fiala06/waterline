@@ -80,20 +80,26 @@
 				['Tank setup', `${base}/settings`, 'G S']
 			];
 			for (const [title, href, key] of tabs) list.push({ group: 'Go to', title, sub: current.name, key, run: go(href) });
-			for (const f of favorites) {
+			// favorites and routines log too (#344)
+			for (const f of current.role === 'view' ? [] : favorites) {
 				if (f.tankId && f.tankId !== current.id) continue;
 				list.push({ group: 'Actions', title: `★ ${f.label}`, sub: [current.name, f.sub].filter(Boolean).join(' · '), id: `fav:${f.id}`, run: go(favoriteHref(f, current.id)) });
 			}
-			for (const r of routines) {
+			for (const r of current.role === 'view' ? [] : routines) {
 				if (r.tankId !== current.id) continue;
 				list.push({ group: 'Actions', title: `Run ${r.name}`, sub: `${current.name} · ${r.steps} step${r.steps === 1 ? '' : 's'}`, id: `routine:${r.id}`, run: go(`${base}/routines/${r.id}/run`) });
 			}
 			list.push(
-				{ group: 'Actions', title: 'Log water test', sub: current.name, key: 'T', run: go(logHref('test', current.id)) },
-				{ group: 'Actions', title: 'Log water change', sub: current.name, key: 'W', run: go(logHref('water_change', current.id)) },
-				{ group: 'Actions', title: 'Log dosing', sub: current.name, key: 'D', run: go(logHref('dosing', current.id)) },
-				{ group: 'Actions', title: 'Add a note', sub: current.name, key: 'N', run: go(logHref('note', current.id)) },
-				{ group: 'Actions', title: 'Add several livestock', sub: current.name, run: go(`${base}/livestock/several`) },
+				// logging (#344): not for someone who can only view the tank
+				...(current.role !== 'view'
+					? [
+							{ group: 'Actions' as const, title: 'Log water test', sub: current.name, key: 'T', run: go(logHref('test', current.id)) },
+							{ group: 'Actions' as const, title: 'Log water change', sub: current.name, key: 'W', run: go(logHref('water_change', current.id)) },
+							{ group: 'Actions' as const, title: 'Log dosing', sub: current.name, key: 'D', run: go(logHref('dosing', current.id)) },
+							{ group: 'Actions' as const, title: 'Add a note', sub: current.name, key: 'N', run: go(logHref('note', current.id)) },
+							{ group: 'Actions' as const, title: 'Add several livestock', sub: current.name, run: go(`${base}/livestock/several`) }
+						]
+					: []),
 				// a purchase (#313): the owner's
 				...(current.role === 'owner' ? [{ group: 'Actions' as const, title: 'Add expense', sub: current.name, run: go(`${base}/spending/new`) }] : []),
 				{ group: 'Actions', title: 'Share summary', sub: `${current.name} · for a forum, a friend, your fish store or an AI chat`, run: go(`${base}/summary`) },
