@@ -11,6 +11,10 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.23.10 · 2026-11-24
+
+- **Tidier under the hood.** Repeated code across the app is shared now, and the largest screens are split into parts, so fixes land in one place. When some smart plugs are slow to answer, the ones left unread are read first on the next round, and the server does a little less work for each reminder run. Nothing else changes in how the app looks or works: [Settings › What's new](/settings/changelog).
+
 ## 1.23.9 · 2026-11-24
 
 - **Know how to join before signing in.** The sign-in page now says whether new keepers can join this server, join by invitation, or have to wait, with a private email link to ask for access when the server owner has added one. Server owners can pause new accounts without locking out anyone who already has one: [Server settings › Who can sign in](/settings/server#who-can-sign-in).
