@@ -58,15 +58,29 @@ export function loginBlockedMinutes(address: string, now = Date.now()): number {
 	return list.length >= MAX_FAILURES ? Math.ceil((list[0] + WINDOW_MS - now) / 60_000) : 0;
 }
 
-export function recordLoginFailure(address: string, now = Date.now()) {
+/**
+ * Counts a try as failed. A sign-in calls it before the password is checked and
+ * forgives it if the password was right (#329): the check is slow and async, so
+ * counting after it let a burst of parallel tries all pass the limit together.
+ * Returns when it was counted, for loginSucceeded.
+ */
+export function recordLoginFailure(address: string, now = Date.now()): number {
 	const key = addressKey(address);
 	if (failures.size > 10_000) for (const k of failures.keys()) recent(k, now);
 	failures.set(key, [...recent(key, now), now]);
 	allFailures.push(now);
+	return now;
 }
 
 export function clearLoginFailures(address: string) {
 	failures.delete(addressKey(address));
+}
+
+/** Signed in: the address starts afresh, and the try counted for it (at `at`) isn't held against anyone. */
+export function loginSucceeded(address: string, at: number) {
+	clearLoginFailures(address);
+	const i = allFailures.lastIndexOf(at);
+	if (i >= 0) allFailures.splice(i, 1);
 }
 
 /** For tests: as if nobody had tried. */

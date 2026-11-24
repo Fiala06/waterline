@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addressKey, allowRate, clearLoginFailures, isLocalLoginPath, loginBlockedMinutes, loginWaitSeconds, recordLoginFailure, resetLoginLimits } from './rate-limit';
+import { addressKey, allowRate, clearLoginFailures, isLocalLoginPath, loginBlockedMinutes, loginSucceeded, loginWaitSeconds, recordLoginFailure, resetLoginLimits } from './rate-limit';
 
 describe('local admin sign-in limit', () => {
 	it('blocks after 5 failures for 15 minutes', () => {
@@ -17,6 +17,27 @@ describe('local admin sign-in limit', () => {
 		expect(loginBlockedMinutes('9.9.9.9')).toBeGreaterThan(0);
 		clearLoginFailures('9.9.9.9');
 		expect(loginBlockedMinutes('9.9.9.9')).toBe(0);
+	});
+
+	it('counts tries before their passwords are checked, so a parallel burst stops at 5 (#329)', () => {
+		resetLoginLimits();
+		// each try: the check, then counted at once; the slow password check comes after
+		let checked = 0;
+		const pending: number[] = [];
+		for (let i = 0; i < 12; i++) {
+			if (loginBlockedMinutes('7.7.7.7') || loginWaitSeconds()) continue;
+			pending.push(recordLoginFailure('7.7.7.7'));
+			checked++;
+		}
+		expect(checked).toBe(5);
+		// the right password: forgiven, here and in the server-wide count
+		loginSucceeded('7.7.7.7', pending[0]);
+		expect(loginBlockedMinutes('7.7.7.7')).toBe(0);
+		resetLoginLimits();
+		const at = recordLoginFailure('8.8.8.8');
+		loginSucceeded('8.8.8.8', at);
+		for (let i = 0; i < 20; i++) recordLoginFailure(`10.0.0.${i}`);
+		expect(loginWaitSeconds()).toBe(0); // 20 wrong ones are still free: the forgiven one isn't among them
 	});
 });
 
