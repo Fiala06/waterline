@@ -28,8 +28,8 @@ export function readExpenseForm(form: FormData, user: User, fallbackTankId: stri
 	if (!values.what) errors.what = 'Say what it was for.';
 	if (!isDate(values.date)) errors.date = 'Choose a date.';
 	else if (values.date > todayInZone(user.timeZone)) errors.date = "That's in the future.";
-	// the keeper's own tanks only
-	const tankId = listTanks(user.id).some((t) => t.id === values.tankId) ? values.tankId : fallbackTankId;
+	// the keeper's own tanks only: a tank shared with them isn't theirs to spend on (#342)
+	const tankId = listTanks(user.id, { own: true }).some((t) => t.id === values.tankId) ? values.tankId : fallbackTankId;
 	const category = (values.category in CATEGORY_LABEL ? values.category : 'other') as ExpenseCategory;
 	// the item it was for (#148): one of the tank it goes on, else no link
 	const equipmentId = values.equipmentId && equipmentNames([tankId]).has(values.equipmentId) ? values.equipmentId : null;
