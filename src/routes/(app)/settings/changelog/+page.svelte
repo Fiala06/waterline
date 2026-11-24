@@ -1,15 +1,17 @@
 <script lang="ts">
 	// What's new (redesign README § 15): every release, newest first, from
-	// CHANGELOG.md in the build, so it's here offline and always matches the
+	// CHANGELOG.md in the build, sent as page data (#349) so it always matches the
 	// version running. A newer release, for admins, sits at the top with Update now.
-	import { byLine, displayVersion, RELEASES, VERSION, type Release } from '$lib/changelog';
+	import { byLine, displayVersion, type Release } from '$lib/releases';
 	import { fmtDateLong } from '$lib/time';
 	let { data } = $props();
+	const RELEASES = $derived(data.releases);
+	const VERSION = $derived(data.version);
 
 	const id = (v: string) => `v${v.replaceAll('.', '-')}`;
-	const installed = RELEASES.find((r) => r.version === VERSION);
+	const installed = $derived(RELEASES.find((r) => r.version === VERSION));
 	const OPEN = 3;
-	const earlier = byLine(RELEASES.slice(OPEN));
+	const earlier = $derived(byLine(RELEASES.slice(OPEN)));
 	/** "Sep 27, 2026", or "Sep 26, 2026 to Sep 27, 2026" for a line released over days */
 	const span = (rs: Release[]) => {
 		const [newest, oldest] = [fmtDateLong(rs[0].date), fmtDateLong(rs.at(-1)!.date)];

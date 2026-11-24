@@ -1,24 +1,12 @@
-// What's new, from CHANGELOG.md, bundled into the app at build time: it works
-// offline and always matches the running version (package.json).
+// What's new, from CHANGELOG.md, built into the server: it always matches the
+// running version (package.json). Server code only (#349): the whole changelog
+// would otherwise ship in the browser's JavaScript, so pages get the releases
+// as data from their load, and what the browser needs is in ./releases.
 import changelog from '../../CHANGELOG.md?raw';
 import { version } from '../../package.json';
+import { displayVersion, type ChangeLine, type Release } from './releases';
 
-/**
- * One line of a release. `parts` keeps its **bold** name and its [links](/path);
- * `lead` is that name, and `href` the line's first link, for the dashboard's
- * short list.
- */
-export interface ChangeLine {
-	parts: { text: string; strong: boolean; href?: string }[];
-	lead: string | null;
-	href?: string;
-}
-export interface Release {
-	version: string;
-	/** 'YYYY-MM-DD' */
-	date: string;
-	lines: ChangeLine[];
-}
+export { byLine, displayVersion, type ChangeLine, type Release } from './releases';
 
 /** The running version, e.g. "1.1.0". */
 export const VERSION: string = version;
@@ -34,8 +22,6 @@ export function compareVersions(a: string, b: string): number {
 	return 0;
 }
 
-/** "1.1" for 1.1.0, "1.1.2" for 1.1.2. */
-export const displayVersion = (v: string) => v.replace(/^(\d+\.\d+)\.0$/, '$1');
 
 /** A page in the app ("/settings#calendar", not "//elsewhere"), or a page on the web over https. */
 export const safeHref = (href: string) => (/^\/(?!\/)/.test(href) || /^https:\/\//.test(href) ? href : null);
@@ -111,15 +97,4 @@ export function whatsNewCard(seen: string, releases = RELEASES, running = VERSIO
 		leads: lines.slice(0, 3).map(leadOf),
 		more: Math.max(0, lines.length - 3)
 	};
-}
-
-/** Releases grouped by their first two numbers (1.4.0 to 1.4.4 are "1.4"), in order: What's new folds away older ones. */
-export function byLine(releases: Release[]): { line: string; releases: Release[] }[] {
-	const groups: { line: string; releases: Release[] }[] = [];
-	for (const r of releases) {
-		const line = r.version.split('.').slice(0, 2).join('.');
-		if (groups.at(-1)?.line === line) groups.at(-1)!.releases.push(r);
-		else groups.push({ line, releases: [r] });
-	}
-	return groups;
 }
