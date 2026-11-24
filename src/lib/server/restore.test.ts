@@ -161,6 +161,21 @@ describe('restoring a backup (#306)', () => {
 		const left = db.select().from(s.photos).where(inArray(s.photos.tankId, db.select({ id: s.tanks.id }).from(s.tanks).where(eq(s.tanks.userId, other.id)).all().map((t) => t.id))).all().length;
 		const onDisk = readdirSync(join(dir, 'photos')).flatMap((d) => readdirSync(join(dir, 'photos', d))).length;
 		expect(onDisk).toBe(left * 2 + 2); // each restored photo's full and thumb, plus the original's two
+		// a good photo, written as it's read (#359), then a damaged one: the good one's files go too
+		const half = await make(
+			{
+				format: 'waterline-backup',
+				version: 2,
+				tanks: [{ id: 'b3', name: 'Broken 3', type: 'reef', photos: [
+					{ id: 'first-photo', file: 'photos/ok.jpg', takenAt: '2025-01-01T00:00:00.000Z' },
+					{ id: 'second-photo', file: 'photos/x.jpg', takenAt: '2025-01-02T00:00:00.000Z' }
+				] }]
+			},
+			{ 'photos/ok.jpg': jpeg, 'photos/x.jpg': Buffer.from('not a jpeg') }
+		);
+		const ph = previewRestore(me, half);
+		await expect(restoreBackup(me, ph.token, ['b3'])).rejects.toThrow(/isn't a photo/);
+		expect(readdirSync(join(dir, 'photos')).flatMap((d) => readdirSync(join(dir, 'photos', d))).length).toBe(onDisk);
 	});
 });
 

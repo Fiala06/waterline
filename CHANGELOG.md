@@ -11,6 +11,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Restoring big backups.** Restoring a backup with many photos saves each photo as it goes instead of holding them all in memory, so large backups restore without straining the server; a restore that fails still adds nothing: [Import & export](/settings/export).
 - **A quicker dashboard.** The dashboard reads each tank's trends, lighting and doser schedules once instead of several times, so it opens and switches tanks faster: [Dashboard](/).
 - **No pause while sizes are counted.** Server settings and Import & export count the size of your data and backups without holding up the app for everyone else, which mattered most on a NAS with many photos: [Import & export](/settings/export).
 - **Quicker Tasks and Charts.** Tasks opens faster with a long list of reminders, and Charts draws every parameter at once without reading each one separately: [Tasks](/tasks), [Charts](/charts).

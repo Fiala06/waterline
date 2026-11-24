@@ -41,7 +41,7 @@ import {
 	wishes,
 	type User
 } from './db/schema';
-import { writeThen } from './files';
+import { removeFiles, writeAll } from './files';
 import { dataDir } from './instance';
 import { logger } from './log';
 import { photoFromBackup, photoPaths } from './photos';
@@ -291,7 +291,13 @@ export async function restoreBackup(user: User, token: string, tankIds: string[]
 	const plan: { table: SQLiteTable; rows: Row[] }[] = [];
 	// links to photos, set once the photos are in
 	const photoLinks: { table: SQLiteTable; id: string; key: string; photoId: string }[] = [];
-	const files: [string, Uint8Array][] = [];
+	// each photo and receipt is written as soon as it's decoded (#359), so only one is held at a time;
+	// should anything after fail, the ones written go again
+	const written: string[] = [];
+	const put = async (files: [string, Uint8Array][]) => {
+		await writeAll(files);
+		written.push(...files.map(([p]) => p));
+	};
 	const add = (table: SQLiteTable, rows: Row[]) => {
 		const cols = getTableColumns(table);
 		const fks = foreignKeys(table);
@@ -323,102 +329,101 @@ export async function restoreBackup(user: User, token: string, tankIds: string[]
 
 	const today = todayInZone(user.timeZone);
 	const overdue: { id: string; due: string }[] = [];
-	for (const t of chosen) {
-		const { parameters: _p, tests: ts, events: _e, equipment: _q, autoDoses: _a, livestock: _l, plants: _pl, tasks: tk, photos: ph, expenses: ex, wishes: _w, routines: _r, plans: _pn, parReadings: _par, waterSources: _ws, sourceTests: _st, ...tank } = t;
-		const newTank = ids.get(t.id)!;
-		// a restored tank is private and its own: no cover until its photos are in
-		add(tanks, [{ ...tank, userId: user.id, coverPhotoId: null }]);
-		if (isId(t.coverPhotoId) && ids.has(t.coverPhotoId)) photoLinks.push({ table: tanks, id: newTank, key: 'coverPhotoId', photoId: ids.get(t.coverPhotoId)! });
-		add(tankParameters, arr(t.parameters).map((r) => ({ ...r, tankId: t.id })));
-		add(equipment, arr(t.equipment).map((r) => ({ ...r, tankId: t.id })));
-		add(autoDoses, arr(t.autoDoses).map((r) => ({ ...r, tankId: t.id })));
-		add(livestock, arr(t.livestock).map((r) => ({ ...r, tankId: t.id })));
-		add(plants, arr(t.plants).map((r) => ({ ...r, tankId: t.id })));
-		const testRows = arr(ts);
-		add(tests, testRows.map(({ readings: _, ...r }) => ({ ...r, tankId: t.id })));
-		add(
-			testReadings,
-			testRows.flatMap((x) => arr(x.readings).map((r) => ({ testId: x.id, parameterId: r.parameterId, value: r.value })))
-		);
-		add(events, arr(t.events).map((r) => ({ ...r, tankId: t.id })));
-		// a plan pauses tasks, and a task can say which plan set it: plans first
-		add(planRuns, arr(t.plans).map((r) => ({ ...r, tankId: t.id })));
-		const taskRows = arr(tk);
-		add(tasks, taskRows.map(({ completions: _, ...r }) => ({ ...r, tankId: t.id })));
-		// completions have their own numbering: a new one each
-		add(taskCompletions, taskRows.flatMap((x) => arr(x.completions).map(({ id: _, ...c }) => ({ ...c, taskId: x.id }))));
-		for (const x of taskRows) {
-			const due = (typeof x.snoozedUntil === 'string' && x.snoozedUntil) || (typeof x.nextDue === 'string' && x.nextDue) || null;
-			if (due && due < today) overdue.push({ id: ids.get(x.id as string)!, due });
-		}
-
-		// photos: each file decoded and saved again, with a new thumbnail; one missing from the ZIP is left out
-		const photoRows: Row[] = [];
-		const tags: Row[] = [];
-		for (const p of arr(ph)) {
-			const entry = typeof p.file === 'string' ? entries.get(p.file) : undefined;
-			if (!entry || !isId(p.id)) continue;
-			let img: Awaited<ReturnType<typeof photoFromBackup>>;
-			try {
-				img = await photoFromBackup(zipRead(buf, entry, 64 * 1024 * 1024));
-			} catch {
-				throw new RestoreError(`That backup is damaged: ${p.file} isn't a photo.`);
-			}
-			const at = photoPaths(newTank, ids.get(p.id)!);
-			files.push([join(at.dir, at.path), img.full], [join(at.dir, at.thumbPath), img.thumb]);
-			photoRows.push({ id: p.id, tankId: t.id, eventId: p.eventId ?? null, testId: p.testId ?? null, takenAt: p.takenAt, width: img.width, height: img.height, path: at.path, thumbPath: at.thumbPath });
-			for (const l of Array.isArray(p.livestock) ? p.livestock : []) if (isId(l)) tags.push({ photoId: p.id, livestockId: l });
-		}
-		add(photos, photoRows);
-		add(photoLivestock, tags);
-
-		// spending, with each receipt: a PDF as it is, a photo saved again
-		const expenseRows: Row[] = [];
-		for (const e of arr(ex)) {
-			const { receipt, ...row } = e;
-			const entry = typeof receipt === 'string' ? entries.get(receipt) : undefined;
-			let receiptPath: string | null = null;
-			let receiptType: string | null = null;
-			if (entry && isId(e.id)) {
-				const data = zipRead(buf, entry, 32 * 1024 * 1024);
-				const pdf = data.subarray(0, 5).toString('latin1') === '%PDF-';
-				let body: Buffer = data;
-				if (!pdf) {
-					try {
-						body = await sharp(data, { failOn: 'error', limitInputPixels: 100_000_000 }).rotate().jpeg({ quality: 82 }).toBuffer();
-					} catch {
-						throw new RestoreError(`That backup is damaged: ${receipt} isn't a photo or a PDF.`);
-					}
-				}
-				receiptPath = join(newTank, `${ids.get(e.id)}-restored.${pdf ? 'pdf' : 'jpg'}`);
-				receiptType = pdf ? 'application/pdf' : 'image/jpeg';
-				files.push([receiptFilePath(receiptPath), body]);
-			}
-			expenseRows.push({ ...row, tankId: t.id, receiptPath, receiptType });
-		}
-		add(expenses, expenseRows);
-		add(wishes, arr(t.wishes).map((r) => ({ ...r, tankId: t.id })));
-		add(maintenanceRoutines, arr(t.routines).map((r) => ({ ...r, tankId: t.id })));
-		add(parReadings, arr(t.parReadings).map((r) => ({ ...r, tankId: t.id })));
-		// source water and its tests (#315): readings point at the tank's parameters, by their new ids
-		add(waterSources, arr(t.waterSources).map((r) => ({ ...r, tankId: t.id })));
-		add(sourceTests, arr(t.sourceTests).map((r) => ({ ...r, tankId: t.id })));
-	}
-
 	try {
-		await writeThen(files, () =>
-			db.transaction((tx) => {
-				for (const { table, rows } of plan) for (const r of rows) tx.insert(table).values(r as never).run();
-				for (const l of photoLinks) {
-					const idCol = (getTableColumns(l.table) as Record<string, never>).id;
-					tx.update(l.table).set({ [l.key]: l.photoId } as never).where(eq(idCol, l.id)).run();
+		for (const t of chosen) {
+			const { parameters: _p, tests: ts, events: _e, equipment: _q, autoDoses: _a, livestock: _l, plants: _pl, tasks: tk, photos: ph, expenses: ex, wishes: _w, routines: _r, plans: _pn, parReadings: _par, waterSources: _ws, sourceTests: _st, ...tank } = t;
+			const newTank = ids.get(t.id)!;
+			// a restored tank is private and its own: no cover until its photos are in
+			add(tanks, [{ ...tank, userId: user.id, coverPhotoId: null }]);
+			if (isId(t.coverPhotoId) && ids.has(t.coverPhotoId)) photoLinks.push({ table: tanks, id: newTank, key: 'coverPhotoId', photoId: ids.get(t.coverPhotoId)! });
+			add(tankParameters, arr(t.parameters).map((r) => ({ ...r, tankId: t.id })));
+			add(equipment, arr(t.equipment).map((r) => ({ ...r, tankId: t.id })));
+			add(autoDoses, arr(t.autoDoses).map((r) => ({ ...r, tankId: t.id })));
+			add(livestock, arr(t.livestock).map((r) => ({ ...r, tankId: t.id })));
+			add(plants, arr(t.plants).map((r) => ({ ...r, tankId: t.id })));
+			const testRows = arr(ts);
+			add(tests, testRows.map(({ readings: _, ...r }) => ({ ...r, tankId: t.id })));
+			add(
+				testReadings,
+				testRows.flatMap((x) => arr(x.readings).map((r) => ({ testId: x.id, parameterId: r.parameterId, value: r.value })))
+			);
+			add(events, arr(t.events).map((r) => ({ ...r, tankId: t.id })));
+			// a plan pauses tasks, and a task can say which plan set it: plans first
+			add(planRuns, arr(t.plans).map((r) => ({ ...r, tankId: t.id })));
+			const taskRows = arr(tk);
+			add(tasks, taskRows.map(({ completions: _, ...r }) => ({ ...r, tankId: t.id })));
+			// completions have their own numbering: a new one each
+			add(taskCompletions, taskRows.flatMap((x) => arr(x.completions).map(({ id: _, ...c }) => ({ ...c, taskId: x.id }))));
+			for (const x of taskRows) {
+				const due = (typeof x.snoozedUntil === 'string' && x.snoozedUntil) || (typeof x.nextDue === 'string' && x.nextDue) || null;
+				if (due && due < today) overdue.push({ id: ids.get(x.id as string)!, due });
+			}
+
+			// photos: each file decoded and saved again, with a new thumbnail; one missing from the ZIP is left out
+			const photoRows: Row[] = [];
+			const tags: Row[] = [];
+			for (const p of arr(ph)) {
+				const entry = typeof p.file === 'string' ? entries.get(p.file) : undefined;
+				if (!entry || !isId(p.id)) continue;
+				let img: Awaited<ReturnType<typeof photoFromBackup>>;
+				try {
+					img = await photoFromBackup(zipRead(buf, entry, 64 * 1024 * 1024));
+				} catch {
+					throw new RestoreError(`That backup is damaged: ${p.file} isn't a photo.`);
 				}
-				// what was overdue when the backup was made: no alert for it now (the task still shows as overdue)
-				for (const o of overdue)
-					for (const key of [`overdue:${o.id}:${o.due}`, `push:overdue:${o.id}:${o.due}`]) tx.insert(emailLog).values({ userId: user.id, key }).onConflictDoNothing().run();
-			})
-		);
+				const at = photoPaths(newTank, ids.get(p.id)!);
+				await put([[join(at.dir, at.path), img.full], [join(at.dir, at.thumbPath), img.thumb]]);
+				photoRows.push({ id: p.id, tankId: t.id, eventId: p.eventId ?? null, testId: p.testId ?? null, takenAt: p.takenAt, width: img.width, height: img.height, path: at.path, thumbPath: at.thumbPath });
+				for (const l of Array.isArray(p.livestock) ? p.livestock : []) if (isId(l)) tags.push({ photoId: p.id, livestockId: l });
+			}
+			add(photos, photoRows);
+			add(photoLivestock, tags);
+
+			// spending, with each receipt: a PDF as it is, a photo saved again
+			const expenseRows: Row[] = [];
+			for (const e of arr(ex)) {
+				const { receipt, ...row } = e;
+				const entry = typeof receipt === 'string' ? entries.get(receipt) : undefined;
+				let receiptPath: string | null = null;
+				let receiptType: string | null = null;
+				if (entry && isId(e.id)) {
+					const data = zipRead(buf, entry, 32 * 1024 * 1024);
+					const pdf = data.subarray(0, 5).toString('latin1') === '%PDF-';
+					let body: Buffer = data;
+					if (!pdf) {
+						try {
+							body = await sharp(data, { failOn: 'error', limitInputPixels: 100_000_000 }).rotate().jpeg({ quality: 82 }).toBuffer();
+						} catch {
+							throw new RestoreError(`That backup is damaged: ${receipt} isn't a photo or a PDF.`);
+						}
+					}
+					receiptPath = join(newTank, `${ids.get(e.id)}-restored.${pdf ? 'pdf' : 'jpg'}`);
+					receiptType = pdf ? 'application/pdf' : 'image/jpeg';
+					await put([[receiptFilePath(receiptPath), body]]);
+				}
+				expenseRows.push({ ...row, tankId: t.id, receiptPath, receiptType });
+			}
+			add(expenses, expenseRows);
+			add(wishes, arr(t.wishes).map((r) => ({ ...r, tankId: t.id })));
+			add(maintenanceRoutines, arr(t.routines).map((r) => ({ ...r, tankId: t.id })));
+			add(parReadings, arr(t.parReadings).map((r) => ({ ...r, tankId: t.id })));
+			// source water and its tests (#315): readings point at the tank's parameters, by their new ids
+			add(waterSources, arr(t.waterSources).map((r) => ({ ...r, tankId: t.id })));
+			add(sourceTests, arr(t.sourceTests).map((r) => ({ ...r, tankId: t.id })));
+		}
+
+		db.transaction((tx) => {
+			for (const { table, rows } of plan) for (const r of rows) tx.insert(table).values(r as never).run();
+			for (const l of photoLinks) {
+				const idCol = (getTableColumns(l.table) as Record<string, never>).id;
+				tx.update(l.table).set({ [l.key]: l.photoId } as never).where(eq(idCol, l.id)).run();
+			}
+			// what was overdue when the backup was made: no alert for it now (the task still shows as overdue)
+			for (const o of overdue)
+				for (const key of [`overdue:${o.id}:${o.due}`, `push:overdue:${o.id}:${o.due}`]) tx.insert(emailLog).values({ userId: user.id, key }).onConflictDoNothing().run();
+		});
 	} catch (e) {
+		await removeFiles(written, 'export');
 		if (e instanceof RestoreError) throw e;
 		logger.error('export', "A backup couldn't be restored", { userId: user.id, error: e });
 		throw new RestoreError("That backup couldn't be restored: some of it is damaged or from another version. Nothing was added.");
