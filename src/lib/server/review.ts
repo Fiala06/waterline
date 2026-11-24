@@ -106,11 +106,14 @@ export function servicedToday(userId: string, tankId: string, equipmentId: strin
 	const item = getEquipment(userId, equipmentId);
 	if (item.tankId !== tankId || item.removedAt) return null;
 	const at = new Date().toISOString();
-	const event = db
-		.insert(events)
-		.values({ tankId, category: 'maintenance', occurredAt: at, note: null, data: { actions: [`Serviced ${equipmentName(item)}`], equipment_id: item.id } })
-		.returning()
-		.get();
-	markServiced(userId, item.id, at, { timeZone: userZone(userId), eventId: event.id });
+	// the entry and the service together, or neither (#348)
+	db.transaction(() => {
+		const event = db
+			.insert(events)
+			.values({ tankId, category: 'maintenance', occurredAt: at, note: null, data: { actions: [`Serviced ${equipmentName(item)}`], equipment_id: item.id }, loggedBy: userId })
+			.returning()
+			.get();
+		markServiced(userId, item.id, at, { timeZone: userZone(userId), eventId: event.id });
+	});
 	return item;
 }

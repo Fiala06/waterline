@@ -38,7 +38,9 @@ export interface EntryMeta {
   importId?: string | null;
 }
 
+/** A History entry, by whoever made the change (#348: "by …" on a shared tank), or null for the app's own (a smart plug). */
 function logEvent(
+  loggedBy: string | null,
   tankId: string,
   category: "livestock" | "equipment" | "maintenance",
   data: Record<string, unknown>,
@@ -54,6 +56,7 @@ function logEvent(
       data,
       clientId: meta.clientId ?? null,
       importId: meta.importId ?? null,
+      loggedBy,
     })
     .returning()
     .get();
@@ -166,48 +169,55 @@ export function addEquipment(
   timeZone: string,
   importId: string | null = null,
 ) {
-  getTank(userId, tankId, "owner");
-  const e = db
-    .insert(equipment)
-    .values({ ...input, tankId, importId })
-    .returning()
-    .get();
-  // an install date without a time goes on that day at noon, in the user's zone
-  const at = input.installedAt
-    ? zonedToUtc(input.installedAt, "12:00", timeZone).toISOString()
-    : now();
-  logEvent(
-    tankId,
-    "equipment",
-    {
-      action: "installed",
-      equipment_id: e.id,
-      item: equipmentName(e),
-      ...(input.schedule ? { schedule: scheduleLabel(input.schedule) } : {}),
-    },
-    { at, importId },
-  );
-  if (input.schedule) syncTankSchedule(tankId);
-  // a heater added to a tank marked "No heater": it has one now
-  const tank = getTank(userId, tankId);
-  if (tank.withoutEquipment.includes(e.type)) {
-    db.update(tanks)
-      .set({ withoutEquipment: tank.withoutEquipment.filter((t) => t !== e.type) })
-      .where(eq(tanks.id, tankId))
-      .run();
-  }
-  return e;
+  // the change and its History entry together, or neither (#348)
+  return db.transaction(() => {
+    getTank(userId, tankId, "owner");
+    const e = db
+      .insert(equipment)
+      .values({ ...input, tankId, importId })
+      .returning()
+      .get();
+    // an install date without a time goes on that day at noon, in the user's zone
+    const at = input.installedAt
+      ? zonedToUtc(input.installedAt, "12:00", timeZone).toISOString()
+      : now();
+    logEvent(
+      userId,
+      tankId,
+      "equipment",
+      {
+        action: "installed",
+        equipment_id: e.id,
+        item: equipmentName(e),
+        ...(input.schedule ? { schedule: scheduleLabel(input.schedule) } : {}),
+      },
+      { at, importId },
+    );
+    if (input.schedule) syncTankSchedule(tankId);
+    // a heater added to a tank marked "No heater": it has one now
+    const tank = getTank(userId, tankId);
+    if (tank.withoutEquipment.includes(e.type)) {
+      db.update(tanks)
+        .set({ withoutEquipment: tank.withoutEquipment.filter((t) => t !== e.type) })
+        .where(eq(tanks.id, tankId))
+        .run();
+    }
+    return e;
+  });
 }
 
 /** Equipment › Goes without: mark (or unmark) that the tank has no filter, heater, light or CO₂, with a History entry. */
 export function setWithout(userId: string, tankId: string, type: WithoutType, on: boolean) {
-  const tank = getTank(userId, tankId, "owner");
-  const has = tank.withoutEquipment.includes(type);
-  if (has === on) return tank;
-  const list = on ? [...tank.withoutEquipment, type] : tank.withoutEquipment.filter((t) => t !== type);
-  db.update(tanks).set({ withoutEquipment: list }).where(eq(tanks.id, tankId)).run();
-  logEvent(tankId, "equipment", on ? { action: "without", type, item: withoutLabel(type) } : { action: "without_off", type, item: EQUIPMENT_TYPE_LABEL[type] });
-  return { ...tank, withoutEquipment: list };
+  // the change and its History entry together, or neither (#348)
+  return db.transaction(() => {
+    const tank = getTank(userId, tankId, "owner");
+    const has = tank.withoutEquipment.includes(type);
+    if (has === on) return tank;
+    const list = on ? [...tank.withoutEquipment, type] : tank.withoutEquipment.filter((t) => t !== type);
+    db.update(tanks).set({ withoutEquipment: list }).where(eq(tanks.id, tankId)).run();
+    logEvent(userId, tankId, "equipment", on ? { action: "without", type, item: withoutLabel(type) } : { action: "without_off", type, item: EQUIPMENT_TYPE_LABEL[type] });
+    return { ...tank, withoutEquipment: list };
+  });
 }
 
 export function updateEquipment(
@@ -215,54 +225,57 @@ export function updateEquipment(
   id: string,
   input: EquipmentInput,
 ) {
-  const before = getEquipment(userId, id);
-  requireRoleOn(userId, before.tankId, "owner");
-  const after = db
-    .update(equipment)
-    .set(input)
-    .where(eq(equipment.id, id))
-    .returning()
-    .get();
-  // Record what changed so charts can mark it ("8 h → 7 h").
-  const changes: Record<string, [unknown, unknown]> = {};
-  for (const k of new Set([
-    ...Object.keys(before.specs),
-    ...Object.keys(after.specs),
-  ])) {
-    if (before.specs[k] !== after.specs[k])
-      changes[k] = [before.specs[k] ?? null, after.specs[k] ?? null];
-  }
-  if (before.brand !== after.brand)
-    changes.brand = [before.brand ?? null, after.brand ?? null];
-  if (before.model !== after.model)
-    changes.model = [before.model ?? null, after.model ?? null];
-  // the schedule changed (#25): its own entry, so trends can relate algae or pH to it
-  const wasLabel = scheduleLabel(parseSchedule(before.schedule));
-  const nowLabel = scheduleLabel(parseSchedule(after.schedule));
-  if (wasLabel !== nowLabel) {
-    logEvent(after.tankId, "equipment", {
-      action: "schedule",
-      equipment_id: id,
-      item: equipmentName(after),
-      schedule: nowLabel,
-      was: wasLabel,
-      changes: { schedule: [wasLabel, nowLabel] },
-    });
-    syncTankSchedule(after.tankId);
-  }
-  if (
-    before.brand !== after.brand ||
-    before.model !== after.model ||
-    Object.keys(changes).length
-  ) {
-    logEvent(after.tankId, "equipment", {
-      action: "adjusted",
-      equipment_id: id,
-      item: equipmentName(after),
-      changes,
-    });
-  }
-  return after;
+  // the change and its History entry together, or neither (#348)
+  return db.transaction(() => {
+    const before = getEquipment(userId, id);
+    requireRoleOn(userId, before.tankId, "owner");
+    const after = db
+      .update(equipment)
+      .set(input)
+      .where(eq(equipment.id, id))
+      .returning()
+      .get();
+    // Record what changed so charts can mark it ("8 h → 7 h").
+    const changes: Record<string, [unknown, unknown]> = {};
+    for (const k of new Set([
+      ...Object.keys(before.specs),
+      ...Object.keys(after.specs),
+    ])) {
+      if (before.specs[k] !== after.specs[k])
+        changes[k] = [before.specs[k] ?? null, after.specs[k] ?? null];
+    }
+    if (before.brand !== after.brand)
+      changes.brand = [before.brand ?? null, after.brand ?? null];
+    if (before.model !== after.model)
+      changes.model = [before.model ?? null, after.model ?? null];
+    // the schedule changed (#25): its own entry, so trends can relate algae or pH to it
+    const wasLabel = scheduleLabel(parseSchedule(before.schedule));
+    const nowLabel = scheduleLabel(parseSchedule(after.schedule));
+    if (wasLabel !== nowLabel) {
+      logEvent(userId, after.tankId, "equipment", {
+        action: "schedule",
+        equipment_id: id,
+        item: equipmentName(after),
+        schedule: nowLabel,
+        was: wasLabel,
+        changes: { schedule: [wasLabel, nowLabel] },
+      });
+      syncTankSchedule(after.tankId);
+    }
+    if (
+      before.brand !== after.brand ||
+      before.model !== after.model ||
+      Object.keys(changes).length
+    ) {
+      logEvent(userId, after.tankId, "equipment", {
+        action: "adjusted",
+        equipment_id: id,
+        item: equipmentName(after),
+        changes,
+      });
+    }
+    return after;
+  });
 }
 
 /** Moves it to past equipment. Its suggested maintenance reminder goes with it. */
@@ -271,30 +284,34 @@ export function removeEquipment(
   id: string,
   meta: EntryMeta & { reasons?: string[] } = {},
 ) {
-  const e = getEquipment(userId, id);
-  requireRoleOn(userId, e.tankId, "owner");
-  db.update(equipment)
-    .set({ removedAt: meta.at ?? now() })
-    .where(eq(equipment.id, id))
-    .run();
-  const tasksRemoved = db
-    .delete(tasks)
-    .where(eq(tasks.equipmentId, id))
-    .run().changes;
-  // its smart plug (#203) is no longer read
-  db.delete(equipmentPlugs).where(eq(equipmentPlugs.equipmentId, id)).run();
-  const event = logEvent(
-    e.tankId,
-    "equipment",
-    {
-      action: "removed",
-      equipment_id: id,
-      item: equipmentName(e),
-      reasons: meta.reasons ?? [],
-    },
-    meta,
-  );
-  return Object.assign(e, { event, tasksRemoved });
+  // the change and its History entry together, or neither (#348)
+  return db.transaction(() => {
+    const e = getEquipment(userId, id);
+    requireRoleOn(userId, e.tankId, "owner");
+    db.update(equipment)
+      .set({ removedAt: meta.at ?? now() })
+      .where(eq(equipment.id, id))
+      .run();
+    const tasksRemoved = db
+      .delete(tasks)
+      .where(eq(tasks.equipmentId, id))
+      .run().changes;
+    // its smart plug (#203) is no longer read
+    db.delete(equipmentPlugs).where(eq(equipmentPlugs.equipmentId, id)).run();
+    const event = logEvent(
+      userId,
+      e.tankId,
+      "equipment",
+      {
+        action: "removed",
+        equipment_id: id,
+        item: equipmentName(e),
+        reasons: meta.reasons ?? [],
+      },
+      meta,
+    );
+    return Object.assign(e, { event, tasksRemoved });
+  });
 }
 
 /**
@@ -303,25 +320,28 @@ export function removeEquipment(
  * History says when, and on resuming, for how long.
  */
 export function setEquipmentPaused(userId: string, id: string, paused: boolean, timeZone: string, at = now(), opts: { byPlug?: boolean } = {}) {
-  const e = getEquipment(userId, id);
-  requireRoleOn(userId, e.tankId, "log");
-  if (e.removedAt) error(400, "That equipment was removed");
-  if (!!e.pausedAt === paused) return e;
-  db.update(equipment)
-    .set({ pausedAt: paused ? at : null })
-    .where(eq(equipment.id, id))
-    .run();
-  logEvent(e.tankId, "equipment", {
-    action: paused ? "paused" : "resumed",
-    equipment_id: id,
-    item: equipmentName(e),
-    ...(e.pausedAt && !paused ? { paused_at: e.pausedAt } : {}),
-    // switched at its smart plug (#203), not in Waterline
-    ...(opts.byPlug ? { by: "plug" } : {}),
-  }, { at });
-  // a doser back on picks its doses up from their next time, not the ones it missed
-  if (!paused && e.type === "doser") restartDoses(id, timeZone, new Date(at));
-  return { ...e, pausedAt: paused ? at : null };
+  // the change and its History entry together, or neither (#348)
+  return db.transaction(() => {
+    const e = getEquipment(userId, id);
+    requireRoleOn(userId, e.tankId, "log");
+    if (e.removedAt) error(400, "That equipment was removed");
+    if (!!e.pausedAt === paused) return e;
+    db.update(equipment)
+      .set({ pausedAt: paused ? at : null })
+      .where(eq(equipment.id, id))
+      .run();
+    logEvent(opts.byPlug ? null : userId, e.tankId, "equipment", {
+      action: paused ? "paused" : "resumed",
+      equipment_id: id,
+      item: equipmentName(e),
+      ...(e.pausedAt && !paused ? { paused_at: e.pausedAt } : {}),
+      // switched at its smart plug (#203), not in Waterline
+      ...(opts.byPlug ? { by: "plug" } : {}),
+    }, { at });
+    // a doser back on picks its doses up from their next time, not the ones it missed
+    if (!paused && e.type === "doser") restartDoses(id, timeZone, new Date(at));
+    return { ...e, pausedAt: paused ? at : null };
+  });
 }
 
 /**
@@ -379,24 +399,31 @@ export function addPar(
   tankId: string,
   input: { spot: string; x: number; y: number; value: number; note: string | null; measuredAt: string },
 ) {
-  getTank(userId, tankId, "log");
-  const r = db.insert(parReadings).values({ ...input, tankId }).returning().get();
-  logEvent(
-    tankId,
-    "equipment",
-    { action: "par", par_id: r.id, item: "PAR", spot: input.spot, value: input.value },
-    { at: input.measuredAt, note: input.note },
-  );
-  return r;
+  // the change and its History entry together, or neither (#348)
+  return db.transaction(() => {
+    getTank(userId, tankId, "log");
+    const r = db.insert(parReadings).values({ ...input, tankId }).returning().get();
+    logEvent(
+      userId,
+      tankId,
+      "equipment",
+      { action: "par", par_id: r.id, item: "PAR", spot: input.spot, value: input.value },
+      { at: input.measuredAt, note: input.note },
+    );
+    return r;
+  });
 }
 
 export function deletePar(userId: string, tankId: string, id: string) {
-  getTank(userId, tankId, "log");
-  const r = db.select().from(parReadings).where(and(eq(parReadings.id, id), eq(parReadings.tankId, tankId))).get();
-  if (!r) error(404, "Reading not found");
-  db.delete(parReadings).where(eq(parReadings.id, id)).run();
-  db.delete(events).where(sql`json_extract(${events.data}, '$.par_id') = ${id}`).run();
-  return r;
+  // the change and its History entry together, or neither (#348)
+  return db.transaction(() => {
+    getTank(userId, tankId, "log");
+    const r = db.select().from(parReadings).where(and(eq(parReadings.id, id), eq(parReadings.tankId, tankId))).get();
+    if (!r) error(404, "Reading not found");
+    db.delete(parReadings).where(eq(parReadings.id, id)).run();
+    db.delete(events).where(sql`json_extract(${events.data}, '$.par_id') = ${id}`).run();
+    return r;
+  });
 }
 
 /** Brands the user has on other tanks, for "Tidewell · used in Reef 24". */
@@ -497,35 +524,39 @@ export function addLivestock(
   input: LivestockInput,
   meta: EntryMeta = {},
 ) {
-  getTank(userId, tankId, "log");
-  const same = sameSpecies(tankId, input);
-  const row = same
-    ? db
-        .update(livestock)
-        .set({ count: Math.min(same.count + input.count, MAX_LIVESTOCK_COUNT) })
-        .where(eq(livestock.id, same.id))
-        .returning()
-        .get()
-    : db
-        .insert(livestock)
-        .values({ ...input, tankId, importId: meta.importId ?? null })
-        .returning()
-        .get();
-  const event = logEvent(
-    tankId,
-    "livestock",
-    {
-      action: "added",
-      livestock_id: row.id,
-      name: row.commonName,
-      scientific_name: row.scientificName,
-      count: input.count,
-      status: input.status,
-      delta: input.count,
-    },
-    meta,
-  );
-  return { row, event };
+  // the change and its History entry together, or neither (#348)
+  return db.transaction(() => {
+    getTank(userId, tankId, "log");
+    const same = sameSpecies(tankId, input);
+    const row = same
+      ? db
+          .update(livestock)
+          .set({ count: Math.min(same.count + input.count, MAX_LIVESTOCK_COUNT) })
+          .where(eq(livestock.id, same.id))
+          .returning()
+          .get()
+      : db
+          .insert(livestock)
+          .values({ ...input, tankId, importId: meta.importId ?? null })
+          .returning()
+          .get();
+    const event = logEvent(
+      userId,
+      tankId,
+      "livestock",
+      {
+        action: "added",
+        livestock_id: row.id,
+        name: row.commonName,
+        scientific_name: row.scientificName,
+        count: input.count,
+        status: input.status,
+        delta: input.count,
+      },
+      meta,
+    );
+    return { row, event };
+  });
 }
 
 export type CountReason = "loss" | "rehomed" | "recount" | "added";
@@ -538,36 +569,40 @@ export function changeCount(
   reason: CountReason,
   meta: EntryMeta = {},
 ) {
-  const at = meta.at ?? now();
-  const l = getLivestock(userId, id);
-  requireRoleOn(userId, l.tankId, "log");
-  const delta = newCount - l.count;
-  if (delta === 0)
-    return Object.assign(l, {
-      event: null as typeof events.$inferSelect | null,
-    });
-  db.update(livestock)
-    .set({ count: Math.max(0, newCount), removedAt: newCount <= 0 ? at : null })
-    .where(eq(livestock.id, id))
-    .run();
-  const event = logEvent(
-    l.tankId,
-    "livestock",
-    {
-      action:
-        reason === "recount" ? "recount" : delta > 0 ? "added" : "removed",
-      reason: delta > 0 && reason !== "recount" ? null : reason,
-      livestock_id: id,
-      name: l.commonName,
-      nickname: l.nickname,
-      count: Math.abs(delta),
-      delta,
-      from: l.count,
-      to: newCount,
-    },
-    { ...meta, at },
-  );
-  return Object.assign(getLivestock(userId, id), { event });
+  // the change and its History entry together, or neither (#348)
+  return db.transaction(() => {
+    const at = meta.at ?? now();
+    const l = getLivestock(userId, id);
+    requireRoleOn(userId, l.tankId, "log");
+    const delta = newCount - l.count;
+    if (delta === 0)
+      return Object.assign(l, {
+        event: null as typeof events.$inferSelect | null,
+      });
+    db.update(livestock)
+      .set({ count: Math.max(0, newCount), removedAt: newCount <= 0 ? at : null })
+      .where(eq(livestock.id, id))
+      .run();
+    const event = logEvent(
+      userId,
+      l.tankId,
+      "livestock",
+      {
+        action:
+          reason === "recount" ? "recount" : delta > 0 ? "added" : "removed",
+        reason: delta > 0 && reason !== "recount" ? null : reason,
+        livestock_id: id,
+        name: l.commonName,
+        nickname: l.nickname,
+        count: Math.abs(delta),
+        delta,
+        from: l.count,
+        to: newCount,
+      },
+      { ...meta, at },
+    );
+    return Object.assign(getLivestock(userId, id), { event });
+  });
 }
 
 /** Quarantine ↔ in tank. Moving in joins an existing group of the same species; a named pet stays its own. */
@@ -576,30 +611,33 @@ export function setLivestockStatus(
   id: string,
   status: Livestock["status"],
 ) {
-  const l = getLivestock(userId, id);
-  requireRoleOn(userId, l.tankId, "log");
-  if (l.status === status) return l;
-  const same = l.nickname
-    ? undefined
-    : sameSpecies(l.tankId, { ...l, status }, l.id);
-  if (same) {
-    db.update(livestock)
-      .set({ count: same.count + l.count })
-      .where(eq(livestock.id, same.id))
-      .run();
-    db.delete(livestock).where(eq(livestock.id, id)).run();
-  } else {
-    db.update(livestock).set({ status }).where(eq(livestock.id, id)).run();
-  }
-  logEvent(l.tankId, "livestock", {
-    action: "status",
-    livestock_id: same?.id ?? id,
-    name: l.commonName,
-    nickname: l.nickname,
-    count: l.count,
-    status,
+  // the change and its History entry together, or neither (#348)
+  return db.transaction(() => {
+    const l = getLivestock(userId, id);
+    requireRoleOn(userId, l.tankId, "log");
+    if (l.status === status) return l;
+    const same = l.nickname
+      ? undefined
+      : sameSpecies(l.tankId, { ...l, status }, l.id);
+    if (same) {
+      db.update(livestock)
+        .set({ count: same.count + l.count })
+        .where(eq(livestock.id, same.id))
+        .run();
+      db.delete(livestock).where(eq(livestock.id, id)).run();
+    } else {
+      db.update(livestock).set({ status }).where(eq(livestock.id, id)).run();
+    }
+    logEvent(userId, l.tankId, "livestock", {
+      action: "status",
+      livestock_id: same?.id ?? id,
+      name: l.commonName,
+      nickname: l.nickname,
+      count: l.count,
+      status,
+    });
+    return l;
   });
-  return l;
 }
 
 /**
@@ -658,8 +696,8 @@ export function moveLivestock(
         .get().id;
     }
     const about = { name: l.commonName, scientific_name: l.scientificName, nickname: l.nickname, count: n };
-    logEvent(from.id, "livestock", { action: "moved_out", livestock_id: whole && !same ? movedId : l.id, to_livestock_id: movedId, to_tank_id: to.id, to_tank: to.name, ...about, delta: -n }, { at, clientId: opts.clientId ?? null });
-    logEvent(to.id, "livestock", { action: "moved_in", livestock_id: movedId, from_livestock_id: l.id, from_tank_id: from.id, from_tank: from.name, status, ...about, delta: n }, { at });
+    logEvent(userId, from.id, "livestock", { action: "moved_out", livestock_id: whole && !same ? movedId : l.id, to_livestock_id: movedId, to_tank_id: to.id, to_tank: to.name, ...about, delta: -n }, { at, clientId: opts.clientId ?? null });
+    logEvent(userId, to.id, "livestock", { action: "moved_in", livestock_id: movedId, from_livestock_id: l.id, from_tank_id: from.id, from_tank: from.name, status, ...about, delta: n }, { at });
     return { id: movedId, toTankId: to.id, count: n };
   });
 }
@@ -675,56 +713,60 @@ export function nameLivestock(
   nickname: string | null,
   meta: EntryMeta = {},
 ) {
-  const l = getLivestock(userId, id);
-  requireRoleOn(userId, l.tankId, "log");
-  if (l.removedAt)
-    error(400, "Livestock that has left the tank can't be renamed");
-  nickname = nickname?.trim().slice(0, 60) || null;
-  if (nickname === l.nickname) return l;
-  if (!nickname && !l.nickname) return l;
-  let pet = l;
-  if (nickname && !l.nickname && l.count > 1) {
-    db.update(livestock)
-      .set({ count: l.count - 1 })
-      .where(eq(livestock.id, l.id))
-      .run();
-    pet = db
-      .insert(livestock)
-      .values({
-        tankId: l.tankId,
-        kind: l.kind,
-        commonName: l.commonName,
-        scientificName: l.scientificName,
-        count: 1,
-        status: l.status,
-        addedAt: l.addedAt,
-        source: l.source,
+  // the change and its History entry together, or neither (#348)
+  return db.transaction(() => {
+    const l = getLivestock(userId, id);
+    requireRoleOn(userId, l.tankId, "log");
+    if (l.removedAt)
+      error(400, "Livestock that has left the tank can't be renamed");
+    nickname = nickname?.trim().slice(0, 60) || null;
+    if (nickname === l.nickname) return l;
+    if (!nickname && !l.nickname) return l;
+    let pet = l;
+    if (nickname && !l.nickname && l.count > 1) {
+      db.update(livestock)
+        .set({ count: l.count - 1 })
+        .where(eq(livestock.id, l.id))
+        .run();
+      pet = db
+        .insert(livestock)
+        .values({
+          tankId: l.tankId,
+          kind: l.kind,
+          commonName: l.commonName,
+          scientificName: l.scientificName,
+          count: 1,
+          status: l.status,
+          addedAt: l.addedAt,
+          source: l.source,
+          nickname,
+        })
+        .returning()
+        .get();
+    } else {
+      pet = db
+        .update(livestock)
+        .set({ nickname })
+        .where(eq(livestock.id, l.id))
+        .returning()
+        .get();
+    }
+    logEvent(
+      userId,
+      l.tankId,
+      "livestock",
+      {
+        action: "named",
+        livestock_id: pet.id,
+        ...(pet.id !== l.id ? { from_id: l.id } : {}),
+        name: l.commonName,
         nickname,
-      })
-      .returning()
-      .get();
-  } else {
-    pet = db
-      .update(livestock)
-      .set({ nickname })
-      .where(eq(livestock.id, l.id))
-      .returning()
-      .get();
-  }
-  logEvent(
-    l.tankId,
-    "livestock",
-    {
-      action: "named",
-      livestock_id: pet.id,
-      ...(pet.id !== l.id ? { from_id: l.id } : {}),
-      name: l.commonName,
-      nickname,
-      previous: l.nickname,
-    },
-    meta,
-  );
-  return pet;
+        previous: l.nickname,
+      },
+      meta,
+    );
+    return pet;
+  });
 }
 
 /** Notes, where it came from and the profile photo: about the animal, not a change to the tank, so no History entry. A profile photo is also tagged. */
@@ -825,25 +867,29 @@ export function addPlant(
   input: Pick<Plant, "name" | "scientificName" | "position" | "status">,
   meta: EntryMeta = {},
 ) {
-  getTank(userId, tankId, "log");
-  const p = db
-    .insert(plants)
-    .values({ ...input, tankId, importId: meta.importId ?? null })
-    .returning()
-    .get();
-  const event = logEvent(
-    tankId,
-    "livestock",
-    {
-      action: "added",
-      plant_id: p.id,
-      name: p.name,
-      scientific_name: p.scientificName,
-      kind: "plant",
-    },
-    meta,
-  );
-  return Object.assign(p, { event });
+  // the change and its History entry together, or neither (#348)
+  return db.transaction(() => {
+    getTank(userId, tankId, "log");
+    const p = db
+      .insert(plants)
+      .values({ ...input, tankId, importId: meta.importId ?? null })
+      .returning()
+      .get();
+    const event = logEvent(
+      userId,
+      tankId,
+      "livestock",
+      {
+        action: "added",
+        plant_id: p.id,
+        name: p.name,
+        scientific_name: p.scientificName,
+        kind: "plant",
+      },
+      meta,
+    );
+    return Object.assign(p, { event });
+  });
 }
 
 export function updatePlant(
@@ -862,34 +908,42 @@ export function updatePlant(
 
 /** Rename a plant (#265), logged in History as "Renamed Java fern to …". */
 export function renamePlant(userId: string, id: string, name: string, meta: EntryMeta = {}) {
-  const p = getPlant(userId, id);
-  requireRoleOn(userId, p.tankId, "log");
-  name = name.trim().slice(0, 80);
-  if (!name || name === p.name) return p;
-  const renamed = db.update(plants).set({ name }).where(eq(plants.id, id)).returning().get();
-  logEvent(
-    p.tankId,
-    "livestock",
-    { action: "renamed", plant_id: id, name, previous: p.name, kind: "plant" },
-    meta,
-  );
-  return renamed;
+  // the change and its History entry together, or neither (#348)
+  return db.transaction(() => {
+    const p = getPlant(userId, id);
+    requireRoleOn(userId, p.tankId, "log");
+    name = name.trim().slice(0, 80);
+    if (!name || name === p.name) return p;
+    const renamed = db.update(plants).set({ name }).where(eq(plants.id, id)).returning().get();
+    logEvent(
+      userId,
+      p.tankId,
+      "livestock",
+      { action: "renamed", plant_id: id, name, previous: p.name, kind: "plant" },
+      meta,
+    );
+    return renamed;
+  });
 }
 
 export function removePlant(userId: string, id: string, meta: EntryMeta = {}) {
-  const p = getPlant(userId, id);
-  requireRoleOn(userId, p.tankId, "log");
-  db.update(plants)
-    .set({ removedAt: meta.at ?? now() })
-    .where(eq(plants.id, id))
-    .run();
-  const event = logEvent(
-    p.tankId,
-    "livestock",
-    { action: "removed", plant_id: id, name: p.name, kind: "plant" },
-    meta,
-  );
-  return Object.assign(p, { event });
+  // the change and its History entry together, or neither (#348)
+  return db.transaction(() => {
+    const p = getPlant(userId, id);
+    requireRoleOn(userId, p.tankId, "log");
+    db.update(plants)
+      .set({ removedAt: meta.at ?? now() })
+      .where(eq(plants.id, id))
+      .run();
+    const event = logEvent(
+      userId,
+      p.tankId,
+      "livestock",
+      { action: "removed", plant_id: id, name: p.name, kind: "plant" },
+      meta,
+    );
+    return Object.assign(p, { event });
+  });
 }
 
 /** "Log trim": one maintenance entry, and the trimmed plants remember the date. */
@@ -926,22 +980,26 @@ export function logTrim(
   plantIds: string[],
   note: string | null,
 ) {
-  // a trim is logged, so "view" can't (#106)
-  requireRoleOn(userId, tankId, "log");
-  const mine = listPlants(userId, tankId).filter((p) =>
-    plantIds.includes(p.id),
-  );
-  if (!mine.length) error(400, "Choose at least one plant");
-  const at = now();
-  for (const p of mine)
-    db.update(plants)
-      .set({ lastTrimmedAt: at })
-      .where(eq(plants.id, p.id))
-      .run();
-  return logEvent(
-    tankId,
-    "maintenance",
-    { actions: ["Trimmed plants"], plants: mine.map((p) => p.name) },
-    { note, at },
-  );
+  // the change and its History entry together, or neither (#348)
+  return db.transaction(() => {
+    // a trim is logged, so "view" can't (#106)
+    requireRoleOn(userId, tankId, "log");
+    const mine = listPlants(userId, tankId).filter((p) =>
+      plantIds.includes(p.id),
+    );
+    if (!mine.length) error(400, "Choose at least one plant");
+    const at = now();
+    for (const p of mine)
+      db.update(plants)
+        .set({ lastTrimmedAt: at })
+        .where(eq(plants.id, p.id))
+        .run();
+    return logEvent(
+      userId,
+      tankId,
+      "maintenance",
+      { actions: ["Trimmed plants"], plants: mine.map((p) => p.name) },
+      { note, at },
+    );
+  });
 }

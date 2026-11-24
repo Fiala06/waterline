@@ -14,7 +14,7 @@ const { events, livestock } = await import('./db/schema');
 const { and, eq } = await import('drizzle-orm');
 const { upsertUser } = await import('./users');
 const { createTank, setArchived } = await import('./tanks');
-const { addLivestock, getLivestock, listLivestock, moveLivestock, nameLivestock } = await import('./specs');
+const { addLivestock, changeCount, getLivestock, listLivestock, moveLivestock, nameLivestock } = await import('./specs');
 const { acceptMemberInvites, inviteMember } = await import('./members');
 const { eventTitle } = await import('$lib/events');
 
@@ -85,5 +85,24 @@ describe('moving livestock between tanks (#317)', () => {
 		moveLivestock(me.id, shrimp.id, display.id, 3, { clientId: 'move-key-1' });
 		expect(counts(qt.id)['Amano shrimp/quarantine']).toBe(5);
 		expect(counts(display.id)['Amano shrimp/in_tank']).toBe(3);
+	});
+});
+
+describe('livestock entries, whole or not at all (#348)', () => {
+	it("say who logged them, on the keeper's tank and on one shared with them", () => {
+		const guppies = fish(display.id, 'Guppy', 5, 'in_tank');
+		const shared = addLivestock(me.id, theirs.id, { kind: 'fish', commonName: 'Platy', scientificName: null, count: 3, status: 'in_tank', addedAt: '2026-11-01', source: null }).row;
+		changeCount(me.id, guppies.id, 6, 'added');
+		changeCount(me.id, shared.id, 4, 'added');
+		for (const tankId of [display.id, theirs.id]) for (const e of livestockEvents(tankId)) expect(e.loggedBy, e.data.action as string).toBe(me.id);
+	});
+
+	it('change nothing when their History entry fails (a replayed entry)', () => {
+		const tetras = fish(display.id, 'Ember tetra', 8, 'in_tank');
+		changeCount(me.id, tetras.id, 7, 'loss', { clientId: 'replayed-1' });
+		// the same entry again, for another fish: its History entry is refused, so the count stays
+		const rasboras = fish(display.id, 'Harlequin rasbora', 6, 'in_tank');
+		expect(() => changeCount(me.id, rasboras.id, 5, 'loss', { clientId: 'replayed-1' })).toThrow();
+		expect(getLivestock(me.id, rasboras.id).count).toBe(6);
 	});
 });
