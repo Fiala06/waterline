@@ -245,8 +245,10 @@ export function setMemberRole(tankId: string, id: string, role: TankRole): TankM
 
 /** Remove someone (or cancel a pending invite): the tank leaves their list on their next request. */
 export function removeMember(tankId: string, id: string): TankMember {
-	getMember(tankId, id);
-	return db.update(tankMembers).set({ revokedAt: now() }).where(eq(tankMembers.id, id)).returning().get();
+	const m = getMember(tankId, id);
+	// removed already: it stays removed when it was, so Remove posted again can't reopen Undo (#337)
+	if (m.revokedAt) return m;
+	return db.update(tankMembers).set({ revokedAt: now() }).where(and(eq(tankMembers.id, id), isNull(tankMembers.revokedAt))).returning().get() ?? m;
 }
 
 /** How long after Remove its Undo still works (#290). */

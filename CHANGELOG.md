@@ -23,6 +23,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 - **Offline pages after signing out.** Pages kept for offline use are cleared when your session ends, even when the app opens on the homepage instead of sign-in, and with Wi-Fi up but no way through, a kept page shows after a few seconds instead of a long wait: [Settings › Data](/settings#data).
 - **Email doesn't hold things up.** A mail server that stalls mid-send now gives up after 30 seconds, so reminders, dose logging and device readings carry on: [Server settings](/settings/server).
 - **Spending on your own tanks.** An expense's tank picker lists only your own tanks, not ones shared with you, which can't take one: [Spending](/tanks/current/spending).
+- **Removed stays removed.** Removing someone from a shared tank a second time can no longer bring back the Undo, so a person removed long ago can't be let back in without accepting a new invitation: [Sharing](/tanks/current/sharing).
 
 ## 1.23.4 · 2026-11-21
 

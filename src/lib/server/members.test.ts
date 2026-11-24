@@ -176,6 +176,18 @@ describe('one active membership per person and tank (#117)', async () => {
 		expect(tankRole(leaver.id, t2)).toBe('log');
 	});
 
+	it('Remove posted again on someone removed long ago keeps the old time, so Undo stays shut (#337)', () => {
+		const old = upsertUser({ email: 'old@example.com', name: 'Old', googleSub: 'g-old' });
+		const { member } = inviteMember(t2, old.email, 'log', keeper.id);
+		acceptMemberInvites(old.email, old.id, { id: member.id });
+		const removed = removeMember(t2.id, member.id);
+		db.update(tankMembers).set({ revokedAt: '2026-01-01T00:00:00.000Z' }).where(eq(tankMembers.id, member.id)).run();
+		expect(removeMember(t2.id, member.id).revokedAt).toBe('2026-01-01T00:00:00.000Z');
+		expect(restoreMember(t2.id, member.id)).toBeNull();
+		expect(tankRole(old.id, t2)).toBeNull();
+		expect(removed.revokedAt).toBeTruthy();
+	});
+
 	it('Undo of a cancelled invitation gives way to a newer one for the same address', () => {
 		const { member: first } = inviteMember(t2, 'later@example.com', 'view', keeper.id);
 		removeMember(t2.id, first.id);
