@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { newKeeperWithTank, open } from './helpers';
 
 // An adjustment to equipment says what changed: in History's title and on the

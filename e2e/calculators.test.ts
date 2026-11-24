@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { newKeeperWithTank, open } from './helpers';
 
 // #18: the Calculators page, filled in from the tank and the keeper's units (imperial by default).

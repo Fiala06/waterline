@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { newKeeperWithTank, open, openQuickAdd } from './helpers';
 
 // #85 a plant's health journal, #86 algae on the tank: both observations, in

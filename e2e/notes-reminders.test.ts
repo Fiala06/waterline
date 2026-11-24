@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { newKeeperWithTank, open } from './helpers';
 
 test("a tank's notes: pinned, then the latest dated ones, added from its page", async ({ page }) => {

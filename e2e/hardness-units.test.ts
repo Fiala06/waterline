@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { newKeeperWithTank, open } from './helpers';
 
 // GH and KH in degrees (drop kits: 1 drop = 1°) or ppm, and a nudge when a

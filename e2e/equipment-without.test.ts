@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { newKeeperWithTank, open } from './helpers';
 
 // A tank can go without a heater or filter on purpose: marked, it reads as a choice, not a gap.

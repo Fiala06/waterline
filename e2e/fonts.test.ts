@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 
 // #243: the fonts on every first screen are fetched with the page, so a first visit doesn't reflow
 test('the body and heading weights of Archivo are preloaded', async ({ page }, info) => {

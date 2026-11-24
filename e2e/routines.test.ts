@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { dateValue, newKeeperWithTank, open } from './helpers';
 
 // Dosing and feeding routines (#17): made from the tank's page, marked done

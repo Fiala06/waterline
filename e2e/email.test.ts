@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { dateValue, linkIn, newKeeperWithTank, open, pickDate, waitForMail } from './helpers';
 
 test('out-of-range alert and one-click unsubscribe', async ({ page, request }, info) => {

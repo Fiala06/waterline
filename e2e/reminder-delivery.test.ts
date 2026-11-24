@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { newKeeperWithTank, open } from './helpers';
 
 // #310: the first reminder says when it goes and how it reaches the keeper, from their settings as they are

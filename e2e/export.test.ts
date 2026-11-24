@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { jpeg, newKeeperWithTank, open } from './helpers';
 
 test('export a full backup and a CSV', async ({ page }, info) => {

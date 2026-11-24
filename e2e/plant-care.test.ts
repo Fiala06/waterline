@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { newKeeperWithTank, open } from './helpers';
 
 // #84: a known plant's sheet shows its care profile beside the tank's own temperature; an unknown one has none

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { newKeeperWithTank, open } from './helpers';
 
 // #317: some of a group moves from a quarantine tank to the display, confirmed, logged in both, never a loss

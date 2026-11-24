@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { dateValue, newKeeperWithTank, open } from './helpers';
 
 // #96 a planted tank's Growing setup in Tank setup, #97 the same at a glance on the dashboard.

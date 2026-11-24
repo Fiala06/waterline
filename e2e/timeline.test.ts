@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { jpeg, newKeeperWithTank, open, pickDate } from './helpers';
 
 // #26: photos in date order with the readings of the moment, what changed between, before and after, and the public section.

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 
 // Acceptance: sign in → set up → create a tank → log a test (inline status)
 // → see it on the dashboard → complete a task.

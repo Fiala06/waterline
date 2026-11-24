@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { newKeeperWithTank, open, waitForMail } from './helpers';
 
 test('daily digest instead of individual emails', async ({ page }, info) => {

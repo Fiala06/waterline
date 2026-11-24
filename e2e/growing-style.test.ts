@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { open } from './helpers';
 
 // Planted tank profiles (#81): how a planted tank is grown decides which

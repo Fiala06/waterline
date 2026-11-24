@@ -1,4 +1,5 @@
-import { expect, test, type Page, type Route } from '@playwright/test';
+import { type Page, type Route } from '@playwright/test';
+import { expect, test } from './test';
 import { jpeg, newKeeperWithTank, open } from './helpers';
 
 test.use({ serviceWorkers: 'allow' });

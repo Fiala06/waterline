@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { open } from './helpers';
 
 // #300: the product homepage, opt-in in Server settings: signed-out visitors to / see what

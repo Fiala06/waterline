@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { jpeg, newKeeperWithTank, open } from './helpers';
 
 test('public tank page and photo share link', async ({ page, browser }, info) => {

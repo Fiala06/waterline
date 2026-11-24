@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
+import { expect, test } from './test';
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { openQuickAdd } from './helpers';
 

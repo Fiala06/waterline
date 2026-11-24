@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { jpeg, newKeeperWithTank, open } from './helpers';
 
 // #42: a photo keeps the date it was taken, read from its details.

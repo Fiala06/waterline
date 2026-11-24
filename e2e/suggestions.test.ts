@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { newKeeperWithTank, open } from './helpers';
 
 const logTest = async (page: import('@playwright/test').Page, tankId: string, label: string, value: string) => {

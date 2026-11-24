@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { newKeeperWithTank, open } from './helpers';
 
 test('charts say what they show, and read out a reading on hover, tap or the arrow keys', async ({ page }, info) => {

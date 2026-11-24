@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { newKeeperWithTank, open } from './helpers';
 
 test('an AI assistant: a token from Settings reads the tank over MCP and the API, until revoked', async ({ page }, info) => {

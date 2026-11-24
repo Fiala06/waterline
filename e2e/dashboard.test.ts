@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { newKeeperWithTank, open, tankTitle } from './helpers';
 
 test('dashboard (refresh 1c): the hero, and nothing needing attention when all is in range', async ({ page }, info) => {

@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Opening a plant works again.** Choosing a plant on the Plants tab opens its sheet again, instead of stopping the page with an error: [Plants](/tanks/current/plants).
+
 ## 1.23.4 · 2026-11-21
 
 - **About this server.** A page anyone can open, linked from sign-in, the homepage and Settings: who runs this server, what it keeps, which outside services it uses as it's set up now, how to download or delete your data, and how to get help. Admins add who runs it, a private contact and their terms in Server settings › About this server: [About this server](/about).

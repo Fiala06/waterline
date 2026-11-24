@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { newKeeperWithTank, open, openQuickAdd } from './helpers';
 
 // Maintenance routines (#92): a named sequence of log steps, run one at a

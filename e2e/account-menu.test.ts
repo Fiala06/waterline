@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import Database from 'better-sqlite3';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import sharp from 'sharp';
