@@ -1,5 +1,5 @@
-import { fail, redirect } from '@sveltejs/kit';
-import { setFlash } from '$lib/server/flash';
+import { redirect } from '@sveltejs/kit';
+import { crudActions } from '$lib/server/crud-actions';
 import { str } from '$lib/server/forms';
 import { addFavorite, deleteFavorite, formAmount, formUnit, listFavorites, moveFavorite, parseFavorite, updateFavorite } from '$lib/server/favorites';
 import { listTanks } from '$lib/server/tanks';
@@ -83,31 +83,16 @@ const values = (form: FormData) => {
 };
 
 export const actions: Actions = {
-	add: async ({ request, locals, cookies }) => {
-		const user = locals.user!;
-		const form = await request.formData();
-		const { errors, input } = parseFavorite(form, listTanks(user.id).map((t) => t.id), unitLabel('volume', user));
-		if (Object.keys(errors).length) return fail(400, { add: { errors, values: values(form) } });
-		const f = addFavorite(user.id, input);
-		setFlash(cookies, `✓ ${f.label} pinned`);
-		redirect(303, '/settings/favorites');
-	},
-	update: async ({ request, locals, cookies }) => {
-		const user = locals.user!;
-		const form = await request.formData();
-		const id = str(form, 'id');
-		const { errors, input } = parseFavorite(form, listTanks(user.id).map((t) => t.id), unitLabel('volume', user));
-		if (Object.keys(errors).length) return fail(400, { edit: { id, errors, values: values(form) } });
-		const f = updateFavorite(user.id, id, input);
-		setFlash(cookies, `✓ ${f.label} saved`);
-		redirect(303, '/settings/favorites');
-	},
-	delete: async ({ request, locals, cookies }) => {
-		const form = await request.formData();
-		const f = deleteFavorite(locals.user!.id, str(form, 'id'));
-		setFlash(cookies, `${f.label} removed`);
-		redirect(303, '/settings/favorites');
-	},
+	...crudActions({
+		page: '/settings/favorites',
+		parse: (form, user) => parseFavorite(form, listTanks(user.id).map((t) => t.id), unitLabel('volume', user)),
+		values,
+		add: addFavorite,
+		update: updateFavorite,
+		remove: deleteFavorite,
+		name: (f) => f.label,
+		verbs: { add: 'pinned', remove: 'removed' }
+	}),
 	move: async ({ request, locals }) => {
 		const form = await request.formData();
 		moveFavorite(locals.user!.id, str(form, 'id'), str(form, 'dir') === 'up' ? 'up' : 'down');

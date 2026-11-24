@@ -1,5 +1,4 @@
-import { fail, redirect } from '@sveltejs/kit';
-import { setFlash } from '$lib/server/flash';
+import { crudActions } from '$lib/server/crud-actions';
 import { str } from '$lib/server/forms';
 import { addProduct, deleteProduct, lastDosed, listProducts, parseProduct, productHost, updateProduct } from '$lib/server/products';
 import { formatNumber, toDisplay, unitLabel, type UnitPrefs } from '$lib/units';
@@ -59,28 +58,12 @@ const values = (form: FormData) => ({
 	strengthOf: str(form, 'strengthOf')
 });
 
-export const actions: Actions = {
-	add: async ({ request, locals, cookies }) => {
-		const form = await request.formData();
-		const { errors, input } = parseProduct(form, locals.user!);
-		if (Object.keys(errors).length) return fail(400, { add: { errors, values: values(form) } });
-		const p = addProduct(locals.user!.id, input);
-		setFlash(cookies, `✓ ${p.name} saved`);
-		redirect(303, '/settings/products');
-	},
-	update: async ({ request, locals, cookies }) => {
-		const form = await request.formData();
-		const id = str(form, 'id');
-		const { errors, input } = parseProduct(form, locals.user!);
-		if (Object.keys(errors).length) return fail(400, { edit: { id, errors, values: values(form) } });
-		const p = updateProduct(locals.user!.id, id, input);
-		setFlash(cookies, `✓ ${p.name} saved`);
-		redirect(303, '/settings/products');
-	},
-	delete: async ({ request, locals, cookies }) => {
-		const form = await request.formData();
-		const p = deleteProduct(locals.user!.id, str(form, 'id'));
-		setFlash(cookies, `${p.name} deleted`);
-		redirect(303, '/settings/products');
-	}
-};
+export const actions: Actions = crudActions({
+	page: '/settings/products',
+	parse: parseProduct,
+	values,
+	add: addProduct,
+	update: updateProduct,
+	remove: deleteProduct,
+	name: (p) => p.name
+});
