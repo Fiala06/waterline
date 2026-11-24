@@ -4,7 +4,12 @@
 	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
 	import Logo from '$lib/components/Logo.svelte';
 	import PublicHead from '$lib/components/PublicHead.svelte';
+	import { onMount } from 'svelte';
 	let { data } = $props();
+	// signed out (a revoked session lands here, not on sign-in): forget what's kept offline for the last person (#336)
+	onMount(() => {
+		if (!data.signedIn) navigator.serviceWorker?.controller?.postMessage('clear-user-cache');
+	});
 	const features = [
 		{ icon: 'test', title: 'Water tests and trends', text: 'Log a test in seconds and see each reading against its target, with charts that show where it’s heading.' },
 		{ icon: 'water_change', title: 'Reminders that fit your tank', text: 'Water changes, filter cleans, dosing and feeding, by email, push or just on the dashboard, snoozed or skipped when life happens.' },

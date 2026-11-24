@@ -4,12 +4,13 @@ import { displayNameFor, publicSettings, publicTanksForHome } from '$lib/server/
 import type { PageServerLoad } from './$types';
 
 // Public home (P5): lists public, indexable tanks on this server.
-export const load: PageServerLoad = ({ url }) => {
+export const load: PageServerLoad = ({ url, locals }) => {
 	const s = publicSettings();
 	if (!s.allowPublicPages || !s.publicHomeEnabled) error(404, 'Not found');
 	const base = s.baseUrl ?? url.origin;
 	return {
 		host: new URL(base).host,
+		signedIn: !!locals.user,
 		tanks: publicTanksForHome().map(({ page, tank, user }) => ({
 			slug: page.slug,
 			name: tank.name,
