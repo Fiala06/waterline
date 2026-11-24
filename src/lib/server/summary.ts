@@ -6,7 +6,7 @@ import { fmtMoney } from '$lib/money';
 import { latestSamples } from './sensors';
 import { listWishes } from './wishes';
 import { bySpecies, speciesCount } from '$lib/livestock';
-import { eventKindLabel, eventTitle } from '$lib/events';
+import { eventKindLabel, eventTitle, waterSourceLabel } from '$lib/events';
 import { fmtRange, fmtValue, paramUnit, statusOf } from '$lib/params';
 import { dueInfo, effectiveDue, intervalText } from '$lib/tasks';
 import { addDays, daysBetween, fmtDateLong, todayInZone, utcToZoned, zonedToUtc } from '$lib/time';
@@ -30,7 +30,6 @@ export const summaryDays = (url: URL) => {
 	return (SUMMARY_DAYS as readonly number[]).includes(d) ? d : 90;
 };
 const MAX_TESTS = 60;
-const SOURCES: Record<string, string> = { tap: 'Tap', rodi: 'RODI', mix: 'Mix', well: 'Well' };
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 /** A table cell: one line, no column breaks. */
@@ -90,7 +89,7 @@ export function tankSummary(user: User, tankId: string, days: number, now = new 
 		['Set up', t.startDate ? `${fmtDateLong(t.startDate)} (${age(t.startDate, today)} ago)` : null],
 		['Tank', [t.specBrand, t.specModel].filter(Boolean).join(' ') || null],
 		['Substrate', t.substrate],
-		['Water source', t.waterSource ? (SOURCES[t.waterSource] ?? t.waterSource) : null],
+		['Water source', t.waterSource ? waterSourceLabel(t.waterSource) : null],
 		['Glass', t.glass],
 		[
 			'Lights',

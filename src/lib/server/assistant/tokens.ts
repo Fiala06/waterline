@@ -70,17 +70,17 @@ export interface AssistantAccess {
 	tankIds: Set<string>;
 }
 
-/** "Bearer wl_…" to its keeper and tanks, or null. Marks it used. */
-export function authenticateAssistant(authorization: string | null, now = Date.now()): AssistantAccess | null {
+/** A bearer token of this kind to its keeper and tanks, or null. Marks it used. */
+function authenticate(authorization: string | null, kind: 'assistant' | 'sensor', now: number): AssistantAccess | null {
 	const m = /^Bearer\s+(\S+)\s*$/i.exec(authorization ?? '');
-	if (!m || !m[1].startsWith(PREFIX)) return null;
+	if (!m || !m[1].startsWith(kind === 'sensor' ? SENSOR_PREFIX : PREFIX)) return null;
 	const row = db
 		.select({ token: assistantTokens, user: users })
 		.from(assistantTokens)
 		.innerJoin(users, eq(users.id, assistantTokens.userId))
 		.where(eq(assistantTokens.tokenHash, hash(m[1])))
 		.get();
-	if (!row || row.token.kind !== 'assistant' || !maySignIn(row.user)) return null;
+	if (!row || row.token.kind !== kind || !maySignIn(row.user)) return null;
 	// connected by signing in: the access token lasts an hour, then the app renews it
 	if (row.token.expiresAt && row.token.expiresAt <= new Date(now).toISOString()) return null;
 	if (!row.token.lastUsedAt || now - Date.parse(row.token.lastUsedAt) > TOUCH_MS) {
@@ -91,21 +91,8 @@ export function authenticateAssistant(authorization: string | null, now = Date.n
 	return { user: row.user, token: row.token, tankIds: new Set(ownTanks(row.user.id, row.token.tankIds)) };
 }
 
+/** "Bearer wl_…" to its keeper and tanks, or null. Marks it used. */
+export const authenticateAssistant = (authorization: string | null, now = Date.now()) => authenticate(authorization, 'assistant', now);
+
 /** "Bearer wls_…" (#19) to the sensor token and the tanks it may add readings to, or null. Marks it used. */
-export function authenticateSensor(authorization: string | null, now = Date.now()): AssistantAccess | null {
-	const m = /^Bearer\s+(\S+)\s*$/i.exec(authorization ?? '');
-	if (!m || !m[1].startsWith(SENSOR_PREFIX)) return null;
-	const row = db
-		.select({ token: assistantTokens, user: users })
-		.from(assistantTokens)
-		.innerJoin(users, eq(users.id, assistantTokens.userId))
-		.where(eq(assistantTokens.tokenHash, hash(m[1])))
-		.get();
-	if (!row || row.token.kind !== 'sensor' || !maySignIn(row.user)) return null;
-	if (!row.token.lastUsedAt || now - Date.parse(row.token.lastUsedAt) > TOUCH_MS) {
-		const at = new Date(now).toISOString();
-		db.update(assistantTokens).set({ lastUsedAt: at }).where(eq(assistantTokens.id, row.token.id)).run();
-		row.token.lastUsedAt = at;
-	}
-	return { user: row.user, token: row.token, tankIds: new Set(ownTanks(row.user.id, row.token.tankIds)) };
-}
+export const authenticateSensor = (authorization: string | null, now = Date.now()) => authenticate(authorization, 'sensor', now);

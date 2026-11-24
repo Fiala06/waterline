@@ -1,4 +1,4 @@
-import { error } from '@sveltejs/kit';
+import { requireAdmin } from '$lib/server/users';
 import { VERSION } from '$lib/changelog';
 import { LOG_LEVELS } from '$lib/server/db/schema';
 import { allLogs, KEEP_DAYS, type LogLevel } from '$lib/server/log';
@@ -7,7 +7,7 @@ import type { RequestHandler } from './$types';
 
 /** The log as a text file, to share when asking for help: email addresses shortened, account ids cut. */
 export const GET: RequestHandler = ({ locals, url }) => {
-	if (!locals.user?.isAdmin) error(404, 'Not found');
+	requireAdmin(locals);
 	const raw = url.searchParams.get('level');
 	const level = raw && (LOG_LEVELS as readonly string[]).includes(raw) ? (raw as LogLevel) : null;
 	const now = new Date().toISOString();

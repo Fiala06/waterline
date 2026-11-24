@@ -18,19 +18,12 @@ import { getEquipment, knownBrands } from "$lib/server/specs";
 import { plugOf } from "$lib/server/plugs";
 import { plugText } from "$lib/plugs";
 import { getTank, roleOn } from "$lib/server/tanks";
-import { dateInZone, daysBetween, fmtDate, todayInZone } from "$lib/time";
+import { dateInZone, daysBetween, fmtDate, fmtMonthYear, todayInZone } from "$lib/time";
 import { refillDue, refillLine, refillStats } from "$lib/refills";
 import { refillsOf } from "$lib/server/refills";
 import type { Actions, PageServerLoad } from "./$types";
 
-const since = (d: string | null) =>
-  d
-    ? new Date(d.slice(0, 10) + "T12:00:00Z").toLocaleDateString("en-US", {
-        month: "short",
-        year: "numeric",
-        timeZone: "UTC",
-      })
-    : null;
+const since = (d: string | null) => (d ? fmtMonthYear(d) : null);
 
 export const load: PageServerLoad = ({ locals, params }) => {
   const user = locals.user!;

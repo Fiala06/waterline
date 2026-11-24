@@ -1,4 +1,5 @@
 import { env } from '$env/dynamic/private';
+import { error } from '@sveltejs/kit';
 import { and, eq, inArray, isNotNull, isNull, notInArray } from 'drizzle-orm';
 import { VERSION } from '$lib/changelog';
 import { db } from './db';
@@ -307,4 +308,10 @@ export function unmarkAlertsSeen(userId: string, keys: string[]): string[] {
 	const seen = alertsSeen(user).filter((k) => !keys.includes(k));
 	db.update(users).set({ alertsSeen: JSON.stringify(seen) }).where(eq(users.id, userId)).run();
 	return seen;
+}
+
+/** The signed-in admin, for Server settings' pages; anyone else gets Not found, as if they weren't there. */
+export function requireAdmin(locals: App.Locals) {
+	if (!locals.user?.isAdmin) error(404, 'Not found');
+	return locals.user;
 }

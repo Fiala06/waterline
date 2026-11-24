@@ -189,6 +189,10 @@ export function isValidTimeZone(tz: string): boolean {
 	}
 }
 
+/** "Jun 2026" for a date ('YYYY-MM-DD', or a timestamp). */
+export const fmtMonthYear = (d: string) =>
+	new Date(d.slice(0, 10) + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+
 /**
  * How long a tank has been running, from its start date: `day` is the running
  * day (the start date is day 1; null before it starts or with no date) and
@@ -197,7 +201,7 @@ export function isValidTimeZone(tz: string): boolean {
  */
 export function tankAge(startDate: string | null | undefined, today: string): { day: number | null; since: string | null; label: string | null } {
 	if (!startDate || !isDate(startDate)) return { day: null, since: null, label: null };
-	const since = new Date(startDate + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+	const since = fmtMonthYear(startDate);
 	const day = startDate <= today ? daysBetween(startDate, today) + 1 : null;
 	return { day, since, label: day ? `Day ${day} · since ${since}` : `since ${since}` };
 }

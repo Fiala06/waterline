@@ -1,7 +1,7 @@
 // Setup › Sharing (#22, redesign README § 13): invite someone to help look
 // after this tank, the people with access, and whom reminders and alerts go to.
 import { error, fail, redirect } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
+import { appOrigin } from '$lib/server/origin';
 import { TANK_ROLES, type TankRole } from '$lib/server/db/schema';
 import { revokeActionTokens } from '$lib/server/action-tokens';
 import { setFlash } from '$lib/server/flash';
@@ -39,7 +39,7 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 		// whether someone not on the server yet could sign in through the share (#217):
 		// 'yes', 'admin' (sign-in is the admin's alone), or 'invite' (an admin invites them first)
 		newcomers: signupRules(getServerSettings()).mode === 'admin' ? ('admin' as const) : shareMayInvite(user) ? ('yes' as const) : ('invite' as const),
-		origin: (env.ORIGIN || url.origin).replace(/\/+$/, '')
+		origin: appOrigin(url)
 	};
 };
 
@@ -89,7 +89,7 @@ export const actions: Actions = {
 		// someone not on the server yet: the share lets them sign in too, when the server allows it (#217)
 		const letsIn = !getUserByEmail(email) && !isEmailAllowed(email) && shareMayInvite(user);
 		const { member, token } = inviteMember(tank, email, role, user.id);
-		const origin = (env.ORIGIN || url.origin).replace(/\/+$/, '');
+		const origin = appOrigin(url);
 		const inviter = user.displayName || user.email;
 		if (letsIn) createInvite(email, user.id);
 		const sent = await sendShare(user.id, origin, email, token, inviter, tank.name, role, letsIn);
@@ -101,7 +101,7 @@ export const actions: Actions = {
 		const tank = getTank(user.id, params.id, 'owner');
 		const old = getMember(tank.id, str(await request.formData(), 'id'));
 		const { member, token } = resendMember(tank, old.id, user.id);
-		const origin = (env.ORIGIN || url.origin).replace(/\/+$/, '');
+		const origin = appOrigin(url);
 		// a fresh week for the way onto the server that came with it, too (#217)
 		const letsIn = !getUserByEmail(member.email) && !isEmailAllowed(member.email) && shareMayInvite(user);
 		if (letsIn) createInvite(member.email, user.id);

@@ -2,17 +2,13 @@
 // (?cat=, ?from=, ?to=, ?q=, ?month=). Whoever can see the tab can download
 // it; receipts are only said to be there, never linked.
 import { equipmentNames, expensesCsv, listExpenses } from '$lib/server/expenses';
+import { slugify } from '$lib/server/public';
 import { getTank } from '$lib/server/tanks';
 import { inSpendingFilter, readSpendingFilter } from '$lib/spending-filter';
 import { todayInZone } from '$lib/time';
 import type { RequestHandler } from './$types';
 
-const slug = (name: string) =>
-	name
-		.toLowerCase()
-		.normalize('NFKD')
-		.replace(/[^a-z0-9]+/g, '-')
-		.replace(/^-|-$/g, '') || 'tank';
+const slug = (name: string) => slugify(name) || 'tank';
 
 export const GET: RequestHandler = ({ locals, params, url }) => {
 	const user = locals.user!;

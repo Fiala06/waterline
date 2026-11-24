@@ -1,4 +1,6 @@
 import { error, fail } from '@sveltejs/kit';
+import { requireAdmin } from '$lib/server/users';
+import { appOrigin } from '$lib/server/origin';
 import { count, eq } from 'drizzle-orm';
 import { readdir, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
@@ -21,11 +23,6 @@ import { lookAgain, stockPhotosOn, stockPhotoStatus, TEST_SPECIES } from '$lib/s
 import { careStatus, downloadCare } from '$lib/server/species-care';
 import { listInvites } from '$lib/server/invites';
 import { passwordProblem } from '$lib/server/password-policy';
-
-function requireAdmin(locals: App.Locals) {
-	if (!locals.user?.isAdmin) error(404, 'Not found');
-	return locals.user;
-}
 
 /** All the files under a folder, in bytes, read without blocking the server (#357). */
 async function dirSize(dir: string): Promise<number> {
@@ -59,7 +56,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const google = googleClient();
 	const local = localAdminLogin();
 	const rules = signupRules(s);
-	const origin = (env.ORIGIN || url.origin).replace(/\/+$/, '');
+	const origin = appOrigin(url);
 	return {
 		mail: {
 			provider: s.emailProvider ?? 'mailgun',

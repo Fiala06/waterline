@@ -22,12 +22,18 @@ const g = globalThis as { __waterlineScheduler?: ReturnType<typeof setInterval> 
 
 type Job = [name: string, run: () => unknown];
 
+/** When the tasks job last settled everyone, so reminders in the same run don't settle each person again. */
+let settledAt = 0;
+
 const JOBS: Job[] = [
 	// the doses dosers make (#196), logged at their time
 	['dosers', () => logDueDoses()],
 	// pauses and cadences for a while that are up, and plans past their last day (#242): the shell settles once a day
-	['tasks', () => settleEveryone()],
-	['reminders', () => (getServerSettings().scheduledEmails ? runNotifications() : undefined)],
+	['tasks', () => {
+		settleEveryone();
+		settledAt = Date.now();
+	}],
+	['reminders', () => (getServerSettings().scheduledEmails ? runNotifications(new Date(), Date.now() - settledAt < 60_000) : undefined)],
 	// devices Waterline reads itself, every run: 5 minutes apart
 	['devices', () => pollAllDevices()],
 	// smart plugs (#203): an item off at its plug is paused, back on resumes

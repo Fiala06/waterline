@@ -2,6 +2,7 @@
 // POST endpoint (Streamable HTTP, answered with plain JSON), no sessions, and
 // tools only. Every tool reads; none change anything.
 import { VERSION } from '$lib/changelog';
+import { BodyTooLarge, readCappedText } from '../capped-body';
 import { logger } from '../log';
 import { runTool, ToolError, TOOLS } from './tools';
 import type { AssistantAccess } from './tokens';
@@ -107,25 +108,12 @@ export const MAX_BODY_BYTES = 1024 * 1024;
  * says (or doesn't): 'too-large' past it, 'invalid' when it isn't JSON.
  */
 export async function readJsonBody(request: Request, limit = MAX_BODY_BYTES): Promise<{ body: unknown } | { error: 'too-large' | 'invalid' }> {
+	// refused untouched: cancelling a request's body would reset the connection before the 413 is sent
 	if (Number(request.headers.get('content-length') ?? 0) > limit) return { error: 'too-large' };
-	const reader = request.body?.getReader();
-	if (!reader) return { error: 'invalid' };
-	const chunks: Uint8Array[] = [];
-	let size = 0;
-	for (;;) {
-		const { done, value } = await reader.read();
-		if (done) break;
-		size += value.byteLength;
-		if (size > limit) {
-			await reader.cancel().catch(() => {});
-			return { error: 'too-large' };
-		}
-		chunks.push(value);
-	}
 	try {
-		return { body: JSON.parse(Buffer.concat(chunks).toString('utf8')) };
-	} catch {
-		return { error: 'invalid' };
+		return { body: JSON.parse(await readCappedText(request, limit)) };
+	} catch (e) {
+		return { error: e instanceof BodyTooLarge ? 'too-large' : 'invalid' };
 	}
 }
 

@@ -1,6 +1,6 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { EQUIPMENT_REASONS, RECHECK_OPTIONS, taskKindFor } from '$lib/events';
-import { bySpecies, livestockLabel } from '$lib/livestock';
+import { bySpecies, livestockLabel, speciesWater } from '$lib/livestock';
 import { addDays, dateInZone, fmtDate } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
 import { optStr, parseWhen, str } from '$lib/server/forms';
@@ -84,7 +84,7 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 					equipment: listEquipment(user.id, tank.id).map((e) => ({ id: e.id, name: equipmentName(e) }))
 				}
 			: null,
-		water: (tank.type === 'reef' ? 'marine' : tank.type === 'brackish' ? null : 'fresh') as 'marine' | 'fresh' | null
+		water: speciesWater(tank.type)
 	};
 };
 

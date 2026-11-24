@@ -93,3 +93,6 @@ export function underTreatment(entries: { data: Record<string, unknown> }[]): Se
 	}
 	return open;
 }
+
+/** The species a tank's list searches: reef tanks marine, brackish both (null), everything else freshwater. */
+export const speciesWater = (tankType: string): 'fresh' | 'marine' | null => (tankType === 'reef' ? 'marine' : tankType === 'brackish' ? null : 'fresh');

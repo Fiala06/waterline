@@ -1,5 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { validLivestockCount } from '$lib/livestock';
+import { speciesWater, validLivestockCount } from '$lib/livestock';
 import { isDate, todayInZone, zonedToUtc } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
 import { num, optStr, str } from '$lib/server/forms';
@@ -12,7 +12,7 @@ export const load: PageServerLoad = ({ locals, params }) => {
 	return {
 		tank: { id: t.id, name: t.name },
 		// reef tanks search marine species, brackish both, everything else freshwater
-		water: (t.type === 'reef' ? 'marine' : t.type === 'brackish' ? null : 'fresh') as 'marine' | 'fresh' | null,
+		water: speciesWater(t.type),
 		today: todayInZone(locals.user!.timeZone)
 	};
 };

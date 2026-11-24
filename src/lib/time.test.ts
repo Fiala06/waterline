@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fmtWeekday, isDate, isTime, quickWhens, tankAge, utcToZoned, zonedToUtc } from './time';
+import { fmtMonthYear, fmtWeekday, isDate, isTime, quickWhens, tankAge, utcToZoned, zonedToUtc } from './time';
 
 describe('isDate / isTime', () => {
 	it('accepts real dates and times only', () => {
@@ -89,6 +89,13 @@ describe('quickWhens', () => {
 		]);
 		// 8:30 AM: "this morning" at 8 would be half an hour ago
 		expect(at('2026-09-26T15:30:00Z').map((q) => q.label)).toEqual(['1 hour ago', 'Yesterday evening']);
+	});
+});
+
+describe('fmtMonthYear', () => {
+	it('names the month of a date or a timestamp, whatever the time zone', () => {
+		expect(fmtMonthYear('2026-06-01')).toBe('Jun 2026');
+		expect(fmtMonthYear('2026-12-31T23:30:00Z')).toBe('Dec 2026');
 	});
 });
 

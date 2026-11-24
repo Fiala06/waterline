@@ -1,4 +1,5 @@
 import { summaryDays, tankSummary } from '$lib/server/summary';
+import { slugify } from '$lib/server/public';
 import { getTank } from '$lib/server/tanks';
 import { todayInZone } from '$lib/time';
 import type { RequestHandler } from './$types';
@@ -7,12 +8,7 @@ import type { RequestHandler } from './$types';
 export const GET: RequestHandler = ({ locals, params, url }) => {
 	const user = locals.user!;
 	const t = getTank(user.id, params.id);
-	const slug =
-		t.name
-			.toLowerCase()
-			.normalize('NFKD')
-			.replace(/[^a-z0-9]+/g, '-')
-			.replace(/^-|-$/g, '') || 'tank';
+	const slug = slugify(t.name) || 'tank';
 	return new Response(tankSummary(user, t.id, summaryDays(url)), {
 		headers: {
 			'content-type': 'text/markdown; charset=utf-8',

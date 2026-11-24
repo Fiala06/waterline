@@ -1,5 +1,6 @@
 // The wish list (#24): what's planned for a tank, Add to tank, and the purchase in Spending.
 import { fail, redirect } from '@sveltejs/kit';
+import { speciesWater } from '$lib/livestock';
 import { EQUIPMENT_TYPE_LABEL, EQUIPMENT_TYPES } from '$lib/equipment';
 import { fmtMoney, fmtSums, moneyInput, parseMoney } from '$lib/money';
 import { fmtDateLong, dateInZone } from '$lib/time';
@@ -35,7 +36,7 @@ export const load: PageServerLoad = ({ locals, params }) => {
 	return {
 		tank: { id: tank.id, name: tank.name, type: tank.type },
 		role: roleOn(user.id, tank),
-		water: (tank.type === 'reef' ? 'marine' : tank.type === 'brackish' ? null : 'fresh') as 'marine' | 'fresh' | null,
+		water: speciesWater(tank.type),
 		items: planned.map(view),
 		added: listWishes(user.id, tank.id, { added: true }).map(view),
 		// "3 planned · about $62"

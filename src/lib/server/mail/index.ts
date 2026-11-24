@@ -73,8 +73,14 @@ export function getTransport(): { transport: Transport; from: string } | null {
 	return transportFrom(storedConfig());
 }
 
+/** Whether email can be sent: the same checks as transportFrom, without building a transport (or decrypting the SMTP password). */
 export function emailConfigured() {
-	return getTransport() !== null;
+	if (outboxMode()) return true;
+	const s = getServerSettings();
+	if (!s.sender) return false;
+	if (s.emailProvider === 'mailgun') return !!s.mailgunDomain && !!decrypt(s.mailgunApiKeyEnc);
+	if (s.emailProvider === 'smtp') return !!s.smtpHost && !!s.smtpPort;
+	return false;
 }
 
 export async function sendMail(msg: MailMessage) {

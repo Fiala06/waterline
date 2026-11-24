@@ -1,12 +1,17 @@
 // Add several (bulk add): livestock or plants picked from the species list,
 // each with its count or place, saved in one go. It's saved as an import with
 // no file, so the toast's Undo (and Recent imports) take the whole lot back.
+import { fail, redirect, type RequestEvent } from '@sveltejs/kit';
+import { speciesWater } from '$lib/livestock';
 import { parseSeveralList } from '$lib/several';
 import { todayInZone } from '$lib/time';
 import type { User } from './db/schema';
 import { applyImport } from './import';
 import { MAX_ROWS, validValue, type LivestockValue, type PlantValue } from './import-rows';
 import { exactSpecies } from './species';
+import { setFlash } from './flash';
+import { logger } from './log';
+import { getTank } from './tanks';
 
 export type SeveralList = 'livestock' | 'plants';
 
@@ -62,4 +67,23 @@ export function addSeveral(list: SeveralList, form: FormData, user: User, tankId
 			? `✓ Added ${animals} animal${animals === 1 ? '' : 's'} · ${ok.length} species`
 			: `✓ Added ${ok.length} plant${ok.length === 1 ? '' : 's'}`;
 	return { importId, message };
+}
+
+/** The Add several page's load, for livestock and plants alike. */
+export function severalLoad({ locals, params }: { locals: App.Locals; params: { id: string } }) {
+	const t = getTank(locals.user!.id, params.id, 'log');
+	return { tank: { id: t.id, name: t.name }, water: speciesWater(t.type), today: todayInZone(locals.user!.timeZone) };
+}
+
+/** The Add several page's save: the lot in one go, with Undo on the toast, back to the list. */
+export function severalAction(list: SeveralList) {
+	return async ({ request, locals, params, cookies }: RequestEvent<{ id: string }>) => {
+		const user = locals.user!;
+		const t = getTank(user.id, params.id, 'log');
+		const done = addSeveral(list, await request.formData(), user, t.id, speciesWater(t.type));
+		if ('error' in done) return fail(400, { error: done.error });
+		logger.info('import', `Added several ${list}: ${done.message.slice(2)}`, { userId: user.id });
+		setFlash(cookies, done.message, { undo: { action: `/tanks/${t.id}/import/${list}?/undo`, name: 'importId', value: done.importId } });
+		redirect(303, `/tanks/${t.id}/${list}`);
+	};
 }

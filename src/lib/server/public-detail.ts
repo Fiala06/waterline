@@ -9,7 +9,7 @@ import { toSafeCsv } from '$lib/csv';
 import { publicEntry } from '$lib/pet-names';
 import { and, eq, isNull } from 'drizzle-orm';
 import { tankLighting, equipmentName, specSummary, scheduleLabel, hoursText, EQUIPMENT_TYPE_LABEL, type Schedule } from '$lib/equipment';
-import { eventKindLabel, eventTitle, WATER_SOURCES } from '$lib/events';
+import { eventKindLabel, eventTitle, WATER_SOURCES, waterSourceLabel } from '$lib/events';
 import { displayValue, fmtRange, fmtValue, paramDecimals, paramUnit, shortName, statusOf } from '$lib/params';
 import { statusShort } from '$lib/status';
 import { dueInfo, effectiveDue, intervalText } from '$lib/tasks';
@@ -27,7 +27,6 @@ import { displaySamples, latestSamples, sampleSeries } from './sensors';
 import { bySpecies, livestockLabel, speciesKey } from '$lib/livestock';
 import { listParams } from './tanks';
 
-const SOURCES: Record<string, string> = { tap: 'Tap', rodi: 'RODI', mix: 'Mix', well: 'Well' };
 /** the categories a visitor sees without the detail switch, and the ones it adds */
 const CARE_CATEGORIES: EventCategory[] = ['water_change', 'dosing', 'maintenance', 'livestock', 'equipment'];
 const DETAIL_CATEGORIES: EventCategory[] = ['observation', 'note', 'feeding', 'health'];
@@ -282,7 +281,7 @@ export function publicDetail(page: PublicPage, tank: Tank, owner: User, opts: { 
 				['Tank', [[tank.specBrand, tank.specModel].filter(Boolean).join(' '), tank.lengthCm && tank.widthCm && tank.heightCm ? `${len(tank.lengthCm)} × ${len(tank.widthCm)} × ${len(tank.heightCm)} ${unitLabel('length', prefs)}` : null, tank.glass].filter(Boolean).join(' · ') || null],
 				['Volume', tank.nominalVolumeL != null ? `${vol(tank.nominalVolumeL)}${tank.actualVolumeL != null ? ` tank · ${vol(tank.actualVolumeL)} of water` : ''}` : null],
 				['Substrate', tank.substrate],
-				['Water source', tank.waterSource ? (SOURCES[tank.waterSource] ?? tank.waterSource) : null],
+				['Water source', tank.waterSource ? waterSourceLabel(tank.waterSource) : null],
 				['Set up', tank.startDate ? `${fmtDate(tank.startDate)}${tank.startDate.slice(0, 4) !== today.slice(0, 4) ? `, ${tank.startDate.slice(0, 4)}` : ''}` : null]
 			].filter(([, v]) => v) as [string, string][])
 		: [];
@@ -313,7 +312,11 @@ export function publicDetail(page: PublicPage, tank: Tank, owner: User, opts: { 
 	const pcts = waterChanges.map((e) => e.data.percent).filter((v): v is number => typeof v === 'number');
 	const gaps = waterChanges.slice(1).map((e, i) => (Date.parse(e.occurredAt) - Date.parse(waterChanges[i].occurredAt)) / 86_400_000);
 	const sources = new Map<string, number>();
-	for (const e of waterChanges) if (typeof e.data.source === 'string') sources.set(SOURCES[e.data.source] ?? e.data.source, (sources.get(SOURCES[e.data.source] ?? e.data.source) ?? 0) + 1);
+	for (const e of waterChanges) {
+		if (typeof e.data.source !== 'string') continue;
+		const label = waterSourceLabel(e.data.source);
+		sources.set(label, (sources.get(label) ?? 0) + 1);
+	}
 	const products = new Map<string, { count: number; last: string; amounts: Set<string> }>();
 	for (const e of evs.filter((x) => x.category === 'dosing')) {
 		const name = typeof e.data.product === 'string' && e.data.product ? e.data.product : 'Product';
@@ -359,21 +362,23 @@ export function publicDetail(page: PublicPage, tank: Tank, owner: User, opts: { 
 				.where(and(eq(livestock.tankId, tank.id), isNull(livestock.removedAt), eq(livestock.status, 'in_tank')))
 				.all()
 		: [];
+	// one group per species (a named pet counts with its group), so nothing is said twice
+	const groups = [
+		...rows
+			.reduce((m, l) => {
+				const g = m.get(speciesKey(l));
+				if (g) {
+					g.count += l.count;
+					if (l.addedAt && (!g.added || l.addedAt < g.added)) g.added = l.addedAt;
+				} else m.set(speciesKey(l), { id: l.id, name: l.commonName, s: l.scientificName, count: l.count, added: l.addedAt });
+				return m;
+			}, new Map<string, { id: string; name: string; s: string | null; count: number; added: string | null }>())
+			.values()
+	];
 	// with names: each group, then its pets by name ("Captain · Betta"); without, pets count with their species
 	const animals = names
 		? bySpecies(rows).map((l) => ({ id: l.id, name: livestockLabel(l), scientific: l.scientificName, count: l.count, since: l.addedAt ? fmtDate(l.addedAt) : null }))
-		: [
-				...rows
-					.reduce((m, l) => {
-						const g = m.get(speciesKey(l));
-						if (g) {
-							g.count += l.count;
-							if (l.addedAt && (!g.added || l.addedAt < g.added)) g.added = l.addedAt;
-						} else m.set(speciesKey(l), { id: l.id, name: l.commonName, scientific: l.scientificName, count: l.count, added: l.addedAt });
-						return m;
-					}, new Map<string, { id: string; name: string; scientific: string | null; count: number; added: string | null }>())
-					.values()
-			].map((g) => ({ id: g.id, name: g.name, scientific: g.scientific, count: g.count, since: g.added ? fmtDate(g.added) : null }));
+		: groups.map((g) => ({ id: g.id, name: g.name, scientific: g.s, count: g.count, since: g.added ? fmtDate(g.added) : null }));
 	const losses =
 		page.showLivestock && page.showActivity
 			? evs.filter(isLoss).map((e) => ({ day: fmtDate(dayOf(e.occurredAt)), text: eventTitle(e, prefs).replace(/ · loss$/, ''), note: details ? (e.note?.trim() ?? null) : null }))
@@ -387,27 +392,15 @@ export function publicDetail(page: PublicPage, tank: Tank, owner: User, opts: { 
 				.all()
 				.map((p) => ({ id: p.id, name: p.name, position: p.position }))
 		: [];
-	const kept = rows;
-	// one entry per species (a named pet counts with its group), so nothing is said twice
-	const perKind = [
-		...kept
-			.reduce((m, l) => {
-				const g = m.get(speciesKey(l));
-				if (g) g.count += l.count;
-				else m.set(speciesKey(l), { s: l.scientificName, name: l.commonName, count: l.count });
-				return m;
-			}, new Map<string, { s: string | null; name: string; count: number }>())
-			.values()
-	];
-	const care = perKind
+	const care = groups
 		.map((l) => {
 			const c = careFor(l.s);
 			return c ? { name: l.name, line: careLine(c, prefs) } : null;
 		})
 		.filter((x): x is { name: string; line: string } => !!x);
-	const warnings = kept.length
+	const warnings = rows.length
 		? tankWarnings(
-				perKind,
+				groups,
 				careFor,
 				tankTargets(params),
 				prefs

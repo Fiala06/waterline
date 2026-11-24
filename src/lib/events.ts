@@ -39,6 +39,10 @@ export const WATER_SOURCES = [
 	{ value: 'rodi', label: 'RODI' },
 	{ value: 'mix', label: 'Mix' }
 ] as const;
+/** Where a tank's water comes from (Tank setup): a water change's sources, or a well. */
+export const TANK_WATER_SOURCES = [...WATER_SOURCES, { value: 'well', label: 'Well' }] as const;
+/** "RODI" for "rodi"; anything else as it was saved. */
+export const waterSourceLabel = (v: string) => TANK_WATER_SOURCES.find((s) => s.value === v)?.label ?? v;
 
 export const MAINTENANCE_ACTIONS = [
 	'Cleaned filter',

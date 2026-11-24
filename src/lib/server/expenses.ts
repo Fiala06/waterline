@@ -9,7 +9,7 @@ import sharp from 'sharp';
 import { equipmentName } from '$lib/equipment';
 import { toSafeCsv } from '$lib/csv';
 import { mainCurrency, sumByCurrency, type Sums } from '$lib/money';
-import { addDays } from '$lib/time';
+import { addDays, fmtMonthYear } from '$lib/time';
 import { db } from './db';
 import { requireRoleOn, visibleTo } from './members';
 import { equipment, expenses, tanks, type Expense } from './db/schema';
@@ -122,8 +122,7 @@ export async function deleteExpense(userId: string, id: string) {
 const MONTHS = 12;
 
 /** "Sep 2026" for "2026-09" */
-const monthLabel = (m: string) =>
-	new Date(`${m}-15T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+const monthLabel = (m: string) => fmtMonthYear(`${m}-15`);
 
 /**
  * This month, this year and all time; this year by category; and each of the

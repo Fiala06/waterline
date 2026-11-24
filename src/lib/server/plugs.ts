@@ -509,6 +509,8 @@ export async function pollAllPlugs(fetcher: typeof fetch = fetch, now = Date.now
 		.from(equipmentPlugs)
 		.innerJoin(tanks, eq(tanks.id, equipmentPlugs.tankId))
 		.innerJoin(equipment, eq(equipment.id, equipmentPlugs.equipmentId))
+		// longest unread first (never read sorts first), so plugs past the time budget are read next run
+		.orderBy(equipmentPlugs.lastPolledAt)
 		.all();
 	for (const row of rows) {
 		if (row.archivedAt || row.removedAt) continue;

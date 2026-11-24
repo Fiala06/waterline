@@ -14,7 +14,7 @@ import { EQUIPMENT_TYPE_LABEL, isWithoutType } from '$lib/equipment';
 import { eventTitle } from '$lib/events';
 import { fmtRange, fmtValue, paramUnit, shortName, statusOf } from '$lib/params';
 import { statusShort } from '$lib/status';
-import { dateInZone, fmtDate, fmtDateLong, fmtTime, fmtWhen, todayInZone } from '$lib/time';
+import { dateInZone, fmtDate, fmtDateLong, fmtMonthYear, fmtTime, fmtWhen, todayInZone } from '$lib/time';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { db } from './db';
 import {
@@ -144,8 +144,7 @@ const PUBLIC_TIMELINE_MAX = 24;
 // public titles say the species ("Betta moved into the tank"), naming one isn't
 // listed, pets count with their species, and photos tagged with a pet are hidden.
 const untagged = sql`not exists (select 1 from ${photoLivestock} where ${photoLivestock.photoId} = ${photos.id})`;
-const monthYear = (d: string) =>
-	new Date(d.slice(0, 10) + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+const monthYear = fmtMonthYear;
 
 /** How much of the page a visitor asked to see (?chart=); the owner's switches still decide what. */
 export const CHART_RANGES = [

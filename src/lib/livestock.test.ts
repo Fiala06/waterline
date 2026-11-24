@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bySpecies, healthTitle, livestockLabel, outcomeText, speciesCount, speciesKey, underTreatment, validLivestockCount } from './livestock';
+import { bySpecies, healthTitle, livestockLabel, outcomeText, speciesCount, speciesKey, speciesWater, underTreatment, validLivestockCount } from './livestock';
 
 const cory = { commonName: 'Corydoras', scientificName: 'Corydoras paleatus' };
 const betta = { commonName: 'Betta', scientificName: 'Betta splendens' };
@@ -62,5 +62,13 @@ describe('health entries', () => {
 		];
 		expect([...underTreatment(entries)].sort()).toEqual(['b', 'd']);
 		expect(underTreatment([])).toEqual(new Set());
+	});
+});
+
+describe('speciesWater', () => {
+	it('searches marine species for a reef, both for brackish, freshwater otherwise', () => {
+		expect(speciesWater('reef')).toBe('marine');
+		expect(speciesWater('brackish')).toBeNull();
+		expect(speciesWater('planted')).toBe('fresh');
 	});
 });

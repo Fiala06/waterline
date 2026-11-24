@@ -1,7 +1,7 @@
 // Server settings › People (#27): everyone on the server, invitations with
 // Resend and Revoke, and what an admin can do about a person.
 import { error, fail, redirect } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
+import { appOrigin } from '$lib/server/origin';
 import { fmtDateLong, fmtWhen, dateInZone } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
 import { str } from '$lib/server/forms';
@@ -11,13 +11,8 @@ import { emailConfigured, getServerSettings, MailError, sendMail } from '$lib/se
 import { inviteEmail } from '$lib/server/mail/templates';
 import { adminCount, listPeople, personFootprint, removePerson, setAdmin, signOutEverywhere } from '$lib/server/people';
 import { signupRules } from '$lib/server/sign-in';
-import { getUser } from '$lib/server/users';
+import { getUser, requireAdmin } from '$lib/server/users';
 import type { Actions, PageServerLoad } from './$types';
-
-function requireAdmin(locals: App.Locals) {
-	if (!locals.user?.isAdmin) error(404, 'Not found');
-	return locals.user;
-}
 
 const KIND = { google: 'Google', local: 'Local admin login', invited: 'Invited', none: '—' } as const;
 
@@ -53,7 +48,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
 				sent: fmtWhen(i.invite.createdAt, tz),
 				expires: fmtDateLong(dateInZone(i.invite.expiresAt, tz))
 		})),
-		origin: (env.ORIGIN || url.origin).replace(/\/+$/, '')
+		origin: appOrigin(url)
 	};
 };
 
@@ -87,7 +82,7 @@ export const actions: Actions = {
 		if (!validEmail(email)) return fail(400, { inviteError: 'Enter an email address.', email });
 		if (listPeopleEmails().has(email)) return fail(400, { inviteError: `${email} is on the server already.`, email });
 		const { invite, token } = createInvite(email, me.id);
-		const origin = (env.ORIGIN || url.origin).replace(/\/+$/, '');
+		const origin = appOrigin(url);
 		const sent = await sendInvite(origin, email, token, me.displayName || 'An admin');
 		logger.info('sign-in', `${email} invited to the server${sent === 'sent' ? ' by email' : ' (link to copy)'}`, { userId: me.id });
 		// the link is shown once; it isn't stored
@@ -98,7 +93,7 @@ export const actions: Actions = {
 		const id = str(await request.formData(), 'id');
 		const r = resendInvite(id, me.id);
 		if (!r) error(404, 'Invitation not found');
-		const origin = (env.ORIGIN || url.origin).replace(/\/+$/, '');
+		const origin = appOrigin(url);
 		const sent = await sendInvite(origin, r.invite.email, r.token, me.displayName || 'An admin');
 		logger.info('sign-in', `Invitation to ${r.invite.email} sent again`, { userId: me.id });
 		return { invited: { id: r.invite.id, email: r.invite.email, link: `${origin}/invite/${r.token}`, sent: sent === 'sent', error: sent && sent !== 'sent' ? sent : null } };

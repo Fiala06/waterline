@@ -10,6 +10,7 @@
 	import CoverPicker from './CoverPicker.svelte';
 	import { hoursText, scheduleHours } from '$lib/equipment';
 	import { GROWING_STYLE_LABEL } from '$lib/types';
+	import { TANK_WATER_SOURCES } from '$lib/events';
 	import { setupHref, SETUP_NAV, type SetupItem } from '$lib/shell';
 	let { data, form } = $props();
 	// what the phone's setup list says beside each section
@@ -124,7 +125,7 @@
 			<div class="field">
 				<label class="label" for="waterSource">Water source</label>
 				<select class="input" id="waterSource" name="waterSource">
-					{#each [['', '—'], ['tap', 'Tap'], ['rodi', 'RODI'], ['mix', 'Mix'], ['well', 'Well']] as [v, l] (v)}
+					{#each [['', '—'], ...TANK_WATER_SOURCES.map((s) => [s.value, s.label])] as [v, l] (v)}
 						<option value={v} selected={data.tank.waterSource === v}>{l}</option>
 					{/each}
 				</select>

@@ -2,7 +2,7 @@ import { coverPosition } from '$lib/media';
 import { redirect } from '@sveltejs/kit';
 import { shortName, statusOf } from '$lib/params';
 import { dueInfo } from '$lib/tasks';
-import { dateInZone, daysBetween, fmtDay, todayInZone } from '$lib/time';
+import { dateInZone, daysBetween, fmtDay, fmtMonthYear, todayInZone } from '$lib/time';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { setFlash } from '$lib/server/flash';
 import { lastEventAtFor, latestReadingsFor, latestTestAtFor } from '$lib/server/logs';
@@ -16,8 +16,7 @@ import type { Actions, PageServerLoad } from './$types';
 
 const relDay = (d: string) => (d === 'Today' || d === 'Yesterday' ? d.toLowerCase() : d);
 /** "Jun 2026" for a 'YYYY-MM-DD' date (D3: "archived Jun 2026"). */
-const monthYear = (d: string) =>
-	new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+const monthYear = fmtMonthYear;
 
 export const load: PageServerLoad = ({ locals }) => {
 	const user = locals.user!;

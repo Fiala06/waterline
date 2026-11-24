@@ -3,7 +3,7 @@ import { and, desc, eq, inArray } from 'drizzle-orm';
 import { EQUIPMENT_TYPE_LABEL, equipmentName, specSummary } from '$lib/equipment';
 import { eventTitle } from '$lib/events';
 import { bySpecies, speciesCount, MAX_LIVESTOCK_COUNT } from '$lib/livestock';
-import { dateInZone, fmtDate } from '$lib/time';
+import { dateInZone, fmtDate, fmtMonthYear } from '$lib/time';
 import { db } from '$lib/server/db';
 import { events } from '$lib/server/db/schema';
 import { setFlash } from '$lib/server/flash';
@@ -17,8 +17,7 @@ import { listParams } from '$lib/server/tanks';
 import { readSort, sortRows } from '$lib/sort';
 import type { Actions, PageServerLoad } from './$types';
 
-const month = (d: string | null) =>
-	d ? new Date(d.slice(0, 10) + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' }) : '—';
+const month = (d: string | null) => (d ? fmtMonthYear(d) : '—');
 
 /** The columns a keeper can sort by (#79) */
 const SORTS = ['species', 'type', 'added', 'status', 'count'] as const;

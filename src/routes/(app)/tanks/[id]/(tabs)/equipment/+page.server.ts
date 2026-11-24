@@ -25,7 +25,7 @@ import { addPar, deletePar, getEquipment, listPar, scheduledItems, setEquipmentP
 import { safeReturn } from "$lib/server/redirect";
 import { PAR_ZONES } from "$lib/par";
 import { effectiveDue } from "$lib/tasks";
-import { dateInZone, daysBetween, fmtWhen, fmtDate, fmtDateLong, isDate, todayInZone, utcToZoned, zonedToUtc } from "$lib/time";
+import { dateInZone, daysBetween, fmtDate, fmtDateLong, fmtMonthYear, fmtWhen, isDate, todayInZone, utcToZoned, zonedToUtc } from "$lib/time";
 import { db } from "$lib/server/db";
 import { tasks } from "$lib/server/db/schema";
 import { listEquipment } from "$lib/server/specs";
@@ -38,14 +38,7 @@ import { refillStatsFor } from "$lib/server/refills";
 /** What a keeper can sort equipment by (#79) */
 const SORTS = ["type", "name", "installed", "serviced"] as const;
 
-const since = (d: string | null) =>
-  d
-    ? new Date(d.slice(0, 10) + "T12:00:00Z").toLocaleDateString("en-US", {
-        month: "short",
-        year: "numeric",
-        timeZone: "UTC",
-      })
-    : null;
+const since = (d: string | null) => (d ? fmtMonthYear(d) : null);
 
 export const load: PageServerLoad = ({ locals, params, url }) => {
   const user = locals.user!;

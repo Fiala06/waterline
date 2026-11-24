@@ -2,7 +2,7 @@
 // Node-RED or Home Assistant post readings to a tank, devices Waterline reads
 // itself from their own web page, and what has come in.
 import { fail, redirect } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
+import { appOrigin } from '$lib/server/origin';
 import { setFlash } from '$lib/server/flash';
 import { str } from '$lib/server/forms';
 import { logger } from '$lib/server/log';
@@ -72,7 +72,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
 				})
 			};
 		}),
-		apiUrl: `${(env.ORIGIN || url.origin).replace(/\/+$/, '')}/api/v1`,
+		apiUrl: `${appOrigin(url)}/api/v1`,
 		minGapSeconds: MIN_GAP_MS / 1000,
 		edit: url.searchParams.get('edit')
 	};

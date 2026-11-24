@@ -1,6 +1,7 @@
 // Bulk import, the database side: which checked rows the tank already has,
 // then adding the ones the keeper ticked as if each were added by hand, so
 // History has an entry for each, on its Added date. Each import is recorded,
+import { speciesWater } from '$lib/livestock';
 // and everything it added carries its id, so the whole import can be undone.
 import { error } from '@sveltejs/kit';
 import { and, desc, eq, inArray, isNotNull } from 'drizzle-orm';
@@ -49,7 +50,7 @@ export interface PreviewRow extends CheckedRow {
 	reminder: string | null;
 }
 
-const water = (t: Tank) => (t.type === 'reef' ? 'marine' : t.type === 'brackish' ? null : 'fresh');
+const water = (t: Tank) => speciesWater(t.type);
 const lower = (s: string | null | undefined) => (s ?? '').trim().toLowerCase();
 
 /** A file's rows, checked and compared with what the tank has. */

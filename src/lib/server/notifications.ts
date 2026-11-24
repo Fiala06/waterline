@@ -191,7 +191,7 @@ function groupNotice(user: Pick<User, 'id'>, tank: { id: string; name: string },
 const LATEST_SEND = LATEST_PUSH;
 
 /** One user's scheduled emails and pushes. `force` ignores the send time (for tests and "send now"). */
-export async function notifyUser(user: User, now = new Date(), force = false) {
+export async function notifyUser(user: User, now = new Date(), force = false, settled = false) {
 	const base = baseUrl();
 	if (!base) return { sent: 0 };
 	const prefs = prefsFor(user.id);
@@ -214,7 +214,8 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 		const t = tankRows.get(tankId);
 		return !!t && notifiesUser(t, user.id, kind, roleOn(user.id, t));
 	};
-	settleTasks(user.id, user.timeZone);
+	// the scheduler settled everyone's tasks earlier in the same run
+	if (!settled) settleTasks(user.id, user.timeZone);
 	const tasks = listTasks(user.id)
 		.filter((r) => notified(r.task.tankId, 'remind'))
 		.map((r) => ({ ...r.task, tankName: r.tankName }));
@@ -371,14 +372,15 @@ export async function notifyUser(user: User, now = new Date(), force = false) {
 	return { sent: ok ? sent + 1 : sent };
 }
 
-export async function runNotifications(now = new Date()) {
+/** Everyone's reminders and digests; `settled` when this run already settled everyone's tasks (the scheduler's). */
+export async function runNotifications(now = new Date(), settled = false) {
 	if (!baseUrl()) return { sent: 0 };
 	let sent = 0;
 	for (const user of db.select().from(users).all()) {
 		// nothing goes to someone who was locked out, least of all working Mark done / Snooze links (#209)
 		if (!maySignIn(user)) continue;
 		try {
-			sent += (await notifyUser(user, now)).sent;
+			sent += (await notifyUser(user, now, false, settled)).sent;
 		} catch (e) {
 			logger.error('email', "Reminders and digests couldn't be worked out for an account", { userId: user.id, error: e });
 		}

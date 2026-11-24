@@ -1,4 +1,4 @@
-import { error } from '@sveltejs/kit';
+import { requireAdmin } from '$lib/server/users';
 import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { LOG_LEVELS, serverSettings } from '$lib/server/db/schema';
@@ -7,11 +7,6 @@ import { getServerSettings } from '$lib/server/mail';
 import type { Actions, PageServerLoad } from './$types';
 
 const DEBUG_HOURS = 24;
-
-function requireAdmin(locals: App.Locals) {
-	if (!locals.user?.isAdmin) error(404, 'Not found');
-	return locals.user;
-}
 
 const isLevel = (v: string | null): v is LogLevel => !!v && (LOG_LEVELS as readonly string[]).includes(v);
 const stamp = (iso: string, timeZone: string) =>
