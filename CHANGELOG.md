@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.23.5 · 2026-11-24
+
 - **Opening a plant works again.** Choosing a plant on the Plants tab opens its sheet again, instead of stopping the page with an error: [Plants](/tanks/current/plants).
 - **Lists with repeated names.** Two identical lights on Equipment, two doses at the same time, two tests in the same minute on a compared chart, or two rows of the same fish no longer stop the page with an error, and Worth checking says a repeated line once: [Equipment](/tanks/current/equipment).
 - **Check again, on a shared tank.** Someone who can log on a tank shared with them can save an Observation with its "Remind me to check again" reminder, instead of getting an error after it was saved: [History](/history).
