@@ -27,6 +27,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 - **Sensor alerts only to people who can sign in.** Someone removed from the server or no longer allowed to sign in stops getting a sensor's out-of-range alerts, as they already did for water tests and reminders: [Alerts](/settings#notifications).
 - **Invitation and sign-in pages aren't kept offline.** The homepage, About this server, invitation and share links, first start and an app's sign-in page are no longer saved on your device for offline use, so an old copy is never shown: [Settings › Data](/settings#data).
 - **Water-test spreadsheets open cleanly in Excel.** The water-tests CSV from Export and from a public page now opens in Excel with "°F", "CO₂" and other symbols as they should look: [Export](/settings/export).
+- **A lighter record of sent emails.** The server now forgets which reminders and alerts it sent after 90 days, so that record stops growing and reminders stay quick to work out; a task that's still overdue isn't alerted again: [Server settings](/settings/server).
 
 ## 1.23.4 · 2026-11-21
 

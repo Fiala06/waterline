@@ -2,9 +2,10 @@
 // when a send fails (#232). A failed email or push keeps its row and is tried
 // again later, each wait twice the one before, and given up after a few tries,
 // with one line in the log to say so, rather than every five minutes for good.
-import { and, eq, lte } from 'drizzle-orm';
+import { and, eq, inArray, lt, lte } from 'drizzle-orm';
+import { effectiveDue } from '$lib/tasks';
 import { db } from './db';
-import { emailLog } from './db/schema';
+import { emailLog, tasks } from './db/schema';
 import { logger, type LogArea } from './log';
 
 /** Tries in all, the first included. */
@@ -61,4 +62,34 @@ export function wasClaimed(userId: string, key: string): boolean {
 /** `key` went as part of something else (a tank's grouped push, #180): never sent on its own, or tried again, after. */
 export function markSent(userId: string, key: string) {
 	if (!db.insert(emailLog).values({ userId, key }).onConflictDoNothing().run().changes) sendSucceeded(userId, key);
+}
+
+/** How long what was sent is remembered (#347). */
+export const SEND_LOG_DAYS = 90;
+const TASK_KEY = /^(?:push:)?(?:reminder|overdue):([^:]+):(\d{4}-\d{2}-\d{2})$/;
+
+/**
+ * Forget sends older than SEND_LOG_DAYS (#347), so the log stops growing. Every key
+ * names a day, a due date or a test long past by then, except a reminder whose task
+ * is still due on that date (overdue all that while): that row stays, or the
+ * overdue alert would go again.
+ */
+export function pruneSendLog(now = Date.now()) {
+	const cutoff = new Date(now - SEND_LOG_DAYS * 86_400_000).toISOString();
+	const old = db.select({ id: emailLog.id, key: emailLog.key }).from(emailLog).where(lt(emailLog.sentAt, cutoff)).all();
+	if (!old.length) return 0;
+	const taskIds = [...new Set(old.map((r) => TASK_KEY.exec(r.key)?.[1]).filter((id): id is string => !!id))];
+	const dueOf = new Map<string, string | null>();
+	for (let i = 0; i < taskIds.length; i += 500) {
+		for (const t of db.select({ id: tasks.id, nextDue: tasks.nextDue, snoozedUntil: tasks.snoozedUntil }).from(tasks).where(inArray(tasks.id, taskIds.slice(i, i + 500))).all())
+			dueOf.set(t.id, effectiveDue(t));
+	}
+	const gone = old
+		.filter((r) => {
+			const m = TASK_KEY.exec(r.key);
+			return !m || dueOf.get(m[1]) !== m[2];
+		})
+		.map((r) => r.id);
+	for (let i = 0; i < gone.length; i += 500) db.delete(emailLog).where(inArray(emailLog.id, gone.slice(i, i + 500))).run();
+	return gone.length;
 }
