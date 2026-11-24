@@ -59,6 +59,15 @@ export const safeCell = (v: string) => cell(/^[=+\-@\t\r]/.test(v) && !/^-?\d[\d
 /** A cell as it was before safeCell guarded it: "'=1+1" is "=1+1". Anything else is untouched. */
 export const unguardCell = (v: string) => (/^'[=+\-@\t\r]/.test(v) ? v.slice(1) : v);
 
+/**
+ * A CSV file of what people typed, guarded cell by cell (safeCell), with a BOM so
+ * Excel reads it as UTF-8 ("°F", "CO₂") and Windows line ends (#346). For every
+ * export a keeper opens in a spreadsheet.
+ */
+export function toSafeCsv(rows: string[][]): string {
+	return '\uFEFF' + rows.map((r) => r.map(safeCell).join(',')).join('\r\n') + '\r\n';
+}
+
 /** A CSV file, with a BOM so Excel reads it as UTF-8 ("°F", "CO₂"). */
 export function toCsv(rows: string[][]): string {
 	return '\uFEFF' + rows.map((r) => r.map(cell).join(',')).join('\r\n') + '\r\n';

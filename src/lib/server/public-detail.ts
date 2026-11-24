@@ -5,7 +5,7 @@
 // log by day. Only what the owner's switches allow: with "Detail for people
 // helping me" off, days only (no times), no notes, no observations and no
 // schedule, as the page has always been.
-import { safeCell } from '$lib/csv';
+import { toSafeCsv } from '$lib/csv';
 import { withoutPetNames } from '$lib/pet-names';
 import { and, eq, isNull } from 'drizzle-orm';
 import { tankLighting, equipmentName, specSummary, scheduleLabel, hoursText, EQUIPMENT_TYPE_LABEL, type Schedule } from '$lib/equipment';
@@ -543,5 +543,5 @@ export function testsCsv(d: PublicDetail) {
 	const head = ['When', ...d.testLog.columns.map((c) => (c.unit ? `${c.name} (${c.unit})` : c.name)), ...(d.details ? ['Note', 'Water change before'] : ['Water change before'])];
 	const rows = [...d.testLog.rows].reverse().map((r) => [r.when.replace(' · ', ' '), ...r.cells.map((c) => c?.v ?? ''), ...(d.details ? [r.note ?? ''] : []), r.changeBefore ? 'yes' : '']);
 	// notes and names are someone's typing: guarded as every export's are (#221)
-	return [head, ...rows].map((r) => r.map(safeCell).join(',')).join('\r\n') + '\r\n';
+	return toSafeCsv([head, ...rows]);
 }

@@ -7,7 +7,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import sharp from 'sharp';
 import { equipmentName } from '$lib/equipment';
-import { safeCell } from '$lib/csv';
+import { toSafeCsv } from '$lib/csv';
 import { mainCurrency, sumByCurrency, type Sums } from '$lib/money';
 import { addDays } from '$lib/time';
 import { db } from './db';
@@ -180,7 +180,6 @@ export function spentThisYear(userId: string, year: string): Sums {
  */
 export function expensesCsv(rows: Expense[], tankNames: Map<string, string>, items: Map<string, string>): string {
 	const head = ['Date', 'Amount', 'Currency', 'Category', 'What for', 'Item', 'Note', 'Tank', 'Receipt'];
-	// safeCell guards and quotes each cell, so the lines are joined here rather than by toCsv
 	const lines = [
 		head,
 		...rows.map((e) =>
@@ -197,7 +196,7 @@ export function expensesCsv(rows: Expense[], tankNames: Map<string, string>, ite
 			]
 		)
 	];
-	return '\uFEFF' + lines.map((r) => r.map(safeCell).join(',')).join('\r\n') + '\r\n';
+	return toSafeCsv(lines);
 }
 
 /** Every expense on the keeper's own tanks, archived ones too, newest first: the whole ledger (#314). */

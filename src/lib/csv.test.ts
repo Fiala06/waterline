@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseCsv, safeCell, toCsv, unguardCell } from './csv';
+import { parseCsv, safeCell, toCsv, toSafeCsv, unguardCell } from './csv';
 
 describe('parseCsv', () => {
 	it('reads plain rows, one per record, blank ones included', () => {
@@ -78,5 +78,16 @@ describe('cells of typed text, for a file opened in a spreadsheet (#221)', () =>
 			const [[cell]] = parseCsv(safeCell(typed) + '\n');
 			expect(unguardCell(cell)).toBe(typed);
 		}
+	});
+});
+
+describe('toSafeCsv (#346)', () => {
+	it('starts with a BOM, ends lines with CRLF, guards formulas, and reads back', () => {
+		const text = toSafeCsv([
+			['Date', 'Temperature (°F)', 'Note'],
+			['2026-11-20', '77', '=1+1, "big" one']
+		]);
+		expect(text).toBe('\uFEFFDate,Temperature (°F),Note\r\n2026-11-20,77,"\'=1+1, ""big"" one"\r\n');
+		expect(parseCsv(text)[0]).toEqual(['Date', 'Temperature (°F)', 'Note']);
 	});
 });

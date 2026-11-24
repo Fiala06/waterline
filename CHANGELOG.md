@@ -26,6 +26,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 - **Removed stays removed.** Removing someone from a shared tank a second time can no longer bring back the Undo, so a person removed long ago can't be let back in without accepting a new invitation: [Sharing](/tanks/current/sharing).
 - **Sensor alerts only to people who can sign in.** Someone removed from the server or no longer allowed to sign in stops getting a sensor's out-of-range alerts, as they already did for water tests and reminders: [Alerts](/settings#notifications).
 - **Invitation and sign-in pages aren't kept offline.** The homepage, About this server, invitation and share links, first start and an app's sign-in page are no longer saved on your device for offline use, so an old copy is never shown: [Settings › Data](/settings#data).
+- **Water-test spreadsheets open cleanly in Excel.** The water-tests CSV from Export and from a public page now opens in Excel with "°F", "CO₂" and other symbols as they should look: [Export](/settings/export).
 
 ## 1.23.4 · 2026-11-21
 
