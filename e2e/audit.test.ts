@@ -4,7 +4,8 @@
 // overflow, small tap targets and axe accessibility violations to
 // test-results/audit.json.
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
+import { expect, test } from './test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 
 test.skip(!process.env.AUDIT, 'set AUDIT=1 to run the audit sweep');

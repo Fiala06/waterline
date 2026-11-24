@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { jpeg, linkIn, newKeeperWithTank, open, waitForMail } from './helpers';
 
 // #22: the owner shares a tank; the helper logs to it; History says who; the viewer only looks.

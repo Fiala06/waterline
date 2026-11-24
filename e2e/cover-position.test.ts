@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { jpeg, newKeeperWithTank, open } from './helpers';
 
 // Dragging the cover photo in tank Settings to choose which part shows, as on

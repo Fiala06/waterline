@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { dateValue, newKeeperWithTank, open, pickDate } from './helpers';
 
 test('tasks: create, complete with undo, snooze, edit, delete', async ({ page }, info) => {

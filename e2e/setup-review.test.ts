@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { newKeeperWithTank, open, pickDate } from './helpers';
 
 // The setup review (#30): every few months, check the tank's settings are still right.

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { newKeeperWithTank, open, pickDate } from './helpers';
 
 // #195: Alerts is a page, from the bell: readings out of range and overdue tasks

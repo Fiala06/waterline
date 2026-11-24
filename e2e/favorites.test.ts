@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { newKeeperWithTank, open, openQuickAdd } from './helpers';
 
 // Quick log favorites (#93): pinned entries on Quick add, each opening its

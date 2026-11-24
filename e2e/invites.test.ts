@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { linkIn, newKeeperWithTank, open, waitForMail } from './helpers';
 
 // #27: the admin invites someone by email; the Accept link signs them in; People manages them.

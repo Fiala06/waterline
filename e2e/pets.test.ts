@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { jpeg, newKeeperWithTank, open } from './helpers';
 
 test('pets: naming one of a group gives it its own entry, page and history', async ({ page, browser }, info) => {

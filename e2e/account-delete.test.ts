@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { newKeeperWithTank, open, tankTitle } from './helpers';
 
 // #303: a keeper deletes their own account from Settings › Data

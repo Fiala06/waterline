@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { newKeeperWithTank, open } from './helpers';
 
 // #25: a schedule on a light (with a siesta) sets the tank's photoperiod, draws the day and is kept in History.

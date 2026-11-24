@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { newKeeperWithTank, open } from './helpers';
 
 test('tasks calendar: a private link, for all tanks or one, replaced or turned off', async ({ page }, info) => {

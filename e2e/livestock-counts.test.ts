@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { newKeeperWithTank, open } from './helpers';
 
 // #265: a school's count typed in, Remove all, Remove from an animal's own page, and a plant renamed

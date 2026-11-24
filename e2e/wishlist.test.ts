@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { newKeeperWithTank, open } from './helpers';
 
 // #24: plan fish and gear on the wish list, add one to the tank with its purchase in Spending, delete with Undo.

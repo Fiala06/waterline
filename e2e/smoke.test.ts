@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { dateValue, jpeg, newKeeperWithTank, open, openQuickAdd, pickDate } from './helpers';
 
 // The flows that matter most at the tank, in every browser engine (#104): the

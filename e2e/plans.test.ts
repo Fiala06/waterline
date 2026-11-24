@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { newKeeperWithTank, open } from './helpers';
 
 // #177: a treatment plan from a starter, edited before it starts, shown on Tasks, and ended early

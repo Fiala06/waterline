@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { newKeeperWithTank, open } from './helpers';
 
 // #318: a saved product's stock: measured, doses in mL taken off, a refill, and an opt-in low alert

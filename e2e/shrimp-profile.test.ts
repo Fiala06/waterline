@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { newKeeperWithTank, open } from './helpers';
 
 // #319: a shrimp tank tracks and shows its readings, with no one-size targets; it can be turned on later

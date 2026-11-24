@@ -37,14 +37,11 @@
 	onDestroy(() => {
 		sheets.add = sheets.trim = false;
 	});
-	let editing = $state<(typeof data.plants)[number] | null>(null);
+	// the open sheet follows its row as the list comes back (#326: an effect copying the row looped)
+	let editingId = $state<string | null>(null);
+	const editing = $derived(data.plants.find((p) => p.id === editingId) ?? null);
 	// species photos still on their way from Wikimedia: look again in a moment, a few times
 	reloadWhilePhotosPending(() => !!data.photosPending);
-	// keep the open sheet in step when the list comes back
-	$effect(() => {
-		const now = editing && data.plants.find((p) => p.id === editing!.id);
-		if (now && now !== editing) editing = now;
-	});
 	let editOpen = $state(false);
 	// a row's Trim button opens the sheet with that plant ticked
 	let trimPick = $state<string | null>(null);
@@ -99,7 +96,7 @@
 										type="button"
 										class="plant"
 										onclick={() => {
-											editing = p;
+											editingId = p.id;
 											editOpen = true;
 										}}
 									>

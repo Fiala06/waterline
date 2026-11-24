@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { newKeeperWithTank, open, openQuickAdd } from './helpers';
 
 // Paths that ad blockers' privacy lists block on every site. EasyPrivacy (on by

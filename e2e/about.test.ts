@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import { open } from './helpers';
 
 // #302: About this server, for anyone, linked from sign-in and Settings: what it keeps, the services

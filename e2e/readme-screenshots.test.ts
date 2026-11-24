@@ -1,4 +1,5 @@
-import { expect, test, type Browser } from '@playwright/test';
+import { type Browser } from '@playwright/test';
+import { expect, test } from './test';
 
 // The README's screenshots (docs/screenshots), taken from the demo account
 // in both themes (opt-in): SCREENSHOTS=1 npx playwright test e2e/readme-screenshots.test.ts --project=desktop
