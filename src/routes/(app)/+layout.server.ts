@@ -4,6 +4,7 @@ import { fmtWhen, todayInZone } from '$lib/time';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { collectAlerts } from '$lib/server/alerts';
 import { stockAlerts } from '$lib/server/stock';
+import { refillAlerts } from '$lib/server/refills';
 import { tankTabCounts } from '$lib/server/specs';
 import { listMembers, rolesOn } from '$lib/server/members';
 import { db } from '$lib/server/db';
@@ -66,8 +67,8 @@ export const load: LayoutServerLoad = ({ locals, url, cookies, params, route, is
 	const latestOf = latestReadingsFor(ids);
 	const roles = rolesOn(user.id, tanks);
 	// the bell and the Alerts page (#195): readings out of range and overdue tasks, each with where to go
-	// and supplies running low (#318), when the keeper asked to be told
-	const alerts = [...collectAlerts({ user, tanks, tasks, paramsOf, latestOf, today }), ...stockAlerts(user.id)];
+	// and supplies (#318) and CO₂ cylinders (#368) running low, when the keeper asked to be told
+	const alerts = [...collectAlerts({ user, tanks, tasks, paramsOf, latestOf, today }), ...refillAlerts(user, tanks, today), ...stockAlerts(user.id)];
 	const outOfRangeByTank = new Map<string, number>();
 	for (const a of alerts) if (a.kind === 'reading') outOfRangeByTank.set(a.tankId, (outOfRangeByTank.get(a.tankId) ?? 0) + 1);
 	const summaries = tanks.map((t) => {

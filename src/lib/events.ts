@@ -226,6 +226,8 @@ export function eventTitle(e: EventLike, prefs: UnitPrefs): string {
 			if (d.action === 'schedule') return `${str(d.item) || 'Equipment'} runs ${str(d.schedule) || 'all day'}`;
 			// a doser's doses set or changed (#196): "Kamoer X1 doses Thrive+ 1 mL at 10:00 every day"
 			if (d.action === 'doses') return `${str(d.item) || 'Doser'} doses ${str(d.doses) || 'nothing'}`;
+			// a CO₂ cylinder refilled (#368)
+			if (d.action === 'refilled') return `Refilled ${str(d.item) || 'CO₂ cylinder'}`;
 			if (d.action === 'ran') return `${str(d.item) || 'Equipment'} ran${typeof d.seconds === 'number' ? ` ${runText(d.seconds)}` : ''}`;
 						if (d.action === 'par') return `PAR ${str(d.value)} at ${str(d.spot) || 'a spot'}`;
 			// switched off for a while on purpose, and back on

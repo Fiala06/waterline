@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **CO₂ cylinder refills.** A CO₂ system now has Log refill on its card: log each refill of the cylinder (with what it cost, if you like, which goes to Spending), and from the second one Waterline says how long a fill lasts and when the next is likely. Turn on its alert to be told under Alerts when the cylinder is likely running low: [Equipment](/tanks/current/equipment).
+
 ## 1.23.7 · 2026-11-24
 
 - **A quicker app as your log grows.** The dashboard, Tanks, Tasks, Charts and the photo viewer each gather what they show at once instead of piece by piece, so they open faster with many tanks, reminders, photos or years of readings: [Dashboard](/).

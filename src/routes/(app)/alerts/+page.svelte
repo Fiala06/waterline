@@ -21,7 +21,7 @@
 	const sections = $derived(alertSections(data.alerts, seen, { tank: data.tank, unreadOnly: data.unreadOnly }));
 	const kicker = $derived(alertsKicker(data.alerts.length, unreadCount(data.alerts, seen)));
 	// Mark all read: the unread ones listed
-	const unreadKeys = $derived([...sections.readings, ...sections.tasks, ...sections.updates, ...sections.stock].filter((a) => isUnread(a, seen)).map((a) => a.key));
+	const unreadKeys = $derived([...sections.readings, ...sections.tasks, ...sections.updates, ...sections.refills, ...sections.stock].filter((a) => isUnread(a, seen)).map((a) => a.key));
 
 	const from = $derived(page.url.pathname + page.url.search);
 	const q = (patch: Record<string, string | null>) => {
@@ -177,12 +177,12 @@
 		</section>
 	{/if}
 
-	{#if sections.stock.length}
-		<!-- supplies running low (#318) -->
+	{#if sections.stock.length || sections.refills.length}
+		<!-- supplies (#318) and CO₂ cylinders (#368) running low -->
 		<section aria-labelledby="stock-h">
 			<div class="sec-head"><h2 id="stock-h" class="sec">▲ Running low</h2></div>
 			<div class="rows">
-				{#each sections.stock as a (a.key)}
+				{#each [...sections.refills, ...sections.stock] as a (a.key)}
 					{@const unread = isUnread(a, seen)}
 					<div class="row" class:unread>
 						<a class="rtext" href={a.href}>
@@ -194,7 +194,7 @@
 								<input type="hidden" name="key" value={a.key} />
 								<button class="ghost">{unread ? 'Mark read' : 'Mark unread'}</button>
 							</form>
-							<a class="btn mark" href={a.href}>Stock</a>
+							<a class="btn mark" href={a.href}>{a.kind === 'refill' ? 'Refills' : 'Stock'}</a>
 						</div>
 					</div>
 				{/each}
@@ -227,7 +227,7 @@
 	{/if}
 
 	<p class="foot">
-		{#if sections.stock.length}Readings and overdue tasks are also sent by email and push; running low shows here only.{:else}Also sent by email and push.{/if}
+		{#if sections.stock.length || sections.refills.length}Readings and overdue tasks are also sent by email and push; running low shows here only.{:else}Also sent by email and push.{/if}
 		<a href="/settings#notifications">Notification settings ›</a>
 	</p>
 </div>

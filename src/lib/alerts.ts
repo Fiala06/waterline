@@ -82,13 +82,22 @@ export interface StockAlert extends AlertBase {
 	productId: string;
 }
 
-export type Alert = ReadingAlert | TaskAlert | UpdateAlert | StockAlert;
+/** A CO₂ cylinder likely running low (#368), from its refills, when its alert is on. */
+export interface RefillAlert extends AlertBase {
+	kind: 'refill';
+	tankId: string;
+	equipmentId: string;
+}
+
+export type Alert = ReadingAlert | TaskAlert | UpdateAlert | StockAlert | RefillAlert;
 
 export const readingKey = (paramId: string, since: string) => `reading:${paramId}:${since}`;
 export const taskKey = (taskId: string, due: string) => `task:${taskId}:${due}`;
 export const updateKey = (version: string) => `update:${version}`;
 /** until it's measured or refilled again */
 export const stockKey = (productId: string, since: string) => `stock:${productId}:${since}`;
+/** until the cylinder is refilled again: `last` is its latest refill's day */
+export const refillKey = (equipmentId: string, last: string) => `refill:${equipmentId}:${last}`;
 
 /** The notice an admin gets when a newer Waterline is out. */
 export function updateAlert(version: string): UpdateAlert {
@@ -116,6 +125,7 @@ export interface AlertSections {
 	tasks: TaskAlert[];
 	updates: UpdateAlert[];
 	stock: StockAlert[];
+	refills: RefillAlert[];
 	/** alerts for the tank picked (or every tank), read or not */
 	total: number;
 	unread: number;
@@ -137,6 +147,7 @@ export function alertSections(alerts: Alert[], seen: string[], filter: { tank?: 
 		tasks: listed.filter((a): a is TaskAlert => a.kind === 'task'),
 		updates: listed.filter((a): a is UpdateAlert => a.kind === 'update'),
 		stock: listed.filter((a): a is StockAlert => a.kind === 'stock'),
+		refills: listed.filter((a): a is RefillAlert => a.kind === 'refill'),
 		total: mine.length,
 		unread,
 		shown: listed.length

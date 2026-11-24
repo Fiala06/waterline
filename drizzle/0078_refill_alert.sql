@@ -1,0 +1,1 @@
+ALTER TABLE `equipment` ADD `refill_alert` integer DEFAULT false NOT NULL;

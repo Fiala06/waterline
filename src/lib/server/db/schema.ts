@@ -865,6 +865,8 @@ export const equipment = sqliteTable(
 		pausedAt: text('paused_at'),
 		/** the product barcode it was scanned from (#147), as a GTIN: EAN-13 (a UPC-A with a 0 in front), EAN-8 or GTIN-14 */
 		barcode: text('barcode'),
+		/** a CO₂ cylinder (#368): an alert when it's likely running low, from the refills logged; off until turned on */
+		refillAlert: integer('refill_alert', { mode: 'boolean' }).notNull().default(false),
 		importId: text('import_id'),
 		createdAt: createdAt()
 	},

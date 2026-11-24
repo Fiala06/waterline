@@ -88,6 +88,8 @@ events           id, tank_id, category(water_change|dosing|maintenance|livestock
                  -- equipment {action: schedule, equipment_id, item, schedule, was} (its periods changed)
                  -- equipment {action: doses, equipment_id, item, doses, was} (#196: a doser's doses changed)
                  -- equipment {action: par, par_id, item: "PAR", spot, value} (a PAR reading)
+                 -- equipment {action: refilled, equipment_id, item} (#368: a CO₂ cylinder refilled;
+                 --            how long a fill lasts is worked out from these)
                  -- observation {tags:[...], recheck_at?}
                  -- observation {kind: plant, plant_ids, plants:[names], observation: thriving|
                  --              new_growth|melting|yellowing|pinholes|algae|stunted|removed|other,
@@ -165,7 +167,8 @@ equipment        id, tank_id, type(filter|heater|light|co2|pump|skimmer|doser|ot
                  runs; null runs all day; a light's sets the tank's lights times and photoperiod),
                  installed_at?, last_serviced_at?, notes?, removed_at?, paused_at? (switched off
                  for a while on purpose, until Resume: in Needs attention meanwhile), barcode? (the product
-                 barcode it was scanned from, as a GTIN), import_id?, created_at
+                 barcode it was scanned from, as a GTIN), refill_alert (a CO₂ cylinder: an alert when it's
+                 likely running low, from its refills; off until turned on), import_id?, created_at
 auto_doses       id, tank_id, equipment_id (a doser), product, amount_ml, at ("HH:MM" in the
                  owner's time zone), seconds? (how long the pump runs), weekdays? ("1,3,5";
                  null is every day), paused, last_logged_on? (YYYY-MM-DD: the day of the last

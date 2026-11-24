@@ -64,6 +64,8 @@
 			cost: { total: string; rows: { id: string; what: string; day: string; amount: string; receipt: boolean }[]; addHref: string };
 			/** a doser (#196): the doses it logged, newest first */
 			doses?: { id: string; title: string; day: string }[] | null;
+			/** a CO₂ cylinder (#368): its last refill and how long a fill lasts, and the page refills are logged on */
+			refill?: { href: string; line: string | null; due: { text: string; level: 'ok' | 'warn' } | null } | null;
 			/** its smart plug (#203): its state, or a link to tie one; the owner's */
 			plug?: { href: string; name: string | null; status: { text: string; level: string } | null } | null;
 		} | null;
@@ -343,6 +345,15 @@
 					{#if about.task.due}<span class="task-due status-{about.task.due.level}">{about.task.due.text}</span>{/if}
 					<span class="task-line">{about.task.line}</span>
 					<a class="ghost" href="/tasks?edit={about.task.id}">Open in Tasks ›</a>
+				</div>
+			{/if}
+			{#if about.refill}
+				<!-- a CO₂ cylinder (#368): refills are logged on their own page -->
+				<div class="block">
+					<span class="kicker">Cylinder</span>
+					{#if about.refill.due}<span class="task-due status-{about.refill.due.level}">{about.refill.due.text}</span>{/if}
+					<span class="task-line">{about.refill.line ?? 'Log each refill, and Waterline works out how long a fill lasts.'}</span>
+					<a class="ghost" href={about.refill.href}>{about.refill.line ? 'Refills · log a refill ›' : 'Log a refill ›'}</a>
 				</div>
 			{/if}
 			{#if about.plug}

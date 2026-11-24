@@ -19,6 +19,8 @@ import { plugOf } from "$lib/server/plugs";
 import { plugText } from "$lib/plugs";
 import { getTank, roleOn } from "$lib/server/tanks";
 import { dateInZone, daysBetween, fmtDate, todayInZone } from "$lib/time";
+import { refillDue, refillLine, refillStats } from "$lib/refills";
+import { refillsOf } from "$lib/server/refills";
 import type { Actions, PageServerLoad } from "./$types";
 
 const since = (d: string | null) =>
@@ -111,6 +113,14 @@ export const load: PageServerLoad = ({ locals, params }) => {
         })),
         addHref: `/tanks/${e.tankId}/spending/new?equipment=${e.id}`,
       },
+      // a CO₂ cylinder (#368): its last refill, how long a fill lasts, and where refills are logged
+      refill:
+        e.type === "co2" && !e.removedAt
+          ? (() => {
+              const s = refillStats(refillsOf(e).map((r) => dateInZone(r.occurredAt, user.timeZone)));
+              return { href: `/tanks/${e.tankId}/equipment/${e.id}/refills`, line: refillLine(s), due: refillDue(s, today) };
+            })()
+          : null,
       // a doser (#196): the doses it logged
       doses:
         e.type === "doser"

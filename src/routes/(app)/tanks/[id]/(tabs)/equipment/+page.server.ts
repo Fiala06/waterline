@@ -32,6 +32,8 @@ import { listEquipment } from "$lib/server/specs";
 import { and, eq, isNotNull } from "drizzle-orm";
 import type { Actions, PageServerLoad } from "./$types";
 import { readSort, sortRows } from "$lib/sort";
+import { refillDue, refillLine } from "$lib/refills";
+import { refillStatsFor } from "$lib/server/refills";
 
 /** What a keeper can sort equipment by (#79) */
 const SORTS = ["type", "name", "installed", "serviced"] as const;
@@ -59,6 +61,8 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
   const dosesOf = dosesByEquipment(params.id);
   // the smart plugs items run from (#203), by the item
   const plugs = plugsOfTank(params.id);
+  // CO₂ cylinders (#368): how long a fill lasts, from the refills logged
+  const refills = refillStatsFor(params.id, user.timeZone);
   const view = (e: ReturnType<typeof listEquipment>[number]) => {
     const name = equipmentName(e);
     const task = openTasks.find((t) => t.equipmentId === e.id);
@@ -91,6 +95,15 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
       // "Service due in 12 days" / "✕ Service overdue 3 days", from its reminder
       service: due ? serviceDueText(daysBetween(today, due)) : null,
       notes: e.notes,
+      // a CO₂ cylinder (#368): "Last refilled Nov 24 · a fill lasts about 4 months", "▲ Likely running low", and where a refill is logged
+      refill:
+        e.type === "co2" && !e.removedAt
+          ? (() => {
+              const s = refills.get(e.id);
+              const due = s ? refillDue(s, today) : null;
+              return { href: `/tanks/${params.id}/equipment/${e.id}/refills`, line: s ? refillLine(s) : null, low: due?.low ? due.text : null };
+            })()
+          : null,
       // switched off for a while: "‖ Paused since Nov 3", until Resume
       paused: e.pausedAt ? pausedText(dateInZone(e.pausedAt, user.timeZone), today) : null,
       // its smart plug (#203): "● On · 4.2 W"; Pause and Resume switch it

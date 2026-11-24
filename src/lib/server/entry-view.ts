@@ -35,6 +35,8 @@ import { symptomFacts } from './symptoms';
 export function eventEditable(e: { category: string; data: Record<string, unknown> }) {
 	if (e.category === 'note') return !e.data.system;
 	if (e.category === 'livestock') return LIVESTOCK_ACTIONS.some((a) => a.value === e.data.action);
+	// a cylinder's refill (#368) is logged from its own page: the form has no such change
+	if (e.category === 'equipment' && e.data.action === 'refilled') return false;
 	return true;
 }
 
@@ -145,7 +147,7 @@ export function eventView(user: User, id: string): EntryView {
 			add('Status', labelOf(LIVESTOCK_STATUS, d.status));
 			break;
 		case 'equipment': {
-			add('Change', labelOf(EQUIPMENT_ACTIONS, d.action));
+			add('Change', d.action === 'refilled' ? 'Refilled' : labelOf(EQUIPMENT_ACTIONS, d.action));
 			add('Item', d.item);
 			// what an adjustment changed: each setting, before → after
 			if (d.changes && typeof d.changes === 'object')

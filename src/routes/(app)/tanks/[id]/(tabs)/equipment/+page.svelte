@@ -72,9 +72,13 @@
 						<div class="sched"><span class="on-now" class:off={d.paused}>{d.paused ? '○ Paused' : `● ${d.next}`}</span><span class="sched-label">{d.label}{d.last ? ` · ${d.last}` : ''}</span></div>
 					{/each}
 					{#if e.service}<div class="service status-{e.service.level}">{e.service.text}</div>{/if}
+					{#if e.refill?.low}<div class="service status-warn">{e.refill.low}</div>{/if}
 					{#if meta(e)}<div class="meta">{meta(e)}</div>{/if}
+					<!-- a CO₂ cylinder (#368): its last refill and how long a fill lasts -->
+					{#if e.refill?.line}<div class="meta">{e.refill.line}</div>{/if}
 					<div class="acts">
 						<a class="ghost" href={serviceHref}>Log service</a>
+						{#if e.refill}<a class="ghost" href={e.refill.href}>Log refill</a>{/if}
 						<!-- switched off for a while on purpose: it stays in Needs attention until it's resumed -->
 						{#if e.plug}
 							<!-- on a smart plug: switching it is the owner's, after a confirm -->

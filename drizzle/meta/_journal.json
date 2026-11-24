@@ -547,6 +547,13 @@
       "when": 1795535717210,
       "tag": "0077_sensor_task_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "6",
+      "when": 1795546520174,
+      "tag": "0078_refill_alert",
+      "breakpoints": true
     }
   ]
 }

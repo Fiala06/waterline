@@ -62,6 +62,7 @@ const TANK_TITLES: Record<string, string> = {
 	'equipment/scan': 'Scan a barcode',
 	'equipment/[eid]': 'Edit equipment',
 	'equipment/[eid]/plug': 'Smart plug',
+	'equipment/[eid]/refills': 'Cylinder refills',
 	health: 'Log health',
 	'plants/health': 'Log plant health',
 	algae: 'Log algae',
