@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.24.0 · 2026-11-24
+
 - **A sample tank to explore.** Visitors can look around a made-up planted tank before signing in: its readings against targets, water changes on the chart, the care log, reminders and spending, clearly labelled as sample data, with a way to start their own. Server owners turn it on in [Server settings › Public pages](/settings/server#public-pages), and it's linked from the homepage and sign-in.
 
 ## 1.23.11 · 2026-11-24
