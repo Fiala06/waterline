@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { and, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { addDays, dateInZone, fmtDate, todayInZone } from '$lib/time';
 import { amountText, courseDayText, effectiveDue, intervalText, isRoutine, logCompletes, nextDueAfterCompletion, reminderSub, resumeSchedule, skipTo, type TriggerKind } from '$lib/tasks';
 import { clearText, readingClears } from '$lib/suggestions';
@@ -274,14 +274,53 @@ export function lastDoneOn(taskId: string, timeZone: string): string | null {
 	return c ? dateInZone(c.at, timeZone) : null;
 }
 
+/** The day each task was last done (not skipped), in one query for a list of tasks (#358). */
+export function lastDoneOnFor(taskIds: string[], timeZone: string): Map<string, string> {
+	if (!taskIds.length) return new Map();
+	const rows = db
+		.select({ taskId: taskCompletions.taskId, at: sql<string>`max(${taskCompletions.completedAt})` })
+		.from(taskCompletions)
+		.where(and(inArray(taskCompletions.taskId, taskIds), eq(taskCompletions.skipped, false)))
+		.groupBy(taskCompletions.taskId)
+		.all();
+	return new Map(rows.map((r) => [r.taskId, dateInZone(r.at, timeZone)]));
+}
+
+type Entry = { id: string; at: string };
+/** Each tank's latest water test and water change, a query each for a list of tanks (#358), for countableEntry. */
+export function latestEntriesFor(tankIds: string[]): { test: Map<string, Entry>; waterChange: Map<string, Entry> } {
+	if (!tankIds.length) return { test: new Map(), waterChange: new Map() };
+	// SQLite takes the bare columns from the row with the max
+	const test = db
+		.select({ tankId: tests.tankId, id: tests.id, at: sql<string>`max(${tests.takenAt})` })
+		.from(tests)
+		.where(inArray(tests.tankId, tankIds))
+		.groupBy(tests.tankId)
+		.all();
+	const wc = db
+		.select({ tankId: events.tankId, id: events.id, at: sql<string>`max(${events.occurredAt})` })
+		.from(events)
+		.where(and(inArray(events.tankId, tankIds), eq(events.category, 'water_change')))
+		.groupBy(events.tankId)
+		.all();
+	const byTank = (rows: (Entry & { tankId: string })[]) => new Map(rows.map((r) => [r.tankId, { id: r.id, at: r.at }]));
+	return { test: byTank(test), waterChange: byTank(wc) };
+}
+
 /**
  * A water change or test already logged that is this task's occurrence (#163),
  * so Skip can offer to count it instead: the tank's latest of that kind.
  */
-export function countableEntry(task: Task, timeZone: string): { kind: 'event' | 'test'; id: string; at: string; date: string } | null {
+export function countableEntry(
+	task: Task,
+	timeZone: string,
+	// already read for a list of tasks (#358): its last done day, and its tank's latest entries
+	known?: { lastDone: string | null; latest: ReturnType<typeof latestEntriesFor> }
+): { kind: 'event' | 'test'; id: string; at: string; date: string } | null {
 	if (task.kind !== 'water_change' && task.kind !== 'test') return null;
-	const latest =
-		task.kind === 'test'
+	const latest = known
+		? (task.kind === 'test' ? known.latest.test : known.latest.waterChange).get(task.tankId)
+		: task.kind === 'test'
 			? db.select({ id: tests.id, at: tests.takenAt }).from(tests).where(eq(tests.tankId, task.tankId)).orderBy(desc(tests.takenAt)).get()
 			: db
 					.select({ id: events.id, at: events.occurredAt })
@@ -291,7 +330,7 @@ export function countableEntry(task: Task, timeZone: string): { kind: 'event' | 
 					.get();
 	if (!latest) return null;
 	const date = dateInZone(latest.at, timeZone);
-	if (date > todayInZone(timeZone) || !logCompletes(task, lastDoneOn(task.id, timeZone), date)) return null;
+	if (date > todayInZone(timeZone) || !logCompletes(task, known ? known.lastDone : lastDoneOn(task.id, timeZone), date)) return null;
 	return { kind: task.kind === 'test' ? 'test' : 'event', id: latest.id, at: latest.at, date };
 }
 

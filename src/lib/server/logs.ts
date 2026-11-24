@@ -253,6 +253,33 @@ export function series(tankId: string, parameterId: string, since: string) {
 		.all();
 }
 
+/** series() for several of a tank's parameters in one query (#358), each oldest first. */
+export function seriesFor(tankId: string, parameterIds: string[], since: string): Map<string, { value: number; takenAt: string }[]> {
+	const out = new Map<string, { value: number; takenAt: string }[]>(parameterIds.map((id) => [id, []]));
+	if (!parameterIds.length) return out;
+	const rows = db
+		.select({ parameterId: testReadings.parameterId, value: testReadings.value, takenAt: tests.takenAt })
+		.from(testReadings)
+		.innerJoin(tests, eq(tests.id, testReadings.testId))
+		.where(and(eq(tests.tankId, tankId), inArray(testReadings.parameterId, parameterIds), gte(tests.takenAt, since)))
+		.orderBy(tests.takenAt)
+		.all();
+	for (const r of rows) out.get(r.parameterId)?.push({ value: r.value, takenAt: r.takenAt });
+	return out;
+}
+
+/** How many tests read a parameter, ever: a count, not the readings (#358). */
+export function readingCount(tankId: string, parameterId: string): number {
+	return (
+		db
+			.select({ n: sql<number>`count(*)` })
+			.from(testReadings)
+			.innerJoin(tests, eq(tests.id, testReadings.testId))
+			.where(and(eq(tests.tankId, tankId), eq(testReadings.parameterId, parameterId)))
+			.get()?.n ?? 0
+	);
+}
+
 // ── Events ──────────────────────────────────────────────────────────────────
 
 export interface EventInput {

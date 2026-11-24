@@ -5,7 +5,7 @@ import { statusIcon, statusShort } from '$lib/status';
 import { fmtDate, dateInZone } from '$lib/time';
 import { db } from '$lib/server/db';
 import { tests } from '$lib/server/db/schema';
-import { eventsSince, latestReadings, series } from '$lib/server/logs';
+import { eventsSince, latestReadings, readingCount, series, seriesFor } from '$lib/server/logs';
 import { getTank, listParams } from '$lib/server/tanks';
 import { tankNotes } from '$lib/server/trends';
 import { displaySamples, isLive, latestSamples, sampleCount, sampleSeries } from '$lib/server/sensors';
@@ -71,6 +71,7 @@ export const load: PageServerLoad = async ({ locals, parent, url, cookies, isDat
 
 	// Every parameter on one chart, each against its own target (?p=all)
 	if (url.searchParams.get('p') === 'all') {
+		const seriesOf = seriesFor(tank.id, params.map((p) => p.id), since);
 		const lines = params.map((p) => {
 			const st = statusOf(p, latest.get(p.id)?.value);
 			return {
@@ -83,7 +84,7 @@ export const load: PageServerLoad = async ({ locals, parent, url, cookies, isDat
 					min: p.min == null ? null : displayValue(p, p.min, user),
 					max: p.max == null ? null : displayValue(p, p.max, user)
 				},
-				points: series(tank.id, p.id, since).map((r) => ({ t: Date.parse(r.takenAt), v: displayValue(p, r.value, user), href: hrefAt(r.takenAt) })),
+				points: seriesOf.get(p.id)!.map((r) => ({ t: Date.parse(r.takenAt), v: displayValue(p, r.value, user), href: hrefAt(r.takenAt) })),
 				latest: latest.has(p.id) ? fmtValue(p, latest.get(p.id)!.value, user) : null,
 				level: st.level,
 				status: statusShort(st)
@@ -141,7 +142,7 @@ export const load: PageServerLoad = async ({ locals, parent, url, cookies, isDat
 	// Sensor samples count as readings here (#130): a probe's chart shows
 	// without a test, and a range with none says to try a longer one.
 	const enough = points.length >= 2 || sensor.length >= 2;
-	const allTime = enough || !range.days ? Math.max(points.length, sensor.length) : Math.max(series(tank.id, param.id, '0000').length, sampleCount(tank.id, param.id));
+	const allTime = enough || !range.days ? Math.max(points.length, sensor.length) : Math.max(readingCount(tank.id, param.id), sampleCount(tank.id, param.id));
 	const from = range.days ? now - range.days * 86_400_000 : (points[0]?.t ?? sensor[0]?.t ?? now - 30 * 86_400_000);
 
 	// the events in range, with the reading just before and after each one

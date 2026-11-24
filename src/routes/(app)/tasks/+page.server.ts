@@ -6,7 +6,7 @@ import { safeReturn } from '$lib/server/redirect';
 import { listPlanRuns } from '$lib/server/plans';
 import { clearTextOf } from '$lib/server/suggestions';
 import { formTanks, routineProducts, taskFormValues, taskType } from '$lib/server/task-form';
-import { algaeOf, completeTask, needsOwnDone, countableEntry, courseDay, endCourseEarly, getTask, reopenCourse, lastDoneOn, waitingTasks, lastDoseText, listTasks, recentCompletions, resumeTask, skipTask, snoozeTask, undoCompletion, unpauseTasks } from '$lib/server/tasks';
+import { algaeOf, completeTask, needsOwnDone, countableEntry, courseDay, endCourseEarly, getTask, reopenCourse, lastDoneOnFor, latestEntriesFor, waitingTasks, lastDoseText, listTasks, recentCompletions, resumeTask, skipTask, snoozeTask, undoCompletion, unpauseTasks } from '$lib/server/tasks';
 import { effectiveDue, followText, waitingText } from '$lib/tasks';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -29,11 +29,15 @@ export const load: PageServerLoad = ({ locals, url }) => {
 		if (task) pane = { mode: 'edit', taskId: task.id, values: taskFormValues(task, user, null) };
 	}
 
+	// each task's last done day, and its tank's latest test and water change, read once for the list (#358)
+	const lastDone = lastDoneOnFor(rows.map((r) => r.task.id), user.timeZone);
+	const latest = latestEntriesFor([...new Set(rows.filter((r) => r.task.kind === 'water_change' || r.task.kind === 'test').map((r) => r.task.tankId))]);
+
 	return {
 		filter,
 		today: todayInZone(user.timeZone),
 		// a water change or test logged already that Skip can count instead (#163)
-		tasks: rows.map((r) => ({ ...r.task, tempClear: clearTextOf(r.task.tempUntilParam), countable: countableEntry(r.task, user.timeZone), lastDone: lastDoneOn(r.task.id, user.timeZone), lastDose: r.task.kind === 'dosing' ? lastDoseText(r.task, user.timeZone) : null, courseDay: courseDay(r.task, user.timeZone) })),
+		tasks: rows.map((r) => ({ ...r.task, tempClear: clearTextOf(r.task.tempUntilParam), countable: countableEntry(r.task, user.timeZone, { lastDone: lastDone.get(r.task.id) ?? null, latest }), lastDone: lastDone.get(r.task.id) ?? null, lastDose: r.task.kind === 'dosing' ? lastDoseText(r.task, user.timeZone) : null, courseDay: courseDay(r.task, user.timeZone) })),
 		// treatment plans running (#177), at the top
 		plans: listPlanRuns(user.id, user.timeZone, filter ?? undefined).running.map((p) => ({ id: p.id, tankId: p.tankId, name: p.name, tankName: p.tankName, status: p.status })),
 		// paused (#172), listed apart with Resume
