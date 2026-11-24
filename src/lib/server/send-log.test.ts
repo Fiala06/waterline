@@ -25,7 +25,7 @@ const { actionTokens, emailLog, logs } = await import('./db/schema');
 const { upsertUser } = await import('./users');
 const { createTank } = await import('./tanks');
 const { createTask } = await import('./tasks');
-const { notifyUser } = await import('./notifications');
+const { alertOutOfRange, notifyUser, retryTestAlerts } = await import('./notifications');
 const { claimSend, MAX_ATTEMPTS, pruneSendLog, retryWait, sendFailed } = await import('./send-log');
 const { todayInZone } = await import('$lib/time');
 
@@ -114,5 +114,40 @@ describe('pruneSendLog (#347)', () => {
 		db.insert(emailLog).values({ userId: user.id, key: 'daily-digest:2026-04-01', sentAt: '2026-04-01T09:00:00.000Z' }).run();
 		expect(pruneSendLog(Date.parse('2026-04-20T00:00:00.000Z'))).toBe(3);
 		expect(keys()).toEqual(['daily-digest:2026-04-01', `overdue:${stuck.id}:2026-01-05`, `push:overdue:${stuck.id}:2026-01-05`].sort());
+	});
+});
+
+describe("a test's out-of-range alert that fails (#334)", async () => {
+	const { listParams, updateParams } = await import('./tanks');
+	const { createTest } = await import('./logs');
+	const user = upsertUser({ email: 'oor-retry@example.com', name: 'Retry' });
+	const tank = createTank(user, { name: 'Retry 40', type: 'freshwater', nominalVolumeL: 150 });
+	const no3 = listParams(tank.id).find((p) => p.key === 'no3')!;
+	updateParams(user.id, tank.id, [{ id: no3.id, min: 5, max: 20, tracked: true }]);
+	const row = () => db.select().from(emailLog).where(eq(emailLog.userId, user.id)).get()!;
+	// alerts go only to people who may sign in: anyone, here
+	const { serverSettings } = await import('./db/schema');
+	const { getServerSettings } = await import('./mail');
+	getServerSettings();
+	db.update(serverSettings).set({ signupMode: 'open' }).where(eq(serverSettings.id, 1)).run();
+
+	it('is tried again by the scheduler when its retry is due, and only then', async () => {
+		const { test } = createTest(user.id, tank.id, { takenAt: new Date().toISOString(), note: null, readings: new Map([[no3.id, 500]]) }, { timeZone: 'UTC' });
+		failing.on = true;
+		failing.calls = 0;
+		await alertOutOfRange(user, tank.id, test.id);
+		expect(failing.calls).toBe(1);
+		expect(row()).toMatchObject({ key: `oor:${test.id}`, attempts: 1 });
+		// not due yet
+		failing.on = false;
+		await retryTestAlerts();
+		expect(failing.calls).toBe(1);
+		// due: it goes, once
+		db.update(emailLog).set({ retryAt: new Date(Date.now() - 1000).toISOString() }).where(eq(emailLog.userId, user.id)).run();
+		await retryTestAlerts();
+		expect(failing.calls).toBe(2);
+		expect(row()).toMatchObject({ error: null, retryAt: null });
+		await retryTestAlerts();
+		expect(failing.calls).toBe(2);
 	});
 });

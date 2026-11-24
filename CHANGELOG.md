@@ -31,6 +31,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 - **Clearer when you've been signed out.** If your session ends while a page is open, species searches and photos stop quietly instead of loading the sign-in page in their place, and the sign-in page is never kept on your device as a photo: [Sign in](/signin).
 - **Public pages keep to your switches.** A public page no longer names your other tanks when fish move between them (it says "another tank"), shows the tank's size and water volume only with Equipment on, and with Readings off its charts don't show the latest status and search engines aren't told when you last tested: [Public page](/tanks/current/public).
 - **Who changed livestock, plants and equipment.** On a shared tank, History now says who added or removed livestock, plants and equipment, trimmed plants or changed counts, as it already did for tests and other entries: [History](/history).
+- **Out-of-range alerts try again.** If the email or push for an out-of-range water test can't be sent when you save it, it's tried again later, as reminders are, instead of being lost: [Alerts](/settings#notifications).
 
 ## 1.23.4 · 2026-11-21
 
