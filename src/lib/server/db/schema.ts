@@ -427,7 +427,7 @@ export const tasks = sqliteTable(
 		remindAt: text('remind_at'),
 		createdAt: createdAt()
 	},
-	(t) => [index('tasks_next_due').on(t.nextDue)]
+	(t) => [index('tasks_next_due').on(t.nextDue), index('tasks_tank').on(t.tankId)]
 );
 
 /**
@@ -455,19 +455,24 @@ export const planRuns = sqliteTable('plan_runs', {
 	createdAt: createdAt()
 });
 
-export const taskCompletions = sqliteTable('task_completions', {
-	id: id(),
-	taskId: text('task_id')
-		.notNull()
-		.references(() => tasks.id, { onDelete: 'cascade' }),
-	completedAt: text('completed_at').notNull(),
-	eventId: text('event_id').references(() => events.id, { onDelete: 'set null' }),
-	// schedule before this completion, so Mark done can be undone
-	prevNextDue: text('prev_next_due'),
-	prevSnoozedUntil: text('prev_snoozed_until'),
-	// Skip this one (#71): passed over, not done; its eventId is the "Skipped" note
-	skipped: integer('skipped', { mode: 'boolean' }).notNull().default(false)
-});
+export const taskCompletions = sqliteTable(
+	'task_completions',
+	{
+		id: id(),
+		taskId: text('task_id')
+			.notNull()
+			.references(() => tasks.id, { onDelete: 'cascade' }),
+		completedAt: text('completed_at').notNull(),
+		eventId: text('event_id').references(() => events.id, { onDelete: 'set null' }),
+		// schedule before this completion, so Mark done can be undone
+		prevNextDue: text('prev_next_due'),
+		prevSnoozedUntil: text('prev_snoozed_until'),
+		// Skip this one (#71): passed over, not done; its eventId is the "Skipped" note
+		skipped: integer('skipped', { mode: 'boolean' }).notNull().default(false)
+	},
+	// a task's last and recent completions (Tasks, reminders), and the cascade when it goes (#352)
+	(t) => [index('task_completions_task').on(t.taskId, t.completedAt)]
+);
 
 export type User = typeof users.$inferSelect;
 export type Tank = typeof tanks.$inferSelect;
@@ -1280,7 +1285,13 @@ export const sensorReadings = sqliteTable(
 		source: text('source').notNull(),
 		tokenId: text('token_id').references(() => assistantTokens.id, { onDelete: 'set null' })
 	},
-	(t) => [index('sensor_readings_tank_param_at').on(t.tankId, t.parameterId, t.at)]
+	// pruning by age, and the cascades from a parameter or a token (#352)
+	(t) => [
+		index('sensor_readings_tank_param_at').on(t.tankId, t.parameterId, t.at),
+		index('sensor_readings_at').on(t.at),
+		index('sensor_readings_param').on(t.parameterId),
+		index('sensor_readings_token').on(t.tokenId).where(sql`token_id is not null`)
+	]
 );
 export type SensorReading = typeof sensorReadings.$inferSelect;
 

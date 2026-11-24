@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Quicker with a year of sensor data.** Clearing out old sensor samples, removing a parameter or an assistant connection, and opening Tasks no longer read through every sample or every completion, so the app stays responsive as the log grows: [Tasks](/tasks).
+
 ## 1.23.6 · 2026-11-24
 
 - **Buttons named as they read.** For people who use speech input, the account button, the parts of Server settings and the public page's Download data button are named by what they show, so saying what's on screen selects them: [Server settings](/settings/server).
