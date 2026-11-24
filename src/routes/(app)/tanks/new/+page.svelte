@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { refusal } from '$lib/forms';
 	import TankCreateForm from '$lib/components/TankCreateForm.svelte';
 	let { data, form } = $props();
+	const tank = $derived(refusal(form, 'tank'));
 </script>
 
 <svelte:head><title>Add tank · Waterline</title></svelte:head>
@@ -11,7 +13,7 @@
 		<a href="/tanks" class="back">‹ Tanks</a>
 		<h1>Add tank</h1>
 	</div>
-	<TankCreateForm volUnit={data.volUnit} errors={form?.errors} values={form?.values} submitLabel="Create tank" cancelHref="/tanks" />
+	<TankCreateForm volUnit={data.volUnit} errors={tank.errors} values={tank.form ? (tank.values as Record<string, string>) : undefined} submitLabel="Create tank" cancelHref="/tanks" />
 </div>
 
 <style>

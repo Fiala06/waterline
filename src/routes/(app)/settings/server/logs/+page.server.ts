@@ -1,3 +1,5 @@
+import { redirect } from '@sveltejs/kit';
+import { setFlash } from '$lib/server/flash';
 import { requireAdmin } from '$lib/server/users';
 import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
@@ -49,7 +51,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
 
 export const actions: Actions = {
 	/** What the log keeps: errors and warnings, what the server does too, or everything for a day. */
-	detail: async ({ request, locals }) => {
+	detail: async ({ request, locals, cookies }) => {
 		const user = requireAdmin(locals);
 		const v = String((await request.formData()).get('detail') ?? '');
 		getServerSettings();
@@ -61,6 +63,7 @@ export const actions: Actions = {
 		logger.info('settings', v === 'debug' ? `Log keeps everything for the next ${DEBUG_HOURS} hours` : v === 'info' ? 'Log keeps what the server does too' : 'Log keeps errors and warnings', {
 			userId: user.id
 		});
-		return { detailSaved: true };
+		setFlash(cookies, '✓ Saved');
+		redirect(303, '/settings/server/logs');
 	}
 };

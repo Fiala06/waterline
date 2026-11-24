@@ -2,12 +2,12 @@
 // substrate, CO₂ from pH and KH, and GH / KH remineralization, filled in from
 // what the app already knows about the tank: its size and volumes, the latest
 // readings and targets, and saved products with a strength.
-import { fail, redirect } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import { tankVolume } from '$lib/calculators';
 import { paramUnit } from '$lib/params';
 import { fmtVolume } from '$lib/calculators-format';
 import { setFlash } from '$lib/server/flash';
-import { num, str } from '$lib/server/forms';
+import { num, refuse, str } from '$lib/server/forms';
 import { createEvent, latestReadings } from '$lib/server/logs';
 import { listProducts } from '$lib/server/products';
 import { getTank, listParams, listTanks, updateTank } from '$lib/server/tanks';
@@ -74,9 +74,9 @@ export const actions: Actions = {
 			return v == null ? null : toStored(v, 'length', user);
 		};
 		const [lengthCm, widthCm, heightCm] = [len('length'), len('width'), len('height')];
-		if (lengthCm == null || widthCm == null || heightCm == null) return fail(400, { error: 'Enter the length, width and height.' });
+		if (lengthCm == null || widthCm == null || heightCm == null) return refuse('volume', 'Enter the length, width and height.');
 		const v = tankVolume({ lengthCm, widthCm, heightCm, glassCm: len('glass') ?? 0, substrateCm: len('substrate') ?? 0, gapCm: len('gap') ?? 0 });
-		if (!v || v.waterL <= 0) return fail(400, { error: 'That size leaves no room for water.' });
+		if (!v || v.waterL <= 0) return refuse('volume', 'That size leaves no room for water.');
 		updateTank(user.id, tank.id, {
 			actualVolumeL: v.waterL,
 			lengthCm,

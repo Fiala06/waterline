@@ -4,10 +4,12 @@
 	// with Upload in the toolbar. The shell carries the tank name and tabs.
 	import { onMount, tick, untrack } from 'svelte';
 	import { enhance } from '$app/forms';
+	import { refusal } from '$lib/forms';
 	import DateField from '$lib/components/DateField.svelte';
 	import { exifHint, exifToWhen, readFileExifDate, type ExifDate } from '$lib/exif';
 	import { photoUrl } from '$lib/media';
 	let { data, form } = $props();
+	const refused = $derived(refusal(form, 'photos'));
 	const total = $derived(data.months.reduce((n, m) => n + m.photos.length, 0));
 
 	// The upload (#42): choosing photos reads the date each was taken and adds them at once, each
@@ -72,7 +74,7 @@
 			</form>
 		{/if}
 	</div>
-	{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
+	{#if refused.message}<p class="banner banner-bad" role="alert">✕ {refused.message}</p>{/if}
 
 	{#if !total}
 		<div class="empty">

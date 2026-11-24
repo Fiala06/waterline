@@ -3,21 +3,29 @@
 	// step at a time (or from a Quick log favorite), with ↑ ↓ and Remove, and
 	// Run to walk through it. Works without scripts: Add a step is a link.
 	import { enhance } from '$app/forms';
+	import { refusal } from '$lib/forms';
 	import { untrack } from 'svelte';
 	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
-	import LogStepFields, { BLANK_STEP } from '$lib/components/LogStepFields.svelte';
+	import LogStepFields, { BLANK_STEP, type StepValues } from '$lib/components/LogStepFields.svelte';
 	let { data, form } = $props();
+	const addR = $derived(refusal(form, 'add'));
+	const renameR = $derived(refusal(form, 'rename'));
+	const stepR = $derived(refusal(form, 'step'));
+	// which routine's form was refused: its id rides along with what was typed
+	const renameId = $derived(renameR.values.id as string | undefined);
+	const stepId = $derived(stepR.values.id as string | undefined);
 
 	// the routine whose Add a step form is open: after a refused save, from ?add= without scripts, or picked here
-	let adding = $state<string | null>(untrack(() => form?.step?.id ?? data.open ?? null));
+	let adding = $state<string | null>(untrack(() => stepId ?? data.open ?? null));
 	// after Add routine (or a step) the address names the routine to keep adding to
 	$effect(() => {
 		if (data.open) adding = data.open;
 	});
-	let renaming = $state<string | null>(untrack(() => form?.rename?.id ?? null));
-	const stepErr = $derived<Record<string, string>>(form?.step?.errors ?? {});
-	const stepVal = $derived(form?.step?.values ?? BLANK_STEP);
+	let renaming = $state<string | null>(untrack(() => renameId ?? null));
+	const stepErr = $derived(stepR.errors);
+	// a refused Add a step brings back what was typed (a refused favorite has nothing typed)
+	const stepVal = $derived('kind' in stepR.values ? (stepR.values as unknown as StepValues) : BLANK_STEP);
 </script>
 
 <svelte:head><title>Maintenance routines · {data.tank.name}</title></svelte:head>
@@ -36,7 +44,7 @@
 					{#if renaming === r.id}
 						<form method="POST" action="?/rename" class="rename" use:enhance={() => async ({ result, update }) => { if (result.type === 'redirect') renaming = null; await update(); }}>
 							<input type="hidden" name="id" value={r.id} />
-							<input class="input" name="name" value={r.name} maxlength="60" aria-label="Routine name" aria-invalid={form?.rename?.id === r.id && !!form.rename.error} />
+							<input class="input" name="name" value={r.name} maxlength="60" aria-label="Routine name" aria-invalid={renameId === r.id && !!renameR.message} />
 							<button class="btn btn-primary">Save</button>
 							<button type="button" class="btn" onclick={() => (renaming = null)}>Cancel</button>
 						</form>
@@ -48,7 +56,7 @@
 						</span>
 					{/if}
 				</div>
-				{#if form?.rename?.id === r.id && form.rename.error}<span class="error-text">✕ {form.rename.error}</span>{/if}
+				{#if renameId === r.id && renameR.message}<span class="error-text">✕ {renameR.message}</span>{/if}
 				{#if r.steps.length}
 					<ol class="steps" aria-label="Steps of {r.name}">
 						{#each r.steps as s (s.i)}
@@ -98,7 +106,7 @@
 						<form method="POST" action="?/addStep" class="step-form" use:enhance={() => async ({ result, update }) => { await update(); if (result.type === 'redirect') adding = r.id; }}>
 							<input type="hidden" name="id" value={r.id} />
 							<span class="label">Or a step of your own</span>
-							<LogStepFields prefix="s-{r.id}" v={form?.step?.id === r.id && form.step.values ? form.step.values : BLANK_STEP} err={form?.step?.id === r.id ? stepErr : {}} volUnit={data.volUnit} />
+							<LogStepFields prefix="s-{r.id}" v={stepId === r.id ? stepVal : BLANK_STEP} err={stepId === r.id ? stepErr : {}} volUnit={data.volUnit} />
 							<div class="step-acts">
 								<button type="button" class="btn" onclick={() => (adding = null)}>Done adding</button>
 								<button class="btn btn-primary">Add step</button>
@@ -116,8 +124,8 @@
 		<h2>Add a routine</h2>
 		<div class="field">
 			<label class="label" for="new-name">Name</label>
-			<input class="input" id="new-name" name="name" maxlength="60" autocomplete="off" placeholder="e.g. Sunday maintenance" aria-invalid={!!form?.add?.error} />
-			{#if form?.add?.error}<span class="error-text">✕ {form.add.error}</span>{/if}
+			<input class="input" id="new-name" name="name" maxlength="60" autocomplete="off" placeholder="e.g. Sunday maintenance" aria-invalid={!!addR.message} />
+			{#if addR.message}<span class="error-text">✕ {addR.message}</span>{/if}
 		</div>
 		<button class="btn btn-primary go">Add routine</button>
 	</form>

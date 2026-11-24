@@ -1,11 +1,11 @@
 // Setup › Sharing (#22, redesign README § 13): invite someone to help look
 // after this tank, the people with access, and whom reminders and alerts go to.
-import { error, fail, redirect } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import { appOrigin } from '$lib/server/origin';
 import { TANK_ROLES, type TankRole } from '$lib/server/db/schema';
 import { revokeActionTokens } from '$lib/server/action-tokens';
 import { setFlash } from '$lib/server/flash';
-import { str } from '$lib/server/forms';
+import { refuse, str } from '$lib/server/forms';
 import { createInvite, revokeShareInvite, validEmail } from '$lib/server/invites';
 import { logger } from '$lib/server/log';
 import { allowRate } from '$lib/server/rate-limit';
@@ -82,9 +82,9 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const email = str(form, 'email').toLowerCase().slice(0, 200);
 		const role = parseRole(str(form, 'role'));
-		if (!validEmail(email)) return fail(400, { inviteError: 'Enter an email address.', email, role });
-		if (email === user.email) return fail(400, { inviteError: "That's you.", email, role });
-		if (hasAccess(tank.id, email)) return fail(400, { inviteError: `${email} already has access.`, email, role });
+		if (!validEmail(email)) return refuse('invite', 'Enter an email address.', { email, role });
+		if (email === user.email) return refuse('invite', "That's you.", { email, role });
+		if (hasAccess(tank.id, email)) return refuse('invite', `${email} already has access.`, { email, role });
 		// the share waits for them to accept, on the server already or not, and the answer is the same either way (#218)
 		// someone not on the server yet: the share lets them sign in too, when the server allows it (#217)
 		const letsIn = !getUserByEmail(email) && !isEmailAllowed(email) && shareMayInvite(user);

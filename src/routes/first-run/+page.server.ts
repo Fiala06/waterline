@@ -1,6 +1,6 @@
-import { fail, isRedirect, redirect } from '@sveltejs/kit';
+import { isRedirect, redirect } from '@sveltejs/kit';
 import { signInWith } from '../../auth';
-import { str } from '$lib/server/forms';
+import { refuse, str } from '$lib/server/forms';
 import { logger } from '$lib/server/log';
 import { clearLoginFailures, loginBlockedMinutes, recordLoginFailure } from '$lib/server/rate-limit';
 import { codeMatches, finishSetup, setupCode, setupNeeded } from '$lib/server/setup';
@@ -22,11 +22,11 @@ export const actions: Actions = {
 		const username = str(form, 'username') || 'admin';
 		const values = { username, code: '' };
 		const wait = loginBlockedMinutes(address);
-		if (wait) return fail(429, { values, errors: { code: `Too many tries. Try again in ${wait} minute${wait === 1 ? '' : 's'}.` } });
+		if (wait) return refuse('setup', { code: `Too many tries. Try again in ${wait} minute${wait === 1 ? '' : 's'}.` }, values, 429);
 		if (!codeMatches(str(form, 'code'))) {
 			recordLoginFailure(address);
 			logger.warn('setup', 'Wrong setup code entered', { address });
-			return fail(400, { values, errors: { code: "That isn't the setup code. Copy it from the server's log." } });
+			return refuse('setup', { code: "That isn't the setup code. Copy it from the server's log." }, values);
 		}
 		const password = String(form.get('password') ?? '');
 		const errors: Record<string, string> = {};
@@ -35,7 +35,7 @@ export const actions: Actions = {
 		if (weak) errors.password = weak;
 		else if (password !== String(form.get('confirm') ?? '')) errors.confirm = "The passwords don't match.";
 		// the right code stays in the form while the rest is fixed
-		if (Object.keys(errors).length) return fail(400, { values: { ...values, code: str(form, 'code') }, errors });
+		if (Object.keys(errors).length) return refuse('setup', errors, { ...values, code: str(form, 'code') });
 		clearLoginFailures(address);
 		finishSetup(username, password);
 		logger.info('setup', `Admin login “${username}” created on first start`);

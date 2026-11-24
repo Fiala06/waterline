@@ -2,15 +2,17 @@
 	// Log plant health (#85): the plants, what they're doing as chips (✓ Thriving,
 	// ▲ Melting, ✕ Removed…), when, a note and photos. Works without scripts.
 	import { enhance } from '$app/forms';
+	import { refusal } from '$lib/forms';
 	import { untrack } from 'svelte';
 	import DateField from '$lib/components/DateField.svelte';
 	import FormBar from '$lib/components/FormBar.svelte';
 
 	let { data, form } = $props();
-	const v = $derived(form?.values);
-	const errors = $derived(form?.errors ?? {});
-	let chosen = $state(untrack(() => form?.values?.plantIds ?? (data.preselect ? [data.preselect] : data.plants.length === 1 ? [data.plants[0].id] : [])));
-	let date = $state(untrack(() => form?.values?.date || data.now.date));
+	const r = $derived(refusal(form, 'health'));
+	const v = $derived(r.values as Record<string, string | undefined>);
+	const errors = $derived(r.errors);
+	let chosen = $state(untrack(() => (r.values.plantIds as string[] | undefined) ?? (data.preselect ? [data.preselect] : data.plants.length === 1 ? [data.plants[0].id] : [])));
+	let date = $state(untrack(() => r.values.date as string || data.now.date));
 	let busy = $state(false);
 </script>
 

@@ -1,10 +1,10 @@
 // Server settings › People (#27): everyone on the server, invitations with
 // Resend and Revoke, and what an admin can do about a person.
-import { error, fail, redirect } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import { appOrigin } from '$lib/server/origin';
 import { fmtDateLong, fmtWhen, dateInZone } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
-import { str } from '$lib/server/forms';
+import { refuse, str } from '$lib/server/forms';
 import { createInvite, getInvite, INVITE_DAYS, listInvites, resendInvite, revokeInvite, validEmail } from '$lib/server/invites';
 import { logger } from '$lib/server/log';
 import { emailConfigured, getServerSettings, MailError, sendMail } from '$lib/server/mail';
@@ -79,8 +79,8 @@ export const actions: Actions = {
 		const me = requireAdmin(locals);
 		const form = await request.formData();
 		const email = str(form, 'email').toLowerCase().slice(0, 200);
-		if (!validEmail(email)) return fail(400, { inviteError: 'Enter an email address.', email });
-		if (listPeopleEmails().has(email)) return fail(400, { inviteError: `${email} is on the server already.`, email });
+		if (!validEmail(email)) return refuse('invite', { email: 'Enter an email address.' }, { email });
+		if (listPeopleEmails().has(email)) return refuse('invite', { email: `${email} is on the server already.` }, { email });
 		const { invite, token } = createInvite(email, me.id);
 		const origin = appOrigin(url);
 		const sent = await sendInvite(origin, email, token, me.displayName || 'An admin');

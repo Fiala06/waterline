@@ -6,6 +6,7 @@
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import { onMount, untrack } from 'svelte';
 	import DateField from './DateField.svelte';
+	import { refusal } from '$lib/forms';
 	import { REMIND_WHEN } from '$lib/tasks';
 	import { addDays } from '$lib/time';
 
@@ -42,7 +43,7 @@
 		return async ({ result, update }) => {
 			busy = false;
 			if (result.type === 'failure') {
-				failed = (result.data?.error as string | undefined) ?? "Couldn't save it. Try again.";
+				failed = refusal(result.data, 'remind').message || "Couldn't save it. Try again.";
 				return;
 			}
 			failed = null;

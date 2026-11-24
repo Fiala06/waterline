@@ -4,8 +4,10 @@
 	import { enhance } from '$app/forms';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import { toast } from '$lib/ui.svelte';
+	import { refusal } from '$lib/forms';
 	let { data, form } = $props();
 	const invited = $derived(form?.invited ?? null);
+	const invite = $derived(refusal(form, 'invite'));
 	let copied = $state(false);
 	async function copy() {
 		if (!invited) return;
@@ -42,10 +44,10 @@
 		<h2 class="kicker">Invite someone</h2>
 		<div class="invite-row">
 			<label class="sr-only" for="invite-email">Email</label>
-			<input class="input" id="invite-email" name="email" type="email" placeholder="name@example.com" autocomplete="off" value={form?.email ?? ''} aria-invalid={!!form?.inviteError} />
+			<input class="input" id="invite-email" name="email" type="email" placeholder="name@example.com" autocomplete="off" value={String(invite.values.email ?? '')} aria-invalid={!!invite.errors.email} />
 			<button class="btn btn-primary">{data.emailOn ? 'Send invite' : 'Make invite link'}</button>
 		</div>
-		{#if form?.inviteError}<span class="error-text">✕ {form.inviteError}</span>{/if}
+		{#if invite.errors.email}<span class="error-text">✕ {invite.errors.email}</span>{/if}
 		{#if !data.emailOn}<span class="hint">Email isn't set up on this server, so you'll copy the link and send it yourself. <a href="/settings/server#email">Set up email ›</a></span>{/if}
 		{#if invited}
 			<div class="sent" role="status">

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { chipScrollLeft, entryHref, eventTypes, joinNames, photoOtherDay, restoredText, splitTask, testTypes } from './entry-form';
-import { attentionSummary, cleanReading, readingRow, shortStatus, statusWord, testSaveLabel, waterChangeSummary, type TestParam } from './test-form';
+import { attentionSummary, cleanReading, readingRow, refusedReadings, shortStatus, statusWord, testSaveLabel, waterChangeSummary, type TestParam } from './test-form';
 import {
 	doseHint,
 	eventQueueTitle,
@@ -204,5 +204,12 @@ describe('the event form', () => {
 		expect(notePlaceholder('maintenance')).toBe('e.g. swapped sponge, kept ceramic');
 		expect(notePlaceholder('dosing')).toBe('Optional');
 		expect(notePlaceholder('note')).toBeUndefined();
+	});
+});
+
+describe('refusedReadings', () => {
+	it('puts back what was typed by parameter id, and nothing else', () => {
+		expect(refusedReadings({ v_ph: '7.4', v_no3: '', note: 'cloudy', wc: '1', amount: '25' })).toEqual({ ph: '7.4', no3: '' });
+		expect(refusedReadings({})).toEqual({});
 	});
 });

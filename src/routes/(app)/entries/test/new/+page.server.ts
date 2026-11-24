@@ -1,7 +1,7 @@
-import { error, fail, redirect } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import { todayInZone } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
-import { optStr, parseWhen, str } from '$lib/server/forms';
+import { optStr, parseWhen, refuse, str } from '$lib/server/forms';
 import { completableTask, parseEventData, parseReadings, testFormParams, testWaterChange } from '$lib/server/log-forms';
 import { createEvent, createTest, latestReadings } from '$lib/server/logs';
 import { photoFiles, preparePhotos, storePhotos } from '$lib/server/photos';
@@ -56,23 +56,26 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const params = listParams(tank.id);
 		const { readings, errors } = parseReadings(form, params, user);
-		const values = Object.fromEntries(params.map((p) => [p.id, str(form, `v_${p.id}`)]));
 		// "Also log a water change" (05, 08): its own entry, at the time of the test
 		const withWc = form.get('wc') === '1';
 		const wc = withWc ? parseEventData('water_change', form, tank, user) : null;
-		const back = {
-			values,
-			// the note too, so a refused save without scripts keeps it (#261)
+		// what was typed, by field name: the readings, the note too, so a refused
+		// save without scripts keeps it (#261), and the water change
+		const values = {
+			...Object.fromEntries(params.map((p) => [`v_${p.id}`, str(form, `v_${p.id}`)])),
 			note: str(form, 'note'),
-			wc: { on: withWc, amountMode: str(form, 'amountMode') || 'percent', amount: str(form, 'amount'), source: str(form, 'source') || 'tap' }
+			wc: withWc ? '1' : '',
+			amountMode: str(form, 'amountMode') || 'percent',
+			amount: str(form, 'amount'),
+			source: str(form, 'source') || 'tap'
 		};
 		if (wc) Object.assign(errors, wc.errors);
-		if (Object.keys(errors).length) return fail(400, { ...back, errors, error: null });
-		if (!readings.size) return fail(400, { ...back, errors, error: 'Enter at least one reading.' });
+		if (Object.keys(errors).length) return refuse('test', errors, values);
+		if (!readings.size) return refuse('test', { message: 'Enter at least one reading.', errors }, values);
 		const when = parseWhen(form, user.timeZone);
-		if ('error' in when) return fail(400, { ...back, errors, error: when.error });
+		if ('error' in when) return refuse('test', { message: when.error, errors }, values);
 		const prepared = await preparePhotos(photoFiles(form));
-		if ('error' in prepared) return fail(400, { ...back, errors, error: prepared.error });
+		if ('error' in prepared) return refuse('test', { message: prepared.error, errors }, values);
 		const wcTaskId = wc ? optStr(form, 'wcCompleteTask', 64) : null;
 
 		const clientId = optStr(form, 'clientId', 64);

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { refusal } from '$lib/forms';
 	import Tip from '$lib/components/Tip.svelte';
 	import { TIPS } from '$lib/tips';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
@@ -32,7 +33,7 @@
 	});
 	let notes = $state(untrack(() => data.tank.notes));
 	let startDate = $state(untrack(() => data.tank.startDate));
-	const errors = $derived((form?.errors ?? {}) as Record<string, string>);
+	const errors = $derived(refusal(form, 'tank').errors);
 	const types = [
 		{ value: 'freshwater', label: 'Fresh' },
 		{ value: 'planted', label: 'Planted' },

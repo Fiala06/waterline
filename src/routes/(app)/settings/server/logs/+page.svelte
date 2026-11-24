@@ -4,7 +4,6 @@
 	// an error page finds its entry. Works without scripts.
 	import { enhance } from '$app/forms';
 	import EmptyState from '$lib/components/EmptyState.svelte';
-	import { toast } from '$lib/ui.svelte';
 	let { data } = $props();
 
 	// never color alone: a glyph and a word for each level
@@ -56,11 +55,7 @@
 		method="POST"
 		action="?/detail"
 		class="keep"
-		use:enhance={() =>
-			async ({ result, update }) => {
-				await update({ reset: false });
-				if (result.type === 'success') toast('✓ Saved');
-			}}
+		use:enhance
 	>
 		<fieldset>
 			<legend class="kicker">What to keep</legend>

@@ -2,8 +2,10 @@
 	// A new server's first page: the setup code from the server's log proves this
 	// is its owner, who then chooses the admin login. Works without scripts.
 	import Logo from '$lib/components/Logo.svelte';
+	import { refusal } from '$lib/forms';
 	let { data, form } = $props();
-	const errors = $derived((form?.errors ?? {}) as Record<string, string>);
+	const r = $derived(refusal(form, 'setup'));
+	const errors = $derived(r.errors);
 </script>
 
 <svelte:head><title>Set up Waterline</title></svelte:head>
@@ -23,7 +25,7 @@
 				class="input mono"
 				id="code"
 				name="code"
-				value={form?.values?.code ?? ''}
+				value={String(r.values.code ?? '')}
 				placeholder="ABCD-EFGH"
 				autocomplete="off"
 				autocapitalize="characters"
@@ -37,7 +39,7 @@
 		</div>
 		<div class="field">
 			<label class="label" for="username">Admin username</label>
-			<input class="input" id="username" name="username" value={form?.values?.username ?? 'admin'} autocomplete="username" autocapitalize="off" spellcheck="false" aria-invalid={!!errors.username} />
+			<input class="input" id="username" name="username" value={String(r.values.username ?? 'admin')} autocomplete="username" autocapitalize="off" spellcheck="false" aria-invalid={!!errors.username} />
 			{#if errors.username}<span class="error-text">✕ {errors.username}</span>{/if}
 		</div>
 		<div class="pair">

@@ -1,13 +1,17 @@
 <script lang="ts">
 	// Pause tasks (#172): the tank's tasks to hold back, and until when.
 	import { enhance } from '$app/forms';
+	import { refusal } from '$lib/forms';
 	import DateField from '$lib/components/DateField.svelte';
 	import { fmtDate } from '$lib/time';
 	import { untrack } from 'svelte';
 	let { data, form } = $props();
-	let until = $state(untrack(() => form?.values?.until ?? data.until));
+	const r = $derived(refusal(form, 'pause'));
+	// what was sent, when the pause was turned down
+	const v = $derived(r.form ? (r.values as { until: string; ids: string[]; param: string }) : null);
+	let until = $state(untrack(() => v?.until ?? data.until));
 	let busy = $state(false);
-	const ticked = (id: string, checked: boolean) => (form?.values ? form.values.ids.includes(id) : checked);
+	const ticked = (id: string, checked: boolean) => (v ? v.ids.includes(id) : checked);
 </script>
 
 <svelte:head><title>Pause tasks · {data.tank.name}</title></svelte:head>
@@ -31,7 +35,7 @@
 		}}
 	>
 		<input type="hidden" name="from" value={data.from} />
-		{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
+		{#if r.message}<p class="banner banner-bad" role="alert">✕ {r.message}</p>{/if}
 		{#if data.tasks.length}
 			<fieldset class="field">
 				<legend class="label">Tasks in {data.tank.name}</legend>
@@ -48,7 +52,7 @@
 			<!-- or sooner, until a reading clears (#179): "until ammonia reads 0" -->
 			<div class="field">
 				<label class="label" for="pause-param">Or sooner, when a test reads in range</label>
-				<select class="input" id="pause-param" name="param" value={form?.values?.param ?? data.param}>
+				<select class="input" id="pause-param" name="param" value={v?.param ?? data.param}>
 					<option value="">No: just the day</option>
 					{#each data.clears as p (p.id)}<option value={p.id}>{p.text}</option>{/each}
 				</select>

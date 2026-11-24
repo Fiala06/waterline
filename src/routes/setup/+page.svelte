@@ -5,7 +5,9 @@
 	import { untrack } from 'svelte';
 	import { onMount } from 'svelte';
 	import Logo from '$lib/components/Logo.svelte';
+	import { refusal } from '$lib/forms';
 	let { data, form } = $props();
+	const refused = $derived(refusal(form, 'profile'));
 
 	let timeZone = $state(untrack(() => data.timeZone));
 	let detected = $state(false);
@@ -53,7 +55,7 @@
 			</div>
 
 			<div class="body">
-				{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
+				{#if refused.message}<p class="banner banner-bad" role="alert">✕ {refused.message}</p>{/if}
 				<div class="field name">
 					<label class="label" for="displayName">Display name</label>
 					<input class="input" id="displayName" name="displayName" defaultValue={data.displayName} required autocomplete="name" />

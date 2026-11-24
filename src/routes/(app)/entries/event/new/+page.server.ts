@@ -1,9 +1,9 @@
-import { error, fail, redirect } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import { EQUIPMENT_REASONS, EVENT_MULTI_FIELDS, RECHECK_OPTIONS, taskKindFor } from '$lib/events';
 import { bySpecies, livestockLabel, speciesWater } from '$lib/livestock';
 import { addDays, dateInZone, fmtDate } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
-import { formValues, optStr, str } from '$lib/server/forms';
+import { formValues, optStr, refuse, str } from '$lib/server/forms';
 import {
 	completableTask,
 	eventFormContext,
@@ -112,9 +112,9 @@ export const actions: Actions = {
 		// Linked livestock/plant changes update the tank's lists and write their own entry.
 		if (category === 'livestock' && form.get('linked') === '1') {
 			const w = await whenAndPhotos(form, user.timeZone, files);
-			if ('error' in w) return fail(400, { errors: {}, values, error: w.error });
+			if ('error' in w) return refuse('entry', w.error, values);
 			const r = handleLinkedLivestock(user, tank, form, w.at);
-			if (r && 'errors' in r) return fail(400, { errors: r.errors, values, error: null });
+			if (r && 'errors' in r) return refuse('entry', r.errors, values);
 			if (r) {
 				if (r.eventId) await storePhotos(tank.id, w.prepared, { eventId: r.eventId, takenAt: w.at });
 				setFlash(cookies, r.message, r.eventId ? { view: `/entries/event/${r.eventId}` } : {});
@@ -129,7 +129,7 @@ export const actions: Actions = {
 		if (eqItem && category === 'equipment') form.set('item', equipmentName(eqItem));
 		if (eqItem && category === 'equipment' && str(form, 'action') === 'removed') {
 			const w = await whenAndPhotos(form, user.timeZone, files);
-			if ('error' in w) return fail(400, { errors: {}, values, error: w.error });
+			if ('error' in w) return refuse('entry', w.error, values);
 			const reasons = form.getAll('reasons').map(String).filter((r) => EQUIPMENT_REASONS.includes(r));
 			const r = removeEquipment(user.id, eqItem.id, { at: w.at, note: optStr(form, 'note'), clientId, reasons });
 			await storePhotos(tank.id, w.prepared, { eventId: r.event.id, takenAt: w.at });
@@ -145,9 +145,9 @@ export const actions: Actions = {
 			delete errors.tags;
 			delete errors.actions;
 		}
-		if (Object.keys(errors).length) return fail(400, { errors, values, error: null });
+		if (Object.keys(errors).length) return refuse('entry', errors, values);
 		const w = await whenAndPhotos(form, user.timeZone, files);
-		if ('error' in w) return fail(400, { errors, values, error: w.error });
+		if ('error' in w) return refuse('entry', { message: w.error, errors }, values);
 		const { at, prepared } = w;
 
 		const completeTaskId = optStr(form, 'completeTask', 64);

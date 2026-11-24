@@ -1,8 +1,8 @@
-import { error, fail, redirect } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import { EVENT_MULTI_FIELDS, eventTitle } from '$lib/events';
 import { dateInZone, fmtDate, loggedLine, utcToZoned } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
-import { formValues, optStr, parseWhen, str } from '$lib/server/forms';
+import { formValues, optStr, parseWhen, refuse, str } from '$lib/server/forms';
 import { eventFormContext, eventFormValues, parseEventData } from '$lib/server/log-forms';
 import { eventEditable } from '$lib/server/entry-view';
 import { getEvent, updateEvent } from '$lib/server/logs';
@@ -50,11 +50,11 @@ export const actions: Actions = {
 			delete errors.tags;
 			delete errors.actions;
 		}
-		if (Object.keys(errors).length) return fail(400, { errors, values, error: null });
+		if (Object.keys(errors).length) return refuse('entry', errors, values);
 		const when = parseWhen(form, user.timeZone);
-		if ('error' in when) return fail(400, { errors, values, error: when.error });
+		if ('error' in when) return refuse('entry', { message: when.error, errors }, values);
 		const prepared = await preparePhotos(files);
-		if ('error' in prepared) return fail(400, { errors, values, error: prepared.error });
+		if ('error' in prepared) return refuse('entry', { message: prepared.error, errors }, values);
 		// keep fields the form doesn't edit (e.g. recheck_at)
 		updateEvent(user.id, e.id, { occurredAt: when.at, note: optStr(form, 'note'), data: { ...e.data, ...data } });
 		await deleteEntryPhotos(user.id, form.getAll('removePhoto').map(String), { eventId: e.id });

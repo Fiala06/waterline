@@ -2,6 +2,7 @@
 	import { reloadWhilePhotosPending } from '$lib/photos-pending.svelte';
 	import WorthChecking from '$lib/components/WorthChecking.svelte';
 	import { enhance } from '$app/forms';
+	import { refusal } from '$lib/forms';
 	import { getContext, onDestroy } from 'svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ImportButton from '$lib/components/ImportButton.svelte';
@@ -10,6 +11,8 @@
 	import SortHeader from '$lib/components/SortHeader.svelte';
 	import SortMenu from '$lib/components/SortMenu.svelte';
 	let { data, form } = $props();
+	// a refused Add, Save, Photo or Trim: its message shows wherever the page shows one
+	const error = $derived(['add', 'update', 'photo', 'trim'].map((n) => refusal(form, n).message).find(Boolean) ?? '');
 
 	const GROUPS = [
 		// on the surface, like water lettuce and frogbit
@@ -58,7 +61,7 @@
 <svelte:head><title>Plants · {data.tankHead.name}</title></svelte:head>
 
 <div class="body">
-	{#if form?.error && !sheetOpen}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
+	{#if error && !sheetOpen}<p class="banner banner-bad" role="alert">✕ {error}</p>{/if}
 
 	{#if !data.plants.length}
 		<EmptyState icon="plant" title="No plants yet" text="Add stems, carpets, epiphytes and mosses to track how they're doing.">
@@ -147,7 +150,7 @@
 
 <Sheet bind:open={sheets.add} title="Add plant" width={480}>
 	<form method="POST" action="?/add" class="sheet-form" use:enhance={close}>
-		{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
+		{#if error}<p class="banner banner-bad" role="alert">✕ {error}</p>{/if}
 		<SpeciesInput id="plant-name" kind="plant" water="fresh" label="Plant" />
 		<fieldset class="field">
 			<legend class="label">Position</legend>
@@ -231,7 +234,7 @@
 				{/if}
 			</section>
 			<form method="POST" action="?/update" class="sheet-form" use:enhance={close}>
-				{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
+				{#if error}<p class="banner banner-bad" role="alert">✕ {error}</p>{/if}
 				<input type="hidden" name="id" value={editing.id} />
 				<!-- renamed here (#265): a cultivar, or a better guess at what it is -->
 				<div class="field">
@@ -261,7 +264,7 @@
 
 <Sheet bind:open={sheets.trim} title="Log trim" width={480}>
 	<form method="POST" action="?/trim" class="sheet-form" use:enhance={close}>
-		{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
+		{#if error}<p class="banner banner-bad" role="alert">✕ {error}</p>{/if}
 		<fieldset class="field">
 			<legend class="label">What did you trim?</legend>
 			<div class="chips">

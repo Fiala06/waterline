@@ -1,8 +1,8 @@
-import { error, fail, redirect } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import { planTemplate, validStep, type PlanStep } from '$lib/plans';
 import { todayInZone } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
-import { num, str } from '$lib/server/forms';
+import { num, refuse, str } from '$lib/server/forms';
 import { startPlan } from '$lib/server/plans';
 import { getTank } from '$lib/server/tanks';
 import { listTasks } from '$lib/server/tasks';
@@ -43,10 +43,10 @@ export const actions: Actions = {
 			.map((s, i) => ({ ...s, name: (names[i] ?? s.name).slice(0, 80), from: froms[i], to: tos[i], every: everys[i], i }))
 			.filter((s) => kept.has(String(s.i)))
 			.map(({ i: _i, ...s }) => s);
-		if (!steps.length) return fail(400, { error: 'Keep at least one step.' });
-		if (!steps.every(validStep)) return fail(400, { error: 'Each step needs a name, and days from 1 with the last on or after the first.' });
+		if (!steps.length) return refuse('plan', 'Keep at least one step.');
+		if (!steps.every(validStep)) return refuse('plan', 'Each step needs a name, and days from 1 with the last on or after the first.');
 		const pauseDays = num(form, 'pauseDays') ?? 0;
-		if (pauseDays < 0 || pauseDays > 60 || !Number.isInteger(pauseDays)) return fail(400, { error: 'Hold routines back for 0 to 60 days.' });
+		if (pauseDays < 0 || pauseDays > 60 || !Number.isInteger(pauseDays)) return refuse('plan', 'Hold routines back for 0 to 60 days.');
 		const run = startPlan(user, tank.id, {
 			template: t.key,
 			name: str(form, 'planName').slice(0, 80) || t.name,

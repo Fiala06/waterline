@@ -1,8 +1,8 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import { speciesWater, validLivestockCount } from '$lib/livestock';
 import { isDate, todayInZone, zonedToUtc } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
-import { num, optStr, str } from '$lib/server/forms';
+import { num, optStr, refuse, str } from '$lib/server/forms';
 import { addLivestock } from '$lib/server/specs';
 import { getTank } from '$lib/server/tanks';
 import type { Actions, PageServerLoad } from './$types';
@@ -25,8 +25,8 @@ export const actions: Actions = {
 		const count = num(form, 'count') ?? 1;
 		const kind = str(form, 'kind');
 		const values = { name, scientificName: str(form, 'scientificName'), count: String(count), kind };
-		if (!name) return fail(400, { error: 'Enter the species.', values });
-		if (!validLivestockCount(count)) return fail(400, { error: 'Enter a whole number from 1 to 10,000.', values });
+		if (!name) return refuse('add', 'Enter the species.', values);
+		if (!validLivestockCount(count)) return refuse('add', 'Enter a whole number from 1 to 10,000.', values);
 		const today = todayInZone(user.timeZone);
 		const picked = optStr(form, 'addedAt');
 		const addedAt = picked && isDate(picked) ? picked : today;

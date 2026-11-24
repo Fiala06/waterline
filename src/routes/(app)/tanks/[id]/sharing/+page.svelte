@@ -3,9 +3,11 @@
 	// people with access (owner first, each member with a role select and Remove,
 	// pending invites with Resend and Cancel), then whom reminders and alerts go to.
 	import { enhance } from '$app/forms';
+	import { refusal } from '$lib/forms';
 	import { toast } from '$lib/ui.svelte';
 	let { data, form } = $props();
 	const invited = $derived(form?.invited ?? null);
+	const r = $derived(refusal(form, 'invite'));
 	let email = $state('');
 	let copied = $state(false);
 	const valid = $derived(/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim()));
@@ -40,18 +42,18 @@
 		<div class="invite-row">
 			<div class="field grow">
 				<label class="label" for="share-email">Email</label>
-				<input class="input" id="share-email" name="email" type="email" bind:value={email} placeholder="name@example.com" autocomplete="off" aria-invalid={!!form?.inviteError} />
+				<input class="input" id="share-email" name="email" type="email" bind:value={email} placeholder="name@example.com" autocomplete="off" aria-invalid={!!r.message} />
 			</div>
 			<div class="field">
 				<label class="label" for="share-role">Role</label>
-				<select class="input" id="share-role" name="role" value={form?.role ?? 'log'}>
+				<select class="input" id="share-role" name="role" value={(r.values.role as string | undefined) ?? 'log'}>
 					<option value="log">Can log care</option>
 					<option value="view">Can view</option>
 				</select>
 			</div>
 			<button class="btn btn-primary send" disabled={!valid || duplicate}>Send invite</button>
 		</div>
-		{#if form?.inviteError}<span class="error-text">✕ {form.inviteError}</span>{:else if email && duplicate}<span class="error-text">✕ They have access already.</span>{/if}
+		{#if r.message}<span class="error-text">✕ {r.message}</span>{:else if email && duplicate}<span class="error-text">✕ They have access already.</span>{/if}
 		<p class="help"><b>Can log</b> = tests, water changes, dosing, notes, photos and task done. <b>Can view</b> = read-only and no email.</p>
 		{#if !data.emailOn}<span class="hint">Email isn't set up on this server, so you'll copy the link and send it yourself.</span>{/if}
 		{#if data.newcomers === 'admin'}<span class="hint">▲ Sign-in is set to Only the admin, so someone not on this server yet can't sign in to accept. An admin can change that under Server settings › Sign-in.</span>{:else if data.newcomers === 'invite'}<span class="hint">▲ Someone not on this server yet needs an invitation from an admin, under Server settings › People, before they can accept.</span>{/if}

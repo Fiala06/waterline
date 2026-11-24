@@ -2,14 +2,16 @@
 	// Log algae (#86): which kind as chips, how much (– A little / ▲ Some / ✕ A lot),
 	// where, when, a note and photos. Works without scripts.
 	import { enhance } from '$app/forms';
+	import { refusal } from '$lib/forms';
 	import { untrack } from 'svelte';
 	import DateField from '$lib/components/DateField.svelte';
 	import FormBar from '$lib/components/FormBar.svelte';
 
 	let { data, form } = $props();
-	const v = $derived(form?.values);
-	const errors = $derived(form?.errors ?? {});
-	let date = $state(untrack(() => form?.values?.date || data.now.date));
+	const r = $derived(refusal(form, 'algae'));
+	const v = $derived(r.values as Record<string, string | undefined>);
+	const errors = $derived(r.errors);
+	let date = $state(untrack(() => r.values.date as string || data.now.date));
 	let busy = $state(false);
 </script>
 

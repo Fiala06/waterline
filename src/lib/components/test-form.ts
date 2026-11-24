@@ -97,3 +97,11 @@ export const cleanReading = (typed: string) => typed.replace(',', '.').replace(/
 export function waterChangeSummary(amount: string, mode: string, volUnit: string, source: string): string {
 	return `${amount || '–'}${mode === 'percent' ? '%' : ` ${volUnit}`} · ${WATER_SOURCES.find((s) => s.value === source)?.label ?? ''}`;
 }
+
+/** A refused test's readings as typed (posted as `v_<param id>`), by parameter id, to fill the form in again. */
+export const refusedReadings = (values: Record<string, unknown>): Record<string, string> =>
+	Object.fromEntries(
+		Object.entries(values)
+			.filter(([k]) => k.startsWith('v_'))
+			.map(([k, v]) => [k.slice(2), String(v ?? '')])
+	);

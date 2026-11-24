@@ -3,12 +3,14 @@
 	// past livestock with Restore, and a 240px column of equipment and recent changes.
 	import { reloadWhilePhotosPending } from '$lib/photos-pending.svelte';
 	import { enhance } from '$app/forms';
+	import { refusal } from '$lib/forms';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ImportButton from '$lib/components/ImportButton.svelte';
 	import SortHeader from '$lib/components/SortHeader.svelte';
 	import SortMenu from '$lib/components/SortMenu.svelte';
 	import { MAX_LIVESTOCK_COUNT } from '$lib/livestock';
 	let { data, form } = $props();
+	const countR = $derived(refusal(form, 'count'));
 	// species photos still on their way from Wikimedia: look again in a moment, a few times
 	reloadWhilePhotosPending(() => !!data.photosPending);
 	const base = $derived(`/tanks/${data.tankHead.id}`);
@@ -61,7 +63,7 @@
 <!-- "+ Add livestock" and the "23 animals · 4 species" line are in the tab's toolbar (layout) -->
 <div class="body">
 	<div class="main">
-		{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
+		{#if countR.message}<p class="banner banner-bad" role="alert">✕ {countR.message}</p>{/if}
 		{#if data.warnings.length}
 			<!-- care (#20): never in the way: a short list above the table, with its source -->
 			<section class="check" aria-labelledby="check-h">

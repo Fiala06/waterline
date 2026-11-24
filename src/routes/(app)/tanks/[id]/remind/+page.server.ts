@@ -1,8 +1,7 @@
-import { fail } from '@sveltejs/kit';
 import { reminderDue } from '$lib/tasks';
 import { fmtDate, todayInZone } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
-import { str } from '$lib/server/forms';
+import { refuse, str } from '$lib/server/forms';
 import { goBack, safeReturn } from '$lib/server/redirect';
 import { getTank } from '$lib/server/tanks';
 import { createTask } from '$lib/server/tasks';
@@ -28,9 +27,9 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const name = str(form, 'name').slice(0, 80);
 		const values = { name, when: str(form, 'when'), date: str(form, 'date') };
-		if (!name) return fail(400, { error: 'Say what to be reminded about.', values });
+		if (!name) return refuse('remind', 'Say what to be reminded about.', values);
 		const due = reminderDue(values.when, values.date, todayInZone(user.timeZone));
-		if (!due) return fail(400, { error: values.when === 'date' ? 'Choose a day after today.' : 'Choose when.', values });
+		if (!due) return refuse('remind', values.when === 'date' ? 'Choose a day after today.' : 'Choose when.', values);
 		createTask(user.id, tank.id, {
 			name,
 			kind: 'other',

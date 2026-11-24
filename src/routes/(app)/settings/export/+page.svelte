@@ -2,7 +2,7 @@
 	// Import & export (redesign README § 15): scope, format, a build with its
 	// progress, then the download; and a spreadsheet in, one kind at a time.
 	import { enhance } from '$app/forms';
-	import { keepValues } from '$lib/forms';
+	import { keepValues, refusal } from '$lib/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { untrack } from 'svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
@@ -15,6 +15,8 @@
 	let format = $state<'zip' | 'csv'>('zip');
 	// a backup being restored (#306): what's in it, until it's restored or cancelled
 	const restore = $derived(form && 'restore' in form ? form.restore : null);
+	const restoreRefused = $derived(refusal(form, 'restore'));
+	const exportRefused = $derived(refusal(form, 'export'));
 	let reading = $state(false);
 	const n = (k: number, one: string, many = `${one}s`) => `${k} ${k === 1 ? one : many}`;
 	let restoring = $state(false);
@@ -125,7 +127,7 @@
 						</a>
 					</div>
 				</fieldset>
-				{#if form?.error}<p class="error-text">✕ {form.error}</p>{/if}
+				{#if exportRefused.message}<p class="error-text">✕ {exportRefused.message}</p>{/if}
 			</form>
 			<!-- exactly what a backup holds and what Restore puts back (#306) -->
 			<details class="manifest">
@@ -249,7 +251,7 @@
 						</li>
 					{/each}
 				</ul>
-				{#if form?.restoreError}<p class="error-text" role="alert">✕ {form.restoreError}</p>{/if}
+				{#if restoreRefused.message}<p class="error-text" role="alert">✕ {restoreRefused.message}</p>{/if}
 				<div class="action">
 					<button class="btn btn-primary" disabled={restoring}>{restoring ? 'Restoring…' : 'Restore'}</button>
 					<button class="btn-text" formaction="?/restoreCancel">Cancel</button>
@@ -269,7 +271,7 @@
 				</p>
 				<label class="label" for="restore-file">Backup ZIP</label>
 				<input class="input" id="restore-file" name="backup" type="file" accept=".zip,application/zip" />
-				{#if form?.restoreError}<p class="error-text" role="alert">✕ {form.restoreError}</p>{/if}
+				{#if restoreRefused.message}<p class="error-text" role="alert">✕ {restoreRefused.message}</p>{/if}
 				<div class="action"><button class="btn" disabled={reading}>{reading ? 'Reading…' : 'Look inside'}</button></div>
 			</form>
 		{/if}

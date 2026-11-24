@@ -1,8 +1,8 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import { ALGAE_SEVERITY, ALGAE_TYPES } from '$lib/plants';
 import { todayInZone, utcToZoned } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
-import { str } from '$lib/server/forms';
+import { refuse, str } from '$lib/server/forms';
 import { logAlgae } from '$lib/server/log-plants';
 import { photoFiles, photoHints, storePhotos, whenAndPhotos } from '$lib/server/photos';
 import { safeReturn } from '$lib/server/redirect';
@@ -35,9 +35,9 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const values = { algae: str(form, 'algae'), severity: str(form, 'severity'), area: str(form, 'area'), note: str(form, 'note'), date: str(form, 'date'), time: str(form, 'time') };
 		const w = await whenAndPhotos(form, user.timeZone, photoFiles(form), photoHints(form));
-		if ('error' in w) return fail(400, { errors: { [w.field]: w.error } as Record<string, string>, values });
+		if ('error' in w) return refuse('algae', { [w.field]: w.error }, values);
 		const r = logAlgae(user, tank, form, w.at);
-		if ('errors' in r) return fail(400, { errors: r.errors, values });
+		if ('errors' in r) return refuse('algae', r.errors, values);
 		await storePhotos(tank.id, w.prepared, { eventId: r.eventId, takenAt: w.at });
 		const from = safeReturn(form.get('from'), `/?tank=${tank.id}`);
 		// "Save and start a treatment course" (#174): a task every other day for two weeks, linked to the entry

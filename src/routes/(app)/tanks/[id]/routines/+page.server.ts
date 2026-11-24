@@ -1,9 +1,9 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import { FAVORITE_KIND_LABEL } from '$lib/favorites';
 import { stepSub } from '$lib/routines';
 import { setFlash } from '$lib/server/flash';
 import { listFavorites } from '$lib/server/favorites';
-import { str } from '$lib/server/forms';
+import { refuse, str } from '$lib/server/forms';
 import { addRoutine, addStep, deleteRoutine, getRoutine, listRoutines, moveStep, parseStep, removeStep, renameRoutine, stepsOf } from '$lib/server/routines';
 import { getTank } from '$lib/server/tanks';
 import { unitLabel } from '$lib/units';
@@ -52,7 +52,7 @@ export const actions: Actions = {
 	add: async ({ request, locals, params, cookies }) => {
 		const tank = getTank(locals.user!.id, params.id, 'log');
 		const name = str((await request.formData()), 'name').slice(0, 60);
-		if (!name) return fail(400, { add: { error: 'Name the routine, like Sunday maintenance.' } });
+		if (!name) return refuse('add', 'Name the routine, like Sunday maintenance.');
 		const r = addRoutine(tank.id, name);
 		setFlash(cookies, `✓ ${r.name} added · now add its steps`);
 		redirect(303, `/tanks/${tank.id}/routines?add=${r.id}#r-${r.id}`);
@@ -61,7 +61,7 @@ export const actions: Actions = {
 		const tank = getTank(locals.user!.id, params.id, 'log');
 		const form = await request.formData();
 		const name = str(form, 'name').slice(0, 60);
-		if (!name) return fail(400, { rename: { id: str(form, 'id'), error: 'Name the routine.' } });
+		if (!name) return refuse('rename', 'Name the routine.', { id: str(form, 'id') });
 		renameRoutine(tank.id, str(form, 'id'), name);
 		setFlash(cookies, '✓ Renamed');
 		redirect(303, `/tanks/${tank.id}/routines`);
@@ -78,9 +78,9 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const id = str(form, 'id');
 		const { errors, step } = parseStep(form, unitLabel('volume', user));
-		if (Object.keys(errors).length) return fail(400, { step: { id, errors, values: stepValues(form) } });
+		if (Object.keys(errors).length) return refuse('step', errors, { id, ...stepValues(form) });
 		const r = addStep(tank.id, id, step);
-		if (r) return fail(400, { step: { id, errors: { kind: r.error }, values: stepValues(form) } });
+		if (r) return refuse('step', { kind: r.error }, { id, ...stepValues(form) });
 		setFlash(cookies, `✓ ${step.label} added`);
 		redirect(303, `/tanks/${tank.id}/routines?add=${id}#r-${id}`);
 	},
@@ -91,9 +91,9 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const id = str(form, 'id');
 		const f = listFavorites(user.id).find((x) => x.id === str(form, 'favorite') && (!x.tankId || x.tankId === tank.id));
-		if (!f) return fail(400, { step: { id, errors: { kind: 'That favorite is gone.' }, values: null } });
+		if (!f) return refuse('step', { kind: 'That favorite is gone.' }, { id });
 		const r = addStep(tank.id, id, { kind: f.kind, label: f.label, fields: f.fields });
-		if (r) return fail(400, { step: { id, errors: { kind: r.error }, values: null } });
+		if (r) return refuse('step', { kind: r.error }, { id });
 		setFlash(cookies, `✓ ${f.label} added`);
 		redirect(303, `/tanks/${tank.id}/routines?add=${id}#r-${id}`);
 	},

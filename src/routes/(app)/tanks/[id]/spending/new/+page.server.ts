@@ -1,7 +1,8 @@
-import { error, fail } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import { equipmentName } from '$lib/equipment';
 import { addExpense } from '$lib/server/expenses';
 import { finishExpense, readExpenseForm } from '$lib/server/expense-form';
+import { refuse } from '$lib/server/forms';
 import { expensePage } from '$lib/server/expense-page';
 import { getProduct } from '$lib/server/products';
 import { getEquipment } from '$lib/server/specs';
@@ -44,7 +45,7 @@ export const actions: Actions = {
 		getTank(user.id, params.id, 'owner');
 		const form = await request.formData();
 		const read = readExpenseForm(form, user, params.id);
-		if (!read.input) return fail(400, { errors: read.errors, values: read.values });
+		if (!read.input) return refuse('expense', read.errors, read.values);
 		const { tankId, ...input } = read.input;
 		// in the keeper's currency as it is now (#307)
 		const e = addExpense(user.id, tankId, { ...input, currency: user.currency });

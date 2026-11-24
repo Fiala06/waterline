@@ -1,7 +1,7 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import { dateInZone, fmtDate, isDate, todayInZone, zonedToUtc } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
-import { str } from '$lib/server/forms';
+import { refuse, str } from '$lib/server/forms';
 import { logger } from '$lib/server/log';
 import { createEvent, deleteEvent } from '$lib/server/logs';
 import { datePhotos, photoDate, photoFiles, photoHints, preparePhotos, storePhotos, tankPhotos } from '$lib/server/photos';
@@ -45,14 +45,14 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const tank = getTank(user.id, String(form.get('tankId') ?? ''), 'log');
 		const files = photoFiles(form);
-		if (!files.length) return fail(400, { error: 'Choose at least one photo.' });
+		if (!files.length) return refuse('photos', 'Choose at least one photo.');
 		const today = todayInZone(user.timeZone);
 		const taken = str(form, 'taken') || today;
-		if (!isDate(taken) || taken > today) return fail(400, { error: 'Pick a day up to today for Taken.' });
+		if (!isDate(taken) || taken > today) return refuse('photos', 'Pick a day up to today for Taken.');
 		// today: this moment; an earlier day: midday, since the photo doesn't say
 		const fallback = taken === today ? new Date().toISOString() : zonedToUtc(taken, '12:00', user.timeZone).toISOString();
 		const prepared = await preparePhotos(files, photoHints(form));
-		if ('error' in prepared) return fail(400, { error: prepared.error });
+		if ('error' in prepared) return refuse('photos', prepared.error);
 		// photos that don't say when they were taken get the Taken date: the toast says so
 		const undated = prepared.filter((p) => !photoDate(p, user.timeZone)).length;
 		datePhotos(prepared, user.timeZone, fallback);
@@ -74,7 +74,7 @@ export const actions: Actions = {
 		} catch (err) {
 			for (const id of made) deleteEvent(user.id, id);
 			logger.error('photos', "Photos couldn't be stored", { userId: user.id, tankId: tank.id, error: err });
-			return fail(500, { error: "The photos couldn't be saved. Nothing was added: try again." });
+			return refuse('photos', "The photos couldn't be saved. Nothing was added: try again.", {}, 500);
 		}
 		const n = files.length;
 		const dated = undated === n ? ` · dated ${taken === today ? 'today' : fmtDate(taken)}` : '';

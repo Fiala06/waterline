@@ -3,7 +3,9 @@
 	// goes, a backup first, then its name typed out. Once it's gone, this
 	// device's offline copies of pages go too.
 	import { enhance } from '$app/forms';
+	import { refusal } from '$lib/forms';
 	let { data, form } = $props();
+	const r = $derived(refusal(form, 'delete'));
 	const f = $derived(data.footprint);
 	const n = (k: number, one: string, many = `${one}s`) => `${k} ${k === 1 ? one : many}`;
 	const what = $derived(
@@ -68,11 +70,11 @@
 			name="name"
 			autocomplete="off"
 			spellcheck="false"
-			value={form?.typed ?? ''}
-			aria-invalid={!!form?.error}
-			aria-describedby={form?.error ? 'del-err' : undefined}
+			value={String(r.values.name ?? '')}
+			aria-invalid={!!r.message}
+			aria-describedby={r.message ? 'del-err' : undefined}
 		/>
-		{#if form?.error}<p class="error-text" id="del-err" role="alert">✕ {form.error}</p>{/if}
+		{#if r.message}<p class="error-text" id="del-err" role="alert">✕ {r.message}</p>{/if}
 		<button class="btn btn-danger" disabled={busy}>Delete tank for good</button>
 	</form>
 </div>

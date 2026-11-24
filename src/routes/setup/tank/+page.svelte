@@ -1,7 +1,9 @@
 <script lang="ts">
+	import { refusal } from '$lib/forms';
 	// First run, step 2: the first tank (redesign README § 17).
 	import TankCreateForm from '$lib/components/TankCreateForm.svelte';
 	let { data, form } = $props();
+	const tank = $derived(refusal(form, 'tank'));
 </script>
 
 <svelte:head><title>Create your first tank · Waterline</title></svelte:head>
@@ -12,7 +14,7 @@
 			<span class="kicker">Step 2 of 2</span>
 			<h1>Create your first tank</h1>
 		</div>
-		<TankCreateForm volUnit={data.volUnit} errors={form?.errors} values={form?.values} />
+		<TankCreateForm volUnit={data.volUnit} errors={tank.errors} values={tank.form ? (tank.values as Record<string, string>) : undefined} />
 		<a class="skip" href="/">Skip, I'll add a tank later</a>
 	</div>
 </div>

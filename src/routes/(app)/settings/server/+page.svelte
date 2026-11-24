@@ -4,9 +4,8 @@
 	// 13px labels over the fields and rows with 1px dividers.
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
-	import type { SubmitFunction } from '@sveltejs/kit';
 	import { untrack } from 'svelte';
-	import { toast } from '$lib/ui.svelte';
+	import { keepValues, refusal } from '$lib/forms';
 	import SectionLink from '$lib/components/SectionLink.svelte';
 	import { SERVER_SECTIONS } from '$lib/settings-sections';
 	let { data, form } = $props();
@@ -18,28 +17,23 @@
 		{ value: 'invited', label: 'Invited people only', d: 'People you send an invitation to, under People' },
 		{ value: 'open', label: 'Anyone with a Google account', d: 'Anyone who finds this server can make an account' }
 	] as const;
-	const googleErrors = $derived((form?.googleErrors ?? {}) as Record<string, string>);
-	const accessErrors = $derived((form?.accessErrors ?? {}) as Record<string, string>);
-	const localErrors = $derived((form?.localErrors ?? {}) as Record<string, string>);
-	/** A form that saves in place and says so. */
-	const saved =
-		(message: string | ((data: Record<string, unknown> | undefined) => string)): SubmitFunction =>
-		() =>
-		async ({ result, update }) => {
-			await update({ reset: false });
-			if (result.type === 'success') toast(typeof message === 'string' ? message : message(result.data));
-		};
+	// each form's refusal (#269); a save comes back as the server's flash, with or without scripts
+	const googleErrors = $derived(refusal(form, 'google').errors);
+	const accessErrors = $derived(refusal(form, 'access').errors);
+	const localErrors = $derived(refusal(form, 'local').errors);
+	const publicErrors = $derived(refusal(form, 'public').errors);
+	const aboutErrors = $derived(refusal(form, 'about').errors);
 
 	let provider = $state(untrack(() => data.mail.provider));
 	let showKey = $state(false);
 	let busy = $state<string | null>(null);
-	const errors = $derived((form?.errors ?? {}) as Record<string, string>);
+	const errors = $derived(refusal(form, 'mail').errors);
 	const stockResult = $derived(form && 'stock' in form ? (form.stock as { ok: boolean; message: string }) : null);
 	const stock = $derived(data.server.stock);
 	const careResult = $derived(form && 'care' in form ? (form.care as { ok: boolean; message: string }) : null);
 	const care = $derived(data.server.care);
 	const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
-	const test = $derived(form && 'test' in form ? form.test : null);
+	const test = $derived(form && 'test' in form ? (form.test as { ok: boolean; message: string }) : null);
 	// the first sentence in bold, a trailing "(401 Unauthorized)" in mono
 	const result = $derived.by(() => {
 		if (!test) return null;
@@ -148,7 +142,7 @@
 			<p class="sub">How people sign in to this server, and who can.</p>
 		</div>
 
-		<form method="POST" action="?/saveGoogle" class="block" id="google" use:enhance={saved((d) => (d?.needsAdmin ? "✓ Google sign-in saved. Now enter your Google account as the admin's, under Who can sign in." : '✓ Google sign-in saved'))}>
+		<form method="POST" action="?/saveGoogle" class="block" id="google" use:enhance={keepValues}>
 			<div class="bhead">
 				<h3>Google sign-in<SectionLink id="google" label="Google sign-in" /></h3>
 				<p class="sub">People sign in with their Google account. Create an OAuth client (type Web application) in the Google Cloud console and add the redirect URI below.</p>
@@ -201,7 +195,7 @@
 			<div class="actions"><button class="btn btn-primary">Save</button></div>
 		</form>
 
-		<form method="POST" action="?/saveAccess" class="block access" id="who-can-sign-in" use:enhance={saved('✓ Sign-in settings saved')}>
+		<form method="POST" action="?/saveAccess" class="block access" id="who-can-sign-in" use:enhance={keepValues}>
 			<div class="bhead"><h3>Who can sign in<SectionLink id="who-can-sign-in" label="Who can sign in" /></h3></div>
 			{#if data.signIn.needsAdmin}
 				<p class="banner banner-warn">▲ Enter your own Google account as the admin's, then save, to sign in with Google. Until then it turns you away too.</p>
@@ -268,7 +262,7 @@
 			<div class="actions"><button class="btn btn-primary">Save</button></div>
 		</form>
 
-		<form method="POST" action="?/saveLocal" class="block" id="local-admin" use:enhance={saved((d) => (d?.localSaved === 'off' ? 'Local admin login turned off' : '✓ Local admin login saved'))}>
+		<form method="POST" action="?/saveLocal" class="block" id="local-admin" use:enhance={keepValues}>
 			<div class="bhead">
 				<div class="line">
 					<h3>Local admin login<SectionLink id="local-admin" label="Local admin login" /></h3>
@@ -334,10 +328,9 @@
 		aria-labelledby="email-h"
 		use:enhance={({ action }) => {
 			busy = action.search.includes('test') ? 'test' : 'save';
-			return async ({ result, update }) => {
+			return async ({ update }) => {
 				await update({ reset: false });
 				busy = null;
-				if (result.type === 'success' && result.data?.saved) toast('✓ Email settings saved');
 			};
 		}}
 	>
@@ -452,11 +445,7 @@
 		class="sec"
 		id="public-pages"
 		aria-labelledby="public-h"
-		use:enhance={() =>
-			async ({ result, update }) => {
-				await update({ reset: false });
-				if (result.type === 'success') toast('✓ Public page settings saved');
-			}}
+		use:enhance={keepValues}
 	>
 		<div class="sec-head">
 			<h2 id="public-h">Public pages<SectionLink id="public-pages" label="Public pages" /></h2>
@@ -499,10 +488,10 @@
 				name="publicBaseUrl"
 				defaultValue={data.publicPages.baseUrl}
 				placeholder={data.publicPages.effectiveBase || 'https://tanks.example.com'}
-				aria-invalid={!!form?.publicErrors?.publicBaseUrl}
+				aria-invalid={!!publicErrors.publicBaseUrl}
 			/>
 			<span class="hint">Used in shared links, canonical URLs, the sitemap and social previews. Defaults to ORIGIN.</span>
-			{#if form?.publicErrors?.publicBaseUrl}<span class="error-text">✕ {form.publicErrors.publicBaseUrl}</span>{/if}
+			{#if publicErrors.publicBaseUrl}<span class="error-text">✕ {publicErrors.publicBaseUrl}</span>{/if}
 		</div>
 
 		<div class="bhead" id="analytics">
@@ -511,8 +500,8 @@
 		</div>
 		<div class="field ga">
 			<label class="label" for="pp-ga4">Google Analytics 4 measurement ID</label>
-			<input class="input mono" id="pp-ga4" name="ga4Id" defaultValue={data.publicPages.ga4Id} placeholder="G-XXXXXXXXXX" aria-invalid={!!form?.publicErrors?.ga4Id} />
-			{#if form?.publicErrors?.ga4Id}<span class="error-text">✕ {form.publicErrors.ga4Id}</span>{/if}
+			<input class="input mono" id="pp-ga4" name="ga4Id" defaultValue={data.publicPages.ga4Id} placeholder="G-XXXXXXXXXX" aria-invalid={!!publicErrors.ga4Id} />
+			{#if publicErrors.ga4Id}<span class="error-text">✕ {publicErrors.ga4Id}</span>{/if}
 			<span class="hint">Leave empty to turn analytics off.</span>
 		</div>
 		<div class="rows">
@@ -529,15 +518,15 @@
 				name="searchConsoleTag"
 				defaultValue={data.publicPages.searchConsoleTag}
 				placeholder={'<meta name="google-site-verification" content="…">'}
-				aria-invalid={!!form?.publicErrors?.searchConsoleTag}
+				aria-invalid={!!publicErrors.searchConsoleTag}
 			/>
-			{#if form?.publicErrors?.searchConsoleTag}<span class="error-text">✕ {form.publicErrors.searchConsoleTag}</span>{/if}
+			{#if publicErrors.searchConsoleTag}<span class="error-text">✕ {publicErrors.searchConsoleTag}</span>{/if}
 		</div>
 		<div class="actions"><button class="btn btn-primary">Save</button></div>
 	</form>
 
 	<!-- About this server (#302): the public page's own words; the rest of it comes from how the server is set up -->
-	<form method="POST" action="?/saveAbout" class="sec" id="about-server" aria-labelledby="about-server-h" use:enhance={saved('✓ About this server saved')}>
+	<form method="POST" action="?/saveAbout" class="sec" id="about-server" aria-labelledby="about-server-h" use:enhance={keepValues}>
 		<div class="sec-head">
 			<h2 id="about-server-h">About this server<SectionLink id="about-server" label="About this server" /></h2>
 			<p class="sub">
@@ -551,8 +540,8 @@
 		</div>
 		<div class="field">
 			<label class="label" for="ab-contact">Private contact · optional</label>
-			<input class="input" id="ab-contact" name="aboutContact" type="email" maxlength="200" defaultValue={data.publicPages.aboutContact} placeholder="you@example.com" aria-invalid={!!form?.aboutErrors?.aboutContact} />
-			{#if form?.aboutErrors?.aboutContact}<span class="error-text">✕ {form.aboutErrors.aboutContact}</span>{:else}<span class="hint">For account, privacy and security questions. Left blank, people are pointed to GitHub for bugs only.</span>{/if}
+			<input class="input" id="ab-contact" name="aboutContact" type="email" maxlength="200" defaultValue={data.publicPages.aboutContact} placeholder="you@example.com" aria-invalid={!!aboutErrors.aboutContact} />
+			{#if aboutErrors.aboutContact}<span class="error-text">✕ {aboutErrors.aboutContact}</span>{:else}<span class="hint">For account, privacy and security questions. Left blank, people are pointed to GitHub for bugs only.</span>{/if}
 		</div>
 		<div class="field">
 			<label class="label" for="ab-terms">Terms and retention · optional</label>
@@ -567,7 +556,7 @@
 			<h2 id="features-h">Features<SectionLink id="features" label="Features" /></h2>
 			<p class="sub">What this server does by itself, for everyone on it.</p>
 		</div>
-		<form method="POST" action="?/saveServer" class="block plain" use:enhance={saved('✓ Server settings saved')}>
+		<form method="POST" action="?/saveServer" class="block plain" use:enhance={keepValues}>
 			<div class="rows">
 				<div class="row">
 					<label for="sv-emails" class="ttext"

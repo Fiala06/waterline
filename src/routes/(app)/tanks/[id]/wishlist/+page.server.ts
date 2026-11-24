@@ -5,7 +5,7 @@ import { EQUIPMENT_TYPE_LABEL, EQUIPMENT_TYPES } from '$lib/equipment';
 import { fmtMoney, fmtSums, moneyInput, parseMoney } from '$lib/money';
 import { fmtDateLong, dateInZone } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
-import { str } from '$lib/server/forms';
+import { refuse, str } from '$lib/server/forms';
 import { productHost } from '$lib/server/products';
 import { addWish, addWishToTank, deleteWish, listWishes, parseWish, restoreWish, wishTotals } from '$lib/server/wishes';
 import { getTank, roleOn } from '$lib/server/tanks';
@@ -50,7 +50,7 @@ export const actions: Actions = {
 	add: async ({ request, locals, params, cookies }) => {
 		const form = await request.formData();
 		const { errors, input, values } = parseWish(form);
-		if (Object.keys(errors).length) return fail(400, { errors, values });
+		if (Object.keys(errors).length) return refuse('add', errors, values);
 		const w = addWish(locals.user!.id, params.id, input, locals.user!.currency);
 		setFlash(cookies, `✓ ${w.name} on the wish list`);
 		redirect(303, `/tanks/${params.id}/wishlist`);
@@ -74,7 +74,7 @@ export const actions: Actions = {
 		const spend = form.get('spend') === 'on';
 		const amount = str(form, 'amount');
 		const amountCents = amount ? parseMoney(amount) : null;
-		if (spend && amount && amountCents == null) return fail(400, { addError: { id: str(form, 'id'), error: 'Enter the price paid, like 12.50.' } });
+		if (spend && amount && amountCents == null) return refuse('addToTank', 'Enter the price paid, like 12.50.', { id: str(form, 'id') });
 		const { message } = addWishToTank(user, params.id, str(form, 'id'), { spend, amountCents });
 		setFlash(cookies, message);
 		redirect(303, `/tanks/${params.id}/wishlist`);

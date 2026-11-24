@@ -1,8 +1,8 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import { BACKUP_EXCLUDES, BACKUP_INCLUDES, BACKUP_NOT_RESTORED } from '$lib/backup';
 import { setFlash } from '$lib/server/flash';
 import { discardRestore, previewRestore, restoreBackup, RestoreError } from '$lib/server/restore';
-import { str } from '$lib/server/forms';
+import { refuse, str } from '$lib/server/forms';
 import { estimateBackupSizes, listExports, startExport } from '$lib/server/export';
 import { listTanks } from '$lib/server/tanks';
 import type { Actions, PageServerLoad } from './$types';
@@ -42,11 +42,11 @@ export const actions: Actions = {
 	// Restore a backup (#306): the ZIP is read and kept, and what's in it shown, before anything is added
 	restorePreview: async ({ request, locals }) => {
 		const file = (await request.formData()).get('backup');
-		if (!(file instanceof File) || !file.size) return fail(400, { restoreError: 'Choose a backup ZIP.' });
+		if (!(file instanceof File) || !file.size) return refuse('restore', 'Choose a backup ZIP.');
 		try {
 			return { restore: previewRestore(locals.user!, Buffer.from(await file.arrayBuffer())) };
 		} catch (e) {
-			if (e instanceof RestoreError) return fail(400, { restoreError: e.message });
+			if (e instanceof RestoreError) return refuse('restore', e.message);
 			throw e;
 		}
 	},
@@ -58,7 +58,7 @@ export const actions: Actions = {
 		try {
 			made = await restoreBackup(locals.user!, token, picked);
 		} catch (e) {
-			if (e instanceof RestoreError) return fail(400, { restoreError: e.message });
+			if (e instanceof RestoreError) return refuse('restore', e.message);
 			throw e;
 		}
 		setFlash(cookies, `✓ Restored ${made.length === 1 ? made[0].name : `${made.length} tanks`}`);
@@ -74,7 +74,7 @@ export const actions: Actions = {
 		const scope = str(form, 'scope') === 'tank' ? 'tank' : 'account';
 		const format = str(form, 'format') === 'csv' ? 'csv' : 'zip';
 		const tankId = scope === 'tank' ? str(form, 'tankId') : null;
-		if (scope === 'tank' && !tankId) return fail(400, { error: 'Choose a tank.' });
+		if (scope === 'tank' && !tankId) return refuse('export', 'Choose a tank.');
 		const row = startExport(user, scope, tankId, format);
 		return { started: row.id };
 	}

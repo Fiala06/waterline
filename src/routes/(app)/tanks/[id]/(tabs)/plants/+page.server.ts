@@ -2,7 +2,7 @@ import { getTank } from '$lib/server/tanks';
 import { fail, redirect } from '@sveltejs/kit';
 import { dateInZone, fmtDate } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
-import { optStr, str } from '$lib/server/forms';
+import { optStr, refuse, str } from '$lib/server/forms';
 import { storeOnePhoto } from '$lib/server/photos';
 import { addPlant, getPlant, listEquipment, listPlants, logTrim, removePlant, renamePlant, restorePlant, updatePlant } from '$lib/server/specs';
 import { careRows, plantCare } from '$lib/plant-care';
@@ -95,7 +95,7 @@ export const actions: Actions = {
 	add: async ({ request, locals, params, cookies }) => {
 		const form = await request.formData();
 		const name = str(form, 'name').slice(0, 80);
-		if (!name) return fail(400, { error: 'Enter the plant.' });
+		if (!name) return refuse('add', 'Enter the plant.');
 		const p = addPlant(locals.user!.id, params.id, {
 			name,
 			scientificName: optStr(form, 'scientificName', 120),
@@ -112,7 +112,7 @@ export const actions: Actions = {
 		// its name too (#265), when the sheet sent one
 		if (form.has('name')) {
 			const name = str(form, 'name').slice(0, 80);
-			if (!name) return fail(400, { error: 'Enter the plant.' });
+			if (!name) return refuse('update', 'Enter the plant.');
 			renamePlant(locals.user!.id, id, name);
 		}
 		updatePlant(locals.user!.id, id, {
@@ -129,7 +129,7 @@ export const actions: Actions = {
 		if (getPlant(locals.user!.id, id).tankId !== params.id) return fail(404);
 		getTank(locals.user!.id, params.id, 'log');
 		const stored = await storeOnePhoto(form, params.id, locals.user!.timeZone);
-		if ('error' in stored) return fail(400, { error: stored.error });
+		if ('error' in stored) return refuse('photo', stored.error);
 		updatePlant(locals.user!.id, id, { photoId: stored.photo.id });
 		setFlash(cookies, '✓ Photo saved');
 		redirect(303, `/tanks/${params.id}/plants`);
@@ -162,7 +162,7 @@ export const actions: Actions = {
 	trim: async ({ request, locals, params, cookies }) => {
 		const form = await request.formData();
 		const ids = form.getAll('plant').map(String);
-		if (!ids.length) return fail(400, { error: 'Choose the plants you trimmed.' });
+		if (!ids.length) return refuse('trim', 'Choose the plants you trimmed.');
 		logTrim(locals.user!.id, params.id, ids, optStr(form, 'note'));
 		setFlash(cookies, `✓ Trim logged · ${ids.length} plant${ids.length === 1 ? '' : 's'}`);
 		redirect(303, `/tanks/${params.id}/plants`);

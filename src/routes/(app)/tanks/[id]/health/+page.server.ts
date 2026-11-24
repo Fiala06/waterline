@@ -1,8 +1,8 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import { bySpecies, HEALTH_OUTCOMES, HEALTH_SYMPTOMS, livestockLabel } from '$lib/livestock';
 import { todayInZone, utcToZoned } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
-import { parseWhen, str } from '$lib/server/forms';
+import { parseWhen, refuse, str } from '$lib/server/forms';
 import { healthValues, logHealth } from '$lib/server/log-livestock';
 import { safeReturn } from '$lib/server/redirect';
 import { listLivestock } from '$lib/server/specs';
@@ -37,9 +37,9 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const values = { ...healthValues(form), date: str(form, 'date'), time: str(form, 'time') };
 		const when = parseWhen(form, user.timeZone);
-		if ('error' in when) return fail(400, { errors: { when: when.error } as Record<string, string>, values });
+		if ('error' in when) return refuse('health', { when: when.error }, values);
 		const r = logHealth(user, tank, form, when.at);
-		if ('errors' in r) return fail(400, { errors: r.errors, values });
+		if ('errors' in r) return refuse('health', r.errors, values);
 		const from = safeReturn(form.get('from'), `/tanks/${tank.id}/livestock`);
 		setFlash(cookies, '✓ Health logged');
 		// "Save and start a treatment course": the new-routine form, filled in with the treatment

@@ -3,7 +3,7 @@
 	// (Web Push, needs scripts and HTTPS), every device that has it, an ntfy
 	// topic, and a test. Removing a device, ntfy and the test work without scripts.
 	import { enhance } from '$app/forms';
-	import { keepValues } from '$lib/forms';
+	import { keepValues, refusal } from '$lib/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { fmtDate, dateInZone } from '$lib/time';
@@ -25,9 +25,10 @@
 		/** the page's form result: an ntfy or test problem */
 		form: Record<string, unknown> | null | undefined;
 	} = $props();
-	const ntfyError = $derived(typeof form?.ntfyError === 'string' ? form.ntfyError : '');
+	const ntfy = $derived(refusal(form, 'ntfy'));
+	const ntfyError = $derived(ntfy.errors.ntfyUrl ?? '');
 	const pushError = $derived(typeof form?.pushError === 'string' ? form.pushError : '');
-	const typedUrl = $derived(typeof form?.ntfyUrl === 'string' ? form.ntfyUrl : null);
+	const typedUrl = $derived(typeof ntfy.values.ntfyUrl === 'string' ? ntfy.values.ntfyUrl : null);
 
 	let support = $state<PushSupport>('checking');
 	let busy = $state(false);

@@ -4,6 +4,7 @@
 	// saved products with a strength. Everything is in the keeper's units.
 	import { untrack } from 'svelte';
 	import { enhance } from '$app/forms';
+	import { refusal } from '$lib/forms';
 	import { page } from '$app/state';
 	import { hscroll } from '$lib/actions';
 	import {
@@ -28,6 +29,7 @@
 	import { formatNumber, galToL, parseNumber, toDisplay, toStored } from '$lib/units';
 
 	let { data, form } = $props();
+	const volumeRefused = $derived(refusal(form, 'volume'));
 	const u = $derived(data.user);
 	const t = $derived(data.tank);
 	const n = (s: string) => parseNumber(s);
@@ -202,7 +204,7 @@
 					</select>
 				</label>
 			{/if}
-			{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
+			{#if volumeRefused.message}<p class="banner banner-bad" role="alert">✕ {volumeRefused.message}</p>{/if}
 
 			<!-- 1 · Tank volume -->
 			<section id="volume" class="sec" aria-labelledby="volume-h">

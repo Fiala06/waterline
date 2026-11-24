@@ -3,7 +3,7 @@
 	// and entry, Set as cover and Delete. The stage is dark in both themes; the
 	// panel, caption and sheet use the normal theme colors.
 	import { enhance } from '$app/forms';
-	import { keepValues } from '$lib/forms';
+	import { keepValues, refusal } from '$lib/forms';
 	import { goto } from '$app/navigation';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import Sheet from '$lib/components/Sheet.svelte';
@@ -11,6 +11,7 @@
 	import type { SubmitFunction } from '@sveltejs/kit';
 
 	let { data, form } = $props();
+	const dateRefused = $derived(refusal(form, 'date'));
 	let menu = $state(false);
 	let changingDate = $state(false);
 	let copied = $state(false);
@@ -145,7 +146,7 @@
 					<label class="sr-only" for="photo-time">Time taken</label>
 					<input class="input" id="photo-time" type="time" name="time" value={data.taken.time} required />
 					<button class="btn btn-primary">Save date</button>
-					{#if form?.dateError}<span class="error-text">✕ {form.dateError}</span>{/if}
+					{#if dateRefused.message}<span class="error-text">✕ {dateRefused.message}</span>{/if}
 				</form>
 			</details>
 			{#if data.pets.length}

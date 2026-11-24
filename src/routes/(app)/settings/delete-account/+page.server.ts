@@ -1,9 +1,9 @@
 // Settings › Data › Delete account (#303): what goes and what stays, a
 // backup first, then the keeper's own say-so: signed in within the last few
 // minutes, and their email address typed out. Never the server's last admin.
-import { fail, redirect } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import { accountFootprint, adminCount, deleteOwnAccount } from '$lib/server/people';
-import { str } from '$lib/server/forms';
+import { refuse, str } from '$lib/server/forms';
 import type { Actions, PageServerLoad } from './$types';
 
 /** How recently they must have signed in to delete the account. */
@@ -28,8 +28,8 @@ export const actions: Actions = {
 	default: async ({ request, locals, cookies }) => {
 		const user = locals.user!;
 		const typed = str(await request.formData(), 'email');
-		if (!(await signedInRecently(locals))) return fail(400, { error: `Sign in again first: deleting your account needs a sign-in from the last ${RECENT_SIGN_IN_MIN} minutes.`, typed });
-		if (typed.trim().toLowerCase() !== user.email.toLowerCase()) return fail(400, { error: 'Type your email address exactly as it is shown.', typed });
+		if (!(await signedInRecently(locals))) return refuse('delete', `Sign in again first: deleting your account needs a sign-in from the last ${RECENT_SIGN_IN_MIN} minutes.`, { email: typed });
+		if (typed.trim().toLowerCase() !== user.email.toLowerCase()) return refuse('delete', { email: 'Type your email address exactly as it is shown.' }, { email: typed });
 		await deleteOwnAccount(user);
 		// signed out here: the session's cookie goes with the account
 		for (const c of cookies.getAll()) if (c.name.includes('authjs.session-token')) cookies.delete(c.name, { path: '/' });

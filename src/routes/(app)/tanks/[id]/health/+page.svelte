@@ -2,16 +2,19 @@
 	// Log health: the animals, the symptoms as chips, a treatment, and how it stands
 	// (▲ Watching, ▲ Treating, ✓ Recovered, ✕ Lost). Works without scripts.
 	import { enhance } from '$app/forms';
+	import { refusal } from '$lib/forms';
 	import { untrack } from 'svelte';
 	import DateField from '$lib/components/DateField.svelte';
 	import FormBar from '$lib/components/FormBar.svelte';
 
 	let { data, form } = $props();
-	const v = $derived(form?.values);
-	const errors = $derived(form?.errors ?? {});
-	let chosen = $state(untrack(() => form?.values?.livestockIds ?? (data.preselect ? [data.preselect] : data.livestock.length === 1 ? [data.livestock[0].id] : [])));
-	let outcome = $state(untrack(() => form?.values?.outcome ?? 'watching'));
-	let date = $state(untrack(() => form?.values?.date || data.now.date));
+	const r = $derived(refusal(form, 'health'));
+	// what was typed, when the form was turned down (else nothing: the defaults show)
+	const v = $derived(r.form ? (r.values as { livestockIds: string[]; symptoms: string[]; treatment: string; outcome: string; note: string; reduce: boolean; date: string; time: string }) : undefined);
+	const errors = $derived(r.errors);
+	let chosen = $state(untrack(() => v?.livestockIds ?? (data.preselect ? [data.preselect] : data.livestock.length === 1 ? [data.livestock[0].id] : [])));
+	let outcome = $state(untrack(() => v?.outcome ?? 'watching'));
+	let date = $state(untrack(() => v?.date || data.now.date));
 	let busy = $state(false);
 	// a loss of one animal can take 1 off its count
 	const lostOne = $derived(outcome === 'lost' && chosen.length === 1);

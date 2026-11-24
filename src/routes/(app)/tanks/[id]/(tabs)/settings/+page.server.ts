@@ -1,8 +1,8 @@
 import { clampPct } from '$lib/media';
-import { fail, redirect } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { setFlash } from '$lib/server/flash';
-import { parseTankForm } from '$lib/server/forms';
+import { parseTankForm, refuse } from '$lib/server/forms';
 import { datePhotos, isTankPhoto, preparePhotos, setCover, storePhotos, tankPhotos } from '$lib/server/photos';
 import { dateInZone, fmtDate } from '$lib/time';
 import { db } from '$lib/server/db';
@@ -103,10 +103,10 @@ export const actions: Actions = {
 		const user = locals.user!;
 		const form = await request.formData();
 		const { errors, values } = parseTankForm(form, user);
-		if (Object.keys(errors).length) return fail(400, { errors });
+		if (Object.keys(errors).length) return refuse('tank', errors);
 		const cover = form.get('cover');
 		const prepared = cover instanceof File && cover.size ? await preparePhotos([cover]) : [];
-		if ('error' in prepared) return fail(400, { errors: { cover: prepared.error } });
+		if ('error' in prepared) return refuse('tank', { cover: prepared.error });
 		// cycling goes through its own steps, so History has the start or end of a cycle (#333)
 		const { cycling, ...rest } = values as typeof values & { cycling?: boolean };
 		updateTank(user.id, params.id, rest);

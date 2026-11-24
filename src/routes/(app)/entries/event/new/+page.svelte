@@ -2,8 +2,11 @@
 	import { page } from '$app/state';
 	import EventForm from '$lib/components/EventForm.svelte';
 	import { ui } from '$lib/ui.svelte';
+	import { refusal } from '$lib/forms';
+	import type { FormValues } from '$lib/components/event-form';
 	import type { EventCategory } from '$lib/types';
 	let { data, form } = $props();
+	const r = $derived(refusal(form, 'entry'));
 
 	function categoryHref(c: EventCategory) {
 		const q = new URLSearchParams(page.url.searchParams);
@@ -25,8 +28,8 @@
 		tankVolumeIsActual={data.context.tankVolumeIsActual}
 		lastAmountMode={data.context.lastAmountMode}
 		lastAmount={data.context.lastAmount}
-		values={form?.values ?? data.prefill}
-		initialNote={typeof form?.values?.note === 'string' ? form.values.note : ''}
+		values={r.form ? (r.values as FormValues) : data.prefill}
+		initialNote={typeof r.values.note === 'string' ? r.values.note : ''}
 		initialWhen={data.when}
 		timeZone={data.user.timeZone}
 		closeHref={data.returnTo ?? `/?tank=${data.tank.id}`}
@@ -39,8 +42,8 @@
 		productLinks={data.productLinks}
 		inventory={data.inventory}
 		water={data.water}
-		error={form?.error}
-		errors={form?.errors}
+		error={r.message || null}
+		errors={r.errors}
 		ontankclick={() => (ui.tankSwitcher = true)}
 		draftKey="{data.user.id}:event:{data.tank.id}:{data.category}"
 	/>

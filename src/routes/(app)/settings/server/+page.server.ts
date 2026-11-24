@@ -1,4 +1,5 @@
-import { error, fail } from '@sveltejs/kit';
+import { error, fail, redirect } from '@sveltejs/kit';
+import { setFlash } from '$lib/server/flash';
 import { requireAdmin } from '$lib/server/users';
 import { appOrigin } from '$lib/server/origin';
 import { count, eq } from 'drizzle-orm';
@@ -7,7 +8,7 @@ import { join, resolve } from 'node:path';
 import { env } from '$env/dynamic/private';
 import { db } from '$lib/server/db';
 import { serverSettings, users } from '$lib/server/db/schema';
-import { num, optStr, str } from '$lib/server/forms';
+import { num, optStr, refuse, str } from '$lib/server/forms';
 import { getServerSettings, MailError, outboxMode, storedConfig, transportFrom, type MailConfig } from '$lib/server/mail';
 import { testEmail } from '$lib/server/mail/templates';
 import { baseUrl, prefsFor, recipient, unsubscribeToken } from '$lib/server/notifications';
@@ -171,7 +172,7 @@ const setSettings = (patch: Partial<typeof serverSettings.$inferInsert>) => {
 
 export const actions: Actions = {
 	/** Google sign-in's OAuth client. An empty client ID turns it off, unless that leaves no way in. */
-	saveGoogle: async ({ request, locals }) => {
+	saveGoogle: async ({ request, locals, cookies }) => {
 		requireAdmin(locals);
 		const form = await request.formData();
 		const s = getServerSettings();
@@ -184,18 +185,19 @@ export const actions: Actions = {
 		if (!clientId && !localAdminLogin() && !(env.AUTH_GOOGLE_ID && env.AUTH_GOOGLE_SECRET)) {
 			errors.googleClientId = "Set a local admin password first: without Google sign-in it's the only way in.";
 		}
-		if (Object.keys(errors).length) return fail(400, { googleErrors: errors });
+		if (Object.keys(errors).length) return refuse('google', errors);
 		setSettings(
 			clientId
 				? { googleClientId: clientId, googleClientSecretEnc: secret ? encrypt(secret) : s.googleClientSecretEnc }
 				: { googleClientId: null, googleClientSecretEnc: null }
 		);
 		logger.info('settings', clientId ? 'Google sign-in client saved' : 'Google sign-in turned off in the app', { userId: locals.user!.id });
-		// the next step, when nobody could be let in as the admin with it yet
-		return { googleSaved: true, needsAdmin: !!clientId && !googleAdminPossible() };
+		// saved, and the next step when nobody could be let in as the admin with it yet (#269)
+		setFlash(cookies, clientId && !googleAdminPossible() ? "✓ Google sign-in saved. Now enter your Google account as the admin's, under Who can sign in." : '✓ Google sign-in saved');
+		redirect(303, '/settings/server#google');
 	},
 	/** Who may sign in with Google, and the admin's own account. */
-	saveAccess: async ({ request, locals }) => {
+	saveAccess: async ({ request, locals, cookies }) => {
 		requireAdmin(locals);
 		const form = await request.formData();
 		const adminEmail = str(form, 'adminEmail').toLowerCase();
@@ -207,26 +209,28 @@ export const actions: Actions = {
 		const bad = entries.filter((e) => !validAllowed(e));
 		if (bad.length) errors.allowedEmails = `Not an email or @domain: ${bad.slice(0, 3).join(', ')}${bad.length > 3 ? '…' : ''}`;
 		else if (mode === 'list' && !entries.length) errors.allowedEmails = 'Add someone, or choose Only the admin.';
-		if (Object.keys(errors).length) return fail(400, { accessErrors: errors });
+		if (Object.keys(errors).length) return refuse('access', errors);
 		// sharing a tank lets new people in too (#217): only asked with a list or invited people only
 		const shareInvites = form.get('shareInvites') === 'on';
 		// pausing new accounts (#299): only asked with anyone with a Google account
 		const signupPaused = mode === 'open' && form.get('signupPaused') === 'on';
 		setSettings({ adminEmail: adminEmail || null, signupMode: mode, allowedEmails: entries.join('\n') || null, shareInvites, signupPaused });
 		logger.info('settings', 'Who can sign in saved', { userId: locals.user!.id, mode, listed: entries.length, paused: signupPaused });
-		return { accessSaved: true };
+		setFlash(cookies, '✓ Sign-in settings saved');
+		redirect(303, '/settings/server#who-can-sign-in');
 	},
 	/** The local admin login: a new username or password, or off (while Google can still let an admin in). */
-	saveLocal: async ({ request, locals }) => {
+	saveLocal: async ({ request, locals, cookies }) => {
 		requireAdmin(locals);
 		const form = await request.formData();
 		if (form.get('off')) {
 			if (!googleAdminPossible()) {
-				return fail(400, { localErrors: { password: "Set up Google sign-in for the admin's account first: otherwise nobody could sign in as the admin." } });
+				return refuse('local', { password: "Set up Google sign-in for the admin's account first: otherwise nobody could sign in as the admin." });
 			}
 			setSettings({ localAdminPasswordHash: null });
 			logger.info('settings', 'Local admin login turned off', { userId: locals.user!.id });
-			return { localSaved: 'off' };
+			setFlash(cookies, 'Local admin login turned off');
+			redirect(303, '/settings/server#local-admin');
 		}
 		const s = getServerSettings();
 		const username = str(form, 'username') || 'admin';
@@ -236,13 +240,14 @@ export const actions: Actions = {
 		if (!password && !s.localAdminPasswordHash) errors.password = 'Choose a password.';
 		else if (password && passwordProblem(password, [username, s.adminEmail ?? ''])) errors.password = passwordProblem(password, [username, s.adminEmail ?? ''])!;
 		else if (password && password !== String(form.get('confirm') ?? '')) errors.confirm = "The passwords don't match.";
-		if (Object.keys(errors).length) return fail(400, { localErrors: errors });
+		if (Object.keys(errors).length) return refuse('local', errors);
 		setSettings({ localAdminUsername: username, ...(password ? { localAdminPasswordHash: hashPassword(password) } : {}) });
 		logger.info('settings', password ? 'Local admin password changed' : 'Local admin username saved', { userId: locals.user!.id });
-		return { localSaved: true };
+		setFlash(cookies, '✓ Local admin login saved');
+		redirect(303, '/settings/server#local-admin');
 	},
 	/** Scheduled emails and the update check; a switch forced off by the environment keeps its saved value. */
-	saveServer: async ({ request, locals }) => {
+	saveServer: async ({ request, locals, cookies }) => {
 		requireAdmin(locals);
 		const form = await request.formData();
 		setSettings({
@@ -253,7 +258,8 @@ export const actions: Actions = {
 			...(env.BARCODE_LOOKUP === 'off' ? {} : { barcodeLookup: form.get('barcodeLookup') === 'on' })
 		});
 		logger.info('settings', 'Server switches saved', { userId: locals.user!.id, scheduledEmails: form.get('scheduledEmails') === 'on', updateCheck: form.get('updateCheck') === 'on' });
-		return { serverSaved: true };
+		setFlash(cookies, '✓ Server settings saved');
+		redirect(303, '/settings/server#features');
 	},
 	/** Species care data (#20): download FishBase's snapshot now, or again for a newer release. */
 	careDownload: async ({ locals }) => {
@@ -277,10 +283,10 @@ export const actions: Actions = {
 		if (found.status === 'none') return { stock: { ok: true, message: `Wikipedia answered, but has no photo of ${who} to use (${found.reason}). The rest are looked up again as you open Plants and Livestock.` } };
 		return fail(502, { stock: { ok: false, message: `✕ This server couldn't reach Wikipedia. (${found.reason})` } });
 	},
-	save: async ({ request, locals }) => {
+	save: async ({ request, locals, cookies }) => {
 		requireAdmin(locals);
 		const { cfg, errors } = readForm(await request.formData(), storedConfig());
-		if (Object.keys(errors).length) return fail(400, { errors, saved: false });
+		if (Object.keys(errors).length) return refuse('mail', errors);
 		getServerSettings();
 		db.update(serverSettings)
 			.set({
@@ -298,9 +304,10 @@ export const actions: Actions = {
 			.where(eq(serverSettings.id, 1))
 			.run();
 		logger.info('settings', 'Email delivery settings saved', { userId: locals.user!.id, provider: cfg.emailProvider });
-		return { saved: true };
+		setFlash(cookies, '✓ Email settings saved');
+		redirect(303, '/settings/server#email');
 	},
-	savePublic: async ({ request, locals }) => {
+	savePublic: async ({ request, locals, cookies }) => {
 		requireAdmin(locals);
 		const form = await request.formData();
 		const errors: Record<string, string> = {};
@@ -312,7 +319,7 @@ export const actions: Actions = {
 		const tagRaw = str(form, 'searchConsoleTag');
 		const tag = tagRaw.match(/content=["']([^"']+)["']/)?.[1] ?? tagRaw;
 		if (tag && !/^[A-Za-z0-9_-]{10,100}$/.test(tag)) errors.searchConsoleTag = 'Paste the verification meta tag or its content value.';
-		if (Object.keys(errors).length) return fail(400, { publicErrors: errors });
+		if (Object.keys(errors).length) return refuse('public', errors);
 		getServerSettings();
 		db.update(serverSettings)
 			.set({
@@ -328,15 +335,16 @@ export const actions: Actions = {
 			.where(eq(serverSettings.id, 1))
 			.run();
 		logger.info('settings', 'Public page settings saved', { userId: locals.user!.id });
-		return { publicSaved: true };
+		setFlash(cookies, '✓ Public page settings saved');
+		redirect(303, '/settings/server#public-pages');
 	},
 	// Sends E5 with what's in the form right now, saved or not.
 	/** About this server (#302): who runs it, a private contact and its terms, dated when they change */
-	saveAbout: async ({ request, locals }) => {
+	saveAbout: async ({ request, locals, cookies }) => {
 		requireAdmin(locals);
 		const form = await request.formData();
 		const contact = str(form, 'aboutContact');
-		if (contact && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact)) return fail(400, { aboutErrors: { aboutContact: 'Enter an email address, or leave it blank.' } });
+		if (contact && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact)) return refuse('about', { aboutContact: 'Enter an email address, or leave it blank.' });
 		const next = { aboutOperator: optStr(form, 'aboutOperator', 200), aboutContact: contact || null, aboutTerms: optStr(form, 'aboutTerms', 4000) };
 		const s = getServerSettings();
 		const changed = next.aboutOperator !== s.aboutOperator || next.aboutContact !== s.aboutContact || next.aboutTerms !== s.aboutTerms;
@@ -345,17 +353,18 @@ export const actions: Actions = {
 			.where(eq(serverSettings.id, 1))
 			.run();
 		logger.info('settings', 'About this server saved', { userId: locals.user!.id });
-		return { saved: true };
+		setFlash(cookies, '✓ About this server saved');
+		redirect(303, '/settings/server#about-server');
 	},
 	test: async ({ request, locals }) => {
 		const user = requireAdmin(locals);
 		const { cfg, errors } = readForm(await request.formData(), storedConfig());
-		if (Object.keys(errors).length) return fail(400, { errors, test: null });
+		if (Object.keys(errors).length) return refuse('mail', errors);
 		const to = recipient(user, prefsFor(user.id)) ?? (/@.+\./.test(user.email) ? user.email : null);
-		if (!to) return fail(400, { errors: {}, test: { ok: false, message: 'Add a notification email in Settings first — this account has no real address.' } });
+		if (!to) return fail(400, { test: { ok: false, message: 'Add a notification email in Settings first — this account has no real address.' } });
 		const base = baseUrl() ?? '';
 		const t = outboxMode() ? { transport: outboxTransport(), from: 'Waterline <waterline@localhost>' } : transportFrom(cfg);
-		if (!t) return fail(400, { errors: {}, test: { ok: false, message: 'Fill in the delivery settings first.' } });
+		if (!t) return fail(400, { test: { ok: false, message: 'Fill in the delivery settings first.' } });
 		const sent = new Date().toLocaleString('en-US', {
 			month: 'short',
 			day: 'numeric',
@@ -380,7 +389,7 @@ export const actions: Actions = {
 		} catch (e) {
 			const message = e instanceof MailError ? e.message : `Sending failed. (${(e as Error).message})`;
 			logger.error('email', "The test email didn't send", { userId: user.id, via: t.transport.describe, error: e });
-			return fail(502, { errors: {}, test: { ok: false, message } });
+			return fail(502, { test: { ok: false, message } });
 		}
 		const via = cfg.emailProvider === 'smtp' ? 'your SMTP server' : 'Mailgun';
 		logger.info('email', 'Sent a test email', { userId: user.id, via: t.transport.describe });

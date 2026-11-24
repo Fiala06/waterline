@@ -4,7 +4,11 @@
 	// done, this device's offline pages and waiting entries go too.
 	import { enhance } from '$app/forms';
 	import { forgetDevice } from '$lib/offline';
+	import { refusal } from '$lib/forms';
 	let { data, form } = $props();
+	// a refused delete (#269): not signed in recently (the whole form), or the email typed wrong
+	const refused = $derived(refusal(form, 'delete'));
+	const deleteError = $derived(refused.message || refused.errors.email || '');
 	const f = $derived(data.footprint);
 	const n = (k: number, one: string, many = `${one}s`) => `${k} ${k === 1 ? one : many}`;
 	let busy = $state(false);
@@ -80,11 +84,11 @@
 				type="email"
 				autocomplete="off"
 				spellcheck="false"
-				value={form?.typed ?? ''}
-				aria-invalid={!!form?.error}
-				aria-describedby={form?.error ? 'del-err' : undefined}
+				value={String(refused.values.email ?? '')}
+				aria-invalid={!!deleteError}
+				aria-describedby={deleteError ? 'del-err' : undefined}
 			/>
-			{#if form?.error}<p class="error-text" id="del-err" role="alert">✕ {form.error}</p>{/if}
+			{#if deleteError}<p class="error-text" id="del-err" role="alert">✕ {deleteError}</p>{/if}
 			<button class="btn btn-danger" disabled={busy}>Delete my account</button>
 		</form>
 	{/if}

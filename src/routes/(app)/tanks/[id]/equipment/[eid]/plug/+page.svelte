@@ -2,8 +2,10 @@
 	// Smart plug (#203): the Shelly plug an item runs from, its state, and the
 	// address and password Waterline reads and switches it with.
 	import { enhance } from '$app/forms';
+	import { refusal } from '$lib/forms';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	let { data, form } = $props();
+	const r = $derived(refusal(form, 'plug'));
 	let busy = $state(false);
 	const back = $derived(`/tanks/${data.item.tankId}/equipment`);
 </script>
@@ -48,10 +50,10 @@
 			}}
 		>
 			<h2 class="kicker">{data.plug ? 'Change the plug' : 'Link a Shelly plug'}</h2>
-			{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
+			{#if r.message}<p class="banner banner-bad" role="alert">✕ {r.message}</p>{/if}
 			<div class="field">
 				<label class="label" for="plug-url">Plug address</label>
-				<input class="input" id="plug-url" name="url" required autocomplete="off" inputmode="url" placeholder="192.168.1.40" value={form?.values?.url ?? data.plug?.url ?? ''} />
+				<input class="input" id="plug-url" name="url" required autocomplete="off" inputmode="url" placeholder="192.168.1.40" value={(r.values.url as string | undefined) ?? data.plug?.url ?? ''} />
 				<span class="hint">The plug's address on your network, from the Shelly app (Settings › Device information) or your router. Waterline needs to reach it from the server.</span>
 			</div>
 			<div class="field">
@@ -61,7 +63,7 @@
 			</div>
 			<div class="field">
 				<label class="label" for="plug-report">Waterline's address for the plug · optional</label>
-				<input class="input" id="plug-report" name="reportUrl" autocomplete="off" inputmode="url" placeholder={data.origin ?? 'http://192.168.1.10:3000'} value={form?.values?.reportUrl ?? data.plug?.reportUrl ?? ''} />
+				<input class="input" id="plug-report" name="reportUrl" autocomplete="off" inputmode="url" placeholder={data.origin ?? 'http://192.168.1.10:3000'} value={(r.values.reportUrl as string | undefined) ?? data.plug?.reportUrl ?? ''} />
 				<span class="hint">The plug tells Waterline each time it switches, at {data.origin ?? 'this server’s address'}. If the plug can't reach that (a public address, say), enter the one it can on your network.</span>
 			</div>
 			{#if data.item.doser}

@@ -1,8 +1,8 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import { eventKindLabel, eventTitle } from '$lib/events';
 import { utcToZoned } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
-import { parseWhen } from '$lib/server/forms';
+import { parseWhen, refuse } from '$lib/server/forms';
 import { deletePhoto, getPhoto, isTankPhoto, photoEntry, photoNeighbours, setCover, setInTimeline, setPhotoDate } from '$lib/server/photos';
 import { getTank, updateTank } from '$lib/server/tanks';
 import { getLivestock, getPlant, listLivestock, listPlants, photoPets, tagPhoto, updateLivestockDetails, updatePlant } from '$lib/server/specs';
@@ -118,22 +118,22 @@ export const actions: Actions = {
 		const [kind, id] = String((await request.formData()).get('for') ?? '').split(':');
 		if (kind === 'plant') {
 			const p = getPlant(user.id, id);
-			if (p.tankId !== photo.tankId) return { error: 'That plant is in another tank.' };
+			if (p.tankId !== photo.tankId) return refuse('useFor', 'That plant is in another tank.');
 			updatePlant(user.id, p.id, { photoId: photo.id });
 			setFlash(cookies, `✓ The photo for ${p.name}`);
 		} else if (kind === 'animal') {
 			const l = getLivestock(user.id, id);
-			if (l.tankId !== photo.tankId) return { error: 'That animal is in another tank.' };
+			if (l.tankId !== photo.tankId) return refuse('useFor', 'That animal is in another tank.');
 			updateLivestockDetails(user.id, l.id, { photoId: photo.id });
 			setFlash(cookies, `✓ The photo for ${livestockLabel(l)}`);
-		} else return { error: 'Choose a plant or an animal.' };
+		} else return refuse('useFor', 'Choose a plant or an animal.');
 		redirect(303, `/photos/${params.id}`);
 	},
 	/** Change date (#42): fix when the photo was taken; from then on it no longer follows its entry's date. */
 	date: async ({ locals, params, request, cookies }) => {
 		const user = locals.user!;
 		const when = parseWhen(await request.formData(), user.timeZone);
-		if ('error' in when) return fail(400, { dateError: when.error });
+		if ('error' in when) return refuse('date', when.error);
 		setPhotoDate(user.id, params.id, when.at);
 		setFlash(cookies, '✓ Date changed');
 		redirect(303, `/photos/${params.id}`);

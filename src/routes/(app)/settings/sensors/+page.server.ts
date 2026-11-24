@@ -1,10 +1,10 @@
 // Settings › Sensors & controllers (#19): tokens that let a probe, ESPHome,
 // Node-RED or Home Assistant post readings to a tank, devices Waterline reads
 // itself from their own web page, and what has come in.
-import { fail, redirect } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import { appOrigin } from '$lib/server/origin';
 import { setFlash } from '$lib/server/flash';
-import { str } from '$lib/server/forms';
+import { refuse, str } from '$lib/server/forms';
 import { logger } from '$lib/server/log';
 import { listAssistantTokens } from '$lib/server/assistant/tokens';
 import { tokenActions } from '$lib/server/assistant/token-actions';
@@ -142,15 +142,15 @@ export const actions: Actions = {
 		if (!url) errors.url = raw ? 'An address like 192.168.1.33 or http://probe.local, nothing more.' : "The device's address, like 192.168.1.33.";
 		if (!tank) errors.tank = 'Pick the tank it reads into.';
 		if (listDevicePolls(user.id).length >= MAX_DEVICES) errors.url = `That's ${MAX_DEVICES} devices already: remove one you don't read first.`;
-		if (Object.keys(errors).length || !url || !tank) return fail(400, { find: { errors, ...back } });
+		if (Object.keys(errors).length || !url || !tank) return refuse('find', errors, back);
 		const auth: DeviceAuth | null = username ? { username, password } : null;
 		let found: Awaited<ReturnType<typeof discoverEsphome>>;
 		try {
 			found = await discoverEsphome(url, auth, fetch, DISCOVER_MS, user.isAdmin);
 		} catch (e) {
-			return fail(400, { find: { errors: { url: e instanceof Error ? e.message : String(e) }, ...back } });
+			return refuse('find', { url: e instanceof Error ? e.message : String(e) }, back);
 		}
-		if (!found.sensors.length) return fail(400, { find: { errors: { url: `${found.title ?? 'The device'} answered, but reports no sensors.` }, ...back } });
+		if (!found.sensors.length) return refuse('find', { url: `${found.title ?? 'The device'} answered, but reports no sensors.` }, back);
 		const params = listParams(tank.id);
 		logger.info('sensors', `Found ${found.sensors.length} sensor${found.sensors.length === 1 ? '' : 's'} on ${url}`, { userId: user.id, tankId });
 		return {
@@ -179,7 +179,7 @@ export const actions: Actions = {
 		const url = parseDeviceUrl(str(form, 'url'));
 		const name = str(form, 'name').slice(0, 60);
 		const tank = listTanks(user.id, { own: true }).find((t) => t.id === tankId);
-		if (!tank || !url) return fail(400, { find: { errors: { url: 'Find the device again.' }, url: '', tankId, username: '' } });
+		if (!tank || !url) return refuse('find', { url: 'Find the device again.' }, { url: '', tankId, username: '' });
 		let auth: DeviceAuth | null = null;
 		const sealed = str(form, 'auth');
 		if (sealed) {
@@ -201,7 +201,7 @@ export const actions: Actions = {
 		else if (sensors.length > MAX_SENSORS) errors.sensors = `That's more than ${MAX_SENSORS} sensors: tick the ones this tank needs.`;
 		else if (sensors.some((s) => !labels.has(s.parameter))) errors.sensors = 'Pick which parameter each ticked sensor is.';
 		if (listDevicePolls(user.id).length >= MAX_DEVICES) errors.sensors = `That's ${MAX_DEVICES} devices already: remove one you don't read first.`;
-		if (Object.keys(errors).length) return fail(400, { found: foundFromForm(form, tank, url), add: { errors } });
+		if (Object.keys(errors).length) return refuse('add', errors, { found: foundFromForm(form, tank, url) });
 		const row = createDevicePoll(user.id, { tankId, name, url, sensors, auth });
 		const first = await pollDevice(row.id);
 		logger.info('sensors', `Reading ${row.name} at ${url}: ${sensors.length} sensor${sensors.length === 1 ? '' : 's'}`, { userId: user.id, tankId });

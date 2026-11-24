@@ -27,18 +27,21 @@ export interface FieldErrors {
  * Turn a form down (#269), in the one shape every page reads with `refusal()`
  * from $lib/forms: a message for the whole form, or errors by field, and what
  * was typed. `refuse('par', { value: 'Enter the PAR reading.' })`,
- * `refuse('name', 'Enter a name.')`.
+ * `refuse('name', 'Enter a name.')`; both at once with
+ * `refuse('entry', { message: 'Pick a valid date and time.', errors })`.
  */
 export function refuse(
   form: string,
-  errors: FieldErrors | string,
+  errors: FieldErrors | string | { message: string; errors: FieldErrors },
   values: Record<string, unknown> = {},
   status = 400,
 ) {
   const refused: Refusal =
     typeof errors === "string"
       ? { form, message: errors, errors: {}, values }
-      : { form, message: "", errors, values };
+      : typeof errors.errors === "object" // a field's error is always a string
+        ? { form, message: String(errors.message ?? ""), errors: errors.errors as FieldErrors, values }
+        : { form, message: "", errors: errors as FieldErrors, values };
   return fail(status, { refused });
 }
 

@@ -2,11 +2,13 @@
 	// Start a plan (#177): the steps, each to keep or leave out, rename and re-time,
 	// with the dates it works out to, then the routines to hold back. Works without scripts.
 	import { enhance } from '$app/forms';
+	import { refusal } from '$lib/forms';
 	import { untrack } from 'svelte';
 	import { planDays, stepText } from '$lib/plans';
 	import { addDays, fmtDate } from '$lib/time';
 
 	let { data, form } = $props();
+	const r = $derived(refusal(form, 'plan'));
 	let steps = $state(untrack(() => data.template.steps.map((s) => ({ ...s, keep: true }))));
 	let busy = $state(false);
 	const kept = $derived(steps.filter((s) => s.keep));
@@ -35,7 +37,7 @@
 	</div>
 
 	<div class="body">
-		{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
+		{#if r.message}<p class="banner banner-bad" role="alert">✕ {r.message}</p>{/if}
 		<p class="lead">{data.template.lead}</p>
 
 		<div class="field">

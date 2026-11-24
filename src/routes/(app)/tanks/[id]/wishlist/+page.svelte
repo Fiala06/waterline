@@ -3,14 +3,19 @@
 	// Add to tank puts an item in Livestock, Plants or Equipment with the usual
 	// History entry, and can log the purchase in Spending. Owners edit; others read.
 	import { enhance } from '$app/forms';
+	import { refusal } from '$lib/forms';
 	import { untrack } from 'svelte';
 	import SpeciesInput from '$lib/components/SpeciesInput.svelte';
 	import type { WishKind } from '$lib/server/db/schema';
 	let { data, form } = $props();
-	const errors = $derived(form?.errors ?? {});
-	const values = $derived(form?.values ?? {});
-	let kind = $state<WishKind>(untrack(() => (form?.values?.kind as WishKind) || 'fish'));
-	let count = $state(untrack(() => Number(form?.values?.count) || 1));
+	const r = $derived(refusal(form, 'add'));
+	// Add to tank, turned down: which item's form, and why
+	const addR = $derived(refusal(form, 'addToTank'));
+	const addId = $derived(addR.values.id as string | undefined);
+	const errors = $derived(r.errors);
+	const values = $derived(r.values as Record<string, string | undefined>);
+	let kind = $state<WishKind>(untrack(() => (values.kind as WishKind) || 'fish'));
+	let count = $state(untrack(() => Number(values.count) || 1));
 	// the other fields, so a saved wish clears the form (reset alone leaves Svelte's values)
 	let name = $state(untrack(() => values.name ?? ''));
 	let price = $state(untrack(() => values.price ?? ''));
@@ -24,7 +29,7 @@
 	}
 	const livestock = $derived(kind === 'fish' || kind === 'invert' || kind === 'coral');
 	// Add to tank: which row is open, and whether the purchase goes in Spending
-	let adding = $state<string | null>(untrack(() => form?.addError?.id ?? null));
+	let adding = $state<string | null>(untrack(() => addId ?? null));
 	let spend = $state(true);
 	const owner = $derived(data.role === 'owner');
 	const KINDS: { value: WishKind; label: string }[] = [
@@ -165,9 +170,9 @@
 										<label class="label" for="paid-{w.id}">Paid</label>
 										<div class="money">
 											<span class="cur">{w.currency}</span>
-											<input class="input" id="paid-{w.id}" name="amount" inputmode="decimal" placeholder="0.00" value={form?.addError?.id === w.id ? '' : w.priceInput} aria-invalid={form?.addError?.id === w.id} />
+											<input class="input" id="paid-{w.id}" name="amount" inputmode="decimal" placeholder="0.00" value={addId === w.id ? '' : w.priceInput} aria-invalid={addId === w.id} />
 										</div>
-										{#if form?.addError?.id === w.id}<span class="error-text">✕ {form.addError.error}</span>{/if}
+										{#if addId === w.id}<span class="error-text">✕ {addR.message}</span>{/if}
 									</div>
 								{/if}
 								<div class="confirm-acts">

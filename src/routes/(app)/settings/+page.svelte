@@ -80,12 +80,14 @@
 	// Changes save right away, one request per form at a time; the server's flash
 	// ("✓ Settings saved") comes back as the toast. Without JS, the <noscript>
 	// buttons submit the same two forms.
-	let errs = $state({ error: '', notifyError: '' });
-	const nameError = $derived(errs.error || form?.error || '');
-	const emailError = $derived(errs.notifyError || form?.notifyError || '');
+	// each form's refusal (#269): 'profile' for the name, 'notify' for the email
+	const FIELD = { profile: 'displayName', notify: 'notifyEmail' } as const;
+	let errs = $state({ profile: '', notify: '' });
+	const nameError = $derived(errs.profile || refusal(form, 'profile').errors.displayName || '');
+	const emailError = $derived(errs.notify || refusal(form, 'notify').errors.notifyEmail || '');
 	const saving: Record<string, { busy: boolean; again: boolean; sent: string }> = {};
 	const autosave: SubmitFunction = ({ formElement, formData, action, cancel }) => {
-		const key = action.search.includes('notifications') ? 'notifyError' : 'error';
+		const key = action.search.includes('notifications') ? 'notify' : 'profile';
 		const s = (saving[key] ??= { busy: false, again: false, sent: '' });
 		const body = JSON.stringify([...formData]);
 		if (s.busy) {
@@ -102,7 +104,10 @@
 				await invalidateAll();
 			} else {
 				s.sent = '';
-				if (result.type === 'failure') errs[key] = String(result.data?.[key] ?? '');
+				if (result.type === 'failure') {
+					const r = refusal(result.data, key);
+					errs[key] = r.errors[FIELD[key]] || r.message;
+				}
 				else if (result.type === 'error' && result.status === undefined) toast("✕ Couldn't save. You're offline.");
 				else await update({ reset: false });
 			}

@@ -1,8 +1,8 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import { fmtValue } from '$lib/params';
 import { dateInZone, fmtDate, loggedLine, utcToZoned } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
-import { optStr, parseWhen, str } from '$lib/server/forms';
+import { optStr, parseWhen, refuse, str } from '$lib/server/forms';
 import { parseReadings, testFormParams } from '$lib/server/log-forms';
 import { getTest, updateTest } from '$lib/server/logs';
 import { deleteEntryPhotos, entryPhotos, photoFiles, preparePhotos, storePhotos } from '$lib/server/photos';
@@ -41,13 +41,13 @@ export const actions: Actions = {
 			const old = existing.get(p.id);
 			if (old != null && readings.has(p.id) && str(form, `v_${p.id}`) === fmtValue(p, old, user)) readings.set(p.id, old);
 		}
-		const values = Object.fromEntries(ps.map((p) => [p.id, str(form, `v_${p.id}`)]));
-		if (Object.keys(errors).length) return fail(400, { errors, values, error: null });
-		if (!readings.size) return fail(400, { errors, values, error: 'Keep at least one reading, or delete the entry.' });
+		const values = Object.fromEntries(ps.map((p) => [`v_${p.id}`, str(form, `v_${p.id}`)]));
+		if (Object.keys(errors).length) return refuse('test', errors, values);
+		if (!readings.size) return refuse('test', { message: 'Keep at least one reading, or delete the entry.', errors }, values);
 		const when = parseWhen(form, user.timeZone);
-		if ('error' in when) return fail(400, { errors, values, error: when.error });
+		if ('error' in when) return refuse('test', { message: when.error, errors }, values);
 		const prepared = await preparePhotos(photoFiles(form));
-		if ('error' in prepared) return fail(400, { errors, values, error: prepared.error });
+		if ('error' in prepared) return refuse('test', { message: prepared.error, errors }, values);
 		updateTest(user.id, params.id, { takenAt: when.at, note: optStr(form, 'note'), readings });
 		await deleteEntryPhotos(user.id, form.getAll('removePhoto').map(String), { testId: test.id });
 		await storePhotos(test.tankId, prepared, { testId: test.id, takenAt: when.at });

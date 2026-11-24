@@ -1,7 +1,6 @@
-import { fail } from '@sveltejs/kit';
 import { addDays, fmtDate, isDate, todayInZone } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
-import { str } from '$lib/server/forms';
+import { refuse, str } from '$lib/server/forms';
 import { goBack, safeReturn } from '$lib/server/redirect';
 import { clearText } from '$lib/suggestions';
 import { getTank, listParams } from '$lib/server/tanks';
@@ -41,10 +40,10 @@ export const actions: Actions = {
 		const ids = form.getAll('task').map(String);
 		const param = str(form, 'param');
 		const values = { until, ids, param };
-		if (!isDate(until) || until <= today) return fail(400, { error: `Pick a day after ${fmtDate(today)}.`, values });
+		if (!isDate(until) || until <= today) return refuse('pause', `Pick a day after ${fmtDate(today)}.`, values);
 		const mine = new Set(listTasks(user.id, tank.id).map((r) => r.task.id));
 		const chosen = ids.filter((id) => mine.has(id));
-		if (!chosen.length) return fail(400, { error: 'Tick the tasks to pause.', values });
+		if (!chosen.length) return refuse('pause', 'Tick the tasks to pause.', values);
 		const clears = listParams(tank.id).find((p) => p.id === param);
 		const { noteIds } = pauseTasks(user.id, chosen, until, user.timeZone, clears?.id ?? null);
 		setFlash(cookies, `Paused ${chosen.length === 1 ? '1 task' : `${chosen.length} tasks`} until ${clears ? clearText(clears) : fmtDate(until)}`, {

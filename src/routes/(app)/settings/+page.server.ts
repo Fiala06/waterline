@@ -72,7 +72,7 @@ export const actions: Actions = {
 		const user = locals.user!;
 		const form = await request.formData();
 		const displayName = str(form, 'displayName').slice(0, 80);
-		if (!displayName) return fail(400, { error: 'Enter a display name.' });
+		if (!displayName) return refuse('profile', { displayName: 'Enter a display name.' });
 		const theme = str(form, 'theme');
 		updateUser(user.id, {
 			displayName,
@@ -110,7 +110,7 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const notifyEmail = str(form, 'notifyEmail').slice(0, 200);
 		if (notifyEmail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(notifyEmail)) {
-			return fail(400, { notifyError: 'Enter a valid email address.' });
+			return refuse('notify', { notifyEmail: 'Enter a valid email address.' });
 		}
 		const delivery = str(form, 'delivery');
 		const lead = Number(str(form, 'leadDays'));
@@ -151,7 +151,7 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const url = str(form, 'ntfyUrl').slice(0, 300);
 		const token = str(form, 'ntfyToken').slice(0, 200);
-		if (!parseTopicUrl(url)) return fail(400, { ntfyError: 'Enter the topic\'s full address, like https://ntfy.sh/your-topic.', ntfyUrl: url });
+		if (!parseTopicUrl(url)) return refuse('ntfy', { ntfyUrl: "Enter the topic's full address, like https://ntfy.sh/your-topic." }, { ntfyUrl: url });
 		prefsFor(locals.user!.id);
 		db.update(notificationPrefs)
 			.set({ ntfyUrl: url, ...(token ? { ntfyTokenEnc: encrypt(token) } : form.get('clearToken') === 'on' ? { ntfyTokenEnc: null } : {}) })

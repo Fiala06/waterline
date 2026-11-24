@@ -10,6 +10,9 @@
 	import TankChecks from '$lib/components/TankChecks.svelte';
 	import TokenList from '$lib/components/TokenList.svelte';
 	import { fmtWhen } from '$lib/time';
+	import { refusal } from '$lib/forms';
+	import type { ActionData } from './$types';
+	type FoundDevice = NonNullable<Extract<NonNullable<ActionData>, { found: unknown }>['found']>;
 	let { data, form } = $props();
 
 	const tz = $derived(data.user.timeZone);
@@ -50,10 +53,14 @@ sensor:
               Content-Type: application/json
             body: !lambda 'return "{\\"parameter\\":\\"temp\\",\\"value\\":" + to_string(x) + ",\\"unit\\":\\"°C\\"}";'`);
 	// a device read from its own web page: what Find sensors turned up, and the forms' slips
-	const found = $derived(form?.found ?? null);
-	const findErr = $derived<Record<string, string>>(form?.find?.errors ?? {});
-	const addErr = $derived<Record<string, string>>(form?.add?.errors ?? {});
-	const findTank = $derived(form?.find?.tankId || found?.tankId || data.exampleTank || data.tanks[0]?.id || '');
+	// a refused Read a device (#269): what was typed; a refused add keeps the device found so far
+	const find = $derived(refusal(form, 'find'));
+	const add = $derived(refusal(form, 'add'));
+	const found = $derived(form?.found ?? (add.values.found as FoundDevice | undefined) ?? null);
+	const findErr = $derived(find.errors);
+	const addErr = $derived(add.errors);
+	const findText = (k: string) => (typeof find.values[k] === 'string' ? (find.values[k] as string) : '');
+	const findTank = $derived(findText('tankId') || found?.tankId || data.exampleTank || data.tanks[0]?.id || '');
 </script>
 
 <svelte:head><title>Sensors · Settings · Waterline</title></svelte:head>
@@ -179,7 +186,7 @@ sensor:
 			<h2 id="find-h" class="kicker">Read a device</h2>
 			<div class="field">
 				<label class="label" for="d-url">Device address</label>
-				<input class="input mono" id="d-url" name="url" inputmode="url" autocomplete="off" placeholder="192.168.1.33" value={form?.find?.url ?? ''} aria-invalid={!!findErr.url} aria-describedby={findErr.url ? 'd-url-e' : undefined} />
+				<input class="input mono" id="d-url" name="url" inputmode="url" autocomplete="off" placeholder="192.168.1.33" value={findText('url')} aria-invalid={!!findErr.url} aria-describedby={findErr.url ? 'd-url-e' : undefined} />
 				{#if findErr.url}<span class="error-text" id="d-url-e">✕ {findErr.url}</span>{/if}
 			</div>
 			<fieldset class="tanks" aria-describedby={findErr.tank ? 'd-tank-e' : undefined}>
@@ -191,11 +198,11 @@ sensor:
 				</div>
 				{#if findErr.tank}<span class="error-text" id="d-tank-e">✕ {findErr.tank}</span>{/if}
 			</fieldset>
-			<details class="signin" open={!!form?.find?.username}>
+			<details class="signin" open={!!findText('username')}>
 				<summary>The device asks for a sign-in</summary>
 				<div class="field">
 					<label class="label" for="d-user">Username</label>
-					<input class="input" id="d-user" name="username" autocomplete="off" value={form?.find?.username ?? ''} />
+					<input class="input" id="d-user" name="username" autocomplete="off" value={findText('username')} />
 				</div>
 				<div class="field">
 					<label class="label" for="d-pass">Password</label>

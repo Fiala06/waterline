@@ -1,8 +1,8 @@
-import { error, fail, redirect } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import { equipmentName } from '$lib/equipment';
 import { plugText } from '$lib/plugs';
 import { setFlash } from '$lib/server/flash';
-import { str } from '$lib/server/forms';
+import { refuse, str } from '$lib/server/forms';
 import { linkPlug, parsePlugUrl, PlugError, plugOf, plugsOff, pollPlug, reportBase, unlinkPlug } from '$lib/server/plugs';
 import { runText } from '$lib/events';
 import { getEquipment } from '$lib/server/specs';
@@ -59,13 +59,13 @@ export const actions: Actions = {
 		const rawReport = str(form, 'reportUrl');
 		const reportUrl = rawReport ? parsePlugUrl(rawReport) : null;
 		const values = { url: raw, reportUrl: rawReport };
-		if (!url) return fail(400, { error: 'Enter the plug’s address, such as 192.168.1.40.', values });
-		if (rawReport && !reportUrl) return fail(400, { error: 'Enter Waterline’s address as the plug can reach it, such as http://192.168.1.10:3000.', values });
+		if (!url) return refuse('plug', 'Enter the plug’s address, such as 192.168.1.40.', values);
+		if (rawReport && !reportUrl) return refuse('plug', 'Enter Waterline’s address as the plug can reach it, such as http://192.168.1.10:3000.', values);
 		try {
 			const p = await linkPlug(locals.user!.id, e.id, { url, password: password || null, reportUrl });
 			setFlash(cookies, `✓ ${equipmentName(e)} runs from ${p.name ?? 'its plug'} · ${plugText(p).text}`);
 		} catch (err) {
-			if (err instanceof PlugError) return fail(400, { error: `${err.message}. Check the address, and the password if you set one in the Shelly app.`, values });
+			if (err instanceof PlugError) return refuse('plug', `${err.message}. Check the address, and the password if you set one in the Shelly app.`, values);
 			throw err;
 		}
 		redirect(303, `/tanks/${params.id}/equipment/${e.id}/plug`);

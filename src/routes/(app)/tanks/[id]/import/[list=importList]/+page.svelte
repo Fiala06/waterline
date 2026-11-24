@@ -3,12 +3,15 @@
 	// the file. Step 2 (ImportPreview) shows every row before anything is added.
 	// Past imports of this kind can be undone at the bottom.
 	import { enhance } from '$app/forms';
+	import { refusal } from '$lib/forms';
 	import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
 	import ImportColumns from '$lib/components/ImportColumns.svelte';
 	import ImportWords from '$lib/components/ImportWords.svelte';
 	import ImportPreview from '$lib/components/ImportPreview.svelte';
 	import { HISTORY_FILES, IMPORTS, isHistoryKind } from '$lib/imports';
 	let { data, form } = $props();
+	const checkR = $derived(refusal(form, 'check'));
+	const importR = $derived(refusal(form, 'import'));
 
 	const info = $derived(IMPORTS[data.kind]);
 	const history = $derived(isHistoryKind(data.kind));
@@ -22,7 +25,7 @@
 		fileColumns: { index: number; header: string; key: string | null }[];
 		columns: { key: string; header: string }[];
 	};
-	const mapping = $derived(form && 'mapping' in form && form.mapping ? (form.mapping as Mapping) : null);
+	const mapping = $derived((checkR.values.mapping as Mapping | undefined) ?? null);
 	let busy = $state(false);
 </script>
 
@@ -45,7 +48,7 @@
 				<ImportPreview kind={data.kind} file={preview.file} rows={preview.rows} ignored={preview.ignored} csv={preview.csv} fileColumns={preview.fileColumns} />
 			{/key}
 		{:else if mapping}
-			<p class="banner banner-bad map-error" role="alert">✕ {form?.error}</p>
+			<p class="banner banner-bad map-error" role="alert">✕ {checkR.message}</p>
 			{#key mapping}<ImportColumns file={mapping.file} csv={mapping.csv} fileColumns={mapping.fileColumns} columns={mapping.columns} open />{/key}
 			<div class="foot"><a class="btn again" href="?">Choose another file</a></div>
 		{:else}
@@ -70,7 +73,7 @@
 					};
 				}}
 			>
-				{#if form && 'error' in form}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
+				{#if checkR.message || importR.message}<p class="banner banner-bad" role="alert">✕ {checkR.message || importR.message}</p>{/if}
 				{#if data.kind === 'history'}
 					<p class="lead">One file with water tests, water changes, doses and more: its Type column says what each row is.</p>
 				{/if}

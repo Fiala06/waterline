@@ -1,6 +1,9 @@
 <script lang="ts">
 	import TestForm from '$lib/components/TestForm.svelte';
+	import { refusal } from '$lib/forms';
+	import { refusedReadings } from '$lib/components/test-form';
 	let { data, form } = $props();
+	const r = $derived(refusal(form, 'test'));
 	const readings = $derived(Object.keys(data.values).length);
 </script>
 
@@ -10,13 +13,13 @@
 	mode="edit"
 	tankName={data.entry.tankName}
 	params={data.params}
-	values={form?.values ?? data.values}
+	values={r.form ? refusedReadings(r.values) : data.values}
 	initialNote={data.entry.note}
 	initialWhen={data.when}
 	timeZone={data.user.timeZone}
 	closeHref="/entries/test/{data.entry.id}"
-	error={form?.error}
-	fieldErrors={form?.errors}
+	error={r.message || null}
+	fieldErrors={r.errors}
 	meta={data.meta}
 	existingPhotos={data.photos}
 	previous={data.previous}

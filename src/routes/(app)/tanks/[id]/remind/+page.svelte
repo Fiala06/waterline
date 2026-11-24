@@ -1,7 +1,9 @@
 <script lang="ts">
 	// Remind me, on its own page: where the button leads without scripts.
 	import RemindForm from '$lib/components/RemindForm.svelte';
+	import { refusal } from '$lib/forms';
 	let { data, form } = $props();
+	const r = $derived(refusal(form, 'remind'));
 </script>
 
 <svelte:head><title>Remind me · {data.tank.name}</title></svelte:head>
@@ -19,8 +21,8 @@
 			tankName={data.tank.name}
 			today={data.today}
 			from={data.from}
-			error={form?.error ?? null}
-			values={form?.values ?? null}
+			error={r.message || null}
+			values={r.form ? (r.values as { name: string; when: string; date: string }) : null}
 		/>
 	</div>
 </div>

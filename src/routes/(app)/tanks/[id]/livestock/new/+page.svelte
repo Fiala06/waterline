@@ -1,10 +1,13 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { refusal } from '$lib/forms';
 	import { untrack } from 'svelte';
 	import DateField from '$lib/components/DateField.svelte';
 	import FormBar from '$lib/components/FormBar.svelte';
 	import SpeciesInput from '$lib/components/SpeciesInput.svelte';
 	let { data, form } = $props();
+	const r = $derived(refusal(form, 'add'));
+	const v = (k: string) => String(r.values[k] ?? '');
 	let kind = $state<'fish' | 'invert' | 'coral'>('fish');
 	let count = $state(1);
 	let addedAt = $state(untrack(() => data.today));
@@ -39,14 +42,14 @@
 	<!-- phones; on desktop the header has the title -->
 	<FormBar title="Add livestock" cancelHref="/tanks/{data.tank.id}/livestock" saveLabel="Add" />
 	<div class="body">
-		{#if form?.error}<p class="banner banner-bad" role="alert">✕ {form.error}</p>{/if}
+		{#if r.message}<p class="banner banner-bad" role="alert">✕ {r.message}</p>{/if}
 		<div class="segmented" role="group" aria-label="Kind">
 			<label><input type="radio" name="kind" value="fish" bind:group={kind} />Fish</label>
 			<label><input type="radio" name="kind" value="invert" bind:group={kind} />Invert</label>
 			<label><input type="radio" name="kind" value="coral" bind:group={kind} />Coral</label>
 		</div>
 
-		{#key kind}<SpeciesInput {kind} water={data.water} initialName={form?.values?.name ?? ''} initialScientific={form?.values?.scientificName ?? ''} invalid={!!form?.error} onpick={(p) => (picked = p)} />{/key}
+		{#key kind}<SpeciesInput {kind} water={data.water} initialName={v('name')} initialScientific={v('scientificName')} invalid={!!r.message} onpick={(p) => (picked = p)} />{/key}
 		{#if care && (care.care || care.warnings.length)}
 			<div class="care" aria-live="polite">
 				{#if care.care}

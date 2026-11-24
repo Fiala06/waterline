@@ -8,7 +8,7 @@ describe('what a queued entry’s post came back as (#225)', () => {
 	});
 
 	it('is refused, with why, when the app itself said no', () => {
-		expect(syncOutcome({ status: 400 }, { type: 'failure', data: { errors: {} } })).toEqual({ kind: 'refused', message: "The server couldn't save this entry." });
+		expect(syncOutcome({ status: 400 }, { type: 'failure', data: { refused: { form: 'entry', message: '', errors: { amount: 'Enter an amount.' }, values: {} } } })).toEqual({ kind: 'refused', message: "The server couldn't save this entry." });
 		expect(syncOutcome({ status: 404 }, { type: 'error' })).toEqual({ kind: 'refused', message: 'Sync failed (404).' });
 		expect(syncOutcome({ status: 409 }, { type: 'error' })).toEqual({ kind: 'refused', message: 'Logged by another account. Sign in as them to sync it.' });
 		expect(syncOutcome({ status: 413 }, null)).toEqual({ kind: 'refused', message: 'Sync failed (413).' });
