@@ -51,6 +51,19 @@
 				<p class="banner banner-warn">▲ Google sign-in isn't set up yet. The admin can turn it on in Settings › Server settings.</p>
 			{/if}
 
+			{#if data.google && data.joining}
+				<!-- who can join, so a visitor knows before trying (#299); the request goes privately to the admin's contact -->
+				<p class="joining" data-testid="joining">
+					{#if data.joining === 'open'}New here? Signing in with Google makes your account.
+					{:else if data.joining === 'paused'}New accounts are paused for now. If you already have one, sign in as usual.
+					{:else if data.joining === 'invite'}New keepers join by invitation.
+					{:else}This server is private: only its owner signs in.{/if}
+				</p>
+				{#if data.contact && data.joining !== 'open'}
+					<p class="joining ask">To ask for access, email <a class="link" href="mailto:{data.contact}">{data.contact}</a></p>
+				{/if}
+			{/if}
+
 			{#if data.dev}
 				<form method="POST" action="?/dev" class="local">
 					<input type="hidden" name="redirectTo" value={data.redirectTo} />
@@ -117,6 +130,21 @@
 		font-size: 16px;
 		line-height: 1.5;
 		max-width: 300px;
+	}
+	.joining {
+		margin: 0;
+		font-size: 14px;
+		line-height: 1.5;
+		text-align: center;
+		color: var(--text-muted);
+	}
+	.joining.ask {
+		margin-top: -12px;
+	}
+	.joining.ask a {
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
 	}
 	.about-link {
 		margin: 0;

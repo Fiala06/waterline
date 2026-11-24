@@ -107,6 +107,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			mode: rules.mode,
 			list: rules.list.join('\n'),
 			shareInvites: s.shareInvites,
+			paused: s.signupPaused,
 			accessFromEnv: rules.from === 'env',
 			local: { on: !!local, username: local?.username ?? s.localAdminUsername ?? 'admin', fromApp: !!local?.fromApp, fromEnv: !!local?.fromEnv }
 		},
@@ -212,8 +213,10 @@ export const actions: Actions = {
 		if (Object.keys(errors).length) return fail(400, { accessErrors: errors });
 		// sharing a tank lets new people in too (#217): only asked with a list or invited people only
 		const shareInvites = form.get('shareInvites') === 'on';
-		setSettings({ adminEmail: adminEmail || null, signupMode: mode, allowedEmails: entries.join('\n') || null, shareInvites });
-		logger.info('settings', 'Who can sign in saved', { userId: locals.user!.id, mode, listed: entries.length });
+		// pausing new accounts (#299): only asked with anyone with a Google account
+		const signupPaused = mode === 'open' && form.get('signupPaused') === 'on';
+		setSettings({ adminEmail: adminEmail || null, signupMode: mode, allowedEmails: entries.join('\n') || null, shareInvites, signupPaused });
+		logger.info('settings', 'Who can sign in saved', { userId: locals.user!.id, mode, listed: entries.length, paused: signupPaused });
 		return { accessSaved: true };
 	},
 	/** The local admin login: a new username or password, or off (while Google can still let an admin in). */

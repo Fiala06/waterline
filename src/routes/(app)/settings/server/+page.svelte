@@ -234,6 +234,14 @@
 				<span class="hint">@family.example lets in everyone at that domain. Someone taken off is signed out on their next visit.</span>
 				{#if accessErrors.allowedEmails}<span class="error-text">✕ {accessErrors.allowedEmails}</span>{/if}
 			</div>
+			<div class="row pause-field">
+				<label for="a-pause" class="ttext"
+					><span class="tt">Pause new accounts</span><span class="td"
+						>Nobody new can make an account, and the sign-in page says so. Everyone who already has one keeps signing in, and so does anyone an admin invites under People.</span
+					></label
+				>
+				<span class="switch"><input id="a-pause" type="checkbox" name="signupPaused" defaultChecked={data.signIn.paused} /><span></span></span>
+			</div>
 			<div class="row share-field">
 				<label for="a-share" class="ttext"
 					><span class="tt">Sharing a tank invites people too</span><span class="td"
@@ -1032,6 +1040,13 @@
 	}
 	.access:has(input[name='signupMode'][value='list']:checked) .share-field,
 	.access:has(input[name='signupMode'][value='invited']:checked) .share-field {
+		display: flex;
+	}
+	/* pausing new accounts: only when anyone with a Google account may sign in (#299) */
+	.pause-field {
+		display: none;
+	}
+	.access:has(input[name='signupMode'][value='open']:checked) .pause-field {
 		display: flex;
 	}
 	.logs .chev {

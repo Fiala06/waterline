@@ -3,6 +3,8 @@ import { devLoginEnabled, googleEnabled, localAdminEnabled, signInWith } from '.
 import { loginBlockedMinutes, loginSucceeded, loginWaitSeconds, recordLoginFailure } from '$lib/server/rate-limit';
 import { safeReturn } from '$lib/server/redirect';
 import { setupNeeded } from '$lib/server/setup';
+import { joining } from '$lib/server/sign-in';
+import { getServerSettings } from '$lib/server/mail';
 import { logger } from '$lib/server/log';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -18,6 +20,9 @@ export const load: PageServerLoad = ({ url }) => {
 		showLocal: url.searchParams.has('local') || !googleEnabled(),
 		host: url.host,
 		redirectTo: safeReturn(url.searchParams.get('redirectTo')),
+		// how someone new gets an account here, and the admin's private address to ask for one (#299)
+		joining: joining(),
+		contact: getServerSettings().aboutContact?.trim() || null,
 		// after Settings › Delete account (#303)
 		deleted: url.searchParams.has('deleted'),
 		error: error

@@ -40,15 +40,31 @@ export function localAdminLogin(): { username: string; hashes: string[]; fromApp
 
 /**
  * Whether sharing a tank with someone not on the server lets them sign in too
- * (#217): never when sign-in is the admin's alone; always when anyone may, or
- * when an admin shares; otherwise only if the admin turned on "Sharing a tank
- * invites people" under Who can sign in.
+ * (#217): never when sign-in is the admin's alone; always when an admin
+ * shares, or when anyone may and new accounts aren't paused (#299); otherwise
+ * only if the admin turned on "Sharing a tank invites people" under Who can sign in.
  */
 export function shareMayInvite(sharer: { isAdmin: boolean }): boolean {
 	const s = getServerSettings();
 	const { mode } = signupRules(s);
 	if (mode === 'admin') return false;
-	return mode === 'open' || sharer.isAdmin || s.shareInvites;
+	if (sharer.isAdmin) return true;
+	// new accounts paused (#299): only an admin's share lets someone new in
+	if (mode === 'open') return !s.signupPaused;
+	return s.shareInvites;
+}
+
+/**
+ * How someone new gets an account here, for the sign-in page (#299): anyone
+ * with Google, nobody new for now, by invitation, or nobody but the admin.
+ * Null when Google sign-in isn't set up, since then nobody new can sign in at all.
+ */
+export function joining(): 'open' | 'paused' | 'invite' | 'private' | null {
+	if (!googleClient()) return null;
+	const s = getServerSettings();
+	const { mode } = signupRules(s);
+	if (mode === 'open') return s.signupPaused ? 'paused' : 'open';
+	return mode === 'admin' ? 'private' : 'invite';
 }
 
 /** An admin could sign in with Google: it's set up, for the admin's address or an admin who signed in with it before. */

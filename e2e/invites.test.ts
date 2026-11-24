@@ -23,6 +23,13 @@ test('invitations and People', async ({ page, browser }, info) => {
 	await page.locator('label', { hasText: 'Invited people only' }).click();
 	await expect(shareSwitch).toBeVisible();
 	await expect(shareSwitch).not.toBeChecked();
+	// #299: pausing new accounts is asked only when anyone with a Google account may sign in
+	const pauseSwitch = page.getByLabel(/Pause new accounts/);
+	await expect(pauseSwitch).toBeHidden();
+	await page.locator('label', { hasText: 'Anyone with a Google account' }).click();
+	await expect(pauseSwitch).toBeVisible();
+	await expect(pauseSwitch).not.toBeChecked();
+	await expect(shareSwitch).toBeHidden();
 	await page.reload();
 	await page.locator('a.row', { hasText: 'People' }).click();
 	await expect(page).toHaveURL(/\/settings\/server\/people$/);

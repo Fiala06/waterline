@@ -43,8 +43,14 @@ export const LOCAL_ADMIN_FALLBACK_EMAIL = 'admin@localhost';
 export function isEmailAllowed(email: string): boolean {
 	const e = email.trim().toLowerCase();
 	if (e === adminEmail() || e === LOCAL_ADMIN_FALLBACK_EMAIL) return true;
-	const rules = signupRules(getServerSettings());
-	if (rules.mode === 'open' || listAllows(rules.list, e)) return true;
+	const s = getServerSettings();
+	const rules = signupRules(s);
+	if (listAllows(rules.list, e)) return true;
+	if (rules.mode === 'open') {
+		if (!s.signupPaused) return true;
+		// new accounts paused (#299): anyone who already has one keeps signing in
+		if (db.select({ id: users.id }).from(users).where(eq(users.email, e)).get()) return true;
+	}
 	// an invitation counts whenever people besides the admin may sign in at all
 	if (rules.mode !== 'admin' && inviteAllows(e)) return true;
 	// an admin always can, so changing the admin's address never locks them out

@@ -1,0 +1,1 @@
+ALTER TABLE `server_settings` ADD `signup_paused` integer DEFAULT false NOT NULL;

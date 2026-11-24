@@ -525,6 +525,8 @@ export const serverSettings = sqliteTable('server_settings', {
 	allowedEmails: text('allowed_emails'), // one email or @domain per line
 	// with the admin and a list, or invited people only: whether sharing a tank lets a new address sign in too (#217)
 	shareInvites: integer('share_invites', { mode: 'boolean' }).notNull().default(false),
+	// with anyone with a Google account (#299): nobody new makes an account; people who have one, the list and admins' invitations still sign in
+	signupPaused: integer('signup_paused', { mode: 'boolean' }).notNull().default(false),
 	localAdminUsername: text('local_admin_username'),
 	localAdminPasswordHash: text('local_admin_password_hash'), // scrypt, like LOCAL_ADMIN_PASSWORD_HASH
 	scheduledEmails: integer('scheduled_emails', { mode: 'boolean' }).notNull().default(true),

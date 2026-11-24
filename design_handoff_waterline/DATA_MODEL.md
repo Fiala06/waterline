@@ -261,6 +261,8 @@ server_settings  singleton: email_provider?(mailgun|smtp), mailgun_api_key_enc?,
                  google_client_id?, google_client_secret_enc?, admin_email?,
                  signup_mode?(admin|list|invited|open), allowed_emails?, share_invites (whether
                  sharing a tank lets a new address sign in, with list or invited; admins' shares do),
+                 signup_paused (#299: with open, nobody new makes an account; people who have one,
+                 the list, admins' invitations and admins' shares still sign in),
                  local_admin_username?, local_admin_password_hash?,
                  allow_public_pages, public_home_enabled, landing_enabled, landing_access? (#300: the product
                  homepage at /welcome for signed-out visitors, and the admin's line on who can join), about_operator?,

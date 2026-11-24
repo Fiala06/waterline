@@ -132,6 +132,48 @@ describe('whether sharing a tank may let a new address in (#217)', async () => {
 	});
 });
 
+describe('pausing new accounts (#299)', async () => {
+	const { joining, shareMayInvite } = await import('./sign-in');
+	const { encrypt } = await import('./secrets');
+	const setPaused = (signupPaused: boolean) => db.update(serverSettings).set({ signupPaused }).where(eq(serverSettings.id, 1)).run();
+
+	it('keeps everyone who has an account and admins’ invitations, and turns away anyone new', () => {
+		setMode('open');
+		upsertUser({ email: 'tester@example.com', name: 'Tester' });
+		expect(isEmailAllowed('stranger@example.com')).toBe(true);
+		setPaused(true);
+		expect(isEmailAllowed('stranger@example.com')).toBe(false);
+		expect(isEmailAllowed('Tester@example.com')).toBe(true);
+		expect(isEmailAllowed('owner@example.com')).toBe(true);
+		// an admin's invitation still lets someone new in; a member's share doesn't
+		const owner = upsertUser({ email: 'owner@example.com', name: 'Owner' });
+		createInvite('invited-while-paused@example.com', owner.id);
+		expect(isEmailAllowed('invited-while-paused@example.com')).toBe(true);
+		expect(shareMayInvite({ isAdmin: false })).toBe(false);
+		expect(shareMayInvite({ isAdmin: true })).toBe(true);
+		setPaused(false);
+		expect(isEmailAllowed('stranger@example.com')).toBe(true);
+	});
+
+	it('tells the sign-in page how someone new joins, once Google sign-in is set up', () => {
+		db.update(serverSettings).set({ googleClientId: null, googleClientSecretEnc: null }).where(eq(serverSettings.id, 1)).run();
+		setMode('open');
+		expect(joining()).toBeNull();
+		db.update(serverSettings).set({ googleClientId: 'id.apps.googleusercontent.com', googleClientSecretEnc: encrypt('secret') }).where(eq(serverSettings.id, 1)).run();
+		expect(joining()).toBe('open');
+		setPaused(true);
+		expect(joining()).toBe('paused');
+		setPaused(false);
+		setMode('invited');
+		expect(joining()).toBe('invite');
+		setMode('list', 'me@example.com');
+		expect(joining()).toBe('invite');
+		setMode('admin');
+		expect(joining()).toBe('private');
+		db.update(serverSettings).set({ googleClientId: null, googleClientSecretEnc: null }).where(eq(serverSettings.id, 1)).run();
+	});
+});
+
 describe('people (#27)', () => {
 	it('keeps at least one admin, signs out everywhere and removes a person with their invitation', async () => {
 		setMode('invited');
