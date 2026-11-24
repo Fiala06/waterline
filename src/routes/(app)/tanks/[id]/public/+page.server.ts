@@ -4,7 +4,7 @@ import { db } from '$lib/server/db';
 import { photos } from '$lib/server/db/schema';
 import { setFlash } from '$lib/server/flash';
 import { optStr, refuse, str } from '$lib/server/forms';
-import { displayNameFor, getPublicPage, ogVersion, publicSettings, slugify, updatePublicPage, viewsThisWeek } from '$lib/server/public';
+import { displayNameFor, getPublicPage, ogVersion, publicSettings, publicView, slugify, updatePublicPage, viewsThisWeek } from '$lib/server/public';
 import { getTank } from '$lib/server/tanks';
 import { logger } from '$lib/server/log';
 import type { Actions, PageServerLoad } from './$types';
@@ -19,7 +19,7 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 	return {
 		tank: { id: tank.id, name: tank.name, hasCover: !!tank.coverPhotoId },
 		page,
-		ogVersion: ogVersion(page, tank),
+		ogVersion: ogVersion(page, tank, publicView(page, tank, user)),
 		allowed: s.allowPublicPages,
 		base,
 		host: new URL(base).host,

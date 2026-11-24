@@ -444,11 +444,29 @@ export function recordView(tankId: string, userAgent: string | null) {
 	db.update(publicPages).set({ viewCount: sql`${publicPages.viewCount} + 1` }).where(eq(publicPages.tankId, tankId)).run();
 }
 
-/** Changes whenever the share image would look different, for ?v= cache-busting. */
-export function ogVersion(page: PublicPage, tank: Tank) {
-	const last = db.select({ id: tests.id, at: tests.takenAt }).from(tests).where(eq(tests.tankId, tank.id)).orderBy(desc(tests.takenAt)).get();
+/**
+ * Changes whenever the share image would look different, for ?v= cache-busting and
+ * the image's cache on disk: everything the card draws (#335: edited readings,
+ * targets, units, the start date and "tested today" were left out, so it went stale).
+ */
+export function ogVersion(page: PublicPage, tank: Tank, view: PublicView) {
 	return createHash('sha1')
-		.update([tank.name, tank.type, tank.nominalVolumeL, tank.coverPhotoId, tank.coverX, tank.coverY, page.ogPhotoId, page.ogPlain, page.showReadings, last?.id, last?.at].join('|'))
+		.update(
+			JSON.stringify([
+				view.name,
+				view.type,
+				view.volume,
+				view.since,
+				view.tested,
+				view.readings.map((r) => [r.key, r.name, r.value, r.unit, r.level, r.status]),
+				view.summary?.bad ?? null,
+				tank.coverPhotoId,
+				tank.coverX,
+				tank.coverY,
+				page.ogPhotoId,
+				page.ogPlain
+			])
+		)
 		.digest('hex')
 		.slice(0, 10);
 }

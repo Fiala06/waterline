@@ -35,7 +35,7 @@ export const load: PageServerLoad = ({ params, request, url, locals }) => {
 			description,
 			canonical,
 			indexable: page.indexable,
-			image: `${base}/t/${page.slug}/og.png?v=${ogVersion(page, tank)}`,
+			image: `${base}/t/${page.slug}/og.png?v=${ogVersion(page, tank, view)}`,
 			imageAlt: tankCardAlt(view),
 			siteName: 'Waterline'
 		},

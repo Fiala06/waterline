@@ -19,6 +19,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 - **Keyboard shortcuts.** Ctrl+Enter (⌘↵) saves the form you're in or the page's log form, never the first button on the dashboard or a page behind an open sheet. Someone who can only view a shared tank isn't offered log keys or the palette's log actions: [Dashboard](/).
 - **Cycling from Tank setup.** Ticking or unticking "This tank is still cycling" in Tank setup now notes the cycle's start or end in History, so a restarted cycle only counts its own tests: [Tank setup](/tanks/current/settings).
 - **Safer admin sign-in.** The limit on wrong admin passwords can't be got round by sending many at once, and a failed sign-in no longer writes the typed username to the server log: [Server settings](/settings/server).
+- **Fresh share images.** The picture shown when your public page is shared now updates when readings are edited, targets, units or the start date change, and as "tested today" gets older: [Public page](/tanks/current/public).
 
 ## 1.23.4 · 2026-11-21
 
