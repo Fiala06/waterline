@@ -16,6 +16,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 - **Check again, on a shared tank.** Someone who can log on a tank shared with them can save an Observation with its "Remind me to check again" reminder, instead of getting an error after it was saved: [History](/history).
 - **Entries save whatever happened to their reminder.** A water test or entry whose reminder was deleted in the meantime, say while it waited offline, still saves with its photos and alerts: [History](/history).
 - **Maintenance and its reminder.** Logging maintenance on an item marks its service reminder done once, tied to the entry, and the next date counts from your own day rather than UTC's: [Tasks](/tasks).
+- **Keyboard shortcuts.** Ctrl+Enter (⌘↵) saves the form you're in or the page's log form, never the first button on the dashboard or a page behind an open sheet. Someone who can only view a shared tank isn't offered log keys or the palette's log actions: [Dashboard](/).
 
 ## 1.23.4 · 2026-11-21
 

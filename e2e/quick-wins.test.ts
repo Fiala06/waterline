@@ -46,6 +46,22 @@ test('Ctrl+Enter saves the water test', async ({ page }, info) => {
 	await expect(page.getByRole('status')).toContainText('Saved 1 reading');
 });
 
+// #332: with focus outside a form, Ctrl+Enter doesn't submit the dashboard's first button
+test('Ctrl+Enter on the dashboard marks nothing done', async ({ page }, info) => {
+	test.skip(info.project.name !== 'desktop', 'a keyboard shortcut');
+	await newKeeperWithTank(page, 'ctrl-enter-dash');
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	await open(page, `/?tank=${tankId}`);
+	const posts: string[] = [];
+	page.on('request', (r) => r.method() === 'POST' && posts.push(r.url()));
+	await page.locator('main a[href]').first().focus();
+	await page.keyboard.press('Control+Enter');
+	await page.locator('body').click({ position: { x: 1, y: 1 } });
+	await page.keyboard.press('Control+Enter');
+	await page.waitForTimeout(300);
+	expect(posts).toEqual([]);
+});
+
 // #255: a double click on Mark done marks it done once
 test('a double click on Mark done records one completion', async ({ page }, info) => {
 	test.skip(info.project.name !== 'desktop', 'one size is enough');

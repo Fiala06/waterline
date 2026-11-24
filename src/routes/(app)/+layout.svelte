@@ -311,8 +311,16 @@
 			active instanceof HTMLButtonElement || active instanceof HTMLInputElement || active instanceof HTMLSelectElement || active instanceof HTMLTextAreaElement
 				? active.form
 				: active?.closest('form');
-		if (!form) form = [...document.querySelectorAll<HTMLFormElement>('main form')].find((f) => f.method === 'post' && primary(f) && shown(f));
+		// focus outside a form: only a page's own form that asks for it (a log form, one with a
+		// FormBar), never the first Done or Mark as cycling on the page (#332)
+		if (!form)
+			form = [...document.querySelectorAll('main [data-save-shortcut]')]
+				.map((el) => (el instanceof HTMLFormElement ? el : el.closest('form')))
+				.find((f): f is HTMLFormElement => !!f && f.method === 'post' && !!primary(f) && shown(f));
 		if (!form || !shown(form)) return false;
+		// with a sheet or the palette open, never the form behind it
+		const open = [...document.querySelectorAll('dialog[open]')];
+		if (open.length && !open.some((d) => d.contains(form))) return false;
 		const submitter = primary(form);
 		if (submitter?.disabled) return true;
 		form.requestSubmit(submitter);
@@ -369,6 +377,8 @@
 				togglePin();
 				return;
 			case '+':
+				// Quick add logs: not for someone who can only view the tank (#344)
+				if (current?.role === 'view') return;
 				e.preventDefault();
 				ui.quickAdd = true;
 				return;
@@ -380,7 +390,7 @@
 			goTimer = setTimeout(() => (goPending = false), 1500);
 			return;
 		}
-		if (current && !e.shiftKey) {
+		if (current && current.role !== 'view' && !e.shiftKey) {
 			const kind = ({ t: 'test', w: 'water_change', d: 'dosing', n: 'note' } as const)[lower as 't' | 'w' | 'd' | 'n'];
 			if (kind) {
 				e.preventDefault();

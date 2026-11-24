@@ -65,6 +65,17 @@ test('share a tank with someone', async ({ page, browser }, info) => {
 	await expect(theirs.getByRole('link', { name: /Log water test/ })).toHaveCount(0);
 	const refusedLog = await theirs.request.get(`/entries/test/new?tank=${tankId}`);
 	expect(refusedLog.status()).toBe(403);
+	// #344: nor the log keys or the palette's log actions
+	if (info.project.name === 'desktop') {
+		await theirs.keyboard.press('t');
+		await theirs.keyboard.press('+');
+		await expect(theirs).toHaveURL(new RegExp(`/\\?tank=${tankId}$`));
+		await expect(theirs.getByRole('dialog', { name: 'Quick add' })).toHaveCount(0);
+		await theirs.keyboard.press('Control+k');
+		await expect(theirs.getByRole('option', { name: /History/ }).first()).toBeVisible();
+		await expect(theirs.getByRole('option', { name: /Log water test/ })).toHaveCount(0);
+		await theirs.keyboard.press('Escape');
+	}
 
 	// Remove, with Undo
 	await page.getByRole('button', { name: `Remove ${helperEmail}` }).click();
