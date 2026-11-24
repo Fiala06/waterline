@@ -11,6 +11,7 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+- **Photos open faster.** Opening a photo, and stepping to the one before or after, no longer reads the tank's whole gallery first, which you'll notice on a tank with years of photos: [Photos](/photos).
 - **A quicker Tanks page.** With many tanks, or tanks shared with you, the Tanks page opens faster: it gathers every tank's status, last test and last water change at once: [Tanks](/tanks).
 - **A quicker public page.** Your tank's public page, its download and its share picture do less work for each visitor, so they open faster on a busy server: [Public page](/tanks/current/public).
 - **Quicker with a year of sensor data.** Clearing out old sensor samples, removing a parameter or an assistant connection, and opening Tasks no longer read through every sample or every completion, so the app stays responsive as the log grows: [Tasks](/tasks).

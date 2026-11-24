@@ -3,7 +3,7 @@ import { eventKindLabel, eventTitle } from '$lib/events';
 import { utcToZoned } from '$lib/time';
 import { setFlash } from '$lib/server/flash';
 import { parseWhen } from '$lib/server/forms';
-import { deletePhoto, getPhoto, setCover, setInTimeline, setPhotoDate, tankPhotos } from '$lib/server/photos';
+import { deletePhoto, getPhoto, isTankPhoto, photoEntry, photoNeighbours, setCover, setInTimeline, setPhotoDate } from '$lib/server/photos';
 import { getTank, updateTank } from '$lib/server/tanks';
 import { getLivestock, getPlant, listLivestock, listPlants, photoPets, tagPhoto, updateLivestockDetails, updatePlant } from '$lib/server/specs';
 import { livestockLabel } from '$lib/livestock';
@@ -14,9 +14,9 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 	const user = locals.user!;
 	const photo = getPhoto(user.id, params.id);
 	const tank = getTank(user.id, photo.tankId);
-	const all = tankPhotos(user.id, tank.id);
-	const i = all.findIndex((r) => r.photo.id === photo.id);
-	const { event, test } = all[i];
+	// its place in the gallery and its entry, without reading every photo (#354)
+	const { prev, next, index, total } = photoNeighbours(photo);
+	const { event, test } = photoEntry(photo);
 	// "Mon Sep 22, 6:40 PM" (13b, D8)
 	const when = new Date(photo.takenAt)
 		.toLocaleString('en-US', {
@@ -40,11 +40,11 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 			: null;
 	// "In this photo": the tank's named pets, and any already tagged (even one that has left)
 	const tagged = new Set(photoPets(photo.id));
-	const pets = [...listLivestock(user.id, tank.id), ...listLivestock(user.id, tank.id, { removed: true })]
+	const inTank = listLivestock(user.id, tank.id);
+	const pets = [...inTank, ...listLivestock(user.id, tank.id, { removed: true })]
 		.filter((l) => (l.nickname && !l.removedAt) || tagged.has(l.id))
 		.map((l) => ({ id: l.id, name: l.nickname ?? l.commonName, species: l.commonName, tagged: tagged.has(l.id) }));
 	// "Use as the photo for": the tank's plants and animals, and which already use this one
-	const inTank = listLivestock(user.id, tank.id);
 	const plantList = listPlants(user.id, tank.id);
 	const subjects = [
 		...plantList.map((p) => ({ value: `plant:${p.id}`, label: p.name, group: 'Plants', uses: p.photoId === photo.id })),
@@ -58,9 +58,9 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 			: null,
 		photo: { id: photo.id, width: photo.width, height: photo.height, isCover: tank.coverPhotoId === photo.id, inTimeline: photo.inTimeline },
 		tankId: tank.id,
-		position: `${i + 1} of ${all.length}`,
-		prev: i > 0 ? all[i - 1].photo.id : null,
-		next: i < all.length - 1 ? all[i + 1].photo.id : null,
+		position: `${index + 1} of ${total}`,
+		prev,
+		next,
 		when: entry ? `${when} · ${entry.kind}` : when,
 		// Change date (#42): the date taken as the keeper's wall clock, to fix afterwards
 		taken: utcToZoned(photo.takenAt, user.timeZone),
@@ -91,7 +91,7 @@ export const actions: Actions = {
 		const [prev = '', x = '50', y = '50'] = String((await request.formData()).get('previous') ?? '').split(',');
 		const pct = (s: string) => Math.min(100, Math.max(0, Number(s) || 50));
 		// only a photo of this tank can be its cover again
-		const back = prev && tankPhotos(user.id, photo.tankId).some((r) => r.photo.id === prev) ? prev : null;
+		const back = prev && isTankPhoto(photo.tankId, prev) ? prev : null;
 		updateTank(user.id, photo.tankId, { coverPhotoId: back, coverX: pct(x), coverY: pct(y) });
 		setFlash(cookies, back ? 'Cover put back' : 'Cover removed');
 		redirect(303, `/photos/${params.id}`);

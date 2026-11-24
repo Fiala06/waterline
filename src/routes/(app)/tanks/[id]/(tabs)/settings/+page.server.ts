@@ -3,7 +3,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import { formatNumber, toDisplay, unitLabel } from '$lib/units';
 import { setFlash } from '$lib/server/flash';
 import { parseTankForm } from '$lib/server/forms';
-import { datePhotos, preparePhotos, setCover, storePhotos, tankPhotos } from '$lib/server/photos';
+import { datePhotos, isTankPhoto, preparePhotos, setCover, storePhotos, tankPhotos } from '$lib/server/photos';
 import { dateInZone, fmtDate } from '$lib/time';
 import { db } from '$lib/server/db';
 import { publicPages } from '$lib/server/db/schema';
@@ -116,7 +116,7 @@ export const actions: Actions = {
 		if (photo) setCover(user.id, photo.id);
 		// or one of the tank's own photos, picked under Choose from photos (an upload wins)
 		const chosen = String(form.get('coverPhotoId') ?? '');
-		if (!photo && chosen && tankPhotos(user.id, params.id).some((r) => r.photo.id === chosen)) setCover(user.id, chosen);
+		if (!photo && chosen && isTankPhoto(params.id, chosen)) setCover(user.id, chosen);
 		// where the cover sits in its frame, as dragged (a new photo's too)
 		if (form.has('coverX') || form.has('coverY')) {
 			updateTank(user.id, params.id, { coverX: clampPct(form.get('coverX')), coverY: clampPct(form.get('coverY')) });

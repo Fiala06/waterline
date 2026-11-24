@@ -1,7 +1,7 @@
 // Photos on disk in DATA_DIR/photos/<tankId>/: a 2048px full-size image and a
 // 400px square thumbnail, both JPEG. EXIF (including GPS) is stripped.
 import { error } from '@sveltejs/kit';
-import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, lt, or, sql } from 'drizzle-orm';
 import { removeFiles, writeThen } from './files';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -313,6 +313,37 @@ export function tankPhotos(userId: string, tankId: string) {
 		.where(eq(photos.tankId, tankId))
 		.orderBy(desc(photos.takenAt), desc(photos.id))
 		.all();
+}
+
+/**
+ * Where a photo sits in its tank's gallery (newest first, as tankPhotos orders it),
+ * and the photos either side, without reading the gallery (#354).
+ */
+export function photoNeighbours(photo: Pick<Photo, 'id' | 'tankId' | 'takenAt'>) {
+	const newer = or(gt(photos.takenAt, photo.takenAt), and(eq(photos.takenAt, photo.takenAt), gt(photos.id, photo.id)));
+	const older = or(lt(photos.takenAt, photo.takenAt), and(eq(photos.takenAt, photo.takenAt), lt(photos.id, photo.id)));
+	const mine = eq(photos.tankId, photo.tankId);
+	const prev = db.select({ id: photos.id }).from(photos).where(and(mine, newer)).orderBy(asc(photos.takenAt), asc(photos.id)).get();
+	const next = db.select({ id: photos.id }).from(photos).where(and(mine, older)).orderBy(desc(photos.takenAt), desc(photos.id)).get();
+	const counts = db
+		.select({ total: sql<number>`count(*)`, before: sql<number>`coalesce(sum(${newer}), 0)` })
+		.from(photos)
+		.where(mine)
+		.get();
+	return { prev: prev?.id ?? null, next: next?.id ?? null, index: counts?.before ?? 0, total: counts?.total ?? 1 };
+}
+
+/** The entry a photo belongs to: a log entry's or a water test's, if either. */
+export function photoEntry(photo: Pick<Photo, 'eventId' | 'testId'>) {
+	return {
+		event: photo.eventId ? (db.select().from(events).where(eq(events.id, photo.eventId)).get() ?? null) : null,
+		test: photo.testId ? (db.select().from(tests).where(eq(tests.id, photo.testId)).get() ?? null) : null
+	};
+}
+
+/** Whether a photo is one of this tank's, for a choice sent back from a form. */
+export function isTankPhoto(tankId: string, photoId: string): boolean {
+	return !!db.select({ id: photos.id }).from(photos).where(and(eq(photos.id, photoId), eq(photos.tankId, tankId))).get();
 }
 
 /** In or out of the tank's timeline (#26). */

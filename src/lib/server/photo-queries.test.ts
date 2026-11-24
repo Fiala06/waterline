@@ -11,7 +11,7 @@ const dir = mkdtempSync(join(tmpdir(), 'wl-photo-queries-'));
 vi.mock('$env/dynamic/private', () => ({ env: { DATA_DIR: dir, OPEN_SIGNUP: 'true' } }));
 const { db } = await import('./db');
 const { events, photos, tests } = await import('./db/schema');
-const { entryPhotos, removeEntryPhotoFiles, tankPhotos, thumbsFor } = await import('./photos');
+const { entryPhotos, isTankPhoto, photoNeighbours, removeEntryPhotoFiles, tankPhotos, thumbsFor } = await import('./photos');
 const { timelineEntries } = await import('./timeline');
 const { createTank } = await import('./tanks');
 const { upsertUser } = await import('./users');
@@ -111,5 +111,27 @@ describe('photo queries (#119)', () => {
 		const [p] = plans(q);
 		expect(p).toMatch(/photos USING INDEX photos_tank_taken/);
 		expect(p).not.toMatch(/SCAN photos(?! USING)/);
+	});
+
+	it('a photo’s place and neighbours match the gallery’s order, read by the index (#354)', () => {
+		// three taken in the same second, ordered by id as the gallery orders them
+		const same = iso(t0 + 500.5 * 86_400_000);
+		for (const n of ['a', 'b', 'c']) db.insert(photos).values({ tankId: tank.id, path: `same-${n}.jpg`, thumbPath: `same-${n}.jpg`, width: 1, height: 1, takenAt: same }).run();
+		const all = tankPhotos(user.id, tank.id).map((r) => r.photo);
+		for (const i of [0, 1, 499, 500, 501, 502, all.length - 1]) {
+			expect(photoNeighbours(all[i])).toEqual({ prev: all[i - 1]?.id ?? null, next: all[i + 1]?.id ?? null, index: i, total: all.length });
+		}
+		const q = photoQueries(() => photoNeighbours(all[500]));
+		for (const p of plans(q)) {
+			expect(p).toMatch(/photos USING (COVERING )?INDEX photos_tank_taken/);
+			expect(p).not.toMatch(/SCAN photos(?! USING)/);
+		}
+	});
+
+	it('a photo belongs to its own tank only', () => {
+		const [mine] = tankPhotos(user.id, tank.id);
+		expect(isTankPhoto(tank.id, mine.photo.id)).toBe(true);
+		expect(isTankPhoto(tanks[1].id, mine.photo.id)).toBe(false);
+		expect(isTankPhoto(tank.id, 'nope')).toBe(false);
 	});
 });
