@@ -8,6 +8,7 @@ import { setFlash } from '$lib/server/flash';
 import { str } from '$lib/server/forms';
 import { createInvite, revokeShareInvite, validEmail } from '$lib/server/invites';
 import { logger } from '$lib/server/log';
+import { allowRate } from '$lib/server/rate-limit';
 import { emailConfigured, getServerSettings, MailError, sendMail } from '$lib/server/mail';
 import { shareEmail } from '$lib/server/mail/templates';
 import { getMember, hasAccess, inviteMember, listMembers, MEMBER_INVITE_DAYS, pendingShares, removeMember, resendMember, restoreMember, setMemberRole } from '$lib/server/members';
@@ -42,8 +43,16 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
 	};
 };
 
-async function sendShare(origin: string, to: string, token: string, inviter: string, tankName: string, role: TankRole, newToServer: boolean): Promise<'sent' | string | null> {
+/** Invitation emails one person may send in an hour (#341): past it, the share is made and its link is to copy, so the server's mail can't be used to send many. */
+const SHARE_EMAILS_PER_HOUR = 20;
+const SHARE_LIMIT_MESSAGE = "You've sent a lot of invitations in the last hour, so this one wasn't emailed. Copy the link and send it yourself.";
+
+async function sendShare(userId: string, origin: string, to: string, token: string, inviter: string, tankName: string, role: TankRole, newToServer: boolean): Promise<'sent' | string | null> {
 	if (!emailConfigured()) return null;
+	if (!allowRate(`share:${userId}`, SHARE_EMAILS_PER_HOUR)) {
+		logger.warn('email', 'Share invitation not emailed: too many in the last hour', { userId });
+		return SHARE_LIMIT_MESSAGE;
+	}
 	const host = origin.replace(/^https?:\/\//, '');
 	const mail = shareEmail({
 		host,
@@ -83,7 +92,7 @@ export const actions: Actions = {
 		const origin = (env.ORIGIN || url.origin).replace(/\/+$/, '');
 		const inviter = user.displayName || user.email;
 		if (letsIn) createInvite(email, user.id);
-		const sent = await sendShare(origin, email, token, inviter, tank.name, role, letsIn);
+		const sent = await sendShare(user.id, origin, email, token, inviter, tank.name, role, letsIn);
 		logger.info('settings', `${tank.name} shared with ${email} (${role})${sent === 'sent' ? ' by email' : ' (link to copy)'}`, { userId: user.id, tankId: tank.id });
 		return { invited: { id: member.id, email, link: `${origin}/share/${token}`, sent: sent === 'sent', error: sent && sent !== 'sent' ? sent : null } };
 	},
@@ -96,7 +105,7 @@ export const actions: Actions = {
 		// a fresh week for the way onto the server that came with it, too (#217)
 		const letsIn = !getUserByEmail(member.email) && !isEmailAllowed(member.email) && shareMayInvite(user);
 		if (letsIn) createInvite(member.email, user.id);
-		const sent = await sendShare(origin, member.email, token, user.displayName || user.email, tank.name, member.role, letsIn);
+		const sent = await sendShare(user.id, origin, member.email, token, user.displayName || user.email, tank.name, member.role, letsIn);
 		return { invited: { id: member.id, email: member.email, link: `${origin}/share/${token}`, sent: sent === 'sent', error: sent && sent !== 'sent' ? sent : null } };
 	},
 	role: async ({ request, locals, params, cookies }) => {

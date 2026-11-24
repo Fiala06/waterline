@@ -111,3 +111,21 @@ test('share a tank with someone', async ({ page, browser }, info) => {
 	void ownerEmail;
 	void jpeg;
 });
+
+// #341: past 20 invitation emails in an hour, a share is still made but its link is to copy, not emailed
+test('a burst of invitations stops emailing, and the link is there to copy', async ({ page }, info) => {
+	test.skip(info.project.name !== 'desktop', 'one size is enough');
+	await newKeeperWithTank(page, 'share-burst');
+	const tankId = new URL(page.url()).searchParams.get('tank')!;
+	const origin = new URL(page.url()).origin;
+	for (let i = 0; i < 20; i++) {
+		const res = await page.request.post(`/tanks/${tankId}/sharing?/invite`, { headers: { origin, 'x-sveltekit-action': 'true' }, form: { email: `burst-${i}-${Date.now()}@example.com`, role: 'view' } });
+		expect(await res.json()).toMatchObject({ type: 'success' });
+	}
+	await open(page, `/tanks/${tankId}/sharing`);
+	const email = `burst-last-${Date.now()}@example.com`;
+	await page.getByLabel('Email').fill(email);
+	await page.getByRole('button', { name: 'Send invite' }).click();
+	await expect(page.getByRole('status').filter({ hasText: 'invitations' })).toContainText("You've sent a lot of invitations in the last hour, so this one wasn't emailed. Copy the link and send it yourself.");
+	await expect(page.getByLabel('Invite link')).toHaveValue(/\/share\//);
+});
