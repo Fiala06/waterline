@@ -159,7 +159,7 @@ test('pet photos: tag one from the viewer, its gallery, and the public page swit
 	await saved;
 	await expect(page.getByText('✓ Public page saved')).toBeVisible();
 	await v.goto(`/t/${slug}`);
-	await expect(v.locator('section#life th', { hasText: 'Captain · Betta' })).toBeVisible();
+	await expect(v.locator('section#life h3', { hasText: 'Captain · Betta' })).toBeVisible();
 	await expect(v.locator(`img[src*="${photoId}"]`).first()).toBeAttached();
 	expect((await v.request.get(`/p/${slug}/${photoId}?size=thumb`)).status()).toBe(200);
 	await visitor.close();

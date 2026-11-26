@@ -90,7 +90,7 @@ test('sensor readings over the API', async ({ page }, info) => {
 	await expect(trends.locator('svg polyline.sensor')).toHaveCount(1);
 	await expect(trends.locator('.legend')).toContainText('Sensor');
 	// its reading says Live, with when; the header's time stays the latest test's
-	await expect(page.locator('#summary li, #summary .arow').filter({ hasText: 'Temp' })).toContainText(/● Live · \d{1,2}:\d{2} [AP]M/);
+	await expect(page.locator('#summary .tile').filter({ hasText: 'Temp' })).toContainText(/● Live · \d{1,2}:\d{2} [AP]M/);
 	await expect(page.locator('.by')).toContainText(/Last water test today, \d{1,2}:\d{2} [AP]M/);
 
 	await open(page, '/settings/sensors');

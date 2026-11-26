@@ -23,6 +23,7 @@ import { equipment, livestock, plants, tasks, type Event, type PublicPage, type 
 import { eventsSince, latestReadings, testsSince } from './logs';
 import { scheduledItems } from './specs';
 import { careFor } from './species-care';
+import { lookupName } from './stock-photos';
 import { displaySamples, latestSamples, sampleSeries } from './sensors';
 import { bySpecies, livestockLabel, speciesKey } from '$lib/livestock';
 import { listParams } from './tanks';
@@ -377,8 +378,8 @@ export function publicDetail(page: PublicPage, tank: Tank, owner: User, opts: { 
 	];
 	// with names: each group, then its pets by name ("Captain · Betta"); without, pets count with their species
 	const animals = names
-		? bySpecies(rows).map((l) => ({ id: l.id, name: livestockLabel(l), scientific: l.scientificName, count: l.count, since: l.addedAt ? fmtDate(l.addedAt) : null }))
-		: groups.map((g) => ({ id: g.id, name: g.name, scientific: g.s, count: g.count, since: g.added ? fmtDate(g.added) : null }));
+		? bySpecies(rows).map((l) => ({ id: l.id, name: livestockLabel(l), scientific: l.scientificName, count: l.count, since: l.addedAt ? fmtDate(l.addedAt) : null, species: l.commonName, lookup: lookupName(l.scientificName, l.commonName) }))
+		: groups.map((g) => ({ id: g.id, name: g.name, scientific: g.s, count: g.count, since: g.added ? fmtDate(g.added) : null, species: g.name, lookup: lookupName(g.s, g.name) }));
 	const losses =
 		page.showLivestock && page.showActivity
 			? evs.filter(isLoss).map((e) => ({ day: fmtDate(dayOf(e.occurredAt)), text: eventTitle(e, prefs).replace(/ · loss$/, ''), note: details ? (e.note?.trim() ?? null) : null }))
@@ -390,7 +391,7 @@ export function publicDetail(page: PublicPage, tank: Tank, owner: User, opts: { 
 				.from(plants)
 				.where(and(eq(plants.tankId, tank.id), isNull(plants.removedAt)))
 				.all()
-				.map((p) => ({ id: p.id, name: p.name, position: p.position }))
+				.map((p) => ({ id: p.id, name: p.name, scientific: p.scientificName, position: p.position, lookup: lookupName(p.scientificName, p.name) }))
 		: [];
 	const care = groups
 		.map((l) => {

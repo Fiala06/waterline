@@ -33,7 +33,11 @@
 	// change. Built for someone diagnosing a problem: "ammonia jumped the day the light
 	// and the wood changed" should be visible without reading the log. Sized to its box;
 	// each mark is focusable and names itself, and the chosen one's details show under it.
+	// Lanes that stayed in range all period fold to one line each, with a small trend: a tap
+	// opens the full chart, and "Show all as charts" opens them all (the full ones stay full).
+	import { onMount } from 'svelte';
 	import { chartDomain } from '$lib/charts';
+	import Sparkline from './Sparkline.svelte';
 	import { formatNumber } from '$lib/units';
 	import { timeScale, valueScale } from './trend-chart';
 
@@ -105,19 +109,25 @@
 			return { ...c, cx, cy: row ? 30 : 11 };
 		});
 	});
+	// a lane needs its full chart when its latest reading or any in the period is near or out of range
+	const needsLook = (l: Lane) => l.level === 'bad' || l.level === 'warn' || l.points.some((p) => p.level === 'bad' || p.level === 'warn');
+	const full = $derived(lanes.filter(needsLook));
+	const calm = $derived(lanes.filter((l) => !needsLook(l)));
+	let allOpen = $state(false);
+	let mounted = $state(false);
+	onMount(() => (mounted = true));
 	const hasEvents = $derived(markers.waterChanges.length + markers.doses.length + markers.changes.length > 0);
 </script>
 
-<div class="lanes">
-	{#each lanes as l (l.id)}
+{#snippet lane(l: Lane, label: boolean)}
 		{@const band = bandRect(l)}
 		{@const d = dom(l)}
-		<div class="lane">
-			<div class="lab">
+		<div class="lane" class:nolab={!label}>
+			{#if label}<div class="lab">
 				<span class="ln">{l.name}</span>
 				<span class="lt">{l.target ? `target ${l.target}` : 'no target'}</span>
 				{#if l.latest}<span class="lv status-{l.level}">{l.latest} <span class="ls">{l.status}</span></span>{/if}
-			</div>
+			</div>{:else}<div class="lab"></div>{/if}
 			<div class="plot">
 				<svg width="100%" height={H} viewBox="0 0 {width} {H}" role="toolbar" tabindex="-1" aria-label="{l.name}: {l.points.length} readings{l.target ? `, target ${l.target}` : ''}" onkeydown={rove}>
 					{#if band}<rect class="band" x={PAD} y={band.y} width={width - PAD - PADR} height={band.h} />{/if}
@@ -135,7 +145,28 @@
 				</svg>
 			</div>
 		</div>
-	{/each}
+{/snippet}
+
+<div class="lanes">
+	{#each full as l (l.id)}{@render lane(l, true)}{/each}
+	{#if calm.length}
+		<div class="calm-h">
+			<span>In range all period · {calm.length}</span>
+			{#if mounted && calm.length > 1}<button type="button" class="all" onclick={() => (allOpen = !allOpen)}>{allOpen ? 'Show fewer charts' : 'Show all as charts'}</button>{/if}
+		</div>
+		{#each calm as l (l.id)}
+			<details class="calm" open={allOpen}>
+				<summary>
+					<span class="cn">{l.name}</span>
+					<span class="cv">{#if l.latest}{l.latest} <span class="ls">{l.status}</span>{:else}<span class="ls">{l.status}</span>{/if}</span>
+					<span class="cs"><Sparkline values={l.points.map((p) => p.v)} level={l.level === 'none' ? 'ok' : l.level} lo={l.band.min} hi={l.band.max} /></span>
+					<span class="ct">{l.target ? `target ${l.target}` : 'no target'}</span>
+					<span class="chev" aria-hidden="true">›</span>
+				</summary>
+				{@render lane(l, false)}
+			</details>
+		{/each}
+	{/if}
 
 	{#if hasEvents}
 		<div class="lane ev first">
@@ -201,6 +232,92 @@
 		gap: 12px;
 		border-bottom: 1px solid var(--divider-soft);
 		padding: 4px 0;
+	}
+	.lane.nolab {
+		border-bottom: none;
+	}
+	/* the lanes that stayed in range: one line each, a tap opens the chart */
+	.calm-h {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: space-between;
+		align-items: center;
+		gap: 4px 12px;
+		margin-top: 18px;
+		padding-bottom: 4px;
+		border-bottom: 1px solid var(--divider);
+		font-size: 12px;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--text-muted);
+	}
+	.all {
+		min-height: 44px;
+		padding: 0;
+		background: none;
+		border: none;
+		font: inherit;
+		font-size: 14px;
+		letter-spacing: 0;
+		text-transform: none;
+		color: var(--accent-text);
+		cursor: pointer;
+	}
+	.calm {
+		border-bottom: 1px solid var(--divider-soft);
+	}
+	.calm > summary {
+		display: grid;
+		grid-template-columns: 170px 150px minmax(0, 1fr) 150px 20px;
+		align-items: center;
+		gap: 12px;
+		min-height: 44px;
+		cursor: pointer;
+		list-style: none;
+	}
+	.calm > summary::-webkit-details-marker {
+		display: none;
+	}
+	.calm > summary:focus-visible {
+		outline: 2px solid var(--accent);
+		outline-offset: 2px;
+	}
+	.cn {
+		font-size: 14px;
+		font-weight: 700;
+	}
+	.cv {
+		font-size: 13px;
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+	}
+	.cs {
+		height: 22px;
+		min-width: 0;
+	}
+	.calm[open] .cs {
+		visibility: hidden;
+	}
+	.ct {
+		font-size: 12px;
+		color: var(--text-muted);
+		text-align: right;
+	}
+	.chev {
+		font-weight: 700;
+		color: var(--text-muted);
+		text-align: center;
+		transition: transform 0.15s;
+	}
+	.calm[open] .chev {
+		transform: rotate(90deg);
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.chev {
+			transition: none;
+		}
 	}
 	.lane.ev.first {
 		border-top: 2px solid var(--ink);
@@ -335,7 +452,15 @@
 			align-items: baseline;
 			gap: 0 8px;
 		}
-		.lane.axis .lab {
+		.lane.axis .lab,
+		.lane.nolab .lab {
+			display: none;
+		}
+		.calm > summary {
+			grid-template-columns: minmax(0, 1fr) auto 64px 16px;
+			gap: 10px;
+		}
+		.ct {
 			display: none;
 		}
 	}

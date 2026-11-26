@@ -6,6 +6,7 @@ import { CHART_RANGES, publicRanges, publicSettings } from '$lib/server/public';
 import { forumSummary } from '$lib/server/public-detail';
 import { SAMPLE_PATH, sampleTank } from '$lib/server/sample-tank';
 import type { SampleExtras } from '$lib/sample';
+import { publicSpeciesPhotos } from '$lib/server/public-species';
 import type { PageServerLoad } from './$types';
 
 const REPO = 'https://github.com/Fiala06/waterline';
@@ -21,6 +22,8 @@ export const load: PageServerLoad = ({ url, setHeaders }) => {
 	return {
 		view,
 		detail,
+		// the species' photos from Wikimedia Commons, by name, for the livestock and plant cards
+		speciesPhotos: publicSpeciesPhotos([...detail.animals, ...detail.plants].map((x) => x.lookup), SAMPLE_PATH),
 		summary: forumSummary(detail, { name: view.name, type: view.type, volume: view.volume, keeper: view.keeper, url: `${base}${SAMPLE_PATH}`, periodTitle: view.ranges.chart.title }),
 		ranges,
 		chartRanges: CHART_RANGES.map((r) => ({ key: r.key, label: r.label })),

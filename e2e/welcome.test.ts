@@ -78,7 +78,7 @@ test('the product homepage: off by default, then on for signed-out visitors, and
 			await guest.getByRole('heading', { name: 'Care log' }).scrollIntoViewIfNeeded();
 			await expect(label).toBeInViewport();
 			// an overview, a trend with care on it, a short history, a reminder and spending
-			await expect(guest.getByRole('heading', { name: 'Needs attention' })).toBeVisible();
+			await expect(guest.getByRole('heading', { name: 'Latest readings' })).toBeVisible();
 			await expect(guest.getByRole('heading', { name: 'Readings & events' })).toBeVisible();
 			await expect(guest.getByText('Water changes', { exact: true }).first()).toBeVisible();
 			await expect(guest.getByText(/Water change 25% · every 7 days/)).toBeVisible();

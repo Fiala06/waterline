@@ -2,6 +2,7 @@ import { CHART_RANGES, findPublic, ogVersion, publicRanges, publicSettings, publ
 import { tankCardAlt } from '$lib/server/og';
 import { forumSummary, publicDetail } from '$lib/server/public-detail';
 import type { SampleExtras } from '$lib/sample';
+import { publicSpeciesPhotos } from '$lib/server/public-species';
 import type { PageServerLoad } from './$types';
 
 // Public, server-rendered, read-only tank page (P2 / P3).
@@ -22,6 +23,8 @@ export const load: PageServerLoad = ({ params, request, url, locals }) => {
 	return {
 		view,
 		detail,
+		// the species' photos from Wikimedia Commons, by name, for the livestock and plant cards
+		speciesPhotos: publicSpeciesPhotos([...detail.animals, ...detail.plants].map((x) => x.lookup), `/t/${page.slug}`),
 		// the page as text for a forum post, for "Copy summary"
 		summary: forumSummary(detail, { name: view.name, type: view.type, volume: view.volume, keeper: view.keeper, url: canonical, periodTitle: view.ranges.chart.title }),
 		ranges,

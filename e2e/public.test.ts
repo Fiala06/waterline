@@ -45,18 +45,24 @@ test('public tank page and photo share link', async ({ page, browser }, info) =>
 	await expect(v.getByRole('heading', { name: 'Riverbed 40', level: 1 })).toBeVisible();
 	// the keeper's question leads the page
 	await expect(v.locator('blockquote.question')).toHaveText('Nitrate keeps climbing between water changes. What am I missing?');
-	// what's out of range, with its target and what it was before
-	const nitrate = v.locator('.arow', { hasText: 'Nitrate' });
-	await expect(v.getByRole('heading', { name: 'Needs attention' })).toBeVisible();
+	// the latest readings as tiles: what's out of range first, with its target and what it was before
+	const nitrate = v.locator('.tile', { hasText: 'Nitrate' });
+	await expect(v.getByRole('heading', { name: 'Latest readings' })).toBeVisible();
+	await expect(v.locator('.tile').first()).toContainText('Nitrate');
 	await expect(nitrate).toContainText('✕ High');
 	await expect(nitrate).toContainText('was 40 on');
-	await expect(nitrate.locator('.aval')).toContainText('35');
+	await expect(nitrate.locator('.tv')).toContainText('35');
 	// the latest test's time shows with its day
 	await expect(v.locator('.by')).toContainText(/Last water test today, \d{1,2}:\d{2} [AP]M/);
 	// every tested parameter has a lane on the shared timeline; the range is a link
 	const trends = v.locator('section#trends');
+	// out of range: a full chart; in range all period: one line, which opens its chart
 	await expect(trends.locator('.lane .ln', { hasText: 'Nitrate' })).toBeVisible();
-	await expect(trends.locator('.lane .ln', { hasText: 'pH' })).toBeVisible();
+	const ph = trends.locator('details.calm', { hasText: 'pH' });
+	await expect(ph.locator('summary')).toContainText('✓ OK');
+	await expect(ph.locator('svg[role=toolbar]')).toBeHidden();
+	await ph.locator('summary').click();
+	await expect(ph.locator('svg[role=toolbar]')).toBeVisible();
 	await expect(trends.locator('svg circle.pt.bad')).toHaveCount(2);
 	await trends.getByRole('link', { name: '90 days' }).click();
 	await expect(v).toHaveURL(new RegExp(`/t/${slug}\\?chart=90d#trends$`));
@@ -98,6 +104,9 @@ test('public tank page and photo share link', async ({ page, browser }, info) =>
 	await expect(v.locator('meta[name="robots"]')).toHaveAttribute('content', 'index, follow');
 	await expect(v.locator('meta[property="og:image"]')).toHaveAttribute('content', new RegExp(`/t/${slug}/og\\.png\\?v=`));
 	await expect(v.locator('link[rel="canonical"]')).toHaveAttribute('href', new RegExp(`/t/${slug}$`));
+
+	// species photos are served only for this tank's own species
+	expect((await visitor.request.get(`/t/${slug}/species/${'0'.repeat(40)}.jpg`)).status()).toBe(404);
 
 	const og = await visitor.request.get(`/t/${slug}/og.png`);
 	expect(og.headers()['content-type']).toBe('image/png');
