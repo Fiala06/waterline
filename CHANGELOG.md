@@ -11,6 +11,8 @@ A release heading is `## <version> · <date>`, with the version in `package.json
 
 ## Unreleased
 
+## 1.24.1 · 2026-11-26
+
 - **A public page that's easier to read.** A shared tank's page now opens with its cover photo large and recent photos beside it, the latest readings as tiles (anything out of range first, in red), and livestock and plants as cards with their species photos. Charts stay full size only for readings that went near or out of range; the rest are one line each that opens on a tap. The test log, care log and the tank's details show the latest few with "Show all", and on a phone each test is its own block instead of a table that scrolls sideways. With Detail for people helping me on, everything opens and the charts and logs come first: [Public page](/tanks/current/public).
 
 ## 1.24.0 · 2026-11-24
